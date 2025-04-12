@@ -93,6 +93,26 @@ public class NetPaceConsoleTests
         await Verify(result.Output);
     }
 
+    [InlineData("-h")]
+    [InlineData("--help")]
+    [InlineData("-?")]
+    [Theory]
+    public async Task Should_Display_Help(string help)
+    {
+        // Given
+        var registrar = new TypeRegistrar();
+        registrar.Register(typeof(ISpeedTestService), typeof(SpeedTestStub));
+        registrar.Register(typeof(IClock), typeof(ClockStub));
+        var app = GetCommandAppTester(registrar);
+
+        // When
+        var result = await app.RunAsync(help);
+
+        // Then
+        Assert.Equal(0, result.ExitCode);
+        await Verify(result.Output).DisableRequireUniquePrefix();
+    }
+
     [Fact]
     public async Task Should_Perform_Speed_Test_With_CSV()
     {
