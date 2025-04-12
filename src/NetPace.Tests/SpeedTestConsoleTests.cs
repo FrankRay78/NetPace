@@ -1,11 +1,11 @@
-﻿using Spectre.Console.Cli;
-using NetPace.Console;
+﻿using NetPace.Console;
 using NetPace.Console.Commands;
 using NetPace.Console.DependencyInjection;
+using Spectre.Console.Cli;
 
 namespace NetPace.Tests;
 
-public class SpeedTestConsoleTests
+public class NetPaceConsoleTests
 {
     /// <summary>
     /// Create the CommandAppTester and configure.
