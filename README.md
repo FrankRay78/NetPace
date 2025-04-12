@@ -14,11 +14,11 @@ Network speed test CLI application; made beautiful with [Spectre.Console](https:
 A cross-platform command-line application for performing network speed tests, including server discovery, latency measurement, download and upload speed testing. 
 The core speed test library, `NetPace.Core`, has been designed for developer use in other projects and applications.
 
-NetPace is not endorsed by or related to [Speedtest by Ookla](https://www.speedtest.net/) in any way, although their servers are used under the hood.
+NetPace is not endorsed by or related to [Speedtest by Ookla](https://www.speedtest.net/) in any way, although their servers are used under the hood in the `OoklaSpeedtest` implementation (the default speed test provider for NetPace).
 
-The obligatory screenshot (as of 6 March 2025):
+The obligatory screenshot (as of 12 April 2025):
 
-![2025-03-25 NetPace](https://github.com/user-attachments/assets/b2df7f36-f620-4683-88ad-81b913b24070)
+![NetPace screenshot - 12 April 2025](https://github.com/user-attachments/assets/8296f350-ea5d-4f45-8c52-d393f025b477)
 
 <br />
 
