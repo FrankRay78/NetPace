@@ -1,4 +1,4 @@
-﻿namespace NetPace.Core.Clients;
+namespace NetPace.Core.Clients;
 
 /// <summary>
 /// Configuration unique to Ookla Speedtest.

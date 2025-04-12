@@ -1,4 +1,4 @@
-﻿<Project>
+<Project>
   <PropertyGroup Label="Settings">
     <Version>0.1.0</Version>
     <Deterministic>true</Deterministic>

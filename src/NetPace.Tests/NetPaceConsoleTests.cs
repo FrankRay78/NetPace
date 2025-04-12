@@ -1,4 +1,4 @@
-﻿using NetPace.Console;
+using NetPace.Console;
 using NetPace.Console.Commands;
 using NetPace.Console.DependencyInjection;
 using NetPace.Core;
