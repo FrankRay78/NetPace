@@ -30,7 +30,7 @@ public static class Program
     private static ICommandApp GetCommandApp(ITypeRegistrar registrar)
     {
         var app = new CommandApp<SpeedTestCommand>(registrar)
-            .WithDescription("Internet speed tester including server discovery, latency measurement, download and upload speed testing.");
+            .WithDescription("Network speed tester including server discovery, latency measurement, download and upload speed testing.");
 
         app.Configure(ConfigureAction);
 

@@ -45,15 +45,15 @@ Then clone this repository locally and build.
 ```txt
 C:\>NetPace.exe --help
 
-   _____                            __  ______                 __    ______                                  __
-  / ___/    ____   ___   ___   ____/ / /_  __/  ___    _____  / /_  / ____/  ____    ____    _____  ____    / /  ___
-  \__ \    / __ \ / _ \ / _ \ / __  /   / /    / _ \  / ___/ / __/ / /      / __ \  / __ \  / ___/ / __ \  / /  / _ \
- ___/ /   / /_/ //  __//  __// /_/ /   / /    /  __/ (__  ) / /_  / /___   / /_/ / / / / / (__  ) / /_/ / / /  /  __/
-/____/   / .___/ \___/ \___/ \__,_/   /_/     \___/ /____/  \__/  \____/   \____/ /_/ /_/ /____/  \____/ /_/   \___/
-        /_/
+    _   __         __     ____
+   / | / /  ___   / /_   / __ \  ____ _  _____  ___
+  /  |/ /  / _ \ / __/  / /_/ / / __ `/ / ___/ / _ \
+ / /|  /  /  __// /_   / ____/ / /_/ / / /__  /  __/
+/_/ |_/   \___/ \__/  /_/      \__,_/  \___/  \___/
+
 
 DESCRIPTION:
-Internet speed tester including server discovery, latency measurement, download and upload speed testing.
+Network speed tester including server discovery, latency measurement, download and upload speed testing.
 
 USAGE:
     NetPace [OPTIONS] [COMMAND]
