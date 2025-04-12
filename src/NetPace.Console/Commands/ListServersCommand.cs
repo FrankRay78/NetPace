@@ -1,4 +1,6 @@
-﻿namespace NetPace.Console.Commands;
+﻿using NetPace.Core;
+
+namespace NetPace.Console.Commands;
 
 public sealed class ListServersCommand : AsyncCommand<ListServersCommandSettings>
 {

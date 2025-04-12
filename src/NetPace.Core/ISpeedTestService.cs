@@ -1,4 +1,4 @@
-namespace NetPace.Core.Client;
+namespace NetPace.Core;
 
 /// <summary>
 /// Interface for performing internet speed tests.

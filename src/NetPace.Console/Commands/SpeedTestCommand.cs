@@ -1,5 +1,6 @@
 ﻿using ByteSizeLib;
 using Humanizer;
+using NetPace.Core;
 using NetPace.Core.Extensions;
 
 namespace NetPace.Console.Commands;

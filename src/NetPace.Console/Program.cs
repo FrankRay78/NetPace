@@ -1,5 +1,6 @@
 ﻿using NetPace.Console;
 using NetPace.Console.DependencyInjection;
+using NetPace.Core;
 
 public static class Program
 {

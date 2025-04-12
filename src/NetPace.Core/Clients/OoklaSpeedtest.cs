@@ -1,9 +1,8 @@
-using Microsoft.VisualBasic;
 using System.Diagnostics;
 using System.Net.Http.Headers;
 using System.Text;
 
-namespace NetPace.Core.Client;
+namespace NetPace.Core.Clients;
 
 /// <summary>
 /// An Ookla Speedtest implementation of the <see cref="ISpeedTestService"/> interface.

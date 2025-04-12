@@ -1,6 +1,7 @@
 ﻿using NetPace.Console;
 using NetPace.Console.Commands;
 using NetPace.Console.DependencyInjection;
+using NetPace.Core;
 using Spectre.Console.Cli;
 
 namespace NetPace.Tests;
