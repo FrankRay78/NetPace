@@ -1,10 +1,10 @@
-# SpeedTestConsole
+# NetPace
 An internet speed test CLI application; made beautiful with [Spectre.Console](https://github.com/spectreconsole/spectre.console). 
 
 <p align="left">
-    <a href="https://github.com/FrankRay78/SpeedTestConsole/issues/new?labels=needs%20triage,bug&template=bug-report---.md">Report Bug</a>
+    <a href="https://github.com/FrankRay78/NetPace/issues/new?labels=needs%20triage,bug&template=bug-report---.md">Report Bug</a>
     -
-    <a href="https://github.com/FrankRay78/SpeedTestConsole/issues/new?labels=needs%20triage,enhancement&template=feature-request---.md">Request Feature</a>
+    <a href="https://github.com/FrankRay78/NetPace/issues/new?labels=needs%20triage,enhancement&template=feature-request---.md">Request Feature</a>
 </p>
 
 <br />
@@ -14,11 +14,11 @@ An internet speed test CLI application; made beautiful with [Spectre.Console](ht
 A cross-platform command-line application for performing network speed tests, including server discovery, latency measurement, download and upload speed testing. 
 The core speed test library has also been designed for reuse in other projects and applications.
 
-SpeedTestConsole is not endorsed by or related to [Speedtest by Ookla](https://www.speedtest.net/) in any way, although their servers are used under the hood.
+NetPace is not endorsed by or related to [Speedtest by Ookla](https://www.speedtest.net/) in any way, although their servers are used under the hood.
 
 The obligatory screenshot (as of 6 March 2025):
 
-![2025-03-25 SpeedTestConsole](https://github.com/user-attachments/assets/b2df7f36-f620-4683-88ad-81b913b24070)
+![2025-03-25 NetPace](https://github.com/user-attachments/assets/b2df7f36-f620-4683-88ad-81b913b24070)
 
 <br />
 
@@ -40,10 +40,10 @@ Then clone this repository locally and build.
 
 
 ## Usage
-`SpeedTestConsole --help` will display detailed usage instructions.
+`NetPace --help` will display detailed usage instructions.
 
 ```txt
-C:\>SpeedTestConsole.exe --help
+C:\>NetPace.exe --help
 
    _____                            __  ______                 __    ______                                  __
   / ___/    ____   ___   ___   ____/ / /_  __/  ___    _____  / /_  / ____/  ____    ____    _____  ____    / /  ___
@@ -56,7 +56,7 @@ DESCRIPTION:
 Internet speed tester including server discovery, latency measurement, download and upload speed testing.
 
 USAGE:
-    SpeedTestConsole [OPTIONS] [COMMAND]
+    NetPace [OPTIONS] [COMMAND]
 
 OPTIONS:
                            DEFAULT
@@ -96,7 +96,7 @@ COMMANDS:
 - [ ] Run unit tests on PR
 - [ ] NuGet package for the core library
 
-See the [open issues](https://github.com/FrankRay78/SpeedTestConsole/issues) for a full list of proposed features (and known issues).
+See the [open issues](https://github.com/FrankRay78/NetPace/issues) for a full list of proposed features (and known issues).
 
 <br />
 
@@ -105,7 +105,7 @@ See the [open issues](https://github.com/FrankRay78/SpeedTestConsole/issues) for
 > [!IMPORTANT]\
 > I'm not currently accepting pull requests for this project. 
 
-You can contribute by [opening a new issue](https://github.com/FrankRay78/SpeedTestConsole/issues/new/choose) or commenting on existing issues, and you are most welcome to fork the repository for your own purposes. 
+You can contribute by [opening a new issue](https://github.com/FrankRay78/NetPace/issues/new/choose) or commenting on existing issues, and you are most welcome to fork the repository for your own purposes. 
 
 But please **don't be offended** if I close or delete issues as I see fit.
 
@@ -121,7 +121,7 @@ Distributed under the MIT license. See `LICENSE` for more information.
 ## Contact
 Frank Ray - [LinkedIn](https://www.linkedin.com/in/frankray/) - [Better Software UK](https://bettersoftware.uk)
 
-Project Link: [https://github.com/FrankRay78/SpeedTestConsole](https://github.com/FrankRay78/SpeedTestConsole)
+Project Link: [https://github.com/FrankRay78/NetPace](https://github.com/FrankRay78/NetPace)
 
 <br />
 
