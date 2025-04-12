@@ -1,4 +1,0 @@
-﻿Test Sponsor 1 (100 ms)
-Download: 1 KBps Upload: 2.33 KBps
-
-Try 'SpeedTestConsole --help' for more information.

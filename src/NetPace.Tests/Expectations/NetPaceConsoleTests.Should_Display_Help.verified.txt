@@ -1,0 +1,30 @@
+﻿
+    _   __         __     ____                      
+   / | / /  ___   / /_   / __ \  ____ _  _____  ___ 
+  /  |/ /  / _ \ / __/  / /_/ / / __ `/ / ___/ / _ \
+ / /|  /  /  __// /_   / ____/ / /_/ / / /__  /  __/
+/_/ |_/   \___/ \__/  /_/      \__,_/  \___/  \___/ 
+                                                    
+
+DESCRIPTION:
+Internet speed tester including server discovery, latency measurement, download and upload speed testing.
+
+USAGE:
+    NetPace [OPTIONS] [COMMAND]
+
+OPTIONS:
+                           DEFAULT                                                                                                                                                             
+    -h, --help                              Prints help information.                                                                                                                           
+        --csv                               Display minimal output in CSV format (always includes timestamp).                                                                                  
+        --csv-delimiter    ,                Single character delimiter to use in CSV output.                                                                                                   
+        --no-download                       Do not perform download test.                                                                                                                      
+        --no-upload                         Do not perform upload test.                                                                                                                        
+    -t, --timestamp                         Include a timestamp.                                                                                                                               
+    -u, --unit             BitsPerSecond    The speed unit. <BitsPerSecond, BytesPerSecond>                                                                                                    
+        --unit-system      SI               The speed unit system. <SI, IEC>                                                                                                                   
+                                            SI steps up in powers of 1000 (KB, MB, GB), common in networking, while IEC uses powers of 1024 (KiB, MiB, GiB), standard in computing and storage.
+        --verbosity        Normal           The verbosity level. <Minimal, Normal, Debug>                                                                                                      
+                                            Minimal is ideal for batch scripts and redirected output.                                                                                          
+
+COMMANDS:
+    servers    Show the nearest speed test servers.

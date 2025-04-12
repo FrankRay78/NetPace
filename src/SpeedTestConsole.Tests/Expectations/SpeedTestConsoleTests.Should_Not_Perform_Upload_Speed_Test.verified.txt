@@ -1,4 +1,0 @@
-﻿Test Sponsor 1 (100 ms)
-Download: 8 Kbps
-
-Try 'SpeedTestConsole --help' for more information.

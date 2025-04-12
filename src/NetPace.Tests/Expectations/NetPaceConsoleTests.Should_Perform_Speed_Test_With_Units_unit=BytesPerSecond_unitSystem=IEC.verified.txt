@@ -1,0 +1,4 @@
+﻿Test Sponsor 1 (100 ms)
+Download: 1000 Bps Upload: 2.28 KiBps
+
+Try 'NetPace --help' for more information.
