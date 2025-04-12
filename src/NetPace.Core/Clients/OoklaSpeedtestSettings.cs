@@ -3,7 +3,7 @@
 /// <summary>
 /// Configuration unique to Ookla Speedtest.
 /// </summary>
-/// <see cref="https://www.speedtest.net/"/>
+/// <remarks>See https://www.speedtest.net/</remarks>
 public sealed class OoklaSpeedtestSettings
 {
     public string ServersUrl = "http://www.speedtest.net/speedtest-servers.php";

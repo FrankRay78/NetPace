@@ -7,7 +7,7 @@
                                                     
 
 DESCRIPTION:
-Internet speed tester including server discovery, latency measurement, download and upload speed testing.
+Network speed tester including server discovery, latency measurement, download and upload speed testing.
 
 USAGE:
     NetPace [OPTIONS] [COMMAND]
