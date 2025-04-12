@@ -1,5 +1,5 @@
 # NetPace
-An internet speed test CLI application; made beautiful with [Spectre.Console](https://github.com/spectreconsole/spectre.console). 
+Network speed test CLI application; made beautiful with [Spectre.Console](https://github.com/spectreconsole/spectre.console). 
 
 <p align="left">
     <a href="https://github.com/FrankRay78/NetPace/issues/new?labels=needs%20triage,bug&template=bug-report---.md">Report Bug</a>
@@ -12,7 +12,7 @@ An internet speed test CLI application; made beautiful with [Spectre.Console](ht
 
 ## About The Project
 A cross-platform command-line application for performing network speed tests, including server discovery, latency measurement, download and upload speed testing. 
-The core speed test library has also been designed for reuse in other projects and applications.
+The core speed test library, `NetPace.Core`, has been designed for developer use in other projects and applications.
 
 NetPace is not endorsed by or related to [Speedtest by Ookla](https://www.speedtest.net/) in any way, although their servers are used under the hood.
 
