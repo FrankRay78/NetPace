@@ -4,6 +4,35 @@
     <TargetFramework>net8.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <IsPackable>true</IsPackable>
+
+    <!-- NuGet metadata -->
+    <PackageId>NetPace.Core</PackageId>
+    <Title>NetPace.Core</Title>
+    <Description>Network speed tester including server discovery, latency measurement, download and upload speed testing.</Description>
+    <Authors>Frank Ray</Authors>
+    <Copyright>Frank Ray</Copyright>
+    <Company>Better Software UK</Company>
+    <PackageTags>speedtest;internet-speed-checker;internet-speed;network-speed;internet-speed-test;network-speed-meter;network-speed-test;library;dotnet;dotnet-library</PackageTags>
+    <PackageIcon>logo.png</PackageIcon>
+
+    <RepositoryUrl>https://github.com/FrankRay78/NetPace</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageProjectUrl>https://github.com/FrankRay78/NetPace</PackageProjectUrl>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageReleaseNotes>https://github.com/FrankRay78/NetPace/releases</PackageReleaseNotes>
+
+    <!-- Ensure compatibility and public API validation -->
+    <EnablePackageValidation>true</EnablePackageValidation>
+
+    <!-- Include the README file in the package -->
+    <IncludePackageReadmeFile>true</IncludePackageReadmeFile>
   </PropertyGroup>
 
+  <!-- Explicitly include embedded package files not in csproj folder -->
+  <ItemGroup>
+    <None Include="$(MSBuildThisFileDirectory)..\..\resources\nuget\README.md" Pack="true" PackagePath="" Visible="false" />
+    <None Include="$(MSBuildThisFileDirectory)..\..\resources\nuget\logo.png" Pack="true" PackagePath="" Visible="false" />
+  </ItemGroup>
 </Project>
