@@ -14,6 +14,7 @@ public class SpeedTestMock : ISpeedTestService
     public Func<IServer, Task<SpeedTestResult>>? GetUploadSpeedAsyncFunc { get; set; }
     public Func<IServer, Action<int>, Task<SpeedTestResult>>? GetUploadSpeedWithProgressAsyncFunc { get; set; }
 
+    /// <inheritdoc/>
     public Task<IServer[]> GetServersAsync()
     {
         if (GetServersAsyncFunc != null)
@@ -21,6 +22,7 @@ public class SpeedTestMock : ISpeedTestService
         throw new NotImplementedException();
     }
 
+    /// <inheritdoc/>
     public Task<int?> GetServerLatencyAsync(IServer server)
     {
         if (GetServerLatencyAsyncFunc != null)
@@ -28,6 +30,7 @@ public class SpeedTestMock : ISpeedTestService
         throw new NotImplementedException();
     }
 
+    /// <inheritdoc/>
     public Task<(IServer server, int latency)?> GetFastestServerByLatencyAsync(IServer[] servers)
     {
         if (GetFastestServerByLatencyAsyncFunc != null)
@@ -35,6 +38,7 @@ public class SpeedTestMock : ISpeedTestService
         throw new NotImplementedException();
     }
 
+    /// <inheritdoc/>
     public Task<SpeedTestResult> GetDownloadSpeedAsync(IServer server)
     {
         if (GetDownloadSpeedAsyncFunc != null)
@@ -42,6 +46,7 @@ public class SpeedTestMock : ISpeedTestService
         throw new NotImplementedException();
     }
 
+    /// <inheritdoc/>
     public Task<SpeedTestResult> GetDownloadSpeedAsync(IServer server, Action<int> updateProgress)
     {
         if (GetDownloadSpeedWithProgressAsyncFunc != null)
@@ -49,6 +54,7 @@ public class SpeedTestMock : ISpeedTestService
         throw new NotImplementedException();
     }
 
+    /// <inheritdoc/>
     public Task<SpeedTestResult> GetUploadSpeedAsync(IServer server)
     {
         if (GetUploadSpeedAsyncFunc != null)
@@ -56,6 +62,7 @@ public class SpeedTestMock : ISpeedTestService
         throw new NotImplementedException();
     }
 
+    /// <inheritdoc/>
     public Task<SpeedTestResult> GetUploadSpeedAsync(IServer server, Action<int> updateProgress)
     {
         if (GetUploadSpeedWithProgressAsyncFunc != null)
