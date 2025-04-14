@@ -14,6 +14,7 @@ public class SpeedTestStub : ISpeedTestService
         this.delayMilliseconds = delayMilliseconds;
     }
 
+    /// <inheritdoc/>
     public Task<IServer[]> GetServersAsync()
     {
         return Task.FromResult(new IServer[]
@@ -24,6 +25,7 @@ public class SpeedTestStub : ISpeedTestService
         });
     }
 
+    /// <inheritdoc/>
     public Task<int?> GetServerLatencyAsync(IServer server)
     {
         var latency = int.Parse(server.Name!.Replace("Test Server", "")) * 100;
@@ -31,6 +33,7 @@ public class SpeedTestStub : ISpeedTestService
         return Task.FromResult<int?>(latency);
     }
 
+    /// <inheritdoc/>
     public Task<(IServer server, int latency)?> GetFastestServerByLatencyAsync(IServer[] servers)
     {
         var fastestServer = servers[0];
@@ -39,11 +42,13 @@ public class SpeedTestStub : ISpeedTestService
         return Task.FromResult<(IServer server, int latency)?>((fastestServer, fastestLatency));
     }
 
+    /// <inheritdoc/>
     public Task<SpeedTestResult> GetDownloadSpeedAsync(IServer server)
     {
         return GetDownloadSpeedAsync(server, _ => { });
     }
 
+    /// <inheritdoc/>
     public Task<SpeedTestResult> GetDownloadSpeedAsync(IServer server, Action<int> updateProgress)
     {
         if (updateProgress is not null)
@@ -61,11 +66,13 @@ public class SpeedTestStub : ISpeedTestService
         return Task.FromResult<SpeedTestResult>(new SpeedTestResult() { BytesProcessed = 1000, ElapsedMilliseconds = 1000 });
     }
 
+    /// <inheritdoc/>
     public Task<SpeedTestResult> GetUploadSpeedAsync(IServer server)
     {
         return GetUploadSpeedAsync(server, (int _) => { });
     }
 
+    /// <inheritdoc/>
     public Task<SpeedTestResult> GetUploadSpeedAsync(IServer server, Action<int> updateProgress)
     {
         if (updateProgress is not null)
