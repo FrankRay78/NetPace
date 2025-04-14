@@ -16,7 +16,7 @@ public class NetPaceConsoleTests
         var app = registrar == null ? 
             new CommandAppTester(new CommandAppTesterSettings { TrimConsoleOutput = false }) :
             new CommandAppTester(registrar, new CommandAppTesterSettings { TrimConsoleOutput = false });
-        app.SetDefaultCommand<SpeedTestCommand>("Internet speed tester including server discovery, latency measurement, download and upload speed testing.");
+        app.SetDefaultCommand<SpeedTestCommand>("Network speed tester including server discovery, latency measurement, download and upload speed testing.");
         app.Configure(Program.ConfigureAction);
         return app;
     }

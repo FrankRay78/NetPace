@@ -1,0 +1,28 @@
+﻿<Project>
+  <PropertyGroup Label="Settings">
+    <Version>0.1.0</Version>
+    <Deterministic>true</Deterministic>
+    <LangVersion>12</LangVersion>
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>embedded</DebugType>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <IsPackable>false</IsPackable>
+    <Nullable>enable</Nullable>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <NoWarn>$(NoWarn);SA1633</NoWarn>
+    <EnableNETAnalyzers>true</EnableNETAnalyzers>
+    <AnalysisLevel>latest</AnalysisLevel>
+    <SignAssembly>true</SignAssembly>
+    <AssemblyOriginatorKeyFile>$(MSBuildThisFileDirectory)..\resources\NetPace.snk</AssemblyOriginatorKeyFile>
+    <PublicKey>00240000048000009400000006020000002400005253413100040000010001001dab0da860a27573250e2b43335ded9f6599d2344658bf2015b562b1466dee5e8f5b2b8ddd0668f552f0de1f93fd547876a9580921dd96fc3ce97029d22fb2ae034a2cc1ef7a1ffaf71d6dca6b43e69c559dbaf48ea37066fa78003c6fede31d501ec1efef95ce0cd83606161a290da09b08f0c946eb995ab2c48fceaab40db1</PublicKey>
+  </PropertyGroup>
+
+  <PropertyGroup Label="Source Link">
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <AdditionalFiles Include="$(MSBuildThisFileDirectory)/stylecop.json" Link="Properties/stylecop.json"/>
+  </ItemGroup>
+</Project>
