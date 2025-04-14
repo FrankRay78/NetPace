@@ -5,6 +5,11 @@ using NetPace.Core;
 public static class Program
 {
     /// <summary>
+    /// The application description
+    /// </summary>
+    internal const string Description = "Network speed tester including server discovery, latency measurement, download and upload speed testing.";
+
+    /// <summary>
     /// The configure action for the CommandApp.
     /// </summary>
     /// <remarks>
@@ -30,7 +35,7 @@ public static class Program
     private static ICommandApp GetCommandApp(ITypeRegistrar registrar)
     {
         var app = new CommandApp<SpeedTestCommand>(registrar)
-            .WithDescription("Network speed tester including server discovery, latency measurement, download and upload speed testing.");
+            .WithDescription(Description);
 
         app.Configure(ConfigureAction);
 
