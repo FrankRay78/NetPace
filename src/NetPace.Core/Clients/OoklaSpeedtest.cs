@@ -11,6 +11,12 @@ public sealed class OoklaSpeedtest : ISpeedTestService
 {
     private OoklaSpeedtestSettings settings { get; set; }
 
+    public OoklaSpeedtest()
+    {
+        // Use default settings when none provided
+        this.settings = new OoklaSpeedtestSettings();
+    }
+
     public OoklaSpeedtest(OoklaSpeedtestSettings settings)
     {
         this.settings = settings;
