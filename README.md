@@ -12,7 +12,7 @@ Network speed tester including server discovery, latency measurement, download a
 
 ## About The Project
 A cross-platform command-line application for performing network speed tests, including server discovery, latency measurement, download and upload speed testing. 
-The core speed test library, `NetPace.Core`, has been designed for developer use and can be installed via [NuGet Package Manager](https://www.nuget.org/packages/NetPace.Core/).
+The core speed test library, `NetPace.Core`, has been designed for developer use and can be installed via [NuGet](https://www.nuget.org/packages/NetPace.Core/).
 
 NetPace is not endorsed by or related to [Speedtest by Ookla](https://www.speedtest.net/) in any way, although their servers are used under the hood in the `OoklaSpeedtest` implementation (the default speed test provider for NetPace).
 
