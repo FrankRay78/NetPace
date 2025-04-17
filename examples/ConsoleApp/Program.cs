@@ -9,8 +9,7 @@ using NetPace.Core.Extensions;
 
 
 // Instantiate a speed tester
-//var speedTester = new OoklaSpeedtest() as ISpeedTestService;
-var speedTester = new SpeedTestStub() as ISpeedTestService;
+var speedTester = new OoklaSpeedtest() as ISpeedTestService;
 
 // Get a list of available speed test servers
 var servers = await speedTester.GetServersAsync();
