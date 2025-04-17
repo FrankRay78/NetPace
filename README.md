@@ -1,5 +1,5 @@
 # NetPace
-Network speed test CLI application; made beautiful with [Spectre.Console](https://github.com/spectreconsole/spectre.console). 
+Network speed tester including server discovery, latency measurement, download and upload speed testing.
 
 <p align="left">
     <a href="https://github.com/FrankRay78/NetPace/issues/new?labels=needs%20triage,bug&template=bug-report---.md">Report Bug</a>
@@ -12,7 +12,7 @@ Network speed test CLI application; made beautiful with [Spectre.Console](https:
 
 ## About The Project
 A cross-platform command-line application for performing network speed tests, including server discovery, latency measurement, download and upload speed testing. 
-The core speed test library, `NetPace.Core`, has been designed for developer use in other projects and applications.
+The core speed test library, `NetPace.Core`, has been designed for developer use and can be installed via [NuGet](https://www.nuget.org/packages/NetPace.Core/).
 
 NetPace is not endorsed by or related to [Speedtest by Ookla](https://www.speedtest.net/) in any way, although their servers are used under the hood in the `OoklaSpeedtest` implementation (the default speed test provider for NetPace).
 
@@ -24,7 +24,7 @@ The obligatory screenshot (as of 12 April 2025):
 
 
 ## Background
-The idea for this project came from my experience as the Spectre.Console CLI sub-system maintainer, whilst never having used the library for my own production quality application. My motivation is to become expert at developing excellent command line applications, following best practices like the [Command Line Interface Guidelines](https://clig.dev/), and then taking the experience back into my maintainer role. 
+The idea for this project came from my experience as the [Spectre.Console](https://github.com/spectreconsole/spectre.console) CLI sub-system maintainer, never having actually used the library for my own use. My motivation is to become expert at developing excellent command line applications, following best practices like the [Command Line Interface Guidelines](https://clig.dev/), and then taking the experience back into my maintainer role. 
 
 This is also known as 'dogfooding' in the tech industry ie. using your own product before expecting others to do the same.
 
@@ -88,7 +88,7 @@ COMMANDS:
    - [X] SI or IEC
    - [ ] Fixed speed unit (eg. Mbps, Gbps)
    - [X] Verbosity of output
-   - [X] ~~`--plain` switch for minimal output~~ (nb. implemented by verbosity switch)
+   - [X] ~~`--plain` switch for minimal output~~ (nb. implemented by '--verbosity=Minimal')
    - [X] CSV output
    - [ ] Maximum speed test (time)
    - [ ] Maximum speed test (size transferred)
@@ -122,12 +122,3 @@ Distributed under the MIT license. See `LICENSE` for more information.
 Frank Ray - [LinkedIn](https://www.linkedin.com/in/frankray/) - [Better Software UK](https://bettersoftware.uk)
 
 Project Link: [https://github.com/FrankRay78/NetPace](https://github.com/FrankRay78/NetPace)
-
-<br />
-
-
-## Acknowledgments
-* [Spectre.Console](https://github.com/spectreconsole/spectre.console)
-* [SpeedTestSharp](https://github.com/manuelmayer-dev/SpeedTestSharp)
-* [Best-README-Template](https://github.com/othneildrew/Best-README-Template)
-* [Standard Readme](https://github.com/RichardLitt/standard-readme)
