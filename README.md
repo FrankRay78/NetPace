@@ -1,5 +1,11 @@
 # NetPace
+
+[![NuGet](https://img.shields.io/nuget/v/NetPace.Core.svg)](https://www.nuget.org/packages/NetPace.Core/)
+[![Build & Tests](https://github.com/FrankRay78/NetPace/actions/workflows/dotnet.yml/badge.svg)](https://github.com/FrankRay78/NetPace/actions/workflows/dotnet.yml)
+
 Network speed tester including server discovery, latency measurement, download and upload speed testing.
+
+Built with .NET 8.0 — runs on Windows, Linux, and macOS.
 
 <p align="left">
     <a href="https://github.com/FrankRay78/NetPace/issues/new?labels=needs%20triage,bug&template=bug-report---.md">Report Bug</a>
@@ -32,7 +38,7 @@ This is also known as 'dogfooding' in the tech industry ie. using your own produ
 
 
 ## Getting Started
-I use Windows 10, Visual Studio 2022 Community, and Microsoft .Net 8.0 to develop and build the codebase - you will need the same, or similar.
+Developed with Microsoft .NET 8.0 on Windows 10 using Visual Studio 2022 Community. Other modern environments should work fine.
 
 Then clone this repository locally and build.
 
@@ -80,6 +86,33 @@ COMMANDS:
 <br />
 
 
+## Developer Use
+
+Want to integrate network speed testing into your own app?
+
+Install the core library via NuGet:
+
+```bash
+dotnet add package NetPace.Core
+```
+
+Then use the `ISpeedTestService` interface:
+
+```csharp
+var speedTester = new OoklaSpeedtest() as ISpeedTestService;
+
+var servers = await speedTester.GetServersAsync();
+var fastestServer = await speedTester.GetFastestServerByLatencyAsync(servers) ?? default;
+
+var downloadResult = await speedTester.GetDownloadSpeedAsync(fastestServer.server);
+var uploadResult = await speedTester.GetUploadSpeedAsync(fastestServer.server);
+```
+
+See the [full usage example](https://github.com/FrankRay78/NetPace/tree/main/examples/ConsoleApp/Program.cs).
+
+<br />
+
+
 ## Roadmap
 - [X] Download speed test
 - [X] Upload speed test
@@ -121,4 +154,4 @@ Distributed under the MIT license. See `LICENSE` for more information.
 ## Contact
 Frank Ray - [LinkedIn](https://www.linkedin.com/in/frankray/) - [Better Software UK](https://bettersoftware.uk)
 
-Project Link: [https://github.com/FrankRay78/NetPace](https://github.com/FrankRay78/NetPace)
+GitHub: [https://github.com/FrankRay78/NetPace](https://github.com/FrankRay78/NetPace)
