@@ -2,8 +2,6 @@
 
 Network speed test library including server discovery, latency measurement, download and upload speed testing.
 
-<br/>
-
 ## Quick Start
 
 ```csharp
@@ -27,9 +25,6 @@ Console.WriteLine($"Upload: {uploadResult.GetSpeedString(SpeedUnit.BitsPerSecond
 ```
 
 See [full example](https://github.com/FrankRay78/NetPace/tree/main/examples/ConsoleApp/Program.cs) on GitHub.
-
-<br/>
-
 
 ## API Overview
 
