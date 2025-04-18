@@ -1,9 +1,9 @@
-﻿namespace NetPace.Core.Clients;
+namespace NetPace.Core.Clients;
 
 /// <summary>
 /// A stub implementation of <see cref="ISpeedTestService"/> for testing purposes.
 /// </summary>
-public class SpeedTestStub : ISpeedTestService
+public sealed class SpeedTestStub : ISpeedTestService
 {
     private int delayMilliseconds = 0;
 

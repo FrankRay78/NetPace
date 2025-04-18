@@ -1,9 +1,9 @@
-﻿namespace NetPace.Core.Clients;
+namespace NetPace.Core.Clients;
 
 /// <summary>
 /// A mock implementation of <see cref="ISpeedTestService"/> for testing purposes.
 /// </summary>
-public class SpeedTestMock : ISpeedTestService
+public sealed class SpeedTestMock : ISpeedTestService
 {
     // Delegates for method behavior
     public Func<Task<IServer[]>>? GetServersAsyncFunc { get; set; }

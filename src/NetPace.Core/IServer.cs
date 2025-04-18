@@ -1,4 +1,4 @@
-﻿namespace NetPace.Core.DataTypes;
+namespace NetPace.Core;
 
 /// <summary>
 /// Represents a server used for network speed testing.
