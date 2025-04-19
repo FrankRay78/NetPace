@@ -1,6 +1,6 @@
-namespace NetPace.Core.Extensions;
+namespace NetPace.Core.Clients.Ookla;
 
-public static class StringExtensions
+internal static class StringExtensions
 {
     public static T? DeserializeFromXml<T>(this string data)
     {

@@ -1,4 +1,4 @@
-namespace NetPace.Core.Clients;
+namespace NetPace.Core.Clients.Testing;
 
 /// <summary>
 /// A stub implementation of <see cref="ISpeedTestService"/> for testing purposes.
@@ -63,13 +63,13 @@ public sealed class SpeedTestStub : ISpeedTestService
             updateProgress(100);
         }
 
-        return Task.FromResult<SpeedTestResult>(new SpeedTestResult() { BytesProcessed = 1000, ElapsedMilliseconds = 1000 });
+        return Task.FromResult(new SpeedTestResult() { BytesProcessed = 1000, ElapsedMilliseconds = 1000 });
     }
 
     /// <inheritdoc/>
     public Task<SpeedTestResult> GetUploadSpeedAsync(IServer server)
     {
-        return GetUploadSpeedAsync(server, (int _) => { });
+        return GetUploadSpeedAsync(server, (_) => { });
     }
 
     /// <inheritdoc/>
@@ -87,6 +87,6 @@ public sealed class SpeedTestStub : ISpeedTestService
             updateProgress(100);
         }
 
-        return Task.FromResult<SpeedTestResult>(new SpeedTestResult() { BytesProcessed = 7000, ElapsedMilliseconds = 3000 });
+        return Task.FromResult(new SpeedTestResult() { BytesProcessed = 7000, ElapsedMilliseconds = 3000 });
     }
 }

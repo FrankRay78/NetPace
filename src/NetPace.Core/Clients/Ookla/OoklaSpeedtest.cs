@@ -2,7 +2,7 @@ using System.Diagnostics;
 using System.Net.Http.Headers;
 using System.Text;
 
-namespace NetPace.Core.Clients;
+namespace NetPace.Core.Clients.Ookla;
 
 /// <summary>
 /// An Ookla Speedtest implementation of the <see cref="ISpeedTestService"/> interface.
@@ -14,7 +14,7 @@ public sealed class OoklaSpeedtest : ISpeedTestService
     public OoklaSpeedtest()
     {
         // Use default settings when none provided
-        this.settings = new OoklaSpeedtestSettings();
+        settings = new OoklaSpeedtestSettings();
     }
 
     public OoklaSpeedtest(OoklaSpeedtestSettings settings)
@@ -84,13 +84,13 @@ public sealed class OoklaSpeedtest : ISpeedTestService
     /// <inheritdoc/>
     public async Task<(IServer server, int latency)?> GetFastestServerByLatencyAsync(IServer[] servers)
     {
-        int fastestLatency = settings.DefaultHttpTimeoutMilliseconds;
+        var fastestLatency = settings.DefaultHttpTimeoutMilliseconds;
         IServer? fastestServer = null;
 
         foreach (var server in servers)
         {
             // nb. Bump up the fastest latency/timeout by a slight margin
-            var httpTimeoutMilliseconds = (fastestLatency == settings.DefaultHttpTimeoutMilliseconds ? fastestLatency : (int)(fastestLatency * 1.5));
+            var httpTimeoutMilliseconds = fastestLatency == settings.DefaultHttpTimeoutMilliseconds ? fastestLatency : (int)(fastestLatency * 1.5);
 
             var latency = await GetServerLatencyAsync(server, httpTimeoutMilliseconds, settings.LatencyTestIterations);
 
@@ -103,13 +103,13 @@ public sealed class OoklaSpeedtest : ISpeedTestService
             }
         }
 
-        return (fastestServer == null ? null : (fastestServer, fastestLatency));
+        return fastestServer == null ? null : (fastestServer, fastestLatency);
     }
 
     /// <inheritdoc/>
     public async Task<SpeedTestResult> GetDownloadSpeedAsync(IServer server)
     {
-        return await GetDownloadSpeedAsync(server, (int _) => { });
+        return await GetDownloadSpeedAsync(server, (_) => { });
     }
 
     /// <inheritdoc/>
@@ -137,7 +137,7 @@ public sealed class OoklaSpeedtest : ISpeedTestService
     /// <inheritdoc/>
     public async Task<SpeedTestResult> GetUploadSpeedAsync(IServer server)
     {
-        return await GetUploadSpeedAsync(server, (int _) => { });
+        return await GetUploadSpeedAsync(server, (_) => { });
     }
 
     /// <inheritdoc/>
@@ -174,8 +174,8 @@ public sealed class OoklaSpeedtest : ISpeedTestService
         int parallelTasks)
     {
         object lockObject = new();
-        int completedCount = 0;
-        int totalCount = testData.Count();
+        var completedCount = 0;
+        var totalCount = testData.Count();
 
         var timer = new Stopwatch();
         var throttler = new SemaphoreSlim(parallelTasks);
@@ -198,7 +198,7 @@ public sealed class OoklaSpeedtest : ISpeedTestService
                 lock (lockObject)
                 {
                     completedCount++;
-                    int percentageComplete = (int)(((double)completedCount / totalCount) * 100);
+                    var percentageComplete = (int)((double)completedCount / totalCount * 100);
                     UpdateProgress(percentageComplete);
                 }
 

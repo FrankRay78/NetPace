@@ -1,4 +1,4 @@
-namespace NetPace.Core.DataTypes;
+namespace NetPace.Core;
 
 public sealed record SpeedTestResult
 {

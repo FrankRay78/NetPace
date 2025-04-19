@@ -1,4 +1,4 @@
-namespace NetPace.Core.DataTypes;
+namespace NetPace.Core.Clients.Ookla;
 
 [XmlRoot("settings")]
 public sealed class ServersList

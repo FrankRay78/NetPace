@@ -1,7 +1,5 @@
 using NetPace.Core;
-using NetPace.Core.Clients;
-using NetPace.Core.DataTypes;
-using NetPace.Core.Extensions;
+using NetPace.Core.Clients.Ookla;
 
 
 // The following example code demonstrates how to use NetPace.Core library.
