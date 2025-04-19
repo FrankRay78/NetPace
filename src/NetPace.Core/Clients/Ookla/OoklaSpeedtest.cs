@@ -29,7 +29,7 @@ public sealed class OoklaSpeedtest : ISpeedTestService
         var serversXml = await httpClient.GetStringAsync(settings.ServersUrl);
         var servers = serversXml.DeserializeFromXml<ServerList>()?.Servers ?? Array.Empty<Server>();
         return servers.Where(s =>
-                !string.IsNullOrWhiteSpace(s.Name) &&
+                !string.IsNullOrWhiteSpace(s.Location) &&
                 !string.IsNullOrWhiteSpace(s.Sponsor) &&
                 !string.IsNullOrWhiteSpace(s.Url)).ToArray();
     }

@@ -4,7 +4,7 @@ namespace NetPace.Core.Clients.Testing;
 public sealed record Server : IServer
 {
     /// <inheritdoc/>
-    public required string Name { get; set; }
+    public required string Location { get; set; }
 
     /// <inheritdoc/>
     public required string Sponsor { get; set; }

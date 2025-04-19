@@ -19,16 +19,16 @@ public sealed class SpeedTestStub : ISpeedTestService
     {
         return Task.FromResult(new IServer[]
         {
-            new Server { Name = "Test Server 1", Sponsor = "Test Sponsor 1", Url = "http://test1.com" },
-            new Server { Name = "Test Server 2", Sponsor = "Test Sponsor 2", Url = "http://test2.com" },
-            new Server { Name = "Test Server 3", Sponsor = "Test Sponsor 3", Url = "http://test3.com" },
+            new Server { Location = "Location 1", Sponsor = "Test Sponsor 1", Url = "http://test1.com" },
+            new Server { Location = "Location 2", Sponsor = "Test Sponsor 2", Url = "http://test2.com" },
+            new Server { Location = "Location 3", Sponsor = "Test Sponsor 3", Url = "http://test3.com" },
         });
     }
 
     /// <inheritdoc/>
     public Task<int?> GetServerLatencyAsync(IServer server)
     {
-        var latency = int.Parse(server.Name!.Replace("Test Server", "")) * 100;
+        var latency = int.Parse(server.Location!.Replace("Location ", "")) * 100;
 
         return Task.FromResult<int?>(latency);
     }
@@ -37,7 +37,7 @@ public sealed class SpeedTestStub : ISpeedTestService
     public Task<(IServer server, int latency)?> GetFastestServerByLatencyAsync(IServer[] servers)
     {
         var fastestServer = servers[0];
-        var fastestLatency = int.Parse(fastestServer.Name!.Replace("Test Server", "")) * 100;
+        var fastestLatency = int.Parse(fastestServer.Location!.Replace("Location ", "")) * 100;
 
         return Task.FromResult<(IServer server, int latency)?>((fastestServer, fastestLatency));
     }

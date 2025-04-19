@@ -1,8 +1,8 @@
-﻿
-┌───────────────┬────────────────┐
-│ Country       │ Sponsor        │
-├───────────────┼────────────────┤
-│ Test Server 1 │ Test Sponsor 1 │
-│ Test Server 2 │ Test Sponsor 2 │
-│ Test Server 3 │ Test Sponsor 3 │
-└───────────────┴────────────────┘
+
+┌────────────┬────────────────┐
+│ Location   │ Sponsor        │
+├────────────┼────────────────┤
+│ Location 1 │ Test Sponsor 1 │
+│ Location 2 │ Test Sponsor 2 │
+│ Location 3 │ Test Sponsor 3 │
+└────────────┴────────────────┘
