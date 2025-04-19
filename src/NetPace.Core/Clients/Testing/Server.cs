@@ -1,8 +1,14 @@
 namespace NetPace.Core.Clients.Testing;
 
-public sealed class Server : IServer
+/// <inheritdoc/>
+public sealed record Server : IServer
 {
-    public string? Name { get; set; }
-    public string? Sponsor { get; set; }
-    public string? Url { get; set; }
+    /// <inheritdoc/>
+    public required string Name { get; set; }
+
+    /// <inheritdoc/>
+    public required string Sponsor { get; set; }
+
+    /// <inheritdoc/>
+    public required string Url { get; set; }
 }

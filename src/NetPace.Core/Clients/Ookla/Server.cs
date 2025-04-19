@@ -6,19 +6,19 @@ public sealed class Server : IServer
     public int Id { get; set; }
 
     [XmlAttribute("name")]
-    public string? Name { get; set; }
+    public string Name { get; set; } = string.Empty;
 
     [XmlAttribute("country")]
     public string? Country { get; set; }
 
     [XmlAttribute("sponsor")]
-    public string? Sponsor { get; set; }
+    public string Sponsor { get; set; } = string.Empty;
 
     [XmlAttribute("host")]
     public string? Host { get; set; }
 
     [XmlAttribute("url")]
-    public string? Url { get; set; }
+    public string Url { get; set; } = string.Empty;
 
     [XmlAttribute("lat")]
     public double Latitude { get; set; }
