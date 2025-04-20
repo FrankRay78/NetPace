@@ -99,6 +99,9 @@ dotnet add package NetPace.Core
 Then use the `ISpeedTestService` interface:
 
 ```csharp
+using NetPace.Core;
+using NetPace.Core.Clients.Ookla;
+
 var speedTester = new OoklaSpeedtest() as ISpeedTestService;
 
 var servers = await speedTester.GetServersAsync();

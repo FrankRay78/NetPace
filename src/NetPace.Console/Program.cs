@@ -1,6 +1,7 @@
 ﻿using NetPace.Console;
 using NetPace.Console.DependencyInjection;
 using NetPace.Core;
+using NetPace.Core.Clients.Ookla;
 
 public static class Program
 {

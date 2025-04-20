@@ -1,7 +1,7 @@
-namespace NetPace.Core.DataTypes;
+namespace NetPace.Core.Clients.Ookla;
 
 [XmlRoot("settings")]
-public sealed class ServersList
+public sealed class ServerList
 {
     [XmlArray("servers")]
     [XmlArrayItem("server")]

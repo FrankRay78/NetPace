@@ -1,7 +1,5 @@
 using NetPace.Core;
-using NetPace.Core.Clients;
-using NetPace.Core.DataTypes;
-using NetPace.Core.Extensions;
+using NetPace.Core.Clients.Ookla;
 
 
 // The following example code demonstrates how to use NetPace.Core library.
@@ -17,7 +15,7 @@ var servers = await speedTester.GetServersAsync();
 // Get the fastest speed test server
 var fastestServer = await speedTester.GetFastestServerByLatencyAsync(servers) ?? default;
 
-// Display the sever name and latency
+// Display the fastest server and latency
 Console.WriteLine($"{fastestServer.server.Sponsor} ({fastestServer.latency} ms)");
 
 // Perform download speed test

@@ -1,4 +1,4 @@
-﻿namespace NetPace.Core.Extensions;
+namespace NetPace.Core;
 
 public static class SpeedTestResultExtensions
 {
@@ -13,11 +13,11 @@ public static class SpeedTestResultExtensions
     /// </summary>
     public static string GetSpeedString(this SpeedTestResult result, SpeedUnit unit, SpeedUnitSystem unitSystem)
     {
-        bool isBits = unit == SpeedUnit.BitsPerSecond;
+        var isBits = unit == SpeedUnit.BitsPerSecond;
         double divisor = unitSystem == SpeedUnitSystem.IEC ? 1024 : 1000;
 
-        double speed = isBits
-            ? (result.BytesProcessed * 8) / ((double)result.ElapsedMilliseconds / 1000)
+        var speed = isBits
+            ? result.BytesProcessed * 8 / ((double)result.ElapsedMilliseconds / 1000)
             : result.BytesProcessed / ((double)result.ElapsedMilliseconds / 1000);
 
         return FormatSpeed(speed, isBits, unitSystem, divisor);
@@ -25,11 +25,11 @@ public static class SpeedTestResultExtensions
 
     private static string FormatSpeed(double speed, bool isBits, SpeedUnitSystem unitSystem, double divisor)
     {
-        string[] units = isBits
-            ? (unitSystem == SpeedUnitSystem.IEC ? IEC_BitUnits : SI_BitUnits)
-            : (unitSystem == SpeedUnitSystem.IEC ? IEC_ByteUnits : SI_ByteUnits);
+        var units = isBits
+            ? unitSystem == SpeedUnitSystem.IEC ? IEC_BitUnits : SI_BitUnits
+            : unitSystem == SpeedUnitSystem.IEC ? IEC_ByteUnits : SI_ByteUnits;
 
-        int index = 0;
+        var index = 0;
         while (Math.Round(speed, 2) >= divisor && index < units.Length - 1)
         {
             speed /= divisor;

@@ -6,21 +6,18 @@ Network speed test library including server discovery, latency measurement, down
 
 ```csharp
 using NetPace.Core;
-using NetPace.Core.Clients;
-using NetPace.Core.DataTypes;
-using NetPace.Core.Extensions;
+using NetPace.Core.Clients.Ookla;
 
 var speedTester = new OoklaSpeedtest() as ISpeedTestService;
 
 var servers = await speedTester.GetServersAsync();
 var fastestServer = await speedTester.GetFastestServerByLatencyAsync(servers) ?? default;
 
-Console.WriteLine($"{fastestServer.server.Sponsor} ({fastestServer.latency} ms)");
-
 var downloadResult = await speedTester.GetDownloadSpeedAsync(fastestServer.server);
-Console.WriteLine($"Download: {downloadResult.GetSpeedString(SpeedUnit.BitsPerSecond, SpeedUnitSystem.SI)}");
-
 var uploadResult = await speedTester.GetUploadSpeedAsync(fastestServer.server);
+
+Console.WriteLine($"{fastestServer.server.Sponsor} ({fastestServer.latency} ms)");
+Console.WriteLine($"Download: {downloadResult.GetSpeedString(SpeedUnit.BitsPerSecond, SpeedUnitSystem.SI)}");
 Console.WriteLine($"Upload: {uploadResult.GetSpeedString(SpeedUnit.BitsPerSecond, SpeedUnitSystem.SI)}");
 ```
 

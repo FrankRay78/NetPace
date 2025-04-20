@@ -1,4 +1,4 @@
-﻿using NetPace.Core;
+using NetPace.Core;
 
 namespace NetPace.Console.Commands;
 
@@ -18,7 +18,7 @@ public sealed class ListServersCommand : AsyncCommand<ListServersCommandSettings
     {
         var servers = await speedTestClient.GetServersAsync();
 
-        var serversList = servers.OrderBy(servers => servers.Name).ToList();
+        var serversList = servers.OrderBy(servers => servers.Location).ToList();
 
         if (settings.ShowLatency == null || !settings.ShowLatency.HasValue || !settings.ShowLatency.Value)
         {
@@ -37,12 +37,12 @@ public sealed class ListServersCommand : AsyncCommand<ListServersCommandSettings
         var table = new Table()
             .Border(TableBorder.Square)
             .BorderColor(Color.Red)
-            .AddColumn(new TableColumn("Country"))
+            .AddColumn(new TableColumn("Location"))
             .AddColumn(new TableColumn("Sponsor"));
 
         foreach (var server in servers)
         {
-            table.AddRow(server.Name ?? string.Empty, server.Sponsor ?? string.Empty);
+            table.AddRow(server.Location ?? string.Empty, server.Sponsor ?? string.Empty);
         }
 
         console.WriteLine("");
@@ -54,14 +54,14 @@ public sealed class ListServersCommand : AsyncCommand<ListServersCommandSettings
         var table = new Table()
             .Border(TableBorder.Square)
             .BorderColor(Color.Red)
-            .AddColumn(new TableColumn("Country"))
+            .AddColumn(new TableColumn("Location"))
             .AddColumn(new TableColumn("Sponsor"))
             .AddColumn(new TableColumn("Latency"));
 
         // Add the initial server list (without latency)
         foreach (var server in servers)
         {
-            table.AddRow(server.Name ?? string.Empty, server.Sponsor ?? string.Empty);
+            table.AddRow(server.Location ?? string.Empty, server.Sponsor ?? string.Empty);
         }
 
         console.WriteLine("");

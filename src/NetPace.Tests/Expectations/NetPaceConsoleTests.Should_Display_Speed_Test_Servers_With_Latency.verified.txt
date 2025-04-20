@@ -1,28 +1,28 @@
-﻿
+
 Press CTRL+C to exit.
 
-┌───────────────┬────────────────┬─────────┐
-│ Country       │ Sponsor        │ Latency │
-├───────────────┼────────────────┼─────────┤
-│ Test Server 1 │ Test Sponsor 1 │ 100ms   │
-│ Test Server 2 │ Test Sponsor 2 │         │
-│ Test Server 3 │ Test Sponsor 3 │         │
-└───────────────┴────────────────┴─────────┘┌───────────────┬────────────────┬─────────┐
-│ Country       │ Sponsor        │ Latency │
-├───────────────┼────────────────┼─────────┤
-│ Test Server 1 │ Test Sponsor 1 │ 100ms   │
-│ Test Server 2 │ Test Sponsor 2 │ 200ms   │
-│ Test Server 3 │ Test Sponsor 3 │         │
-└───────────────┴────────────────┴─────────┘┌───────────────┬────────────────┬─────────┐
-│ Country       │ Sponsor        │ Latency │
-├───────────────┼────────────────┼─────────┤
-│ Test Server 1 │ Test Sponsor 1 │ 100ms   │
-│ Test Server 2 │ Test Sponsor 2 │ 200ms   │
-│ Test Server 3 │ Test Sponsor 3 │ 300ms   │
-└───────────────┴────────────────┴─────────┘┌───────────────┬────────────────┬─────────┐
-│ Country       │ Sponsor        │ Latency │
-├───────────────┼────────────────┼─────────┤
-│ Test Server 1 │ Test Sponsor 1 │ 100ms   │
-│ Test Server 2 │ Test Sponsor 2 │ 200ms   │
-│ Test Server 3 │ Test Sponsor 3 │ 300ms   │
-└───────────────┴────────────────┴─────────┘
+┌────────────┬────────────────┬─────────┐
+│ Location   │ Sponsor        │ Latency │
+├────────────┼────────────────┼─────────┤
+│ Location 1 │ Test Sponsor 1 │ 100ms   │
+│ Location 2 │ Test Sponsor 2 │         │
+│ Location 3 │ Test Sponsor 3 │         │
+└────────────┴────────────────┴─────────┘┌────────────┬────────────────┬─────────┐
+│ Location   │ Sponsor        │ Latency │
+├────────────┼────────────────┼─────────┤
+│ Location 1 │ Test Sponsor 1 │ 100ms   │
+│ Location 2 │ Test Sponsor 2 │ 200ms   │
+│ Location 3 │ Test Sponsor 3 │         │
+└────────────┴────────────────┴─────────┘┌────────────┬────────────────┬─────────┐
+│ Location   │ Sponsor        │ Latency │
+├────────────┼────────────────┼─────────┤
+│ Location 1 │ Test Sponsor 1 │ 100ms   │
+│ Location 2 │ Test Sponsor 2 │ 200ms   │
+│ Location 3 │ Test Sponsor 3 │ 300ms   │
+└────────────┴────────────────┴─────────┘┌────────────┬────────────────┬─────────┐
+│ Location   │ Sponsor        │ Latency │
+├────────────┼────────────────┼─────────┤
+│ Location 1 │ Test Sponsor 1 │ 100ms   │
+│ Location 2 │ Test Sponsor 2 │ 200ms   │
+│ Location 3 │ Test Sponsor 3 │ 300ms   │
+└────────────┴────────────────┴─────────┘
