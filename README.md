@@ -129,8 +129,8 @@ See the [full usage example](https://github.com/FrankRay78/NetPace/tree/main/exa
    - [ ] Maximum speed test (time)
    - [ ] Maximum speed test (size transferred)
 - [ ] Periodically repeat tests
-- [ ] Run unit tests on PR
-- [ ] NuGet package for the core library
+- [X] Run unit tests on PR
+- [X] NuGet package for the core library
 
 See the [open issues](https://github.com/FrankRay78/NetPace/issues) for a full list of proposed features (and known issues).
 
