@@ -15,7 +15,7 @@ var servers = await speedTester.GetServersAsync();
 // Get the fastest speed test server
 var fastestServer = await speedTester.GetFastestServerByLatencyAsync(servers) ?? default;
 
-// Display the sever name and latency
+// Display the fastest server and latency
 Console.WriteLine($"{fastestServer.server.Sponsor} ({fastestServer.latency} ms)");
 
 // Perform download speed test
