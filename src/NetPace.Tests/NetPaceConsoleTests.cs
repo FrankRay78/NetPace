@@ -60,7 +60,7 @@ public class NetPaceConsoleTests
         var mock = new SpeedTestMock
         {
             GetServersAsyncFunc = () => Task.FromResult(Array.Empty<IServer>()),
-            GetFastestServerByLatencyAsyncFunc = servers => Task.FromResult<(IServer server, int latency)?>(null),
+            GetFastestServerByLatencyAsyncFunc = servers => Task.FromResult<ServerLatencyResult?>(null),
         };
 
         var registrar = new TypeRegistrar();

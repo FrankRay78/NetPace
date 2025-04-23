@@ -16,7 +16,7 @@ public interface ISpeedTestService
     /// </summary>
     /// <param name="server">The server to measure latency against.</param>
     /// <returns>The latency in milliseconds, or <c>null</c> if the latency could not be determined.</returns>
-    public Task<int?> GetServerLatencyAsync(IServer server);
+    public Task<ServerLatencyResult?> GetServerLatencyAsync(IServer server);
 
     /// <summary>
     /// Determines the fastest server based on latency from a given list of servers.
@@ -24,7 +24,7 @@ public interface ISpeedTestService
     /// <param name="servers">An array of servers to test for latency.</param>
     /// <returns>A tuple containing the server with the lowest latency and its latency in milliseconds,
     /// or <c>null</c> if no suitable server was found.</returns>
-    public Task<(IServer server, int latency)?> GetFastestServerByLatencyAsync(IServer[] servers);
+    public Task<ServerLatencyResult?> GetFastestServerByLatencyAsync(IServer[] servers);
 
     /// <summary>
     /// Measures the download speed of the specified server.

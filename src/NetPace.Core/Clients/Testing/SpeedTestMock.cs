@@ -7,8 +7,8 @@ public sealed class SpeedTestMock : ISpeedTestService
 {
     // Delegates for method behavior
     public Func<Task<IServer[]>>? GetServersAsyncFunc { get; set; }
-    public Func<IServer, Task<int?>>? GetServerLatencyAsyncFunc { get; set; }
-    public Func<IServer[], Task<(IServer server, int latency)?>>? GetFastestServerByLatencyAsyncFunc { get; set; }
+    public Func<IServer, Task<ServerLatencyResult?>>? GetServerLatencyAsyncFunc { get; set; }
+    public Func<IServer[], Task<ServerLatencyResult?>>? GetFastestServerByLatencyAsyncFunc { get; set; }
     public Func<IServer, Task<SpeedTestResult>>? GetDownloadSpeedAsyncFunc { get; set; }
     public Func<IServer, Action<int>, Task<SpeedTestResult>>? GetDownloadSpeedWithProgressAsyncFunc { get; set; }
     public Func<IServer, Task<SpeedTestResult>>? GetUploadSpeedAsyncFunc { get; set; }
@@ -23,7 +23,7 @@ public sealed class SpeedTestMock : ISpeedTestService
     }
 
     /// <inheritdoc/>
-    public Task<int?> GetServerLatencyAsync(IServer server)
+    public Task<ServerLatencyResult?> GetServerLatencyAsync(IServer server)
     {
         if (GetServerLatencyAsyncFunc != null)
             return GetServerLatencyAsyncFunc(server);
@@ -31,7 +31,7 @@ public sealed class SpeedTestMock : ISpeedTestService
     }
 
     /// <inheritdoc/>
-    public Task<(IServer server, int latency)?> GetFastestServerByLatencyAsync(IServer[] servers)
+    public Task<ServerLatencyResult?> GetFastestServerByLatencyAsync(IServer[] servers)
     {
         if (GetFastestServerByLatencyAsyncFunc != null)
             return GetFastestServerByLatencyAsyncFunc(servers);

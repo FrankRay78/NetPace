@@ -1,3 +1,6 @@
+using NetPace.Core.Clients.Ookla;
+using System.Diagnostics;
+
 namespace NetPace.Core.Clients.Testing;
 
 /// <summary>
@@ -26,20 +29,27 @@ public sealed class SpeedTestStub : ISpeedTestService
     }
 
     /// <inheritdoc/>
-    public Task<int?> GetServerLatencyAsync(IServer server)
+    public Task<ServerLatencyResult?> GetServerLatencyAsync(IServer server)
     {
-        var latency = int.Parse(server.Location!.Replace("Location ", "")) * 100;
+        var latencyResult = new ServerLatencyResult
+        {
+            Server = server,
+            Latency = int.Parse(server.Location!.Replace("Location ", "")) * 100
+        };
 
-        return Task.FromResult<int?>(latency);
+        return Task.FromResult<ServerLatencyResult?>(latencyResult);
     }
 
     /// <inheritdoc/>
-    public Task<(IServer server, int latency)?> GetFastestServerByLatencyAsync(IServer[] servers)
+    public Task<ServerLatencyResult?> GetFastestServerByLatencyAsync(IServer[] servers)
     {
-        var fastestServer = servers[0];
-        var fastestLatency = int.Parse(fastestServer.Location!.Replace("Location ", "")) * 100;
+        var latencyResult = new ServerLatencyResult
+        {
+            Server = servers[0],
+            Latency = int.Parse(servers[0].Location!.Replace("Location ", "")) * 100
+        };
 
-        return Task.FromResult<(IServer server, int latency)?>((fastestServer, fastestLatency));
+        return Task.FromResult<ServerLatencyResult?>(latencyResult);
     }
 
     /// <inheritdoc/>

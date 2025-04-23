@@ -78,11 +78,11 @@ public sealed class ListServersCommand : AsyncCommand<ListServersCommandSettings
                 {
                     var server = servers[i];
 
-                    var latency = await speedTestClient.GetServerLatencyAsync(server);
+                    var latencyResult = await speedTestClient.GetServerLatencyAsync(server);
 
-                    if (latency != null)
+                    if (latencyResult != null)
                     {
-                        table.UpdateCell(i, 2, $"{latency}ms");
+                        table.UpdateCell(i, 2, $"{latencyResult.Latency}ms");
                     }
                     else
                     {
