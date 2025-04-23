@@ -29,7 +29,7 @@ public sealed class SpeedTestStub : ISpeedTestService
     }
 
     /// <inheritdoc/>
-    public Task<ServerLatencyResult?> GetServerLatencyAsync(IServer server)
+    public Task<ServerLatencyResult> GetServerLatencyAsync(IServer server)
     {
         var latencyResult = new ServerLatencyResult
         {
@@ -37,11 +37,11 @@ public sealed class SpeedTestStub : ISpeedTestService
             Latency = int.Parse(server.Location!.Replace("Location ", "")) * 100
         };
 
-        return Task.FromResult<ServerLatencyResult?>(latencyResult);
+        return Task.FromResult<ServerLatencyResult>(latencyResult);
     }
 
     /// <inheritdoc/>
-    public Task<ServerLatencyResult?> GetFastestServerByLatencyAsync(IServer[] servers)
+    public Task<ServerLatencyResult> GetFastestServerByLatencyAsync(IServer[] servers)
     {
         var latencyResult = new ServerLatencyResult
         {
@@ -49,7 +49,7 @@ public sealed class SpeedTestStub : ISpeedTestService
             Latency = int.Parse(servers[0].Location!.Replace("Location ", "")) * 100
         };
 
-        return Task.FromResult<ServerLatencyResult?>(latencyResult);
+        return Task.FromResult<ServerLatencyResult>(latencyResult);
     }
 
     /// <inheritdoc/>

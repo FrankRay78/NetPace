@@ -20,7 +20,8 @@ public sealed class SpeedTestCommand : AsyncCommand<SpeedTestCommandSettings>
     public override async Task<int> ExecuteAsync(CommandContext context, SpeedTestCommandSettings settings)
     {
         // Get the speed test server
-        var fastest = await GetFastestServerAsync(settings);
+        var servers = await speedTestClient.GetServersAsync();
+        var fastest = await speedTestClient.GetFastestServerByLatencyAsync(servers);
 
         if (!settings.CSV && ((settings.Verbosity & (Verbosity.Normal | Verbosity.Debug)) != 0))
         {
@@ -97,19 +98,6 @@ public sealed class SpeedTestCommand : AsyncCommand<SpeedTestCommandSettings>
 
 
         return 0;
-    }
-
-    private async Task<ServerLatencyResult> GetFastestServerAsync(SpeedTestCommandSettings settings)
-    {
-        var servers = await speedTestClient.GetServersAsync();
-        var fastest = await speedTestClient.GetFastestServerByLatencyAsync(servers);
-
-        if (fastest == null)
-        {
-            throw new Exception("No servers available");
-        }
-
-        return fastest;
     }
 
     private async Task<(SpeedTestResult downloadResult, SpeedTestResult uploadResult)> PerformSpeedTestAsync(IServer server, SpeedTestCommandSettings settings)

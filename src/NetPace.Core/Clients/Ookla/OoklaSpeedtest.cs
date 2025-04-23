@@ -35,62 +35,52 @@ public sealed class OoklaSpeedtest : ISpeedTestService
     }
 
     /// <inheritdoc/>
-    public async Task<ServerLatencyResult?> GetServerLatencyAsync(IServer server)
+    public async Task<ServerLatencyResult> GetServerLatencyAsync(IServer server)
     {
         return await GetServerLatencyAsync(server, settings.DefaultHttpTimeoutMilliseconds, settings.LatencyTestIterations);
     }
 
-    private async Task<ServerLatencyResult?> GetServerLatencyAsync(IServer server, int httpTimeoutMilliseconds, int testIterations)
+    private async Task<ServerLatencyResult> GetServerLatencyAsync(IServer server, int httpTimeoutMilliseconds, int maxIterations)
     {
-        ServerLatencyResult? latencyResult = null;
-
-        try
+        if (string.IsNullOrWhiteSpace(server.Url))
         {
-            if (string.IsNullOrWhiteSpace(server.Url))
-            {
-                throw new NullReferenceException("Server url was null");
-            }
-
-            var latencyUrl = GetBaseUrl(server.Url).Append("latency.txt");
-            var stopwatch = new Stopwatch();
-
-            using var httpClient = GetHttpClient();
-            httpClient.Timeout = TimeSpan.FromMilliseconds(httpTimeoutMilliseconds);
-
-
-            var iteration = 1;
-            do
-            {
-                stopwatch.Start();
-                var testString = await httpClient.GetStringAsync(latencyUrl);
-                stopwatch.Stop();
-
-                if (!testString.StartsWith("test=test"))
-                {
-                    throw new InvalidOperationException("Server returned incorrect test string for latency.txt");
-                }
-
-                iteration++;
-            }
-            while (iteration < testIterations);
-
-            // Calculate the average server latency
-            latencyResult = new ServerLatencyResult
-            {
-                Server = server,
-                Latency = (int)stopwatch.ElapsedMilliseconds / testIterations
-            };
+            throw new NullReferenceException("Server url was null");
         }
-        catch
+
+        var latencyUrl = GetBaseUrl(server.Url).Append("latency.txt");
+        var stopwatch = new Stopwatch();
+
+        using var httpClient = GetHttpClient();
+        httpClient.Timeout = TimeSpan.FromMilliseconds(httpTimeoutMilliseconds);
+
+
+        for (var iteration = 0; iteration < maxIterations; iteration++)
         {
-            // Ignore this server
+            stopwatch.Start();
+            var testString = await httpClient.GetStringAsync(latencyUrl);
+            stopwatch.Stop();
+
+            if (!testString.StartsWith("test=test"))
+            {
+                throw new InvalidOperationException("Server returned incorrect test string for latency.txt");
+            }
         }
+
+        // Calculate the average server latency
+        var latency = (int)stopwatch.ElapsedMilliseconds / maxIterations;
+
+
+        var latencyResult = new ServerLatencyResult
+        {
+            Server = server,
+            Latency = (int)stopwatch.ElapsedMilliseconds / maxIterations
+        };
 
         return latencyResult;
     }
 
     /// <inheritdoc/>
-    public async Task<ServerLatencyResult?> GetFastestServerByLatencyAsync(IServer[] servers)
+    public async Task<ServerLatencyResult> GetFastestServerByLatencyAsync(IServer[] servers)
     {
         var fastestLatency = settings.DefaultHttpTimeoutMilliseconds;
         ServerLatencyResult? fastestServer = null;
@@ -100,15 +90,28 @@ public sealed class OoklaSpeedtest : ISpeedTestService
             // nb. Bump up the fastest latency/timeout by a slight margin
             var httpTimeoutMilliseconds = fastestLatency == settings.DefaultHttpTimeoutMilliseconds ? fastestLatency : (int)(fastestLatency * 1.5);
 
-            var latencyResult = await GetServerLatencyAsync(server, httpTimeoutMilliseconds, settings.LatencyTestIterations);
-
-            if (latencyResult != null && latencyResult.Latency < fastestLatency)
+            try
             {
-                // Reduce the http timeout to the new fastest latency
-                // (ie. do not wait for servers that are slower)
-                fastestLatency = latencyResult.Latency;
-                fastestServer = latencyResult;
+                var latencyResult = await GetServerLatencyAsync(server, httpTimeoutMilliseconds, settings.LatencyTestIterations);
+
+                if (latencyResult.Latency < fastestLatency)
+                {
+                    // Reduce the http timeout to the new fastest latency
+                    // (ie. do not wait for servers that are slower)
+                    fastestLatency = latencyResult.Latency;
+                    fastestServer = latencyResult;
+                }
             }
+            catch
+            {
+                // A exception was thrown when pinging the server
+                // Ignore and continue with the next server
+            }
+        }
+
+        if (fastestServer == null)
+        {
+            throw new Exception("No servers available");
         }
 
         return fastestServer;

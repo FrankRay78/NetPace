@@ -54,13 +54,19 @@ public class NetPaceConsoleTests
     }
 
     [Fact]
+    public async Task Should_Display_Speed_Test_Servers_With_Latency_With_Faulty_Server_Pings()
+    {
+        await Task.FromException(new NotImplementedException());
+    }
+
+    [Fact]
     public async Task Should_Handle_No_Servers_Available()
     {
         // Given
         var mock = new SpeedTestMock
         {
             GetServersAsyncFunc = () => Task.FromResult(Array.Empty<IServer>()),
-            GetFastestServerByLatencyAsyncFunc = servers => Task.FromResult<ServerLatencyResult?>(null),
+            GetFastestServerByLatencyAsyncFunc = servers => throw new Exception("No servers available"),
         };
 
         var registrar = new TypeRegistrar();

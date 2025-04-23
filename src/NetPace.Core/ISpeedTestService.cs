@@ -3,6 +3,11 @@ namespace NetPace.Core;
 /// <summary>
 /// Interface for performing internet speed tests.
 /// </summary>
+/// <remarks>
+/// Implementations of this interface should favor allowing network-related exceptions (e.g., timeouts, connection failures)
+/// to propagate to the caller rather than catching and suppressing them. This approach enables consumers of the library
+/// to implement their own error handling strategies that align with their application's needs.
+/// </remarks>
 public interface ISpeedTestService
 {
     /// <summary>
@@ -16,7 +21,7 @@ public interface ISpeedTestService
     /// </summary>
     /// <param name="server">The server to measure latency against.</param>
     /// <returns>The latency in milliseconds, or <c>null</c> if the latency could not be determined.</returns>
-    public Task<ServerLatencyResult?> GetServerLatencyAsync(IServer server);
+    public Task<ServerLatencyResult> GetServerLatencyAsync(IServer server);
 
     /// <summary>
     /// Determines the fastest server based on latency from a given list of servers.
@@ -24,7 +29,7 @@ public interface ISpeedTestService
     /// <param name="servers">An array of servers to test for latency.</param>
     /// <returns>A tuple containing the server with the lowest latency and its latency in milliseconds,
     /// or <c>null</c> if no suitable server was found.</returns>
-    public Task<ServerLatencyResult?> GetFastestServerByLatencyAsync(IServer[] servers);
+    public Task<ServerLatencyResult> GetFastestServerByLatencyAsync(IServer[] servers);
 
     /// <summary>
     /// Measures the download speed of the specified server.
