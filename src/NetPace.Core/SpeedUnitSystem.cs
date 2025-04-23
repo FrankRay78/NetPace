@@ -1,7 +1,7 @@
 namespace NetPace.Core;
 
 /// <summary>
-/// Represents the unit system used to express network speed measurements.
+/// The unit system used to express network speed measurements.
 /// </summary>
 public enum SpeedUnitSystem
 {

@@ -1,7 +1,7 @@
 namespace NetPace.Core;
 
 /// <summary>
-/// Represents a server used for network speed testing.
+/// A server used for network speed testing.
 /// </summary>
 public interface IServer
 {
