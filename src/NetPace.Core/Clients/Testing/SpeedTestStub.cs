@@ -1,6 +1,3 @@
-using NetPace.Core.Clients.Ookla;
-using System.Diagnostics;
-
 namespace NetPace.Core.Clients.Testing;
 
 /// <summary>
@@ -34,10 +31,10 @@ public sealed class SpeedTestStub : ISpeedTestService
         var latencyResult = new ServerLatencyResult
         {
             Server = server,
-            Latency = int.Parse(server.Location!.Replace("Location ", "")) * 100
+            Latency = int.Parse(server.Sponsor!.Replace("Test Sponsor ", "")) * 100
         };
 
-        return Task.FromResult<ServerLatencyResult>(latencyResult);
+        return Task.FromResult(latencyResult);
     }
 
     /// <inheritdoc/>
@@ -46,10 +43,10 @@ public sealed class SpeedTestStub : ISpeedTestService
         var latencyResult = new ServerLatencyResult
         {
             Server = servers[0],
-            Latency = int.Parse(servers[0].Location!.Replace("Location ", "")) * 100
+            Latency = int.Parse(servers[0].Sponsor!.Replace("Test Sponsor ", "")) * 100
         };
 
-        return Task.FromResult<ServerLatencyResult>(latencyResult);
+        return Task.FromResult(latencyResult);
     }
 
     /// <inheritdoc/>

@@ -54,9 +54,19 @@ public class NetPaceConsoleTests
     }
 
     [Fact]
-    public async Task Should_Display_Speed_Test_Servers_With_Latency_With_Faulty_Server_Pings()
+    public async Task Should_Display_Speed_Test_Servers_With_Latency_With_Faulty_Server_Ping()
     {
-        await Task.FromException(new NotImplementedException());
+        // Given
+        var registrar = new TypeRegistrar();
+        registrar.Register(typeof(ISpeedTestService), typeof(FaultySpeedTestStub));
+        var app = GetCommandAppTester(registrar);
+
+        // When
+        var result = await app.RunAsync("servers", "-l");
+
+        // Then
+        Assert.Equal(0, result.ExitCode);
+        await Verify(result.Output);
     }
 
     [Fact]
