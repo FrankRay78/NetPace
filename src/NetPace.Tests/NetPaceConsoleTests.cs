@@ -58,7 +58,7 @@ public class NetPaceConsoleTests
     {
         // Given
         var registrar = new TypeRegistrar();
-        registrar.Register(typeof(ISpeedTestService), typeof(FaultySpeedTestStub));
+        registrar.RegisterInstance(typeof(ISpeedTestService), new FaultySpeedTester());
         var app = GetCommandAppTester(registrar);
 
         // When
