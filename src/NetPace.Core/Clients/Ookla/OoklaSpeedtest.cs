@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Net.Http.Headers;
 using System.Text;
+using NetPace.Core.Clients.Ookla.Settings;
 
 namespace NetPace.Core.Clients.Ookla;
 
@@ -9,24 +10,29 @@ namespace NetPace.Core.Clients.Ookla;
 /// </summary>
 public sealed class OoklaSpeedtest : ISpeedTestService
 {
-    private OoklaSpeedtestSettings settings { get; set; }
+    private readonly ServerDiscoverySettings serverDiscoverySettings;
+    private readonly LatencyTestSettings latencyTestSettings;
+    private readonly DownloadTestSettings downloadTestSettings;
+    private readonly UploadTestSettings uploadTestSettings;
 
-    public OoklaSpeedtest()
+    public OoklaSpeedtest(
+        ServerDiscoverySettings? serverDiscoverySettings = null,
+        LatencyTestSettings? latencyTestSettings = null,
+        DownloadTestSettings? downloadTestSettings = null,
+        UploadTestSettings? uploadTestSettings = null)
     {
         // Use default settings when none provided
-        settings = new OoklaSpeedtestSettings();
-    }
-
-    public OoklaSpeedtest(OoklaSpeedtestSettings settings)
-    {
-        this.settings = settings;
+        this.serverDiscoverySettings = serverDiscoverySettings ?? new ServerDiscoverySettings();
+        this.latencyTestSettings = latencyTestSettings ?? new LatencyTestSettings();
+        this.downloadTestSettings = downloadTestSettings ?? new DownloadTestSettings();
+        this.uploadTestSettings = uploadTestSettings ?? new UploadTestSettings();
     }
 
     /// <inheritdoc/>
     public async Task<IServer[]> GetServersAsync()
     {
         using var httpClient = GetHttpClient();
-        var serversXml = await httpClient.GetStringAsync(settings.ServersUrl);
+        var serversXml = await httpClient.GetStringAsync(serverDiscoverySettings.ServersUrl);
         var servers = serversXml.DeserializeFromXml<ServerList>()?.Servers ?? Array.Empty<Server>();
         return servers.Where(s =>
                 !string.IsNullOrWhiteSpace(s.Location) &&
@@ -37,7 +43,7 @@ public sealed class OoklaSpeedtest : ISpeedTestService
     /// <inheritdoc/>
     public async Task<ServerLatencyResult> GetServerLatencyAsync(IServer server)
     {
-        return await GetServerLatencyAsync(server, settings.DefaultHttpTimeoutMilliseconds, settings.LatencyTestIterations);
+        return await GetServerLatencyAsync(server, latencyTestSettings.DefaultHttpTimeoutMilliseconds, latencyTestSettings.LatencyTestIterations);
     }
 
     private async Task<ServerLatencyResult> GetServerLatencyAsync(IServer server, int httpTimeoutMilliseconds, int maxIterations)
@@ -82,17 +88,17 @@ public sealed class OoklaSpeedtest : ISpeedTestService
     /// <inheritdoc/>
     public async Task<ServerLatencyResult> GetFastestServerByLatencyAsync(IServer[] servers)
     {
-        var fastestLatency = settings.DefaultHttpTimeoutMilliseconds;
+        var fastestLatency = latencyTestSettings.DefaultHttpTimeoutMilliseconds;
         ServerLatencyResult? fastestServer = null;
 
         foreach (var server in servers)
         {
             // nb. Bump up the fastest latency/timeout by a slight margin
-            var httpTimeoutMilliseconds = fastestLatency == settings.DefaultHttpTimeoutMilliseconds ? fastestLatency : (int)(fastestLatency * 1.5);
+            var httpTimeoutMilliseconds = fastestLatency == latencyTestSettings.DefaultHttpTimeoutMilliseconds ? fastestLatency : (int)(fastestLatency * 1.5);
 
             try
             {
-                var latencyResult = await GetServerLatencyAsync(server, httpTimeoutMilliseconds, settings.LatencyTestIterations);
+                var latencyResult = await GetServerLatencyAsync(server, httpTimeoutMilliseconds, latencyTestSettings.LatencyTestIterations);
 
                 if (latencyResult.Latency < fastestLatency)
                 {
@@ -131,7 +137,7 @@ public sealed class OoklaSpeedtest : ISpeedTestService
             throw new NullReferenceException("Server url was null");
         }
 
-        var downloadUrls = GenerateDownloadUrls(server.Url, settings.DownloadSizes, settings.DownloadSizeIterations);
+        var downloadUrls = GenerateDownloadUrls(server.Url, downloadTestSettings.DownloadSizes, downloadTestSettings.DownloadSizeIterations);
 
         // Download content from a specified URL and return the size of the data in bytes.
         Func<HttpClient, string, Task<int>> DownloadAndMeasureAsync = async (client, url) =>
@@ -140,7 +146,7 @@ public sealed class OoklaSpeedtest : ISpeedTestService
             return data.Length;
         };
 
-        var downloadResult = await GenericTestSpeedAsync(downloadUrls, DownloadAndMeasureAsync, UpdateProgress, settings.DownloadParallelTasks);
+        var downloadResult = await GenericTestSpeedAsync(downloadUrls, DownloadAndMeasureAsync, UpdateProgress, downloadTestSettings.DownloadParallelTasks);
 
         return downloadResult;
     }
@@ -159,7 +165,7 @@ public sealed class OoklaSpeedtest : ISpeedTestService
             throw new NullReferenceException("Server url was null");
         }
 
-        var testData = GenerateUploadData(settings.UploadIncrements);
+        var testData = GenerateUploadData(uploadTestSettings.UploadIncrements);
 
         // Upload content to a specified URL and return the size of the data in bytes.
         Func<HttpClient, byte[], Task<int>> UploadAndMeasureAsync = async (client, uploadData) =>
@@ -169,7 +175,7 @@ public sealed class OoklaSpeedtest : ISpeedTestService
             return uploadData.Length;
         };
 
-        var uploadResult = await GenericTestSpeedAsync(testData, UploadAndMeasureAsync, UpdateProgress, settings.UploadParallelTasks);
+        var uploadResult = await GenericTestSpeedAsync(testData, UploadAndMeasureAsync, UpdateProgress, uploadTestSettings.UploadParallelTasks);
 
         return uploadResult;
     }
