@@ -33,7 +33,7 @@ public sealed class OoklaSpeedtest : ISpeedTestService
     {
         using var httpClient = GetHttpClient();
         var serversXml = await httpClient.GetStringAsync(serverDiscoverySettings.ServersUrl);
-        var servers = serversXml.DeserializeFromXml<ServerList>()?.Servers ?? Array.Empty<Server>();
+        var servers = DeserializeFromXml<ServerList>(serversXml)?.Servers ?? Array.Empty<Server>();
         return servers.Where(s =>
                 !string.IsNullOrWhiteSpace(s.Location) &&
                 !string.IsNullOrWhiteSpace(s.Sponsor) &&
@@ -53,7 +53,7 @@ public sealed class OoklaSpeedtest : ISpeedTestService
             throw new NullReferenceException("Server url was null");
         }
 
-        var latencyUrl = GetBaseUrl(server.Url).Append("latency.txt");
+        var latencyUrl = GetBaseUrl(server.Url) + "latency.txt";
         var stopwatch = new Stopwatch();
 
         using var httpClient = GetHttpClient();
@@ -242,7 +242,61 @@ public sealed class OoklaSpeedtest : ISpeedTestService
         };
     }
 
-    #region Static Helper Functions
+    #region Static Functions
+
+    private static HttpClient GetHttpClient()
+    {
+        var httpClient = new HttpClient();
+        httpClient.DefaultRequestHeaders.UserAgent.ParseAdd(
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.0.0 Safari/537.36");
+        httpClient.DefaultRequestHeaders.Accept.ParseAdd("text/html, application/xhtml+xml, */*");
+        httpClient.DefaultRequestHeaders.CacheControl = new CacheControlHeaderValue { NoCache = true };
+        return httpClient;
+    }
+
+    private static T? DeserializeFromXml<T>(string data)
+    {
+        var xmlSerializer = new XmlSerializer(typeof(T));
+        using var reader = new StringReader(data);
+        return (T?)xmlSerializer.Deserialize(reader);
+    }
+
+    /// <summary>
+    /// Returns the base URL (ending with a trailing slash) by removing
+    /// the file name and query parameters from a full URL string.
+    /// </summary>
+    /// <example>
+    /// Input:  "http://example.com/path/speedtest/file.jpg?x=1"
+    /// Output: "http://example.com/path/speedtest/"
+    /// </example>
+    private static string GetBaseUrl(string url)
+    {
+        var uri = new Uri(url);
+        var baseUri = new Uri(uri, ".");
+        return baseUri.ToString();
+    }
+
+    /// <summary>
+    /// Generates numerous download URLs for the speed test.
+    /// </summary>
+    /// <example>
+    /// http://manchester.speedtest.boundlessnetworks.uk:8080/speedtest/random1500x1500.jpg?r=0
+    /// http://manchester.speedtest.boundlessnetworks.uk:8080/speedtest/random1500x1500.jpg?r=1
+    /// ...
+    /// </example>
+    private static IEnumerable<string> GenerateDownloadUrls(string serverUrl, int[] downloadSizes, int downloadSizeIterations)
+    {
+        var downloadUrl = GetBaseUrl(serverUrl) + "random{0}x{0}.jpg?r={1}";
+
+        foreach (var downloadSize in downloadSizes)
+        {
+            for (var i = 0; i < downloadSizeIterations; i++)
+            {
+                yield return string.Format(downloadUrl, downloadSize, i);
+            }
+        }
+    }
+
 
     /// <summary>
     /// Generates a collection of byte arrays representing simulated upload data.
@@ -281,43 +335,6 @@ public sealed class OoklaSpeedtest : ISpeedTestService
         }
 
         return result;
-    }
-
-
-    /// <summary>
-    /// Generates numerous download URLs for the speed test.
-    /// </summary>
-    /// <example>
-    /// http://manchester.speedtest.boundlessnetworks.uk:8080/speedtest/random1500x1500.jpg?r=0
-    /// http://manchester.speedtest.boundlessnetworks.uk:8080/speedtest/random1500x1500.jpg?r=1
-    /// ...
-    /// </example>
-    private static IEnumerable<string> GenerateDownloadUrls(string serverUrl, int[] downloadSizes, int downloadSizeIterations)
-    {
-        var downloadUrl = GetBaseUrl(serverUrl).Append("random{0}x{0}.jpg?r={1}");
-
-        foreach (var downloadSize in downloadSizes)
-        {
-            for (var i = 0; i < downloadSizeIterations; i++)
-            {
-                yield return string.Format(downloadUrl, downloadSize, i);
-            }
-        }
-    }
-
-    private static string GetBaseUrl(string url)
-    {
-        return new Uri(new Uri(url), ".").OriginalString;
-    }
-
-    private static HttpClient GetHttpClient()
-    {
-        var httpClient = new HttpClient();
-        httpClient.DefaultRequestHeaders.UserAgent.ParseAdd(
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.0.0 Safari/537.36");
-        httpClient.DefaultRequestHeaders.Accept.ParseAdd("text/html, application/xhtml+xml, */*");
-        httpClient.DefaultRequestHeaders.CacheControl = new CacheControlHeaderValue { NoCache = true };
-        return httpClient;
     }
 
     #endregion
