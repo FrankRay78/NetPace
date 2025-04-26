@@ -32,7 +32,7 @@ public sealed class OoklaSpeedtest : ISpeedTestService
     public async Task<IServer[]> GetServersAsync(CancellationToken cancellationToken = default)
     {
         using var httpClient = GetHttpClient();
-        var serversXml = await httpClient.GetStringAsync(serverDiscoverySettings.ServersUrl);
+        var serversXml = await httpClient.GetStringAsync(serverDiscoverySettings.ServersUrl, cancellationToken).ConfigureAwait(false);
         var servers = DeserializeFromXml<ServerList>(serversXml)?.Servers ?? Array.Empty<Server>();
         return servers.Where(s =>
                 !string.IsNullOrWhiteSpace(s.Location) &&
@@ -43,16 +43,11 @@ public sealed class OoklaSpeedtest : ISpeedTestService
     /// <inheritdoc/>
     public async Task<ServerLatencyResult> GetServerLatencyAsync(IServer server, CancellationToken cancellationToken = default)
     {
-        return await GetServerLatencyAsync(server, latencyTestSettings.DefaultHttpTimeoutMilliseconds, latencyTestSettings.LatencyTestIterations);
+        return await GetServerLatencyAsync(server, latencyTestSettings.DefaultHttpTimeoutMilliseconds, latencyTestSettings.LatencyTestIterations, cancellationToken);
     }
 
-    private async Task<ServerLatencyResult> GetServerLatencyAsync(IServer server, int httpTimeoutMilliseconds, int maxIterations)
+    private async Task<ServerLatencyResult> GetServerLatencyAsync(IServer server, int httpTimeoutMilliseconds, int maxIterations, CancellationToken cancellationToken)
     {
-        if (string.IsNullOrWhiteSpace(server.Url))
-        {
-            throw new NullReferenceException("Server url was null");
-        }
-
         var latencyUrl = GetBaseUrl(server.Url) + "latency.txt";
         var stopwatch = new Stopwatch();
 
@@ -62,8 +57,10 @@ public sealed class OoklaSpeedtest : ISpeedTestService
 
         for (var iteration = 0; iteration < maxIterations; iteration++)
         {
+            cancellationToken.ThrowIfCancellationRequested();
+
             stopwatch.Start();
-            var testString = await httpClient.GetStringAsync(latencyUrl);
+            var testString = await httpClient.GetStringAsync(latencyUrl, cancellationToken).ConfigureAwait(false);
             stopwatch.Stop();
 
             if (!testString.StartsWith("test=test"))
@@ -93,12 +90,14 @@ public sealed class OoklaSpeedtest : ISpeedTestService
 
         foreach (var server in servers)
         {
+            cancellationToken.ThrowIfCancellationRequested();
+
             // nb. Bump up the fastest latency/timeout by a slight margin
             var httpTimeoutMilliseconds = fastestLatency == latencyTestSettings.DefaultHttpTimeoutMilliseconds ? fastestLatency : (int)(fastestLatency * 1.5);
 
             try
             {
-                var latencyResult = await GetServerLatencyAsync(server, httpTimeoutMilliseconds, latencyTestSettings.LatencyTestIterations);
+                var latencyResult = await GetServerLatencyAsync(server, httpTimeoutMilliseconds, latencyTestSettings.LatencyTestIterations, cancellationToken);
 
                 if (latencyResult.Latency < fastestLatency)
                 {
@@ -126,27 +125,22 @@ public sealed class OoklaSpeedtest : ISpeedTestService
     /// <inheritdoc/>
     public async Task<SpeedTestResult> GetDownloadSpeedAsync(IServer server, CancellationToken cancellationToken = default)
     {
-        return await GetDownloadSpeedAsync(server, (_) => { });
+        return await GetDownloadSpeedAsync(server, (_) => { }, cancellationToken);
     }
 
     /// <inheritdoc/>
     public async Task<SpeedTestResult> GetDownloadSpeedAsync(IServer server, Action<SpeedTestProgress> UpdateProgress, CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrWhiteSpace(server.Url))
-        {
-            throw new NullReferenceException("Server url was null");
-        }
-
         var downloadUrls = GenerateDownloadUrls(server.Url, downloadTestSettings.DownloadSizes, downloadTestSettings.DownloadSizeIterations);
 
         // Download content from a specified URL and return the size of the data in bytes.
-        Func<HttpClient, string, Task<int>> DownloadAndMeasureAsync = async (client, url) =>
+        Func<HttpClient, string, CancellationToken, Task<int>> DownloadAndMeasureAsync = async (client, url, cancellationToken) =>
         {
-            var data = await client.GetStringAsync(url).ConfigureAwait(false);
+            var data = await client.GetStringAsync(url, cancellationToken).ConfigureAwait(false);
             return data.Length;
         };
 
-        var downloadResult = await GenericTestSpeedAsync(downloadUrls, DownloadAndMeasureAsync, UpdateProgress, downloadTestSettings.DownloadParallelTasks);
+        var downloadResult = await GenericTestSpeedAsync(downloadUrls, DownloadAndMeasureAsync, UpdateProgress, downloadTestSettings.DownloadParallelTasks, cancellationToken);
 
         return downloadResult;
     }
@@ -154,28 +148,23 @@ public sealed class OoklaSpeedtest : ISpeedTestService
     /// <inheritdoc/>
     public async Task<SpeedTestResult> GetUploadSpeedAsync(IServer server, CancellationToken cancellationToken = default)
     {
-        return await GetUploadSpeedAsync(server, (_) => { });
+        return await GetUploadSpeedAsync(server, (_) => { }, cancellationToken);
     }
 
     /// <inheritdoc/>
     public async Task<SpeedTestResult> GetUploadSpeedAsync(IServer server, Action<SpeedTestProgress> UpdateProgress, CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrWhiteSpace(server.Url))
-        {
-            throw new NullReferenceException("Server url was null");
-        }
-
         var testData = GenerateUploadData(uploadTestSettings.UploadIncrements);
 
         // Upload content to a specified URL and return the size of the data in bytes.
-        Func<HttpClient, byte[], Task<int>> UploadAndMeasureAsync = async (client, uploadData) =>
+        Func<HttpClient, byte[], CancellationToken, Task<int>> UploadAndMeasureAsync = async (client, uploadData, cancellationToken) =>
         {
             using var content = new ByteArrayContent(uploadData);
-            await client.PostAsync(server.Url, content).ConfigureAwait(false);
+            await client.PostAsync(server.Url, content, cancellationToken).ConfigureAwait(false);
             return uploadData.Length;
         };
 
-        var uploadResult = await GenericTestSpeedAsync(testData, UploadAndMeasureAsync, UpdateProgress, uploadTestSettings.UploadParallelTasks);
+        var uploadResult = await GenericTestSpeedAsync(testData, UploadAndMeasureAsync, UpdateProgress, uploadTestSettings.UploadParallelTasks, cancellationToken);
 
         return uploadResult;
     }
@@ -186,9 +175,10 @@ public sealed class OoklaSpeedtest : ISpeedTestService
     /// </summary>
     private async Task<SpeedTestResult> GenericTestSpeedAsync<T>(
         IEnumerable<T> testData,
-        Func<HttpClient, T, Task<int>> doWork,
+        Func<HttpClient, T, CancellationToken, Task<int>> doWork,
         Action<SpeedTestProgress> UpdateProgress,
-        int parallelTasks)
+        int parallelTasks,
+        CancellationToken cancellationToken)
     {
         object lockObject = new();
         var completedCount = 0;
@@ -203,13 +193,13 @@ public sealed class OoklaSpeedtest : ISpeedTestService
         var tasks = testData.Select(async data =>
         {
             // Limit concurrent executions by waiting for a permit from the semaphore.
-            await throttler.WaitAsync().ConfigureAwait(false);
+            await throttler.WaitAsync(cancellationToken).ConfigureAwait(false);
 
             using var httpClient = GetHttpClient();
             try
             {
                 // Perform the work and retrieve the processed byte count.
-                var size = await doWork(httpClient, data).ConfigureAwait(false);
+                var size = await doWork(httpClient, data, cancellationToken).ConfigureAwait(false);
 
                 // Safely update the progress count and report completion percentage.
                 lock (lockObject)
