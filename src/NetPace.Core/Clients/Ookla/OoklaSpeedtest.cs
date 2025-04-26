@@ -130,7 +130,7 @@ public sealed class OoklaSpeedtest : ISpeedTestService
     }
 
     /// <inheritdoc/>
-    public async Task<SpeedTestResult> GetDownloadSpeedAsync(IServer server, Action<int> UpdateProgress)
+    public async Task<SpeedTestResult> GetDownloadSpeedAsync(IServer server, Action<SpeedTestProgress> UpdateProgress)
     {
         if (string.IsNullOrWhiteSpace(server.Url))
         {
@@ -158,7 +158,7 @@ public sealed class OoklaSpeedtest : ISpeedTestService
     }
 
     /// <inheritdoc/>
-    public async Task<SpeedTestResult> GetUploadSpeedAsync(IServer server, Action<int> UpdateProgress)
+    public async Task<SpeedTestResult> GetUploadSpeedAsync(IServer server, Action<SpeedTestProgress> UpdateProgress)
     {
         if (string.IsNullOrWhiteSpace(server.Url))
         {
@@ -187,7 +187,7 @@ public sealed class OoklaSpeedtest : ISpeedTestService
     private async Task<SpeedTestResult> GenericTestSpeedAsync<T>(
         IEnumerable<T> testData,
         Func<HttpClient, T, Task<int>> doWork,
-        Action<int> UpdateProgress,
+        Action<SpeedTestProgress> UpdateProgress,
         int parallelTasks)
     {
         object lockObject = new();
@@ -216,7 +216,7 @@ public sealed class OoklaSpeedtest : ISpeedTestService
                 {
                     completedCount++;
                     var percentageComplete = (int)((double)completedCount / totalCount * 100);
-                    UpdateProgress(percentageComplete);
+                    UpdateProgress(new SpeedTestProgress { PercentageComplete = percentageComplete });
                 }
 
                 return size;

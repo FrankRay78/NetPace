@@ -65,7 +65,7 @@ public class FaultySpeedTester : ISpeedTestService
     }
 
     /// <inheritdoc/>
-    public Task<SpeedTestResult> GetDownloadSpeedAsync(IServer server, Action<int> UpdateProgress)
+    public Task<SpeedTestResult> GetDownloadSpeedAsync(IServer server, Action<SpeedTestProgress> UpdateProgress)
     {
         AssertNotFaulted(server, nameof(GetDownloadSpeedAsync));
         return inner.GetDownloadSpeedAsync(server, UpdateProgress);
@@ -79,7 +79,7 @@ public class FaultySpeedTester : ISpeedTestService
     }
 
     /// <inheritdoc/>
-    public Task<SpeedTestResult> GetUploadSpeedAsync(IServer server, Action<int> UpdateProgress)
+    public Task<SpeedTestResult> GetUploadSpeedAsync(IServer server, Action<SpeedTestProgress> UpdateProgress)
     {
         AssertNotFaulted(server, nameof(GetUploadSpeedAsync));
         return inner.GetUploadSpeedAsync(server, UpdateProgress);

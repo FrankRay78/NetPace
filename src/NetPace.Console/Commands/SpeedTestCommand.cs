@@ -138,16 +138,16 @@ public sealed class SpeedTestCommand : AsyncCommand<SpeedTestCommandSettings>
                     // Perform the speed tests and show progress
                     if (!settings.NoDownload)
                     {
-                        downloadResult = await speedTestClient.GetDownloadSpeedAsync(server, (int percentageComplete) =>
+                        downloadResult = await speedTestClient.GetDownloadSpeedAsync(server, (SpeedTestProgress progress) =>
                         {
-                            downloadProgress!.Value = percentageComplete;
+                            downloadProgress!.Value = progress.PercentageComplete;
                         });
                     }
                     if (!settings.NoUpload)
                     {
-                        uploadResult = await speedTestClient.GetUploadSpeedAsync(server, (int percentageComplete) =>
+                        uploadResult = await speedTestClient.GetUploadSpeedAsync(server, (SpeedTestProgress progress) =>
                         {
-                            uploadProgress!.Value = percentageComplete;
+                            uploadProgress!.Value = progress.PercentageComplete;
                         });
                     }
                 });

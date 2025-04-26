@@ -56,18 +56,18 @@ public sealed class SpeedTestStub : ISpeedTestService
     }
 
     /// <inheritdoc/>
-    public Task<SpeedTestResult> GetDownloadSpeedAsync(IServer server, Action<int> updateProgress)
+    public Task<SpeedTestResult> GetDownloadSpeedAsync(IServer server, Action<SpeedTestProgress> UpdateProgress)
     {
-        if (updateProgress is not null)
+        if (UpdateProgress is not null)
         {
             Task.Delay(delayMilliseconds).Wait();
-            updateProgress(25);
+            UpdateProgress(new SpeedTestProgress { PercentageComplete = 25 });
             Task.Delay(delayMilliseconds).Wait();
-            updateProgress(50);
+            UpdateProgress(new SpeedTestProgress { PercentageComplete = 50 });
             Task.Delay(delayMilliseconds).Wait();
-            updateProgress(75);
+            UpdateProgress(new SpeedTestProgress { PercentageComplete = 75 });
             Task.Delay(delayMilliseconds).Wait();
-            updateProgress(100);
+            UpdateProgress(new SpeedTestProgress { PercentageComplete = 100 });
         }
 
         return Task.FromResult(new SpeedTestResult() { BytesProcessed = 1000, ElapsedMilliseconds = 1000 });
@@ -80,18 +80,18 @@ public sealed class SpeedTestStub : ISpeedTestService
     }
 
     /// <inheritdoc/>
-    public Task<SpeedTestResult> GetUploadSpeedAsync(IServer server, Action<int> updateProgress)
+    public Task<SpeedTestResult> GetUploadSpeedAsync(IServer server, Action<SpeedTestProgress> UpdateProgress)
     {
-        if (updateProgress is not null)
+        if (UpdateProgress is not null)
         {
             Task.Delay(delayMilliseconds).Wait();
-            updateProgress(25);
+            UpdateProgress(new SpeedTestProgress { PercentageComplete = 25 });
             Task.Delay(delayMilliseconds).Wait();
-            updateProgress(50);
+            UpdateProgress(new SpeedTestProgress { PercentageComplete = 50 });
             Task.Delay(delayMilliseconds).Wait();
-            updateProgress(75);
+            UpdateProgress(new SpeedTestProgress { PercentageComplete = 75 });
             Task.Delay(delayMilliseconds).Wait();
-            updateProgress(100);
+            UpdateProgress(new SpeedTestProgress { PercentageComplete = 100 });
         }
 
         return Task.FromResult(new SpeedTestResult() { BytesProcessed = 7000, ElapsedMilliseconds = 3000 });
