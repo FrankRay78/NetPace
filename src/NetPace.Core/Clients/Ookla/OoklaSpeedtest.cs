@@ -29,7 +29,7 @@ public sealed class OoklaSpeedtest : ISpeedTestService
     }
 
     /// <inheritdoc/>
-    public async Task<IServer[]> GetServersAsync()
+    public async Task<IServer[]> GetServersAsync(CancellationToken cancellationToken = default)
     {
         using var httpClient = GetHttpClient();
         var serversXml = await httpClient.GetStringAsync(serverDiscoverySettings.ServersUrl);
@@ -41,7 +41,7 @@ public sealed class OoklaSpeedtest : ISpeedTestService
     }
 
     /// <inheritdoc/>
-    public async Task<ServerLatencyResult> GetServerLatencyAsync(IServer server)
+    public async Task<ServerLatencyResult> GetServerLatencyAsync(IServer server, CancellationToken cancellationToken = default)
     {
         return await GetServerLatencyAsync(server, latencyTestSettings.DefaultHttpTimeoutMilliseconds, latencyTestSettings.LatencyTestIterations);
     }
@@ -86,7 +86,7 @@ public sealed class OoklaSpeedtest : ISpeedTestService
     }
 
     /// <inheritdoc/>
-    public async Task<ServerLatencyResult> GetFastestServerByLatencyAsync(IServer[] servers)
+    public async Task<ServerLatencyResult> GetFastestServerByLatencyAsync(IServer[] servers, CancellationToken cancellationToken = default)
     {
         var fastestLatency = latencyTestSettings.DefaultHttpTimeoutMilliseconds;
         ServerLatencyResult? fastestServer = null;
@@ -124,13 +124,13 @@ public sealed class OoklaSpeedtest : ISpeedTestService
     }
 
     /// <inheritdoc/>
-    public async Task<SpeedTestResult> GetDownloadSpeedAsync(IServer server)
+    public async Task<SpeedTestResult> GetDownloadSpeedAsync(IServer server, CancellationToken cancellationToken = default)
     {
         return await GetDownloadSpeedAsync(server, (_) => { });
     }
 
     /// <inheritdoc/>
-    public async Task<SpeedTestResult> GetDownloadSpeedAsync(IServer server, Action<SpeedTestProgress> UpdateProgress)
+    public async Task<SpeedTestResult> GetDownloadSpeedAsync(IServer server, Action<SpeedTestProgress> UpdateProgress, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(server.Url))
         {
@@ -152,13 +152,13 @@ public sealed class OoklaSpeedtest : ISpeedTestService
     }
 
     /// <inheritdoc/>
-    public async Task<SpeedTestResult> GetUploadSpeedAsync(IServer server)
+    public async Task<SpeedTestResult> GetUploadSpeedAsync(IServer server, CancellationToken cancellationToken = default)
     {
         return await GetUploadSpeedAsync(server, (_) => { });
     }
 
     /// <inheritdoc/>
-    public async Task<SpeedTestResult> GetUploadSpeedAsync(IServer server, Action<SpeedTestProgress> UpdateProgress)
+    public async Task<SpeedTestResult> GetUploadSpeedAsync(IServer server, Action<SpeedTestProgress> UpdateProgress, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(server.Url))
         {

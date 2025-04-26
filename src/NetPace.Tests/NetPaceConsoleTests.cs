@@ -75,8 +75,8 @@ public class NetPaceConsoleTests
         // Given
         var mock = new SpeedTestMock
         {
-            GetServersAsyncFunc = () => Task.FromResult(Array.Empty<IServer>()),
-            GetFastestServerByLatencyAsyncFunc = servers => throw new Exception("No servers available"),
+            GetServersAsyncFunc = (cancellationToken) => Task.FromResult(Array.Empty<IServer>()),
+            GetFastestServerByLatencyAsyncFunc = (servers, cancellationToken) => throw new Exception("No servers available"),
         };
 
         var registrar = new TypeRegistrar();
@@ -300,7 +300,7 @@ public class NetPaceConsoleTests
         // Given
         var mock = new SpeedTestMock
         {
-            GetServersAsyncFunc = () => throw new HttpRequestException("Could not open socket")
+            GetServersAsyncFunc = (cancellationToken) => throw new HttpRequestException("Could not open socket")
         };
 
         var registrar = new TypeRegistrar();
