@@ -1,6 +1,6 @@
 public static class HttpClientExtensions
 {
-    public static async Task<string> GetStringWithTimeoutAsync(
+    internal static async Task<string> GetStringWithTimeoutAsync(
         this HttpClient client,
         string requestUri,
         TimeSpan timeout,
@@ -11,5 +11,4 @@ public static class HttpClientExtensions
 
         return await client.GetStringAsync(requestUri, linkedCts.Token).ConfigureAwait(false);
     }
-
 }
