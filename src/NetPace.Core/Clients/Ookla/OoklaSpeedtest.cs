@@ -2,7 +2,6 @@ using System.Diagnostics;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Text;
-using NetPace.Core.Clients.Ookla.Settings;
 
 namespace NetPace.Core.Clients.Ookla;
 
@@ -11,18 +10,20 @@ namespace NetPace.Core.Clients.Ookla;
 /// </summary>
 public sealed class OoklaSpeedtest : ISpeedTestService
 {
+    private readonly HttpClient httpClient;
     private readonly OoklaSpeedtestSettings settings;
 
-    public OoklaSpeedtest(OoklaSpeedtestSettings? settings = null)
+    public OoklaSpeedtest(OoklaSpeedtestSettings? speedtestSettings = null)
     {
         // Use default settings when none provided
-        this.settings = settings ?? new OoklaSpeedtestSettings();
+        settings = speedtestSettings ?? new OoklaSpeedtestSettings();
+
+        httpClient = CreateHttpClient(settings.UseProxy, settings.ProxyAddress, settings.ProxyCredential);
     }
 
     /// <inheritdoc/>
     public async Task<IServer[]> GetServersAsync(CancellationToken cancellationToken = default)
     {
-        using var httpClient = GetHttpClient();
         var serversXml = await httpClient.GetStringAsync(settings.ServerDiscovery.ServersUrl, cancellationToken).ConfigureAwait(false);
         var servers = DeserializeFromXml<ServerList>(serversXml)?.Servers ?? Array.Empty<Server>();
         return servers.Where(s =>
@@ -42,16 +43,17 @@ public sealed class OoklaSpeedtest : ISpeedTestService
         var latencyUrl = GetBaseUrl(server.Url) + "latency.txt";
         var stopwatch = new Stopwatch();
 
-        using var httpClient = GetHttpClient();
-        httpClient.Timeout = TimeSpan.FromMilliseconds(httpTimeoutMilliseconds);
-
 
         for (var iteration = 0; iteration < maxIterations; iteration++)
         {
             cancellationToken.ThrowIfCancellationRequested();
 
             stopwatch.Start();
-            var testString = await httpClient.GetStringAsync(latencyUrl, cancellationToken).ConfigureAwait(false);
+
+            using var linkedCancellationSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            linkedCancellationSource.CancelAfter(TimeSpan.FromMilliseconds(httpTimeoutMilliseconds));
+            var testString = await httpClient.GetStringAsync(latencyUrl, linkedCancellationSource.Token).ConfigureAwait(false);
+
             stopwatch.Stop();
 
             if (!testString.StartsWith("test=test"))
@@ -186,7 +188,6 @@ public sealed class OoklaSpeedtest : ISpeedTestService
             // Limit concurrent executions by waiting for a permit from the semaphore.
             await throttler.WaitAsync(cancellationToken).ConfigureAwait(false);
 
-            using var httpClient = GetHttpClient();
             try
             {
                 // Perform the work and retrieve the processed byte count.
@@ -225,12 +226,7 @@ public sealed class OoklaSpeedtest : ISpeedTestService
 
     #region Static Functions
 
-    private static HttpClient GetHttpClient()
-    {
-        return GetHttpClient(false, null, null);
-    }
-
-    private static HttpClient GetHttpClient(bool useProxy, Uri? proxyAddress, NetworkCredential? proxyCredential)
+    private static HttpClient CreateHttpClient(bool useProxy, Uri? proxyAddress, NetworkCredential? proxyCredential)
     {
         var handler = new HttpClientHandler();
 
