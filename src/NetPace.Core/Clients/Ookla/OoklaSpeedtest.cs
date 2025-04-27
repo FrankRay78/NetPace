@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Net;
 using System.Net.Http.Headers;
 using System.Text;
 using NetPace.Core.Clients.Ookla.Settings;
@@ -10,29 +11,19 @@ namespace NetPace.Core.Clients.Ookla;
 /// </summary>
 public sealed class OoklaSpeedtest : ISpeedTestService
 {
-    private readonly ServerDiscoverySettings serverDiscoverySettings;
-    private readonly LatencyTestSettings latencyTestSettings;
-    private readonly DownloadTestSettings downloadTestSettings;
-    private readonly UploadTestSettings uploadTestSettings;
+    private readonly OoklaSpeedtestSettings settings;
 
-    public OoklaSpeedtest(
-        ServerDiscoverySettings? serverDiscoverySettings = null,
-        LatencyTestSettings? latencyTestSettings = null,
-        DownloadTestSettings? downloadTestSettings = null,
-        UploadTestSettings? uploadTestSettings = null)
+    public OoklaSpeedtest(OoklaSpeedtestSettings? settings = null)
     {
         // Use default settings when none provided
-        this.serverDiscoverySettings = serverDiscoverySettings ?? new ServerDiscoverySettings();
-        this.latencyTestSettings = latencyTestSettings ?? new LatencyTestSettings();
-        this.downloadTestSettings = downloadTestSettings ?? new DownloadTestSettings();
-        this.uploadTestSettings = uploadTestSettings ?? new UploadTestSettings();
+        this.settings = settings ?? new OoklaSpeedtestSettings();
     }
 
     /// <inheritdoc/>
     public async Task<IServer[]> GetServersAsync(CancellationToken cancellationToken = default)
     {
         using var httpClient = GetHttpClient();
-        var serversXml = await httpClient.GetStringAsync(serverDiscoverySettings.ServersUrl, cancellationToken).ConfigureAwait(false);
+        var serversXml = await httpClient.GetStringAsync(settings.ServerDiscovery.ServersUrl, cancellationToken).ConfigureAwait(false);
         var servers = DeserializeFromXml<ServerList>(serversXml)?.Servers ?? Array.Empty<Server>();
         return servers.Where(s =>
                 !string.IsNullOrWhiteSpace(s.Location) &&
@@ -43,7 +34,7 @@ public sealed class OoklaSpeedtest : ISpeedTestService
     /// <inheritdoc/>
     public async Task<ServerLatencyResult> GetServerLatencyAsync(IServer server, CancellationToken cancellationToken = default)
     {
-        return await GetServerLatencyAsync(server, latencyTestSettings.DefaultHttpTimeoutMilliseconds, latencyTestSettings.LatencyTestIterations, cancellationToken);
+        return await GetServerLatencyAsync(server, settings.LatencyTest.DefaultHttpTimeoutMilliseconds, settings.LatencyTest.LatencyTestIterations, cancellationToken);
     }
 
     private async Task<ServerLatencyResult> GetServerLatencyAsync(IServer server, int httpTimeoutMilliseconds, int maxIterations, CancellationToken cancellationToken)
@@ -85,7 +76,7 @@ public sealed class OoklaSpeedtest : ISpeedTestService
     /// <inheritdoc/>
     public async Task<ServerLatencyResult> GetFastestServerByLatencyAsync(IServer[] servers, CancellationToken cancellationToken = default)
     {
-        var fastestLatency = latencyTestSettings.DefaultHttpTimeoutMilliseconds;
+        var fastestLatency = settings.LatencyTest.DefaultHttpTimeoutMilliseconds;
         ServerLatencyResult? fastestServer = null;
 
         foreach (var server in servers)
@@ -93,11 +84,11 @@ public sealed class OoklaSpeedtest : ISpeedTestService
             cancellationToken.ThrowIfCancellationRequested();
 
             // nb. Bump up the fastest latency/timeout by a slight margin
-            var httpTimeoutMilliseconds = fastestLatency == latencyTestSettings.DefaultHttpTimeoutMilliseconds ? fastestLatency : (int)(fastestLatency * 1.5);
+            var httpTimeoutMilliseconds = fastestLatency == settings.LatencyTest.DefaultHttpTimeoutMilliseconds ? fastestLatency : (int)(fastestLatency * 1.5);
 
             try
             {
-                var latencyResult = await GetServerLatencyAsync(server, httpTimeoutMilliseconds, latencyTestSettings.LatencyTestIterations, cancellationToken);
+                var latencyResult = await GetServerLatencyAsync(server, httpTimeoutMilliseconds, settings.LatencyTest.LatencyTestIterations, cancellationToken);
 
                 if (latencyResult.Latency < fastestLatency)
                 {
@@ -131,7 +122,7 @@ public sealed class OoklaSpeedtest : ISpeedTestService
     /// <inheritdoc/>
     public async Task<SpeedTestResult> GetDownloadSpeedAsync(IServer server, Action<SpeedTestProgress> UpdateProgress, CancellationToken cancellationToken = default)
     {
-        var downloadUrls = GenerateDownloadUrls(server.Url, downloadTestSettings.DownloadSizes, downloadTestSettings.DownloadSizeIterations);
+        var downloadUrls = GenerateDownloadUrls(server.Url, settings.DownloadTest.DownloadSizes, settings.DownloadTest.DownloadSizeIterations);
 
         // Download content from a specified URL and return the size of the data in bytes.
         Func<HttpClient, string, CancellationToken, Task<int>> DownloadAndMeasureAsync = async (client, url, cancellationToken) =>
@@ -140,7 +131,7 @@ public sealed class OoklaSpeedtest : ISpeedTestService
             return data.Length;
         };
 
-        var downloadResult = await GenericTestSpeedAsync(downloadUrls, DownloadAndMeasureAsync, UpdateProgress, downloadTestSettings.DownloadParallelTasks, cancellationToken);
+        var downloadResult = await GenericTestSpeedAsync(downloadUrls, DownloadAndMeasureAsync, UpdateProgress, settings.DownloadTest.DownloadParallelTasks, cancellationToken);
 
         return downloadResult;
     }
@@ -154,7 +145,7 @@ public sealed class OoklaSpeedtest : ISpeedTestService
     /// <inheritdoc/>
     public async Task<SpeedTestResult> GetUploadSpeedAsync(IServer server, Action<SpeedTestProgress> UpdateProgress, CancellationToken cancellationToken = default)
     {
-        var testData = GenerateUploadData(uploadTestSettings.UploadIncrements);
+        var testData = GenerateUploadData(settings.UploadTest.UploadIncrements);
 
         // Upload content to a specified URL and return the size of the data in bytes.
         Func<HttpClient, byte[], CancellationToken, Task<int>> UploadAndMeasureAsync = async (client, uploadData, cancellationToken) =>
@@ -164,7 +155,7 @@ public sealed class OoklaSpeedtest : ISpeedTestService
             return uploadData.Length;
         };
 
-        var uploadResult = await GenericTestSpeedAsync(testData, UploadAndMeasureAsync, UpdateProgress, uploadTestSettings.UploadParallelTasks, cancellationToken);
+        var uploadResult = await GenericTestSpeedAsync(testData, UploadAndMeasureAsync, UpdateProgress, settings.UploadTest.UploadParallelTasks, cancellationToken);
 
         return uploadResult;
     }
@@ -236,7 +227,28 @@ public sealed class OoklaSpeedtest : ISpeedTestService
 
     private static HttpClient GetHttpClient()
     {
-        var httpClient = new HttpClient();
+        return GetHttpClient(false, null, null);
+    }
+
+    private static HttpClient GetHttpClient(bool useProxy, Uri? proxyAddress, NetworkCredential? proxyCredential)
+    {
+        var handler = new HttpClientHandler();
+
+        if (useProxy && proxyAddress != null)
+        {
+            handler.Proxy = new WebProxy
+            {
+                Address = proxyAddress,
+                Credentials = proxyCredential
+            };
+            handler.UseProxy = true;
+        }
+        else
+        {
+            handler.UseProxy = false;
+        }
+
+        var httpClient = new HttpClient(handler);
         httpClient.DefaultRequestHeaders.UserAgent.ParseAdd(
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.0.0 Safari/537.36");
         httpClient.DefaultRequestHeaders.Accept.ParseAdd("text/html, application/xhtml+xml, */*");

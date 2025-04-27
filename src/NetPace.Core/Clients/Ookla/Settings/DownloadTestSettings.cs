@@ -3,7 +3,7 @@ namespace NetPace.Core.Clients.Ookla.Settings;
 /// <summary>
 /// Settings for downloading test data to measure download speed.
 /// </summary>
-public sealed class DownloadTestSettings
+public sealed record DownloadTestSettings
 {
     // These are used to generate the url for downloading test files.
     // eg: random1500x1500.jpg
