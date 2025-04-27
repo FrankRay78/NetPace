@@ -35,10 +35,10 @@ public sealed class OoklaSpeedtest : ISpeedTestService
     /// <inheritdoc/>
     public async Task<ServerLatencyResult> GetServerLatencyAsync(IServer server, CancellationToken cancellationToken = default)
     {
-        return await GetServerLatencyAsync(server, settings.LatencyTest.DefaultHttpTimeoutMilliseconds, settings.LatencyTest.LatencyTestIterations, cancellationToken);
+        return await GetServerLatencyAsync(server, httpClient, settings.LatencyTest.DefaultHttpTimeoutMilliseconds, settings.LatencyTest.LatencyTestIterations, cancellationToken);
     }
 
-    private async Task<ServerLatencyResult> GetServerLatencyAsync(IServer server, int httpTimeoutMilliseconds, int maxIterations, CancellationToken cancellationToken)
+    private static async Task<ServerLatencyResult> GetServerLatencyAsync(IServer server, HttpClient httpClient, int httpTimeoutMilliseconds, int maxIterations, CancellationToken cancellationToken)
     {
         var latencyUrl = GetBaseUrl(server.Url) + "latency.txt";
         var stopwatch = new Stopwatch();
@@ -49,11 +49,7 @@ public sealed class OoklaSpeedtest : ISpeedTestService
             cancellationToken.ThrowIfCancellationRequested();
 
             stopwatch.Start();
-
-            using var linkedCancellationSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-            linkedCancellationSource.CancelAfter(TimeSpan.FromMilliseconds(httpTimeoutMilliseconds));
-            var testString = await httpClient.GetStringAsync(latencyUrl, linkedCancellationSource.Token).ConfigureAwait(false);
-
+            var testString = await httpClient.GetStringWithTimeoutAsync(latencyUrl, TimeSpan.FromMilliseconds(httpTimeoutMilliseconds), cancellationToken).ConfigureAwait(false);
             stopwatch.Stop();
 
             if (!testString.StartsWith("test=test"))
@@ -90,7 +86,7 @@ public sealed class OoklaSpeedtest : ISpeedTestService
 
             try
             {
-                var latencyResult = await GetServerLatencyAsync(server, httpTimeoutMilliseconds, settings.LatencyTest.LatencyTestIterations, cancellationToken);
+                var latencyResult = await GetServerLatencyAsync(server, httpClient, httpTimeoutMilliseconds, settings.LatencyTest.LatencyTestIterations, cancellationToken);
 
                 if (latencyResult.Latency < fastestLatency)
                 {

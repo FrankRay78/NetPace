@@ -5,6 +5,6 @@ namespace NetPace.Core.Clients.Ookla.Settings;
 /// </summary>
 public sealed record UploadTestSettings
 {
-    public int UploadIncrements { get; set; } = 6;
-    public int UploadParallelTasks { get; set; } = 8;
+    public int UploadIncrements { get; init; } = 6;
+    public int UploadParallelTasks { get; init; } = 8;
 }

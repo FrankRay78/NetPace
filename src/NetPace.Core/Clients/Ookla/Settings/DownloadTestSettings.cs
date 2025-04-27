@@ -9,6 +9,6 @@ public sealed record DownloadTestSettings
     // eg: random1500x1500.jpg
     public int[] DownloadSizes { get; set; } = { 1500, 2000, 3000, 3500, 4000 };
 
-    public int DownloadSizeIterations { get; set; } = 4;
-    public int DownloadParallelTasks { get; set; } = 8;
+    public int DownloadSizeIterations { get; init; } = 4;
+    public int DownloadParallelTasks { get; init; } = 8;
 }

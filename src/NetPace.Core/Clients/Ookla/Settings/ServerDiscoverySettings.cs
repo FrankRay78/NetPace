@@ -5,5 +5,5 @@ namespace NetPace.Core.Clients.Ookla.Settings;
 /// </summary>
 public sealed record ServerDiscoverySettings
 {
-    public string ServersUrl { get; set; } = "http://www.speedtest.net/speedtest-servers.php";
+    public string ServersUrl { get; init; } = "http://www.speedtest.net/speedtest-servers.php";
 }
