@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Text;
+using NetPace.Core.Clients.Ookla.Extensions;
 
 namespace NetPace.Core.Clients.Ookla;
 
@@ -25,7 +26,7 @@ public sealed class OoklaSpeedtest : ISpeedTestService
     public async Task<IServer[]> GetServersAsync(CancellationToken cancellationToken = default)
     {
         var serversXml = await httpClient.GetStringAsync(settings.ServerDiscovery.ServersUrl, cancellationToken).ConfigureAwait(false);
-        var servers = DeserializeFromXml<ServerList>(serversXml)?.Servers ?? Array.Empty<Server>();
+        var servers = serversXml.DeserializeFromXml<ServerList>()?.Servers ?? Array.Empty<Server>();
         return servers.Where(s =>
                 !string.IsNullOrWhiteSpace(s.Location) &&
                 !string.IsNullOrWhiteSpace(s.Sponsor) &&
@@ -246,13 +247,6 @@ public sealed class OoklaSpeedtest : ISpeedTestService
         httpClient.DefaultRequestHeaders.Accept.ParseAdd("text/html, application/xhtml+xml, */*");
         httpClient.DefaultRequestHeaders.CacheControl = new CacheControlHeaderValue { NoCache = true };
         return httpClient;
-    }
-
-    private static T? DeserializeFromXml<T>(string data)
-    {
-        var xmlSerializer = new XmlSerializer(typeof(T));
-        using var reader = new StringReader(data);
-        return (T?)xmlSerializer.Deserialize(reader);
     }
 
     /// <summary>
