@@ -14,12 +14,12 @@ public sealed class OoklaSpeedtest : ISpeedTestService
     private readonly HttpClient httpClient;
     private readonly OoklaSpeedtestSettings settings;
 
-    public OoklaSpeedtest(OoklaSpeedtestSettings? speedtestSettings = null)
+    public OoklaSpeedtest(OoklaSpeedtestSettings? speedtestSettings = null, HttpClient? httpClientOverride = null)
     {
         // Use default settings when none provided
         settings = speedtestSettings ?? new OoklaSpeedtestSettings();
 
-        httpClient = CreateHttpClient(settings.UseProxy, settings.ProxyAddress, settings.ProxyCredential);
+        httpClient = httpClientOverride ?? CreateHttpClient(settings.UseProxy, settings.ProxyAddress, settings.ProxyCredential);
     }
 
     /// <inheritdoc/>
