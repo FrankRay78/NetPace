@@ -105,10 +105,14 @@ using NetPace.Core.Clients.Ookla;
 var speedTester = new OoklaSpeedtest() as ISpeedTestService;
 
 var servers = await speedTester.GetServersAsync();
-var fastestServer = await speedTester.GetFastestServerByLatencyAsync(servers) ?? default;
+var fastest = await speedTester.GetFastestServerByLatencyAsync(servers);
 
-var downloadResult = await speedTester.GetDownloadSpeedAsync(fastestServer.server);
-var uploadResult = await speedTester.GetUploadSpeedAsync(fastestServer.server);
+var downloadResult = await speedTester.GetDownloadSpeedAsync(fastest.Server);
+var uploadResult = await speedTester.GetUploadSpeedAsync(fastest.Server);
+
+Console.WriteLine($"{fastest.Server.Sponsor} ({fastest.Latency} ms)");
+Console.WriteLine($"Download: {downloadResult.GetSpeedString(SpeedUnit.BitsPerSecond, SpeedUnitSystem.SI)}");
+Console.WriteLine($"Upload: {uploadResult.GetSpeedString(SpeedUnit.BitsPerSecond, SpeedUnitSystem.SI)}");
 ```
 
 See the [full usage example](https://github.com/FrankRay78/NetPace/tree/main/examples/ConsoleApp/Program.cs).
