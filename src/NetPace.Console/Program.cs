@@ -1,4 +1,4 @@
-﻿using NetPace.Console;
+using NetPace.Console;
 using NetPace.Console.DependencyInjection;
 using NetPace.Core;
 using NetPace.Core.Clients.Ookla;
@@ -50,7 +50,6 @@ public static class Program
         //registrar.Register(typeof(IClock), typeof(ClockStub));
 
         var registrar = new TypeRegistrar();
-        registrar.Register(typeof(OoklaSpeedtestSettings), typeof(OoklaSpeedtestSettings));
         registrar.Register(typeof(ISpeedTestService), typeof(OoklaSpeedtest));
         registrar.Register(typeof(IClock), typeof(Clock));
 

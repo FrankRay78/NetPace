@@ -15,7 +15,7 @@ public sealed class SpeedTestStub : ISpeedTestService
     }
 
     /// <inheritdoc/>
-    public Task<IServer[]> GetServersAsync()
+    public Task<IServer[]> GetServersAsync(CancellationToken cancellationToken = default)
     {
         return Task.FromResult(new IServer[]
         {
@@ -26,65 +26,72 @@ public sealed class SpeedTestStub : ISpeedTestService
     }
 
     /// <inheritdoc/>
-    public Task<int?> GetServerLatencyAsync(IServer server)
+    public Task<ServerLatencyResult> GetServerLatencyAsync(IServer server, CancellationToken cancellationToken = default)
     {
-        var latency = int.Parse(server.Location!.Replace("Location ", "")) * 100;
+        var latencyResult = new ServerLatencyResult
+        {
+            Server = server,
+            Latency = int.Parse(server.Sponsor!.Replace("Test Sponsor ", "")) * 100
+        };
 
-        return Task.FromResult<int?>(latency);
+        return Task.FromResult(latencyResult);
     }
 
     /// <inheritdoc/>
-    public Task<(IServer server, int latency)?> GetFastestServerByLatencyAsync(IServer[] servers)
+    public Task<ServerLatencyResult> GetFastestServerByLatencyAsync(IServer[] servers, CancellationToken cancellationToken = default)
     {
-        var fastestServer = servers[0];
-        var fastestLatency = int.Parse(fastestServer.Location!.Replace("Location ", "")) * 100;
+        var latencyResult = new ServerLatencyResult
+        {
+            Server = servers[0],
+            Latency = int.Parse(servers[0].Sponsor!.Replace("Test Sponsor ", "")) * 100
+        };
 
-        return Task.FromResult<(IServer server, int latency)?>((fastestServer, fastestLatency));
+        return Task.FromResult(latencyResult);
     }
 
     /// <inheritdoc/>
-    public Task<SpeedTestResult> GetDownloadSpeedAsync(IServer server)
+    public Task<SpeedTestResult> GetDownloadSpeedAsync(IServer server, CancellationToken cancellationToken = default)
     {
         return GetDownloadSpeedAsync(server, _ => { });
     }
 
     /// <inheritdoc/>
-    public Task<SpeedTestResult> GetDownloadSpeedAsync(IServer server, Action<int> updateProgress)
+    public Task<SpeedTestResult> GetDownloadSpeedAsync(IServer server, Action<SpeedTestProgress> UpdateProgress, CancellationToken cancellationToken = default)
     {
-        if (updateProgress is not null)
+        if (UpdateProgress is not null)
         {
             Task.Delay(delayMilliseconds).Wait();
-            updateProgress(25);
+            UpdateProgress(new SpeedTestProgress { PercentageComplete = 25 });
             Task.Delay(delayMilliseconds).Wait();
-            updateProgress(50);
+            UpdateProgress(new SpeedTestProgress { PercentageComplete = 50 });
             Task.Delay(delayMilliseconds).Wait();
-            updateProgress(75);
+            UpdateProgress(new SpeedTestProgress { PercentageComplete = 75 });
             Task.Delay(delayMilliseconds).Wait();
-            updateProgress(100);
+            UpdateProgress(new SpeedTestProgress { PercentageComplete = 100 });
         }
 
         return Task.FromResult(new SpeedTestResult() { BytesProcessed = 1000, ElapsedMilliseconds = 1000 });
     }
 
     /// <inheritdoc/>
-    public Task<SpeedTestResult> GetUploadSpeedAsync(IServer server)
+    public Task<SpeedTestResult> GetUploadSpeedAsync(IServer server, CancellationToken cancellationToken = default)
     {
         return GetUploadSpeedAsync(server, (_) => { });
     }
 
     /// <inheritdoc/>
-    public Task<SpeedTestResult> GetUploadSpeedAsync(IServer server, Action<int> updateProgress)
+    public Task<SpeedTestResult> GetUploadSpeedAsync(IServer server, Action<SpeedTestProgress> UpdateProgress, CancellationToken cancellationToken = default)
     {
-        if (updateProgress is not null)
+        if (UpdateProgress is not null)
         {
             Task.Delay(delayMilliseconds).Wait();
-            updateProgress(25);
+            UpdateProgress(new SpeedTestProgress { PercentageComplete = 25 });
             Task.Delay(delayMilliseconds).Wait();
-            updateProgress(50);
+            UpdateProgress(new SpeedTestProgress { PercentageComplete = 50 });
             Task.Delay(delayMilliseconds).Wait();
-            updateProgress(75);
+            UpdateProgress(new SpeedTestProgress { PercentageComplete = 75 });
             Task.Delay(delayMilliseconds).Wait();
-            updateProgress(100);
+            UpdateProgress(new SpeedTestProgress { PercentageComplete = 100 });
         }
 
         return Task.FromResult(new SpeedTestResult() { BytesProcessed = 7000, ElapsedMilliseconds = 3000 });

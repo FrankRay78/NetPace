@@ -6,67 +6,67 @@ namespace NetPace.Core.Clients.Testing;
 public sealed class SpeedTestMock : ISpeedTestService
 {
     // Delegates for method behavior
-    public Func<Task<IServer[]>>? GetServersAsyncFunc { get; set; }
-    public Func<IServer, Task<int?>>? GetServerLatencyAsyncFunc { get; set; }
-    public Func<IServer[], Task<(IServer server, int latency)?>>? GetFastestServerByLatencyAsyncFunc { get; set; }
-    public Func<IServer, Task<SpeedTestResult>>? GetDownloadSpeedAsyncFunc { get; set; }
-    public Func<IServer, Action<int>, Task<SpeedTestResult>>? GetDownloadSpeedWithProgressAsyncFunc { get; set; }
-    public Func<IServer, Task<SpeedTestResult>>? GetUploadSpeedAsyncFunc { get; set; }
-    public Func<IServer, Action<int>, Task<SpeedTestResult>>? GetUploadSpeedWithProgressAsyncFunc { get; set; }
+    public Func<CancellationToken, Task<IServer[]>>? GetServersAsyncFunc { get; set; }
+    public Func<IServer, CancellationToken, Task<ServerLatencyResult>>? GetServerLatencyAsyncFunc { get; set; }
+    public Func<IServer[], CancellationToken, Task<ServerLatencyResult>>? GetFastestServerByLatencyAsyncFunc { get; set; }
+    public Func<IServer, CancellationToken, Task<SpeedTestResult>>? GetDownloadSpeedAsyncFunc { get; set; }
+    public Func<IServer, Action<SpeedTestProgress>, CancellationToken, Task<SpeedTestResult>>? GetDownloadSpeedWithProgressAsyncFunc { get; set; }
+    public Func<IServer, CancellationToken, Task<SpeedTestResult>>? GetUploadSpeedAsyncFunc { get; set; }
+    public Func<IServer, Action<SpeedTestProgress>, CancellationToken, Task<SpeedTestResult>>? GetUploadSpeedWithProgressAsyncFunc { get; set; }
 
     /// <inheritdoc/>
-    public Task<IServer[]> GetServersAsync()
+    public Task<IServer[]> GetServersAsync(CancellationToken cancellationToken = default)
     {
         if (GetServersAsyncFunc != null)
-            return GetServersAsyncFunc();
+            return GetServersAsyncFunc(cancellationToken);
         throw new NotImplementedException();
     }
 
     /// <inheritdoc/>
-    public Task<int?> GetServerLatencyAsync(IServer server)
+    public Task<ServerLatencyResult> GetServerLatencyAsync(IServer server, CancellationToken cancellationToken = default)
     {
         if (GetServerLatencyAsyncFunc != null)
-            return GetServerLatencyAsyncFunc(server);
+            return GetServerLatencyAsyncFunc(server, cancellationToken);
         throw new NotImplementedException();
     }
 
     /// <inheritdoc/>
-    public Task<(IServer server, int latency)?> GetFastestServerByLatencyAsync(IServer[] servers)
+    public Task<ServerLatencyResult> GetFastestServerByLatencyAsync(IServer[] servers, CancellationToken cancellationToken = default)
     {
         if (GetFastestServerByLatencyAsyncFunc != null)
-            return GetFastestServerByLatencyAsyncFunc(servers);
+            return GetFastestServerByLatencyAsyncFunc(servers, cancellationToken);
         throw new NotImplementedException();
     }
 
     /// <inheritdoc/>
-    public Task<SpeedTestResult> GetDownloadSpeedAsync(IServer server)
+    public Task<SpeedTestResult> GetDownloadSpeedAsync(IServer server, CancellationToken cancellationToken = default)
     {
         if (GetDownloadSpeedAsyncFunc != null)
-            return GetDownloadSpeedAsyncFunc(server);
+            return GetDownloadSpeedAsyncFunc(server, cancellationToken);
         throw new NotImplementedException();
     }
 
     /// <inheritdoc/>
-    public Task<SpeedTestResult> GetDownloadSpeedAsync(IServer server, Action<int> updateProgress)
+    public Task<SpeedTestResult> GetDownloadSpeedAsync(IServer server, Action<SpeedTestProgress> UpdateProgress, CancellationToken cancellationToken = default)
     {
         if (GetDownloadSpeedWithProgressAsyncFunc != null)
-            return GetDownloadSpeedWithProgressAsyncFunc(server, updateProgress);
+            return GetDownloadSpeedWithProgressAsyncFunc(server, UpdateProgress, cancellationToken);
         throw new NotImplementedException();
     }
 
     /// <inheritdoc/>
-    public Task<SpeedTestResult> GetUploadSpeedAsync(IServer server)
+    public Task<SpeedTestResult> GetUploadSpeedAsync(IServer server, CancellationToken cancellationToken = default)
     {
         if (GetUploadSpeedAsyncFunc != null)
-            return GetUploadSpeedAsyncFunc(server);
+            return GetUploadSpeedAsyncFunc(server, cancellationToken);
         throw new NotImplementedException();
     }
 
     /// <inheritdoc/>
-    public Task<SpeedTestResult> GetUploadSpeedAsync(IServer server, Action<int> updateProgress)
+    public Task<SpeedTestResult> GetUploadSpeedAsync(IServer server, Action<SpeedTestProgress> UpdateProgress, CancellationToken cancellationToken = default)
     {
         if (GetUploadSpeedWithProgressAsyncFunc != null)
-            return GetUploadSpeedWithProgressAsyncFunc(server, updateProgress);
+            return GetUploadSpeedWithProgressAsyncFunc(server, UpdateProgress, cancellationToken);
         throw new NotImplementedException();
     }
 }

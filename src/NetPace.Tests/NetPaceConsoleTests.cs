@@ -54,13 +54,29 @@ public class NetPaceConsoleTests
     }
 
     [Fact]
+    public async Task Should_Display_Speed_Test_Servers_With_Latency_With_Faulty_Server_Ping()
+    {
+        // Given
+        var registrar = new TypeRegistrar();
+        registrar.RegisterInstance(typeof(ISpeedTestService), new FaultySpeedTester());
+        var app = GetCommandAppTester(registrar);
+
+        // When
+        var result = await app.RunAsync("servers", "-l");
+
+        // Then
+        Assert.Equal(0, result.ExitCode);
+        await Verify(result.Output);
+    }
+
+    [Fact]
     public async Task Should_Handle_No_Servers_Available()
     {
         // Given
         var mock = new SpeedTestMock
         {
-            GetServersAsyncFunc = () => Task.FromResult(Array.Empty<IServer>()),
-            GetFastestServerByLatencyAsyncFunc = servers => Task.FromResult<(IServer server, int latency)?>(null),
+            GetServersAsyncFunc = (cancellationToken) => Task.FromResult(Array.Empty<IServer>()),
+            GetFastestServerByLatencyAsyncFunc = (servers, cancellationToken) => throw new Exception("No servers available"),
         };
 
         var registrar = new TypeRegistrar();
@@ -284,7 +300,7 @@ public class NetPaceConsoleTests
         // Given
         var mock = new SpeedTestMock
         {
-            GetServersAsyncFunc = () => throw new HttpRequestException("Could not open socket")
+            GetServersAsyncFunc = (cancellationToken) => throw new HttpRequestException("Could not open socket")
         };
 
         var registrar = new TypeRegistrar();

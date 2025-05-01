@@ -20,11 +20,12 @@ public sealed class SpeedTestCommand : AsyncCommand<SpeedTestCommandSettings>
     public override async Task<int> ExecuteAsync(CommandContext context, SpeedTestCommandSettings settings)
     {
         // Get the speed test server
-        var fastest = await GetFastestServerAsync(settings);
+        var servers = await speedTestClient.GetServersAsync();
+        var fastest = await speedTestClient.GetFastestServerByLatencyAsync(servers);
 
         if (!settings.CSV && ((settings.Verbosity & (Verbosity.Normal | Verbosity.Debug)) != 0))
         {
-            console.WriteLine($"{fastest.server.Sponsor} ({fastest.latency} ms)");
+            console.WriteLine($"{fastest.Server.Sponsor} ({fastest.Latency} ms)");
         }
 
         if (settings.NoDownload && settings.NoUpload)
@@ -34,7 +35,7 @@ public sealed class SpeedTestCommand : AsyncCommand<SpeedTestCommandSettings>
 
 
         // Perform speed test
-        var (downloadResult, uploadResult) = await PerformSpeedTestAsync(fastest.server, settings);
+        var (downloadResult, uploadResult) = await PerformSpeedTestAsync(fastest.Server, settings);
 
 
         // CSV output overrides the display options below
@@ -99,19 +100,6 @@ public sealed class SpeedTestCommand : AsyncCommand<SpeedTestCommandSettings>
         return 0;
     }
 
-    private async Task<(IServer server, int latency)> GetFastestServerAsync(SpeedTestCommandSettings settings)
-    {
-        var servers = await speedTestClient.GetServersAsync();
-        var fastest = await speedTestClient.GetFastestServerByLatencyAsync(servers);
-
-        if (fastest == null)
-        {
-            throw new Exception("No servers available");
-        }
-
-        return fastest.Value;
-    }
-
     private async Task<(SpeedTestResult downloadResult, SpeedTestResult uploadResult)> PerformSpeedTestAsync(IServer server, SpeedTestCommandSettings settings)
     {
         var downloadResult = new SpeedTestResult();
@@ -150,16 +138,16 @@ public sealed class SpeedTestCommand : AsyncCommand<SpeedTestCommandSettings>
                     // Perform the speed tests and show progress
                     if (!settings.NoDownload)
                     {
-                        downloadResult = await speedTestClient.GetDownloadSpeedAsync(server, (int percentageComplete) =>
+                        downloadResult = await speedTestClient.GetDownloadSpeedAsync(server, (SpeedTestProgress progress) =>
                         {
-                            downloadProgress!.Value = percentageComplete;
+                            downloadProgress!.Value = progress.PercentageComplete;
                         });
                     }
                     if (!settings.NoUpload)
                     {
-                        uploadResult = await speedTestClient.GetUploadSpeedAsync(server, (int percentageComplete) =>
+                        uploadResult = await speedTestClient.GetUploadSpeedAsync(server, (SpeedTestProgress progress) =>
                         {
-                            uploadProgress!.Value = percentageComplete;
+                            uploadProgress!.Value = progress.PercentageComplete;
                         });
                     }
                 });

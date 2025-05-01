@@ -1,6 +1,8 @@
 using System.Diagnostics;
+using System.Net;
 using System.Net.Http.Headers;
 using System.Text;
+using NetPace.Core.Clients.Ookla.Extensions;
 
 namespace NetPace.Core.Clients.Ookla;
 
@@ -9,24 +11,21 @@ namespace NetPace.Core.Clients.Ookla;
 /// </summary>
 public sealed class OoklaSpeedtest : ISpeedTestService
 {
-    private OoklaSpeedtestSettings settings { get; set; }
+    private readonly HttpClient httpClient;
+    private readonly OoklaSpeedtestSettings settings;
 
-    public OoklaSpeedtest()
+    public OoklaSpeedtest(OoklaSpeedtestSettings? speedtestSettings = null, HttpClient? httpClientOverride = null)
     {
         // Use default settings when none provided
-        settings = new OoklaSpeedtestSettings();
-    }
+        settings = speedtestSettings ?? new OoklaSpeedtestSettings();
 
-    public OoklaSpeedtest(OoklaSpeedtestSettings settings)
-    {
-        this.settings = settings;
+        httpClient = httpClientOverride ?? CreateHttpClient(settings.UseProxy, settings.ProxyAddress, settings.ProxyCredential);
     }
 
     /// <inheritdoc/>
-    public async Task<IServer[]> GetServersAsync()
+    public async Task<IServer[]> GetServersAsync(CancellationToken cancellationToken = default)
     {
-        using var httpClient = GetHttpClient();
-        var serversXml = await httpClient.GetStringAsync(settings.ServersUrl);
+        var serversXml = await httpClient.GetStringAsync(settings.ServerDiscovery.ServersUrl, cancellationToken).ConfigureAwait(false);
         var servers = serversXml.DeserializeFromXml<ServerList>()?.Servers ?? Array.Empty<Server>();
         return servers.Where(s =>
                 !string.IsNullOrWhiteSpace(s.Location) &&
@@ -35,134 +34,127 @@ public sealed class OoklaSpeedtest : ISpeedTestService
     }
 
     /// <inheritdoc/>
-    public async Task<int?> GetServerLatencyAsync(IServer server)
+    public async Task<ServerLatencyResult> GetServerLatencyAsync(IServer server, CancellationToken cancellationToken = default)
     {
-        return await GetServerLatencyAsync(server, settings.DefaultHttpTimeoutMilliseconds, settings.LatencyTestIterations);
+        return await GetServerLatencyAsync(server, httpClient, settings.LatencyTest.DefaultHttpTimeoutMilliseconds, settings.LatencyTest.LatencyTestIterations, cancellationToken);
     }
 
-    private async Task<int?> GetServerLatencyAsync(IServer server, int httpTimeoutMilliseconds, int testIterations)
+    private static async Task<ServerLatencyResult> GetServerLatencyAsync(IServer server, HttpClient httpClient, int httpTimeoutMilliseconds, int maxIterations, CancellationToken cancellationToken)
     {
-        int? latency = null;
+        var latencyUrl = GetBaseUrl(server.Url) + "latency.txt";
+        var stopwatch = new Stopwatch();
 
-        try
+
+        for (var iteration = 0; iteration < maxIterations; iteration++)
         {
-            if (string.IsNullOrWhiteSpace(server.Url))
+            cancellationToken.ThrowIfCancellationRequested();
+
+            stopwatch.Start();
+            var testString = await httpClient.GetStringWithTimeoutAsync(latencyUrl, TimeSpan.FromMilliseconds(httpTimeoutMilliseconds), cancellationToken).ConfigureAwait(false);
+            stopwatch.Stop();
+
+            if (!testString.StartsWith("test=test"))
             {
-                throw new NullReferenceException("Server url was null");
+                throw new InvalidOperationException("Server returned incorrect test string for latency.txt");
             }
-
-            var latencyUrl = GetBaseUrl(server.Url).Append("latency.txt");
-            var stopwatch = new Stopwatch();
-
-            using var httpClient = GetHttpClient();
-            httpClient.Timeout = TimeSpan.FromMilliseconds(httpTimeoutMilliseconds);
-
-
-            var iteration = 1;
-            do
-            {
-                stopwatch.Start();
-                var testString = await httpClient.GetStringAsync(latencyUrl);
-                stopwatch.Stop();
-
-                if (!testString.StartsWith("test=test"))
-                {
-                    throw new InvalidOperationException("Server returned incorrect test string for latency.txt");
-                }
-
-                iteration++;
-            }
-            while (iteration < testIterations);
-
-            // Calculate the average server latency
-            latency = (int)stopwatch.ElapsedMilliseconds / testIterations;
-        }
-        catch
-        {
-            // Ignore this server
         }
 
-        return latency;
+        // Calculate the average server latency
+        var latency = (int)stopwatch.ElapsedMilliseconds / maxIterations;
+
+
+        var latencyResult = new ServerLatencyResult
+        {
+            Server = server,
+            Latency = (int)stopwatch.ElapsedMilliseconds / maxIterations
+        };
+
+        return latencyResult;
     }
 
     /// <inheritdoc/>
-    public async Task<(IServer server, int latency)?> GetFastestServerByLatencyAsync(IServer[] servers)
+    public async Task<ServerLatencyResult> GetFastestServerByLatencyAsync(IServer[] servers, CancellationToken cancellationToken = default)
     {
-        var fastestLatency = settings.DefaultHttpTimeoutMilliseconds;
-        IServer? fastestServer = null;
+        var fastestLatency = settings.LatencyTest.DefaultHttpTimeoutMilliseconds;
+        ServerLatencyResult? fastestServer = null;
 
         foreach (var server in servers)
         {
+            cancellationToken.ThrowIfCancellationRequested();
+
             // nb. Bump up the fastest latency/timeout by a slight margin
-            var httpTimeoutMilliseconds = fastestLatency == settings.DefaultHttpTimeoutMilliseconds ? fastestLatency : (int)(fastestLatency * 1.5);
+            var httpTimeoutMilliseconds = fastestLatency == settings.LatencyTest.DefaultHttpTimeoutMilliseconds ? fastestLatency : (int)(fastestLatency * 1.5);
 
-            var latency = await GetServerLatencyAsync(server, httpTimeoutMilliseconds, settings.LatencyTestIterations);
-
-            if (latency != null && latency < fastestLatency)
+            try
             {
-                // Reduce the http timeout to the new fastest latency
-                // (ie. do not wait for servers that are slower)
-                fastestLatency = latency.Value;
-                fastestServer = server;
+                var latencyResult = await GetServerLatencyAsync(server, httpClient, httpTimeoutMilliseconds, settings.LatencyTest.LatencyTestIterations, cancellationToken);
+
+                if (latencyResult.Latency < fastestLatency)
+                {
+                    // Reduce the http timeout to the new fastest latency
+                    // (ie. do not wait for servers that are slower)
+                    fastestLatency = latencyResult.Latency;
+                    fastestServer = latencyResult;
+                }
+            }
+            catch
+            {
+                // A exception was thrown when pinging the server
+                // Ignore and continue with the next server
             }
         }
 
-        return fastestServer == null ? null : (fastestServer, fastestLatency);
-    }
-
-    /// <inheritdoc/>
-    public async Task<SpeedTestResult> GetDownloadSpeedAsync(IServer server)
-    {
-        return await GetDownloadSpeedAsync(server, (_) => { });
-    }
-
-    /// <inheritdoc/>
-    public async Task<SpeedTestResult> GetDownloadSpeedAsync(IServer server, Action<int> UpdateProgress)
-    {
-        if (string.IsNullOrWhiteSpace(server.Url))
+        if (fastestServer == null)
         {
-            throw new NullReferenceException("Server url was null");
+            throw new Exception("No servers available");
         }
 
-        var downloadUrls = GenerateDownloadUrls(server.Url, settings.DownloadSizes, settings.DownloadSizeIterations);
+        return fastestServer;
+    }
+
+    /// <inheritdoc/>
+    public async Task<SpeedTestResult> GetDownloadSpeedAsync(IServer server, CancellationToken cancellationToken = default)
+    {
+        return await GetDownloadSpeedAsync(server, (_) => { }, cancellationToken);
+    }
+
+    /// <inheritdoc/>
+    public async Task<SpeedTestResult> GetDownloadSpeedAsync(IServer server, Action<SpeedTestProgress> UpdateProgress, CancellationToken cancellationToken = default)
+    {
+        var downloadUrls = GenerateDownloadUrls(server.Url, settings.DownloadTest.DownloadSizes, settings.DownloadTest.DownloadSizeIterations);
 
         // Download content from a specified URL and return the size of the data in bytes.
-        Func<HttpClient, string, Task<int>> DownloadAndMeasureAsync = async (client, url) =>
+        Func<HttpClient, string, CancellationToken, Task<int>> DownloadAndMeasureAsync = async (client, url, cancellationToken) =>
         {
-            var data = await client.GetStringAsync(url).ConfigureAwait(false);
+            var data = await client.GetStringAsync(url, cancellationToken).ConfigureAwait(false);
             return data.Length;
         };
 
-        var downloadResult = await GenericTestSpeedAsync(downloadUrls, DownloadAndMeasureAsync, UpdateProgress, settings.DownloadParallelTasks);
+        var downloadResult = await GenericTestSpeedAsync(downloadUrls, DownloadAndMeasureAsync, UpdateProgress, settings.DownloadTest.DownloadParallelTasks, cancellationToken);
 
         return downloadResult;
     }
 
     /// <inheritdoc/>
-    public async Task<SpeedTestResult> GetUploadSpeedAsync(IServer server)
+    public async Task<SpeedTestResult> GetUploadSpeedAsync(IServer server, CancellationToken cancellationToken = default)
     {
-        return await GetUploadSpeedAsync(server, (_) => { });
+        return await GetUploadSpeedAsync(server, (_) => { }, cancellationToken);
     }
 
     /// <inheritdoc/>
-    public async Task<SpeedTestResult> GetUploadSpeedAsync(IServer server, Action<int> UpdateProgress)
+    public async Task<SpeedTestResult> GetUploadSpeedAsync(IServer server, Action<SpeedTestProgress> UpdateProgress, CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrWhiteSpace(server.Url))
-        {
-            throw new NullReferenceException("Server url was null");
-        }
-
-        var testData = GenerateUploadData(settings.UploadIncrements);
+        var testData = GenerateUploadData(settings.UploadTest.UploadIncrements);
 
         // Upload content to a specified URL and return the size of the data in bytes.
-        Func<HttpClient, byte[], Task<int>> UploadAndMeasureAsync = async (client, uploadData) =>
+        Func<HttpClient, byte[], CancellationToken, Task<int>> UploadAndMeasureAsync = async (client, uploadData, cancellationToken) =>
         {
             using var content = new ByteArrayContent(uploadData);
-            await client.PostAsync(server.Url, content).ConfigureAwait(false);
+            await client.PostAsync(server.Url, content, cancellationToken).ConfigureAwait(false);
             return uploadData.Length;
         };
 
-        var uploadResult = await GenericTestSpeedAsync(testData, UploadAndMeasureAsync, UpdateProgress, settings.UploadParallelTasks);
+        var uploadResult = await GenericTestSpeedAsync(testData, UploadAndMeasureAsync, UpdateProgress, settings.UploadTest.UploadParallelTasks, cancellationToken);
 
         return uploadResult;
     }
@@ -173,9 +165,10 @@ public sealed class OoklaSpeedtest : ISpeedTestService
     /// </summary>
     private async Task<SpeedTestResult> GenericTestSpeedAsync<T>(
         IEnumerable<T> testData,
-        Func<HttpClient, T, Task<int>> doWork,
-        Action<int> UpdateProgress,
-        int parallelTasks)
+        Func<HttpClient, T, CancellationToken, Task<int>> doWork,
+        Action<SpeedTestProgress> UpdateProgress,
+        int parallelTasks,
+        CancellationToken cancellationToken)
     {
         object lockObject = new();
         var completedCount = 0;
@@ -190,20 +183,19 @@ public sealed class OoklaSpeedtest : ISpeedTestService
         var tasks = testData.Select(async data =>
         {
             // Limit concurrent executions by waiting for a permit from the semaphore.
-            await throttler.WaitAsync().ConfigureAwait(false);
+            await throttler.WaitAsync(cancellationToken).ConfigureAwait(false);
 
-            using var httpClient = GetHttpClient();
             try
             {
                 // Perform the work and retrieve the processed byte count.
-                var size = await doWork(httpClient, data).ConfigureAwait(false);
+                var size = await doWork(httpClient, data, cancellationToken).ConfigureAwait(false);
 
                 // Safely update the progress count and report completion percentage.
                 lock (lockObject)
                 {
                     completedCount++;
                     var percentageComplete = (int)((double)completedCount / totalCount * 100);
-                    UpdateProgress(percentageComplete);
+                    UpdateProgress(new SpeedTestProgress { PercentageComplete = percentageComplete });
                 }
 
                 return size;
@@ -229,7 +221,70 @@ public sealed class OoklaSpeedtest : ISpeedTestService
         };
     }
 
-    #region Static Helper Functions
+    #region Static Functions
+
+    private static HttpClient CreateHttpClient(bool useProxy, Uri? proxyAddress, NetworkCredential? proxyCredential)
+    {
+        var handler = new HttpClientHandler();
+
+        if (useProxy && proxyAddress != null)
+        {
+            handler.Proxy = new WebProxy
+            {
+                Address = proxyAddress,
+                Credentials = proxyCredential
+            };
+            handler.UseProxy = true;
+        }
+        else
+        {
+            handler.UseProxy = false;
+        }
+
+        var httpClient = new HttpClient(handler);
+        httpClient.DefaultRequestHeaders.UserAgent.ParseAdd(
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.0.0 Safari/537.36");
+        httpClient.DefaultRequestHeaders.Accept.ParseAdd("text/html, application/xhtml+xml, */*");
+        httpClient.DefaultRequestHeaders.CacheControl = new CacheControlHeaderValue { NoCache = true };
+        return httpClient;
+    }
+
+    /// <summary>
+    /// Returns the base URL (ending with a trailing slash) by removing
+    /// the file name and query parameters from a full URL string.
+    /// </summary>
+    /// <example>
+    /// Input:  "http://example.com/path/speedtest/file.jpg?x=1"
+    /// Output: "http://example.com/path/speedtest/"
+    /// </example>
+    private static string GetBaseUrl(string url)
+    {
+        var uri = new Uri(url);
+        var baseUri = new Uri(uri, ".");
+        return baseUri.ToString();
+    }
+
+    /// <summary>
+    /// Generates numerous download URLs for the speed test.
+    /// </summary>
+    /// <example>
+    /// http://manchester.speedtest.boundlessnetworks.uk:8080/speedtest/random1500x1500.jpg?r=0
+    /// http://manchester.speedtest.boundlessnetworks.uk:8080/speedtest/random1500x1500.jpg?r=1
+    /// ...
+    /// </example>
+    private static IEnumerable<string> GenerateDownloadUrls(string serverUrl, int[] downloadSizes, int downloadSizeIterations)
+    {
+        var downloadUrl = GetBaseUrl(serverUrl) + "random{0}x{0}.jpg?r={1}";
+
+        foreach (var downloadSize in downloadSizes)
+        {
+            for (var i = 0; i < downloadSizeIterations; i++)
+            {
+                yield return string.Format(downloadUrl, downloadSize, i);
+            }
+        }
+    }
+
 
     /// <summary>
     /// Generates a collection of byte arrays representing simulated upload data.
@@ -268,43 +323,6 @@ public sealed class OoklaSpeedtest : ISpeedTestService
         }
 
         return result;
-    }
-
-
-    /// <summary>
-    /// Generates numerous download URLs for the speed test.
-    /// </summary>
-    /// <example>
-    /// http://manchester.speedtest.boundlessnetworks.uk:8080/speedtest/random1500x1500.jpg?r=0
-    /// http://manchester.speedtest.boundlessnetworks.uk:8080/speedtest/random1500x1500.jpg?r=1
-    /// ...
-    /// </example>
-    private static IEnumerable<string> GenerateDownloadUrls(string serverUrl, int[] downloadSizes, int downloadSizeIterations)
-    {
-        var downloadUrl = GetBaseUrl(serverUrl).Append("random{0}x{0}.jpg?r={1}");
-
-        foreach (var downloadSize in downloadSizes)
-        {
-            for (var i = 0; i < downloadSizeIterations; i++)
-            {
-                yield return string.Format(downloadUrl, downloadSize, i);
-            }
-        }
-    }
-
-    private static string GetBaseUrl(string url)
-    {
-        return new Uri(new Uri(url), ".").OriginalString;
-    }
-
-    private static HttpClient GetHttpClient()
-    {
-        var httpClient = new HttpClient();
-        httpClient.DefaultRequestHeaders.UserAgent.ParseAdd(
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.0.0 Safari/537.36");
-        httpClient.DefaultRequestHeaders.Accept.ParseAdd("text/html, application/xhtml+xml, */*");
-        httpClient.DefaultRequestHeaders.CacheControl = new CacheControlHeaderValue { NoCache = true };
-        return httpClient;
     }
 
     #endregion
