@@ -11,12 +11,12 @@ using NetPace.Core.Clients.Ookla;
 var speedTester = new OoklaSpeedtest() as ISpeedTestService;
 
 var servers = await speedTester.GetServersAsync();
-var fastestServer = await speedTester.GetFastestServerByLatencyAsync(servers) ?? default;
+var fastest = await speedTester.GetFastestServerByLatencyAsync(servers);
 
-var downloadResult = await speedTester.GetDownloadSpeedAsync(fastestServer.server);
-var uploadResult = await speedTester.GetUploadSpeedAsync(fastestServer.server);
+var downloadResult = await speedTester.GetDownloadSpeedAsync(fastest.Server);
+var uploadResult = await speedTester.GetUploadSpeedAsync(fastest.Server);
 
-Console.WriteLine($"{fastestServer.server.Sponsor} ({fastestServer.latency} ms)");
+Console.WriteLine($"{fastest.Server.Sponsor} ({fastest.Latency} ms)");
 Console.WriteLine($"Download: {downloadResult.GetSpeedString(SpeedUnit.BitsPerSecond, SpeedUnitSystem.SI)}");
 Console.WriteLine($"Upload: {uploadResult.GetSpeedString(SpeedUnit.BitsPerSecond, SpeedUnitSystem.SI)}");
 ```
@@ -25,20 +25,21 @@ See [full example](https://github.com/FrankRay78/NetPace/tree/main/examples/Cons
 
 ## API Overview
 
-`ISpeedTestService` is the main interface you'll interact with.
+`ISpeedTestService` is the primary interface you will interact with.
 
 ```csharp
 public interface ISpeedTestService
 {
-    public Task<IServer[]> GetServersAsync();
-    public Task<int?> GetServerLatencyAsync(IServer server);
-    public Task<(IServer server, int latency)?> GetFastestServerByLatencyAsync(IServer[] servers);
+    public Task<IServer[]> GetServersAsync(CancellationToken cancellationToken = default);
 
-    public Task<SpeedTestResult> GetDownloadSpeedAsync(IServer server);
-    public Task<SpeedTestResult> GetDownloadSpeedAsync(IServer server, Action<int> UpdateProgress);
+    public Task<ServerLatencyResult> GetServerLatencyAsync(IServer server, CancellationToken cancellationToken = default);
+    public Task<ServerLatencyResult> GetFastestServerByLatencyAsync(IServer[] servers, CancellationToken cancellationToken = default);
 
-    public Task<SpeedTestResult> GetUploadSpeedAsync(IServer server);
-    public Task<SpeedTestResult> GetUploadSpeedAsync(IServer server, Action<int> UpdateProgress);
+    public Task<SpeedTestResult> GetDownloadSpeedAsync(IServer server, CancellationToken cancellationToken = default);
+    public Task<SpeedTestResult> GetDownloadSpeedAsync(IServer server, Action<SpeedTestProgress> UpdateProgress, CancellationToken cancellationToken = default);
+
+    public Task<SpeedTestResult> GetUploadSpeedAsync(IServer server, CancellationToken cancellationToken = default);
+    public Task<SpeedTestResult> GetUploadSpeedAsync(IServer server, Action<SpeedTestProgress> UpdateProgress, CancellationToken cancellationToken = default);
 }
 ```
 
