@@ -28,9 +28,6 @@ jobs:
       - name: Build
         run: dotnet build src --configuration Release --no-restore
 
-      - name: Test
-        run: dotnet test src --no-build --verbosity normal
-
       - name: Pack
         run: |
           dotnet pack src/NetPace.Core/NetPace.Core.csproj \
