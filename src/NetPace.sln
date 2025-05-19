@@ -19,6 +19,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Examples", "Examples", "{5B
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ConsoleApp", "..\examples\ConsoleApp\ConsoleApp.csproj", "{3C069F6A-0D91-4B46-B710-45A2F2883759}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NetPace.Core.Tests", "NetPace.Core.Tests\NetPace.Core.Tests.csproj", "{ED348238-47F5-41B5-B0F5-F256D3750FD1}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -41,6 +43,10 @@ Global
 		{3C069F6A-0D91-4B46-B710-45A2F2883759}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{3C069F6A-0D91-4B46-B710-45A2F2883759}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{3C069F6A-0D91-4B46-B710-45A2F2883759}.Release|Any CPU.Build.0 = Release|Any CPU
+		{ED348238-47F5-41B5-B0F5-F256D3750FD1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{ED348238-47F5-41B5-B0F5-F256D3750FD1}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{ED348238-47F5-41B5-B0F5-F256D3750FD1}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{ED348238-47F5-41B5-B0F5-F256D3750FD1}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
