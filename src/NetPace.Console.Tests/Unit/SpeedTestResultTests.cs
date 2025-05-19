@@ -1,4 +1,4 @@
-namespace NetPace.Tests.Unit;
+namespace NetPace.Console.Tests.Unit;
 
 public class SpeedTestResultTests
 {

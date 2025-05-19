@@ -1,6 +1,6 @@
-﻿using System.Runtime.CompilerServices;
+using System.Runtime.CompilerServices;
 
-namespace NetPace.Tests;
+namespace NetPace.Console.Tests;
 
 public static class VerifyConfiguration
 {
