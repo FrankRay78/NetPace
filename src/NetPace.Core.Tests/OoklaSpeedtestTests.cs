@@ -1,10 +1,13 @@
 using NetPace.Core.Clients.Ookla;
 using RichardSzalay.MockHttp;
+using static System.Net.WebRequestMethods;
 
 namespace NetPace.Core.Tests;
 
 public class OoklaSpeedtestTests
 {
+    // --- GetServersAsync ---
+
     [Fact]
     public async Task GetServersAsync_ShouldReturnSingleServer_WhenResponseHasOneServer()
     {
@@ -100,7 +103,7 @@ public class OoklaSpeedtestTests
     }
 
     [Fact]
-    public async Task GetServersAsync_ShouldThrow_WhenResponseIsInvalidXml()
+    public async Task GetServersAsync_ShouldThrow_WhenResponseIsInvalid()
     {
         // Given
         var invalidXml = "Not XML at all <><>??";
@@ -123,24 +126,155 @@ public class OoklaSpeedtestTests
     // --- GetServerLatencyAsync ---
 
     [Fact]
-    public async Task GetServerLatencyAsync_ShouldReturnLatency_WhenServerRespondsWithValidTestString()
+    public async Task GetServerLatencyAsync_ShouldReturnLatency_WhenResponseIsValid()
     {
-        await Task.CompletedTask;
-        throw new NotImplementedException();
+        // Given
+        var mockHttp = new MockHttpMessageHandler();
+        mockHttp.When("http://testserver.com/latency.txt")
+                .Respond("text/plain", "test=test");
+
+        var httpClient = mockHttp.ToHttpClient();
+        var speedtest = new OoklaSpeedtest(httpClientOverride: httpClient);
+
+        var server = new Clients.Testing.Server
+        {
+            Url = "http://testserver.com/",
+            Sponsor = "Sponsor",
+            Location = "Location"
+        };
+
+        // When
+        var result = await speedtest.GetServerLatencyAsync(server);
+
+        // Then
+        Assert.NotNull(result);
+        Assert.Equal(server, result.Server);
+        Assert.True(result.Latency >= 0);
     }
 
     [Fact]
     public async Task GetServerLatencyAsync_ShouldThrow_WhenLatencyTestFails()
     {
-        await Task.CompletedTask;
-        throw new NotImplementedException();
+        // Given
+        var mockHttp = new MockHttpMessageHandler();
+        mockHttp.When("http://failserver.com/latency.txt")
+                .Throw(new HttpRequestException("Server unreachable"));
+
+        var httpClient = mockHttp.ToHttpClient();
+        var speedtest = new OoklaSpeedtest(httpClientOverride: httpClient);
+
+        var server = new Clients.Testing.Server
+        {
+            Url = "http://failserver.com/",
+            Sponsor = "FailSponsor",
+            Location = "FailLocation"
+        };
+
+        // When
+        var exception = await Record.ExceptionAsync(() => speedtest.GetServerLatencyAsync(server));
+
+        // Then
+        Assert.NotNull(exception);
+        Assert.IsType<HttpRequestException>(exception);
+        Assert.Equal("Server unreachable", exception.Message);
     }
 
     [Fact]
-    public async Task GetServerLatencyAsync_ShouldThrow_WhenLatencyResponseIsInvalid()
+    public async Task GetServerLatencyAsync_ShouldThrow_WhenResponseIsInvalid()
     {
-        await Task.CompletedTask;
-        throw new NotImplementedException();
+        // Given
+        var mockHttp = new MockHttpMessageHandler();
+        mockHttp.When("http://badserver.com/latency.txt")
+                .Respond("text/plain", "garbage");
+
+        var httpClient = mockHttp.ToHttpClient();
+        var speedtest = new OoklaSpeedtest(httpClientOverride: httpClient);
+
+        var server = new Clients.Testing.Server
+        {
+            Url = "http://badserver.com/",
+            Sponsor = "BadSponsor",
+            Location = "BadLocation"
+        };
+
+        // When
+        var exception = await Record.ExceptionAsync(() => speedtest.GetServerLatencyAsync(server));
+
+        // Then
+        Assert.NotNull(exception);
+        Assert.IsType<InvalidOperationException>(exception);
+    }
+
+    [Fact]
+    public async Task GetServerLatencyAsync_ShouldThrow_WhenCancelledByUser()
+    {
+        // Given
+        var mockHttp = new MockHttpMessageHandler();
+        mockHttp.When("http://slowserver.com/latency.txt")
+                .Respond(async _ =>
+                {
+                    await Task.Delay(500);
+                    return new HttpResponseMessage { Content = new StringContent("test=test") };
+                });
+
+        var httpClient = mockHttp.ToHttpClient();
+        var speedtest = new OoklaSpeedtest(httpClientOverride: httpClient);
+
+        var server = new Clients.Testing.Server
+        {
+            Url = "http://slowserver.com/",
+            Sponsor = "SlowSponsor",
+            Location = "SlowLocation"
+        };
+
+        using var cts = new CancellationTokenSource();
+        cts.CancelAfter(50);
+
+        // When
+        var exception = await Record.ExceptionAsync(() => speedtest.GetServerLatencyAsync(server, cts.Token));
+
+        // Then
+        Assert.NotNull(exception);
+        Assert.IsType<TaskCanceledException>(exception);
+    }
+
+    [Fact]
+    public async Task GetServerLatencyAsync_ShouldThrow_WhenRequestTimesOut()
+    {
+        // Given
+        var mockHttp = new MockHttpMessageHandler();
+        mockHttp.When("http://timeoutserver.com/latency.txt")
+                .Respond(async _ =>
+                {
+                    await Task.Delay(1000);
+                    return new HttpResponseMessage { Content = new StringContent("test=test") };
+                });
+
+        var httpClient = mockHttp.ToHttpClient();
+        var settings = new OoklaSpeedtestSettings
+        {
+            LatencyTest = new()
+            {
+                DefaultHttpTimeoutMilliseconds = 10,
+                LatencyTestIterations = 1
+            }
+        };
+
+        var speedtest = new OoklaSpeedtest(settings, httpClient);
+
+        var server = new Clients.Testing.Server
+        {
+            Url = "http://timeoutserver.com/",
+            Sponsor = "TimeoutSponsor",
+            Location = "TimeoutLocation"
+        };
+
+        // When
+        var exception = await Record.ExceptionAsync(() => speedtest.GetServerLatencyAsync(server));
+
+        // Then
+        Assert.NotNull(exception);
+        Assert.IsType<TaskCanceledException>(exception);
     }
 
     // --- GetFastestServerByLatencyAsync ---
