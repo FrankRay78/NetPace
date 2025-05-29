@@ -73,4 +73,135 @@ public class OoklaSpeedtestTests
                 Assert.Equal("http://testurl2.com", s.Url);
             });
     }
+
+    [Fact]
+    public async Task GetServersAsync_ShouldReturnEmptyArray_WhenNoServersFound()
+    {
+        // Given
+        var fakeXml = """
+        <settings>
+            <servers>
+            </servers>
+        </settings>
+        """;
+
+        var mockHttp = new MockHttpMessageHandler();
+        mockHttp.When("http://*")
+                .Respond("application/xml", fakeXml);
+
+        var httpClient = mockHttp.ToHttpClient();
+        var speedtest = new OoklaSpeedtest(httpClientOverride: httpClient);
+
+        // When
+        var servers = await speedtest.GetServersAsync();
+
+        // Then
+        Assert.Empty(servers);
+    }
+
+    [Fact]
+    public async Task GetServersAsync_ShouldThrow_WhenResponseIsInvalidXml()
+    {
+        // Given
+        var invalidXml = "Not XML at all <><>??";
+
+        var mockHttp = new MockHttpMessageHandler();
+        mockHttp.When("http://*")
+                .Respond("application/xml", invalidXml);
+
+        var httpClient = mockHttp.ToHttpClient();
+        var speedtest = new OoklaSpeedtest(httpClientOverride: httpClient);
+
+        // When
+        var exception = await Record.ExceptionAsync(() => speedtest.GetServersAsync());
+
+        // Then
+        Assert.NotNull(exception);
+        Assert.IsType<InvalidOperationException>(exception);
+    }
+
+    // --- GetServerLatencyAsync ---
+
+    [Fact]
+    public async Task GetServerLatencyAsync_ShouldReturnLatency_WhenServerRespondsWithValidTestString()
+    {
+        await Task.CompletedTask;
+        throw new NotImplementedException();
+    }
+
+    [Fact]
+    public async Task GetServerLatencyAsync_ShouldThrow_WhenLatencyTestFails()
+    {
+        await Task.CompletedTask;
+        throw new NotImplementedException();
+    }
+
+    [Fact]
+    public async Task GetServerLatencyAsync_ShouldThrow_WhenLatencyResponseIsInvalid()
+    {
+        await Task.CompletedTask;
+        throw new NotImplementedException();
+    }
+
+    // --- GetFastestServerByLatencyAsync ---
+
+    [Fact]
+    public async Task GetFastestServerByLatencyAsync_ShouldReturnServerWithLowestLatency()
+    {
+        await Task.CompletedTask;
+        throw new NotImplementedException();
+    }
+
+    [Fact]
+    public async Task GetFastestServerByLatencyAsync_ShouldThrow_WhenAllServersFail()
+    {
+        await Task.CompletedTask;
+        throw new NotImplementedException();
+    }
+
+    // --- GetDownloadSpeedAsync ---
+
+    [Fact]
+    public async Task GetDownloadSpeedAsync_ShouldReturnSpeedTestResult_WhenSuccessful()
+    {
+        await Task.CompletedTask;
+        throw new NotImplementedException();
+    }
+
+    [Fact]
+    public async Task GetDownloadSpeedAsync_ShouldReportProgress_WhileDownloading()
+    {
+        await Task.CompletedTask;
+        throw new NotImplementedException();
+    }
+
+    [Fact]
+    public async Task GetDownloadSpeedAsync_ShouldHandlePartialFailures_AndContinue()
+    {
+        await Task.CompletedTask;
+        throw new NotImplementedException();
+    }
+
+    // --- GetUploadSpeedAsync ---
+
+    [Fact]
+    public async Task GetUploadSpeedAsync_ShouldReturnSpeedTestResult_WhenSuccessful()
+    {
+        await Task.CompletedTask;
+        throw new NotImplementedException();
+    }
+
+    [Fact]
+    public async Task GetUploadSpeedAsync_ShouldReportProgress_WhileUploading()
+    {
+        await Task.CompletedTask;
+        throw new NotImplementedException();
+    }
+
+    [Fact]
+    public async Task GetUploadSpeedAsync_ShouldHandlePartialFailures_AndContinue()
+    {
+        await Task.CompletedTask;
+        throw new NotImplementedException();
+    }
 }
