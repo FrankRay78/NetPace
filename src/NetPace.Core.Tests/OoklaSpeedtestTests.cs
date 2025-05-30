@@ -282,16 +282,110 @@ public class OoklaSpeedtestTests
     [Fact]
     public async Task GetFastestServerByLatencyAsync_ShouldReturnServerWithLowestLatency()
     {
-        await Task.CompletedTask;
-        throw new NotImplementedException();
+        // Given
+        var mockHttp = new MockHttpMessageHandler();
+
+        // Fast server responds quickly
+        mockHttp.When("http://fastserver.com/latency.txt")
+                .Respond(async _ =>
+                {
+                    await Task.Delay(10);
+                    return new HttpResponseMessage { Content = new StringContent("test=test") };
+                });
+
+        // Slow server responds more slowly
+        mockHttp.When("http://slowserver.com/latency.txt")
+                .Respond(async _ =>
+                {
+                    await Task.Delay(50);
+                    return new HttpResponseMessage { Content = new StringContent("test=test") };
+                });
+
+        var httpClient = mockHttp.ToHttpClient();
+        var settings = new OoklaSpeedtestSettings
+        {
+            LatencyTest = new()
+            {
+                DefaultHttpTimeoutMilliseconds = 500,
+                LatencyTestIterations = 1
+            }
+        };
+
+        var speedtest = new OoklaSpeedtest(settings, httpClient);
+
+        var fastServer = new Clients.Testing.Server
+        {
+            Url = "http://fastserver.com/",
+            Sponsor = "FastSponsor",
+            Location = "FastLocation"
+        };
+
+        var slowServer = new Clients.Testing.Server
+        {
+            Url = "http://slowserver.com/",
+            Sponsor = "SlowSponsor",
+            Location = "SlowLocation"
+        };
+
+        var servers = new[] { slowServer, fastServer };
+
+        // When
+        var result = await speedtest.GetFastestServerByLatencyAsync(servers);
+
+        // Then
+        Assert.NotNull(result);
+        Assert.Equal(fastServer, result.Server);
     }
 
     [Fact]
     public async Task GetFastestServerByLatencyAsync_ShouldThrow_WhenAllServersFail()
     {
-        await Task.CompletedTask;
-        throw new NotImplementedException();
+        // Given
+        var mockHttp = new MockHttpMessageHandler();
+
+        mockHttp.When("http://fail1.com/latency.txt")
+                .Throw(new HttpRequestException("Unreachable 1"));
+
+        mockHttp.When("http://fail2.com/latency.txt")
+                .Throw(new HttpRequestException("Unreachable 2"));
+
+        var httpClient = mockHttp.ToHttpClient();
+        var settings = new OoklaSpeedtestSettings
+        {
+            LatencyTest = new()
+            {
+                DefaultHttpTimeoutMilliseconds = 100,
+                LatencyTestIterations = 1
+            }
+        };
+
+        var speedtest = new OoklaSpeedtest(settings, httpClient);
+
+        var servers = new[]
+        {
+            new Clients.Testing.Server
+            {
+                Url = "http://fail1.com/",
+                Sponsor = "DeadSponsor1",
+                Location = "DeadLocation1"
+            },
+            new Clients.Testing.Server
+            {
+                Url = "http://fail2.com/",
+                Sponsor = "DeadSponsor2",
+                Location = "DeadLocation2"
+            }
+        };
+
+        // When
+        var exception = await Record.ExceptionAsync(() => speedtest.GetFastestServerByLatencyAsync(servers));
+
+        // Then
+        Assert.NotNull(exception);
+        Assert.IsType<Exception>(exception);
+        Assert.Equal("No servers available", exception.Message);
     }
+
 
     // --- GetDownloadSpeedAsync ---
 
