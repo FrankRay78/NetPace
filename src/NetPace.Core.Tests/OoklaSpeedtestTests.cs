@@ -1,3 +1,4 @@
+using System.Net;
 using NetPace.Core.Clients.Ookla;
 using RichardSzalay.MockHttp;
 using static System.Net.WebRequestMethods;
@@ -415,4 +416,110 @@ public class OoklaSpeedtestTests
     }
 
     // --- GetUploadSpeedAsync ---
+
+    [Fact]
+    public async Task GetUploadSpeedAsync_ShouldReturnSpeedTestResult_WhenSuccessful()
+    {
+        // Given
+        var mockHttp = new MockHttpMessageHandler();
+        mockHttp.When("*").Respond(HttpStatusCode.OK);
+
+        var httpClient = mockHttp.ToHttpClient();
+        var settings = new OoklaSpeedtestSettings
+        {
+            UploadTest = new()
+            {
+                UploadIncrements = 1,
+                UploadParallelTasks = 1
+            }
+        };
+
+        var speedtest = new OoklaSpeedtest(settings, httpClient);
+        var server = new Clients.Testing.Server { Url = "http://example.com/", Sponsor = "Test", Location = "Test" };
+
+        // When
+        var result = await speedtest.GetUploadSpeedAsync(server);
+
+        // Then
+        Assert.NotNull(result);
+        Assert.True(result.BytesProcessed > 0);
+        Assert.True(result.ElapsedMilliseconds >= 0);
+    }
+
+    [Fact]
+    public async Task GetUploadSpeedAsync_ShouldReportProgress_WhileUploading()
+    {
+        // Given
+        var mockHttp = new MockHttpMessageHandler();
+        mockHttp.When("*").Respond(HttpStatusCode.OK);
+
+        var httpClient = mockHttp.ToHttpClient();
+        var settings = new OoklaSpeedtestSettings
+        {
+            UploadTest = new()
+            {
+                UploadIncrements = 1, // 1 increment → 10 uploads
+                UploadParallelTasks = 1
+            }
+        };
+
+        var speedtest = new OoklaSpeedtest(settings, httpClient);
+        var server = new Clients.Testing.Server { Url = "http://example.com/", Sponsor = "Test", Location = "Test" };
+        var progressReports = new List<int>();
+
+        // When
+        await speedtest.GetUploadSpeedAsync(server, progress =>
+        {
+            progressReports.Add(progress.PercentageComplete);
+        });
+
+        // Then
+        Assert.NotEmpty(progressReports);
+        Assert.Equal(new[] { 10, 20, 30, 40, 50, 60, 70, 80, 90, 100 }, progressReports);
+    }
+
+    [Fact]
+    public async Task GetUploadSpeedAsync_ShouldHandlePartialFailures_AndContinue()
+    {
+        // Given
+        var mockHttp = new MockHttpMessageHandler();
+
+        // Fail exactly the first upload attempt by matching URL or header
+        var failureTriggered = false;
+
+        mockHttp.When("*").Respond(request =>
+        {
+            if (!failureTriggered)
+            {
+                failureTriggered = true;
+                throw new HttpRequestException("Simulated failure");
+            }
+
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK));
+        });
+
+        var httpClient = mockHttp.ToHttpClient();
+        var settings = new OoklaSpeedtestSettings
+        {
+            UploadTest = new()
+            {
+                UploadIncrements = 1, // 1 increment → 10 uploads
+                UploadParallelTasks = 1
+            }
+        };
+
+        var speedtest = new OoklaSpeedtest(settings, httpClient);
+        var server = new Clients.Testing.Server { Url = "http://example.com/", Sponsor = "Test", Location = "Test" };
+        var progressReports = new List<int>();
+
+        // When
+        var result = await speedtest.GetUploadSpeedAsync(server, progress => progressReports.Add(progress.PercentageComplete));
+
+        // Then
+        Assert.NotNull(result);
+        Assert.True(result.BytesProcessed > 0); // 9 of 10 uploads succeeded
+        Assert.True(result.ElapsedMilliseconds >= 0);
+        Assert.NotEmpty(progressReports);
+        Assert.Equal(new[] { 10, 20, 30, 40, 50, 60, 70, 80, 90, 100 }, progressReports);
+    }
 }
