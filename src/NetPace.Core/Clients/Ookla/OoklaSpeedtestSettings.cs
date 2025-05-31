@@ -1,6 +1,4 @@
-using System;
 using System.Net;
-using System.Security.Cryptography.X509Certificates;
 using NetPace.Core.Clients.Ookla.Settings;
 
 public sealed record OoklaSpeedtestSettings
