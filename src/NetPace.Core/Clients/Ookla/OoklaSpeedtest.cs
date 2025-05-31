@@ -124,9 +124,9 @@ public sealed class OoklaSpeedtest : ISpeedTestService
         var downloadUrls = GenerateDownloadUrls(server.Url, settings.DownloadTest.DownloadSizes, settings.DownloadTest.DownloadSizeIterations);
 
         // Download content from a specified URL and return the size of the data in bytes.
-        Func<HttpClient, string, CancellationToken, Task<int>> DownloadAndMeasureAsync = async (client, url, cancellationToken) =>
+        Func<HttpClient, string, CancellationToken, Task<int>> DownloadAndMeasureAsync = async (client, downloadUrl, cancellationToken) =>
         {
-            var data = await client.GetStringAsync(url, cancellationToken).ConfigureAwait(false);
+            var data = await client.GetStringAsync(downloadUrl, cancellationToken).ConfigureAwait(false);
             return data.Length;
         };
 
@@ -187,18 +187,31 @@ public sealed class OoklaSpeedtest : ISpeedTestService
 
             try
             {
-                // Perform the work and retrieve the processed byte count.
-                var size = await doWork(httpClient, data, cancellationToken).ConfigureAwait(false);
+                var bytesReturned = 0;
 
-                // Safely update the progress count and report completion percentage.
-                lock (lockObject)
+                try
                 {
-                    completedCount++;
-                    var percentageComplete = (int)((double)completedCount / totalCount * 100);
-                    UpdateProgress(new SpeedTestProgress { PercentageComplete = percentageComplete });
+                    // Perform the work and retrieve the processed byte count.
+                    bytesReturned = await doWork(httpClient, data, cancellationToken).ConfigureAwait(false);
+                }
+                catch
+                {
+                    // An exception was thrown when performing the work
+                    // - Progress will be reported as if no failure
+                    // - Bytes returned will be treated as zero
+                }
+                finally
+                {
+                    lock (lockObject)
+                    {
+                        // Safely update the progress count and report completion percentage.
+                        completedCount++;
+                        var percentageComplete = (int)((double)completedCount / totalCount * 100);
+                        UpdateProgress(new SpeedTestProgress { PercentageComplete = percentageComplete });
+                    }
                 }
 
-                return size;
+                return bytesReturned;
             }
             finally
             {
@@ -211,12 +224,12 @@ public sealed class OoklaSpeedtest : ISpeedTestService
         await Task.WhenAll(tasks);
         timer.Stop();
 
-        // Compute the total bytes processed.
-        long totalBytesProcessed = tasks.Sum(task => task.Result);
+        // Compute the total bytes returned.
+        long totalBytesReturned = tasks.Sum(task => task.Result);
 
         return new SpeedTestResult
         {
-            BytesProcessed = totalBytesProcessed,
+            BytesProcessed = totalBytesReturned,
             ElapsedMilliseconds = timer.ElapsedMilliseconds
         };
     }

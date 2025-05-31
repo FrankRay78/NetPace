@@ -320,44 +320,99 @@ public class OoklaSpeedtestTests
     [Fact]
     public async Task GetDownloadSpeedAsync_ShouldReturnSpeedTestResult_WhenSuccessful()
     {
-        await Task.CompletedTask;
-        throw new NotImplementedException();
+        // Given
+        var mockHttp = new MockHttpMessageHandler();
+        mockHttp.When("*").Respond("text/plain", new string('X', 1024));
+
+        var httpClient = mockHttp.ToHttpClient();
+        var settings = new OoklaSpeedtestSettings
+        {
+            DownloadTest = new()
+            {
+                DownloadSizes = new[] { 100 },
+                DownloadSizeIterations = 1,
+                DownloadParallelTasks = 1
+            }
+        };
+
+        var speedtest = new OoklaSpeedtest(settings, httpClient);
+        var server = new Clients.Testing.Server { Url = "http://example.com/", Sponsor = "Test", Location = "Test" };
+
+        // When
+        var result = await speedtest.GetDownloadSpeedAsync(server);
+
+        // Then
+        Assert.NotNull(result);
+        Assert.True(result.BytesProcessed == 1024);
+        Assert.True(result.ElapsedMilliseconds >= 0);
     }
 
     [Fact]
     public async Task GetDownloadSpeedAsync_ShouldReportProgress_WhileDownloading()
     {
-        await Task.CompletedTask;
-        throw new NotImplementedException();
+        // Given
+        var mockHttp = new MockHttpMessageHandler();
+        mockHttp.When("*").Respond("text/plain", new string('X', 1024));
+
+        var httpClient = mockHttp.ToHttpClient();
+        var settings = new OoklaSpeedtestSettings
+        {
+            DownloadTest = new()
+            {
+                DownloadSizes = new[] { 100 },
+                DownloadSizeIterations = 4,
+                DownloadParallelTasks = 1
+            }
+        };
+
+        var speedtest = new OoklaSpeedtest(settings, httpClient);
+        var server = new Clients.Testing.Server { Url = "http://example.com/", Sponsor = "Test", Location = "Test" };
+        var progressReports = new List<int>();
+
+        // When
+        await speedtest.GetDownloadSpeedAsync(server, progress =>
+        {
+            progressReports.Add(progress.PercentageComplete);
+        });
+
+        // Then
+        Assert.NotEmpty(progressReports);
+        Assert.Equal(new[] { 25, 50, 75, 100 }, progressReports);
     }
 
     [Fact]
     public async Task GetDownloadSpeedAsync_ShouldHandlePartialFailures_AndContinue()
     {
-        await Task.CompletedTask;
-        throw new NotImplementedException();
+        // Given
+        var mockHttp = new MockHttpMessageHandler();
+        mockHttp.When("http://example.com/random100x100.jpg?r=0").Throw(new HttpRequestException("Simulated failure"));
+        mockHttp.When("http://example.com/random100x100.jpg?r=1").Respond("text/plain", new string('X', 1024));
+
+        var httpClient = mockHttp.ToHttpClient();
+        var settings = new OoklaSpeedtestSettings
+        {
+            DownloadTest = new()
+            {
+                DownloadSizes = new[] { 100 },
+                DownloadSizeIterations = 2,
+                DownloadParallelTasks = 1
+            }
+        };
+
+        var speedtest = new OoklaSpeedtest(settings, httpClient);
+        var server = new Clients.Testing.Server { Url = "http://example.com/", Sponsor = "Test", Location = "Test" };
+        var progressReports = new List<int>();
+
+        // When
+        var result = await speedtest.GetDownloadSpeedAsync(server, progress => progressReports.Add(progress.PercentageComplete));
+
+        // Then
+        Assert.NotNull(result);
+        Assert.True(result.BytesProcessed == 1024); // Only one successful response
+        Assert.True(result.ElapsedMilliseconds >= 0);
+        Assert.NotEmpty(progressReports);
+        Assert.Equal(new[] { 50, 100 }, progressReports);
     }
 
     // --- GetUploadSpeedAsync ---
-
-    [Fact]
-    public async Task GetUploadSpeedAsync_ShouldReturnSpeedTestResult_WhenSuccessful()
-    {
-        await Task.CompletedTask;
-        throw new NotImplementedException();
-    }
-
-    [Fact]
-    public async Task GetUploadSpeedAsync_ShouldReportProgress_WhileUploading()
-    {
-        await Task.CompletedTask;
-        throw new NotImplementedException();
-    }
-
-    [Fact]
-    public async Task GetUploadSpeedAsync_ShouldHandlePartialFailures_AndContinue()
-    {
-        await Task.CompletedTask;
-        throw new NotImplementedException();
-    }
 }
