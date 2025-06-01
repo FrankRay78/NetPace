@@ -1,7 +1,7 @@
 using System.Net;
 using NetPace.Core.Clients.Ookla;
 using RichardSzalay.MockHttp;
-using static System.Net.WebRequestMethods;
+using Shouldly;
 
 namespace NetPace.Core.Tests;
 
@@ -32,10 +32,10 @@ public class OoklaSpeedtestTests
         var servers = await speedtest.GetServersAsync();
 
         // Then
-        Assert.Single(servers);
-        Assert.Equal("TestLocation", servers[0].Location);
-        Assert.Equal("TestSponsor", servers[0].Sponsor);
-        Assert.Equal("http://testurl.com", servers[0].Url);
+        servers.ShouldHaveSingleItem();
+        servers[0].Location.ShouldBe("TestLocation");
+        servers[0].Sponsor.ShouldBe("TestSponsor");
+        servers[0].Url.ShouldBe("http://testurl.com");
     }
 
     [Fact]
@@ -62,20 +62,13 @@ public class OoklaSpeedtestTests
         var servers = await speedtest.GetServersAsync();
 
         // Then
-        Assert.Equal(2, servers.Length);
-        Assert.Collection(servers,
-            s =>
-            {
-                Assert.Equal("Location1", s.Location);
-                Assert.Equal("Sponsor1", s.Sponsor);
-                Assert.Equal("http://testurl1.com", s.Url);
-            },
-            s =>
-            {
-                Assert.Equal("Location2", s.Location);
-                Assert.Equal("Sponsor2", s.Sponsor);
-                Assert.Equal("http://testurl2.com", s.Url);
-            });
+        servers.Length.ShouldBe(2);
+        servers[0].Location.ShouldBe("Location1");
+        servers[0].Sponsor.ShouldBe("Sponsor1");
+        servers[0].Url.ShouldBe("http://testurl1.com");
+        servers[1].Location.ShouldBe("Location2");
+        servers[1].Sponsor.ShouldBe("Sponsor2");
+        servers[1].Url.ShouldBe("http://testurl2.com");
     }
 
     [Fact]
@@ -100,7 +93,7 @@ public class OoklaSpeedtestTests
         var servers = await speedtest.GetServersAsync();
 
         // Then
-        Assert.Empty(servers);
+        servers.ShouldBeEmpty();
     }
 
     [Fact]
@@ -120,8 +113,8 @@ public class OoklaSpeedtestTests
         var exception = await Record.ExceptionAsync(() => speedtest.GetServersAsync());
 
         // Then
-        Assert.NotNull(exception);
-        Assert.IsType<InvalidOperationException>(exception);
+        exception.ShouldNotBeNull();
+        exception.ShouldBeOfType<InvalidOperationException>();
     }
 
     // --- GetServerLatencyAsync ---
@@ -143,9 +136,9 @@ public class OoklaSpeedtestTests
         var result = await speedtest.GetServerLatencyAsync(server);
 
         // Then
-        Assert.NotNull(result);
-        Assert.Equal(server, result.Server);
-        Assert.True(result.Latency >= 0);
+        result.ShouldNotBeNull();
+        result.Server.ShouldBe(server);
+        result.Latency.ShouldBeGreaterThanOrEqualTo(0);
     }
 
     [Fact]
@@ -165,9 +158,9 @@ public class OoklaSpeedtestTests
         var exception = await Record.ExceptionAsync(() => speedtest.GetServerLatencyAsync(server));
 
         // Then
-        Assert.NotNull(exception);
-        Assert.IsType<HttpRequestException>(exception);
-        Assert.Equal("Server unreachable", exception.Message);
+        exception.ShouldNotBeNull();
+        exception.ShouldBeOfType<HttpRequestException>();
+        exception.Message.ShouldBe("Server unreachable");
     }
 
     [Fact]
@@ -187,8 +180,8 @@ public class OoklaSpeedtestTests
         var exception = await Record.ExceptionAsync(() => speedtest.GetServerLatencyAsync(server));
 
         // Then
-        Assert.NotNull(exception);
-        Assert.IsType<InvalidOperationException>(exception);
+        exception.ShouldNotBeNull();
+        exception.ShouldBeOfType<InvalidOperationException>();
     }
 
     // --- GetFastestServerByLatencyAsync ---
@@ -237,8 +230,8 @@ public class OoklaSpeedtestTests
         var result = await speedtest.GetFastestServerByLatencyAsync(servers);
 
         // Then
-        Assert.NotNull(result);
-        Assert.Equal(fastServer, result.Server);
+        result.ShouldNotBeNull();
+        result.Server.ShouldBe(fastServer);
     }
 
     [Fact]
@@ -275,9 +268,9 @@ public class OoklaSpeedtestTests
         var exception = await Record.ExceptionAsync(() => speedtest.GetFastestServerByLatencyAsync(servers));
 
         // Then
-        Assert.NotNull(exception);
-        Assert.IsType<Exception>(exception);
-        Assert.Equal("No servers available", exception.Message);
+        exception.ShouldNotBeNull();
+        exception.ShouldBeOfType<Exception>();
+        exception.Message.ShouldBe("No servers available");
     }
 
 
@@ -308,9 +301,9 @@ public class OoklaSpeedtestTests
         var result = await speedtest.GetDownloadSpeedAsync(server);
 
         // Then
-        Assert.NotNull(result);
-        Assert.True(result.BytesProcessed == 1024);
-        Assert.True(result.ElapsedMilliseconds >= 0);
+        result.ShouldNotBeNull();
+        result.BytesProcessed.ShouldBe(1024);
+        result.ElapsedMilliseconds.ShouldBeGreaterThanOrEqualTo(0);
     }
 
     [Fact]
@@ -342,8 +335,8 @@ public class OoklaSpeedtestTests
         });
 
         // Then
-        Assert.NotEmpty(progressReports);
-        Assert.Equal(new[] { 25, 50, 75, 100 }, progressReports);
+        progressReports.ShouldNotBeEmpty();
+        progressReports.ShouldBe(new[] { 25, 50, 75, 100 });
     }
 
     [Fact]
@@ -373,11 +366,11 @@ public class OoklaSpeedtestTests
         var result = await speedtest.GetDownloadSpeedAsync(server, progress => progressReports.Add(progress.PercentageComplete));
 
         // Then
-        Assert.NotNull(result);
-        Assert.True(result.BytesProcessed == 1024); // Only one successful response
-        Assert.True(result.ElapsedMilliseconds >= 0);
-        Assert.NotEmpty(progressReports);
-        Assert.Equal(new[] { 50, 100 }, progressReports);
+        result.ShouldNotBeNull();
+        result.BytesProcessed.ShouldBe(1024); // Only one successful response
+        result.ElapsedMilliseconds.ShouldBeGreaterThanOrEqualTo(0);
+        progressReports.ShouldNotBeEmpty();
+        progressReports.ShouldBe(new[] { 50, 100 });
     }
 
     // --- GetUploadSpeedAsync ---
@@ -406,9 +399,9 @@ public class OoklaSpeedtestTests
         var result = await speedtest.GetUploadSpeedAsync(server);
 
         // Then
-        Assert.NotNull(result);
-        Assert.True(result.BytesProcessed > 0);
-        Assert.True(result.ElapsedMilliseconds >= 0);
+        result.ShouldNotBeNull();
+        result.BytesProcessed.ShouldBeGreaterThan(0);
+        result.ElapsedMilliseconds.ShouldBeGreaterThanOrEqualTo(0);
     }
 
     [Fact]
@@ -439,8 +432,8 @@ public class OoklaSpeedtestTests
         });
 
         // Then
-        Assert.NotEmpty(progressReports);
-        Assert.Equal(new[] { 10, 20, 30, 40, 50, 60, 70, 80, 90, 100 }, progressReports);
+        progressReports.ShouldNotBeEmpty();
+        progressReports.ShouldBe(new[] { 10, 20, 30, 40, 50, 60, 70, 80, 90, 100 });
     }
 
     [Fact]
@@ -481,10 +474,10 @@ public class OoklaSpeedtestTests
         var result = await speedtest.GetUploadSpeedAsync(server, progress => progressReports.Add(progress.PercentageComplete));
 
         // Then
-        Assert.NotNull(result);
-        Assert.True(result.BytesProcessed > 0); // 9 of 10 uploads succeeded
-        Assert.True(result.ElapsedMilliseconds >= 0);
-        Assert.NotEmpty(progressReports);
-        Assert.Equal(new[] { 10, 20, 30, 40, 50, 60, 70, 80, 90, 100 }, progressReports);
+        result.ShouldNotBeNull();
+        result.BytesProcessed.ShouldBeGreaterThan(0); // 9 of 10 uploads succeeded
+        result.ElapsedMilliseconds.ShouldBeGreaterThanOrEqualTo(0);
+        progressReports.ShouldNotBeEmpty();
+        progressReports.ShouldBe(new[] { 10, 20, 30, 40, 50, 60, 70, 80, 90, 100 });
     }
 }
