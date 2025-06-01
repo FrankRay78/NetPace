@@ -132,7 +132,6 @@ public class OoklaSpeedtestTests
 
         var httpClient = mockHttp.ToHttpClient();
         var speedtest = new OoklaSpeedtest(httpClientOverride: httpClient);
-
         var server = new Clients.Testing.Server { Url = "http://testserver.com/", Sponsor = "Sponsor", Location = "Location" };
 
         // When
@@ -154,7 +153,6 @@ public class OoklaSpeedtestTests
 
         var httpClient = mockHttp.ToHttpClient();
         var speedtest = new OoklaSpeedtest(httpClientOverride: httpClient);
-
         var server = new Clients.Testing.Server { Url = "http://failserver.com/", Sponsor = "FailSponsor", Location = "FailLocation" };
 
         // When
@@ -176,7 +174,6 @@ public class OoklaSpeedtestTests
 
         var httpClient = mockHttp.ToHttpClient();
         var speedtest = new OoklaSpeedtest(httpClientOverride: httpClient);
-
         var server = new Clients.Testing.Server { Url = "http://badserver.com/", Sponsor = "BadSponsor", Location = "BadLocation" };
 
         // When
@@ -222,11 +219,8 @@ public class OoklaSpeedtestTests
         };
 
         var speedtest = new OoklaSpeedtest(settings, httpClient);
-
         var fastServer = new Clients.Testing.Server { Url = "http://fastserver.com/", Sponsor = "FastSponsor", Location = "FastLocation" };
-
         var slowServer = new Clients.Testing.Server { Url = "http://slowserver.com/", Sponsor = "SlowSponsor", Location = "SlowLocation" };
-
         var servers = new[] { slowServer, fastServer };
 
         // When
@@ -260,7 +254,6 @@ public class OoklaSpeedtestTests
         };
 
         var speedtest = new OoklaSpeedtest(settings, httpClient);
-
         var servers = new[]
         {
             new Clients.Testing.Server { Url = "http://fail1.com/", Sponsor = "DeadSponsor1", Location = "DeadLocation1" },
@@ -347,6 +340,8 @@ public class OoklaSpeedtestTests
     {
         // Given
         var mockHttp = new MockHttpMessageHandler();
+
+        // Fail the first download attempt
         mockHttp.When("http://example.com/random100x100.jpg?r=0").Throw(new HttpRequestException("Simulated failure"));
         mockHttp.When("http://example.com/random100x100.jpg?r=1").Respond("text/plain", new string('X', 1024));
 
@@ -370,7 +365,7 @@ public class OoklaSpeedtestTests
 
         // Then
         result.ShouldNotBeNull();
-        result.BytesProcessed.ShouldBe(1024); // Only one successful response
+        result.BytesProcessed.ShouldBe(1024); // One download was successful
         result.ElapsedMilliseconds.ShouldBeGreaterThanOrEqualTo(0);
         progressReports.ShouldNotBeNull();
         progressReports.ShouldBe(new[] { 50, 100 });
@@ -390,7 +385,7 @@ public class OoklaSpeedtestTests
         {
             UploadTest = new()
             {
-                UploadIncrements = 1,
+                UploadIncrements = 1, // 1 increment → 10 uploads
                 UploadParallelTasks = 1
             }
         };
@@ -445,9 +440,8 @@ public class OoklaSpeedtestTests
         // Given
         var mockHttp = new MockHttpMessageHandler();
 
-        // Fail exactly the first upload attempt by matching URL or header
+        // Fail the first upload attempt
         var failureTriggered = false;
-
         mockHttp.When("*").Respond(request =>
         {
             if (!failureTriggered)
