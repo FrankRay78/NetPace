@@ -32,6 +32,7 @@ public class OoklaSpeedtestTests
         var servers = await speedtest.GetServersAsync();
 
         // Then
+        servers.ShouldNotBeNull();
         servers.ShouldHaveSingleItem();
         servers[0].Location.ShouldBe("TestLocation");
         servers[0].Sponsor.ShouldBe("TestSponsor");
@@ -62,6 +63,7 @@ public class OoklaSpeedtestTests
         var servers = await speedtest.GetServersAsync();
 
         // Then
+        servers.ShouldNotBeNull();
         servers.Length.ShouldBe(2);
         servers[0].Location.ShouldBe("Location1");
         servers[0].Sponsor.ShouldBe("Sponsor1");
@@ -93,6 +95,7 @@ public class OoklaSpeedtestTests
         var servers = await speedtest.GetServersAsync();
 
         // Then
+        servers.ShouldNotBeNull();
         servers.ShouldBeEmpty();
     }
 
@@ -335,7 +338,7 @@ public class OoklaSpeedtestTests
         });
 
         // Then
-        progressReports.ShouldNotBeEmpty();
+        progressReports.ShouldNotBeNull();
         progressReports.ShouldBe(new[] { 25, 50, 75, 100 });
     }
 
@@ -369,7 +372,7 @@ public class OoklaSpeedtestTests
         result.ShouldNotBeNull();
         result.BytesProcessed.ShouldBe(1024); // Only one successful response
         result.ElapsedMilliseconds.ShouldBeGreaterThanOrEqualTo(0);
-        progressReports.ShouldNotBeEmpty();
+        progressReports.ShouldNotBeNull();
         progressReports.ShouldBe(new[] { 50, 100 });
     }
 
@@ -432,7 +435,7 @@ public class OoklaSpeedtestTests
         });
 
         // Then
-        progressReports.ShouldNotBeEmpty();
+        progressReports.ShouldNotBeNull();
         progressReports.ShouldBe(new[] { 10, 20, 30, 40, 50, 60, 70, 80, 90, 100 });
     }
 
@@ -477,7 +480,7 @@ public class OoklaSpeedtestTests
         result.ShouldNotBeNull();
         result.BytesProcessed.ShouldBeGreaterThan(0); // 9 of 10 uploads succeeded
         result.ElapsedMilliseconds.ShouldBeGreaterThanOrEqualTo(0);
-        progressReports.ShouldNotBeEmpty();
+        progressReports.ShouldNotBeNull();
         progressReports.ShouldBe(new[] { 10, 20, 30, 40, 50, 60, 70, 80, 90, 100 });
     }
 }
