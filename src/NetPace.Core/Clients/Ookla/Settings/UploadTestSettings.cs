@@ -9,10 +9,26 @@ public sealed record UploadTestSettings
     /// The number of incremental upload sizes to generate for the test.
     /// </summary>
     /// <remarks>
-    /// Each increment increases the upload payload size by 200KB. For example, a value of 6 generates
-    /// upload blocks of 200KB, 400KB, ..., up to 1.2MB. Each block is uploaded multiple times during the test.
+    /// Each increment increases the payload size by <see cref="BaseSizeKb"/>. For example, if set to 6 and 
+    /// <c>BaseSizeKb</c> is 200, it generates sizes of 200KB, 400KB, ..., up to 1.2MB.
     /// </remarks>
     public int UploadIncrements { get; init; } = 6;
+
+    /// <summary>
+    /// The size step in kilobytes used to grow the payload size per increment.
+    /// </summary>
+    /// <remarks>
+    /// This value defines how much larger each successive payload is compared to the previous one.
+    /// </remarks>
+    public int BaseSizeKb { get; init; } = 200;
+
+    /// <summary>
+    /// The number of times each generated payload size is repeated in the test.
+    /// </summary>
+    /// <remarks>
+    /// Repeated payloads simulate uploading multiple chunks of the same size and improve sample accuracy.
+    /// </remarks>
+    public int RepeatsPerSize { get; init; } = 10;
 
     /// <summary>
     /// The number of parallel tasks used to upload test data concurrently.
