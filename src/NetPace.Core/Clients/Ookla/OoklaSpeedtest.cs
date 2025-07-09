@@ -144,7 +144,7 @@ public sealed class OoklaSpeedtest : ISpeedTestService
     /// <inheritdoc/>
     public async Task<SpeedTestResult> GetUploadSpeedAsync(IServer server, Action<SpeedTestProgress> UpdateProgress, CancellationToken cancellationToken = default)
     {
-        var testData = GenerateUploadData(settings.UploadTest.UploadIncrements, settings.UploadTest.BaseSizeKb, settings.UploadTest.RepeatsPerSize);
+        var testData = GenerateUploadData(settings.UploadTest.UploadIncrements, settings.UploadTest.UploadSizeIncrementKb, settings.UploadTest.UploadSizeIterations);
 
         // Upload content to a specified URL and return the size of the data in bytes.
         Func<HttpClient, byte[], CancellationToken, Task<int>> UploadAndMeasureAsync = async (client, uploadData, cancellationToken) =>
