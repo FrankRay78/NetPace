@@ -12,7 +12,7 @@ public sealed record DownloadTestSettings
     /// These sizes are used to create URLs in the form of <c>random{size}x{size}.jpg</c> 
     /// to simulate different file sizes for measuring download throughput.
     /// </remarks>
-    public int[] DownloadSizes { get; set; } = { 1500, 2000, 3000, 3500, 4000 };
+    public int[] DownloadSizes { get; init; } = { 1500, 2000, 3000, 3500, 4000 };
 
     /// <summary>
     /// The number of times to repeat the download for each size specified in <see cref="DownloadSizes"/>.

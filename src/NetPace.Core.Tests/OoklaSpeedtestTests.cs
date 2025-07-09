@@ -276,16 +276,34 @@ public class OoklaSpeedtestTests
     public async Task GetDownloadSpeedAsync_ShouldReturnSpeedTestResult_WhenSuccessful()
     {
         // Given
+        var downloadSizesKb = new[] { 100, 200, 300 };
+        const int iterationsPerSize = 2;
+        var expectedRequestCount = downloadSizesKb.Length * iterationsPerSize;
+
+        var receivedRequests = new List<Uri>();
+
         var mockHttp = new MockHttpMessageHandler();
-        mockHttp.When("*").Respond("text/plain", new string('X', 1024));
+        mockHttp.When("*").Respond(request =>
+        {
+            if (request != null && request.RequestUri != null)
+            {
+                receivedRequests.Add(request.RequestUri);
+            }
+
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                // Respond with fixed 1KB payload for simplicity; size isn't measured by payload in this test
+                Content = new StringContent(new string('X', 1024))
+            });
+        });
 
         var httpClient = mockHttp.ToHttpClient();
         var settings = new OoklaSpeedtestSettings
         {
             DownloadTest = new()
             {
-                DownloadSizes = new[] { 100 },
-                DownloadSizeIterations = 1,
+                DownloadSizes = downloadSizesKb,
+                DownloadSizeIterations = iterationsPerSize,
                 DownloadParallelTasks = 1
             }
         };
@@ -298,9 +316,24 @@ public class OoklaSpeedtestTests
 
         // Then
         result.ShouldNotBeNull();
-        result.BytesProcessed.ShouldBe(1024);
         result.ElapsedMilliseconds.ShouldBeGreaterThanOrEqualTo(0);
+        result.BytesProcessed.ShouldBe(1024 * expectedRequestCount);
+
+        receivedRequests.Count.ShouldBe(expectedRequestCount);
+
+        // Build expected URLs based on settings
+        var expectedUrls = settings.DownloadTest.DownloadSizes
+            .SelectMany(size => Enumerable.Range(0, settings.DownloadTest.DownloadSizeIterations)
+            .Select(i => $"http://example.com/random{size}x{size}.jpg?r={i}"))
+            .ToArray();
+
+        // Extract actual URLs from the request log
+        var actualUrls = receivedRequests.Select(uri => uri.ToString()).ToArray();
+
+        // Assert actual and expected match exactly
+        actualUrls.ShouldBe(expectedUrls);
     }
+
 
     [Fact]
     public async Task GetDownloadSpeedAsync_ShouldReportProgress_WhileDownloading()
@@ -420,15 +453,17 @@ public class OoklaSpeedtestTests
 
         receivedRequests.Count.ShouldBe(expectedRequestCount);
 
+        // Build expected sizes based on settings
         var expectedSizes = Enumerable.Range(1, increments)
             .Select(i => i * incrementKb * 1024)
             .SelectMany(size => Enumerable.Repeat(size, iterationsPerIncrement))
             .ToArray();
 
-        for (int i = 0; i < expectedRequestCount; i++)
-        {
-            receivedRequests[i].Length.ShouldBe(expectedSizes[i]);
-        }
+        // Extract actual sizes from the request log
+        var actualSizes = receivedRequests.Select(r => r.Length).ToArray();
+
+        // Assert actual and expected match exactly
+        actualSizes.ShouldBe(expectedSizes);
     }
 
     [Fact]
