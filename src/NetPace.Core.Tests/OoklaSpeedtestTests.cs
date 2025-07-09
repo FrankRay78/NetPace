@@ -377,16 +377,32 @@ public class OoklaSpeedtestTests
     public async Task GetUploadSpeedAsync_ShouldReturnSpeedTestResult_WhenSuccessful()
     {
         // Given
+        const int incrementKb = 200;
+        const int increments = 3;
+        const int iterationsPerIncrement = 2;
+        const int expectedRequestCount = increments * iterationsPerIncrement;
+
+        var receivedRequests = new List<byte[]>();
+
         var mockHttp = new MockHttpMessageHandler();
-        mockHttp.When("*").Respond(HttpStatusCode.OK);
+        mockHttp.When("*").Respond(async request =>
+        {
+            if (request != null && request.Content != null)
+            {
+                var body = await request.Content.ReadAsByteArrayAsync();
+                receivedRequests.Add(body);
+            }
+            return new HttpResponseMessage(HttpStatusCode.OK);
+        });
 
         var httpClient = mockHttp.ToHttpClient();
         var settings = new OoklaSpeedtestSettings
         {
             UploadTest = new()
             {
-                UploadIncrements = 1,
-                UploadSizeIterations = 10,
+                UploadSizeIncrementKb = incrementKb,
+                UploadIncrements = increments,
+                UploadSizeIterations = iterationsPerIncrement,
                 UploadParallelTasks = 1
             }
         };
@@ -399,8 +415,20 @@ public class OoklaSpeedtestTests
 
         // Then
         result.ShouldNotBeNull();
-        result.BytesProcessed.ShouldBeGreaterThan(0);
         result.ElapsedMilliseconds.ShouldBeGreaterThanOrEqualTo(0);
+        result.BytesProcessed.ShouldBe(receivedRequests.Sum(b => b.Length));
+
+        receivedRequests.Count.ShouldBe(expectedRequestCount);
+
+        var expectedSizes = Enumerable.Range(1, increments)
+            .Select(i => i * incrementKb * 1024)
+            .SelectMany(size => Enumerable.Repeat(size, iterationsPerIncrement))
+            .ToArray();
+
+        for (int i = 0; i < expectedRequestCount; i++)
+        {
+            receivedRequests[i].Length.ShouldBe(expectedSizes[i]);
+        }
     }
 
     [Fact]
