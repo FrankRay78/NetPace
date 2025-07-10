@@ -120,6 +120,34 @@ public class OoklaSpeedtestTests
         exception.ShouldBeOfType<InvalidOperationException>();
     }
 
+    [Fact]
+    public async Task GetServersAsync_ShouldCancel_WhenTokenIsCancelled()
+    {
+        // Given
+        var mockHttp = new MockHttpMessageHandler();
+        mockHttp.When("*").Respond(async _ =>
+        {
+            // Simulate slow response.
+            await Task.Delay(1000);
+
+            return new HttpResponseMessage(HttpStatusCode.OK);
+        });
+
+        var httpClient = mockHttp.ToHttpClient();
+        var speedtest = new OoklaSpeedtest(httpClientOverride: httpClient);
+
+        using var cts = new CancellationTokenSource();
+        cts.CancelAfter(200);
+
+        // When
+        var exception = await Record.ExceptionAsync(() => speedtest.GetServersAsync(cts.Token));
+
+        // Then
+        exception.ShouldNotBeNull();
+        exception.ShouldBeAssignableTo<OperationCanceledException>();
+        cts.IsCancellationRequested.ShouldBeTrue();
+    }
+
     // --- GetServerLatencyAsync ---
 
     [Fact]
@@ -182,6 +210,35 @@ public class OoklaSpeedtestTests
         // Then
         exception.ShouldNotBeNull();
         exception.ShouldBeOfType<InvalidOperationException>();
+    }
+
+    [Fact]
+    public async Task GetServerLatencyAsync_ShouldCancel_WhenTokenIsCancelled()
+    {
+        // Given
+        var mockHttp = new MockHttpMessageHandler();
+        mockHttp.When("*").Respond(async _ =>
+        {
+            // Simulate slow response.
+            await Task.Delay(1000);
+
+            return new HttpResponseMessage(HttpStatusCode.OK);
+        });
+
+        var httpClient = mockHttp.ToHttpClient();
+        var speedtest = new OoklaSpeedtest(httpClientOverride: httpClient);
+        var server = new Clients.Testing.Server { Url = "http://testserver.com/", Sponsor = "Sponsor", Location = "Location" };
+
+        using var cts = new CancellationTokenSource();
+        cts.CancelAfter(200);
+
+        // When
+        var exception = await Record.ExceptionAsync(() => speedtest.GetServerLatencyAsync(server, cts.Token));
+
+        // Then
+        exception.ShouldNotBeNull();
+        exception.ShouldBeAssignableTo<OperationCanceledException>();
+        cts.IsCancellationRequested.ShouldBeTrue();
     }
 
     // --- GetFastestServerByLatencyAsync ---
@@ -269,6 +326,36 @@ public class OoklaSpeedtestTests
         exception.Message.ShouldBe("No servers available");
     }
 
+    [Fact]
+    public async Task GetFastestServerByLatencyAsync_ShouldCancel_WhenTokenIsCancelled()
+    {
+        // Given
+        var mockHttp = new MockHttpMessageHandler();
+        mockHttp.When("*").Respond(async _ =>
+        {
+            // Simulate slow response.
+            await Task.Delay(1000);
+
+            return new HttpResponseMessage(HttpStatusCode.OK);
+        });
+
+        var httpClient = mockHttp.ToHttpClient();
+        var speedtest = new OoklaSpeedtest(httpClientOverride: httpClient);
+        var fastServer = new Clients.Testing.Server { Url = "http://fastserver.com/", Sponsor = "FastSponsor", Location = "FastLocation" };
+        var slowServer = new Clients.Testing.Server { Url = "http://slowserver.com/", Sponsor = "SlowSponsor", Location = "SlowLocation" };
+        var servers = new[] { slowServer, fastServer };
+
+        using var cts = new CancellationTokenSource();
+        cts.CancelAfter(200);
+
+        // When
+        var exception = await Record.ExceptionAsync(() => speedtest.GetFastestServerByLatencyAsync(servers, cts.Token));
+
+        // Then
+        exception.ShouldNotBeNull();
+        exception.ShouldBeAssignableTo<OperationCanceledException>();
+        cts.IsCancellationRequested.ShouldBeTrue();
+    }
 
     // --- GetDownloadSpeedAsync ---
 
@@ -313,6 +400,37 @@ public class OoklaSpeedtestTests
         result.BytesProcessed.ShouldBe(actualBytes);
     }
 
+    [Fact]
+    public async Task GetDownloadSpeedAsync_ShouldCancel_WhenTokenIsCancelled()
+    {
+        // Given
+        var mockHttp = new MockHttpMessageHandler();
+        mockHttp.When("*").Respond(async _ =>
+        {
+            // Simulate slow response.
+            await Task.Delay(1000);
+
+            return new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent(new string('X', 1024))
+            };
+        });
+
+        var httpClient = mockHttp.ToHttpClient();
+        var speedtest = new OoklaSpeedtest(httpClientOverride: httpClient);
+        var server = new Clients.Testing.Server { Url = "http://example.com/", Sponsor = "Test", Location = "Test" };
+
+        using var cts = new CancellationTokenSource();
+        cts.CancelAfter(200);
+
+        // When
+        var exception = await Record.ExceptionAsync(() => speedtest.GetDownloadSpeedAsync(server, cts.Token));
+
+        // Then
+        exception.ShouldNotBeNull();
+        exception.ShouldBeAssignableTo<OperationCanceledException>();
+        cts.IsCancellationRequested.ShouldBeTrue();
+    }
 
     [Fact]
     public async Task GetDownloadSpeedAsync_ShouldReportProgress_WhileDownloading()
@@ -422,6 +540,35 @@ public class OoklaSpeedtestTests
         result.ShouldNotBeNull();
         result.ElapsedMilliseconds.ShouldBeGreaterThanOrEqualTo(0);
         result.BytesProcessed.ShouldBe(actualBytes);
+    }
+
+    [Fact]
+    public async Task GetUploadSpeedAsync_ShouldCancel_WhenTokenIsCancelled()
+    {
+        // Given
+        var mockHttp = new MockHttpMessageHandler();
+        mockHttp.When("*").Respond(async _ =>
+        {
+            // Simulate slow response.
+            await Task.Delay(1000);
+
+            return new HttpResponseMessage(HttpStatusCode.OK);
+        });
+
+        var httpClient = mockHttp.ToHttpClient();
+        var speedtest = new OoklaSpeedtest(httpClientOverride: httpClient);
+        var server = new Clients.Testing.Server { Url = "http://example.com/", Sponsor = "Test", Location = "Test" };
+
+        using var cts = new CancellationTokenSource();
+        cts.CancelAfter(200);
+
+        // When
+        var exception = await Record.ExceptionAsync(() => speedtest.GetUploadSpeedAsync(server, cts.Token));
+
+        // Then
+        exception.ShouldNotBeNull();
+        exception.ShouldBeAssignableTo<OperationCanceledException>();
+        cts.IsCancellationRequested.ShouldBeTrue();
     }
 
     [Fact]
