@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
@@ -24,7 +24,7 @@
     <None Update="slant.flf">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
-	<InternalsVisibleTo Include="NetPace.Tests" />
+	<InternalsVisibleTo Include="NetPace.Console.Tests" />
   </ItemGroup>
 
 </Project>
