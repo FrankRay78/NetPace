@@ -22,7 +22,7 @@ public class OoklaSpeedtestTests
         """;
 
         var mockHttp = new MockHttpMessageHandler();
-        mockHttp.When("http://*")
+        mockHttp.When("*")
                 .Respond("application/xml", fakeXml);
 
         var httpClient = mockHttp.ToHttpClient();
@@ -53,7 +53,7 @@ public class OoklaSpeedtestTests
         """;
 
         var mockHttp = new MockHttpMessageHandler();
-        mockHttp.When("http://*")
+        mockHttp.When("*")
                 .Respond("application/xml", fakeXml);
 
         var httpClient = mockHttp.ToHttpClient();
@@ -85,7 +85,7 @@ public class OoklaSpeedtestTests
         """;
 
         var mockHttp = new MockHttpMessageHandler();
-        mockHttp.When("http://*")
+        mockHttp.When("*")
                 .Respond("application/xml", fakeXml);
 
         var httpClient = mockHttp.ToHttpClient();
@@ -106,7 +106,7 @@ public class OoklaSpeedtestTests
         var invalidXml = "Not XML at all <><>??";
 
         var mockHttp = new MockHttpMessageHandler();
-        mockHttp.When("http://*")
+        mockHttp.When("*")
                 .Respond("application/xml", invalidXml);
 
         var httpClient = mockHttp.ToHttpClient();
@@ -583,8 +583,6 @@ public class OoklaSpeedtestTests
         {
             UploadTest = new()
             {
-                UploadIncrements = 1,
-                UploadSizeIterations = 10,
                 UploadParallelTasks = 1
             }
         };
@@ -628,8 +626,6 @@ public class OoklaSpeedtestTests
         {
             UploadTest = new()
             {
-                UploadIncrements = 1,
-                UploadSizeIterations = 10,
                 UploadParallelTasks = 1
             }
         };
