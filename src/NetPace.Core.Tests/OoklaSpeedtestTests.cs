@@ -583,6 +583,8 @@ public class OoklaSpeedtestTests
         {
             UploadTest = new()
             {
+                UploadIncrements = 1,
+                UploadSizeIterations = 10,
                 UploadParallelTasks = 1
             }
         };
@@ -626,6 +628,8 @@ public class OoklaSpeedtestTests
         {
             UploadTest = new()
             {
+                UploadIncrements = 1,
+                UploadSizeIterations = 10,
                 UploadParallelTasks = 1
             }
         };
