@@ -445,6 +445,7 @@ public class OoklaSpeedtestTests
             DownloadTest = new()
             {
                 DownloadSizes = new[] { 100, 200, 500, 1000, 1500, 2000, 3000, 3500, 4000 },
+                DownloadSizeIterations = 100,
                 DownloadParallelTasks = 1
             }
         };
@@ -461,7 +462,7 @@ public class OoklaSpeedtestTests
 
         // HACK: Actual bytes should be very close to the intended download size.
         // Incomplete tasks makes this difficult to test so use the following workaround:
-        result.BytesProcessed.ShouldBeLessThanOrEqualTo((long)(2 * downloadSizeMb * 1024 * 1024));
+        result.BytesProcessed.ShouldBeLessThanOrEqualTo((long)(1.2 * downloadSizeMb * 1024 * 1024));
     }
 
     [Fact]
@@ -630,7 +631,18 @@ public class OoklaSpeedtestTests
         });
 
         var httpClient = mockHttp.ToHttpClient();
-        var speedtest = new OoklaSpeedtest(httpClientOverride: httpClient);
+        var settings = new OoklaSpeedtestSettings
+        {
+            UploadTest = new()
+            {
+                UploadSizeIncrementKb = 200,
+                UploadIncrements = 100,
+                UploadSizeIterations = 10,
+                UploadParallelTasks = 2
+            }
+        };
+
+        var speedtest = new OoklaSpeedtest(settings, httpClient);
         var server = new Clients.Testing.Server { Url = "http://example.com/", Sponsor = "Test", Location = "Test" };
 
         // When
@@ -642,7 +654,7 @@ public class OoklaSpeedtestTests
 
         // HACK: Actual bytes should be very close to the intended upload size.
         // Incomplete tasks makes this difficult to test so use the following workaround:
-        actualBytes.ShouldBeLessThanOrEqualTo((long)(2 * uploadSizeMb * 1024 * 1024));
+        actualBytes.ShouldBeLessThanOrEqualTo((long)(1.2 * uploadSizeMb * 1024 * 1024));
     }
 
     [Fact]
