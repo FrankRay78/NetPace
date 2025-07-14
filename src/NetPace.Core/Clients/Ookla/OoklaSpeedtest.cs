@@ -132,7 +132,7 @@ public sealed class OoklaSpeedtest : ISpeedTestService
             return data.Length;
         };
 
-        var downloadResult = await GenericTestSpeedAsync(downloadUrls, DownloadAndMeasureAsync, UpdateProgress, settings.DownloadTest.DownloadParallelTasks, cancellationToken);
+        var downloadResult = await GenericTestSpeedAsync(downloadUrls, DownloadAndMeasureAsync, UpdateProgress, settings.DownloadTest.DownloadParallelTasks, long.MaxValue, cancellationToken);
 
         return downloadResult;
     }
@@ -140,11 +140,23 @@ public sealed class OoklaSpeedtest : ISpeedTestService
     /// <inheritdoc/>
     public async Task<SpeedTestResult> GetUploadSpeedAsync(IServer server, CancellationToken cancellationToken = default)
     {
-        return await GetUploadSpeedAsync(server, (_) => { }, cancellationToken);
+        return await GetUploadSpeedAsync(server, int.MaxValue, (_) => { }, cancellationToken);
+    }
+
+    /// <inheritdoc/>
+    public async Task<SpeedTestResult> GetUploadSpeedAsync(IServer server, int uploadSizeMb, CancellationToken cancellationToken = default)
+    {
+        return await GetUploadSpeedAsync(server, uploadSizeMb, (_) => { }, cancellationToken);
     }
 
     /// <inheritdoc/>
     public async Task<SpeedTestResult> GetUploadSpeedAsync(IServer server, Action<SpeedTestProgress> UpdateProgress, CancellationToken cancellationToken = default)
+    {
+        return await GetUploadSpeedAsync(server, int.MaxValue, UpdateProgress, cancellationToken);
+    }
+
+    /// <inheritdoc/>
+    public async Task<SpeedTestResult> GetUploadSpeedAsync(IServer server, int uploadSizeMb, Action<SpeedTestProgress> UpdateProgress, CancellationToken cancellationToken = default)
     {
         var testData = GenerateUploadData(settings.UploadTest.UploadIncrements, settings.UploadTest.UploadSizeIncrementKb, settings.UploadTest.UploadSizeIterations);
 
@@ -159,7 +171,7 @@ public sealed class OoklaSpeedtest : ISpeedTestService
             return uploadData.Length;
         };
 
-        var uploadResult = await GenericTestSpeedAsync(testData, UploadAndMeasureAsync, UpdateProgress, settings.UploadTest.UploadParallelTasks, cancellationToken);
+        var uploadResult = await GenericTestSpeedAsync(testData, UploadAndMeasureAsync, UpdateProgress, settings.UploadTest.UploadParallelTasks, uploadSizeMb * 1024L * 1024L, cancellationToken);
 
         return uploadResult;
     }
@@ -173,64 +185,75 @@ public sealed class OoklaSpeedtest : ISpeedTestService
         Func<HttpClient, T, CancellationToken, Task<int>> doWork,
         Action<SpeedTestProgress> UpdateProgress,
         int parallelTasks,
+        long maxBytes,
         CancellationToken cancellationToken)
     {
         object lockObject = new();
+        bool wasCancelledLocally = false;
+        long totalBytesReturned = 0;
+
         var completedCount = 0;
         var totalCount = testData.Count();
 
         var timer = new Stopwatch();
         var throttler = new SemaphoreSlim(parallelTasks);
+        using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
 
         timer.Start();
 
         // Create and execute tasks to process the test data in parallel.
         var tasks = testData.Select(async data =>
         {
-            // Limit concurrent executions by waiting for a permit from the semaphore.
-            await throttler.WaitAsync(cancellationToken).ConfigureAwait(false);
+            var bytesReturned = 0;
 
             try
             {
-                var bytesReturned = 0;
+                // Limit concurrent executions by waiting for a permit from the semaphore.
+                await throttler.WaitAsync(cts.Token).ConfigureAwait(false);
 
-                try
-                {
-                    // Perform the work and retrieve the processed byte count.
-                    bytesReturned = await doWork(httpClient, data, cancellationToken).ConfigureAwait(false);
-                }
-                catch
-                {
-                    // An exception was thrown when performing the work
-                    // - Progress will be reported as if no failure
-                    // - Bytes returned will be treated as zero
-                }
-                finally
-                {
-                    lock (lockObject)
-                    {
-                        // Safely update the progress count and report completion percentage.
-                        completedCount++;
-                        var percentageComplete = (int)((double)completedCount / totalCount * 100);
-                        UpdateProgress(new SpeedTestProgress { PercentageComplete = percentageComplete });
-                    }
-                }
+                // Perform the work and retrieve the processed byte count.
+                bytesReturned = await doWork(httpClient, data, cts.Token).ConfigureAwait(false);
+            }
+            catch (Exception e)
+            {
+                // An exception was thrown when performing the work
+                // - Progress will be reported as if no failure
+                // - Bytes returned will be treated as zero
 
-                return bytesReturned;
+                if (e is OperationCanceledException && !wasCancelledLocally)
+                {
+                    // Propagate user cancelled exceptions
+                    throw;
+                }    
             }
             finally
             {
+                lock (lockObject)
+                {
+                    totalBytesReturned += bytesReturned;
+
+                    if (totalBytesReturned > maxBytes && !cts.IsCancellationRequested)
+                    {
+                        wasCancelledLocally = true;
+                        cts.Cancel();
+                    }
+
+                    // Safely update the progress count and report completion percentage.
+                    completedCount++;
+                    var percentageComplete = (int)((double)completedCount / totalCount * 100);
+                    UpdateProgress(new SpeedTestProgress { PercentageComplete = percentageComplete });
+                }
+
                 // Release the semaphore to allow another task to proceed.
                 throttler.Release();
             }
+
+            return bytesReturned;
         }).ToArray();
 
         // Wait for all tasks to complete.
         await Task.WhenAll(tasks);
         timer.Stop();
-
-        // Compute the total bytes returned.
-        long totalBytesReturned = tasks.Sum(task => task.Result);
 
         return new SpeedTestResult
         {
@@ -238,6 +261,102 @@ public sealed class OoklaSpeedtest : ISpeedTestService
             ElapsedMilliseconds = timer.ElapsedMilliseconds
         };
     }
+
+    /// <summary>
+    /// Executes a generic speed test by processing a collection of test data in parallel, 
+    /// measuring total bytes processed and elapsed time.
+    /// </summary>
+    private async Task<SpeedTestResult> GenericTestSpeedAsync2<T>(
+        IEnumerable<T> testData,
+        Func<HttpClient, T, CancellationToken, Task<int>> doWork,
+        Action<SpeedTestProgress> UpdateProgress,
+        int parallelTasks,
+        int maxUploadSizeMb,
+        CancellationToken cancellationToken)
+    {
+        object lockObject = new();
+        long totalBytesReturned = 0;
+        int completedCount = 0;
+        int totalCount = testData.Count();
+        long maxBytes = maxUploadSizeMb * 1024L * 1024L;
+
+        var throttler = new SemaphoreSlim(parallelTasks);
+        using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        var linkedToken = cts.Token;
+
+        var taskFactories = testData.Select(data => (Func<Task<int>>)(async () =>
+        {
+            await throttler.WaitAsync(linkedToken).ConfigureAwait(false);
+
+            try
+            {
+                int bytesReturned = 0;
+
+                try
+                {
+                    bytesReturned = await doWork(httpClient, data, linkedToken).ConfigureAwait(false);
+                }
+                catch
+                {
+                    // Treat as 0 if exception is thrown
+                }
+
+                lock (lockObject)
+                {
+                    if (totalBytesReturned + bytesReturned > maxBytes)
+                    {
+                        cts.Cancel(); // Trigger cooperative stop
+                        return 0;
+                    }
+
+                    totalBytesReturned += bytesReturned;
+                    completedCount++;
+
+                    var percent = (int)((double)totalBytesReturned / maxBytes * 100);
+                    UpdateProgress(new SpeedTestProgress { PercentageComplete = Math.Min(percent, 100) });
+                }
+
+                return bytesReturned;
+            }
+            finally
+            {
+                throttler.Release();
+            }
+        })).ToList();
+
+        var tasks = new List<Task<int>>();
+
+        foreach (var factory in taskFactories)
+        {
+            tasks.Add(factory());
+        }
+
+        try
+        {
+            await Task.WhenAll(tasks).ConfigureAwait(false);
+        }
+        catch
+        {
+            // Suppress OperationCanceledException and others to allow clean summary
+        }
+
+        var successfulBytes = tasks
+            .Where(t => t.Status == TaskStatus.RanToCompletion)
+            .Sum(t => t.Result);
+
+        // Ensure final progress is 100%
+        UpdateProgress(new SpeedTestProgress { PercentageComplete = 100 });
+
+        var timer = Stopwatch.StartNew();
+        timer.Stop();
+
+        return new SpeedTestResult
+        {
+            BytesProcessed = successfulBytes,
+            ElapsedMilliseconds = timer.ElapsedMilliseconds
+        };
+    }
+
 
     #region Static Functions
 

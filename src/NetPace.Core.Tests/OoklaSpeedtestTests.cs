@@ -542,6 +542,44 @@ public class OoklaSpeedtestTests
         result.BytesProcessed.ShouldBe(actualBytes);
     }
 
+    [Theory]
+    [InlineData(1)]    // 1MB
+    [InlineData(5)]    // 5MB
+    [InlineData(10)]   // 10MB
+    [InlineData(20)]   // 20MB
+    [InlineData(40)]   // 20MB
+    [InlineData(100)]  // 100MB
+    public async Task GetUploadSpeedAsync_ShouldRespectUploadSize(int uploadSizeMb)
+    {
+        // Given
+        long actualBytes = 0;
+
+        var mockHttp = new MockHttpMessageHandler();
+        mockHttp.When("*").Respond(async request =>
+        {
+            if (request?.Content != null)
+            {
+                var body = await request.Content.ReadAsByteArrayAsync();
+                Interlocked.Add(ref actualBytes, body.LongLength);
+            }
+            return new HttpResponseMessage(HttpStatusCode.OK);
+        });
+
+        var httpClient = mockHttp.ToHttpClient();
+        var speedtest = new OoklaSpeedtest(httpClientOverride: httpClient);
+        var server = new Clients.Testing.Server { Url = "http://example.com/", Sponsor = "Test", Location = "Test" };
+
+        // When
+        var result = await speedtest.GetUploadSpeedAsync(server, uploadSizeMb);
+
+        // Then
+        result.ShouldNotBeNull();
+        result.ElapsedMilliseconds.ShouldBeGreaterThanOrEqualTo(0);
+
+        // HACK: Actual bytes should be less than double the intended upload size
+        actualBytes.ShouldBeLessThanOrEqualTo((long)(2 * uploadSizeMb * 1024 * 1024));
+    }
+
     [Fact]
     public async Task GetUploadSpeedAsync_ShouldCancel_WhenTokenIsCancelled()
     {

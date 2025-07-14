@@ -33,7 +33,7 @@ public class FaultySpeedTester : ISpeedTestService
     private void AssertNotFaulted(IServer server, string methodName)
     {
         if (IsFaulted(server.Sponsor, methodName))
-        { 
+        {
             throw new Exception($"Communication with '{server.Sponsor}' has failed");
         }
     }
@@ -41,48 +41,62 @@ public class FaultySpeedTester : ISpeedTestService
     /// <inheritdoc/>
     public Task<IServer[]> GetServersAsync(CancellationToken cancellationToken = default)
     {
-        return inner.GetServersAsync();
+        return inner.GetServersAsync(cancellationToken);
     }
 
     /// <inheritdoc/>
     public Task<ServerLatencyResult> GetServerLatencyAsync(IServer server, CancellationToken cancellationToken = default)
     {
         AssertNotFaulted(server, nameof(GetServerLatencyAsync));
-        return inner.GetServerLatencyAsync(server);
+        return inner.GetServerLatencyAsync(server, cancellationToken);
     }
 
     /// <inheritdoc/>
     public Task<ServerLatencyResult> GetFastestServerByLatencyAsync(IServer[] servers, CancellationToken cancellationToken = default)
     {
-        return inner.GetFastestServerByLatencyAsync(servers);
+        return inner.GetFastestServerByLatencyAsync(servers, cancellationToken);
     }
 
     /// <inheritdoc/>
     public Task<SpeedTestResult> GetDownloadSpeedAsync(IServer server, CancellationToken cancellationToken = default)
     {
         AssertNotFaulted(server, nameof(GetDownloadSpeedAsync));
-        return inner.GetDownloadSpeedAsync(server);
+        return inner.GetDownloadSpeedAsync(server, cancellationToken);
     }
 
     /// <inheritdoc/>
     public Task<SpeedTestResult> GetDownloadSpeedAsync(IServer server, Action<SpeedTestProgress> UpdateProgress, CancellationToken cancellationToken = default)
     {
         AssertNotFaulted(server, nameof(GetDownloadSpeedAsync));
-        return inner.GetDownloadSpeedAsync(server, UpdateProgress);
+        return inner.GetDownloadSpeedAsync(server, UpdateProgress, cancellationToken);
     }
 
     /// <inheritdoc/>
     public Task<SpeedTestResult> GetUploadSpeedAsync(IServer server, CancellationToken cancellationToken = default)
     {
         AssertNotFaulted(server, nameof(GetUploadSpeedAsync));
-        return inner.GetUploadSpeedAsync(server);
+        return inner.GetUploadSpeedAsync(server, cancellationToken);
+    }
+
+    /// <inheritdoc/>
+    public Task<SpeedTestResult> GetUploadSpeedAsync(IServer server, int uploadSizeMb, CancellationToken cancellationToken = default)
+    {
+        AssertNotFaulted(server, nameof(GetUploadSpeedAsync));
+        return inner.GetUploadSpeedAsync(server, uploadSizeMb, cancellationToken);
     }
 
     /// <inheritdoc/>
     public Task<SpeedTestResult> GetUploadSpeedAsync(IServer server, Action<SpeedTestProgress> UpdateProgress, CancellationToken cancellationToken = default)
     {
         AssertNotFaulted(server, nameof(GetUploadSpeedAsync));
-        return inner.GetUploadSpeedAsync(server, UpdateProgress);
+        return inner.GetUploadSpeedAsync(server, UpdateProgress, cancellationToken);
+    }
+
+    /// <inheritdoc/>
+    public Task<SpeedTestResult> GetUploadSpeedAsync(IServer server, int uploadSizeMb, Action<SpeedTestProgress> UpdateProgress, CancellationToken cancellationToken = default)
+    {
+        AssertNotFaulted(server, nameof(GetUploadSpeedAsync));
+        return inner.GetUploadSpeedAsync(server, uploadSizeMb, UpdateProgress, cancellationToken);
     }
 }
 
