@@ -1,6 +1,8 @@
 using System.Diagnostics;
+using System.Drawing;
 using System.Net;
 using System.Net.Http.Headers;
+using System.Security.Cryptography;
 using System.Text;
 using NetPace.Core.Clients.Ookla.Extensions;
 
@@ -119,7 +121,19 @@ public sealed class OoklaSpeedtest : ISpeedTestService
     }
 
     /// <inheritdoc/>
+    public async Task<SpeedTestResult> GetDownloadSpeedAsync(IServer server, int downloadSizeMb, CancellationToken cancellationToken = default)
+    {
+        return await GetDownloadSpeedAsync(server, downloadSizeMb, (_) => { }, cancellationToken);
+    }
+
+    /// <inheritdoc/>
     public async Task<SpeedTestResult> GetDownloadSpeedAsync(IServer server, Action<SpeedTestProgress> UpdateProgress, CancellationToken cancellationToken = default)
+    {
+        return await GetDownloadSpeedAsync(server, int.MaxValue, UpdateProgress, cancellationToken);
+    }
+
+    /// <inheritdoc/>
+    public async Task<SpeedTestResult> GetDownloadSpeedAsync(IServer server, int downloadSizeMb, Action<SpeedTestProgress> UpdateProgress, CancellationToken cancellationToken = default)
     {
         var downloadUrls = GenerateDownloadUrls(server.Url, settings.DownloadTest.DownloadSizes, settings.DownloadTest.DownloadSizeIterations);
 
@@ -130,7 +144,7 @@ public sealed class OoklaSpeedtest : ISpeedTestService
             return data.Length;
         };
 
-        var downloadResult = await GenericTestSpeedAsync(downloadUrls, DownloadAndMeasureAsync, UpdateProgress, settings.DownloadTest.DownloadParallelTasks, cancellationToken);
+        var downloadResult = await GenericTestSpeedAsync(downloadUrls, DownloadAndMeasureAsync, UpdateProgress, settings.DownloadTest.DownloadParallelTasks, downloadSizeMb * 1024L * 1024L, cancellationToken);
 
         return downloadResult;
     }
@@ -138,23 +152,38 @@ public sealed class OoklaSpeedtest : ISpeedTestService
     /// <inheritdoc/>
     public async Task<SpeedTestResult> GetUploadSpeedAsync(IServer server, CancellationToken cancellationToken = default)
     {
-        return await GetUploadSpeedAsync(server, (_) => { }, cancellationToken);
+        return await GetUploadSpeedAsync(server, int.MaxValue, (_) => { }, cancellationToken);
+    }
+
+    /// <inheritdoc/>
+    public async Task<SpeedTestResult> GetUploadSpeedAsync(IServer server, int uploadSizeMb, CancellationToken cancellationToken = default)
+    {
+        return await GetUploadSpeedAsync(server, uploadSizeMb, (_) => { }, cancellationToken);
     }
 
     /// <inheritdoc/>
     public async Task<SpeedTestResult> GetUploadSpeedAsync(IServer server, Action<SpeedTestProgress> UpdateProgress, CancellationToken cancellationToken = default)
     {
+        return await GetUploadSpeedAsync(server, int.MaxValue, UpdateProgress, cancellationToken);
+    }
+
+    /// <inheritdoc/>
+    public async Task<SpeedTestResult> GetUploadSpeedAsync(IServer server, int uploadSizeMb, Action<SpeedTestProgress> UpdateProgress, CancellationToken cancellationToken = default)
+    {
         var testData = GenerateUploadData(settings.UploadTest.UploadIncrements, settings.UploadTest.UploadSizeIncrementKb, settings.UploadTest.UploadSizeIterations);
 
         // Upload content to a specified URL and return the size of the data in bytes.
-        Func<HttpClient, byte[], CancellationToken, Task<int>> UploadAndMeasureAsync = async (client, uploadData, cancellationToken) =>
+        Func<HttpClient, Func<byte[]>, CancellationToken, Task<int>> UploadAndMeasureAsync = async (client, getUploadData, cancellationToken) =>
         {
+            // Generate data lazily.
+            var uploadData = getUploadData();
+
             using var content = new ByteArrayContent(uploadData);
             await client.PostAsync(server.Url, content, cancellationToken).ConfigureAwait(false);
             return uploadData.Length;
         };
 
-        var uploadResult = await GenericTestSpeedAsync(testData, UploadAndMeasureAsync, UpdateProgress, settings.UploadTest.UploadParallelTasks, cancellationToken);
+        var uploadResult = await GenericTestSpeedAsync(testData, UploadAndMeasureAsync, UpdateProgress, settings.UploadTest.UploadParallelTasks, uploadSizeMb * 1024L * 1024L, cancellationToken);
 
         return uploadResult;
     }
@@ -168,64 +197,75 @@ public sealed class OoklaSpeedtest : ISpeedTestService
         Func<HttpClient, T, CancellationToken, Task<int>> doWork,
         Action<SpeedTestProgress> UpdateProgress,
         int parallelTasks,
+        long maxBytes,
         CancellationToken cancellationToken)
     {
         object lockObject = new();
+        bool wasCancelledLocally = false;
+        long totalBytesReturned = 0;
+
         var completedCount = 0;
         var totalCount = testData.Count();
 
         var timer = new Stopwatch();
         var throttler = new SemaphoreSlim(parallelTasks);
+        using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
 
         timer.Start();
 
         // Create and execute tasks to process the test data in parallel.
         var tasks = testData.Select(async data =>
         {
-            // Limit concurrent executions by waiting for a permit from the semaphore.
-            await throttler.WaitAsync(cancellationToken).ConfigureAwait(false);
+            var bytesReturned = 0;
 
             try
             {
-                var bytesReturned = 0;
+                // Limit concurrent executions by waiting for a permit from the semaphore.
+                await throttler.WaitAsync(cts.Token).ConfigureAwait(false);
 
-                try
-                {
-                    // Perform the work and retrieve the processed byte count.
-                    bytesReturned = await doWork(httpClient, data, cancellationToken).ConfigureAwait(false);
-                }
-                catch
-                {
-                    // An exception was thrown when performing the work
-                    // - Progress will be reported as if no failure
-                    // - Bytes returned will be treated as zero
-                }
-                finally
-                {
-                    lock (lockObject)
-                    {
-                        // Safely update the progress count and report completion percentage.
-                        completedCount++;
-                        var percentageComplete = (int)((double)completedCount / totalCount * 100);
-                        UpdateProgress(new SpeedTestProgress { PercentageComplete = percentageComplete });
-                    }
-                }
+                // Perform the work and retrieve the processed byte count.
+                bytesReturned = await doWork(httpClient, data, cts.Token).ConfigureAwait(false);
+            }
+            catch (Exception e)
+            {
+                // An exception was thrown when performing the work
+                // - Progress will be reported as if no failure
+                // - Bytes returned will be treated as zero
 
-                return bytesReturned;
+                if (e is OperationCanceledException && !wasCancelledLocally)
+                {
+                    // Propagate user cancelled exceptions
+                    throw;
+                }    
             }
             finally
             {
+                lock (lockObject)
+                {
+                    totalBytesReturned += bytesReturned;
+
+                    if (totalBytesReturned > maxBytes && !cts.IsCancellationRequested)
+                    {
+                        wasCancelledLocally = true;
+                        cts.Cancel();
+                    }
+
+                    // Safely update the progress count and report completion percentage.
+                    completedCount++;
+                    var percentageComplete = (int)((double)completedCount / totalCount * 100);
+                    UpdateProgress(new SpeedTestProgress { PercentageComplete = percentageComplete });
+                }
+
                 // Release the semaphore to allow another task to proceed.
                 throttler.Release();
             }
+
+            return bytesReturned;
         }).ToArray();
 
         // Wait for all tasks to complete.
         await Task.WhenAll(tasks);
         timer.Stop();
-
-        // Compute the total bytes returned.
-        long totalBytesReturned = tasks.Sum(task => task.Result);
 
         return new SpeedTestResult
         {
@@ -299,41 +339,34 @@ public sealed class OoklaSpeedtest : ISpeedTestService
     }
 
     /// <summary>
-    /// Generates a collection of byte arrays representing simulated upload data.
+    /// Lazily generates a sequence of functions that produce random byte arrays simulating upload data.
     /// </summary>
     /// <remarks>
-    /// - The method creates a series of byte arrays of increasing size, up to a defined maximum.
-    /// - Each byte array is filled with random uppercase A–Z characters.
-    /// - Repeated arrays are independent copies to simulate distinct upload chunks.
-    /// - The purpose of this method is to simulate varying upload payloads for testing performance.
+    /// - Each function, when invoked, returns a new byte array filled with random bytes.
+    /// - Arrays increase in size in increments of <paramref name="baseSizeKb"/>, up to the number of <paramref name="uploadIncrements"/>.
+    /// - For each size, <paramref name="repeatsPerSize"/> independent byte arrays are generated.
+    /// - Data generation uses cryptographically secure randomness for realistic performance testing.
+    /// - The method yields data lazily via <see cref="Func{Byte[]}"/> delegates, avoiding unnecessary memory allocation until use.
     /// </remarks>
-    private static IEnumerable<byte[]> GenerateUploadData(int uploadIncrements, int baseSizeKb, int repeatsPerSize)
+    private static IEnumerable<Func<byte[]>> GenerateUploadData(int uploadIncrements, int baseSizeKb, int repeatsPerSize)
     {
-        const string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-        var random = new Random(0); // Fixed seed
-        var result = new List<byte[]>();
-
         for (var increment = 1; increment <= uploadIncrements; increment++)
         {
-            var size = increment * baseSizeKb * 1024; // Increasing size in baseSizeKb increments
-            var builder = new StringBuilder(size);
+            int incrementSize = increment * baseSizeKb * 1024;
 
-            // Fill the StringBuilder with random characters
-            for (var i = 0; i < size; ++i)
+            for (var repeat = 0; repeat < repeatsPerSize; repeat++)
             {
-                builder.Append(chars[random.Next(chars.Length)]);
-            }
-
-            var bytes = Encoding.UTF8.GetBytes(builder.ToString());
-
-            // Add repeatsPerSize copies of the generated byte array to the result list
-            for (var i = 0; i < repeatsPerSize; i++)
-            {
-                result.Add((byte[])bytes.Clone()); // Ensure each entry is a distinct instance
+                yield return () =>
+                {
+                    var data = new byte[incrementSize];
+                    using (var rng = RandomNumberGenerator.Create())
+                    {
+                        rng.GetBytes(data);
+                    }
+                    return data;
+                };
             }
         }
-
-        return result;
     }
 
     #endregion

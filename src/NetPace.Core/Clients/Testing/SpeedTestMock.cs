@@ -10,9 +10,13 @@ public sealed class SpeedTestMock : ISpeedTestService
     public Func<IServer, CancellationToken, Task<ServerLatencyResult>>? GetServerLatencyAsyncFunc { get; set; }
     public Func<IServer[], CancellationToken, Task<ServerLatencyResult>>? GetFastestServerByLatencyAsyncFunc { get; set; }
     public Func<IServer, CancellationToken, Task<SpeedTestResult>>? GetDownloadSpeedAsyncFunc { get; set; }
+    public Func<IServer, int, CancellationToken, Task<SpeedTestResult>>? GetDownloadSpeedWithDownloadSizeAsyncFunc { get; set; }
     public Func<IServer, Action<SpeedTestProgress>, CancellationToken, Task<SpeedTestResult>>? GetDownloadSpeedWithProgressAsyncFunc { get; set; }
+    public Func<IServer, int, Action<SpeedTestProgress>, CancellationToken, Task<SpeedTestResult>>? GetDownloadSpeedWithDownloadSizeAndProgressAsyncFunc { get; set; }
     public Func<IServer, CancellationToken, Task<SpeedTestResult>>? GetUploadSpeedAsyncFunc { get; set; }
+    public Func<IServer, int, CancellationToken, Task<SpeedTestResult>>? GetUploadSpeedWithUploadSizeAsyncFunc { get; set; }
     public Func<IServer, Action<SpeedTestProgress>, CancellationToken, Task<SpeedTestResult>>? GetUploadSpeedWithProgressAsyncFunc { get; set; }
+    public Func<IServer, int, Action<SpeedTestProgress>, CancellationToken, Task<SpeedTestResult>>? GetUploadSpeedWithUploadSizeAndProgressAsyncFunc { get; set; }
 
     /// <inheritdoc/>
     public Task<IServer[]> GetServersAsync(CancellationToken cancellationToken = default)
@@ -47,10 +51,26 @@ public sealed class SpeedTestMock : ISpeedTestService
     }
 
     /// <inheritdoc/>
+    public Task<SpeedTestResult> GetDownloadSpeedAsync(IServer server, int downloadSizeMb, CancellationToken cancellationToken = default)
+    {
+        if (GetDownloadSpeedWithDownloadSizeAsyncFunc != null)
+            return GetDownloadSpeedWithDownloadSizeAsyncFunc(server, downloadSizeMb, cancellationToken);
+        throw new NotImplementedException();
+    }
+
+    /// <inheritdoc/>
     public Task<SpeedTestResult> GetDownloadSpeedAsync(IServer server, Action<SpeedTestProgress> UpdateProgress, CancellationToken cancellationToken = default)
     {
         if (GetDownloadSpeedWithProgressAsyncFunc != null)
             return GetDownloadSpeedWithProgressAsyncFunc(server, UpdateProgress, cancellationToken);
+        throw new NotImplementedException();
+    }
+
+    /// <inheritdoc/>
+    public Task<SpeedTestResult> GetDownloadSpeedAsync(IServer server, int downloadSizeMb, Action<SpeedTestProgress> UpdateProgress, CancellationToken cancellationToken = default)
+    {
+        if (GetDownloadSpeedWithDownloadSizeAndProgressAsyncFunc != null)
+            return GetDownloadSpeedWithDownloadSizeAndProgressAsyncFunc(server, downloadSizeMb, UpdateProgress, cancellationToken);
         throw new NotImplementedException();
     }
 
@@ -63,10 +83,26 @@ public sealed class SpeedTestMock : ISpeedTestService
     }
 
     /// <inheritdoc/>
+    public Task<SpeedTestResult> GetUploadSpeedAsync(IServer server, int uploadSizeMb, CancellationToken cancellationToken = default)
+    {
+        if (GetUploadSpeedWithUploadSizeAsyncFunc != null)
+            return GetUploadSpeedWithUploadSizeAsyncFunc(server, uploadSizeMb, cancellationToken);
+        throw new NotImplementedException();
+    }
+
+    /// <inheritdoc/>
     public Task<SpeedTestResult> GetUploadSpeedAsync(IServer server, Action<SpeedTestProgress> UpdateProgress, CancellationToken cancellationToken = default)
     {
         if (GetUploadSpeedWithProgressAsyncFunc != null)
             return GetUploadSpeedWithProgressAsyncFunc(server, UpdateProgress, cancellationToken);
+        throw new NotImplementedException();
+    }
+
+    /// <inheritdoc/>
+    public Task<SpeedTestResult> GetUploadSpeedAsync(IServer server, int uploadSizeMb, Action<SpeedTestProgress> UpdateProgress, CancellationToken cancellationToken = default)
+    {
+        if (GetUploadSpeedWithUploadSizeAndProgressAsyncFunc != null)
+            return GetUploadSpeedWithUploadSizeAndProgressAsyncFunc(server, uploadSizeMb, UpdateProgress, cancellationToken);
         throw new NotImplementedException();
     }
 }
