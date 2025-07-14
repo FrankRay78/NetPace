@@ -65,10 +65,24 @@ public class FaultySpeedTester : ISpeedTestService
     }
 
     /// <inheritdoc/>
+    public Task<SpeedTestResult> GetDownloadSpeedAsync(IServer server, int downloadSizeMb, CancellationToken cancellationToken = default)
+    {
+        AssertNotFaulted(server, nameof(GetDownloadSpeedAsync));
+        return inner.GetDownloadSpeedAsync(server, downloadSizeMb, cancellationToken);
+    }
+
+    /// <inheritdoc/>
     public Task<SpeedTestResult> GetDownloadSpeedAsync(IServer server, Action<SpeedTestProgress> UpdateProgress, CancellationToken cancellationToken = default)
     {
         AssertNotFaulted(server, nameof(GetDownloadSpeedAsync));
         return inner.GetDownloadSpeedAsync(server, UpdateProgress, cancellationToken);
+    }
+
+    /// <inheritdoc/>
+    public Task<SpeedTestResult> GetDownloadSpeedAsync(IServer server, int downloadSizeMb, Action<SpeedTestProgress> UpdateProgress, CancellationToken cancellationToken = default)
+    {
+        AssertNotFaulted(server, nameof(GetDownloadSpeedAsync));
+        return inner.GetDownloadSpeedAsync(server, downloadSizeMb, UpdateProgress, cancellationToken);
     }
 
     /// <inheritdoc/>

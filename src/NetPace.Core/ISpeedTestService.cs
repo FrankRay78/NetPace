@@ -46,10 +46,29 @@ public interface ISpeedTestService
     /// Measures the download speed of the specified server.
     /// </summary>
     /// <param name="server">The server to measure download speed from.</param>
+    /// <param name="downloadSizeMb">The size upon which to terminate the download test.</param>
+    /// <param name="cancellationToken">The token to allow the operation to be cancelled.</param>
+    /// <returns>The result including bytes processed and elapsed time in milliseconds.</returns>
+    public Task<SpeedTestResult> GetDownloadSpeedAsync(IServer server, int downloadSizeMb, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Measures the download speed of the specified server.
+    /// </summary>
+    /// <param name="server">The server to measure download speed from.</param>
     /// <param name="UpdateProgress">An action that receives the download progress percentage (0 to 100).</param>
     /// <param name="cancellationToken">The token to allow the operation to be cancelled.</param>
     /// <returns>The result including bytes processed and elapsed time in milliseconds.</returns>
     public Task<SpeedTestResult> GetDownloadSpeedAsync(IServer server, Action<SpeedTestProgress> UpdateProgress, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Measures the download speed of the specified server.
+    /// </summary>
+    /// <param name="server">The server to measure download speed from.</param>
+    /// <param name="downloadSizeMb">The size upon which to terminate the download test.</param>
+    /// <param name="UpdateProgress">An action that receives the download progress percentage (0 to 100).</param>
+    /// <param name="cancellationToken">The token to allow the operation to be cancelled.</param>
+    /// <returns>The result including bytes processed and elapsed time in milliseconds.</returns>
+    public Task<SpeedTestResult> GetDownloadSpeedAsync(IServer server, int downloadSizeMb, Action<SpeedTestProgress> UpdateProgress, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Measures the upload speed of the specified server.

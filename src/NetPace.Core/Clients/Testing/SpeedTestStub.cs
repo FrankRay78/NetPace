@@ -52,11 +52,23 @@ public sealed class SpeedTestStub : ISpeedTestService
     /// <inheritdoc/>
     public Task<SpeedTestResult> GetDownloadSpeedAsync(IServer server, CancellationToken cancellationToken = default)
     {
-        return GetDownloadSpeedAsync(server, _ => { });
+        return GetDownloadSpeedAsync(server, _ => { }, cancellationToken);
+    }
+
+    /// <inheritdoc/>
+    public Task<SpeedTestResult> GetDownloadSpeedAsync(IServer server, int downloadSizeMb, CancellationToken cancellationToken = default)
+    {
+        return GetDownloadSpeedAsync(server, downloadSizeMb, _ => { }, cancellationToken);
     }
 
     /// <inheritdoc/>
     public Task<SpeedTestResult> GetDownloadSpeedAsync(IServer server, Action<SpeedTestProgress> UpdateProgress, CancellationToken cancellationToken = default)
+    {
+        return GetDownloadSpeedAsync(server, int.MaxValue, UpdateProgress, cancellationToken);
+    }
+
+    /// <inheritdoc/>
+    public Task<SpeedTestResult> GetDownloadSpeedAsync(IServer server, int downloadSizeMb, Action<SpeedTestProgress> UpdateProgress, CancellationToken cancellationToken = default)
     {
         if (UpdateProgress is not null)
         {

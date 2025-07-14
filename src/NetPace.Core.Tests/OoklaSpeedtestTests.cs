@@ -1,4 +1,5 @@
 using System.Net;
+using System.Text.RegularExpressions;
 using NetPace.Core.Clients.Ookla;
 using RichardSzalay.MockHttp;
 using Shouldly;
@@ -368,6 +369,8 @@ public class OoklaSpeedtestTests
         var mockHttp = new MockHttpMessageHandler();
         mockHttp.When("*").Respond(request =>
         {
+            Console.WriteLine(request?.RequestUri?.ToString());
+
             // Respond with fixed 1KB payload for simplicity.
             var body = new string('X', 1024);
 
@@ -398,6 +401,67 @@ public class OoklaSpeedtestTests
         result.ShouldNotBeNull();
         result.ElapsedMilliseconds.ShouldBeGreaterThanOrEqualTo(0);
         result.BytesProcessed.ShouldBe(actualBytes);
+    }
+
+    [Theory]
+    [InlineData(1)]   // 1MB
+    [InlineData(5)]   // 5MB
+    [InlineData(10)]  // 10MB
+    [InlineData(20)]  // 20MB
+    [InlineData(40)]  // 40MB
+    [InlineData(100)] // 100MB
+    public async Task GetDownloadSpeedAsync_ShouldRespectDownloadSize(int downloadSizeMb)
+    {
+        // Given
+        var mockHttp = new MockHttpMessageHandler();
+        mockHttp.When("*").Respond(request =>
+        {
+            // Extract dimensions from URL like: /random1500x1500.jpg
+            var match = Regex.Match(request?.RequestUri?.AbsolutePath ?? "", @"random(\d+)x(\d+)\.jpg");
+
+            if (!match.Success)
+            {
+                return new HttpResponseMessage(HttpStatusCode.NotFound);
+            }
+
+            int width = int.Parse(match.Groups[1].Value);
+            int height = int.Parse(match.Groups[2].Value);
+
+            // Simulate byte size: assume 3 bytes per pixel (RGB)
+            int byteCount = width * height * 3;
+            var content = new ByteArrayContent(new byte[byteCount]);
+
+            var response = new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = content
+            };
+
+            return response;
+        });
+
+        var httpClient = mockHttp.ToHttpClient();
+        var settings = new OoklaSpeedtestSettings
+        {
+            DownloadTest = new()
+            {
+                DownloadSizes = new[] { 100, 200, 500, 1000, 1500, 2000, 3000, 3500, 4000 },
+                DownloadParallelTasks = 1
+            }
+        };
+
+        var speedtest = new OoklaSpeedtest(settings, httpClient);
+        var server = new Clients.Testing.Server { Url = "http://example.com/", Sponsor = "Test", Location = "Test" };
+
+        // When
+        var result = await speedtest.GetDownloadSpeedAsync(server, downloadSizeMb);
+
+        // Then
+        result.ShouldNotBeNull();
+        result.ElapsedMilliseconds.ShouldBeGreaterThanOrEqualTo(0);
+
+        // HACK: Actual bytes should be very close to the intended download size.
+        // Incomplete tasks makes this difficult to test so use the following workaround:
+        result.BytesProcessed.ShouldBeLessThanOrEqualTo((long)(2 * downloadSizeMb * 1024 * 1024));
     }
 
     [Fact]
@@ -543,12 +607,12 @@ public class OoklaSpeedtestTests
     }
 
     [Theory]
-    [InlineData(1)]    // 1MB
-    [InlineData(5)]    // 5MB
-    [InlineData(10)]   // 10MB
-    [InlineData(20)]   // 20MB
-    [InlineData(40)]   // 20MB
-    [InlineData(100)]  // 100MB
+    [InlineData(1)]   // 1MB
+    [InlineData(5)]   // 5MB
+    [InlineData(10)]  // 10MB
+    [InlineData(20)]  // 20MB
+    [InlineData(40)]  // 40MB
+    [InlineData(100)] // 100MB
     public async Task GetUploadSpeedAsync_ShouldRespectUploadSize(int uploadSizeMb)
     {
         // Given
@@ -576,7 +640,8 @@ public class OoklaSpeedtestTests
         result.ShouldNotBeNull();
         result.ElapsedMilliseconds.ShouldBeGreaterThanOrEqualTo(0);
 
-        // HACK: Actual bytes should be less than double the intended upload size
+        // HACK: Actual bytes should be very close to the intended upload size.
+        // Incomplete tasks makes this difficult to test so use the following workaround:
         actualBytes.ShouldBeLessThanOrEqualTo((long)(2 * uploadSizeMb * 1024 * 1024));
     }
 

@@ -121,7 +121,19 @@ public sealed class OoklaSpeedtest : ISpeedTestService
     }
 
     /// <inheritdoc/>
+    public async Task<SpeedTestResult> GetDownloadSpeedAsync(IServer server, int downloadSizeMb, CancellationToken cancellationToken = default)
+    {
+        return await GetDownloadSpeedAsync(server, downloadSizeMb, (_) => { }, cancellationToken);
+    }
+
+    /// <inheritdoc/>
     public async Task<SpeedTestResult> GetDownloadSpeedAsync(IServer server, Action<SpeedTestProgress> UpdateProgress, CancellationToken cancellationToken = default)
+    {
+        return await GetDownloadSpeedAsync(server, int.MaxValue, UpdateProgress, cancellationToken);
+    }
+
+    /// <inheritdoc/>
+    public async Task<SpeedTestResult> GetDownloadSpeedAsync(IServer server, int downloadSizeMb, Action<SpeedTestProgress> UpdateProgress, CancellationToken cancellationToken = default)
     {
         var downloadUrls = GenerateDownloadUrls(server.Url, settings.DownloadTest.DownloadSizes, settings.DownloadTest.DownloadSizeIterations);
 
@@ -132,7 +144,7 @@ public sealed class OoklaSpeedtest : ISpeedTestService
             return data.Length;
         };
 
-        var downloadResult = await GenericTestSpeedAsync(downloadUrls, DownloadAndMeasureAsync, UpdateProgress, settings.DownloadTest.DownloadParallelTasks, long.MaxValue, cancellationToken);
+        var downloadResult = await GenericTestSpeedAsync(downloadUrls, DownloadAndMeasureAsync, UpdateProgress, settings.DownloadTest.DownloadParallelTasks, downloadSizeMb * 1024L * 1024L, cancellationToken);
 
         return downloadResult;
     }
