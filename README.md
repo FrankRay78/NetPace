@@ -30,7 +30,7 @@ The obligatory screenshot (as of 12 April 2025):
 
 
 ## Background
-The idea for this project came from my experience as the [Spectre.Console](https://github.com/spectreconsole/spectre.console) CLI sub-system maintainer, never having actually used the library for my own use. My motivation is to become expert at developing excellent command line applications, following best practices like the [Command Line Interface Guidelines](https://clig.dev/), and then taking the experience back into my maintainer role. 
+The idea for this project came from my experience as the [Spectre.Console](https://github.com/spectreconsole/spectre.console) CLI sub-system maintainer, having never actually used the library for my own use. My motivation is to become expert at developing excellent command line applications, following best practices like the [Command Line Interface Guidelines](https://clig.dev/), and then taking the experience back into my maintainer role. 
 
 This is also known as 'dogfooding' in the tech industry ie. using your own product before expecting others to do the same.
 
@@ -72,6 +72,8 @@ OPTIONS:
         --no-download                       Do not perform download test.
         --no-upload                         Do not perform upload test.
     -t, --timestamp                         Include a timestamp.
+        --downloadsize                      Terminate the download speed test when this limit is reached.
+        --uploadsize                        Terminate the upload speed test when this limit is reached.
     -u, --unit             BitsPerSecond    The speed unit. <BitsPerSecond, BytesPerSecond>
         --unit-system      SI               The speed unit system. <SI, IEC>
                                             SI steps up in powers of 1000 (KB, MB, GB), common in networking, while IEC
@@ -115,37 +117,16 @@ Console.WriteLine($"Download: {downloadResult.GetSpeedString(SpeedUnit.BitsPerSe
 Console.WriteLine($"Upload: {uploadResult.GetSpeedString(SpeedUnit.BitsPerSecond, SpeedUnitSystem.SI)}");
 ```
 
-See the [full usage example](https://github.com/FrankRay78/NetPace/tree/main/examples/ConsoleApp/Program.cs).
+See the [ISpeedTestService](https://github.com/FrankRay78/NetPace/blob/main/src/NetPace.Core/ISpeedTestService.cs) interface for full method details and overloads, the [Example Console App](https://github.com/FrankRay78/NetPace/tree/main/examples/ConsoleApp/Program.cs) for a minimal usage example, and the [NetPace command-line application](https://github.com/FrankRay78/NetPace/tree/main/src/NetPace.Console) for an extensive, production-quality usage example.
 
 <br />
 
 
-## Roadmap
-- [X] Download speed test
-- [X] Upload speed test
-- [ ] User-configurable switches
-   - [X] BitsPerSecond or BytesPerSecond
-   - [X] SI or IEC
-   - [ ] Fixed speed unit (eg. Mbps, Gbps)
-   - [X] Verbosity of output
-   - [X] ~~`--plain` switch for minimal output~~ (nb. implemented by '--verbosity=Minimal')
-   - [X] CSV output
-   - [ ] Maximum speed test (time)
-   - [ ] Maximum speed test (size transferred)
-- [ ] Periodically repeat tests
-- [X] Run unit tests on PR
-- [X] NuGet package for the core library
-
-See the [open issues](https://github.com/FrankRay78/NetPace/issues) for a full list of proposed features (and known issues).
-
-<br />
-
-
-##  Contributing
+## Contributing
 > [!IMPORTANT]\
 > I'm not currently accepting pull requests for this project. 
 
-You can contribute by [opening a new issue](https://github.com/FrankRay78/NetPace/issues/new/choose) or commenting on existing issues, and you are most welcome to fork the repository for your own purposes. 
+You can contribute by [starting a discussion](https://github.com/FrankRay78/NetPace/discussions), [opening a new issue](https://github.com/FrankRay78/NetPace/issues/new/choose) or commenting on existing ones, and you are most welcome to fork the repository for your own purposes. 
 
 But please **don't be offended** if I close or delete issues as I see fit.
 
