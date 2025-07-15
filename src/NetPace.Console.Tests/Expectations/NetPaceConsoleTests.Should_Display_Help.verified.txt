@@ -20,8 +20,8 @@ OPTIONS:
         --no-download                       Do not perform download test.                                                                                                                      
         --no-upload                         Do not perform upload test.                                                                                                                        
     -t, --timestamp                         Include a timestamp.                                                                                                                               
-        --downloadsize                      Terminate the download speed test when this limit is reached.                                                                                      
-        --uploadsize                        Terminate the upload speed test when this limit is reached.                                                                                        
+        --downloadsize                      Stop the download test after this many megabytes (IEC MiB).                                                                                        
+        --uploadsize                        Stop the upload test after this many megabytes (IEC MiB).                                                                                          
     -u, --unit             BitsPerSecond    The speed unit. <BitsPerSecond, BytesPerSecond>                                                                                                    
         --unit-system      SI               The speed unit system. <SI, IEC>                                                                                                                   
                                             SI steps up in powers of 1000 (KB, MB, GB), common in networking, while IEC uses powers of 1024 (KiB, MiB, GiB), standard in computing and storage.

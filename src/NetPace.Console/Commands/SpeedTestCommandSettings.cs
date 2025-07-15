@@ -37,11 +37,11 @@ public sealed class SpeedTestCommandSettings : CommandSettings
     public string? DateTimeFormat { get; set; }
 
     [CommandOption("--downloadsize")]
-    [Description("Terminate the download speed test when this limit is reached.")]
+    [Description("Stop the download test after this many megabytes (IEC MiB).")]
     public int DownloadSizeMb { get; set; } = int.MaxValue;
 
     [CommandOption("--uploadsize")]
-    [Description("Terminate the upload speed test when this limit is reached.")]
+    [Description("Stop the upload test after this many megabytes (IEC MiB).")]
     public int UploadSizeMb { get; set; } = int.MaxValue;
 
     [CommandOption("-u | --unit")]
