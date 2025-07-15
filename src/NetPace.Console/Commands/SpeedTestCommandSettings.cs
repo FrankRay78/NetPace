@@ -1,4 +1,4 @@
-﻿using System.ComponentModel;
+using System.ComponentModel;
 using NetPace.Core;
 
 namespace NetPace.Console.Commands;
@@ -35,6 +35,14 @@ public sealed class SpeedTestCommandSettings : CommandSettings
     [DefaultValue("yyyy'-'MM'-'dd' 'HH':'mm':'ss")]
     //ref: https://learn.microsoft.com/en-us/dotnet/standard/base-types/standard-date-and-time-format-strings
     public string? DateTimeFormat { get; set; }
+
+    [CommandOption("--downloadsize")]
+    [Description("Terminate the download speed test when this limit is reached.")]
+    public int DownloadSizeMb { get; set; } = int.MaxValue;
+
+    [CommandOption("--uploadsize")]
+    [Description("Terminate the upload speed test when this limit is reached.")]
+    public int UploadSizeMb { get; set; } = int.MaxValue;
 
     [CommandOption("-u | --unit")]
     [Description("The speed unit. <BitsPerSecond, BytesPerSecond>")]

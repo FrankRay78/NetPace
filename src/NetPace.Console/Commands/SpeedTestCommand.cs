@@ -107,8 +107,8 @@ public sealed class SpeedTestCommand : AsyncCommand<SpeedTestCommandSettings>
 
         if (settings.CSV || ((settings.Verbosity & Verbosity.Minimal) != 0))
         {
-            if (!settings.NoDownload) downloadResult = await speedTestClient.GetDownloadSpeedAsync(server);
-            if (!settings.NoUpload) uploadResult = await speedTestClient.GetUploadSpeedAsync(server);
+            if (!settings.NoDownload) downloadResult = await speedTestClient.GetDownloadSpeedAsync(server, settings.DownloadSizeMb);
+            if (!settings.NoUpload) uploadResult = await speedTestClient.GetUploadSpeedAsync(server, settings.UploadSizeMb);
         }
         else
         {
@@ -138,14 +138,14 @@ public sealed class SpeedTestCommand : AsyncCommand<SpeedTestCommandSettings>
                     // Perform the speed tests and show progress
                     if (!settings.NoDownload)
                     {
-                        downloadResult = await speedTestClient.GetDownloadSpeedAsync(server, (SpeedTestProgress progress) =>
+                        downloadResult = await speedTestClient.GetDownloadSpeedAsync(server, settings.DownloadSizeMb, (SpeedTestProgress progress) =>
                         {
                             downloadProgress!.Value = progress.PercentageComplete;
                         });
                     }
                     if (!settings.NoUpload)
                     {
-                        uploadResult = await speedTestClient.GetUploadSpeedAsync(server, (SpeedTestProgress progress) =>
+                        uploadResult = await speedTestClient.GetUploadSpeedAsync(server, settings.UploadSizeMb, (SpeedTestProgress progress) =>
                         {
                             uploadProgress!.Value = progress.PercentageComplete;
                         });
