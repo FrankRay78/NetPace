@@ -242,18 +242,25 @@ public sealed class OoklaSpeedtest : ISpeedTestService
             {
                 lock (lockObject)
                 {
-                    totalBytesReturned += bytesReturned;
-
-                    if (totalBytesReturned > maxBytes && !cts.IsCancellationRequested)
+                    if (!cts.IsCancellationRequested)
                     {
-                        wasCancelledLocally = true;
-                        cts.Cancel();
-                    }
+                        completedCount++;
+                        totalBytesReturned += bytesReturned;
 
-                    // Safely update the progress count and report completion percentage.
-                    completedCount++;
-                    var percentageComplete = (int)((double)completedCount / totalCount * 100);
-                    UpdateProgress(new SpeedTestProgress { PercentageComplete = percentageComplete });
+                        if (totalBytesReturned >= maxBytes)
+                        {
+                            // User specified byte limit is hit.
+                            wasCancelledLocally = true;
+                            cts.Cancel();
+                            UpdateProgress(new SpeedTestProgress { PercentageComplete = 100 });
+                        }
+                        else
+                        {
+                            // Update the completion percentage.
+                            var percentageComplete = (int)((double)completedCount / totalCount * 100);
+                            UpdateProgress(new SpeedTestProgress { PercentageComplete = percentageComplete });
+                        }
+                    }
                 }
 
                 // Release the semaphore to allow another task to proceed.
