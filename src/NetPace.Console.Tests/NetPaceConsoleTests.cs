@@ -1,3 +1,4 @@
+using System.Reflection.Metadata.Ecma335;
 using NetPace.Console;
 using NetPace.Console.Commands;
 using NetPace.Console.DependencyInjection;
@@ -11,13 +12,17 @@ public class NetPaceConsoleTests
     /// <summary>
     /// Create the CommandAppTester and configure.
     /// </summary>
-    private static CommandAppTester GetCommandAppTester(ITypeRegistrar? registrar = null)
+    private static CommandAppTester GetCommandAppTester(ITypeRegistrar? registrar = null, CancellationToken cancellationToken = default)
     {
         var app = registrar == null ? 
             new CommandAppTester(new CommandAppTesterSettings { TrimConsoleOutput = false }) :
             new CommandAppTester(registrar, new CommandAppTesterSettings { TrimConsoleOutput = false });
+
         app.SetDefaultCommand<SpeedTestCommand>(Program.Description);
         app.Configure(Program.ConfigureAction);
+
+        app.Registrar?.RegisterInstance(typeof(CancellationToken), cancellationToken);
+
         return app;
     }
 
@@ -307,6 +312,35 @@ public class NetPaceConsoleTests
         registrar.RegisterInstance(typeof(ISpeedTestService), mock);
         registrar.Register(typeof(IClock), typeof(ClockStub));
         var app = GetCommandAppTester(registrar);
+
+        // When
+        var result = await app.RunAsync();
+
+        // Then
+        Assert.Equal(-1, result.ExitCode);
+        await Verify(result.Output);
+    }
+
+    [Fact]
+    public async Task Should_Cancel_When_User_Requests()
+    {
+        // Given
+        var mock = new SpeedTestMock
+        {
+            GetServersAsyncFunc = async (cancellationToken) =>
+            {
+                await Task.Delay(1000, cancellationToken);
+                return Array.Empty<IServer>();
+            }
+        };
+
+        var cancellationTokenSource = new CancellationTokenSource();
+        cancellationTokenSource.CancelAfter(200);
+
+        var registrar = new TypeRegistrar();
+        registrar.RegisterInstance(typeof(ISpeedTestService), mock);
+        registrar.Register(typeof(IClock), typeof(ClockStub));
+        var app = GetCommandAppTester(registrar, cancellationTokenSource.Token);
 
         // When
         var result = await app.RunAsync();

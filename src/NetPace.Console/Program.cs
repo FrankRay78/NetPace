@@ -45,16 +45,32 @@ public static class Program
 
     public static int Main(string[] args)
     {
-        //var registrar = new TypeRegistrar();
-        //registrar.RegisterInstance(typeof(ISpeedTestService), new SpeedTestStub(250));
-        //registrar.Register(typeof(IClock), typeof(ClockStub));
-
         var registrar = new TypeRegistrar();
-        registrar.Register(typeof(ISpeedTestService), typeof(OoklaSpeedtest));
-        registrar.Register(typeof(IClock), typeof(Clock));
+
+        var cancellationTokenSource = new CancellationTokenSource();
+        registrar.RegisterInstance(typeof(CancellationToken), cancellationTokenSource.Token);
+
+        Console.CancelKeyPress += (_, eventArgs) =>
+        {
+            // Try to cancel gracefully the first time, then abort the process the second time Ctrl+C is pressed
+            eventArgs.Cancel = !cancellationTokenSource.IsCancellationRequested;
+            cancellationTokenSource.Cancel();
+        };
+
+        if (args != null && args.Contains("--stub"))
+        {
+            // Executes NetPace against stub service implementations.
+            registrar.RegisterInstance(typeof(ISpeedTestService), new SpeedTestStub(250));
+            registrar.Register(typeof(IClock), typeof(ClockStub));
+        }
+        else
+        {
+            registrar.Register(typeof(ISpeedTestService), typeof(OoklaSpeedtest));
+            registrar.Register(typeof(IClock), typeof(Clock));
+        }
 
         var app = GetCommandApp(registrar);
-        var result = app.Run(args);
+        var result = app.Run(args ?? Array.Empty<string>());
         return result;
     }
 }
