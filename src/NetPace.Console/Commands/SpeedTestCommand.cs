@@ -1,27 +1,17 @@
 using ByteSizeLib;
 using Humanizer;
 using NetPace.Core;
+using Spectre.Console.Extensions;
 
 namespace NetPace.Console.Commands;
 
-public sealed class SpeedTestCommand : AsyncCommand<SpeedTestCommandSettings>
+public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService speedTestClient, IClock clock, CancellationToken cancellationToken) : CancelableCommand<SpeedTestCommandSettings>(cancellationToken)
 {
-    private IAnsiConsole console;
-    private ISpeedTestService speedTestClient;
-    private IClock clock;
-
-    public SpeedTestCommand(IAnsiConsole console, ISpeedTestService speedTestClient, IClock clock)
-    {
-        this.console = console;
-        this.speedTestClient = speedTestClient;
-        this.clock = clock;
-    }
-
-    public override async Task<int> ExecuteAsync(CommandContext context, SpeedTestCommandSettings settings)
+    protected override async Task<int> ExecuteAsync(CommandContext context, SpeedTestCommandSettings settings, CancellationToken cancellationToken)
     {
         // Get the speed test server
-        var servers = await speedTestClient.GetServersAsync();
-        var fastest = await speedTestClient.GetFastestServerByLatencyAsync(servers);
+        var servers = await speedTestClient.GetServersAsync(cancellationToken);
+        var fastest = await speedTestClient.GetFastestServerByLatencyAsync(servers, cancellationToken);
 
         if (!settings.CSV && ((settings.Verbosity & (Verbosity.Normal | Verbosity.Debug)) != 0))
         {
@@ -35,7 +25,7 @@ public sealed class SpeedTestCommand : AsyncCommand<SpeedTestCommandSettings>
 
 
         // Perform speed test
-        var (downloadResult, uploadResult) = await PerformSpeedTestAsync(fastest.Server, settings);
+        var (downloadResult, uploadResult) = await PerformSpeedTestAsync(fastest.Server, settings, cancellationToken);
 
 
         // CSV output overrides the display options below
@@ -100,15 +90,15 @@ public sealed class SpeedTestCommand : AsyncCommand<SpeedTestCommandSettings>
         return 0;
     }
 
-    private async Task<(SpeedTestResult downloadResult, SpeedTestResult uploadResult)> PerformSpeedTestAsync(IServer server, SpeedTestCommandSettings settings)
+    private async Task<(SpeedTestResult downloadResult, SpeedTestResult uploadResult)> PerformSpeedTestAsync(IServer server, SpeedTestCommandSettings settings, CancellationToken cancellationToken)
     {
         var downloadResult = new SpeedTestResult();
         var uploadResult = new SpeedTestResult();
 
         if (settings.CSV || ((settings.Verbosity & Verbosity.Minimal) != 0))
         {
-            if (!settings.NoDownload) downloadResult = await speedTestClient.GetDownloadSpeedAsync(server, settings.DownloadSizeMb);
-            if (!settings.NoUpload) uploadResult = await speedTestClient.GetUploadSpeedAsync(server, settings.UploadSizeMb);
+            if (!settings.NoDownload) downloadResult = await speedTestClient.GetDownloadSpeedAsync(server, settings.DownloadSizeMb, cancellationToken);
+            if (!settings.NoUpload) uploadResult = await speedTestClient.GetUploadSpeedAsync(server, settings.UploadSizeMb, cancellationToken);
         }
         else
         {
@@ -141,14 +131,14 @@ public sealed class SpeedTestCommand : AsyncCommand<SpeedTestCommandSettings>
                         downloadResult = await speedTestClient.GetDownloadSpeedAsync(server, settings.DownloadSizeMb, (SpeedTestProgress progress) =>
                         {
                             downloadProgress!.Value = progress.PercentageComplete;
-                        });
+                        }, cancellationToken);
                     }
                     if (!settings.NoUpload)
                     {
                         uploadResult = await speedTestClient.GetUploadSpeedAsync(server, settings.UploadSizeMb, (SpeedTestProgress progress) =>
                         {
                             uploadProgress!.Value = progress.PercentageComplete;
-                        });
+                        }, cancellationToken);
                     }
                 });
         }

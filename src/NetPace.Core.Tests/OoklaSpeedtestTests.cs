@@ -463,6 +463,49 @@ public class OoklaSpeedtestTests
     }
 
     [Fact]
+    public async Task GetDownloadSpeedAsync_ShouldReportProgress_RespectDownloadSize()
+    {
+        // Given
+        const int downloadSizeMb = 2;
+
+        var mockHttp = new MockHttpMessageHandler();
+        mockHttp.When("*").Respond(request =>
+        {
+            var response = new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new ByteArrayContent(new byte[512 * 1024])
+            };
+
+            return response;
+        });
+
+        var httpClient = mockHttp.ToHttpClient();
+        var settings = new OoklaSpeedtestSettings
+        {
+            DownloadTest = new()
+            {
+                DownloadSizes = new[] { 100 },
+                DownloadSizeIterations = 10,
+                DownloadParallelTasks = 1
+            }
+        };
+
+        var speedtest = new OoklaSpeedtest(settings, httpClient);
+        var server = new Clients.Testing.Server { Url = "http://example.com/", Sponsor = "Test", Location = "Test" };
+        var progressReports = new List<int>();
+
+        // When
+        var result = await speedtest.GetDownloadSpeedAsync(server, downloadSizeMb, progress => progressReports.Add(progress.PercentageComplete));
+
+        // Then
+        result.ShouldNotBeNull();
+        result.ElapsedMilliseconds.ShouldBeGreaterThanOrEqualTo(0);
+        result.BytesProcessed.ShouldBe(4 * 512 * 1024);
+        progressReports.ShouldNotBeNull();
+        progressReports.ShouldBe(new[] { 10, 20, 30, 100 });
+    }
+
+    [Fact]
     public async Task GetDownloadSpeedAsync_ShouldCancel_WhenTokenIsCancelled()
     {
         // Given
@@ -649,6 +692,42 @@ public class OoklaSpeedtestTests
         // HACK: Actual bytes should be very close to the intended upload size.
         // Incomplete tasks makes this difficult to test so use the following workaround:
         actualBytes.ShouldBeLessThanOrEqualTo((long)(2 * uploadSizeMb * 1024 * 1024));
+    }
+
+    [Fact]
+    public async Task GetUploadSpeedAsync_ShouldReportProgress_RespectUploadSize()
+    {
+        // Given
+        const int uploadSizeMb = 2;
+
+        var mockHttp = new MockHttpMessageHandler();
+        mockHttp.When("*").Respond(_ => new HttpResponseMessage(HttpStatusCode.OK));
+
+        var httpClient = mockHttp.ToHttpClient();
+        var settings = new OoklaSpeedtestSettings
+        {
+            UploadTest = new()
+            {
+                UploadIncrements = 1,
+                UploadSizeIncrementKb = 512,
+                UploadSizeIterations = 10,
+                UploadParallelTasks = 1
+            }
+        };
+
+        var speedtest = new OoklaSpeedtest(settings, httpClient);
+        var server = new Clients.Testing.Server { Url = "http://example.com/", Sponsor = "Test", Location = "Test" };
+        var progressReports = new List<int>();
+
+        // When
+        var result = await speedtest.GetUploadSpeedAsync(server, uploadSizeMb, progress => progressReports.Add(progress.PercentageComplete));
+
+        // Then
+        result.ShouldNotBeNull();
+        result.ElapsedMilliseconds.ShouldBeGreaterThanOrEqualTo(0);
+        result.BytesProcessed.ShouldBe(4 * 512 * 1024);
+        progressReports.ShouldNotBeNull();
+        progressReports.ShouldBe(new[] { 10, 20, 30, 100 });
     }
 
     [Fact]

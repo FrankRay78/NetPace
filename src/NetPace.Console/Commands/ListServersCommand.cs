@@ -1,20 +1,11 @@
 using NetPace.Core;
+using Spectre.Console.Extensions;
 
 namespace NetPace.Console.Commands;
 
-public sealed class ListServersCommand : AsyncCommand<ListServersCommandSettings>
+public sealed class ListServersCommand(IAnsiConsole console, ISpeedTestService speedTestClient, CancellationToken cancellationToken) : CancelableCommand<ListServersCommandSettings>(cancellationToken)
 {
-    private IAnsiConsole console;
-    private ISpeedTestService speedTestClient;
-
-    public ListServersCommand(IAnsiConsole console, ISpeedTestService speedTestClient)
-    {
-        this.console = console;
-        this.speedTestClient = speedTestClient;
-
-    }
-
-    public override async Task<int> ExecuteAsync(CommandContext context, ListServersCommandSettings settings)
+    protected override async Task<int> ExecuteAsync(CommandContext context, ListServersCommandSettings settings, CancellationToken cancellationToken)
     {
         var servers = await speedTestClient.GetServersAsync();
 

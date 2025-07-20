@@ -16,6 +16,17 @@ Built with .NET 8.0 — runs on Windows, Linux, and macOS.
 <br />
 
 
+## Features
+
+* Server discovery, latency measurement, download and upload speed testing.
+* Command-line application and C# Microsoft .Net [NuGet](https://www.nuget.org/packages/NetPace.Core/) library for developers.
+* User configurable output (eg. SI or IEC units, BitsPerSecond or BytesPerSecond, CSV formats).
+* Highly configurable traffic profiles (see [DownloadTestSettings](https://github.com/FrankRay78/NetPace/blob/main/src/NetPace.Core/Clients/Ookla/Settings/DownloadTestSettings.cs) and [UploadTestSettings](https://github.com/FrankRay78/NetPace/blob/main/src/NetPace.Core/Clients/Ookla/Settings/UploadTestSettings.cs)).
+* Highly reliable, utilises [Ookla's](https://www.speedtest.net/) Speedtest servers.
+
+<br />
+
+
 ## About The Project
 A cross-platform command-line application for performing network speed tests, including server discovery, latency measurement, download and upload speed testing. 
 The core speed test library, `NetPace.Core`, has been designed for developer use and can be installed via [NuGet](https://www.nuget.org/packages/NetPace.Core/).
@@ -30,9 +41,9 @@ The obligatory screenshot (as of 12 April 2025):
 
 
 ## Background
-The idea for this project came from my experience as the [Spectre.Console](https://github.com/spectreconsole/spectre.console) CLI sub-system maintainer, having never actually used the library for my own use. My motivation is to become expert at developing excellent command line applications, following best practices like the [Command Line Interface Guidelines](https://clig.dev/), and then taking the experience back into my maintainer role. 
+This project came out of my time as the [Spectre.Console](https://github.com/spectreconsole/spectre.console) CLI sub-system maintainer, having never actually used the library for myself. I wanted to gain practical experience by developing a command-line application, following best practices such as the [Command Line Interface Guidelines](https://clig.dev/), and then applying that experience in my maintainer role. This is also known as 'dogfooding' in the tech industry ie. using your own product before expecting others to do the same.
 
-This is also known as 'dogfooding' in the tech industry ie. using your own product before expecting others to do the same.
+Sadly, I am no longer the `Spectre.Console` CLI sub-system maintainer, but this project continues to be well supported.
 
 <br />
 
@@ -117,7 +128,9 @@ Console.WriteLine($"Download: {downloadResult.GetSpeedString(SpeedUnit.BitsPerSe
 Console.WriteLine($"Upload: {uploadResult.GetSpeedString(SpeedUnit.BitsPerSecond, SpeedUnitSystem.SI)}");
 ```
 
-See the [ISpeedTestService](https://github.com/FrankRay78/NetPace/blob/main/src/NetPace.Core/ISpeedTestService.cs) interface for full method details and overloads, the [Example Console App](https://github.com/FrankRay78/NetPace/tree/main/examples/ConsoleApp/Program.cs) for a minimal usage example, and the [NetPace command-line application](https://github.com/FrankRay78/NetPace/tree/main/src/NetPace.Console) for an extensive, production-quality usage example.
+See the [ISpeedTestService](https://github.com/FrankRay78/NetPace/blob/main/src/NetPace.Core/ISpeedTestService.cs) interface for full method details and overloads.
+
+[Example Console App](https://github.com/FrankRay78/NetPace/tree/main/examples/ConsoleApp/Program.cs) is a minimal usage example, and [NetPace command-line application](https://github.com/FrankRay78/NetPace/tree/main/src/NetPace.Console) is an extensive, production-quality usage example.
 
 <br />
 
@@ -126,7 +139,7 @@ See the [ISpeedTestService](https://github.com/FrankRay78/NetPace/blob/main/src/
 > [!IMPORTANT]\
 > I'm not currently accepting pull requests for this project. 
 
-You can contribute by [starting a discussion](https://github.com/FrankRay78/NetPace/discussions), [opening a new issue](https://github.com/FrankRay78/NetPace/issues/new/choose) or commenting on existing ones, and you are most welcome to fork the repository for your own purposes. 
+You can contribute by [opening a new issue](https://github.com/FrankRay78/NetPace/issues/new/choose) or commenting on existing ones, and you are most welcome to fork the repository for your own purposes. 
 
 But please **don't be offended** if I close or delete issues as I see fit.
 
