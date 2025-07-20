@@ -16,6 +16,17 @@ Built with .NET 8.0 — runs on Windows, Linux, and macOS.
 <br />
 
 
+## Features
+
+* Server discovery, latency measurement, download and upload speed testing.
+* Command-line application and C# Microsoft .Net [NuGet](https://www.nuget.org/packages/NetPace.Core/) library for developers.
+* User configurable output (eg. SI or IEC units, BitsPerSecond or BytesPerSecond, CSV formats).
+* Highly configurable traffic profiles (see [DownloadTestSettings](https://github.com/FrankRay78/NetPace/blob/main/src/NetPace.Core/Clients/Ookla/Settings/DownloadTestSettings.cs) and [UploadTestSettings](https://github.com/FrankRay78/NetPace/blob/main/src/NetPace.Core/Clients/Ookla/Settings/UploadTestSettings.cs)).
+* Highly reliable, utilises [Ookla's](https://www.speedtest.net/) Speedtest servers.
+
+<br />
+
+
 ## About The Project
 A cross-platform command-line application for performing network speed tests, including server discovery, latency measurement, download and upload speed testing. 
 The core speed test library, `NetPace.Core`, has been designed for developer use and can be installed via [NuGet](https://www.nuget.org/packages/NetPace.Core/).
@@ -32,7 +43,7 @@ The obligatory screenshot (as of 12 April 2025):
 ## Background
 This project came out of my time as the [Spectre.Console](https://github.com/spectreconsole/spectre.console) CLI sub-system maintainer, having never actually used the library for myself. I wanted to gain practical experience by developing a command-line application, following best practices such as the [Command Line Interface Guidelines](https://clig.dev/), and then applying that experience in my maintainer role. This is also known as 'dogfooding' in the tech industry ie. using your own product before expecting others to do the same.
 
-Sadly, I am no longer the `Spectre.Console` CLI sub-system maintainer. However, this project continues to be well supported.
+Sadly, I am no longer the `Spectre.Console` CLI sub-system maintainer, but this project continues to be well supported.
 
 <br />
 
