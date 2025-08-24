@@ -18,11 +18,6 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
             console.WriteLine($"{fastest.Server.Sponsor}");
         }
 
-        if (settings.NoDownload && settings.NoUpload)
-        {
-            return 0;
-        }
-
 
         // Perform speed test
         var (downloadResult, uploadResult) = await PerformSpeedTestAsync(fastest.Server, settings, cancellationToken);
@@ -97,6 +92,14 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
     {
         var downloadResult = new SpeedTestResult();
         var uploadResult = new SpeedTestResult();
+
+
+        if (settings.NoDownload && settings.NoUpload)
+        {
+            // Latency only test - so just return
+            return (downloadResult, uploadResult);
+        }
+
 
         if (settings.CSV || ((settings.Verbosity & Verbosity.Minimal) != 0))
         {

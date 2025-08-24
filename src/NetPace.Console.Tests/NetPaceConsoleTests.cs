@@ -98,6 +98,23 @@ public class NetPaceConsoleTests
     }
 
     [Fact]
+    public async Task Should_Perform_Speed_Test_Latency_Only()
+    {
+        // Given
+        var registrar = new TypeRegistrar();
+        registrar.Register(typeof(ISpeedTestService), typeof(SpeedTestStub));
+        registrar.Register(typeof(IClock), typeof(ClockStub));
+        var app = GetCommandAppTester(registrar);
+
+        // When
+        var result = await app.RunAsync("--no-download", "--no-upload");
+
+        // Then
+        Assert.Equal(0, result.ExitCode);
+        await Verify(result.Output);
+    }
+
+    [Fact]
     public async Task Should_Perform_Speed_Test()
     {
         // Given
