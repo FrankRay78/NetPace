@@ -6,7 +6,7 @@ updates:
       interval: "daily"
       time: "23:00"
       timezone: "UTC"
-    open-pull-requests-limit: 5
+    open-pull-requests-limit: 10
     reviewers:
       - "FrankRay78"
     assignees:
