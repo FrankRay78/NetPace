@@ -1,6 +1,6 @@
-﻿Test Sponsor 1 (100 ms)
+Test Sponsor 1
 1 KB downloaded in 1 second
 7 KB uploaded in 3 seconds
-Download: 8 Kbps Upload: 18.67 Kbps
+Latency: 100 ms, Download: 8 Kbps, Upload: 18.67 Kbps
 
 Try 'NetPace --help' for more information.
