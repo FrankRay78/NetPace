@@ -258,6 +258,20 @@ public sealed class OoklaSpeedtest : ISpeedTestService
                         {
                             // Update the completion percentage.
                             var percentageComplete = (int)((double)completedCount / totalCount * 100);
+
+                            if (maxBytes != long.MaxValue)
+                            {
+                                // When a user specified limit has been imposed on the test,
+                                // we should defer to the greater % complete value.
+
+                                var percentageCompleteMaxBytes = (int)((double)totalBytesReturned / maxBytes * 100);
+
+                                if (percentageCompleteMaxBytes > percentageComplete)
+                                {
+                                    percentageComplete = percentageCompleteMaxBytes;
+                                }
+                            }
+
                             UpdateProgress(new SpeedTestProgress { PercentageComplete = percentageComplete });
                         }
                     }
