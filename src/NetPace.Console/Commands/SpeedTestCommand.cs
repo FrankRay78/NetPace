@@ -15,12 +15,7 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
 
         if (!settings.CSV && ((settings.Verbosity & (Verbosity.Normal | Verbosity.Debug)) != 0))
         {
-            console.WriteLine($"{fastest.Server.Sponsor} ({fastest.Latency} ms)");
-        }
-
-        if (settings.NoDownload && settings.NoUpload)
-        {
-            return 0;
+            console.WriteLine($"{fastest.Server.Sponsor}");
         }
 
 
@@ -37,6 +32,7 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
             console.WriteLine(string.Join(settings.CSVDelimiter, new[]
             {
                 settings.IncludeTimestamp ? "Timestamp" : null,
+                "Latency",
                 !settings.NoDownload ? "Download" : null,
                 !settings.NoUpload ? "Upload" : null
             }.Where(s => !string.IsNullOrEmpty(s))));
@@ -44,6 +40,7 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
             console.WriteLine(string.Join(settings.CSVDelimiter, new[]
             {
                 settings.IncludeTimestamp ? clock.Now.ToString(settings.DateTimeFormat) : null,
+                $"{fastest.Latency} ms",
                 !settings.NoDownload ? downloadResult.GetSpeedString(settings.SpeedUnit, settings.SpeedUnitSystem) : null,
                 !settings.NoUpload ? uploadResult.GetSpeedString(settings.SpeedUnit, settings.SpeedUnitSystem) : null
             }.Where(s => !string.IsNullOrEmpty(s))));
@@ -73,9 +70,10 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
 
 
         // Display speed test result
-        console.WriteLine(string.Join(" ", new[]
+        console.WriteLine(string.Join(", ", new[]
         {
             settings.IncludeTimestamp ? clock.Now.ToString(settings.DateTimeFormat) : null,
+            $"Latency: {fastest.Latency} ms",
             !settings.NoDownload ? $"Download: {downloadResult.GetSpeedString(settings.SpeedUnit, settings.SpeedUnitSystem)}" : null,
             !settings.NoUpload ? $"Upload: {uploadResult.GetSpeedString(settings.SpeedUnit, settings.SpeedUnitSystem)}" : null
         }.Where(s => !string.IsNullOrEmpty(s))));
@@ -94,6 +92,14 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
     {
         var downloadResult = new SpeedTestResult();
         var uploadResult = new SpeedTestResult();
+
+
+        if (settings.NoDownload && settings.NoUpload)
+        {
+            // Latency only test - so just return
+            return (downloadResult, uploadResult);
+        }
+
 
         if (settings.CSV || ((settings.Verbosity & Verbosity.Minimal) != 0))
         {

@@ -1,4 +1,4 @@
-﻿Test Sponsor 1 (100 ms)
-Download: 1 KBps Upload: 2.33 KBps
+Test Sponsor 1
+Latency: 100 ms, Download: 1 KBps, Upload: 2.33 KBps
 
 Try 'NetPace --help' for more information.

@@ -502,7 +502,7 @@ public class OoklaSpeedtestTests
         result.ElapsedMilliseconds.ShouldBeGreaterThanOrEqualTo(0);
         result.BytesProcessed.ShouldBe(4 * 512 * 1024);
         progressReports.ShouldNotBeNull();
-        progressReports.ShouldBe(new[] { 10, 20, 30, 100 });
+        progressReports.ShouldBe(new[] { 25, 50, 75, 100 });
     }
 
     [Fact]
@@ -727,7 +727,7 @@ public class OoklaSpeedtestTests
         result.ElapsedMilliseconds.ShouldBeGreaterThanOrEqualTo(0);
         result.BytesProcessed.ShouldBe(4 * 512 * 1024);
         progressReports.ShouldNotBeNull();
-        progressReports.ShouldBe(new[] { 10, 20, 30, 100 });
+        progressReports.ShouldBe(new[] { 25, 50, 75, 100 });
     }
 
     [Fact]
