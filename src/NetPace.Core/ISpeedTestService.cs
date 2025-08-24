@@ -46,7 +46,7 @@ public interface ISpeedTestService
     /// Measures the download speed of the specified server.
     /// </summary>
     /// <param name="server">The server to measure download speed from.</param>
-    /// <param name="downloadSizeMb">The size upon which to terminate the download test.</param>
+    /// <param name="downloadSizeMb">The size upon which to terminate the download test (IEC MiB).</param>
     /// <param name="cancellationToken">The token to allow the operation to be cancelled.</param>
     /// <returns>The result including bytes processed and elapsed time in milliseconds.</returns>
     public Task<SpeedTestResult> GetDownloadSpeedAsync(IServer server, int downloadSizeMb, CancellationToken cancellationToken = default);
@@ -64,7 +64,7 @@ public interface ISpeedTestService
     /// Measures the download speed of the specified server.
     /// </summary>
     /// <param name="server">The server to measure download speed from.</param>
-    /// <param name="downloadSizeMb">The size upon which to terminate the download test.</param>
+    /// <param name="downloadSizeMb">The size upon which to terminate the download test (IEC MiB).</param>
     /// <param name="UpdateProgress">An action that receives the download progress percentage (0 to 100).</param>
     /// <param name="cancellationToken">The token to allow the operation to be cancelled.</param>
     /// <returns>The result including bytes processed and elapsed time in milliseconds.</returns>
@@ -82,7 +82,7 @@ public interface ISpeedTestService
     /// Measures the upload speed of the specified server.
     /// </summary>
     /// <param name="server">The server to measure upload speed from.</param>
-    /// <param name="uploadSizeMb">The size upon which to terminate the upload test.</param>
+    /// <param name="uploadSizeMb">The size upon which to terminate the upload test (IEC MiB).</param>
     /// <param name="cancellationToken">The token to allow the operation to be cancelled.</param>
     /// <returns>The result including bytes processed and elapsed time in milliseconds.</returns>
     public Task<SpeedTestResult> GetUploadSpeedAsync(IServer server, int uploadSizeMb, CancellationToken cancellationToken = default);
@@ -100,10 +100,9 @@ public interface ISpeedTestService
     /// Measures the upload speed of the specified server.
     /// </summary>
     /// <param name="server">The server to measure upload speed from.</param>
-    /// <param name="uploadSizeMb">The size upon which to terminate the upload test.</param>
+    /// <param name="uploadSizeMb">The size upon which to terminate the upload test (IEC MiB).</param>
     /// <param name="UpdateProgress">An action that receives the upload progress percentage (0 to 100).</param>
     /// <param name="cancellationToken">The token to allow the operation to be cancelled.</param>
     /// <returns>The result including bytes processed and elapsed time in milliseconds.</returns>
     public Task<SpeedTestResult> GetUploadSpeedAsync(IServer server, int uploadSizeMb, Action<SpeedTestProgress> UpdateProgress, CancellationToken cancellationToken = default);
-
 }

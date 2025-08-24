@@ -121,6 +121,14 @@ public sealed class OoklaSpeedtest : ISpeedTestService
     }
 
     /// <inheritdoc/>
+    /// <remarks>
+    /// In the Ookla implementation, downloads are processed in parallel batches 
+    /// (configured via <see cref="OoklaSpeedtestSettings.DownloadTest"/>). The <paramref name="downloadSizeMb"/> 
+    /// parameter triggers cancellation of the internal <see cref="CancellationTokenSource"/> once the threshold 
+    /// is reached, but all currently executing parallel download tasks will complete before termination.
+    /// The actual bytes processed may significantly exceed the specified limit depending on the number of 
+    /// concurrent downloads and their individual sizes.
+    /// </remarks>
     public async Task<SpeedTestResult> GetDownloadSpeedAsync(IServer server, int downloadSizeMb, CancellationToken cancellationToken = default)
     {
         return await GetDownloadSpeedAsync(server, downloadSizeMb, (_) => { }, cancellationToken);
@@ -133,6 +141,14 @@ public sealed class OoklaSpeedtest : ISpeedTestService
     }
 
     /// <inheritdoc/>
+    /// <remarks>
+    /// In the Ookla implementation, downloads are processed in parallel batches 
+    /// (configured via <see cref="OoklaSpeedtestSettings.DownloadTest"/>). The <paramref name="downloadSizeMb"/> 
+    /// parameter triggers cancellation of the internal <see cref="CancellationTokenSource"/> once the threshold 
+    /// is reached, but all currently executing parallel download tasks will complete before termination.
+    /// The actual bytes processed may significantly exceed the specified limit depending on the number of 
+    /// concurrent downloads and their individual sizes.
+    /// </remarks>
     public async Task<SpeedTestResult> GetDownloadSpeedAsync(IServer server, int downloadSizeMb, Action<SpeedTestProgress> UpdateProgress, CancellationToken cancellationToken = default)
     {
         var downloadUrls = GenerateDownloadUrls(server.Url, settings.DownloadTest.DownloadSizes, settings.DownloadTest.DownloadSizeIterations);
@@ -156,6 +172,14 @@ public sealed class OoklaSpeedtest : ISpeedTestService
     }
 
     /// <inheritdoc/>
+    /// <remarks>
+    /// In the default Ookla implementation, uploads are processed in parallel batches
+    /// (configured via <see cref="OoklaSpeedtestSettings.UploadTest"/>). The <paramref name="uploadSizeMb"/> 
+    /// parameter triggers cancellation of the internal <see cref="CancellationTokenSource"/> once the threshold 
+    /// is reached, but all currently executing parallel upload tasks will complete before termination.
+    /// The actual bytes processed may significantly exceed the specified limit depending on the number of 
+    /// concurrent uploads and their individual sizes.
+    /// </remarks>
     public async Task<SpeedTestResult> GetUploadSpeedAsync(IServer server, int uploadSizeMb, CancellationToken cancellationToken = default)
     {
         return await GetUploadSpeedAsync(server, uploadSizeMb, (_) => { }, cancellationToken);
@@ -168,6 +192,14 @@ public sealed class OoklaSpeedtest : ISpeedTestService
     }
 
     /// <inheritdoc/>
+    /// <remarks>
+    /// In the default Ookla implementation, uploads are processed in parallel batches
+    /// (configured via <see cref="OoklaSpeedtestSettings.UploadTest"/>). The <paramref name="uploadSizeMb"/> 
+    /// parameter triggers cancellation of the internal <see cref="CancellationTokenSource"/> once the threshold 
+    /// is reached, but all currently executing parallel upload tasks will complete before termination.
+    /// The actual bytes processed may significantly exceed the specified limit depending on the number of 
+    /// concurrent uploads and their individual sizes.
+    /// </remarks>
     public async Task<SpeedTestResult> GetUploadSpeedAsync(IServer server, int uploadSizeMb, Action<SpeedTestProgress> UpdateProgress, CancellationToken cancellationToken = default)
     {
         var testData = GenerateUploadData(settings.UploadTest.UploadIncrements, settings.UploadTest.UploadSizeIncrementKb, settings.UploadTest.UploadSizeIterations);
