@@ -49,11 +49,6 @@ public interface ISpeedTestService
     /// <param name="downloadSizeMb">The size upon which to terminate the download test (IEC MiB).</param>
     /// <param name="cancellationToken">The token to allow the operation to be cancelled.</param>
     /// <returns>The result including bytes processed and elapsed time in milliseconds.</returns>
-    /// <remarks>
-    /// The <paramref name="downloadSizeMb"/> parameter serves as a trigger to stop initiating new downloads
-    /// once the specified size is reached. However, any in-flight downloads will continue until complete,
-    /// meaning the actual total download size may exceed the specified value.
-    /// </remarks>
     public Task<SpeedTestResult> GetDownloadSpeedAsync(IServer server, int downloadSizeMb, CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -73,11 +68,6 @@ public interface ISpeedTestService
     /// <param name="UpdateProgress">An action that receives the download progress percentage (0 to 100).</param>
     /// <param name="cancellationToken">The token to allow the operation to be cancelled.</param>
     /// <returns>The result including bytes processed and elapsed time in milliseconds.</returns>
-    /// <remarks>
-    /// The <paramref name="downloadSizeMb"/> parameter serves as a trigger to stop initiating new downloads
-    /// once the specified size is reached. However, any in-flight downloads will continue until complete,
-    /// meaning the actual total download size may exceed the specified value.
-    /// </remarks>
     public Task<SpeedTestResult> GetDownloadSpeedAsync(IServer server, int downloadSizeMb, Action<SpeedTestProgress> UpdateProgress, CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -95,11 +85,6 @@ public interface ISpeedTestService
     /// <param name="uploadSizeMb">The size upon which to terminate the upload test (IEC MiB).</param>
     /// <param name="cancellationToken">The token to allow the operation to be cancelled.</param>
     /// <returns>The result including bytes processed and elapsed time in milliseconds.</returns>
-    /// <remarks>
-    /// The <paramref name="uploadSizeMb"/> parameter serves as a trigger to stop initiating new uploads
-    /// once the specified size is reached. However, any in-flight uploads will continue until complete,
-    /// meaning the actual total upload size may exceed the specified value.
-    /// </remarks>
     public Task<SpeedTestResult> GetUploadSpeedAsync(IServer server, int uploadSizeMb, CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -119,9 +104,5 @@ public interface ISpeedTestService
     /// <param name="UpdateProgress">An action that receives the upload progress percentage (0 to 100).</param>
     /// <param name="cancellationToken">The token to allow the operation to be cancelled.</param>
     /// <returns>The result including bytes processed and elapsed time in milliseconds.</returns>
-    /// The <paramref name="uploadSizeMb"/> parameter serves as a trigger to stop initiating new uploads
-    /// once the specified size is reached. However, any in-flight uploads will continue until complete,
-    /// meaning the actual total upload size may exceed the specified value.
-    /// </remarks>
     public Task<SpeedTestResult> GetUploadSpeedAsync(IServer server, int uploadSizeMb, Action<SpeedTestProgress> UpdateProgress, CancellationToken cancellationToken = default);
 }
