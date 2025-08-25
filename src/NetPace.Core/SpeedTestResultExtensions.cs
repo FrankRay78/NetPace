@@ -17,7 +17,7 @@ public static class SpeedTestResultExtensions
         double divisor = unitSystem == SpeedUnitSystem.IEC ? 1024 : 1000;
 
         var speed = isBits
-            ? result.BytesProcessed * 8 / ((double)result.ElapsedMilliseconds / 1000)
+            ? result.BytesProcessed * 8.0 / ((double)result.ElapsedMilliseconds / 1000)
             : result.BytesProcessed / ((double)result.ElapsedMilliseconds / 1000);
 
         return FormatSpeed(speed, isBits, unitSystem, divisor);
