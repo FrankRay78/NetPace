@@ -1,4 +1,7 @@
+
 Test Sponsor 1
+http://test1.com
+
 Latency: 100 ms
 
 Try 'NetPace --help' for more information.

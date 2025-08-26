@@ -19,6 +19,12 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
             console.WriteLine("");
             console.WriteLine($"{fastest.Server.Sponsor}", new Style(foreground: Color.Yellow, decoration: Decoration.Bold));
             console.WriteLine($"{fastest.Server.Url}");
+
+            if (!console.Profile.Capabilities.Interactive)
+            {
+                // Add an extra line given the live widget will not appear.
+                console.WriteLine("");
+            }
         }
 
 
@@ -76,8 +82,10 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
             }
         }
 
-        if ((settings.NoDownload && settings.NoUpload) && ((settings.Verbosity & (Verbosity.Normal | Verbosity.Debug)) != 0))
+        if ((settings.NoDownload && settings.NoUpload) && ((settings.Verbosity & (Verbosity.Normal | Verbosity.Debug)) != 0) &&
+            console.Profile.Capabilities.Interactive)
         {
+            // Latency only test: Add an extra blank line for formatting.
             console.WriteLine("");
         }
 
