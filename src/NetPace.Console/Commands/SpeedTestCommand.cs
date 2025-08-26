@@ -1,3 +1,4 @@
+using System;
 using ByteSizeLib;
 using Humanizer;
 using NetPace.Core;
@@ -15,7 +16,9 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
 
         if (!settings.CSV && ((settings.Verbosity & (Verbosity.Normal | Verbosity.Debug)) != 0))
         {
-            console.WriteLine($"{fastest.Server.Sponsor}");
+            console.WriteLine($"");
+            console.WriteLine($"{fastest.Server.Sponsor}", new Style(foreground: Color.Yellow, decoration: Decoration.Bold));
+            console.WriteLine($"{fastest.Server.Url}");
         }
 
 

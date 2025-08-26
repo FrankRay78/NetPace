@@ -7,20 +7,46 @@ public sealed class ListServersCommand(IAnsiConsole console, ISpeedTestService s
 {
     protected override async Task<int> ExecuteAsync(CommandContext context, ListServersCommandSettings settings, CancellationToken cancellationToken)
     {
-        var servers = await speedTestClient.GetServersAsync();
+        var servers = await speedTestClient.GetServersAsync(cancellationToken);
 
         var serversList = servers.OrderBy(servers => servers.Location).ToList();
 
-        if (settings.ShowLatency == null || !settings.ShowLatency.HasValue || !settings.ShowLatency.Value)
+        if (settings.Fastest != null && settings.Fastest.HasValue && settings.Fastest.Value)
+        {
+            await DisplayFastestServer(serversList, speedTestClient, cancellationToken);
+        }
+        else if (settings.ShowLatency == null || !settings.ShowLatency.HasValue || !settings.ShowLatency.Value)
         {
             DisplayServers(serversList);
         }
         else
         {
-            await DisplayServersWithLatency(serversList, speedTestClient);
+            await DisplayServersWithLatency(serversList, speedTestClient, cancellationToken);
         }
 
         return 0;
+    }
+
+    private async Task DisplayFastestServer(List<IServer> servers, ISpeedTestService speedTestClient, CancellationToken cancellationToken)
+    {
+        console.WriteLine("");
+        console.MarkupLine("Press [yellow]CTRL+C[/] to exit.");
+        console.WriteLine("");
+
+        var fastestLatencyResult = await speedTestClient.GetFastestServerByLatencyAsync(servers.ToArray(), cancellationToken);
+
+        var table = new Table()
+            .Border(TableBorder.Square)
+            .BorderColor(Color.Red)
+            .AddColumn(new TableColumn("Location"))
+            .AddColumn(new TableColumn("Sponsor"))
+            .AddColumn(new TableColumn("Url"))
+            .AddColumn(new TableColumn("Latency"));
+
+        table.AddRow(fastestLatencyResult.Server.Location ?? string.Empty, fastestLatencyResult.Server.Sponsor ?? string.Empty, fastestLatencyResult.Server.Url ?? string.Empty, $"{fastestLatencyResult.Latency}ms");
+
+        console.WriteLine("");
+        console.Write(table);
     }
 
     private void DisplayServers(List<IServer> servers)
@@ -29,30 +55,32 @@ public sealed class ListServersCommand(IAnsiConsole console, ISpeedTestService s
             .Border(TableBorder.Square)
             .BorderColor(Color.Red)
             .AddColumn(new TableColumn("Location"))
-            .AddColumn(new TableColumn("Sponsor"));
+            .AddColumn(new TableColumn("Sponsor"))
+            .AddColumn(new TableColumn("Url"));
 
         foreach (var server in servers)
         {
-            table.AddRow(server.Location ?? string.Empty, server.Sponsor ?? string.Empty);
+            table.AddRow(server.Location ?? string.Empty, server.Sponsor ?? string.Empty, server.Url ?? string.Empty);
         }
 
         console.WriteLine("");
         console.Write(table);
     }
 
-    private async Task DisplayServersWithLatency(List<IServer> servers, ISpeedTestService speedTestClient)
+    private async Task DisplayServersWithLatency(List<IServer> servers, ISpeedTestService speedTestClient, CancellationToken cancellationToken)
     {
         var table = new Table()
             .Border(TableBorder.Square)
             .BorderColor(Color.Red)
             .AddColumn(new TableColumn("Location"))
             .AddColumn(new TableColumn("Sponsor"))
+            .AddColumn(new TableColumn("Url"))
             .AddColumn(new TableColumn("Latency"));
 
         // Add the initial server list (without latency)
         foreach (var server in servers)
         {
-            table.AddRow(server.Location ?? string.Empty, server.Sponsor ?? string.Empty);
+            table.AddRow(server.Location ?? string.Empty, server.Sponsor ?? string.Empty, server.Url ?? string.Empty);
         }
 
         console.WriteLine("");
@@ -71,14 +99,14 @@ public sealed class ListServersCommand(IAnsiConsole console, ISpeedTestService s
 
                     try
                     {
-                        var latencyResult = await speedTestClient.GetServerLatencyAsync(server);
+                        var latencyResult = await speedTestClient.GetServerLatencyAsync(server, cancellationToken);
 
-                        table.UpdateCell(i, 2, $"{latencyResult.Latency}ms");
+                        table.UpdateCell(i, 3, $"{latencyResult.Latency}ms");
                     }
                     catch
                     {
                         // A exception was thrown when pinging the server
-                        table.UpdateCell(i, 2, "-");
+                        table.UpdateCell(i, 3, "-");
                     }
 
                     ctx.Refresh();
