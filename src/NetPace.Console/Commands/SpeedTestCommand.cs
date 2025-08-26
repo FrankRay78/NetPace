@@ -16,7 +16,7 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
 
         if (!settings.CSV && ((settings.Verbosity & (Verbosity.Normal | Verbosity.Debug)) != 0))
         {
-            console.WriteLine($"");
+            console.WriteLine("");
             console.WriteLine($"{fastest.Server.Sponsor}", new Style(foreground: Color.Yellow, decoration: Decoration.Bold));
             console.WriteLine($"{fastest.Server.Url}");
         }
@@ -69,6 +69,16 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
                 elapsed = TimeSpan.FromMilliseconds(uploadResult.ElapsedMilliseconds);
                 console.WriteLine($"{size.ToString()} uploaded in {elapsed.Humanize()}");
             }
+
+            if (!(settings.NoDownload && settings.NoUpload))
+            {
+                console.WriteLine("");
+            }
+        }
+
+        if ((settings.NoDownload && settings.NoUpload) && ((settings.Verbosity & (Verbosity.Normal | Verbosity.Debug)) != 0))
+        {
+            console.WriteLine("");
         }
 
 
