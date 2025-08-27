@@ -26,6 +26,24 @@ public class NetPaceConsoleTests
         return app;
     }
 
+    [InlineData("-f")]
+    [InlineData("--fastest")]
+    [Theory]
+    public async Task Should_Display_Fastest_Speed_Test_Server(string fastest)
+    {
+        // Given
+        var registrar = new TypeRegistrar();
+        registrar.Register(typeof(ISpeedTestService), typeof(SpeedTestStub));
+        var app = GetCommandAppTester(registrar);
+
+        // When
+        var result = await app.RunAsync("servers", fastest);
+
+        // Then
+        Assert.Equal(0, result.ExitCode);
+        await Verify(result.Output).DisableRequireUniquePrefix();
+    }
+
     [Fact]
     public async Task Should_Display_Speed_Test_Servers()
     {
@@ -98,23 +116,6 @@ public class NetPaceConsoleTests
     }
 
     [Fact]
-    public async Task Should_Perform_Speed_Test_Latency_Only()
-    {
-        // Given
-        var registrar = new TypeRegistrar();
-        registrar.Register(typeof(ISpeedTestService), typeof(SpeedTestStub));
-        registrar.Register(typeof(IClock), typeof(ClockStub));
-        var app = GetCommandAppTester(registrar);
-
-        // When
-        var result = await app.RunAsync("--no-download", "--no-upload");
-
-        // Then
-        Assert.Equal(0, result.ExitCode);
-        await Verify(result.Output);
-    }
-
-    [Fact]
     public async Task Should_Perform_Speed_Test()
     {
         // Given
@@ -129,6 +130,26 @@ public class NetPaceConsoleTests
         // Then
         Assert.Equal(0, result.ExitCode);
         await Verify(result.Output);
+    }
+
+    [InlineData("Minimal")]
+    [InlineData("Normal")]
+    [InlineData("Debug")]
+    [Theory]
+    public async Task Should_Perform_Speed_Test_With_Verbosity(string verbosity)
+    {
+        // Given
+        var registrar = new TypeRegistrar();
+        registrar.Register(typeof(ISpeedTestService), typeof(SpeedTestStub));
+        registrar.Register(typeof(IClock), typeof(ClockStub));
+        var app = GetCommandAppTester(registrar);
+
+        // When
+        var result = await app.RunAsync("--verbosity", verbosity);
+
+        // Then
+        Assert.Equal(0, result.ExitCode);
+        await Verify(result.Output).UseParameters(verbosity);
     }
 
     [InlineData("-h")]
@@ -222,26 +243,6 @@ public class NetPaceConsoleTests
         await Verify(result.Output).UseParameters(delimiter);
     }
 
-    [InlineData("Minimal")]
-    [InlineData("Normal")]
-    [InlineData("Debug")]
-    [Theory]
-    public async Task Should_Perform_Speed_Test_With_Verbosity(string verbosity)
-    {
-        // Given
-        var registrar = new TypeRegistrar();
-        registrar.Register(typeof(ISpeedTestService), typeof(SpeedTestStub));
-        registrar.Register(typeof(IClock), typeof(ClockStub));
-        var app = GetCommandAppTester(registrar);
-
-        // When
-        var result = await app.RunAsync("--verbosity", verbosity);
-
-        // Then
-        Assert.Equal(0, result.ExitCode);
-        await Verify(result.Output).UseParameters(verbosity);
-    }
-
     [InlineData("-t")]
     [InlineData("--timestamp")]
     [Theory]
@@ -310,6 +311,23 @@ public class NetPaceConsoleTests
 
         // When
         var result = await app.RunAsync("--no-upload");
+
+        // Then
+        Assert.Equal(0, result.ExitCode);
+        await Verify(result.Output);
+    }
+
+    [Fact]
+    public async Task Should_Not_Perform_Download_Upload_Speed_Test()
+    {
+        // Given
+        var registrar = new TypeRegistrar();
+        registrar.Register(typeof(ISpeedTestService), typeof(SpeedTestStub));
+        registrar.Register(typeof(IClock), typeof(ClockStub));
+        var app = GetCommandAppTester(registrar);
+
+        // When
+        var result = await app.RunAsync("--no-download", "--no-upload");
 
         // Then
         Assert.Equal(0, result.ExitCode);
