@@ -1,0 +1,9 @@
+
+Test Sponsor 1
+http://test1.com
+
+7 KB uploaded in 3 seconds
+
+Latency: 100 ms, Upload: 18.67 Kbps
+
+Try 'NetPace --help' for more information.

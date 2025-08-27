@@ -1,0 +1,7 @@
+
+Test Sponsor 1
+http://test1.com
+
+Latency: 100 ms, Download: 8 Kbps
+
+Try 'NetPace --help' for more information.

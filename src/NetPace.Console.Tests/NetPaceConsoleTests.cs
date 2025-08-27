@@ -283,8 +283,11 @@ public class NetPaceConsoleTests
         await Verify(result.Output).UseParameters(unit, unitSystem);
     }
 
-    [Fact]
-    public async Task Should_Not_Perform_Download_Speed_Test()
+    [InlineData("Minimal")]
+    [InlineData("Normal")]
+    [InlineData("Debug")]
+    [Theory]
+    public async Task Should_Not_Perform_Download_Speed_Test(string verbosity)
     {
         // Given
         var registrar = new TypeRegistrar();
@@ -293,15 +296,18 @@ public class NetPaceConsoleTests
         var app = GetCommandAppTester(registrar);
 
         // When
-        var result = await app.RunAsync("--no-download");
+        var result = await app.RunAsync("--no-download", "--verbosity", verbosity);
 
         // Then
         Assert.Equal(0, result.ExitCode);
-        await Verify(result.Output);
+        await Verify(result.Output).UseParameters(verbosity);
     }
 
-    [Fact]
-    public async Task Should_Not_Perform_Upload_Speed_Test()
+    [InlineData("Minimal")]
+    [InlineData("Normal")]
+    [InlineData("Debug")]
+    [Theory]
+    public async Task Should_Not_Perform_Upload_Speed_Test(string verbosity)
     {
         // Given
         var registrar = new TypeRegistrar();
@@ -310,15 +316,18 @@ public class NetPaceConsoleTests
         var app = GetCommandAppTester(registrar);
 
         // When
-        var result = await app.RunAsync("--no-upload");
+        var result = await app.RunAsync("--no-upload", "--verbosity", verbosity);
 
         // Then
         Assert.Equal(0, result.ExitCode);
-        await Verify(result.Output);
+        await Verify(result.Output).UseParameters(verbosity);
     }
 
-    [Fact]
-    public async Task Should_Not_Perform_Download_Upload_Speed_Test()
+    [InlineData("Minimal")]
+    [InlineData("Normal")]
+    [InlineData("Debug")]
+    [Theory]
+    public async Task Should_Not_Perform_Download_Upload_Speed_Test(string verbosity)
     {
         // Given
         var registrar = new TypeRegistrar();
@@ -327,11 +336,11 @@ public class NetPaceConsoleTests
         var app = GetCommandAppTester(registrar);
 
         // When
-        var result = await app.RunAsync("--no-download", "--no-upload");
+        var result = await app.RunAsync("--no-download", "--no-upload", "--verbosity", verbosity);
 
         // Then
         Assert.Equal(0, result.ExitCode);
-        await Verify(result.Output);
+        await Verify(result.Output).UseParameters(verbosity);
     }
 
     [Fact]
