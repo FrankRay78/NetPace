@@ -25,6 +25,10 @@ public sealed class SpeedTestCommandSettings : CommandSettings
     [DefaultValue(false)]
     public bool NoUpload { get; set; }
 
+    [CommandOption("--server")]
+    [Description("The url of a specific speed test sever. Hint: 'NetPace servers -l' will return your nearest servers.")]
+    public string ServerUrl { get; set; } = string.Empty;
+
     [CommandOption("-t | --timestamp")]
     [Description("Include a timestamp.")]
     [DefaultValue(false)]

@@ -6,7 +6,7 @@
     },
     "NetPace": {
       "commandName": "Project",
-      "commandLineArgs": "servers -l"
+      "commandLineArgs": "servers"
     }
   }
 }

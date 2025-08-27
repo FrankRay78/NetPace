@@ -10,9 +10,20 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
 {
     protected override async Task<int> ExecuteAsync(CommandContext context, SpeedTestCommandSettings settings, CancellationToken cancellationToken)
     {
-        // Get the speed test server
-        var servers = await speedTestClient.GetServersAsync(cancellationToken);
-        var fastest = await speedTestClient.GetFastestServerByLatencyAsync(servers, cancellationToken);
+        ServerLatencyResult fastest;
+
+        if (string.IsNullOrEmpty(settings.ServerUrl))
+        {
+            // Get the fastest speed test server
+            var servers = await speedTestClient.GetServersAsync(cancellationToken);
+            fastest = await speedTestClient.GetFastestServerByLatencyAsync(servers, cancellationToken);
+        }
+        else
+        {
+            var server = new NetPace.Core.Clients.Ookla.Server() { Sponsor = "(Unknown)", Url = settings.ServerUrl };
+            fastest = await speedTestClient.GetServerLatencyAsync(server, cancellationToken);
+        }
+
 
         if (!settings.CSV && ((settings.Verbosity & (Verbosity.Normal | Verbosity.Debug)) != 0))
         {
