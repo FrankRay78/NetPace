@@ -33,9 +33,9 @@ The core speed test library, `NetPace.Core`, has been designed for developer use
 
 NetPace is not endorsed by or related to [Speedtest by Ookla](https://www.speedtest.net/) in any way, although their servers are used under the hood in the `OoklaSpeedtest` implementation (the default speed test provider for NetPace).
 
-The obligatory screenshot (as of 12 April 2025):
+The obligatory screenshot (as of 29 August 2025):
 
-![NetPace screenshot - 12 April 2025](https://github.com/user-attachments/assets/8296f350-ea5d-4f45-8c52-d393f025b477)
+<img width="1115" height="628" alt="NetPace_Screenshot_2025-08-29" src="https://github.com/user-attachments/assets/e4bced3d-04a9-47a9-8ba5-fd6ef9390833" />
 
 <br />
 
@@ -82,6 +82,8 @@ OPTIONS:
         --csv-delimiter    ,                Single character delimiter to use in CSV output.
         --no-download                       Do not perform download test.
         --no-upload                         Do not perform upload test.
+        --server                            The url of a specific speed test sever. Hint: 'NetPace servers -l' will
+                                            return your nearest servers.
     -t, --timestamp                         Include a timestamp.
         --downloadsize                      Stop the download test after this many megabytes (IEC MiB).
         --uploadsize                        Stop the upload test after this many megabytes (IEC MiB).
