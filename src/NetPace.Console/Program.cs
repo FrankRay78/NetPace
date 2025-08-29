@@ -57,7 +57,7 @@ public static class Program
             cancellationTokenSource.Cancel();
         };
 
-        if (args != null && args.Contains("--stub"))
+        if (args != null && args.Contains("--test"))
         {
             // Executes NetPace against stub service implementations.
             registrar.RegisterInstance(typeof(ISpeedTestService), new SpeedTestStub(250));

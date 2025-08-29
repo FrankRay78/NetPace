@@ -1,0 +1,7 @@
+
+(Unknown)
+http://random-speedtest-server.com
+
+Latency: 1000 ms, Download: 800 bps, Upload: 1.87 Kbps
+
+Try 'NetPace --help' for more information.

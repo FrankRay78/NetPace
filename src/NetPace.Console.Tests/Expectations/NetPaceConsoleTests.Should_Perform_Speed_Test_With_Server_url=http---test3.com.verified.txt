@@ -1,0 +1,7 @@
+
+(Unknown)
+http://test3.com
+
+Latency: 300 ms, Download: 2.67 Kbps, Upload: 6.22 Kbps
+
+Try 'NetPace --help' for more information.

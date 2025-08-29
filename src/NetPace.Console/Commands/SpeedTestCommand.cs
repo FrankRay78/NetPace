@@ -1,3 +1,4 @@
+using System;
 using ByteSizeLib;
 using Humanizer;
 using NetPace.Core;
@@ -9,13 +10,32 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
 {
     protected override async Task<int> ExecuteAsync(CommandContext context, SpeedTestCommandSettings settings, CancellationToken cancellationToken)
     {
-        // Get the speed test server
-        var servers = await speedTestClient.GetServersAsync(cancellationToken);
-        var fastest = await speedTestClient.GetFastestServerByLatencyAsync(servers, cancellationToken);
+        ServerLatencyResult fastest;
+
+        if (string.IsNullOrEmpty(settings.ServerUrl))
+        {
+            // Get the fastest speed test server
+            var servers = await speedTestClient.GetServersAsync(cancellationToken);
+            fastest = await speedTestClient.GetFastestServerByLatencyAsync(servers, cancellationToken);
+        }
+        else
+        {
+            var server = new NetPace.Core.Clients.Ookla.Server() { Sponsor = "(Unknown)", Url = settings.ServerUrl };
+            fastest = await speedTestClient.GetServerLatencyAsync(server, cancellationToken);
+        }
+
 
         if (!settings.CSV && ((settings.Verbosity & (Verbosity.Normal | Verbosity.Debug)) != 0))
         {
-            console.WriteLine($"{fastest.Server.Sponsor}");
+            console.WriteLine("");
+            console.WriteLine($"{fastest.Server.Sponsor}", new Style(foreground: Color.Yellow, decoration: Decoration.Bold));
+            console.WriteLine($"{fastest.Server.Url}");
+
+            if (!console.Profile.Capabilities.Interactive)
+            {
+                // Add an extra line given the live widget will not appear.
+                console.WriteLine("");
+            }
         }
 
 
@@ -66,6 +86,18 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
                 elapsed = TimeSpan.FromMilliseconds(uploadResult.ElapsedMilliseconds);
                 console.WriteLine($"{size.ToString()} uploaded in {elapsed.Humanize()}");
             }
+
+            if (!(settings.NoDownload && settings.NoUpload))
+            {
+                console.WriteLine("");
+            }
+        }
+
+        if ((settings.NoDownload && settings.NoUpload) && ((settings.Verbosity & (Verbosity.Normal | Verbosity.Debug)) != 0) &&
+            console.Profile.Capabilities.Interactive)
+        {
+            // Latency only test: Add an extra blank line for formatting.
+            console.WriteLine("");
         }
 
 

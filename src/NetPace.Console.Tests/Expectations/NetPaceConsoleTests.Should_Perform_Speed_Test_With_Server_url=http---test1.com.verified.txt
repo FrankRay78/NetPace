@@ -1,9 +1,6 @@
 
-Test Sponsor 1
+(Unknown)
 http://test1.com
-
-1 KB downloaded in 1 second
-7 KB uploaded in 3 seconds
 
 Latency: 100 ms, Download: 8 Kbps, Upload: 18.67 Kbps
 

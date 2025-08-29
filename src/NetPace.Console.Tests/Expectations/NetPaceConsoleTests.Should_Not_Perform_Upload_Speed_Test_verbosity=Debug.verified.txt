@@ -2,6 +2,8 @@
 Test Sponsor 1
 http://test1.com
 
-1980-01-01 10:05:00, Latency: 100 ms, Download: 8 Kbps, Upload: 18.67 Kbps
+1 KB downloaded in 1 second
+
+Latency: 100 ms, Download: 8 Kbps
 
 Try 'NetPace --help' for more information.
