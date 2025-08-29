@@ -19,6 +19,7 @@ OPTIONS:
         --csv-delimiter    ,                Single character delimiter to use in CSV output.                                                                                                   
         --no-download                       Do not perform download test.                                                                                                                      
         --no-upload                         Do not perform upload test.                                                                                                                        
+        --server                            The url of a specific speed test sever. Hint: 'NetPace servers -l' will return your nearest servers.                                               
     -t, --timestamp                         Include a timestamp.                                                                                                                               
         --downloadsize                      Stop the download test after this many megabytes (IEC MiB).                                                                                        
         --uploadsize                        Stop the upload test after this many megabytes (IEC MiB).                                                                                          

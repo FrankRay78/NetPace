@@ -26,6 +26,8 @@ public class NetPaceConsoleTests
         return app;
     }
 
+    #region Speed Test Servers
+
     [InlineData("-f")]
     [InlineData("--fastest")]
     [Theory]
@@ -115,6 +117,10 @@ public class NetPaceConsoleTests
         await Verify(result.Output);
     }
 
+    #endregion
+
+    #region Speed Test
+
     [Fact]
     public async Task Should_Perform_Speed_Test()
     {
@@ -150,6 +156,27 @@ public class NetPaceConsoleTests
         // Then
         Assert.Equal(0, result.ExitCode);
         await Verify(result.Output).UseParameters(verbosity);
+    }
+
+    [InlineData("http://test1.com")]
+    [InlineData("http://test2.com")]
+    [InlineData("http://test3.com")]
+    [InlineData("http://random-speedtest-server.com")]
+    [Theory]
+    public async Task Should_Perform_Speed_Test_With_Server(string url)
+    {
+        // Given
+        var registrar = new TypeRegistrar();
+        registrar.Register(typeof(ISpeedTestService), typeof(SpeedTestStub));
+        registrar.Register(typeof(IClock), typeof(ClockStub));
+        var app = GetCommandAppTester(registrar);
+
+        // When
+        var result = await app.RunAsync("--server", url);
+
+        // Then
+        Assert.Equal(0, result.ExitCode);
+        await Verify(result.Output).UseParameters(url);
     }
 
     [InlineData("-h")]
@@ -393,4 +420,6 @@ public class NetPaceConsoleTests
         Assert.Equal(-1, result.ExitCode);
         await Verify(result.Output);
     }
+
+    #endregion
 }
