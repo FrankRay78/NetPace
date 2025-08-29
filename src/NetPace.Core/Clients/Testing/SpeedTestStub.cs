@@ -7,7 +7,7 @@ namespace NetPace.Core.Clients.Testing;
 /// </summary>
 public sealed class SpeedTestStub : ISpeedTestService
 {
-    private IServer[] servers = new IServer[]
+    private readonly IServer[] servers = new IServer[]
     {
         new Server { Location = "Location 1", Sponsor = "Test Sponsor 1", Url = "http://test1.com" },
         new Server { Location = "Location 2", Sponsor = "Test Sponsor 2", Url = "http://test2.com" },
