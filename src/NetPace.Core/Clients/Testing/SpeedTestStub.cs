@@ -28,15 +28,9 @@ public sealed class SpeedTestStub : ISpeedTestService
         // First see if we can match the server on our 'pre-canned list'
         var matched = servers.FirstOrDefault(s => s.Url.Equals(server.Url));
 
-        if (matched != null)
-        {
-            return int.Parse(matched.Sponsor!.Replace("Test Sponsor ", ""));
-        }
-        else
-        {
-            // An unknown server
-            return 10;
-        }
+        return matched != null
+            ? int.Parse(matched.Sponsor!.Replace("Test Sponsor ", ""))
+            : 10;
     }
 
     /// <inheritdoc/>
