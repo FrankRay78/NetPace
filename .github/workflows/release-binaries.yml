@@ -38,7 +38,7 @@ jobs:
             -p:AssemblyVersion=${{ steps.get_version.outputs.version }} \
             -p:FileVersion=${{ steps.get_version.outputs.version }} \
             -p:PublishSingleFile=true \
-            -p:PublishTrimmed=true
+            -p:PublishTrimmed=false
 
       - name: Create archive
         run: |
