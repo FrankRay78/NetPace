@@ -60,6 +60,8 @@ jobs:
   attach-to-release:
     needs: build-cross-platform
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     
     steps:
       - name: Extract version from tag
