@@ -1,0 +1,80 @@
+name: Build and Release Cross-Platform Binaries
+
+on:
+  push:
+    tags:
+      - '*'  # Match any tag like 0.4.0, 1.0.0, etc.
+
+jobs:
+  build-cross-platform:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        runtime: [win-x64, win-arm64, linux-x64, linux-arm64, osx-x64, osx-arm64]
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Extract version from tag
+        id: get_version
+        run: echo "version=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+
+      - name: Restore dependencies
+        run: dotnet restore src
+
+      - name: Publish Console App
+        run: |
+          dotnet publish src/NetPace.Console/NetPace.Console.csproj \
+            --configuration Release \
+            --runtime ${{ matrix.runtime }} \
+            --self-contained true \
+            --output ./publish/${{ matrix.runtime }} \
+            -p:AssemblyVersion=${{ steps.get_version.outputs.version }} \
+            -p:FileVersion=${{ steps.get_version.outputs.version }} \
+            -p:PublishSingleFile=true \
+            -p:PublishTrimmed=true
+
+      - name: Create archive
+        run: |
+          cd ./publish/${{ matrix.runtime }}
+          if [[ "${{ matrix.runtime }}" == win-* ]]; then
+            zip -r ../../netpace-${{ steps.get_version.outputs.version }}-${{ matrix.runtime }}.zip .
+          else
+            tar -czf ../../netpace-${{ steps.get_version.outputs.version }}-${{ matrix.runtime }}.tar.gz .
+          fi
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: netpace-${{ matrix.runtime }}
+          path: |
+            *.zip
+            *.tar.gz
+
+  attach-to-release:
+    needs: build-cross-platform
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Extract version from tag
+        id: get_version
+        run: echo "version=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: ./artifacts
+
+      - name: Attach binaries to existing release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ steps.get_version.outputs.version }}
+          files: ./artifacts/**/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
