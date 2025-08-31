@@ -11,6 +11,7 @@ jobs:
     strategy:
       matrix:
         runtime: [win-x64, win-arm64, linux-x64, linux-arm64, osx-x64, osx-arm64]
+        deployment: [self-contained, framework-dependent]
     
     steps:
       - name: Checkout code
@@ -28,31 +29,41 @@ jobs:
       - name: Restore dependencies
         run: dotnet restore src
 
+      - name: Set deployment flags
+        id: deployment_flags
+        run: |
+          if [ "${{ matrix.deployment }}" = "self-contained" ]; then
+            echo "self_contained=true" >> $GITHUB_OUTPUT
+            echo "suffix=-standalone" >> $GITHUB_OUTPUT
+          else
+            echo "self_contained=false" >> $GITHUB_OUTPUT
+            echo "suffix=-net8" >> $GITHUB_OUTPUT
+          fi
+
       - name: Publish Console App
         run: |
           dotnet publish src/NetPace.Console/NetPace.Console.csproj \
             --configuration Release \
             --runtime ${{ matrix.runtime }} \
-            --self-contained true \
-            --output ./publish/${{ matrix.runtime }} \
+            --self-contained ${{ steps.deployment_flags.outputs.self_contained }} \
+            --output ./publish/${{ matrix.runtime }}-${{ matrix.deployment }} \
             -p:AssemblyVersion=${{ steps.get_version.outputs.version }} \
             -p:FileVersion=${{ steps.get_version.outputs.version }} \
-            -p:PublishSingleFile=true \
-            -p:PublishTrimmed=false
+            -p:PublishSingleFile=true
 
       - name: Create archive
         run: |
-          cd ./publish/${{ matrix.runtime }}
+          cd ./publish/${{ matrix.runtime }}-${{ matrix.deployment }}
           if [[ "${{ matrix.runtime }}" == win-* ]]; then
-            zip -r ../../netpace-${{ steps.get_version.outputs.version }}-${{ matrix.runtime }}.zip .
+            zip -r ../../netpace-${{ steps.get_version.outputs.version }}-${{ matrix.runtime }}${{ steps.deployment_flags.outputs.suffix }}.zip .
           else
-            tar -czf ../../netpace-${{ steps.get_version.outputs.version }}-${{ matrix.runtime }}.tar.gz .
+            tar -czf ../../netpace-${{ steps.get_version.outputs.version }}-${{ matrix.runtime }}${{ steps.deployment_flags.outputs.suffix }}.tar.gz .
           fi
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: netpace-${{ matrix.runtime }}
+          name: netpace-${{ matrix.runtime }}-${{ matrix.deployment }}
           path: |
             *.zip
             *.tar.gz
