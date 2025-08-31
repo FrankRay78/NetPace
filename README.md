@@ -43,15 +43,19 @@ The obligatory screenshot (as of 29 August 2025):
 ## Background
 This project came out of my time as the [Spectre.Console](https://github.com/spectreconsole/spectre.console) CLI sub-system maintainer, having never actually used the library for myself. I wanted to gain practical experience by developing a command-line application, following best practices such as the [Command Line Interface Guidelines](https://clig.dev/), and then applying that experience in my maintainer role. This is also known as 'dogfooding' in the tech industry ie. using your own product before expecting others to do the same.
 
-Sadly, I am no longer the `Spectre.Console` CLI sub-system maintainer, but this project continues to be well supported.
+I am no longer the `Spectre.Console` CLI sub-system maintainer, but this project continues to be well supported.
 
 <br />
 
 
 ## Getting Started
-Developed with Microsoft .NET 8.0 on Windows 10 using Visual Studio 2022 Community. Other modern environments should work fine.
+Each release contains precompiled binaries you can simply [download](https://github.com/FrankRay78/NetPace/releases), unzip and run. 
 
-Then clone this repository locally and build.
+Choose from Windows, Linux and macOS; standalone (large file but includes all dependencies) or net8 (small file but requires [Microsoft .NET 8.0 runtime](https://dotnet.microsoft.com/en-us/download/dotnet/8.0) to already be installed). 
+
+Alternatively, clone this repository locally and build.
+
+Developed with Microsoft .NET 8.0 on Windows 10 using Visual Studio 2022 Community. Other modern environments should work fine.
 
 <br />
 
