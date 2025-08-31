@@ -1,3 +1,4 @@
+using System.Reflection;
 using Spectre.Console.Cli.Help;
 using Spectre.Console.Rendering;
 
@@ -15,7 +16,7 @@ internal class CustomHelpProvider : HelpProvider
     {
         if (!string.IsNullOrWhiteSpace(ApplicationName))
         {
-            var font = FigletFont.Load("slant.flf");
+            var font = LoadEmbeddedFont("slant.flf");
 
             return
             [
@@ -28,5 +29,19 @@ internal class CustomHelpProvider : HelpProvider
         }
 
         return base.GetHeader(model, command);
+    }
+
+    private static FigletFont LoadEmbeddedFont(string fileName)
+    {
+        var assembly = Assembly.GetExecutingAssembly();
+        var resourceName = $"NetPace.Console.{fileName}";
+
+        using var stream = assembly.GetManifestResourceStream(resourceName);
+        if (stream == null)
+        {
+            throw new FileNotFoundException($"Embedded resource '{resourceName}' not found.");
+        }
+
+        return FigletFont.Load(stream);
     }
 }
