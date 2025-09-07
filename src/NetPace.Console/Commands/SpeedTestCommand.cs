@@ -10,16 +10,42 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
 {
     protected override async Task<int> ExecuteAsync(CommandContext context, SpeedTestCommandSettings settings, CancellationToken cancellationToken)
     {
+        if (settings.Count > 1)
+        {
+            for (int i = 0; i < settings.Count; i++)
+            {
+                await internalExecuteAsync(includeCSVHeader: (i == 0), settings, cancellationToken);
+
+                if (!settings.Delay.Equals(TimeSpan.Zero) &&
+                    (i + 1) != settings.Count)
+                {
+                    // Pause before commencing the next test.
+                    await Task.Delay(settings.Delay, cancellationToken);
+                }
+            }
+        }
+        else
+        {
+            // Run once and return
+            await internalExecuteAsync(includeCSVHeader: true, settings, cancellationToken);
+        }
+
+        return 0;
+    }
+
+    private async Task internalExecuteAsync(bool includeCSVHeader, SpeedTestCommandSettings settings, CancellationToken cancellationToken)
+    {
         ServerLatencyResult fastest;
 
         if (string.IsNullOrEmpty(settings.ServerUrl))
         {
-            // Get the fastest speed test server
+            // Get the fastest speed test server.
             var servers = await speedTestClient.GetServersAsync(cancellationToken);
             fastest = await speedTestClient.GetFastestServerByLatencyAsync(servers, cancellationToken);
         }
         else
         {
+            // User specified speed test server.
             var server = new NetPace.Core.Clients.Ookla.Server() { Sponsor = "(Unknown)", Url = settings.ServerUrl };
             fastest = await speedTestClient.GetServerLatencyAsync(server, cancellationToken);
         }
@@ -49,14 +75,19 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
             // Always including the timestamp in the CSV output seems reasonable
             settings.IncludeTimestamp = true;
 
-            console.WriteLine(string.Join(settings.CSVDelimiter, new[]
+            // Header row.
+            if (includeCSVHeader)
             {
-                settings.IncludeTimestamp ? "Timestamp" : null,
-                "Latency",
-                !settings.NoDownload ? "Download" : null,
-                !settings.NoUpload ? "Upload" : null
-            }.Where(s => !string.IsNullOrEmpty(s))));
+                console.WriteLine(string.Join(settings.CSVDelimiter, new[]
+                {
+                    settings.IncludeTimestamp ? "Timestamp" : null,
+                    "Latency",
+                    !settings.NoDownload ? "Download" : null,
+                    !settings.NoUpload ? "Upload" : null
+                }.Where(s => !string.IsNullOrEmpty(s))));
+            }
 
+            // Data row.
             console.WriteLine(string.Join(settings.CSVDelimiter, new[]
             {
                 settings.IncludeTimestamp ? clock.Now.ToString(settings.DateTimeFormat) : null,
@@ -64,60 +95,56 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
                 !settings.NoDownload ? downloadResult.GetSpeedString(settings.SpeedUnit, settings.SpeedUnitSystem) : null,
                 !settings.NoUpload ? uploadResult.GetSpeedString(settings.SpeedUnit, settings.SpeedUnitSystem) : null
             }.Where(s => !string.IsNullOrEmpty(s))));
-
-            return 0;
         }
-
-
-        if ((settings.Verbosity & Verbosity.Debug) != 0)
+        else
         {
-            // Display detailed diagnostics
-            ByteSize size; TimeSpan elapsed;
+            if ((settings.Verbosity & Verbosity.Debug) != 0)
+            {
+                // Display detailed diagnostics
+                ByteSize size; TimeSpan elapsed;
 
-            if (!settings.NoDownload)
-            {
-                size = ByteSize.FromBytes(downloadResult.BytesProcessed);
-                elapsed = TimeSpan.FromMilliseconds(downloadResult.ElapsedMilliseconds);
-                console.WriteLine($"{size.ToString()} downloaded in {elapsed.Humanize()}");
-            }
-            if (!settings.NoUpload)
-            {
-                size = ByteSize.FromBytes(uploadResult.BytesProcessed);
-                elapsed = TimeSpan.FromMilliseconds(uploadResult.ElapsedMilliseconds);
-                console.WriteLine($"{size.ToString()} uploaded in {elapsed.Humanize()}");
+                if (!settings.NoDownload)
+                {
+                    size = ByteSize.FromBytes(downloadResult.BytesProcessed);
+                    elapsed = TimeSpan.FromMilliseconds(downloadResult.ElapsedMilliseconds);
+                    console.WriteLine($"{size.ToString()} downloaded in {elapsed.Humanize()}");
+                }
+                if (!settings.NoUpload)
+                {
+                    size = ByteSize.FromBytes(uploadResult.BytesProcessed);
+                    elapsed = TimeSpan.FromMilliseconds(uploadResult.ElapsedMilliseconds);
+                    console.WriteLine($"{size.ToString()} uploaded in {elapsed.Humanize()}");
+                }
+
+                if (!(settings.NoDownload && settings.NoUpload))
+                {
+                    console.WriteLine("");
+                }
             }
 
-            if (!(settings.NoDownload && settings.NoUpload))
+            if ((settings.NoDownload && settings.NoUpload) && ((settings.Verbosity & (Verbosity.Normal | Verbosity.Debug)) != 0) &&
+                console.Profile.Capabilities.Interactive)
             {
+                // Latency only test: Add an extra blank line for formatting.
                 console.WriteLine("");
             }
+
+
+            // Display speed test result
+            console.WriteLine(string.Join(", ", new[]
+            {
+                settings.IncludeTimestamp ? clock.Now.ToString(settings.DateTimeFormat) : null,
+                $"Latency: {fastest.Latency} ms",
+                !settings.NoDownload ? $"Download: {downloadResult.GetSpeedString(settings.SpeedUnit, settings.SpeedUnitSystem)}" : null,
+                !settings.NoUpload ? $"Upload: {uploadResult.GetSpeedString(settings.SpeedUnit, settings.SpeedUnitSystem)}" : null
+            }.Where(s => !string.IsNullOrEmpty(s))));
+
+
+            if ((settings.Verbosity & (Verbosity.Normal | Verbosity.Debug)) != 0)
+            {
+                console.WriteLine("\nTry 'NetPace --help' for more information.");
+            }
         }
-
-        if ((settings.NoDownload && settings.NoUpload) && ((settings.Verbosity & (Verbosity.Normal | Verbosity.Debug)) != 0) &&
-            console.Profile.Capabilities.Interactive)
-        {
-            // Latency only test: Add an extra blank line for formatting.
-            console.WriteLine("");
-        }
-
-
-        // Display speed test result
-        console.WriteLine(string.Join(", ", new[]
-        {
-            settings.IncludeTimestamp ? clock.Now.ToString(settings.DateTimeFormat) : null,
-            $"Latency: {fastest.Latency} ms",
-            !settings.NoDownload ? $"Download: {downloadResult.GetSpeedString(settings.SpeedUnit, settings.SpeedUnitSystem)}" : null,
-            !settings.NoUpload ? $"Upload: {uploadResult.GetSpeedString(settings.SpeedUnit, settings.SpeedUnitSystem)}" : null
-        }.Where(s => !string.IsNullOrEmpty(s))));
-
-
-        if ((settings.Verbosity & (Verbosity.Normal | Verbosity.Debug)) != 0)
-        {
-            console.WriteLine("\nTry 'NetPace --help' for more information.");
-        }
-
-
-        return 0;
     }
 
     private async Task<(SpeedTestResult downloadResult, SpeedTestResult uploadResult)> PerformSpeedTestAsync(IServer server, SpeedTestCommandSettings settings, CancellationToken cancellationToken)
