@@ -1,4 +1,4 @@
-﻿namespace NetPace.Console;
+namespace NetPace.Console;
 
 /// <summary>
 /// Interface for obtaining the current date and time.
@@ -25,4 +25,24 @@ public sealed class Clock : IClock
 public sealed class ClockStub : IClock
 {
     public DateTime Now => new DateTime(1980, 1, 1, 10, 5, 0);
+}
+
+/// <summary>
+/// Increment the clock by 5 seconds on each call.
+/// </summary>
+public sealed class IncrementingClockStub : IClock
+{
+    private DateTime startDate = new DateTime(1980, 1, 1, 10, 5, 0);
+
+    private int callCount = -1;
+
+    public DateTime Now
+    {
+        get
+        {
+            callCount++;
+
+            return startDate.AddSeconds(callCount * 5);
+        }
+    }
 }

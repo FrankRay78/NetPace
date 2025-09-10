@@ -147,11 +147,11 @@ public class NetPaceConsoleTests
         // Given
         var registrar = new TypeRegistrar();
         registrar.Register(typeof(ISpeedTestService), typeof(SpeedTestStub));
-        registrar.Register(typeof(IClock), typeof(ClockStub));
+        registrar.Register(typeof(IClock), typeof(IncrementingClockStub));
         var app = GetCommandAppTester(registrar);
 
         // When
-        var result = await app.RunAsync("--count", $"{count}", "--verbosity", "Minimal");
+        var result = await app.RunAsync("-t", "--count", $"{count}", "--verbosity", "Minimal");
 
         // Then
         Assert.Equal(0, result.ExitCode);
@@ -243,7 +243,7 @@ public class NetPaceConsoleTests
         // Given
         var registrar = new TypeRegistrar();
         registrar.Register(typeof(ISpeedTestService), typeof(SpeedTestStub));
-        registrar.Register(typeof(IClock), typeof(ClockStub));
+        registrar.Register(typeof(IClock), typeof(IncrementingClockStub));
         var app = GetCommandAppTester(registrar);
 
         // When

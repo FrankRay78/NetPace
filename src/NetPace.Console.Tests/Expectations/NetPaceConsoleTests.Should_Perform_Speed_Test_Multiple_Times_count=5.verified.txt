@@ -1,5 +1,5 @@
-Latency: 100 ms, Download: 8 Kbps, Upload: 18.67 Kbps
-Latency: 100 ms, Download: 8 Kbps, Upload: 18.67 Kbps
-Latency: 100 ms, Download: 8 Kbps, Upload: 18.67 Kbps
-Latency: 100 ms, Download: 8 Kbps, Upload: 18.67 Kbps
-Latency: 100 ms, Download: 8 Kbps, Upload: 18.67 Kbps
+1980-01-01 10:05:00, Latency: 100 ms, Download: 8 Kbps, Upload: 18.67 Kbps
+1980-01-01 10:05:05, Latency: 100 ms, Download: 8 Kbps, Upload: 18.67 Kbps
+1980-01-01 10:05:10, Latency: 100 ms, Download: 8 Kbps, Upload: 18.67 Kbps
+1980-01-01 10:05:15, Latency: 100 ms, Download: 8 Kbps, Upload: 18.67 Kbps
+1980-01-01 10:05:20, Latency: 100 ms, Download: 8 Kbps, Upload: 18.67 Kbps
