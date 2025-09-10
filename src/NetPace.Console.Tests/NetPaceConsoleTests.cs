@@ -1,3 +1,4 @@
+using System;
 using System.Reflection.Metadata.Ecma335;
 using NetPace.Console;
 using NetPace.Console.Commands;
@@ -21,6 +22,7 @@ public class NetPaceConsoleTests
         app.SetDefaultCommand<SpeedTestCommand>(Program.Description);
         app.Configure(Program.ConfigureAction);
 
+        app.Registrar?.Register(typeof(IWaiter), typeof(NoDelayStub));
         app.Registrar?.RegisterInstance(typeof(CancellationToken), cancellationToken);
 
         return app;
@@ -138,6 +140,24 @@ public class NetPaceConsoleTests
         await Verify(result.Output);
     }
 
+    [InlineData(5)]
+    [Theory]
+    public async Task Should_Perform_Speed_Test_Multiple_Times(int count)
+    {
+        // Given
+        var registrar = new TypeRegistrar();
+        registrar.Register(typeof(ISpeedTestService), typeof(SpeedTestStub));
+        registrar.Register(typeof(IClock), typeof(ClockStub));
+        var app = GetCommandAppTester(registrar);
+
+        // When
+        var result = await app.RunAsync("--count", $"{count}", "--verbosity", "Minimal");
+
+        // Then
+        Assert.Equal(0, result.ExitCode);
+        await Verify(result.Output).UseParameters(count);
+    }
+
     [InlineData("Minimal")]
     [InlineData("Normal")]
     [InlineData("Debug")]
@@ -214,6 +234,24 @@ public class NetPaceConsoleTests
         // Then
         Assert.Equal(0, result.ExitCode);
         await Verify(result.Output);
+    }
+
+    [InlineData(5)]
+    [Theory]
+    public async Task Should_Perform_Speed_Test_With_CSV_Multiple_Times(int count)
+    {
+        // Given
+        var registrar = new TypeRegistrar();
+        registrar.Register(typeof(ISpeedTestService), typeof(SpeedTestStub));
+        registrar.Register(typeof(IClock), typeof(ClockStub));
+        var app = GetCommandAppTester(registrar);
+
+        // When
+        var result = await app.RunAsync("--csv", "--count", $"{count}", "--verbosity", "Minimal");
+
+        // Then
+        Assert.Equal(0, result.ExitCode);
+        await Verify(result.Output).UseParameters(count);
     }
 
     [Fact]

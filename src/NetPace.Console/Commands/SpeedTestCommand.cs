@@ -6,7 +6,7 @@ using Spectre.Console.Extensions;
 
 namespace NetPace.Console.Commands;
 
-public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService speedTestClient, IClock clock, CancellationToken cancellationToken) : CancelableCommand<SpeedTestCommandSettings>(cancellationToken)
+public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService speedTestClient, IClock clock, IWaiter waiter, CancellationToken cancellationToken) : CancelableCommand<SpeedTestCommandSettings>(cancellationToken)
 {
     protected override async Task<int> ExecuteAsync(CommandContext context, SpeedTestCommandSettings settings, CancellationToken cancellationToken)
     {
@@ -21,7 +21,7 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
                     (i + 1) != settings.Count)
                 {
                     // Pause before commencing the next test.
-                    await Task.Delay(settings.Delay, cancellationToken);
+                    await waiter.Delay(settings.Delay, cancellationToken);
                 }
             }
         }
