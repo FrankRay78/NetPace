@@ -12,6 +12,7 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
     {
         if (settings.Count > 1)
         {
+            // Run multiple times.
             for (int i = 0; i < settings.Count; i++)
             {
                 await internalExecuteAsync(includeCSVHeader: (i == 0), settings, cancellationToken);
@@ -26,7 +27,7 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
         }
         else
         {
-            // Run once and return
+            // Run once and return.
             await internalExecuteAsync(includeCSVHeader: true, settings, cancellationToken);
         }
 
