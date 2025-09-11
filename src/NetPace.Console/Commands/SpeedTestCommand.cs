@@ -17,8 +17,7 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
             {
                 await internalExecuteAsync(includeCSVHeader: (i == 0), settings, cancellationToken);
 
-                if (!settings.Delay.Equals(TimeSpan.Zero) &&
-                    (i + 1) != settings.Count)
+                if ((i + 1) < settings.Count)
                 {
                     // Pause before commencing the next test.
                     await waiter.Delay(settings.Delay, cancellationToken);

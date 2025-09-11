@@ -22,7 +22,6 @@ public class NetPaceConsoleTests
         app.SetDefaultCommand<SpeedTestCommand>(Program.Description);
         app.Configure(Program.ConfigureAction);
 
-        app.Registrar?.Register(typeof(IWaiter), typeof(NoDelayStub));
         app.Registrar?.RegisterInstance(typeof(CancellationToken), cancellationToken);
 
         return app;
@@ -109,6 +108,7 @@ public class NetPaceConsoleTests
         var registrar = new TypeRegistrar();
         registrar.RegisterInstance(typeof(ISpeedTestService), mock);
         registrar.Register(typeof(IClock), typeof(ClockStub));
+        registrar.Register(typeof(IWaiter), typeof(NoDelayStub));
         var app = GetCommandAppTester(registrar);
 
         // When
@@ -130,6 +130,7 @@ public class NetPaceConsoleTests
         var registrar = new TypeRegistrar();
         registrar.Register(typeof(ISpeedTestService), typeof(SpeedTestStub));
         registrar.Register(typeof(IClock), typeof(ClockStub));
+        registrar.Register(typeof(IWaiter), typeof(NoDelayStub));
         var app = GetCommandAppTester(registrar);
 
         // When
@@ -148,6 +149,7 @@ public class NetPaceConsoleTests
         var registrar = new TypeRegistrar();
         registrar.Register(typeof(ISpeedTestService), typeof(SpeedTestStub));
         registrar.Register(typeof(IClock), typeof(IncrementingClockStub));
+        registrar.Register(typeof(IWaiter), typeof(NoDelayStub));
         var app = GetCommandAppTester(registrar);
 
         // When
@@ -156,6 +158,28 @@ public class NetPaceConsoleTests
         // Then
         Assert.Equal(0, result.ExitCode);
         await Verify(result.Output).UseParameters(count);
+    }
+
+    [InlineData(10, "00:10:00")]
+    [Theory]
+    public async Task Should_Perform_Speed_Test_Multiple_Times_With_Delay(int count, string delay)
+    {
+        // Given
+        var waiter = new NoDelayStub();
+
+        var registrar = new TypeRegistrar();
+        registrar.Register(typeof(ISpeedTestService), typeof(SpeedTestStub));
+        registrar.Register(typeof(IClock), typeof(IncrementingClockStub));
+        registrar.RegisterInstance(typeof(IWaiter), waiter);
+        var app = GetCommandAppTester(registrar);
+
+        // When
+        var result = await app.RunAsync("-t", "--count", $"{count}", "--delay", $"{delay}", "--verbosity", "Minimal");
+
+        // Then
+        Assert.Equal(count - 1, waiter.CallCount);
+        Assert.Equal(0, result.ExitCode);
+        await Verify(result.Output).UseParameters(count, delay);
     }
 
     [InlineData("Minimal")]
@@ -168,6 +192,7 @@ public class NetPaceConsoleTests
         var registrar = new TypeRegistrar();
         registrar.Register(typeof(ISpeedTestService), typeof(SpeedTestStub));
         registrar.Register(typeof(IClock), typeof(ClockStub));
+        registrar.Register(typeof(IWaiter), typeof(NoDelayStub));
         var app = GetCommandAppTester(registrar);
 
         // When
@@ -189,6 +214,7 @@ public class NetPaceConsoleTests
         var registrar = new TypeRegistrar();
         registrar.Register(typeof(ISpeedTestService), typeof(SpeedTestStub));
         registrar.Register(typeof(IClock), typeof(ClockStub));
+        registrar.Register(typeof(IWaiter), typeof(NoDelayStub));
         var app = GetCommandAppTester(registrar);
 
         // When
@@ -209,6 +235,7 @@ public class NetPaceConsoleTests
         var registrar = new TypeRegistrar();
         registrar.Register(typeof(ISpeedTestService), typeof(SpeedTestStub));
         registrar.Register(typeof(IClock), typeof(ClockStub));
+        registrar.Register(typeof(IWaiter), typeof(NoDelayStub));
         var app = GetCommandAppTester(registrar);
 
         // When
@@ -226,6 +253,7 @@ public class NetPaceConsoleTests
         var registrar = new TypeRegistrar();
         registrar.Register(typeof(ISpeedTestService), typeof(SpeedTestStub));
         registrar.Register(typeof(IClock), typeof(ClockStub));
+        registrar.Register(typeof(IWaiter), typeof(NoDelayStub));
         var app = GetCommandAppTester(registrar);
 
         // When
@@ -244,6 +272,7 @@ public class NetPaceConsoleTests
         var registrar = new TypeRegistrar();
         registrar.Register(typeof(ISpeedTestService), typeof(SpeedTestStub));
         registrar.Register(typeof(IClock), typeof(IncrementingClockStub));
+        registrar.Register(typeof(IWaiter), typeof(NoDelayStub));
         var app = GetCommandAppTester(registrar);
 
         // When
@@ -254,6 +283,28 @@ public class NetPaceConsoleTests
         await Verify(result.Output).UseParameters(count);
     }
 
+    [InlineData(10, "00:10:00")]
+    [Theory]
+    public async Task Should_Perform_Speed_Test_With_CSV_Multiple_Times_With_Delay(int count, string delay)
+    {
+        // Given
+        var waiter = new NoDelayStub();
+
+        var registrar = new TypeRegistrar();
+        registrar.Register(typeof(ISpeedTestService), typeof(SpeedTestStub));
+        registrar.Register(typeof(IClock), typeof(IncrementingClockStub));
+        registrar.RegisterInstance(typeof(IWaiter), waiter);
+        var app = GetCommandAppTester(registrar);
+
+        // When
+        var result = await app.RunAsync("--csv", "--count", $"{count}", "--delay", $"{delay}", "--verbosity", "Minimal");
+
+        // Then
+        Assert.Equal(count - 1, waiter.CallCount);
+        Assert.Equal(0, result.ExitCode);
+        await Verify(result.Output).UseParameters(count, delay);
+    }
+
     [Fact]
     public async Task Should_Perform_Speed_Test_With_CSV_No_Download()
     {
@@ -261,6 +312,7 @@ public class NetPaceConsoleTests
         var registrar = new TypeRegistrar();
         registrar.Register(typeof(ISpeedTestService), typeof(SpeedTestStub));
         registrar.Register(typeof(IClock), typeof(ClockStub));
+        registrar.Register(typeof(IWaiter), typeof(NoDelayStub));
         var app = GetCommandAppTester(registrar);
 
         // When
@@ -278,6 +330,7 @@ public class NetPaceConsoleTests
         var registrar = new TypeRegistrar();
         registrar.Register(typeof(ISpeedTestService), typeof(SpeedTestStub));
         registrar.Register(typeof(IClock), typeof(ClockStub));
+        registrar.Register(typeof(IWaiter), typeof(NoDelayStub));
         var app = GetCommandAppTester(registrar);
 
         // When
@@ -298,6 +351,7 @@ public class NetPaceConsoleTests
         var registrar = new TypeRegistrar();
         registrar.Register(typeof(ISpeedTestService), typeof(SpeedTestStub));
         registrar.Register(typeof(IClock), typeof(ClockStub));
+        registrar.Register(typeof(IWaiter), typeof(NoDelayStub));
         var app = GetCommandAppTester(registrar);
 
         // When
@@ -317,6 +371,7 @@ public class NetPaceConsoleTests
         var registrar = new TypeRegistrar();
         registrar.Register(typeof(ISpeedTestService), typeof(SpeedTestStub));
         registrar.Register(typeof(IClock), typeof(ClockStub));
+        registrar.Register(typeof(IWaiter), typeof(NoDelayStub));
         var app = GetCommandAppTester(registrar);
 
         // When
@@ -338,6 +393,7 @@ public class NetPaceConsoleTests
         var registrar = new TypeRegistrar();
         registrar.Register(typeof(ISpeedTestService), typeof(SpeedTestStub));
         registrar.Register(typeof(IClock), typeof(ClockStub));
+        registrar.Register(typeof(IWaiter), typeof(NoDelayStub));
         var app = GetCommandAppTester(registrar);
 
         // When
@@ -358,6 +414,7 @@ public class NetPaceConsoleTests
         var registrar = new TypeRegistrar();
         registrar.Register(typeof(ISpeedTestService), typeof(SpeedTestStub));
         registrar.Register(typeof(IClock), typeof(ClockStub));
+        registrar.Register(typeof(IWaiter), typeof(NoDelayStub));
         var app = GetCommandAppTester(registrar);
 
         // When
@@ -378,6 +435,7 @@ public class NetPaceConsoleTests
         var registrar = new TypeRegistrar();
         registrar.Register(typeof(ISpeedTestService), typeof(SpeedTestStub));
         registrar.Register(typeof(IClock), typeof(ClockStub));
+        registrar.Register(typeof(IWaiter), typeof(NoDelayStub));
         var app = GetCommandAppTester(registrar);
 
         // When
@@ -398,6 +456,7 @@ public class NetPaceConsoleTests
         var registrar = new TypeRegistrar();
         registrar.Register(typeof(ISpeedTestService), typeof(SpeedTestStub));
         registrar.Register(typeof(IClock), typeof(ClockStub));
+        registrar.Register(typeof(IWaiter), typeof(NoDelayStub));
         var app = GetCommandAppTester(registrar);
 
         // When
@@ -420,6 +479,7 @@ public class NetPaceConsoleTests
         var registrar = new TypeRegistrar();
         registrar.RegisterInstance(typeof(ISpeedTestService), mock);
         registrar.Register(typeof(IClock), typeof(ClockStub));
+        registrar.Register(typeof(IWaiter), typeof(NoDelayStub));
         var app = GetCommandAppTester(registrar);
 
         // When
@@ -449,6 +509,7 @@ public class NetPaceConsoleTests
         var registrar = new TypeRegistrar();
         registrar.RegisterInstance(typeof(ISpeedTestService), mock);
         registrar.Register(typeof(IClock), typeof(ClockStub));
+        registrar.Register(typeof(IWaiter), typeof(NoDelayStub));
         var app = GetCommandAppTester(registrar, cancellationTokenSource.Token);
 
         // When
@@ -457,6 +518,28 @@ public class NetPaceConsoleTests
         // Then
         Assert.Equal(-1, result.ExitCode);
         await Verify(result.Output);
+    }
+
+    [InlineData(2, "00:01:00")]
+    [Theory]
+    public async Task Should_Cancel_Multiple_Speed_Tests_When_User_Requests(int count, string delay)
+    {
+        // Given
+        var cancellationTokenSource = new CancellationTokenSource();
+        cancellationTokenSource.CancelAfter(1000);
+
+        var registrar = new TypeRegistrar();
+        registrar.Register(typeof(ISpeedTestService), typeof(SpeedTestStub));
+        registrar.Register(typeof(IClock), typeof(IncrementingClockStub));
+        registrar.Register(typeof(IWaiter), typeof(Waiter));
+        var app = GetCommandAppTester(registrar, cancellationTokenSource.Token);
+
+        // When
+        var result = await app.RunAsync("-t", "--count", $"{count}", "--delay", $"{delay}", "--verbosity", "Minimal");
+
+        // Then
+        Assert.Equal(-1, result.ExitCode);
+        await Verify(result.Output).UseParameters(count, delay);
     }
 
     #endregion

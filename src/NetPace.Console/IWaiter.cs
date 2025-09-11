@@ -25,8 +25,12 @@ public sealed class Waiter : IWaiter
 /// </remarks>
 public sealed class NoDelayStub : IWaiter
 {
+    public int CallCount { get; private set; } = 0;
+
     public async Task Delay(TimeSpan delay, CancellationToken cancellationToken)
     {
-        await Task.Yield();
+        CallCount++;
+
+        await Task.Delay(TimeSpan.Zero, cancellationToken);
     }
 }
