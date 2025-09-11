@@ -35,3 +35,6 @@ OPTIONS:
 
 COMMANDS:
     servers    Show the nearest speed test servers.
+
+SEE ALSO:
+    https://github.com/FrankRay78/NetPace/USER_GUIDE.md
