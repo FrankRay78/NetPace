@@ -68,7 +68,7 @@ For most users, running a simple speed test is as easy as:
 NetPace
 ```
 
-For a full list of options and advanced usage scenarios (such as scripting, restricting payload size, or custom output formats), see the [User Guide](https://github.com/FrankRay78/NetPace/USER_GUIDE.md).
+For common scenarios and advanced usage (such as scripting, restricting payload size, or customising output), see the [User Guide](https://github.com/FrankRay78/NetPace/USER_GUIDE.md).
 
 `NetPace --help` will display detailed usage instructions.
 
