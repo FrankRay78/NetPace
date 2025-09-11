@@ -61,6 +61,15 @@ Developed with Microsoft .NET 8.0 on Windows 10 using Visual Studio 2022 Communi
 
 
 ## Usage
+
+For most users, running a simple speed test is as easy as:
+
+```bash
+NetPace
+```
+
+For a full list of options and advanced usage scenarios (such as scripting, restricting payload size, or custom output formats), see the [User Guide](https://github.com/FrankRay78/NetPace/USER_GUIDE.md).
+
 `NetPace --help` will display detailed usage instructions.
 
 ```txt
