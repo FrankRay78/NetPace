@@ -5,6 +5,11 @@ namespace NetPace.Console.Commands;
 
 public sealed class SpeedTestCommandSettings : CommandSettings
 {
+    [CommandOption("--loop")]
+    [Description("Performs the speed test on loop.")]
+    [DefaultValue(false)]
+    public bool Loop { get; set; }
+
     [CommandOption("--count")]
     [Description("Stop speed testing after this many times.")]
     public int Count { get; set; } = 1;
@@ -38,7 +43,7 @@ public sealed class SpeedTestCommandSettings : CommandSettings
     public string ServerUrl { get; set; } = string.Empty;
 
     [CommandOption("-t | --timestamp")]
-    [Description("Include a timestamp.")]
+    [Description("Include a timestamp in the output.")]
     [DefaultValue(false)]
     public bool IncludeTimestamp { get; set; }
 

@@ -141,6 +141,27 @@ public class NetPaceConsoleTests
         await Verify(result.Output);
     }
 
+    [Fact]
+    public async Task Should_Perform_Speed_Test_Continuously()
+    {
+        // Given
+        var cancellationTokenSource = new CancellationTokenSource();
+        cancellationTokenSource.CancelAfter(1000);
+
+        var registrar = new TypeRegistrar();
+        registrar.Register(typeof(ISpeedTestService), typeof(SpeedTestStub));
+        registrar.Register(typeof(IClock), typeof(IncrementingClockStub));
+        registrar.Register(typeof(IWaiter), typeof(NoDelayStub));
+        var app = GetCommandAppTester(registrar, cancellationTokenSource.Token);
+
+        // When
+        var result = await app.RunAsync("-t", "--loop", "--verbosity", "Minimal");
+
+        // Then
+        Assert.Equal(0, result.ExitCode);
+        Assert.True(result.Output.Split(Environment.NewLine).Count() > 1);
+    }
+
     [InlineData(5)]
     [Theory]
     public async Task Should_Perform_Speed_Test_Multiple_Times(int count)
@@ -540,6 +561,41 @@ public class NetPaceConsoleTests
         // Then
         Assert.Equal(-1, result.ExitCode);
         await Verify(result.Output).UseParameters(count, delay);
+    }
+
+    [Fact]
+    public async Task Should_Continue_Multiple_Speed_Tests_On_Exception()
+    {
+        // Given
+        var cancellationTokenSource = new CancellationTokenSource();
+        cancellationTokenSource.CancelAfter(1000);
+
+        // Create a stateful fault function that tracks calls
+        var downloadCallCount = 0;
+        var faultyTester = new FaultySpeedTester(
+            inner: new SpeedTestStub(),
+            isFaulted: (sponsor, methodName) =>
+            {
+                if (methodName == nameof(ISpeedTestService.GetDownloadSpeedAsync))
+                {
+                    downloadCallCount++;
+                    return downloadCallCount == 2; // Fail only on the second call
+                }
+                return false; // Don't fail other methods
+            }
+        );
+
+        var registrar = new TypeRegistrar();
+        registrar.RegisterInstance(typeof(ISpeedTestService), faultyTester);
+        registrar.Register(typeof(IClock), typeof(IncrementingClockStub));
+        registrar.Register(typeof(IWaiter), typeof(Waiter));
+        var app = GetCommandAppTester(registrar, cancellationTokenSource.Token);
+
+        // When
+        var result = await app.RunAsync("-t", "--loop", "--verbosity", "Minimal");
+
+        // Then
+        Assert.Equal(-1, result.ExitCode);
     }
 
     #endregion
