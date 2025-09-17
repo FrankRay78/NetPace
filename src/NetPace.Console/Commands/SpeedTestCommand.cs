@@ -179,7 +179,7 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
                 {
                     size = ByteSize.FromBytes(downloadResult.BytesProcessed);
                     elapsed = TimeSpan.FromMilliseconds(downloadResult.ElapsedMilliseconds);
-                    console.WriteLine($"{size.ToString()} downloaded in {elapsed.Humanize()}");
+                    console.WriteLine($"{size} downloaded in {elapsed.Humanize()}");
                 }
                 if (!settings.NoUpload)
                 {
