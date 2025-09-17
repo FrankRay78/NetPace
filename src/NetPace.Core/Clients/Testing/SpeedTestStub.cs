@@ -14,7 +14,7 @@ public sealed class SpeedTestStub : ISpeedTestService
         new Server { Location = "Location 3", Sponsor = "Test Sponsor 3", Url = "http://test3.com" },
     };
 
-    private int delayMilliseconds = 0;
+    private readonly int delayMilliseconds = 0;
 
     public SpeedTestStub() { }
 
