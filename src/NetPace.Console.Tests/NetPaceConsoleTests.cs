@@ -115,7 +115,7 @@ public class NetPaceConsoleTests
         var result = await app.RunAsync();
 
         // Then
-        Assert.Equal(-1, result.ExitCode);
+        Assert.Equal(0, result.ExitCode);
         await Verify(result.Output);
     }
 
@@ -151,15 +151,15 @@ public class NetPaceConsoleTests
         var registrar = new TypeRegistrar();
         registrar.Register(typeof(ISpeedTestService), typeof(SpeedTestStub));
         registrar.Register(typeof(IClock), typeof(IncrementingClockStub));
-        registrar.Register(typeof(IWaiter), typeof(NoDelayStub));
+        registrar.Register(typeof(IWaiter), typeof(Waiter));
         var app = GetCommandAppTester(registrar, cancellationTokenSource.Token);
 
         // When
-        var result = await app.RunAsync("-t", "--loop", "--verbosity", "Minimal");
+        var result = await app.RunAsync("-t", "--loop", "--delay", "00:01:00", "--verbosity", "Minimal");
 
         // Then
         Assert.Equal(0, result.ExitCode);
-        Assert.True(result.Output.Split(Environment.NewLine).Count() > 1);
+        await Verify(result.Output);
     }
 
     [InlineData(5)]
@@ -507,7 +507,7 @@ public class NetPaceConsoleTests
         var result = await app.RunAsync();
 
         // Then
-        Assert.Equal(-1, result.ExitCode);
+        Assert.Equal(0, result.ExitCode);
         await Verify(result.Output);
     }
 
@@ -537,7 +537,28 @@ public class NetPaceConsoleTests
         var result = await app.RunAsync();
 
         // Then
-        Assert.Equal(-1, result.ExitCode);
+        Assert.Equal(0, result.ExitCode);
+        await Verify(result.Output);
+    }
+
+    [Fact]
+    public async Task Should_Cancel_Continuous_Speed_Tests_When_User_Requests()
+    {
+        // Given
+        var cancellationTokenSource = new CancellationTokenSource();
+        cancellationTokenSource.CancelAfter(1000);
+
+        var registrar = new TypeRegistrar();
+        registrar.Register(typeof(ISpeedTestService), typeof(SpeedTestStub));
+        registrar.Register(typeof(IClock), typeof(IncrementingClockStub));
+        registrar.Register(typeof(IWaiter), typeof(Waiter));
+        var app = GetCommandAppTester(registrar, cancellationTokenSource.Token);
+
+        // When
+        var result = await app.RunAsync("-t", "--loop", "--delay", "00:01:00", "--verbosity", "Minimal");
+
+        // Then
+        Assert.Equal(0, result.ExitCode);
         await Verify(result.Output);
     }
 
@@ -559,7 +580,7 @@ public class NetPaceConsoleTests
         var result = await app.RunAsync("-t", "--count", $"{count}", "--delay", $"{delay}", "--verbosity", "Minimal");
 
         // Then
-        Assert.Equal(-1, result.ExitCode);
+        Assert.Equal(0, result.ExitCode);
         await Verify(result.Output).UseParameters(count, delay);
     }
 
@@ -588,14 +609,15 @@ public class NetPaceConsoleTests
         var registrar = new TypeRegistrar();
         registrar.RegisterInstance(typeof(ISpeedTestService), faultyTester);
         registrar.Register(typeof(IClock), typeof(IncrementingClockStub));
-        registrar.Register(typeof(IWaiter), typeof(Waiter));
+        registrar.Register(typeof(IWaiter), typeof(NoDelayStub));
         var app = GetCommandAppTester(registrar, cancellationTokenSource.Token);
 
         // When
-        var result = await app.RunAsync("-t", "--loop", "--verbosity", "Minimal");
+        var result = await app.RunAsync("-t", "--count", "4", "--verbosity", "Minimal");
 
         // Then
-        Assert.Equal(-1, result.ExitCode);
+        Assert.Equal(0, result.ExitCode);
+        await Verify(result.Output);
     }
 
     #endregion

@@ -10,24 +10,77 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
 {
     protected override async Task<int> ExecuteAsync(CommandContext context, SpeedTestCommandSettings settings, CancellationToken cancellationToken)
     {
-        if (settings.Count > 1)
+        if (settings.Loop)
+        {
+            // Run continuously.
+            do
+            {
+                var firstLoop = true;
+
+                try
+                {
+                    await internalExecuteAsync(includeCSVHeader: firstLoop, settings, cancellationToken);
+
+                    await waiter.Delay(settings.Delay, cancellationToken);
+                }
+                catch (TaskCanceledException)
+                {
+                    // User requested cancellation.
+                    return 0;
+                }
+                catch (Exception e)
+                {
+                    console.Markup($"[red]Error:[/] {e.Message.EscapeMarkup()}\n");
+                }
+                finally
+                {
+                    firstLoop = false;
+                }
+            }
+            while (true);
+        }
+        else if (settings.Count > 1)
         {
             // Run multiple times.
             for (int i = 0; i < settings.Count; i++)
             {
-                await internalExecuteAsync(includeCSVHeader: (i == 0), settings, cancellationToken);
-
-                if ((i + 1) < settings.Count)
+                try
                 {
-                    // Pause before commencing the next test.
-                    await waiter.Delay(settings.Delay, cancellationToken);
+                    await internalExecuteAsync(includeCSVHeader: (i == 0), settings, cancellationToken);
+
+                    if ((i + 1) < settings.Count)
+                    {
+                        // Pause before commencing the next test.
+                        await waiter.Delay(settings.Delay, cancellationToken);
+                    }
+                }
+                catch (TaskCanceledException)
+                {
+                    // User requested cancellation.
+                    return 0;
+                }
+                catch (Exception e)
+                {
+                    console.Markup($"[red]Error:[/] {e.Message.EscapeMarkup()}\n");
                 }
             }
         }
         else
         {
-            // Run once and return.
-            await internalExecuteAsync(includeCSVHeader: true, settings, cancellationToken);
+            // Run once.
+            try
+            {
+                await internalExecuteAsync(includeCSVHeader: true, settings, cancellationToken);
+            }
+            catch (TaskCanceledException)
+            {
+                // User requested cancellation.
+                return 0;
+            }
+            catch (Exception e)
+            {
+                console.Markup($"[red]Error:[/] {e.Message.EscapeMarkup()}\n");
+            }
         }
 
         return 0;
