@@ -5,6 +5,19 @@ namespace NetPace.Console.Commands;
 
 public sealed class SpeedTestCommandSettings : CommandSettings
 {
+    [CommandOption("--loop")]
+    [Description("Performs the speed test on continuous loop.")]
+    [DefaultValue(false)]
+    public bool Loop { get; set; }
+
+    [CommandOption("--count")]
+    [Description("Stop speed testing after this many times.")]
+    public int Count { get; set; } = 1;
+
+    [CommandOption("--delay")]
+    [Description("Time between multiple speed tests (HH:MM:SS)")]
+    public TimeSpan Delay { get; set; } = TimeSpan.Zero;
+
     [CommandOption("--csv")]
     [Description("Display minimal output in CSV format (always includes timestamp).")]
     [DefaultValue(false)]
@@ -26,17 +39,17 @@ public sealed class SpeedTestCommandSettings : CommandSettings
     public bool NoUpload { get; set; }
 
     [CommandOption("--server")]
-    [Description("The url of a specific speed test sever. Hint: 'NetPace servers -l' will return your nearest servers.")]
+    [Description("The url of a specific speed test sever. \n'NetPace servers -l' will return your nearest servers.")]
     public string ServerUrl { get; set; } = string.Empty;
 
     [CommandOption("-t | --timestamp")]
-    [Description("Include a timestamp.")]
+    [Description("Include a timestamp in the output.")]
     [DefaultValue(false)]
     public bool IncludeTimestamp { get; set; }
 
-    [CommandOption("--datetimeformat", IsHidden = true)]
-    [Description("The datetime format string (as defined by Microsoft.Net).")]
-    [DefaultValue("yyyy'-'MM'-'dd' 'HH':'mm':'ss")]
+    [CommandOption("--datetimeformat")]
+    [Description("The datetime format string, as defined by Microsoft.Net.")]
+    [DefaultValue("yyyy-MM-dd HH:mm:ss")]
     //ref: https://learn.microsoft.com/en-us/dotnet/standard/base-types/standard-date-and-time-format-strings
     public string? DateTimeFormat { get; set; }
 
@@ -62,4 +75,15 @@ public sealed class SpeedTestCommandSettings : CommandSettings
     [Description("The verbosity level. <Minimal, Normal, Debug>\nMinimal is ideal for batch scripts and redirected output.")]
     [DefaultValue(Verbosity.Normal)]
     public Verbosity Verbosity { get; set; }
+
+
+    /// <summary>
+    /// Validate the settings.
+    /// </summary>
+    public override ValidationResult Validate()
+    {
+        // Add settings validations here.
+
+        return base.Validate();
+    }
 }
