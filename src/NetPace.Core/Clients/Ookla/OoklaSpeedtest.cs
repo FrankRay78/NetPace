@@ -61,10 +61,7 @@ public sealed class OoklaSpeedtest : ISpeedTestService
             }
         }
 
-        // Calculate the average server latency
-        var latency = (int)stopwatch.ElapsedMilliseconds / maxIterations;
-
-
+        // Calculate the average server latency.
         var latencyResult = new ServerLatencyResult
         {
             Server = server,
