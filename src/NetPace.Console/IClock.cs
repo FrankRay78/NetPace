@@ -32,7 +32,7 @@ public sealed class ClockStub : IClock
 /// </summary>
 public sealed class IncrementingClockStub : IClock
 {
-    private DateTime startDate = new DateTime(1980, 1, 1, 10, 5, 0);
+    private readonly DateTime startDate = new DateTime(1980, 1, 1, 10, 5, 0);
 
     private int callCount = -1;
 
