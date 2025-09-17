@@ -16,7 +16,7 @@ public static class Program
     /// <remarks>
     /// Extracted here so the testing project can reuse the production configuration.
     /// </remarks>
-    internal static Action<IConfigurator> ConfigureAction = (config =>
+    internal static readonly Action<IConfigurator> ConfigureAction = (config =>
     {
         config.SetApplicationName("NetPace");
         config.ValidateExamples();
