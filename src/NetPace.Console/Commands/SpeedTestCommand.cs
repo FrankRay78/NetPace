@@ -13,15 +13,13 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
         if (settings.Loop)
         {
             // Run continuously.
+            var firstLoop = true;
             do
             {
-                var firstLoop = true;
-
                 try
                 {
+                    // Run the speed test.
                     await internalExecuteAsync(includeCSVHeader: firstLoop, settings, cancellationToken);
-
-                    await waiter.Delay(settings.Delay, cancellationToken);
                 }
                 catch (TaskCanceledException)
                 {
@@ -36,6 +34,17 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
                 {
                     firstLoop = false;
                 }
+
+                try
+                {
+                    // Pause before the next speed test.
+                    await waiter.Delay(settings.Delay, cancellationToken);
+                }
+                catch (TaskCanceledException)
+                {
+                    // User requested cancellation.
+                    return 0;
+                }
             }
             while (true);
         }
@@ -46,13 +55,8 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
             {
                 try
                 {
+                    // Run the speed test.
                     await internalExecuteAsync(includeCSVHeader: (i == 0), settings, cancellationToken);
-
-                    if ((i + 1) < settings.Count)
-                    {
-                        // Pause before commencing the next test.
-                        await waiter.Delay(settings.Delay, cancellationToken);
-                    }
                 }
                 catch (TaskCanceledException)
                 {
@@ -63,6 +67,20 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
                 {
                     console.Markup($"[red]Error:[/] {e.Message.EscapeMarkup()}\n");
                 }
+
+                if ((i + 1) < settings.Count)
+                {
+                    try
+                    {
+                        // Pause before the next speed test.
+                        await waiter.Delay(settings.Delay, cancellationToken);
+                    }
+                    catch (TaskCanceledException)
+                    {
+                        // User requested cancellation.
+                        return 0;
+                    }
+                }
             }
         }
         else
@@ -70,6 +88,7 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
             // Run once.
             try
             {
+                // Run the speed test.
                 await internalExecuteAsync(includeCSVHeader: true, settings, cancellationToken);
             }
             catch (TaskCanceledException)
