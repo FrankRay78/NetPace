@@ -6,7 +6,7 @@ namespace NetPace.Console.Commands;
 public sealed class SpeedTestCommandSettings : CommandSettings
 {
     [CommandOption("--loop")]
-    [Description("Performs the speed test on loop.")]
+    [Description("Performs the speed test on continuous loop.")]
     [DefaultValue(false)]
     public bool Loop { get; set; }
 

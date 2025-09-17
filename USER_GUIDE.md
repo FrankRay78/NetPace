@@ -20,6 +20,11 @@ Run upload test only:
 NetPace --no-download
 ```
 
+Run speed tests continuously, with a 15 minute delay between each:  
+```bash
+NetPace --loop --delay 00:15:00
+```
+
 Run 3 tests in a row, with 30 seconds delay between each:  
 ```bash
 NetPace --count 3 --delay 00:00:30

@@ -91,6 +91,7 @@ USAGE:
 OPTIONS:
                             DEFAULT
     -h, --help                                     Prints help information.
+        --loop                                     Performs the speed test on loop.
         --count                                    Stop speed testing after this many times.
         --delay                                    Time between multiple speed tests (HH:MM:SS)
         --csv                                      Display minimal output in CSV format (always includes timestamp).
@@ -99,7 +100,7 @@ OPTIONS:
         --no-upload                                Do not perform upload test.
         --server                                   The url of a specific speed test sever.
                                                    'NetPace servers -l' will return your nearest servers.
-    -t, --timestamp                                Include a timestamp.
+    -t, --timestamp                                Include a timestamp in the output.
         --datetimeformat    yyyy-MM-dd HH:mm:ss    The datetime format string, as defined by Microsoft.Net.
         --downloadsize                             Stop the download test after this many megabytes (IEC MiB).
         --uploadsize                               Stop the upload test after this many megabytes (IEC MiB).
@@ -113,6 +114,9 @@ OPTIONS:
 
 COMMANDS:
     servers    Show the nearest speed test servers.
+
+SEE ALSO:
+    https://github.com/FrankRay78/NetPace/USER_GUIDE.md
 ```
 
 <br />

@@ -34,3 +34,29 @@ public sealed class NoDelayStub : IWaiter
         await Task.Delay(TimeSpan.Zero, cancellationToken);
     }
 }
+
+public sealed class SelfCancellingWaiter : IWaiter
+{
+    public int CallCount { get; private set; } = 0;
+
+    private readonly int maxCallCount;
+    private readonly CancellationTokenSource cancellationTokenSource;
+
+    public SelfCancellingWaiter(int maxCallCount, CancellationTokenSource cancellationTokenSource)
+    {
+        this.maxCallCount = maxCallCount;
+        this.cancellationTokenSource = cancellationTokenSource;
+    }
+
+    public async Task Delay(TimeSpan delay, CancellationToken cancellationToken)
+    {
+        CallCount++;
+
+        if (CallCount >= maxCallCount)
+        {
+            cancellationTokenSource.Cancel();
+        }
+
+        await Task.Delay(TimeSpan.Zero, cancellationToken);  
+    }
+}

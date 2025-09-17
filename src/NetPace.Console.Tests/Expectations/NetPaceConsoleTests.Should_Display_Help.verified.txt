@@ -15,7 +15,7 @@ USAGE:
 OPTIONS:
                             DEFAULT                                                                                                                                                                   
     -h, --help                                     Prints help information.                                                                                                                           
-        --loop                                     Performs the speed test on loop.                                                                                                                   
+        --loop                                     Performs the speed test on continuous loop.                                                                                                        
         --count                                    Stop speed testing after this many times.                                                                                                          
         --delay                                    Time between multiple speed tests (HH:MM:SS)                                                                                                       
         --csv                                      Display minimal output in CSV format (always includes timestamp).                                                                                  
