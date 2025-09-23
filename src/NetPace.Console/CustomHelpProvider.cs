@@ -34,7 +34,7 @@ internal class CustomHelpProvider : HelpProvider
     public override IEnumerable<IRenderable> GetFooter(ICommandModel model, ICommandInfo? command)
     {
         // User Guide link.
-        const string userGuideUrl = "https://github.com/FrankRay78/NetPace/USER_GUIDE.md";
+        const string userGuideUrl = "https://github.com/FrankRay78/NetPace/blob/main/USER_GUIDE.md";
 
         // Renderable for SEE ALSO section.
         var seeAlsoText = new Markup($"\n[bold yellow]SEE ALSO:[/]\n    [link={userGuideUrl}]{userGuideUrl}[/]\n");
