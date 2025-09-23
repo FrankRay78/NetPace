@@ -34,6 +34,10 @@ jobs:
             --configuration Release \
             --no-build \
             -p:PackageVersion=${{ steps.get_version.outputs.version }} \
+            -p:Version=${{ steps.get_version.outputs.version }} \
+            -p:AssemblyVersion=${{ steps.get_version.outputs.version }} \
+            -p:FileVersion=${{ steps.get_version.outputs.version }} \
+            -p:InformationalVersion=${{ steps.get_version.outputs.version }} \
             -p:RepositoryUrl=https://github.com/FrankRay78/NetPace \
             -o ./output
 

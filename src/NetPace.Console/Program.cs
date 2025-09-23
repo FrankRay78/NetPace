@@ -1,7 +1,7 @@
+using System.Reflection;
 using NetPace.Console;
 using NetPace.Console.DependencyInjection;
 using NetPace.Core;
-using NetPace.Core.Clients.Ookla;
 
 public static class Program
 {
@@ -25,6 +25,13 @@ public static class Program
 
         // Register the custom help provider
         config.SetHelpProvider(new CustomHelpProvider(config.Settings));
+
+        // Set application version for Spectre.Console automatic version handling
+        var assembly = typeof(Program).Assembly;
+        var version = assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion
+            ?? assembly.GetName().Version?.ToString()
+            ?? "N/A";
+        config.SetApplicationVersion(version);
 
         config.AddCommand<ListServersCommand>("servers")
             .WithDescription("Show the nearest speed test servers.");
