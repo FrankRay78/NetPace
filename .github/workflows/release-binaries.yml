@@ -57,7 +57,7 @@ jobs:
         run: |
           dotnet build src/NetPace.Core/NetPace.Core.csproj \
             --configuration Release \
-            -p:Version=${{ steps.get_version.outputs.version }}
+            -p:Version=${{ steps.get_version.outputs.version }} \
             -p:AssemblyVersion=${{ steps.get_version.outputs.version }} \
             -p:FileVersion=${{ steps.get_version.outputs.version }} \
             -p:InformationalVersion=${{ steps.get_version.outputs.version }}
