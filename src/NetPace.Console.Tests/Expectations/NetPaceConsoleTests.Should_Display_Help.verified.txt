@@ -15,6 +15,7 @@ USAGE:
 OPTIONS:
                             DEFAULT                                                                                                                                                                   
     -h, --help                                     Prints help information.                                                                                                                           
+    -v, --version                                  Prints version information.                                                                                                                        
         --loop                                     Performs the speed test on continuous loop.                                                                                                        
         --count                                    Stop speed testing after this many times.                                                                                                          
         --delay                                    Time between multiple speed tests (HH:MM:SS)                                                                                                       
