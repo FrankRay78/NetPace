@@ -1,11 +1,14 @@
 version: 2
 updates:
   - package-ecosystem: "nuget"
-    directory: "/"
+    directory: "/src/"
     schedule:
       interval: "daily"
       time: "23:00"
       timezone: "UTC"
+    ignore:
+      - dependency-type: "all"
+        update-type: "version-update:semver-patch"
     open-pull-requests-limit: 10
     reviewers:
       - "FrankRay78"
