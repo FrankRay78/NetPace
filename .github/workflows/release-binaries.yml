@@ -47,9 +47,20 @@ jobs:
             --runtime ${{ matrix.runtime }} \
             --self-contained ${{ steps.deployment_flags.outputs.self_contained }} \
             --output ./publish/${{ matrix.runtime }}-${{ matrix.deployment }} \
+            -p:Version=${{ steps.get_version.outputs.version }} \
             -p:AssemblyVersion=${{ steps.get_version.outputs.version }} \
             -p:FileVersion=${{ steps.get_version.outputs.version }} \
+            -p:InformationalVersion=${{ steps.get_version.outputs.version }} \
             -p:PublishSingleFile=true
+
+      - name: Build NetPace.Core.dll (library) with version
+        run: |
+          dotnet build src/NetPace.Core/NetPace.Core.csproj \
+            --configuration Release \
+            -p:Version=${{ steps.get_version.outputs.version }}
+            -p:AssemblyVersion=${{ steps.get_version.outputs.version }} \
+            -p:FileVersion=${{ steps.get_version.outputs.version }} \
+            -p:InformationalVersion=${{ steps.get_version.outputs.version }}
 
       - name: Create archive
         run: |

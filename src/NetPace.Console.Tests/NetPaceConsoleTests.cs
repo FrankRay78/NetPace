@@ -246,27 +246,6 @@ public class NetPaceConsoleTests
         await Verify(result.Output).UseParameters(url);
     }
 
-    [InlineData("-h")]
-    [InlineData("--help")]
-    [InlineData("-?")]
-    [Theory]
-    public async Task Should_Display_Help(string help)
-    {
-        // Given
-        var registrar = new TypeRegistrar();
-        registrar.Register(typeof(ISpeedTestService), typeof(SpeedTestStub));
-        registrar.Register(typeof(IClock), typeof(ClockStub));
-        registrar.Register(typeof(IWaiter), typeof(NoDelayStub));
-        var app = GetCommandAppTester(registrar);
-
-        // When
-        var result = await app.RunAsync(help);
-
-        // Then
-        Assert.Equal(0, result.ExitCode);
-        await Verify(result.Output).DisableRequireUniquePrefix();
-    }
-
     [Fact]
     public async Task Should_Perform_Speed_Test_With_CSV()
     {
@@ -638,6 +617,51 @@ public class NetPaceConsoleTests
         // Then
         Assert.Equal(0, result.ExitCode);
         await Verify(result.Output);
+    }
+
+    #endregion
+
+    #region CommandApp
+
+    [InlineData("-h")]
+    [InlineData("--help")]
+    [InlineData("-?")]
+    [Theory]
+    public async Task Should_Display_Help(string help)
+    {
+        // Given
+        var registrar = new TypeRegistrar();
+        registrar.Register(typeof(ISpeedTestService), typeof(SpeedTestStub));
+        registrar.Register(typeof(IClock), typeof(ClockStub));
+        registrar.Register(typeof(IWaiter), typeof(NoDelayStub));
+        var app = GetCommandAppTester(registrar);
+
+        // When
+        var result = await app.RunAsync(help);
+
+        // Then
+        Assert.Equal(0, result.ExitCode);
+        await Verify(result.Output).DisableRequireUniquePrefix();
+    }
+
+    [InlineData("-v")]
+    [InlineData("--version")]
+    [Theory]
+    public async Task Should_Display_Version(string version)
+    {
+        // Given
+        var registrar = new TypeRegistrar();
+        registrar.Register(typeof(ISpeedTestService), typeof(SpeedTestStub));
+        registrar.Register(typeof(IClock), typeof(ClockStub));
+        registrar.Register(typeof(IWaiter), typeof(NoDelayStub));
+        var app = GetCommandAppTester(registrar);
+
+        // When
+        var result = await app.RunAsync(version);
+
+        // Then
+        Assert.Equal(0, result.ExitCode);
+        await Verify(result.Output).DisableRequireUniquePrefix();
     }
 
     #endregion
