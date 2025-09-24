@@ -28,7 +28,7 @@ public static class Program
 
         // Set application version for Spectre.Console automatic version handling
         var assembly = typeof(Program).Assembly;
-        var version = assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion
+        var version = assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion?.Split('+')[0]
             ?? assembly.GetName().Version?.ToString()
             ?? "N/A";
         config.SetApplicationVersion(version);
