@@ -15,4 +15,3 @@ updates:
       prefix: "chore"
     labels:
       - "dependencies"
-      - "chore"
