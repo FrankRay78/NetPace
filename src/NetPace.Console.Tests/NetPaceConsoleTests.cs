@@ -142,6 +142,24 @@ public class NetPaceConsoleTests
     }
 
     [Fact]
+    public async Task Should_Perform_Speed_Test_With_Fixed_Unit_Scale()
+    {
+        // Given
+        var registrar = new TypeRegistrar();
+        registrar.Register(typeof(ISpeedTestService), typeof(SpeedTestStub));
+        registrar.Register(typeof(IClock), typeof(ClockStub));
+        registrar.Register(typeof(IWaiter), typeof(NoDelayStub));
+        var app = GetCommandAppTester(registrar);
+
+        // When
+        var result = await app.RunAsync("--unit-scale", "Mega");
+
+        // Then
+        Assert.Equal(0, result.ExitCode);
+        await Verify(result.Output);
+    }
+
+    [Fact]
     public async Task Should_Perform_Speed_Test_Continuously()
     {
         // Given
