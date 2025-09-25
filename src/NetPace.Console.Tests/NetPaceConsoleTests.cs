@@ -221,6 +221,78 @@ public class NetPaceConsoleTests
         await Verify(result.Output).UseParameters(count, delay);
     }
 
+    [Fact]
+    public async Task Should_Perform_Speed_Test_Multiple_Times_With_Fixed_Scale()
+    {
+        // Given
+        var callCount = 0;
+
+        // Create a custom speed test service that returns different results for each call
+        var customSpeedTest = new SpeedTestMock
+        {
+            GetServersAsyncFunc = _ => Task.FromResult(new IServer[]
+            {
+                new Server { Location = "Test Location", Sponsor = "Test Sponsor", Url = "http://test.com" }
+            }),
+
+            GetFastestServerByLatencyAsyncFunc = (servers, _) => Task.FromResult(new ServerLatencyResult
+            {
+                Server = servers[0],
+                Latency = 50
+            }),
+
+            GetDownloadSpeedAsyncFunc = (server, _) =>
+            {
+                callCount++;
+                SpeedTestResult result = callCount switch
+                {
+                    // 31,250 bytes in 1 second = 250,000 bits/second = 0.25 Mbps
+                    1 => new SpeedTestResult { BytesProcessed = 31250, ElapsedMilliseconds = 1000 },
+
+                    // 125,000 bytes in 1 second = 1,000,000 bits/second = 1.0 Mbps
+                    2 => new SpeedTestResult { BytesProcessed = 125000, ElapsedMilliseconds = 1000 },
+
+                    // 343,750 bytes in 1 second = 2,750,000 bits/second = 2.75 Mbps
+                    3 => new SpeedTestResult { BytesProcessed = 343750, ElapsedMilliseconds = 1000 },
+
+                    _ => new SpeedTestResult { BytesProcessed = 125000, ElapsedMilliseconds = 1000 }
+                };
+                return Task.FromResult(result);
+            },
+
+            GetUploadSpeedAsyncFunc = (server, _) =>
+            {
+                SpeedTestResult result = callCount switch
+                {
+                    // 62,500 bytes in 1 second = 500,000 bits/second = 0.5 Mbps
+                    1 => new SpeedTestResult { BytesProcessed = 62500, ElapsedMilliseconds = 1000 },
+
+                    // 375,000 bytes in 1 second = 3,000,000 bits/second = 3.0 Mbps
+                    2 => new SpeedTestResult { BytesProcessed = 375000, ElapsedMilliseconds = 1000 },
+
+                    // 166,250 bytes in 1 second = 1,330,000 bits/second = 1.33 Mbps
+                    3 => new SpeedTestResult { BytesProcessed = 166250, ElapsedMilliseconds = 1000 },
+
+                    _ => new SpeedTestResult { BytesProcessed = 375000, ElapsedMilliseconds = 1000 }
+                };
+                return Task.FromResult(result);
+            }
+        };
+
+        var registrar = new TypeRegistrar();
+        registrar.RegisterInstance(typeof(ISpeedTestService), customSpeedTest);
+        registrar.Register(typeof(IClock), typeof(IncrementingClockStub));
+        registrar.Register(typeof(IWaiter), typeof(NoDelayStub));
+        var app = GetCommandAppTester(registrar);
+
+        // When
+        var result = await app.RunAsync("--count", "3", "--unit-scale", "Mega", "--verbosity", "Minimal");
+
+        // Then
+        Assert.Equal(0, result.ExitCode);
+        await Verify(result.Output);
+    }
+
     [InlineData("Minimal")]
     [InlineData("Normal")]
     [InlineData("Debug")]
@@ -683,4 +755,5 @@ public class NetPaceConsoleTests
     }
 
     #endregion
+
 }

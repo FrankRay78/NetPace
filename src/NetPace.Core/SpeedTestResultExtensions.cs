@@ -11,6 +11,14 @@ public static class SpeedTestResultExtensions
     /// <summary>
     /// Calculates and formats the speed string.
     /// </summary>
+    public static string GetSpeedString(this SpeedTestResult result, SpeedUnit unit, SpeedUnitSystem unitSystem)
+    {
+        return GetSpeedString(result, unit, unitSystem, SpeedScale.Auto);
+    }
+
+    /// <summary>
+    /// Calculates and formats the speed string.
+    /// </summary>
     public static string GetSpeedString(this SpeedTestResult result, SpeedUnit unit, SpeedUnitSystem unitSystem, SpeedScale scale = SpeedScale.Auto)
     {
         var isBits = unit == SpeedUnit.BitsPerSecond;

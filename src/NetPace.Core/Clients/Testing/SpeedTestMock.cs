@@ -23,7 +23,7 @@ public sealed class SpeedTestMock : ISpeedTestService
     {
         if (GetServersAsyncFunc != null)
             return GetServersAsyncFunc(cancellationToken);
-        throw new NotImplementedException();
+        throw new NotImplementedException(nameof(GetServersAsync));
     }
 
     /// <inheritdoc/>
@@ -31,7 +31,7 @@ public sealed class SpeedTestMock : ISpeedTestService
     {
         if (GetServerLatencyAsyncFunc != null)
             return GetServerLatencyAsyncFunc(server, cancellationToken);
-        throw new NotImplementedException();
+        throw new NotImplementedException(nameof(GetDownloadSpeedAsync));
     }
 
     /// <inheritdoc/>
@@ -39,7 +39,7 @@ public sealed class SpeedTestMock : ISpeedTestService
     {
         if (GetFastestServerByLatencyAsyncFunc != null)
             return GetFastestServerByLatencyAsyncFunc(servers, cancellationToken);
-        throw new NotImplementedException();
+        throw new NotImplementedException(nameof(GetDownloadSpeedAsync));
     }
 
     /// <inheritdoc/>
@@ -47,7 +47,7 @@ public sealed class SpeedTestMock : ISpeedTestService
     {
         if (GetDownloadSpeedAsyncFunc != null)
             return GetDownloadSpeedAsyncFunc(server, cancellationToken);
-        throw new NotImplementedException();
+        throw new NotImplementedException(nameof(GetDownloadSpeedAsync));
     }
 
     /// <inheritdoc/>
@@ -55,7 +55,7 @@ public sealed class SpeedTestMock : ISpeedTestService
     {
         if (GetDownloadSpeedWithDownloadSizeAsyncFunc != null)
             return GetDownloadSpeedWithDownloadSizeAsyncFunc(server, downloadSizeMb, cancellationToken);
-        throw new NotImplementedException();
+        throw new NotImplementedException(nameof(GetDownloadSpeedAsync));
     }
 
     /// <inheritdoc/>
@@ -63,7 +63,7 @@ public sealed class SpeedTestMock : ISpeedTestService
     {
         if (GetDownloadSpeedWithProgressAsyncFunc != null)
             return GetDownloadSpeedWithProgressAsyncFunc(server, UpdateProgress, cancellationToken);
-        throw new NotImplementedException();
+        throw new NotImplementedException(nameof(GetDownloadSpeedAsync));
     }
 
     /// <inheritdoc/>
@@ -71,7 +71,7 @@ public sealed class SpeedTestMock : ISpeedTestService
     {
         if (GetDownloadSpeedWithDownloadSizeAndProgressAsyncFunc != null)
             return GetDownloadSpeedWithDownloadSizeAndProgressAsyncFunc(server, downloadSizeMb, UpdateProgress, cancellationToken);
-        throw new NotImplementedException();
+        throw new NotImplementedException(nameof(GetDownloadSpeedAsync));
     }
 
     /// <inheritdoc/>
@@ -79,7 +79,7 @@ public sealed class SpeedTestMock : ISpeedTestService
     {
         if (GetUploadSpeedAsyncFunc != null)
             return GetUploadSpeedAsyncFunc(server, cancellationToken);
-        throw new NotImplementedException();
+        throw new NotImplementedException(nameof(GetUploadSpeedAsync));
     }
 
     /// <inheritdoc/>
@@ -87,7 +87,7 @@ public sealed class SpeedTestMock : ISpeedTestService
     {
         if (GetUploadSpeedWithUploadSizeAsyncFunc != null)
             return GetUploadSpeedWithUploadSizeAsyncFunc(server, uploadSizeMb, cancellationToken);
-        throw new NotImplementedException();
+        throw new NotImplementedException(nameof(GetUploadSpeedAsync));
     }
 
     /// <inheritdoc/>
@@ -95,7 +95,7 @@ public sealed class SpeedTestMock : ISpeedTestService
     {
         if (GetUploadSpeedWithProgressAsyncFunc != null)
             return GetUploadSpeedWithProgressAsyncFunc(server, UpdateProgress, cancellationToken);
-        throw new NotImplementedException();
+        throw new NotImplementedException(nameof(GetUploadSpeedAsync));
     }
 
     /// <inheritdoc/>
@@ -103,6 +103,6 @@ public sealed class SpeedTestMock : ISpeedTestService
     {
         if (GetUploadSpeedWithUploadSizeAndProgressAsyncFunc != null)
             return GetUploadSpeedWithUploadSizeAndProgressAsyncFunc(server, uploadSizeMb, UpdateProgress, cancellationToken);
-        throw new NotImplementedException();
+        throw new NotImplementedException(nameof(GetUploadSpeedAsync));
     }
 }
