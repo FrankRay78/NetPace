@@ -241,7 +241,7 @@ public class NetPaceConsoleTests
                 Latency = 50
             }),
 
-            GetDownloadSpeedAsyncFunc = (server, _) =>
+            GetDownloadSpeedAsyncFunc = (server, _, _, _) =>
             {
                 callCount++;
                 SpeedTestResult result = callCount switch
@@ -260,7 +260,7 @@ public class NetPaceConsoleTests
                 return Task.FromResult(result);
             },
 
-            GetUploadSpeedAsyncFunc = (server, _) =>
+            GetUploadSpeedAsyncFunc = (server, _, _, _) =>
             {
                 SpeedTestResult result = callCount switch
                 {
