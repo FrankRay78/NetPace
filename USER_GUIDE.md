@@ -5,9 +5,9 @@ Run a simple speed test using the nearest available server:
 NetPace
 ```
 
-Produce minimal CSV output, suitable for scripting or parsing:  
+Produce CSV output with test results in megabits, suitable for parsing:  
 ```bash
-NetPace --csv
+NetPace --csv --unit-scale Mega
 ```
 
 Run download test only:  

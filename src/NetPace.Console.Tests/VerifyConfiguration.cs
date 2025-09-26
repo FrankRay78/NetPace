@@ -1,4 +1,5 @@
 using System.Runtime.CompilerServices;
+using DiffEngine;
 
 namespace NetPace.Console.Tests;
 

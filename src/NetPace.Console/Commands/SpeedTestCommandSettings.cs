@@ -66,6 +66,11 @@ public sealed class SpeedTestCommandSettings : CommandSettings
     [DefaultValue(SpeedUnit.BitsPerSecond)]
     public SpeedUnit SpeedUnit { get; set; }
 
+    [CommandOption("--unit-scale")]
+    [Description("The speed unit scale. <Auto, Base, Kilo, Mega, Giga, Tera, Peta>")]
+    [DefaultValue(SpeedScale.Auto)]
+    public SpeedScale SpeedScale { get; set; }
+
     [CommandOption("--unit-system")]
     [Description("The speed unit system. <SI, IEC>\nSI steps up in powers of 1000 (KB, MB, GB), common in networking, while IEC uses powers of 1024 (KiB, MiB, GiB), standard in computing and storage.")]
     [DefaultValue(SpeedUnitSystem.SI)]

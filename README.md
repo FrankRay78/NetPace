@@ -91,6 +91,7 @@ USAGE:
 OPTIONS:
                             DEFAULT
     -h, --help                                     Prints help information.
+    -v, --version                                  Prints version information.
         --loop                                     Performs the speed test on continuous loop.
         --count                                    Stop speed testing after this many times.
         --delay                                    Time between multiple speed tests (HH:MM:SS)
@@ -105,6 +106,7 @@ OPTIONS:
         --downloadsize                             Stop the download test after this many megabytes (IEC MiB).
         --uploadsize                               Stop the upload test after this many megabytes (IEC MiB).
     -u, --unit              BitsPerSecond          The speed unit. <BitsPerSecond, BytesPerSecond>
+        --unit-scale        Auto                   The speed unit scale. <Auto, Base, Kilo, Mega, Giga, Tera, Peta>
         --unit-system       SI                     The speed unit system. <SI, IEC>
                                                    SI steps up in powers of 1000 (KB, MB, GB), common in networking,
                                                    while IEC uses powers of 1024 (KiB, MiB, GiB), standard in computing

@@ -164,8 +164,8 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
             {
                 settings.IncludeTimestamp ? clock.Now.ToString(settings.DateTimeFormat) : null,
                 $"{fastest.Latency} ms",
-                !settings.NoDownload ? downloadResult.GetSpeedString(settings.SpeedUnit, settings.SpeedUnitSystem) : null,
-                !settings.NoUpload ? uploadResult.GetSpeedString(settings.SpeedUnit, settings.SpeedUnitSystem) : null
+                !settings.NoDownload ? downloadResult.GetSpeedString(settings.SpeedUnit, settings.SpeedUnitSystem, settings.SpeedScale) : null,
+                !settings.NoUpload ? uploadResult.GetSpeedString(settings.SpeedUnit, settings.SpeedUnitSystem, settings.SpeedScale) : null
             }.Where(s => !string.IsNullOrEmpty(s))));
         }
         else
@@ -207,8 +207,8 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
             {
                 settings.IncludeTimestamp ? clock.Now.ToString(settings.DateTimeFormat) : null,
                 $"Latency: {fastest.Latency} ms",
-                !settings.NoDownload ? $"Download: {downloadResult.GetSpeedString(settings.SpeedUnit, settings.SpeedUnitSystem)}" : null,
-                !settings.NoUpload ? $"Upload: {uploadResult.GetSpeedString(settings.SpeedUnit, settings.SpeedUnitSystem)}" : null
+                !settings.NoDownload ? $"Download: {downloadResult.GetSpeedString(settings.SpeedUnit, settings.SpeedUnitSystem, settings.SpeedScale)}" : null,
+                !settings.NoUpload ? $"Upload: {uploadResult.GetSpeedString(settings.SpeedUnit, settings.SpeedUnitSystem, settings.SpeedScale)}" : null
             }.Where(s => !string.IsNullOrEmpty(s))));
 
 

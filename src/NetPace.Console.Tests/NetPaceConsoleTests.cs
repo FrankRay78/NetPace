@@ -142,6 +142,24 @@ public class NetPaceConsoleTests
     }
 
     [Fact]
+    public async Task Should_Perform_Speed_Test_With_Fixed_Unit_Scale()
+    {
+        // Given
+        var registrar = new TypeRegistrar();
+        registrar.Register(typeof(ISpeedTestService), typeof(SpeedTestStub));
+        registrar.Register(typeof(IClock), typeof(ClockStub));
+        registrar.Register(typeof(IWaiter), typeof(NoDelayStub));
+        var app = GetCommandAppTester(registrar);
+
+        // When
+        var result = await app.RunAsync("--unit-scale", "Mega");
+
+        // Then
+        Assert.Equal(0, result.ExitCode);
+        await Verify(result.Output);
+    }
+
+    [Fact]
     public async Task Should_Perform_Speed_Test_Continuously()
     {
         // Given
@@ -201,6 +219,24 @@ public class NetPaceConsoleTests
         Assert.Equal(count - 1, waiter.CallCount);
         Assert.Equal(0, result.ExitCode);
         await Verify(result.Output).UseParameters(count, delay);
+    }
+
+    [Fact]
+    public async Task Should_Perform_Speed_Test_Multiple_Times_With_Fixed_Scale()
+    {
+        // Given
+        var registrar = new TypeRegistrar();
+        registrar.Register(typeof(ISpeedTestService), typeof(VariableSpeedTester));
+        registrar.Register(typeof(IClock), typeof(IncrementingClockStub));
+        registrar.Register(typeof(IWaiter), typeof(NoDelayStub));
+        var app = GetCommandAppTester(registrar);
+
+        // When
+        var result = await app.RunAsync("--count", "3", "--unit-scale", "Mega", "--verbosity", "Minimal");
+
+        // Then
+        Assert.Equal(0, result.ExitCode);
+        await Verify(result.Output);
     }
 
     [InlineData("Minimal")]
@@ -324,6 +360,24 @@ public class NetPaceConsoleTests
         Assert.Equal(count - 1, waiter.CallCount);
         Assert.Equal(0, result.ExitCode);
         await Verify(result.Output).UseParameters(count, delay);
+    }
+
+    [Fact]
+    public async Task Should_Perform_Speed_Test_With_CSV_Multiple_Times_With_Fixed_Scale()
+    {
+        // Given
+        var registrar = new TypeRegistrar();
+        registrar.Register(typeof(ISpeedTestService), typeof(VariableSpeedTester));
+        registrar.Register(typeof(IClock), typeof(IncrementingClockStub));
+        registrar.Register(typeof(IWaiter), typeof(NoDelayStub));
+        var app = GetCommandAppTester(registrar);
+
+        // When
+        var result = await app.RunAsync("--csv", "--count", "3", "--unit-scale", "Mega", "--verbosity", "Minimal");
+
+        // Then
+        Assert.Equal(0, result.ExitCode);
+        await Verify(result.Output);
     }
 
     [Fact]
@@ -665,4 +719,5 @@ public class NetPaceConsoleTests
     }
 
     #endregion
+
 }
