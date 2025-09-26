@@ -1,3 +1,3 @@
-﻿Latency: 50 ms, Download: 0.25 Mbps, Upload: 0.5 Mbps
-Latency: 50 ms, Download: 1 Mbps, Upload: 3 Mbps
-Latency: 50 ms, Download: 2.75 Mbps, Upload: 1.33 Mbps
+Latency: 75 ms, Download: 0.25 Mbps, Upload: 0.5 Mbps
+Latency: 100 ms, Download: 1 Mbps, Upload: 3 Mbps
+Latency: 150 ms, Download: 2.75 Mbps, Upload: 1.33 Mbps

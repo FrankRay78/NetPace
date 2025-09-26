@@ -19,22 +19,25 @@ public class VariableSpeedTester : ISpeedTestService
                 new Server { Location = "Test Location", Sponsor = "Test Sponsor", Url = "http://test.com" }
             }),
 
-            GetFastestServerByLatencyAsyncFunc = (servers, _) => Task.FromResult(new ServerLatencyResult
-            {
-                Server = servers[0],
-                Latency = 50
-            }),
-
-            GetServerLatencyAsyncFunc = (server, _) => Task.FromResult(new ServerLatencyResult
-            {
-                Server = server,
-                Latency = 50
-            }),
-
-            GetDownloadSpeedAsyncFunc = (server, _, _, _) =>
+            GetFastestServerByLatencyAsyncFunc = (servers, _) => 
             {
                 callCount++;
 
+                // The first server is always the fastest
+                var server = servers[0];
+
+                ServerLatencyResult result = callCount switch
+                {
+                    1 => new ServerLatencyResult { Server = server, Latency = 75 },
+                    2 => new ServerLatencyResult { Server = server, Latency = 100 },
+                    3 => new ServerLatencyResult { Server = server, Latency = 150 },
+                    _ => new ServerLatencyResult { Server = server, Latency = 100 },
+                };
+                return Task.FromResult(result);
+            },
+
+            GetDownloadSpeedAsyncFunc = (server, _, _, _) =>
+            {
                 // Call 1: 31,250 bytes in 1 second = 250,000 bits/second = 0.25 Mbps
                 // Call 2: 125,000 bytes in 1 second = 1,000,000 bits/second = 1.0 Mbps
                 // Call 3: 343,750 bytes in 1 second = 2,750,000 bits/second = 2.75 Mbps
