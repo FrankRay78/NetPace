@@ -26,6 +26,15 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Documentation", "Documentat
 		..\USER_GUIDE.md = ..\USER_GUIDE.md
 	EndProjectSection
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "GitHub Actions", "GitHub Actions", "{D2028549-8A8F-4832-AB1F-D54CE765D17B}"
+	ProjectSection(SolutionItems) = preProject
+		..\.github\workflows\codeql.yml = ..\.github\workflows\codeql.yml
+		..\.github\dependabot.yml = ..\.github\dependabot.yml
+		..\.github\workflows\dotnet.yml = ..\.github\workflows\dotnet.yml
+		..\.github\workflows\publish-nuget.yml = ..\.github\workflows\publish-nuget.yml
+		..\.github\workflows\release-binaries.yml = ..\.github\workflows\release-binaries.yml
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
