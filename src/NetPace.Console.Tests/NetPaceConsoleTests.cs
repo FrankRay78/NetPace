@@ -402,6 +402,24 @@ public class NetPaceConsoleTests
     }
 
     [Fact]
+    public async Task Should_Perform_Speed_Test_With_CSV_Multiple_Times_Without_Fixed_Scale_In_Header_When_Unit_Scale_Is_Auto()
+    {
+        // Given
+        var registrar = new TypeRegistrar();
+        registrar.Register(typeof(ISpeedTestService), typeof(VariableSpeedTester));
+        registrar.Register(typeof(IClock), typeof(IncrementingClockStub));
+        registrar.Register(typeof(IWaiter), typeof(NoDelayStub));
+        var app = GetCommandAppTester(registrar);
+
+        // When
+        var result = await app.RunAsync("--csv", "--csv-header-units", "--count", "3", "--unit-scale", "Auto");
+
+        // Then
+        Assert.Equal(0, result.ExitCode);
+        await Verify(result.Output);
+    }
+
+    [Fact]
     public async Task Should_Perform_Speed_Test_With_CSV_No_Download()
     {
         // Given
