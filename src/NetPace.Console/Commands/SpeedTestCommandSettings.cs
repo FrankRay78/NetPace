@@ -28,6 +28,11 @@ public sealed class SpeedTestCommandSettings : CommandSettings
     [DefaultValue(',')]
     public char CSVDelimiter { get; set; }
 
+    [CommandOption("--csv-header-units")]
+    [Description("Display speed test units (eg. Mbps) in the CSV header row, not the data rows.\n--unit-scale must not be <Auto> for multiple speed tests (eg. --loop or --count)")]
+    [DefaultValue(false)]
+    public bool CSVHeaderUnits { get; set; }
+
     [CommandOption("--no-download")]
     [Description("Do not perform download test.")]
     [DefaultValue(false)]

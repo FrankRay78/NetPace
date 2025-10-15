@@ -380,6 +380,27 @@ public class NetPaceConsoleTests
         await Verify(result.Output);
     }
 
+    [InlineData("Base")]
+    [InlineData("Kilo")]
+    [InlineData("Mega")]
+    [Theory]
+    public async Task Should_Perform_Speed_Test_With_CSV_Multiple_Times_With_Fixed_Scale_In_Header(string scale)
+    {
+        // Given
+        var registrar = new TypeRegistrar();
+        registrar.Register(typeof(ISpeedTestService), typeof(VariableSpeedTester));
+        registrar.Register(typeof(IClock), typeof(IncrementingClockStub));
+        registrar.Register(typeof(IWaiter), typeof(NoDelayStub));
+        var app = GetCommandAppTester(registrar);
+
+        // When
+        var result = await app.RunAsync("--csv", "--csv-header-units", "--count", "3", "--unit-scale", $"{scale}");
+
+        // Then
+        Assert.Equal(0, result.ExitCode);
+        await Verify(result.Output).UseParameters(scale);
+    }
+
     [Fact]
     public async Task Should_Perform_Speed_Test_With_CSV_No_Download()
     {
