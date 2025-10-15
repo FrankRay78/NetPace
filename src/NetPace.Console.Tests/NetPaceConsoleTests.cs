@@ -333,7 +333,7 @@ public class NetPaceConsoleTests
         var app = GetCommandAppTester(registrar);
 
         // When
-        var result = await app.RunAsync("--csv", "--count", $"{count}", "--verbosity", "Minimal");
+        var result = await app.RunAsync("--csv", "--count", $"{count}");
 
         // Then
         Assert.Equal(0, result.ExitCode);
@@ -354,7 +354,7 @@ public class NetPaceConsoleTests
         var app = GetCommandAppTester(registrar);
 
         // When
-        var result = await app.RunAsync("--csv", "--count", $"{count}", "--delay", $"{delay}", "--verbosity", "Minimal");
+        var result = await app.RunAsync("--csv", "--count", $"{count}", "--delay", $"{delay}");
 
         // Then
         Assert.Equal(count - 1, waiter.CallCount);
@@ -373,7 +373,7 @@ public class NetPaceConsoleTests
         var app = GetCommandAppTester(registrar);
 
         // When
-        var result = await app.RunAsync("--csv", "--count", "3", "--unit-scale", "Mega", "--verbosity", "Minimal");
+        var result = await app.RunAsync("--csv", "--count", "3", "--unit-scale", "Mega");
 
         // Then
         Assert.Equal(0, result.ExitCode);
