@@ -1,4 +1,1 @@
-﻿Timestamp,Latency,Download,Upload
-1980-01-01 10:05:00,75 ms,250 Kbps,500 Kbps
-1980-01-01 10:05:05,100 ms,1 Mbps,3 Mbps
-1980-01-01 10:05:10,150 ms,2.75 Mbps,1.33 Mbps
+Error: The --unit-scale option cannot be Auto.

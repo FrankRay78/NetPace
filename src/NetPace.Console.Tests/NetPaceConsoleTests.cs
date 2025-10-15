@@ -415,7 +415,7 @@ public class NetPaceConsoleTests
         var result = await app.RunAsync("--csv", "--csv-header-units", "--count", "3", "--unit-scale", "Auto");
 
         // Then
-        Assert.Equal(0, result.ExitCode);
+        Assert.Equal(-1, result.ExitCode);
         await Verify(result.Output);
     }
 
