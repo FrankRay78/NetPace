@@ -118,7 +118,7 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
         else
         {
             // User specified speed test server.
-            var server = new NetPace.Core.Clients.Ookla.Server() { Sponsor = "(Unknown)", Url = settings.ServerUrl };
+            var server = new Core.Clients.Ookla.Server() { Sponsor = "(Unknown)", Url = settings.ServerUrl };
             fastest = await speedTestClient.GetServerLatencyAsync(server, cancellationToken);
         }
 
@@ -147,26 +147,55 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
             // Always including the timestamp in the CSV output seems reasonable
             settings.IncludeTimestamp = true;
 
-            // Header row.
-            if (includeCSVHeader)
+            if (settings.CSVHeaderUnits)
             {
+                var downloadFormattedParts = downloadResult.GetSpeedStringParts(settings.SpeedUnit, settings.SpeedUnitSystem, settings.SpeedScale);
+                var uploadFormattedParts = uploadResult.GetSpeedStringParts(settings.SpeedUnit, settings.SpeedUnitSystem, settings.SpeedScale);
+
+                // Header row.
+                if (includeCSVHeader)
+                {
+                    console.WriteLine(string.Join(settings.CSVDelimiter, new[]
+                    {
+                        settings.IncludeTimestamp ? "Timestamp" : null,
+                        "Latency (ms)",
+                        !settings.NoDownload ? $"Download ({downloadFormattedParts.unit})" : null,
+                        !settings.NoUpload ? $"Upload ({uploadFormattedParts.unit})" : null
+                    }.Where(s => !string.IsNullOrEmpty(s))));
+                }
+
+                // Data row.
                 console.WriteLine(string.Join(settings.CSVDelimiter, new[]
                 {
-                    settings.IncludeTimestamp ? "Timestamp" : null,
-                    "Latency",
-                    !settings.NoDownload ? "Download" : null,
-                    !settings.NoUpload ? "Upload" : null
+                    settings.IncludeTimestamp ? clock.Now.ToString(settings.DateTimeFormat) : null,
+                    $"{fastest.Latency}",
+                    !settings.NoDownload ? downloadFormattedParts.speed : null,
+                    !settings.NoUpload ? uploadFormattedParts.speed : null
                 }.Where(s => !string.IsNullOrEmpty(s))));
             }
-
-            // Data row.
-            console.WriteLine(string.Join(settings.CSVDelimiter, new[]
+            else
             {
-                settings.IncludeTimestamp ? clock.Now.ToString(settings.DateTimeFormat) : null,
-                $"{fastest.Latency} ms",
-                !settings.NoDownload ? downloadResult.GetSpeedString(settings.SpeedUnit, settings.SpeedUnitSystem, settings.SpeedScale) : null,
-                !settings.NoUpload ? uploadResult.GetSpeedString(settings.SpeedUnit, settings.SpeedUnitSystem, settings.SpeedScale) : null
-            }.Where(s => !string.IsNullOrEmpty(s))));
+                // Header row.
+                if (includeCSVHeader)
+                {
+                    console.WriteLine(string.Join(settings.CSVDelimiter, new[]
+                    {
+                        settings.IncludeTimestamp ? "Timestamp" : null,
+                        "Latency",
+                        !settings.NoDownload ? "Download" : null,
+                        !settings.NoUpload ? "Upload" : null
+                    }.Where(s => !string.IsNullOrEmpty(s))));
+                }
+
+                // Data row.
+                console.WriteLine(string.Join(settings.CSVDelimiter, new[]
+                {
+                    settings.IncludeTimestamp ? clock.Now.ToString(settings.DateTimeFormat) : null,
+                    $"{fastest.Latency} ms",
+                    !settings.NoDownload ? downloadResult.GetSpeedString(settings.SpeedUnit, settings.SpeedUnitSystem, settings.SpeedScale) : null,
+                    !settings.NoUpload ? uploadResult.GetSpeedString(settings.SpeedUnit, settings.SpeedUnitSystem, settings.SpeedScale) : null
+                }.Where(s => !string.IsNullOrEmpty(s))));
+            }
         }
         else
         {
@@ -234,6 +263,7 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
 
         if (settings.CSV || ((settings.Verbosity & Verbosity.Minimal) != 0))
         {
+            // No progress is reported
             if (!settings.NoDownload) downloadResult = await speedTestClient.GetDownloadSpeedAsync(server, settings.DownloadSizeMb, cancellationToken);
             if (!settings.NoUpload) uploadResult = await speedTestClient.GetUploadSpeedAsync(server, settings.UploadSizeMb, cancellationToken);
         }
