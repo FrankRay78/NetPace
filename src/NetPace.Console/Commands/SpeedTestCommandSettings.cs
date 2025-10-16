@@ -97,7 +97,7 @@ public sealed class SpeedTestCommandSettings : CommandSettings
         if (CSV && CSVHeaderUnits && SpeedScale == SpeedScale.Auto && (Loop || Count > 1))
         {
             //return ValidationResult.Error("The --csv-header-units option requires --unit-scale to be set to a specific value when performing multiple speed tests (eg. --loop or --count).");
-            return ValidationResult.Error("The --unit-scale option cannot be Auto.");
+            return ValidationResult.Error("The --unit-scale option cannot be Auto when performing multiple speed tests (eg. --loop or --count).");
         }
 
         return base.Validate();

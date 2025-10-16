@@ -1,1 +1,0 @@
-Error: The --unit-scale option cannot be Auto.
