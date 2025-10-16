@@ -7,7 +7,7 @@ NetPace
 
 Produce CSV output with test results in megabits, suitable for parsing:  
 ```bash
-NetPace --csv --unit-scale Mega
+NetPace --csv --csv-header-units --unit-scale Mega
 ```
 
 Run download test only:  

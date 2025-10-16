@@ -15,7 +15,7 @@ public sealed class SpeedTestCommandSettings : CommandSettings
     public int Count { get; set; } = 1;
 
     [CommandOption("--delay")]
-    [Description("Time between multiple speed tests (HH:MM:SS)")]
+    [Description("Time between multiple speed tests (HH:MM:SS).")]
     public TimeSpan Delay { get; set; } = TimeSpan.Zero;
 
     [CommandOption("--csv")]
@@ -27,6 +27,11 @@ public sealed class SpeedTestCommandSettings : CommandSettings
     [Description("Single character delimiter to use in CSV output.")]
     [DefaultValue(',')]
     public char CSVDelimiter { get; set; }
+
+    [CommandOption("--csv-header-units")]
+    [Description("Display speed test units (eg. Mbps) in the CSV header row, not the data rows.\n--unit-scale must not be <Auto> for multiple speed tests (eg. --loop or --count).")]
+    [DefaultValue(false)]
+    public bool CSVHeaderUnits { get; set; }
 
     [CommandOption("--no-download")]
     [Description("Do not perform download test.")]
@@ -88,6 +93,11 @@ public sealed class SpeedTestCommandSettings : CommandSettings
     public override ValidationResult Validate()
     {
         // Add settings validations here.
+
+        if (CSV && CSVHeaderUnits && SpeedScale == SpeedScale.Auto && (Loop || Count > 1))
+        {
+            return ValidationResult.Error("The --unit-scale option must not be <Auto> for multiple speed tests (eg. --loop or --count).");
+        }
 
         return base.Validate();
     }

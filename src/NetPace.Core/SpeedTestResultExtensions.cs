@@ -1,3 +1,5 @@
+using static System.Formats.Asn1.AsnWriter;
+
 namespace NetPace.Core;
 
 public static class SpeedTestResultExtensions
@@ -21,6 +23,36 @@ public static class SpeedTestResultExtensions
     /// </summary>
     public static string GetSpeedString(this SpeedTestResult result, SpeedUnit unit, SpeedUnitSystem unitSystem, SpeedScale scale = SpeedScale.Auto)
     {
+        return FormatSpeed(result, unit, unitSystem, scale);
+    }
+
+    /// <summary>
+    /// Calculates and formats the speed string.
+    /// </summary>
+    public static (string speed, string unit) GetSpeedStringParts(this SpeedTestResult result, SpeedUnit unit, SpeedUnitSystem unitSystem)
+    {
+        return GetSpeedStringParts(result, unit, unitSystem, SpeedScale.Auto);
+    }
+
+    /// <summary>
+    /// Calculates and formats the speed string.
+    /// </summary>
+    public static (string speed, string unit) GetSpeedStringParts(this SpeedTestResult result, SpeedUnit unit, SpeedUnitSystem unitSystem, SpeedScale scale = SpeedScale.Auto)
+    {
+        return FormatSpeedParts(result, unit, unitSystem, scale);
+    }
+
+    #region Private Methods
+
+    private static string FormatSpeed(SpeedTestResult result, SpeedUnit unit, SpeedUnitSystem unitSystem, SpeedScale scale)
+    {
+        (string speed, string unit) formattedParts = FormatSpeedParts(result, unit, unitSystem, scale);
+
+        return formattedParts.speed + " " + formattedParts.unit;
+    }
+
+    private static (string speed, string unit) FormatSpeedParts(SpeedTestResult result, SpeedUnit unit, SpeedUnitSystem unitSystem, SpeedScale scale)
+    {
         var isBits = unit == SpeedUnit.BitsPerSecond;
         double divisor = unitSystem == SpeedUnitSystem.IEC ? 1024 : 1000;
 
@@ -28,17 +60,21 @@ public static class SpeedTestResultExtensions
             ? result.BytesProcessed * 8.0 / ((double)result.ElapsedMilliseconds / 1000)
             : result.BytesProcessed / ((double)result.ElapsedMilliseconds / 1000);
 
+        (string speed, string unit) formattedResult;
+
         if (scale == SpeedScale.Auto)
         {
-            return FormatSpeed(speed, isBits, unitSystem, divisor);
+            formattedResult = FormatSpeed_AutoScale(speed, isBits, unitSystem, divisor);
         }
         else
         {
-            return FormatSpeedWithFixedScale(speed, isBits, unitSystem, divisor, (int)scale - 1);
+            formattedResult = FormatSpeed_FixedScale(speed, isBits, unitSystem, divisor, (int)scale - 1);
         }
+
+        return formattedResult;
     }
 
-    private static string FormatSpeed(double speed, bool isBits, SpeedUnitSystem unitSystem, double divisor)
+    private static (string speed, string unit) FormatSpeed_AutoScale(double speed, bool isBits, SpeedUnitSystem unitSystem, double divisor)
     {
         var units = isBits
             ? unitSystem == SpeedUnitSystem.IEC ? IEC_BitUnits : SI_BitUnits
@@ -51,10 +87,10 @@ public static class SpeedTestResultExtensions
             index++;
         }
 
-        return $"{speed.ToString("0.##")} {units[index]}";
+        return ($"{speed.ToString("0.##")}", $"{units[index]}");
     }
 
-    private static string FormatSpeedWithFixedScale(double speed, bool isBits, SpeedUnitSystem unitSystem, double divisor, int fixedScale)
+    private static (string speed, string unit) FormatSpeed_FixedScale(double speed, bool isBits, SpeedUnitSystem unitSystem, double divisor, int fixedScale)
     {
         var units = isBits
             ? unitSystem == SpeedUnitSystem.IEC ? IEC_BitUnits : SI_BitUnits
@@ -62,13 +98,15 @@ public static class SpeedTestResultExtensions
 
         // Select the correct scale index (Base=0, Kilo=1, Mega=2, etc).
         var index = Math.Min(Math.Max(0, fixedScale), units.Length - 1);
-        
+
         // Apply the fixed scaling.
         for (int i = 0; i < index; i++)
         {
             speed /= divisor;
         }
 
-        return $"{speed.ToString("0.##")} {units[index]}";
+        return ($"{speed.ToString("0.##")}", $"{units[index]}");
     }
+
+    #endregion
 }
