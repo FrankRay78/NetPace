@@ -1,1 +1,1 @@
-﻿Error: The --unit-scale option cannot be Auto when performing multiple speed tests (eg. --loop or --count).
+﻿Error: The --unit-scale option must not be <Auto> for multiple speed tests (eg. --loop or --count).

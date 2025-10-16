@@ -15,7 +15,7 @@ public sealed class SpeedTestCommandSettings : CommandSettings
     public int Count { get; set; } = 1;
 
     [CommandOption("--delay")]
-    [Description("Time between multiple speed tests (HH:MM:SS)")]
+    [Description("Time between multiple speed tests (HH:MM:SS).")]
     public TimeSpan Delay { get; set; } = TimeSpan.Zero;
 
     [CommandOption("--csv")]
@@ -29,7 +29,7 @@ public sealed class SpeedTestCommandSettings : CommandSettings
     public char CSVDelimiter { get; set; }
 
     [CommandOption("--csv-header-units")]
-    [Description("Display speed test units (eg. Mbps) in the CSV header row, not the data rows.\n--unit-scale must not be <Auto> for multiple speed tests (eg. --loop or --count)")]
+    [Description("Display speed test units (eg. Mbps) in the CSV header row, not the data rows.\n--unit-scale must not be <Auto> for multiple speed tests (eg. --loop or --count).")]
     [DefaultValue(false)]
     public bool CSVHeaderUnits { get; set; }
 
@@ -96,8 +96,7 @@ public sealed class SpeedTestCommandSettings : CommandSettings
 
         if (CSV && CSVHeaderUnits && SpeedScale == SpeedScale.Auto && (Loop || Count > 1))
         {
-            //return ValidationResult.Error("The --csv-header-units option requires --unit-scale to be set to a specific value when performing multiple speed tests (eg. --loop or --count).");
-            return ValidationResult.Error("The --unit-scale option cannot be Auto when performing multiple speed tests (eg. --loop or --count).");
+            return ValidationResult.Error("The --unit-scale option must not be <Auto> for multiple speed tests (eg. --loop or --count).");
         }
 
         return base.Validate();
