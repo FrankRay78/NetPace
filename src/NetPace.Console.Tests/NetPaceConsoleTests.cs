@@ -282,6 +282,28 @@ public class NetPaceConsoleTests
         await Verify(result.Output).UseParameters(url);
     }
 
+    [InlineData("http://test1.com")]
+    [InlineData("http://test2.com")]
+    [InlineData("http://test3.com")]
+    [InlineData("http://random-speedtest-server.com")]
+    [Theory]
+    public async Task Should_Perform_Speed_Test_Multiple_Times_With_Server(string url)
+    {
+        // Given
+        var registrar = new TypeRegistrar();
+        registrar.Register(typeof(ISpeedTestService), typeof(SpeedTestStub));
+        registrar.Register(typeof(IClock), typeof(ClockStub));
+        registrar.Register(typeof(IWaiter), typeof(NoDelayStub));
+        var app = GetCommandAppTester(registrar);
+
+        // When
+        var result = await app.RunAsync("--csv", "--count", "3", "--unit-scale", "Mega", "--server", url);
+
+        // Then
+        Assert.Equal(0, result.ExitCode);
+        await Verify(result.Output).UseParameters(url);
+    }
+
     [Fact]
     public async Task Should_Perform_Speed_Test_With_CSV()
     {

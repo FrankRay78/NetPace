@@ -1,0 +1,4 @@
+Timestamp,Latency,Download,Upload
+1980-01-01 10:05:00,300 ms,0 Mbps,0.01 Mbps
+1980-01-01 10:05:00,300 ms,0 Mbps,0.01 Mbps
+1980-01-01 10:05:00,300 ms,0 Mbps,0.01 Mbps
