@@ -33,6 +33,16 @@ public sealed class SpeedTestCommandSettings : CommandSettings
     [DefaultValue(false)]
     public bool CSVHeaderUnits { get; set; }
 
+    [CommandOption("--json")]
+    [Description("Display output in Json format.")]
+    [DefaultValue(false)]
+    public bool Json { get; set; }
+
+    [CommandOption("--json-pretty")]
+    [Description("Display output in Json format (pretty print).")]
+    [DefaultValue(false)]
+    public bool JsonPretty { get; set; }
+
     [CommandOption("--no-download")]
     [Description("Do not perform download test.")]
     [DefaultValue(false)]
