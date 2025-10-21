@@ -23,6 +23,8 @@ OPTIONS:
         --csv-delimiter       ,                      Single character delimiter to use in CSV output.                                                                                                   
         --csv-header-units                           Display speed test units (eg. Mbps) in the CSV header row, not the data rows.                                                                      
                                                      --unit-scale must not be <Auto> for multiple speed tests (eg. --loop or --count).                                                                  
+        --json                                       Display output in Json format.                                                                                                                     
+        --json-pretty                                Display output in Json format (pretty print).                                                                                                      
         --no-download                                Do not perform download test.                                                                                                                      
         --no-upload                                  Do not perform upload test.                                                                                                                        
         --server                                     The url of a specific speed test sever.                                                                                                            
