@@ -1,4 +1,5 @@
 using System;
+using System.Text.Json;
 using ByteSizeLib;
 using Humanizer;
 using NetPace.Core;
@@ -123,7 +124,7 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
         }
 
 
-        if (!settings.CSV && ((settings.Verbosity & (Verbosity.Normal | Verbosity.Debug)) != 0))
+        if (!settings.CSV && !settings.Json && !settings.JsonPretty && ((settings.Verbosity & (Verbosity.Normal | Verbosity.Debug)) != 0))
         {
             console.WriteLine("");
             console.WriteLine($"{fastest.Server.Sponsor}", new Style(foreground: Color.Yellow, decoration: Decoration.Bold));
@@ -197,6 +198,28 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
                 }.Where(s => !string.IsNullOrEmpty(s))));
             }
         }
+        // Json output overrides the display options below
+        else if (settings.Json || settings.JsonPretty)
+        {
+            var downloadFormatted = downloadResult.GetSpeedString(settings.SpeedUnit, settings.SpeedUnitSystem, settings.SpeedScale);
+            var uploadFormatted = uploadResult.GetSpeedString(settings.SpeedUnit, settings.SpeedUnitSystem, settings.SpeedScale);
+
+            var jsonResult = new JsonResult
+            {
+                ServerLocation = fastest.Server.Location,
+                ServerSponsor = fastest.Server.Sponsor,
+                ServerUrl = fastest.Server.Url,
+                Timestamp = clock.Now.ToString(settings.DateTimeFormat),
+                Latency = $"{fastest.Latency} ms",
+                DownloadSpeed = downloadFormatted,
+                UploadSpeed = uploadFormatted
+            };
+
+            var options = new JsonSerializerOptions { WriteIndented = settings.JsonPretty };
+            string jsonString = JsonSerializer.Serialize(jsonResult, options);
+
+            console.WriteLine(jsonString);
+        }
         else
         {
             if ((settings.Verbosity & Verbosity.Debug) != 0)
@@ -261,7 +284,7 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
         }
 
 
-        if (settings.CSV || ((settings.Verbosity & Verbosity.Minimal) != 0))
+        if (settings.CSV || settings.Json || settings.JsonPretty || ((settings.Verbosity & Verbosity.Minimal) != 0))
         {
             // No progress is reported
             if (!settings.NoDownload) downloadResult = await speedTestClient.GetDownloadSpeedAsync(server, settings.DownloadSizeMb, cancellationToken);

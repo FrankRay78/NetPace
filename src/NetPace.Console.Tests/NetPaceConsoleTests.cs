@@ -1,14 +1,10 @@
-using System;
-using System.Reflection.Metadata.Ecma335;
-using NetPace.Console;
 using NetPace.Console.Commands;
 using NetPace.Console.DependencyInjection;
-using NetPace.Core;
 using Spectre.Console.Cli;
 
 namespace NetPace.Console.Tests;
 
-public class NetPaceConsoleTests
+public sealed partial class NetPaceConsoleTests
 {
     /// <summary>
     /// Create the CommandAppTester and configure.
@@ -26,100 +22,6 @@ public class NetPaceConsoleTests
 
         return app;
     }
-
-    #region Speed Test Servers
-
-    [InlineData("-f")]
-    [InlineData("--fastest")]
-    [Theory]
-    public async Task Should_Display_Fastest_Speed_Test_Server(string fastest)
-    {
-        // Given
-        var registrar = new TypeRegistrar();
-        registrar.Register(typeof(ISpeedTestService), typeof(SpeedTestStub));
-        var app = GetCommandAppTester(registrar);
-
-        // When
-        var result = await app.RunAsync("servers", fastest);
-
-        // Then
-        Assert.Equal(0, result.ExitCode);
-        await Verify(result.Output).DisableRequireUniquePrefix();
-    }
-
-    [Fact]
-    public async Task Should_Display_Speed_Test_Servers()
-    {
-        // Given
-        var registrar = new TypeRegistrar();
-        registrar.Register(typeof(ISpeedTestService), typeof(SpeedTestStub));
-        var app = GetCommandAppTester(registrar);
-
-        // When
-        var result = await app.RunAsync("servers");
-
-        // Then
-        Assert.Equal(0, result.ExitCode);
-        await Verify(result.Output);
-    }
-
-    [Fact]
-    public async Task Should_Display_Speed_Test_Servers_With_Latency()
-    {
-        // Given
-        var registrar = new TypeRegistrar();
-        registrar.Register(typeof(ISpeedTestService), typeof(SpeedTestStub));
-        var app = GetCommandAppTester(registrar);
-
-        // When
-        var result = await app.RunAsync("servers", "-l");
-
-        // Then
-        Assert.Equal(0, result.ExitCode);
-        await Verify(result.Output);
-    }
-
-    [Fact]
-    public async Task Should_Display_Speed_Test_Servers_With_Latency_With_Faulty_Server_Ping()
-    {
-        // Given
-        var registrar = new TypeRegistrar();
-        registrar.RegisterInstance(typeof(ISpeedTestService), new FaultySpeedTester());
-        var app = GetCommandAppTester(registrar);
-
-        // When
-        var result = await app.RunAsync("servers", "-l");
-
-        // Then
-        Assert.Equal(0, result.ExitCode);
-        await Verify(result.Output);
-    }
-
-    [Fact]
-    public async Task Should_Handle_No_Servers_Available()
-    {
-        // Given
-        var mock = new SpeedTestMock
-        {
-            GetServersAsyncFunc = (cancellationToken) => Task.FromResult(Array.Empty<IServer>()),
-            GetFastestServerByLatencyAsyncFunc = (servers, cancellationToken) => throw new Exception("No servers available"),
-        };
-
-        var registrar = new TypeRegistrar();
-        registrar.RegisterInstance(typeof(ISpeedTestService), mock);
-        registrar.Register(typeof(IClock), typeof(ClockStub));
-        registrar.Register(typeof(IWaiter), typeof(NoDelayStub));
-        var app = GetCommandAppTester(registrar);
-
-        // When
-        var result = await app.RunAsync();
-
-        // Then
-        Assert.Equal(0, result.ExitCode);
-        await Verify(result.Output);
-    }
-
-    #endregion
 
     #region Speed Test
 
@@ -282,8 +184,12 @@ public class NetPaceConsoleTests
         await Verify(result.Output).UseParameters(url);
     }
 
-    [Fact]
-    public async Task Should_Perform_Speed_Test_With_CSV()
+    [InlineData("http://test1.com")]
+    [InlineData("http://test2.com")]
+    [InlineData("http://test3.com")]
+    [InlineData("http://random-speedtest-server.com")]
+    [Theory]
+    public async Task Should_Perform_Speed_Test_Multiple_Times_With_Server(string url)
     {
         // Given
         var registrar = new TypeRegistrar();
@@ -293,205 +199,11 @@ public class NetPaceConsoleTests
         var app = GetCommandAppTester(registrar);
 
         // When
-        var result = await app.RunAsync("--csv");
+        var result = await app.RunAsync("--csv", "--count", "3", "--unit-scale", "Mega", "--server", url);
 
         // Then
         Assert.Equal(0, result.ExitCode);
-        await Verify(result.Output);
-    }
-
-    [Fact]
-    public async Task Should_Perform_Speed_Test_With_CSV_Continuously()
-    {
-        // Given
-        var cancellationTokenSource = new CancellationTokenSource();
-        var waiter = new SelfCancellingWaiter(10, cancellationTokenSource);
-
-        var registrar = new TypeRegistrar();
-        registrar.Register(typeof(ISpeedTestService), typeof(SpeedTestStub));
-        registrar.Register(typeof(IClock), typeof(IncrementingClockStub));
-        registrar.RegisterInstance(typeof(IWaiter), waiter);
-        var app = GetCommandAppTester(registrar, cancellationTokenSource.Token);
-
-        // When
-        var result = await app.RunAsync("--csv", "--loop");
-
-        // Then
-        Assert.Equal(0, result.ExitCode);
-        await Verify(result.Output);
-    }
-
-    [InlineData(5)]
-    [Theory]
-    public async Task Should_Perform_Speed_Test_With_CSV_Multiple_Times(int count)
-    {
-        // Given
-        var registrar = new TypeRegistrar();
-        registrar.Register(typeof(ISpeedTestService), typeof(SpeedTestStub));
-        registrar.Register(typeof(IClock), typeof(IncrementingClockStub));
-        registrar.Register(typeof(IWaiter), typeof(NoDelayStub));
-        var app = GetCommandAppTester(registrar);
-
-        // When
-        var result = await app.RunAsync("--csv", "--count", $"{count}");
-
-        // Then
-        Assert.Equal(0, result.ExitCode);
-        await Verify(result.Output).UseParameters(count);
-    }
-
-    [InlineData(10, "00:10:00")]
-    [Theory]
-    public async Task Should_Perform_Speed_Test_With_CSV_Multiple_Times_With_Delay(int count, string delay)
-    {
-        // Given
-        var waiter = new NoDelayStub();
-
-        var registrar = new TypeRegistrar();
-        registrar.Register(typeof(ISpeedTestService), typeof(SpeedTestStub));
-        registrar.Register(typeof(IClock), typeof(IncrementingClockStub));
-        registrar.RegisterInstance(typeof(IWaiter), waiter);
-        var app = GetCommandAppTester(registrar);
-
-        // When
-        var result = await app.RunAsync("--csv", "--count", $"{count}", "--delay", $"{delay}");
-
-        // Then
-        Assert.Equal(count - 1, waiter.CallCount);
-        Assert.Equal(0, result.ExitCode);
-        await Verify(result.Output).UseParameters(count, delay);
-    }
-
-    [Fact]
-    public async Task Should_Perform_Speed_Test_With_CSV_With_Scale_In_Header()
-    {
-        // Given
-        var registrar = new TypeRegistrar();
-        registrar.Register(typeof(ISpeedTestService), typeof(VariableSpeedTester));
-        registrar.Register(typeof(IClock), typeof(IncrementingClockStub));
-        registrar.Register(typeof(IWaiter), typeof(NoDelayStub));
-        var app = GetCommandAppTester(registrar);
-
-        // When
-        var result = await app.RunAsync("--csv", "--csv-header-units");
-
-        // Then
-        Assert.Equal(0, result.ExitCode);
-        await Verify(result.Output);
-    }
-
-    [Fact]
-    public async Task Should_Perform_Speed_Test_With_CSV_Multiple_Times_With_Fixed_Scale()
-    {
-        // Given
-        var registrar = new TypeRegistrar();
-        registrar.Register(typeof(ISpeedTestService), typeof(VariableSpeedTester));
-        registrar.Register(typeof(IClock), typeof(IncrementingClockStub));
-        registrar.Register(typeof(IWaiter), typeof(NoDelayStub));
-        var app = GetCommandAppTester(registrar);
-
-        // When
-        var result = await app.RunAsync("--csv", "--count", "3", "--unit-scale", "Mega");
-
-        // Then
-        Assert.Equal(0, result.ExitCode);
-        await Verify(result.Output);
-    }
-
-    [InlineData("Base")]
-    [InlineData("Kilo")]
-    [InlineData("Mega")]
-    [Theory]
-    public async Task Should_Perform_Speed_Test_With_CSV_Multiple_Times_With_Fixed_Scale_In_Header(string scale)
-    {
-        // Given
-        var registrar = new TypeRegistrar();
-        registrar.Register(typeof(ISpeedTestService), typeof(VariableSpeedTester));
-        registrar.Register(typeof(IClock), typeof(IncrementingClockStub));
-        registrar.Register(typeof(IWaiter), typeof(NoDelayStub));
-        var app = GetCommandAppTester(registrar);
-
-        // When
-        var result = await app.RunAsync("--csv", "--csv-header-units", "--count", "3", "--unit-scale", $"{scale}");
-
-        // Then
-        Assert.Equal(0, result.ExitCode);
-        await Verify(result.Output).UseParameters(scale);
-    }
-
-    [Fact]
-    public async Task Should_Not_Perform_Speed_Test_With_CSV_Multiple_Times_With_Fixed_Scale_In_Header_When_Unit_Scale_Is_Auto()
-    {
-        // Given
-        var registrar = new TypeRegistrar();
-        registrar.Register(typeof(ISpeedTestService), typeof(VariableSpeedTester));
-        registrar.Register(typeof(IClock), typeof(IncrementingClockStub));
-        registrar.Register(typeof(IWaiter), typeof(NoDelayStub));
-        var app = GetCommandAppTester(registrar);
-
-        // When
-        var result = await app.RunAsync("--csv", "--csv-header-units", "--count", "3", "--unit-scale", "Auto");
-
-        // Then
-        Assert.Equal(-1, result.ExitCode);
-        await Verify(result.Output);
-    }
-
-    [Fact]
-    public async Task Should_Perform_Speed_Test_With_CSV_No_Download()
-    {
-        // Given
-        var registrar = new TypeRegistrar();
-        registrar.Register(typeof(ISpeedTestService), typeof(SpeedTestStub));
-        registrar.Register(typeof(IClock), typeof(ClockStub));
-        registrar.Register(typeof(IWaiter), typeof(NoDelayStub));
-        var app = GetCommandAppTester(registrar);
-
-        // When
-        var result = await app.RunAsync("--csv", "--no-download");
-
-        // Then
-        Assert.Equal(0, result.ExitCode);
-        await Verify(result.Output);
-    }
-
-    [Fact]
-    public async Task Should_Perform_Speed_Test_With_CSV_No_Upload()
-    {
-        // Given
-        var registrar = new TypeRegistrar();
-        registrar.Register(typeof(ISpeedTestService), typeof(SpeedTestStub));
-        registrar.Register(typeof(IClock), typeof(ClockStub));
-        registrar.Register(typeof(IWaiter), typeof(NoDelayStub));
-        var app = GetCommandAppTester(registrar);
-
-        // When
-        var result = await app.RunAsync("--csv", "--no-upload");
-
-        // Then
-        Assert.Equal(0, result.ExitCode);
-        await Verify(result.Output);
-    }
-
-    [InlineData(',')]
-    [InlineData(';')]
-    [InlineData('\t')]
-    [Theory]
-    public async Task Should_Perform_Speed_Test_With_CSV_Delimiter(char delimiter)
-    {
-        // Given
-        var registrar = new TypeRegistrar();
-        registrar.Register(typeof(ISpeedTestService), typeof(SpeedTestStub));
-        registrar.Register(typeof(IClock), typeof(ClockStub));
-        registrar.Register(typeof(IWaiter), typeof(NoDelayStub));
-        var app = GetCommandAppTester(registrar);
-
-        // When
-        var result = await app.RunAsync("--csv", "--csv-delimiter", delimiter.ToString());
-
-        // Then
-        Assert.Equal(0, result.ExitCode);
-        await Verify(result.Output).UseParameters(delimiter);
+        await Verify(result.Output).UseParameters(url);
     }
 
     [InlineData("-t")]
