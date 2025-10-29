@@ -309,7 +309,7 @@ public sealed class OoklaSpeedtest : ISpeedTestService
 
                             if (maxBytes != long.MaxValue)
                             {
-                                // When a user specified limit has been imposed on the test,
+                                // When a user specified limit has been imposed on the test, 
                                 // we should defer to the greater % complete value.
 
                                 var percentageCompleteMaxBytes = (int)((double)totalBytesReturned / maxBytes * 100);
