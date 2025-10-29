@@ -6,7 +6,7 @@
     },
     "NetPace": {
       "commandName": "Project",
-      "commandLineArgs": "--version"
+      "commandLineArgs": "--no-upload --count 2 --delay 00:01:00"
     }
   }
 }

@@ -1,9 +1,8 @@
+using System.Buffers;
 using System.Diagnostics;
-using System.Drawing;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Security.Cryptography;
-using System.Text;
 using NetPace.Core.Clients.Ookla.Extensions;
 
 namespace NetPace.Core.Clients.Ookla;
@@ -153,8 +152,28 @@ public sealed class OoklaSpeedtest : ISpeedTestService
         // Download content from a specified URL and return the size of the data in bytes.
         Func<HttpClient, string, CancellationToken, Task<int>> DownloadAndMeasureAsync = async (client, downloadUrl, cancellationToken) =>
         {
-            var data = await client.GetStringAsync(downloadUrl, cancellationToken).ConfigureAwait(false);
-            return data.Length;
+            // Stream the response to avoid allocating large strings for each download.
+            using var response = await client.GetAsync(downloadUrl, HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+            response.EnsureSuccessStatusCode();
+
+            await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
+
+            var buffer = ArrayPool<byte>.Shared.Rent(81920); // 80KB buffer
+            try
+            {
+                long total = 0;
+                int bytesRead;
+                while ((bytesRead = await stream.ReadAsync(buffer.AsMemory(0, buffer.Length), cancellationToken).ConfigureAwait(false)) > 0)
+                {
+                    total += bytesRead;
+                }
+
+                return (int)total;
+            }
+            finally
+            {
+                ArrayPool<byte>.Shared.Return(buffer);
+            }
         };
 
         var downloadResult = await GenericTestSpeedAsync(downloadUrls, DownloadAndMeasureAsync, UpdateProgress, settings.DownloadTest.DownloadParallelTasks, downloadSizeMb * 1024L * 1024L, cancellationToken);
