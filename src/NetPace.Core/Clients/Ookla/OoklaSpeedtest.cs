@@ -221,14 +221,22 @@ public sealed class OoklaSpeedtest : ISpeedTestService
         var testData = GenerateUploadData(settings.UploadTest.UploadIncrements, settings.UploadTest.UploadSizeIncrementKb, settings.UploadTest.UploadSizeIterations);
 
         // Upload content to a specified URL and return the size of the data in bytes.
-        Func<HttpClient, Func<byte[]>, CancellationToken, Task<int>> UploadAndMeasureAsync = async (client, getUploadData, cancellationToken) =>
+        // The test data factory returns pooled buffers and the upload handler returns them to the pool after sending.
+        Func<HttpClient, Func<(byte[] Buffer, int Length)>, CancellationToken, Task<int>> UploadAndMeasureAsync = async (client, getUploadData, cancellationToken) =>
         {
-            // Generate data lazily.
-            var uploadData = getUploadData();
+            var (buffer, length) = getUploadData();
 
-            using var content = new ByteArrayContent(uploadData);
-            await client.PostAsync(server.Url, content, cancellationToken).ConfigureAwait(false);
-            return uploadData.Length;
+            try
+            {
+                using var content = new ByteArrayContent(buffer, 0, length);
+                await client.PostAsync(server.Url, content, cancellationToken).ConfigureAwait(false);
+                return length;
+            }
+            finally
+            {
+                // Return the rented buffer to the pool.
+                ArrayPool<byte>.Shared.Return(buffer);
+            }
         };
 
         var uploadResult = await GenericTestSpeedAsync(testData, UploadAndMeasureAsync, UpdateProgress, settings.UploadTest.UploadParallelTasks, uploadSizeMb * 1024L * 1024L, cancellationToken);
@@ -411,13 +419,13 @@ public sealed class OoklaSpeedtest : ISpeedTestService
     /// Lazily generates a sequence of functions that produce random byte arrays simulating upload data.
     /// </summary>
     /// <remarks>
-    /// - Each function, when invoked, returns a new byte array filled with random bytes.
+    /// - Each function, when invoked, returns a rented buffer plus the effective length to use.
     /// - Arrays increase in size in increments of <paramref name="baseSizeKb"/>, up to the number of <paramref name="uploadIncrements"/>.
     /// - For each size, <paramref name="repeatsPerSize"/> independent byte arrays are generated.
     /// - Data generation uses cryptographically secure randomness for realistic performance testing.
-    /// - The method yields data lazily via <see cref="Func{Byte[]}"/> delegates, avoiding unnecessary memory allocation until use.
+    /// - The method yields data lazily via <see cref="Func{(byte[],int)}"/>, avoiding unnecessary memory allocation until use.
     /// </remarks>
-    private static IEnumerable<Func<byte[]>> GenerateUploadData(int uploadIncrements, int baseSizeKb, int repeatsPerSize)
+    private static IEnumerable<Func<(byte[] Buffer, int Length)>> GenerateUploadData(int uploadIncrements, int baseSizeKb, int repeatsPerSize)
     {
         for (var increment = 1; increment <= uploadIncrements; increment++)
         {
@@ -427,12 +435,10 @@ public sealed class OoklaSpeedtest : ISpeedTestService
             {
                 yield return () =>
                 {
-                    var data = new byte[incrementSize];
-                    using (var rng = RandomNumberGenerator.Create())
-                    {
-                        rng.GetBytes(data);
-                    }
-                    return data;
+                    // Rent a buffer at least as large as requested and fill only the requested length.
+                    var buffer = ArrayPool<byte>.Shared.Rent(incrementSize);
+                    RandomNumberGenerator.Fill(buffer.AsSpan(0, incrementSize));
+                    return (buffer, incrementSize);
                 };
             }
         }
