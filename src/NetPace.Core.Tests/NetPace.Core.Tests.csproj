@@ -8,6 +8,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="BenchmarkDotNet" Version="0.15.5" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.0-preview-25107-01" />
     <PackageReference Include="RichardSzalay.MockHttp" Version="7.0.0" />
     <PackageReference Include="Shouldly" Version="4.3.0" />
