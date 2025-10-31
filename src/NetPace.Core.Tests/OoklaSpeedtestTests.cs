@@ -6,7 +6,7 @@ using Shouldly;
 
 namespace NetPace.Core.Tests;
 
-public class OoklaSpeedtestTests
+public sealed partial class OoklaSpeedtestTests
 {
     // --- GetServersAsync ---
 
