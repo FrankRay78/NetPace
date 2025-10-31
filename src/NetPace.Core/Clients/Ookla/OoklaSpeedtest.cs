@@ -1,9 +1,11 @@
+using System.Buffers;
 using System.Diagnostics;
-using System.Drawing;
 using System.Net;
+using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Security.Cryptography;
 using System.Text;
+using System.IO;
 using NetPace.Core.Clients.Ookla.Extensions;
 
 namespace NetPace.Core.Clients.Ookla;
@@ -153,8 +155,28 @@ public sealed class OoklaSpeedtest : ISpeedTestService
         // Download content from a specified URL and return the size of the data in bytes.
         Func<HttpClient, string, CancellationToken, Task<int>> DownloadAndMeasureAsync = async (client, downloadUrl, cancellationToken) =>
         {
-            var data = await client.GetStringAsync(downloadUrl, cancellationToken).ConfigureAwait(false);
-            return data.Length;
+            // Stream the response to avoid allocating large strings for each download.
+            using var response = await client.GetAsync(downloadUrl, HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+            response.EnsureSuccessStatusCode();
+
+            await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
+
+            var buffer = ArrayPool<byte>.Shared.Rent(81920); // 80KB buffer
+            try
+            {
+                long total = 0;
+                int bytesRead;
+                while ((bytesRead = await stream.ReadAsync(buffer.AsMemory(0, buffer.Length), cancellationToken).ConfigureAwait(false)) > 0)
+                {
+                    total += bytesRead;
+                }
+
+                return (int)total;
+            }
+            finally
+            {
+                ArrayPool<byte>.Shared.Return(buffer);
+            }
         };
 
         var downloadResult = await GenericTestSpeedAsync(downloadUrls, DownloadAndMeasureAsync, UpdateProgress, settings.DownloadTest.DownloadParallelTasks, downloadSizeMb * 1024L * 1024L, cancellationToken);
@@ -199,20 +221,19 @@ public sealed class OoklaSpeedtest : ISpeedTestService
     /// </remarks>
     public async Task<SpeedTestResult> GetUploadSpeedAsync(IServer server, int uploadSizeMb, Action<SpeedTestProgress> UpdateProgress, CancellationToken cancellationToken = default)
     {
-        var testData = GenerateUploadData(settings.UploadTest.UploadIncrements, settings.UploadTest.UploadSizeIncrementKb, settings.UploadTest.UploadSizeIterations);
+        // Generate upload sizes (in bytes) rather than allocating large buffers up-front.
+        var testDataLengths = GenerateUploadDataLengths(settings.UploadTest.UploadIncrements, settings.UploadTest.UploadSizeIncrementKb, settings.UploadTest.UploadSizeIterations);
 
         // Upload content to a specified URL and return the size of the data in bytes.
-        Func<HttpClient, Func<byte[]>, CancellationToken, Task<int>> UploadAndMeasureAsync = async (client, getUploadData, cancellationToken) =>
+        Func<HttpClient, int, CancellationToken, Task<int>> UploadAndMeasureAsync = async (client, length, cancellationToken) =>
         {
-            // Generate data lazily.
-            var uploadData = getUploadData();
-
-            using var content = new ByteArrayContent(uploadData);
+            // Use RandomStreamContent to stream generated random bytes in small chunks to avoid LOH allocations.
+            using var content = new RandomStreamContent(length);
             await client.PostAsync(server.Url, content, cancellationToken).ConfigureAwait(false);
-            return uploadData.Length;
+            return length;
         };
 
-        var uploadResult = await GenericTestSpeedAsync(testData, UploadAndMeasureAsync, UpdateProgress, settings.UploadTest.UploadParallelTasks, uploadSizeMb * 1024L * 1024L, cancellationToken);
+        var uploadResult = await GenericTestSpeedAsync(testDataLengths, UploadAndMeasureAsync, UpdateProgress, settings.UploadTest.UploadParallelTasks, uploadSizeMb * 1024L * 1024L, cancellationToken);
 
         return uploadResult;
     }
@@ -290,7 +311,7 @@ public sealed class OoklaSpeedtest : ISpeedTestService
 
                             if (maxBytes != long.MaxValue)
                             {
-                                // When a user specified limit has been imposed on the test,
+                                // When a user specified limit has been imposed on the test, 
                                 // we should defer to the greater % complete value.
 
                                 var percentageCompleteMaxBytes = (int)((double)totalBytesReturned / maxBytes * 100);
@@ -389,16 +410,9 @@ public sealed class OoklaSpeedtest : ISpeedTestService
     }
 
     /// <summary>
-    /// Lazily generates a sequence of functions that produce random byte arrays simulating upload data.
+    /// Generate upload payload lengths (in bytes) for the upload test.
     /// </summary>
-    /// <remarks>
-    /// - Each function, when invoked, returns a new byte array filled with random bytes.
-    /// - Arrays increase in size in increments of <paramref name="baseSizeKb"/>, up to the number of <paramref name="uploadIncrements"/>.
-    /// - For each size, <paramref name="repeatsPerSize"/> independent byte arrays are generated.
-    /// - Data generation uses cryptographically secure randomness for realistic performance testing.
-    /// - The method yields data lazily via <see cref="Func{Byte[]}"/> delegates, avoiding unnecessary memory allocation until use.
-    /// </remarks>
-    private static IEnumerable<Func<byte[]>> GenerateUploadData(int uploadIncrements, int baseSizeKb, int repeatsPerSize)
+    private static IEnumerable<int> GenerateUploadDataLengths(int uploadIncrements, int baseSizeKb, int repeatsPerSize)
     {
         for (var increment = 1; increment <= uploadIncrements; increment++)
         {
@@ -406,15 +420,52 @@ public sealed class OoklaSpeedtest : ISpeedTestService
 
             for (var repeat = 0; repeat < repeatsPerSize; repeat++)
             {
-                yield return () =>
+                yield return incrementSize;
+            }
+        }
+    }
+
+    /// <summary>
+    /// HttpContent that streams cryptographically-random bytes on demand in small chunks.
+    /// Avoids allocating a single large byte[] and prevents LOH allocations.
+    /// </summary>
+    private sealed class RandomStreamContent : HttpContent
+    {
+        private readonly long totalSize;
+        private readonly int chunkSize;
+
+        public RandomStreamContent(long totalSize, int chunkSize = 8192)
+        {
+            this.totalSize = totalSize;
+            this.chunkSize = chunkSize > 0 ? chunkSize : 8192;
+            Headers.ContentType = new MediaTypeHeaderValue("application/octet-stream");
+        }
+
+        protected override bool TryComputeLength(out long length)
+        {
+            length = totalSize;
+            return true;
+        }
+
+        protected override async Task SerializeToStreamAsync(Stream stream, TransportContext? context)
+        {
+            var buffer = ArrayPool<byte>.Shared.Rent(chunkSize);
+            try
+            {
+                long remaining = totalSize;
+                while (remaining > 0)
                 {
-                    var data = new byte[incrementSize];
-                    using (var rng = RandomNumberGenerator.Create())
-                    {
-                        rng.GetBytes(data);
-                    }
-                    return data;
-                };
+                    var toWrite = (int)Math.Min(buffer.Length, remaining);
+                    RandomNumberGenerator.Fill(buffer.AsSpan(0, toWrite));
+                    await stream.WriteAsync(buffer.AsMemory(0, toWrite)).ConfigureAwait(false);
+                    remaining -= toWrite;
+                }
+
+                await stream.FlushAsync().ConfigureAwait(false);
+            }
+            finally
+            {
+                ArrayPool<byte>.Shared.Return(buffer);
             }
         }
     }
