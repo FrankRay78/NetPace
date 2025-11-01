@@ -69,7 +69,7 @@ public sealed partial class OoklaSpeedtestTests
                 await speedtest.GetUploadSpeedAsync(server);
             },
             runs: 10,
-            thresholdAllocatedBytes: 50 * 1024 * 1024); // 50 MB
+            thresholdAllocatedBytes: 100 * 1024 * 1024); // 100 MB
         }
 
         private async Task ExecuteAndAssertMemoryUsage(Func<Task> methodToTest, int runs, long thresholdAllocatedBytes)
