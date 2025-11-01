@@ -5,6 +5,8 @@ using NetPace.Core.Clients.Ookla;
 using RichardSzalay.MockHttp;
 using Shouldly;
 
+[assembly: CollectionBehavior(DisableTestParallelization = true)]
+
 namespace NetPace.Core.Tests;
 
 public sealed partial class OoklaSpeedtestTests
