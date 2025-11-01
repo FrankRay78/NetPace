@@ -12,7 +12,7 @@ public sealed partial class OoklaSpeedtestTests
     public sealed class Memory
     {
         [Fact]
-        public void OoklaSpeedtest_Should_Remain_In_Reasonable_Memory_Limits()
+        public async Task OoklaSpeedtest_Should_Remain_In_Reasonable_Memory_Limits()
         {
             // Given
             var mockHttp = new MockHttpMessageHandler();
@@ -63,16 +63,16 @@ public sealed partial class OoklaSpeedtestTests
 
             // When
             // Then
-            ExecuteAndAssertMemoryUsage(async () =>
+            await ExecuteAndAssertMemoryUsage(async () =>
             {
                 await speedtest.GetDownloadSpeedAsync(server);
                 await speedtest.GetUploadSpeedAsync(server);
             },
             runs: 10,
-            thresholdAllocatedBytes: 5 * 1024 * 1024); // 5 MB
+            thresholdAllocatedBytes: 50 * 1024 * 1024); // 50 MB
         }
 
-        private void ExecuteAndAssertMemoryUsage(Action methodToTest, int runs, long thresholdAllocatedBytes)
+        private async Task ExecuteAndAssertMemoryUsage(Func<Task> methodToTest, int runs, long thresholdAllocatedBytes)
         {
             long maxAllocatedBytes = 0;
 
@@ -86,7 +86,7 @@ public sealed partial class OoklaSpeedtestTests
                 var before = GC.GetTotalAllocatedBytes(precise: true);
 
                 // Method under test.
-                methodToTest();
+                await methodToTest();
 
                 var after = GC.GetTotalAllocatedBytes(precise: true);
                 var allocated = after - before;
