@@ -15,7 +15,7 @@ public sealed partial class OoklaSpeedtestTests
         public async Task OoklaSpeedtest_Should_Remain_In_Reasonable_Memory_Limits()
         {
             // Given
-            var mockHttp = new MockHttpMessageHandler();
+            using var mockHttp = new MockHttpMessageHandler();
 
             mockHttp.When(HttpMethod.Get, "*").Respond(request =>
             {
@@ -55,7 +55,7 @@ public sealed partial class OoklaSpeedtestTests
             });
 
 
-            var httpClient = mockHttp.ToHttpClient();
+           using var httpClient = mockHttp.ToHttpClient();
 
             var speedtest = new OoklaSpeedtest(null, httpClient);
             var server = new Clients.Testing.Server { Url = "http://example.com/", Sponsor = "Test Sponsor", Location = "Test Location" };
