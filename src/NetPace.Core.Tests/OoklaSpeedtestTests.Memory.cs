@@ -77,9 +77,9 @@ public sealed partial class OoklaSpeedtestTests
             long maxAllocatedBytes = 0;
 
             // Initial cleanup before starting.
-            GC.Collect();
+            GC.Collect(2, GCCollectionMode.Aggressive, blocking: true, compacting: true);
             GC.WaitForPendingFinalizers();
-            GC.Collect();
+            GC.Collect(2, GCCollectionMode.Aggressive, blocking: true, compacting: true);
 
             for (int i = 0; i < runs; i++)
             {
@@ -94,9 +94,9 @@ public sealed partial class OoklaSpeedtestTests
                 maxAllocatedBytes = Math.Max(maxAllocatedBytes, allocated);
 
                 // Force cleanup between runs.
-                GC.Collect();
+                GC.Collect(2, GCCollectionMode.Aggressive, blocking: true, compacting: true);
                 GC.WaitForPendingFinalizers();
-                GC.Collect();
+                GC.Collect(2, GCCollectionMode.Aggressive, blocking: true, compacting: true);
 
                 // Assert each run to avoid unnecessary continuation.
                 maxAllocatedBytes.ShouldBeLessThan(thresholdAllocatedBytes,
