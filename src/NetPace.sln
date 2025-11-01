@@ -36,6 +36,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "GitHub Actions", "GitHub Ac
 		..\.github\workflows\release-binaries.yml = ..\.github\workflows\release-binaries.yml
 	EndProjectSection
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NetPace.Benchmarks", "NetPace.Benchmarks\NetPace.Benchmarks.csproj", "{87ED7B25-A461-22AC-8BF1-28076406A3F2}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -62,6 +64,10 @@ Global
 		{ED348238-47F5-41B5-B0F5-F256D3750FD1}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{ED348238-47F5-41B5-B0F5-F256D3750FD1}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{ED348238-47F5-41B5-B0F5-F256D3750FD1}.Release|Any CPU.Build.0 = Release|Any CPU
+		{87ED7B25-A461-22AC-8BF1-28076406A3F2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{87ED7B25-A461-22AC-8BF1-28076406A3F2}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{87ED7B25-A461-22AC-8BF1-28076406A3F2}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{87ED7B25-A461-22AC-8BF1-28076406A3F2}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
