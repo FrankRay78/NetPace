@@ -76,6 +76,11 @@ public sealed partial class OoklaSpeedtestTests
         {
             long maxAllocatedBytes = 0;
 
+            // Initial cleanup before starting.
+            GC.Collect();
+            GC.WaitForPendingFinalizers();
+            GC.Collect();
+
             for (int i = 0; i < runs; i++)
             {
                 var before = GC.GetTotalAllocatedBytes(precise: true);
