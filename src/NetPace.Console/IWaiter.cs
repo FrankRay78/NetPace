@@ -57,6 +57,6 @@ public sealed class SelfCancellingWaiter : IWaiter
             cancellationTokenSource.Cancel();
         }
 
-        await Task.Delay(TimeSpan.Zero, cancellationToken);  
+        await Task.Delay(TimeSpan.Zero, cancellationToken);
     }
 }

@@ -2,7 +2,7 @@ using System.Reflection;
 using Spectre.Console.Cli.Help;
 using Spectre.Console.Rendering;
 
-internal class CustomHelpProvider : HelpProvider
+public sealed class CustomHelpProvider : HelpProvider
 {
     private readonly string? ApplicationName;
 
