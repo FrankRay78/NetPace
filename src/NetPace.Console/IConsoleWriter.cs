@@ -7,5 +7,5 @@ namespace NetPace.Console;
 /// </summary>
 public interface IConsoleWriter
 {
-    Task PerformSpeedTestAsync(bool initialSpeedTest, IAnsiConsole console, ISpeedTestService speedTestClient, IClock clock, IWaiter waiter, SpeedTestCommandSettings settings, CancellationToken cancellationToken);
+    Task PerformSpeedTestAsync(bool initialSpeedTest, IAnsiConsole console, ISpeedTestService speedTestClient, IClock clock, SpeedTestCommandSettings settings, CancellationToken cancellationToken);
 }

@@ -6,10 +6,10 @@ namespace NetPace.Console.Commands;
 
 public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService speedTestClient, IClock clock, IWaiter waiter, CancellationToken cancellationToken) : CancelableCommand<SpeedTestCommandSettings>(cancellationToken)
 {
-    IConsoleWriter writer = new DefaultConsoleWriter();
-
     protected override async Task<int> ExecuteAsync(CommandContext context, SpeedTestCommandSettings settings, CancellationToken cancellationToken)
     {
+        IConsoleWriter writer = (settings.Json || settings.JsonPretty) ? new JsonConsoleWriter() : new DefaultConsoleWriter();
+
         if (settings.Loop)
         {
             // Run continuously.
@@ -19,7 +19,7 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
                 try
                 {
                     // Run the speed test.
-                    await writer.PerformSpeedTestAsync(initialSpeedTest: firstLoop, console, speedTestClient, clock, waiter, settings, cancellationToken);
+                    await writer.PerformSpeedTestAsync(initialSpeedTest: firstLoop, console, speedTestClient, clock, settings, cancellationToken);
                 }
                 catch (TaskCanceledException)
                 {
@@ -56,7 +56,7 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
                 try
                 {
                     // Run the speed test.
-                    await writer.PerformSpeedTestAsync(initialSpeedTest: (i == 0), console, speedTestClient, clock, waiter, settings, cancellationToken);
+                    await writer.PerformSpeedTestAsync(initialSpeedTest: (i == 0), console, speedTestClient, clock, settings, cancellationToken);
                 }
                 catch (TaskCanceledException)
                 {
@@ -89,7 +89,7 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
             try
             {
                 // Run the speed test.
-                await writer.PerformSpeedTestAsync(initialSpeedTest: true, console, speedTestClient, clock, waiter, settings, cancellationToken);
+                await writer.PerformSpeedTestAsync(initialSpeedTest: true, console, speedTestClient, clock, settings, cancellationToken);
             }
             catch (TaskCanceledException)
             {
