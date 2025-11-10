@@ -69,9 +69,10 @@ public sealed partial class NetPaceConsoleTests
             await Verify(result.Output).UseParameters(jsonSwitch, count);
         }
 
-        [InlineData(10, "00:10:00")]
+        [InlineData("--json", 10, "00:10:00")]
+        [InlineData("--json-pretty", 10, "00:10:00")]
         [Theory]
-        public async Task Should_Perform_Speed_Test_With_Json_Multiple_Times_With_Delay(int count, string delay)
+        public async Task Should_Perform_Speed_Test_With_Json_Multiple_Times_With_Delay(string jsonSwitch, int count, string delay)
         {
             // Given
             var waiter = new NoDelayStub();
@@ -83,12 +84,12 @@ public sealed partial class NetPaceConsoleTests
             var app = GetCommandAppTester(registrar);
 
             // When
-            var result = await app.RunAsync("--csv", "--count", $"{count}", "--delay", $"{delay}");
+            var result = await app.RunAsync(jsonSwitch, "--count", $"{count}", "--delay", $"{delay}");
 
             // Then
             Assert.Equal(count - 1, waiter.CallCount);
             Assert.Equal(0, result.ExitCode);
-            await Verify(result.Output).UseParameters(count, delay);
+            await Verify(result.Output).UseParameters(jsonSwitch, count, delay);
         }
 
         [InlineData("--json", "Base")]

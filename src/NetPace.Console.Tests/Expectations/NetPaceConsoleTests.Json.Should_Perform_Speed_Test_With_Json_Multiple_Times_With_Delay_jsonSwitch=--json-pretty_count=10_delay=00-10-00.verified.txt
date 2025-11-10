@@ -1,0 +1,90 @@
+{
+  "ServerLocation": "Location 1",
+  "ServerSponsor": "Test Sponsor 1",
+  "ServerUrl": "http://test1.com",
+  "Timestamp": "1980-01-01 10:05:00",
+  "Latency": "100 ms",
+  "DownloadSpeed": "8 Kbps",
+  "UploadSpeed": "18.67 Kbps"
+}
+{
+  "ServerLocation": "Location 1",
+  "ServerSponsor": "Test Sponsor 1",
+  "ServerUrl": "http://test1.com",
+  "Timestamp": "1980-01-01 10:05:05",
+  "Latency": "100 ms",
+  "DownloadSpeed": "8 Kbps",
+  "UploadSpeed": "18.67 Kbps"
+}
+{
+  "ServerLocation": "Location 1",
+  "ServerSponsor": "Test Sponsor 1",
+  "ServerUrl": "http://test1.com",
+  "Timestamp": "1980-01-01 10:05:10",
+  "Latency": "100 ms",
+  "DownloadSpeed": "8 Kbps",
+  "UploadSpeed": "18.67 Kbps"
+}
+{
+  "ServerLocation": "Location 1",
+  "ServerSponsor": "Test Sponsor 1",
+  "ServerUrl": "http://test1.com",
+  "Timestamp": "1980-01-01 10:05:15",
+  "Latency": "100 ms",
+  "DownloadSpeed": "8 Kbps",
+  "UploadSpeed": "18.67 Kbps"
+}
+{
+  "ServerLocation": "Location 1",
+  "ServerSponsor": "Test Sponsor 1",
+  "ServerUrl": "http://test1.com",
+  "Timestamp": "1980-01-01 10:05:20",
+  "Latency": "100 ms",
+  "DownloadSpeed": "8 Kbps",
+  "UploadSpeed": "18.67 Kbps"
+}
+{
+  "ServerLocation": "Location 1",
+  "ServerSponsor": "Test Sponsor 1",
+  "ServerUrl": "http://test1.com",
+  "Timestamp": "1980-01-01 10:05:25",
+  "Latency": "100 ms",
+  "DownloadSpeed": "8 Kbps",
+  "UploadSpeed": "18.67 Kbps"
+}
+{
+  "ServerLocation": "Location 1",
+  "ServerSponsor": "Test Sponsor 1",
+  "ServerUrl": "http://test1.com",
+  "Timestamp": "1980-01-01 10:05:30",
+  "Latency": "100 ms",
+  "DownloadSpeed": "8 Kbps",
+  "UploadSpeed": "18.67 Kbps"
+}
+{
+  "ServerLocation": "Location 1",
+  "ServerSponsor": "Test Sponsor 1",
+  "ServerUrl": "http://test1.com",
+  "Timestamp": "1980-01-01 10:05:35",
+  "Latency": "100 ms",
+  "DownloadSpeed": "8 Kbps",
+  "UploadSpeed": "18.67 Kbps"
+}
+{
+  "ServerLocation": "Location 1",
+  "ServerSponsor": "Test Sponsor 1",
+  "ServerUrl": "http://test1.com",
+  "Timestamp": "1980-01-01 10:05:40",
+  "Latency": "100 ms",
+  "DownloadSpeed": "8 Kbps",
+  "UploadSpeed": "18.67 Kbps"
+}
+{
+  "ServerLocation": "Location 1",
+  "ServerSponsor": "Test Sponsor 1",
+  "ServerUrl": "http://test1.com",
+  "Timestamp": "1980-01-01 10:05:45",
+  "Latency": "100 ms",
+  "DownloadSpeed": "8 Kbps",
+  "UploadSpeed": "18.67 Kbps"
+}
