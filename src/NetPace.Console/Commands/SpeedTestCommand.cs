@@ -21,7 +21,7 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
                 try
                 {
                     // Run the speed test.
-                    await internalExecuteAsync(includeCSVHeader: firstLoop, settings, cancellationToken);
+                    await PerformSpeedTestAsync(includeCSVHeader: firstLoop, settings, cancellationToken);
                 }
                 catch (TaskCanceledException)
                 {
@@ -58,7 +58,7 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
                 try
                 {
                     // Run the speed test.
-                    await internalExecuteAsync(includeCSVHeader: (i == 0), settings, cancellationToken);
+                    await PerformSpeedTestAsync(includeCSVHeader: (i == 0), settings, cancellationToken);
                 }
                 catch (TaskCanceledException)
                 {
@@ -91,7 +91,7 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
             try
             {
                 // Run the speed test.
-                await internalExecuteAsync(includeCSVHeader: true, settings, cancellationToken);
+                await PerformSpeedTestAsync(includeCSVHeader: true, settings, cancellationToken);
             }
             catch (TaskCanceledException)
             {
@@ -107,7 +107,7 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
         return 0;
     }
 
-    private async Task internalExecuteAsync(bool includeCSVHeader, SpeedTestCommandSettings settings, CancellationToken cancellationToken)
+    private async Task PerformSpeedTestAsync(bool includeCSVHeader, SpeedTestCommandSettings settings, CancellationToken cancellationToken)
     {
         ServerLatencyResult fastest;
 
@@ -139,8 +139,60 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
         }
 
 
+
+        var downloadResult = new SpeedTestResult();
+        var uploadResult = new SpeedTestResult();
+
         // Perform speed test
-        var (downloadResult, uploadResult) = await PerformSpeedTestAsync(fastest.Server, settings, cancellationToken);
+        if (settings.CSV || settings.Json || settings.JsonPretty || ((settings.Verbosity & Verbosity.Minimal) != 0))
+        {
+            // No progress is reported
+            if (!settings.NoDownload) downloadResult = await speedTestClient.GetDownloadSpeedAsync(fastest.Server, settings.DownloadSizeMb, cancellationToken);
+            if (!settings.NoUpload) uploadResult = await speedTestClient.GetUploadSpeedAsync(fastest.Server, settings.UploadSizeMb, cancellationToken);
+        }
+        else
+        {
+            // Graphical progress bar
+            await console.Progress()
+                .AutoClear(false)
+                .Columns(
+                [
+                    new TaskDescriptionColumn(),
+                    new ProgressBarColumn(),
+                    new PercentageColumn(),
+                ])
+                .StartAsync(async progress =>
+                {
+                    ProgressTask? downloadProgress = null; ProgressTask? uploadProgress = null;
+
+                    // Create the progress bars
+                    if (!settings.NoDownload)
+                    {
+                        downloadProgress = progress.AddTask("Downloading", autoStart: true, maxValue: 100);
+                    }
+                    if (!settings.NoUpload)
+                    {
+                        uploadProgress = progress.AddTask("Uploading", autoStart: true, maxValue: 100);
+                    }
+
+                    // Perform the speed tests and show progress
+                    if (!settings.NoDownload)
+                    {
+                        downloadResult = await speedTestClient.GetDownloadSpeedAsync(fastest.Server, settings.DownloadSizeMb, (SpeedTestProgress progress) =>
+                        {
+                            downloadProgress!.Value = progress.PercentageComplete;
+                        }, cancellationToken);
+                    }
+                    if (!settings.NoUpload)
+                    {
+                        uploadResult = await speedTestClient.GetUploadSpeedAsync(fastest.Server, settings.UploadSizeMb, (SpeedTestProgress progress) =>
+                        {
+                            uploadProgress!.Value = progress.PercentageComplete;
+                        }, cancellationToken);
+                    }
+                });
+        }
+
 
 
         // CSV output overrides the display options below
@@ -270,70 +322,5 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
                 console.WriteLine("\nTry 'NetPace --help' for more information.");
             }
         }
-    }
-
-    private async Task<(SpeedTestResult downloadResult, SpeedTestResult uploadResult)> PerformSpeedTestAsync(IServer server, SpeedTestCommandSettings settings, CancellationToken cancellationToken)
-    {
-        var downloadResult = new SpeedTestResult();
-        var uploadResult = new SpeedTestResult();
-
-
-        if (settings.NoDownload && settings.NoUpload)
-        {
-            // Latency only test - so just return
-            return (downloadResult, uploadResult);
-        }
-
-
-        if (settings.CSV || settings.Json || settings.JsonPretty || ((settings.Verbosity & Verbosity.Minimal) != 0))
-        {
-            // No progress is reported
-            if (!settings.NoDownload) downloadResult = await speedTestClient.GetDownloadSpeedAsync(server, settings.DownloadSizeMb, cancellationToken);
-            if (!settings.NoUpload) uploadResult = await speedTestClient.GetUploadSpeedAsync(server, settings.UploadSizeMb, cancellationToken);
-        }
-        else
-        {
-            // Graphical progress bar
-            await console.Progress()
-                .AutoClear(false)
-                .Columns(
-                [
-                    new TaskDescriptionColumn(),
-                    new ProgressBarColumn(),
-                    new PercentageColumn(),
-                ])
-                .StartAsync(async progress =>
-                {
-                    ProgressTask? downloadProgress = null; ProgressTask? uploadProgress = null;
-
-                    // Create the progress bars
-                    if (!settings.NoDownload)
-                    {
-                        downloadProgress = progress.AddTask("Downloading", autoStart: true, maxValue: 100);
-                    }
-                    if (!settings.NoUpload)
-                    {
-                        uploadProgress = progress.AddTask("Uploading", autoStart: true, maxValue: 100);
-                    }
-
-                    // Perform the speed tests and show progress
-                    if (!settings.NoDownload)
-                    {
-                        downloadResult = await speedTestClient.GetDownloadSpeedAsync(server, settings.DownloadSizeMb, (SpeedTestProgress progress) =>
-                        {
-                            downloadProgress!.Value = progress.PercentageComplete;
-                        }, cancellationToken);
-                    }
-                    if (!settings.NoUpload)
-                    {
-                        uploadResult = await speedTestClient.GetUploadSpeedAsync(server, settings.UploadSizeMb, (SpeedTestProgress progress) =>
-                        {
-                            uploadProgress!.Value = progress.PercentageComplete;
-                        }, cancellationToken);
-                    }
-                });
-        }
-
-        return (downloadResult, uploadResult);
     }
 }
