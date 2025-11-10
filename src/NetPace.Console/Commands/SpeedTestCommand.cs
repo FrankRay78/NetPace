@@ -1,5 +1,6 @@
 using System;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using ByteSizeLib;
 using Humanizer;
 using NetPace.Core;
@@ -201,8 +202,8 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
         // Json output overrides the display options below
         else if (settings.Json || settings.JsonPretty)
         {
-            var downloadFormatted = downloadResult.GetSpeedString(settings.SpeedUnit, settings.SpeedUnitSystem, settings.SpeedScale);
-            var uploadFormatted = uploadResult.GetSpeedString(settings.SpeedUnit, settings.SpeedUnitSystem, settings.SpeedScale);
+            var downloadFormatted = !settings.NoDownload ? downloadResult.GetSpeedString(settings.SpeedUnit, settings.SpeedUnitSystem, settings.SpeedScale) : null;
+            var uploadFormatted = !settings.NoUpload ? uploadResult.GetSpeedString(settings.SpeedUnit, settings.SpeedUnitSystem, settings.SpeedScale) : null;
 
             var jsonResult = new JsonResult
             {
@@ -211,11 +212,11 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
                 ServerUrl = fastest.Server.Url,
                 Timestamp = clock.Now.ToString(settings.DateTimeFormat),
                 Latency = $"{fastest.Latency} ms",
-                DownloadSpeed = downloadFormatted,
-                UploadSpeed = uploadFormatted
+                DownloadSpeed = downloadFormatted!,
+                UploadSpeed = uploadFormatted!
             };
 
-            var options = new JsonSerializerOptions { WriteIndented = settings.JsonPretty };
+            var options = new JsonSerializerOptions { WriteIndented = settings.JsonPretty, DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull };
             string jsonString = JsonSerializer.Serialize(jsonResult, options);
 
             console.WriteLine(jsonString);
