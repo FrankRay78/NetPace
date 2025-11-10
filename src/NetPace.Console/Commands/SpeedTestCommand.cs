@@ -21,7 +21,7 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
                 try
                 {
                     // Run the speed test.
-                    await PerformSpeedTestAsync(includeCSVHeader: firstLoop, settings, cancellationToken);
+                    await PerformSpeedTestAsync(initialSpeedTest: firstLoop, settings, cancellationToken);
                 }
                 catch (TaskCanceledException)
                 {
@@ -58,7 +58,7 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
                 try
                 {
                     // Run the speed test.
-                    await PerformSpeedTestAsync(includeCSVHeader: (i == 0), settings, cancellationToken);
+                    await PerformSpeedTestAsync(initialSpeedTest: (i == 0), settings, cancellationToken);
                 }
                 catch (TaskCanceledException)
                 {
@@ -91,7 +91,7 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
             try
             {
                 // Run the speed test.
-                await PerformSpeedTestAsync(includeCSVHeader: true, settings, cancellationToken);
+                await PerformSpeedTestAsync(initialSpeedTest: true, settings, cancellationToken);
             }
             catch (TaskCanceledException)
             {
@@ -107,7 +107,7 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
         return 0;
     }
 
-    private async Task PerformSpeedTestAsync(bool includeCSVHeader, SpeedTestCommandSettings settings, CancellationToken cancellationToken)
+    private async Task PerformSpeedTestAsync(bool initialSpeedTest, SpeedTestCommandSettings settings, CancellationToken cancellationToken)
     {
         ServerLatencyResult fastest;
 
@@ -207,7 +207,7 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
                 var uploadFormattedParts = uploadResult.GetSpeedStringParts(settings.SpeedUnit, settings.SpeedUnitSystem, settings.SpeedScale);
 
                 // Header row.
-                if (includeCSVHeader)
+                if (initialSpeedTest)
                 {
                     console.WriteLine(string.Join(settings.CSVDelimiter, new[]
                     {
@@ -230,7 +230,7 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
             else
             {
                 // Header row.
-                if (includeCSVHeader)
+                if (initialSpeedTest)
                 {
                     console.WriteLine(string.Join(settings.CSVDelimiter, new[]
                     {
