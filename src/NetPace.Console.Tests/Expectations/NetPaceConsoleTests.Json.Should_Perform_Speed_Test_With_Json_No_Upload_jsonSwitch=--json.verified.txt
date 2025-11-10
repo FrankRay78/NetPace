@@ -1,0 +1,1 @@
+{"ServerLocation":"Location 1","ServerSponsor":"Test Sponsor 1","ServerUrl":"http://test1.com","Timestamp":"1980-01-01 10:05:00","Latency":"100 ms","DownloadSpeed":"8 Kbps"}

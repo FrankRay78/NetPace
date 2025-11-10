@@ -116,49 +116,10 @@ public sealed partial class NetPaceConsoleTests
             await Verify(result.Output).UseParameters(jsonSwitch, scale);
         }
 
-        [Fact]
-        public async Task Should_Perform_Speed_Test_With_Json_No_Download()
-        {
-            // Given
-            var registrar = new TypeRegistrar();
-            registrar.Register(typeof(ISpeedTestService), typeof(SpeedTestStub));
-            registrar.Register(typeof(IClock), typeof(ClockStub));
-            registrar.Register(typeof(IWaiter), typeof(NoDelayStub));
-            var app = GetCommandAppTester(registrar);
-
-            // When
-            var result = await app.RunAsync("--csv", "--no-download");
-
-            // Then
-            Assert.Equal(0, result.ExitCode);
-            await Verify(result.Output);
-        }
-
-        [Fact]
-        public async Task Should_Perform_Speed_Test_With_Json_No_Upload()
-        {
-            // Given
-            var registrar = new TypeRegistrar();
-            registrar.Register(typeof(ISpeedTestService), typeof(SpeedTestStub));
-            registrar.Register(typeof(IClock), typeof(ClockStub));
-            registrar.Register(typeof(IWaiter), typeof(NoDelayStub));
-            var app = GetCommandAppTester(registrar);
-
-            // When
-            var result = await app.RunAsync("--csv", "--no-upload");
-
-            // Then
-            Assert.Equal(0, result.ExitCode);
-            await Verify(result.Output);
-        }
-    }
-
-    public sealed class Json2
-    {
         [InlineData("--json")]
         [InlineData("--json-pretty")]
         [Theory]
-        public async Task Should_Perform_Speed_Test_With_Json(string jsonSwitch)
+        public async Task Should_Perform_Speed_Test_With_Json_No_Download(string jsonSwitch)
         {
             // Given
             var registrar = new TypeRegistrar();
@@ -168,35 +129,31 @@ public sealed partial class NetPaceConsoleTests
             var app = GetCommandAppTester(registrar);
 
             // When
-            var result = await app.RunAsync(jsonSwitch);
+            var result = await app.RunAsync(jsonSwitch, "--no-download");
 
             // Then
             Assert.Equal(0, result.ExitCode);
             await Verify(result.Output).UseParameters(jsonSwitch);
         }
 
-        [InlineData("--json", "Base")]
-        [InlineData("--json", "Kilo")]
-        [InlineData("--json", "Mega")]
-        [InlineData("--json-pretty", "Base")]
-        [InlineData("--json-pretty", "Kilo")]
-        [InlineData("--json-pretty", "Mega")]
+        [InlineData("--json")]
+        [InlineData("--json-pretty")]
         [Theory]
-        public async Task Should_Perform_Speed_Test_With_Json_Multiple_Times_With_Fixed_Scale(string jsonSwitch, string scale)
+        public async Task Should_Perform_Speed_Test_With_Json_No_Upload(string jsonSwitch)
         {
             // Given
             var registrar = new TypeRegistrar();
-            registrar.Register(typeof(ISpeedTestService), typeof(VariableSpeedTester));
-            registrar.Register(typeof(IClock), typeof(IncrementingClockStub));
+            registrar.Register(typeof(ISpeedTestService), typeof(SpeedTestStub));
+            registrar.Register(typeof(IClock), typeof(ClockStub));
             registrar.Register(typeof(IWaiter), typeof(NoDelayStub));
             var app = GetCommandAppTester(registrar);
 
             // When
-            var result = await app.RunAsync(jsonSwitch, "--count", "3", "--unit-scale", $"{scale}");
+            var result = await app.RunAsync(jsonSwitch, "--no-upload");
 
             // Then
             Assert.Equal(0, result.ExitCode);
-            await Verify(result.Output).UseParameters(jsonSwitch, scale);
+            await Verify(result.Output).UseParameters(jsonSwitch);
         }
     }
 }
