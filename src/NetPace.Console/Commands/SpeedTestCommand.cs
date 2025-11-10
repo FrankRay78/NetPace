@@ -21,7 +21,7 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
                 try
                 {
                     // Run the speed test.
-                    await PerformSpeedTestAsync(initialSpeedTest: firstLoop, settings, cancellationToken);
+                    await PerformSpeedTestAsync(initialSpeedTest: firstLoop, console, speedTestClient, clock, waiter, settings, cancellationToken);
                 }
                 catch (TaskCanceledException)
                 {
@@ -58,7 +58,7 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
                 try
                 {
                     // Run the speed test.
-                    await PerformSpeedTestAsync(initialSpeedTest: (i == 0), settings, cancellationToken);
+                    await PerformSpeedTestAsync(initialSpeedTest: (i == 0), console, speedTestClient, clock, waiter, settings, cancellationToken);
                 }
                 catch (TaskCanceledException)
                 {
@@ -91,7 +91,7 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
             try
             {
                 // Run the speed test.
-                await PerformSpeedTestAsync(initialSpeedTest: true, settings, cancellationToken);
+                await PerformSpeedTestAsync(initialSpeedTest: true, console, speedTestClient, clock, waiter, settings, cancellationToken);
             }
             catch (TaskCanceledException)
             {
@@ -107,7 +107,7 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
         return 0;
     }
 
-    private async Task PerformSpeedTestAsync(bool initialSpeedTest, SpeedTestCommandSettings settings, CancellationToken cancellationToken)
+    private static async Task PerformSpeedTestAsync(bool initialSpeedTest, IAnsiConsole console, ISpeedTestService speedTestClient, IClock clock, IWaiter waiter, SpeedTestCommandSettings settings, CancellationToken cancellationToken)
     {
         ServerLatencyResult fastest;
 
