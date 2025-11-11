@@ -12,6 +12,7 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
         {
             { CSV: true } => new CSVConsoleWriter(),
             { Json: true } or { JsonPretty: true } => new JsonConsoleWriter(),
+            { Verbosity: Verbosity.Minimal } => new MinimalConsoleWriter(),
             _ => new DefaultConsoleWriter()
         };
 
@@ -24,7 +25,7 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
                 try
                 {
                     // Run the speed test.
-                    await writer.PerformSpeedTestAsync(initialSpeedTest: firstLoop, console, speedTestClient, clock, settings, cancellationToken);
+                    await writer.PerformSpeedTestAsync(initialSpeedTest: firstLoop, console, clock, speedTestClient, settings, cancellationToken);
                 }
                 catch (TaskCanceledException)
                 {
@@ -61,7 +62,7 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
                 try
                 {
                     // Run the speed test.
-                    await writer.PerformSpeedTestAsync(initialSpeedTest: (i == 0), console, speedTestClient, clock, settings, cancellationToken);
+                    await writer.PerformSpeedTestAsync(initialSpeedTest: (i == 0), console, clock, speedTestClient, settings, cancellationToken);
                 }
                 catch (TaskCanceledException)
                 {
@@ -94,7 +95,7 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
             try
             {
                 // Run the speed test.
-                await writer.PerformSpeedTestAsync(initialSpeedTest: true, console, speedTestClient, clock, settings, cancellationToken);
+                await writer.PerformSpeedTestAsync(initialSpeedTest: true, console, clock, speedTestClient, settings, cancellationToken);
             }
             catch (TaskCanceledException)
             {

@@ -1,10 +1,10 @@
-using System.Text.Json;
-using System.Text.Json.Serialization;
+using ByteSizeLib;
+using Humanizer;
 using NetPace.Core;
 
 namespace NetPace.Console.ConsoleWriters;
 
-public sealed class JsonConsoleWriter : IConsoleWriter
+public sealed class MinimalConsoleWriter : IConsoleWriter
 {
     public async Task PerformSpeedTestAsync(bool initialSpeedTest, IAnsiConsole console, IClock clock, ISpeedTestService speedTestClient, SpeedTestCommandSettings settings, CancellationToken cancellationToken)
     {
@@ -32,23 +32,12 @@ public sealed class JsonConsoleWriter : IConsoleWriter
 
 
         // Display speed test result.
-        var downloadFormatted = !settings.NoDownload ? downloadResult.GetSpeedString(settings.SpeedUnit, settings.SpeedUnitSystem, settings.SpeedScale) : null;
-        var uploadFormatted = !settings.NoUpload ? uploadResult.GetSpeedString(settings.SpeedUnit, settings.SpeedUnitSystem, settings.SpeedScale) : null;
-
-        var jsonResult = new JsonResult
+        console.WriteLine(string.Join(", ", new[]
         {
-            ServerLocation = fastest.Server.Location,
-            ServerSponsor = fastest.Server.Sponsor,
-            ServerUrl = fastest.Server.Url,
-            Timestamp = clock.Now.ToString(settings.DateTimeFormat),
-            Latency = $"{fastest.Latency} ms",
-            DownloadSpeed = downloadFormatted!,
-            UploadSpeed = uploadFormatted!
-        };
-
-        var options = new JsonSerializerOptions { WriteIndented = settings.JsonPretty, DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull };
-        string jsonString = JsonSerializer.Serialize(jsonResult, options);
-
-        console.WriteLine(jsonString);
+            settings.IncludeTimestamp ? clock.Now.ToString(settings.DateTimeFormat) : null,
+            $"Latency: {fastest.Latency} ms",
+            !settings.NoDownload ? $"Download: {downloadResult.GetSpeedString(settings.SpeedUnit, settings.SpeedUnitSystem, settings.SpeedScale)}" : null,
+            !settings.NoUpload ? $"Upload: {uploadResult.GetSpeedString(settings.SpeedUnit, settings.SpeedUnitSystem, settings.SpeedScale)}" : null
+        }.Where(s => !string.IsNullOrEmpty(s))));
     }
 }

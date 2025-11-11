@@ -6,7 +6,7 @@ namespace NetPace.Console.ConsoleWriters;
 
 public sealed class DefaultConsoleWriter : IConsoleWriter
 {
-    public async Task PerformSpeedTestAsync(bool initialSpeedTest, IAnsiConsole console, ISpeedTestService speedTestClient, IClock clock, SpeedTestCommandSettings settings, CancellationToken cancellationToken)
+    public async Task PerformSpeedTestAsync(bool initialSpeedTest, IAnsiConsole console, IClock clock, ISpeedTestService speedTestClient, SpeedTestCommandSettings settings, CancellationToken cancellationToken)
     {
         ServerLatencyResult fastest;
 
@@ -23,17 +23,15 @@ public sealed class DefaultConsoleWriter : IConsoleWriter
         }
 
 
-        if ((settings.Verbosity & (Verbosity.Normal | Verbosity.Debug)) != 0)
-        {
-            console.WriteLine("");
-            console.WriteLine($"{fastest.Server.Sponsor}", new Style(foreground: Color.Yellow, decoration: Decoration.Bold));
-            console.WriteLine($"{fastest.Server.Url}");
+        // Display server latency.
+        console.WriteLine("");
+        console.WriteLine($"{fastest.Server.Sponsor}", new Style(foreground: Color.Yellow, decoration: Decoration.Bold));
+        console.WriteLine($"{fastest.Server.Url}");
 
-            if (!console.Profile.Capabilities.Interactive)
-            {
-                // Add an extra line given the live widget will not appear.
-                console.WriteLine("");
-            }
+        if (!console.Profile.Capabilities.Interactive)
+        {
+            // Interactive console: Add an extra line given the live widget will not appear.
+            console.WriteLine("");
         }
 
 
@@ -41,54 +39,44 @@ public sealed class DefaultConsoleWriter : IConsoleWriter
         var uploadResult = new SpeedTestResult();
 
         // Perform speed test
-        if ((settings.Verbosity & Verbosity.Minimal) != 0)
-        {
-            // No progress is reported
-            if (!settings.NoDownload) downloadResult = await speedTestClient.GetDownloadSpeedAsync(fastest.Server, settings.DownloadSizeMb, cancellationToken);
-            if (!settings.NoUpload) uploadResult = await speedTestClient.GetUploadSpeedAsync(fastest.Server, settings.UploadSizeMb, cancellationToken);
-        }
-        else
-        {
-            // Graphical progress bar
-            await console.Progress()
-                .AutoClear(false)
-                .Columns(
-                [
-                    new TaskDescriptionColumn(),
-                    new ProgressBarColumn(),
-                    new PercentageColumn(),
-                ])
-                .StartAsync(async progress =>
+        await console.Progress()
+            .AutoClear(false)
+            .Columns(
+            [
+                new TaskDescriptionColumn(),
+                new ProgressBarColumn(),
+                new PercentageColumn(),
+            ])
+            .StartAsync(async progress =>
+            {
+                ProgressTask? downloadProgress = null; ProgressTask? uploadProgress = null;
+
+                // Create the graphical progress bars
+                if (!settings.NoDownload)
                 {
-                    ProgressTask? downloadProgress = null; ProgressTask? uploadProgress = null;
+                    downloadProgress = progress.AddTask("Downloading", autoStart: true, maxValue: 100);
+                }
+                if (!settings.NoUpload)
+                {
+                    uploadProgress = progress.AddTask("Uploading", autoStart: true, maxValue: 100);
+                }
 
-                    // Create the progress bars
-                    if (!settings.NoDownload)
+                // Perform the speed tests and show progress
+                if (!settings.NoDownload)
+                {
+                    downloadResult = await speedTestClient.GetDownloadSpeedAsync(fastest.Server, settings.DownloadSizeMb, (SpeedTestProgress progress) =>
                     {
-                        downloadProgress = progress.AddTask("Downloading", autoStart: true, maxValue: 100);
-                    }
-                    if (!settings.NoUpload)
+                        downloadProgress!.Value = progress.PercentageComplete;
+                    }, cancellationToken);
+                }
+                if (!settings.NoUpload)
+                {
+                    uploadResult = await speedTestClient.GetUploadSpeedAsync(fastest.Server, settings.UploadSizeMb, (SpeedTestProgress progress) =>
                     {
-                        uploadProgress = progress.AddTask("Uploading", autoStart: true, maxValue: 100);
-                    }
-
-                    // Perform the speed tests and show progress
-                    if (!settings.NoDownload)
-                    {
-                        downloadResult = await speedTestClient.GetDownloadSpeedAsync(fastest.Server, settings.DownloadSizeMb, (SpeedTestProgress progress) =>
-                        {
-                            downloadProgress!.Value = progress.PercentageComplete;
-                        }, cancellationToken);
-                    }
-                    if (!settings.NoUpload)
-                    {
-                        uploadResult = await speedTestClient.GetUploadSpeedAsync(fastest.Server, settings.UploadSizeMb, (SpeedTestProgress progress) =>
-                        {
-                            uploadProgress!.Value = progress.PercentageComplete;
-                        }, cancellationToken);
-                    }
-                });
-        }
+                        uploadProgress!.Value = progress.PercentageComplete;
+                    }, cancellationToken);
+                }
+            });
 
 
         if ((settings.Verbosity & Verbosity.Debug) != 0)
@@ -116,15 +104,14 @@ public sealed class DefaultConsoleWriter : IConsoleWriter
         }
 
 
-        if ((settings.NoDownload && settings.NoUpload) && ((settings.Verbosity & (Verbosity.Normal | Verbosity.Debug)) != 0) &&
-            console.Profile.Capabilities.Interactive)
+        if ((settings.NoDownload && settings.NoUpload) && console.Profile.Capabilities.Interactive)
         {
             // Latency only test: Add an extra blank line for formatting.
             console.WriteLine("");
         }
 
 
-        // Display speed test result
+        // Display speed test result.
         console.WriteLine(string.Join(", ", new[]
         {
             settings.IncludeTimestamp ? clock.Now.ToString(settings.DateTimeFormat) : null,
@@ -134,9 +121,6 @@ public sealed class DefaultConsoleWriter : IConsoleWriter
         }.Where(s => !string.IsNullOrEmpty(s))));
 
 
-        if ((settings.Verbosity & (Verbosity.Normal | Verbosity.Debug)) != 0)
-        {
-            console.WriteLine("\nTry 'NetPace --help' for more information.");
-        }
+        console.WriteLine("\nTry 'NetPace --help' for more information.");
     }
 }

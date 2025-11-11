@@ -4,7 +4,7 @@ namespace NetPace.Console.ConsoleWriters;
 
 public sealed class CSVConsoleWriter : IConsoleWriter
 {
-    public async Task PerformSpeedTestAsync(bool initialSpeedTest, IAnsiConsole console, ISpeedTestService speedTestClient, IClock clock, SpeedTestCommandSettings settings, CancellationToken cancellationToken)
+    public async Task PerformSpeedTestAsync(bool initialSpeedTest, IAnsiConsole console, IClock clock, ISpeedTestService speedTestClient, SpeedTestCommandSettings settings, CancellationToken cancellationToken)
     {
         ServerLatencyResult fastest;
 
@@ -24,12 +24,12 @@ public sealed class CSVConsoleWriter : IConsoleWriter
         var downloadResult = new SpeedTestResult();
         var uploadResult = new SpeedTestResult();
 
-        // Perform speed test
+        // Perform speed test.
         if (!settings.NoDownload) downloadResult = await speedTestClient.GetDownloadSpeedAsync(fastest.Server, settings.DownloadSizeMb, cancellationToken);
         if (!settings.NoUpload) uploadResult = await speedTestClient.GetUploadSpeedAsync(fastest.Server, settings.UploadSizeMb, cancellationToken);
 
 
-        // Display speed test result
+        // Display speed test result.
         if (settings.CSVHeaderUnits)
         {
             var downloadFormattedParts = downloadResult.GetSpeedStringParts(settings.SpeedUnit, settings.SpeedUnitSystem, settings.SpeedScale);
