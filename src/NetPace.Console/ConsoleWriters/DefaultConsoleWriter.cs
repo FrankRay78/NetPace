@@ -42,44 +42,54 @@ public sealed class DefaultConsoleWriter : IConsoleWriter
         var uploadResult = new SpeedTestResult();
 
         // Perform speed test
-        await console.Progress()
-            .AutoClear(false)
-            .Columns(
-            [
-                new TaskDescriptionColumn(),
-                new ProgressBarColumn(),
-                new PercentageColumn(),
-            ])
-            .StartAsync(async progress =>
-            {
-                ProgressTask? downloadProgress = null; ProgressTask? uploadProgress = null;
+        if ((settings.Verbosity & Verbosity.Minimal) != 0)
+        {
+            // No progress is reported
+            if (!settings.NoDownload) downloadResult = await speedTestClient.GetDownloadSpeedAsync(fastest.Server, settings.DownloadSizeMb, cancellationToken);
+            if (!settings.NoUpload) uploadResult = await speedTestClient.GetUploadSpeedAsync(fastest.Server, settings.UploadSizeMb, cancellationToken);
+        }
+        else
+        {
+            // Graphical progress bar
+            await console.Progress()
+                .AutoClear(false)
+                .Columns(
+                [
+                    new TaskDescriptionColumn(),
+                    new ProgressBarColumn(),
+                    new PercentageColumn(),
+                ])
+                .StartAsync(async progress =>
+                {
+                    ProgressTask? downloadProgress = null; ProgressTask? uploadProgress = null;
 
-                // Create the graphical progress bars
-                if (!settings.NoDownload)
-                {
-                    downloadProgress = progress.AddTask("Downloading", autoStart: true, maxValue: 100);
-                }
-                if (!settings.NoUpload)
-                {
-                    uploadProgress = progress.AddTask("Uploading", autoStart: true, maxValue: 100);
-                }
+                    // Create the progress bars
+                    if (!settings.NoDownload)
+                    {
+                        downloadProgress = progress.AddTask("Downloading", autoStart: true, maxValue: 100);
+                    }
+                    if (!settings.NoUpload)
+                    {
+                        uploadProgress = progress.AddTask("Uploading", autoStart: true, maxValue: 100);
+                    }
 
-                // Perform the speed tests and show progress
-                if (!settings.NoDownload)
-                {
-                    downloadResult = await speedTestClient.GetDownloadSpeedAsync(fastest.Server, settings.DownloadSizeMb, (SpeedTestProgress progress) =>
+                    // Perform the speed tests and show progress
+                    if (!settings.NoDownload)
                     {
-                        downloadProgress!.Value = progress.PercentageComplete;
-                    }, cancellationToken);
-                }
-                if (!settings.NoUpload)
-                {
-                    uploadResult = await speedTestClient.GetUploadSpeedAsync(fastest.Server, settings.UploadSizeMb, (SpeedTestProgress progress) =>
+                        downloadResult = await speedTestClient.GetDownloadSpeedAsync(fastest.Server, settings.DownloadSizeMb, (SpeedTestProgress progress) =>
+                        {
+                            downloadProgress!.Value = progress.PercentageComplete;
+                        }, cancellationToken);
+                    }
+                    if (!settings.NoUpload)
                     {
-                        uploadProgress!.Value = progress.PercentageComplete;
-                    }, cancellationToken);
-                }
-            });
+                        uploadResult = await speedTestClient.GetUploadSpeedAsync(fastest.Server, settings.UploadSizeMb, (SpeedTestProgress progress) =>
+                        {
+                            uploadProgress!.Value = progress.PercentageComplete;
+                        }, cancellationToken);
+                    }
+                });
+        }
 
 
         if ((settings.Verbosity & Verbosity.Debug) != 0)
