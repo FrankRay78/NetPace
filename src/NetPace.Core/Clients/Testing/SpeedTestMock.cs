@@ -8,6 +8,7 @@ public sealed class SpeedTestMock : ISpeedTestService
     // Delegates for method behavior
     public Func<CancellationToken, Task<IServer[]>>? GetServersAsyncFunc { get; set; }
     public Func<IServer, CancellationToken, Task<ServerLatencyResult>>? GetServerLatencyAsyncFunc { get; set; }
+    public Func<string, CancellationToken, Task<ServerLatencyResult>>? GetServerLatencyByServerUrlAsyncFunc { get; set; }
     public Func<IServer[], CancellationToken, Task<ServerLatencyResult>>? GetFastestServerByLatencyAsyncFunc { get; set; }
     public Func<IServer, int, Action<SpeedTestProgress>, CancellationToken, Task<SpeedTestResult>>? GetDownloadSpeedAsyncFunc { get; set; }
     public Func<IServer, int, Action<SpeedTestProgress>, CancellationToken, Task<SpeedTestResult>>? GetUploadSpeedAsyncFunc { get; set; }
@@ -25,7 +26,15 @@ public sealed class SpeedTestMock : ISpeedTestService
     {
         if (GetServerLatencyAsyncFunc != null)
             return GetServerLatencyAsyncFunc(server, cancellationToken);
-        throw new NotImplementedException(nameof(GetDownloadSpeedAsync));
+        throw new NotImplementedException(nameof(GetServerLatencyAsync));
+    }
+
+    /// <inheritdoc/>
+    public Task<ServerLatencyResult> GetServerLatencyAsync(string serverUrl, CancellationToken cancellationToken = default)
+    {
+        if (GetServerLatencyByServerUrlAsyncFunc != null)
+            return GetServerLatencyByServerUrlAsyncFunc(serverUrl, cancellationToken);
+        throw new NotImplementedException(nameof(GetServerLatencyAsync));
     }
 
     /// <inheritdoc/>
@@ -33,7 +42,7 @@ public sealed class SpeedTestMock : ISpeedTestService
     {
         if (GetFastestServerByLatencyAsyncFunc != null)
             return GetFastestServerByLatencyAsyncFunc(servers, cancellationToken);
-        throw new NotImplementedException(nameof(GetDownloadSpeedAsync));
+        throw new NotImplementedException(nameof(GetFastestServerByLatencyAsync));
     }
 
     /// <inheritdoc/>

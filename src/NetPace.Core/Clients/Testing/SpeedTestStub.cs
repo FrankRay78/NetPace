@@ -23,10 +23,10 @@ public sealed class SpeedTestStub : ISpeedTestService
         this.delayMilliseconds = delayMilliseconds;
     }
 
-    private int GetServerID(IServer server)
+    private int GetServerID(string serverUrl)
     {
         // First see if we can match the server on our 'pre-canned list'
-        var matched = servers.FirstOrDefault(s => s.Url.Equals(server.Url));
+        var matched = servers.FirstOrDefault(s => s.Url.Equals(serverUrl));
 
         return matched != null
             ? int.Parse(matched.Sponsor!.Replace("Test Sponsor ", ""))
@@ -42,11 +42,25 @@ public sealed class SpeedTestStub : ISpeedTestService
     /// <inheritdoc/>
     public Task<ServerLatencyResult> GetServerLatencyAsync(IServer server, CancellationToken cancellationToken = default)
     {
-        var serverID = GetServerID(server);
+        var serverID = GetServerID(server.Url);
 
         var latencyResult = new ServerLatencyResult
         {
             Server = server,
+            Latency = serverID * 100
+        };
+
+        return Task.FromResult(latencyResult);
+    }
+
+    /// <inheritdoc/>
+    public Task<ServerLatencyResult> GetServerLatencyAsync(string serverUrl, CancellationToken cancellationToken = default)
+    {
+        var serverID = GetServerID(serverUrl);
+
+        var latencyResult = new ServerLatencyResult
+        {
+            Server = new Server() { Location = "(Unknown)", Sponsor = "(Unknown)", Url = serverUrl },
             Latency = serverID * 100
         };
 
@@ -59,7 +73,7 @@ public sealed class SpeedTestStub : ISpeedTestService
         // The fastest server in this stub is always the first one.
         var server = servers[0];
 
-        var serverID = GetServerID(server);
+        var serverID = GetServerID(server.Url);
 
         var latencyResult = new ServerLatencyResult
         {
@@ -103,7 +117,7 @@ public sealed class SpeedTestStub : ISpeedTestService
             UpdateProgress(new SpeedTestProgress { PercentageComplete = 100 });
         }
 
-        var serverID = GetServerID(server);
+        var serverID = GetServerID(server.Url);
 
         return Task.FromResult(new SpeedTestResult() { BytesProcessed = 1000, ElapsedMilliseconds = 1000 * serverID });
     }
@@ -141,7 +155,7 @@ public sealed class SpeedTestStub : ISpeedTestService
             UpdateProgress(new SpeedTestProgress { PercentageComplete = 100 });
         }
 
-        var serverID = GetServerID(server);
+        var serverID = GetServerID(server.Url);
 
         return Task.FromResult(new SpeedTestResult() { BytesProcessed = 7000, ElapsedMilliseconds = 3000 * serverID });
     }
