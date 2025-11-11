@@ -17,8 +17,7 @@ public sealed class CSVConsoleWriter : IConsoleWriter
         else
         {
             // User specified speed test server.
-            var server = new Core.Clients.Ookla.Server() { Sponsor = "(Unknown)", Url = settings.ServerUrl };
-            fastest = await speedTestClient.GetServerLatencyAsync(server, cancellationToken);
+            fastest = await speedTestClient.GetServerLatencyAsync(settings.ServerUrl, cancellationToken);
         }
 
 

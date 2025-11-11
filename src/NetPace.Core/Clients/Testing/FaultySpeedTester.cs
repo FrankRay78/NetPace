@@ -1,3 +1,5 @@
+using NetPace.Core.Clients.Ookla;
+
 namespace NetPace.Core.Clients.Testing;
 
 /// <summary>
@@ -49,6 +51,14 @@ public class FaultySpeedTester : ISpeedTestService
     {
         AssertNotFaulted(server, nameof(GetServerLatencyAsync));
         return inner.GetServerLatencyAsync(server, cancellationToken);
+    }
+
+    /// <inheritdoc/>
+    public async Task<ServerLatencyResult> GetServerLatencyAsync(string serverUrl, CancellationToken cancellationToken = default)
+    {
+        var result =  await inner.GetServerLatencyAsync(serverUrl, cancellationToken);
+        AssertNotFaulted(result.Server, nameof(GetServerLatencyAsync));
+        return result;
     }
 
     /// <inheritdoc/>

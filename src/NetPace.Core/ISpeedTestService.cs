@@ -22,16 +22,23 @@ public interface ISpeedTestService
     /// </summary>
     /// <param name="server">The server to measure latency against.</param>
     /// <param name="cancellationToken">The token to allow the operation to be cancelled.</param>
-    /// <returns>The latency in milliseconds, or <c>null</c> if the latency could not be determined.</returns>
+    /// <returns>The server and its latency in milliseconds.</returns>
     public Task<ServerLatencyResult> GetServerLatencyAsync(IServer server, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Measures the network latency (ping) to the specified server.
+    /// </summary>
+    /// <param name="serverUrl">The server to measure latency against.</param>
+    /// <param name="cancellationToken">The token to allow the operation to be cancelled.</param>
+    /// <returns>The server and its latency in milliseconds.</returns>
+    public Task<ServerLatencyResult> GetServerLatencyAsync(string serverUrl, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Determines the fastest server based on latency from a given list of servers.
     /// </summary>
     /// <param name="servers">An array of servers to test for latency.</param>
     /// <param name="cancellationToken">The token to allow the operation to be cancelled.</param>
-    /// <returns>A tuple containing the server with the lowest latency and its latency in milliseconds,
-    /// or <c>null</c> if no suitable server was found.</returns>
+    /// <returns>The server with the lowest latency and its latency in milliseconds.</returns>
     public Task<ServerLatencyResult> GetFastestServerByLatencyAsync(IServer[] servers, CancellationToken cancellationToken = default);
 
     /// <summary>

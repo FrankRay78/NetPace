@@ -85,6 +85,12 @@ public class VariableSpeedTester : ISpeedTestService
     }
 
     /// <inheritdoc/>
+    public Task<ServerLatencyResult> GetServerLatencyAsync(string serverUrl, CancellationToken cancellationToken = default)
+    {
+        return inner.GetServerLatencyAsync(serverUrl, cancellationToken);
+    }
+
+    /// <inheritdoc/>
     public Task<ServerLatencyResult> GetFastestServerByLatencyAsync(IServer[] servers, CancellationToken cancellationToken = default)
     {
         return inner.GetFastestServerByLatencyAsync(servers, cancellationToken);
