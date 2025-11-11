@@ -1,5 +1,3 @@
-using System.Text.Json;
-using System.Text.Json.Serialization;
 using ByteSizeLib;
 using Humanizer;
 using NetPace.Core;
@@ -26,7 +24,7 @@ public sealed class DefaultConsoleWriter : IConsoleWriter
         }
 
 
-        if (!settings.CSV && !settings.Json && !settings.JsonPretty && ((settings.Verbosity & (Verbosity.Normal | Verbosity.Debug)) != 0))
+        if ((settings.Verbosity & (Verbosity.Normal | Verbosity.Debug)) != 0)
         {
             console.WriteLine("");
             console.WriteLine($"{fastest.Server.Sponsor}", new Style(foreground: Color.Yellow, decoration: Decoration.Bold));
@@ -40,188 +38,96 @@ public sealed class DefaultConsoleWriter : IConsoleWriter
         }
 
 
-
         var downloadResult = new SpeedTestResult();
         var uploadResult = new SpeedTestResult();
 
         // Perform speed test
-        if (settings.CSV || settings.Json || settings.JsonPretty || ((settings.Verbosity & Verbosity.Minimal) != 0))
-        {
-            // No progress is reported
-            if (!settings.NoDownload) downloadResult = await speedTestClient.GetDownloadSpeedAsync(fastest.Server, settings.DownloadSizeMb, cancellationToken);
-            if (!settings.NoUpload) uploadResult = await speedTestClient.GetUploadSpeedAsync(fastest.Server, settings.UploadSizeMb, cancellationToken);
-        }
-        else
-        {
-            // Graphical progress bar
-            await console.Progress()
-                .AutoClear(false)
-                .Columns(
-                [
-                    new TaskDescriptionColumn(),
-                    new ProgressBarColumn(),
-                    new PercentageColumn(),
-                ])
-                .StartAsync(async progress =>
-                {
-                    ProgressTask? downloadProgress = null; ProgressTask? uploadProgress = null;
-
-                    // Create the progress bars
-                    if (!settings.NoDownload)
-                    {
-                        downloadProgress = progress.AddTask("Downloading", autoStart: true, maxValue: 100);
-                    }
-                    if (!settings.NoUpload)
-                    {
-                        uploadProgress = progress.AddTask("Uploading", autoStart: true, maxValue: 100);
-                    }
-
-                    // Perform the speed tests and show progress
-                    if (!settings.NoDownload)
-                    {
-                        downloadResult = await speedTestClient.GetDownloadSpeedAsync(fastest.Server, settings.DownloadSizeMb, (SpeedTestProgress progress) =>
-                        {
-                            downloadProgress!.Value = progress.PercentageComplete;
-                        }, cancellationToken);
-                    }
-                    if (!settings.NoUpload)
-                    {
-                        uploadResult = await speedTestClient.GetUploadSpeedAsync(fastest.Server, settings.UploadSizeMb, (SpeedTestProgress progress) =>
-                        {
-                            uploadProgress!.Value = progress.PercentageComplete;
-                        }, cancellationToken);
-                    }
-                });
-        }
-
-
-
-        // CSV output overrides the display options below
-        if (settings.CSV)
-        {
-            // Always including the timestamp in the CSV output seems reasonable
-            settings.IncludeTimestamp = true;
-
-            if (settings.CSVHeaderUnits)
+        await console.Progress()
+            .AutoClear(false)
+            .Columns(
+            [
+                new TaskDescriptionColumn(),
+                new ProgressBarColumn(),
+                new PercentageColumn(),
+            ])
+            .StartAsync(async progress =>
             {
-                var downloadFormattedParts = downloadResult.GetSpeedStringParts(settings.SpeedUnit, settings.SpeedUnitSystem, settings.SpeedScale);
-                var uploadFormattedParts = uploadResult.GetSpeedStringParts(settings.SpeedUnit, settings.SpeedUnitSystem, settings.SpeedScale);
+                ProgressTask? downloadProgress = null; ProgressTask? uploadProgress = null;
 
-                // Header row.
-                if (initialSpeedTest)
-                {
-                    console.WriteLine(string.Join(settings.CSVDelimiter, new[]
-                    {
-                        settings.IncludeTimestamp ? "Timestamp" : null,
-                        "Latency (ms)",
-                        !settings.NoDownload ? $"Download ({downloadFormattedParts.unit})" : null,
-                        !settings.NoUpload ? $"Upload ({uploadFormattedParts.unit})" : null
-                    }.Where(s => !string.IsNullOrEmpty(s))));
-                }
-
-                // Data row.
-                console.WriteLine(string.Join(settings.CSVDelimiter, new[]
-                {
-                    settings.IncludeTimestamp ? clock.Now.ToString(settings.DateTimeFormat) : null,
-                    $"{fastest.Latency}",
-                    !settings.NoDownload ? downloadFormattedParts.speed : null,
-                    !settings.NoUpload ? uploadFormattedParts.speed : null
-                }.Where(s => !string.IsNullOrEmpty(s))));
-            }
-            else
-            {
-                // Header row.
-                if (initialSpeedTest)
-                {
-                    console.WriteLine(string.Join(settings.CSVDelimiter, new[]
-                    {
-                        settings.IncludeTimestamp ? "Timestamp" : null,
-                        "Latency",
-                        !settings.NoDownload ? "Download" : null,
-                        !settings.NoUpload ? "Upload" : null
-                    }.Where(s => !string.IsNullOrEmpty(s))));
-                }
-
-                // Data row.
-                console.WriteLine(string.Join(settings.CSVDelimiter, new[]
-                {
-                    settings.IncludeTimestamp ? clock.Now.ToString(settings.DateTimeFormat) : null,
-                    $"{fastest.Latency} ms",
-                    !settings.NoDownload ? downloadResult.GetSpeedString(settings.SpeedUnit, settings.SpeedUnitSystem, settings.SpeedScale) : null,
-                    !settings.NoUpload ? uploadResult.GetSpeedString(settings.SpeedUnit, settings.SpeedUnitSystem, settings.SpeedScale) : null
-                }.Where(s => !string.IsNullOrEmpty(s))));
-            }
-        }
-        // Json output overrides the display options below
-        else if (settings.Json || settings.JsonPretty)
-        {
-            var downloadFormatted = !settings.NoDownload ? downloadResult.GetSpeedString(settings.SpeedUnit, settings.SpeedUnitSystem, settings.SpeedScale) : null;
-            var uploadFormatted = !settings.NoUpload ? uploadResult.GetSpeedString(settings.SpeedUnit, settings.SpeedUnitSystem, settings.SpeedScale) : null;
-
-            var jsonResult = new JsonResult
-            {
-                ServerLocation = fastest.Server.Location,
-                ServerSponsor = fastest.Server.Sponsor,
-                ServerUrl = fastest.Server.Url,
-                Timestamp = clock.Now.ToString(settings.DateTimeFormat),
-                Latency = $"{fastest.Latency} ms",
-                DownloadSpeed = downloadFormatted!,
-                UploadSpeed = uploadFormatted!
-            };
-
-            var options = new JsonSerializerOptions { WriteIndented = settings.JsonPretty, DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull };
-            string jsonString = JsonSerializer.Serialize(jsonResult, options);
-
-            console.WriteLine(jsonString);
-        }
-        else
-        {
-            if ((settings.Verbosity & Verbosity.Debug) != 0)
-            {
-                // Display detailed diagnostics
-                ByteSize size; TimeSpan elapsed;
-
+                // Create the graphical progress bars
                 if (!settings.NoDownload)
                 {
-                    size = ByteSize.FromBytes(downloadResult.BytesProcessed);
-                    elapsed = TimeSpan.FromMilliseconds(downloadResult.ElapsedMilliseconds);
-                    console.WriteLine($"{size} downloaded in {elapsed.Humanize()}");
+                    downloadProgress = progress.AddTask("Downloading", autoStart: true, maxValue: 100);
                 }
                 if (!settings.NoUpload)
                 {
-                    size = ByteSize.FromBytes(uploadResult.BytesProcessed);
-                    elapsed = TimeSpan.FromMilliseconds(uploadResult.ElapsedMilliseconds);
-                    console.WriteLine($"{size} uploaded in {elapsed.Humanize()}");
+                    uploadProgress = progress.AddTask("Uploading", autoStart: true, maxValue: 100);
                 }
 
-                if (!(settings.NoDownload && settings.NoUpload))
+                // Perform the speed tests and show progress
+                if (!settings.NoDownload)
                 {
-                    console.WriteLine("");
+                    downloadResult = await speedTestClient.GetDownloadSpeedAsync(fastest.Server, settings.DownloadSizeMb, (SpeedTestProgress progress) =>
+                    {
+                        downloadProgress!.Value = progress.PercentageComplete;
+                    }, cancellationToken);
                 }
+                if (!settings.NoUpload)
+                {
+                    uploadResult = await speedTestClient.GetUploadSpeedAsync(fastest.Server, settings.UploadSizeMb, (SpeedTestProgress progress) =>
+                    {
+                        uploadProgress!.Value = progress.PercentageComplete;
+                    }, cancellationToken);
+                }
+            });
+
+
+        if ((settings.Verbosity & Verbosity.Debug) != 0)
+        {
+            // Display detailed diagnostics
+            ByteSize size; TimeSpan elapsed;
+
+            if (!settings.NoDownload)
+            {
+                size = ByteSize.FromBytes(downloadResult.BytesProcessed);
+                elapsed = TimeSpan.FromMilliseconds(downloadResult.ElapsedMilliseconds);
+                console.WriteLine($"{size} downloaded in {elapsed.Humanize()}");
+            }
+            if (!settings.NoUpload)
+            {
+                size = ByteSize.FromBytes(uploadResult.BytesProcessed);
+                elapsed = TimeSpan.FromMilliseconds(uploadResult.ElapsedMilliseconds);
+                console.WriteLine($"{size} uploaded in {elapsed.Humanize()}");
             }
 
-            if ((settings.NoDownload && settings.NoUpload) && ((settings.Verbosity & (Verbosity.Normal | Verbosity.Debug)) != 0) &&
-                console.Profile.Capabilities.Interactive)
+            if (!(settings.NoDownload && settings.NoUpload))
             {
-                // Latency only test: Add an extra blank line for formatting.
                 console.WriteLine("");
             }
+        }
 
 
-            // Display speed test result
-            console.WriteLine(string.Join(", ", new[]
-            {
-                settings.IncludeTimestamp ? clock.Now.ToString(settings.DateTimeFormat) : null,
-                $"Latency: {fastest.Latency} ms",
-                !settings.NoDownload ? $"Download: {downloadResult.GetSpeedString(settings.SpeedUnit, settings.SpeedUnitSystem, settings.SpeedScale)}" : null,
-                !settings.NoUpload ? $"Upload: {uploadResult.GetSpeedString(settings.SpeedUnit, settings.SpeedUnitSystem, settings.SpeedScale)}" : null
-            }.Where(s => !string.IsNullOrEmpty(s))));
+        if ((settings.NoDownload && settings.NoUpload) && ((settings.Verbosity & (Verbosity.Normal | Verbosity.Debug)) != 0) &&
+            console.Profile.Capabilities.Interactive)
+        {
+            // Latency only test: Add an extra blank line for formatting.
+            console.WriteLine("");
+        }
 
 
-            if ((settings.Verbosity & (Verbosity.Normal | Verbosity.Debug)) != 0)
-            {
-                console.WriteLine("\nTry 'NetPace --help' for more information.");
-            }
+        // Display speed test result
+        console.WriteLine(string.Join(", ", new[]
+        {
+            settings.IncludeTimestamp ? clock.Now.ToString(settings.DateTimeFormat) : null,
+            $"Latency: {fastest.Latency} ms",
+            !settings.NoDownload ? $"Download: {downloadResult.GetSpeedString(settings.SpeedUnit, settings.SpeedUnitSystem, settings.SpeedScale)}" : null,
+            !settings.NoUpload ? $"Upload: {uploadResult.GetSpeedString(settings.SpeedUnit, settings.SpeedUnitSystem, settings.SpeedScale)}" : null
+        }.Where(s => !string.IsNullOrEmpty(s))));
+
+
+        if ((settings.Verbosity & (Verbosity.Normal | Verbosity.Debug)) != 0)
+        {
+            console.WriteLine("\nTry 'NetPace --help' for more information.");
         }
     }
 }
