@@ -8,7 +8,12 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
 {
     protected override async Task<int> ExecuteAsync(CommandContext context, SpeedTestCommandSettings settings, CancellationToken cancellationToken)
     {
-        IConsoleWriter writer = (settings.Json || settings.JsonPretty) ? new JsonConsoleWriter() : new DefaultConsoleWriter();
+        IConsoleWriter writer = settings switch
+        {
+            { CSV: true } => new CSVConsoleWriter(),
+            { Json: true } or { JsonPretty: true } => new JsonConsoleWriter(),
+            _ => new DefaultConsoleWriter()
+        };
 
         if (settings.Loop)
         {
