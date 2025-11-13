@@ -1,4 +1,4 @@
-
+﻿
     _   __         __     ____                      
    / | / /  ___   / /_   / __ \  ____ _  _____  ___ 
   /  |/ /  / _ \ / __/  / /_/ / / __ `/ / ___/ / _ \
@@ -39,6 +39,7 @@ OPTIONS:
                                                      SI steps up in powers of 1000 (KB, MB, GB), common in networking, while IEC uses powers of 1024 (KiB, MiB, GiB), standard in computing and storage.
         --verbosity           Normal                 The verbosity level. <Minimal, Normal, Debug>                                                                                                      
                                                      Minimal is ideal for batch scripts and redirected output.                                                                                          
+    -f, --file                                       Write output to file (in addition to console).                                                                                                     
 
 COMMANDS:
     servers    Show the nearest speed test servers.

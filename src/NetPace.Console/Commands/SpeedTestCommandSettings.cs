@@ -96,6 +96,10 @@ public sealed class SpeedTestCommandSettings : CommandSettings
     [DefaultValue(Verbosity.Normal)]
     public Verbosity Verbosity { get; set; }
 
+    [CommandOption("-f | --file")]
+    [Description("Write output to file (in addition to console).")]
+    public string? OutputFile { get; set; }
+
 
     /// <summary>
     /// Validate the settings.
