@@ -21,7 +21,9 @@ Console.WriteLine($"Download: {downloadResult.GetSpeedString(SpeedUnit.BitsPerSe
 Console.WriteLine($"Upload: {uploadResult.GetSpeedString(SpeedUnit.BitsPerSecond, SpeedUnitSystem.SI)}");
 ```
 
-See [full example](https://github.com/FrankRay78/NetPace/tree/main/examples/ConsoleApp/Program.cs) on GitHub.
+The example above uses the `OoklaSpeedtest` implementation which uses Ookla Speedtest servers under the hood. Ookla and Speedtest are trademarks of Ookla, LLC; this project is not affiliated with or endorsed by Ookla.
+
+See the [full example](https://github.com/FrankRay78/NetPace/tree/main/examples/ConsoleApp/Program.cs) on GitHub.
 
 ## API Overview
 
@@ -49,3 +51,14 @@ public interface ISpeedTestService
 ```
 
 See [ISpeedTestService](https://github.com/FrankRay78/NetPace/tree/main/src/NetPace.Core/ISpeedTestService.cs) on GitHub.
+
+### Testing Your Code
+
+NetPace.Core includes test implementations of `ISpeedTestService` so you can test your code without making real network calls:
+
+- **`SpeedTestStub`** - Simple stub returning fixed values with configurable delays
+- **`SpeedTestMock`** - Fully configurable mock with injectable delegate functions
+- **`VariableSpeedTester`** - Returns different speeds on each call (simulates variable network conditions)
+- **`FaultySpeedTester`** - Simulates network failures and timeouts (for testing error handling)
+
+See the implementations in [NetPace.Core.Clients.Testing](https://github.com/FrankRay78/NetPace/tree/main/src/NetPace.Core/Clients/Testing) and their usage throughout the solution.

@@ -20,7 +20,7 @@ Built with .NET 8.0 — runs on Windows, Linux, and macOS.
 
 * Server discovery, latency measurement, download and upload speed testing.
 * Command-line application and C# Microsoft .Net [NuGet](https://www.nuget.org/packages/NetPace.Core/) library for developers.
-* User configurable output (eg. SI or IEC units, BitsPerSecond or BytesPerSecond, CSV formats).
+* User configurable output (eg. SI or IEC units, BitsPerSecond or BytesPerSecond, CSV and Json formats).
 * Highly configurable traffic profiles (see [DownloadTestSettings](https://github.com/FrankRay78/NetPace/blob/main/src/NetPace.Core/Clients/Ookla/Settings/DownloadTestSettings.cs) and [UploadTestSettings](https://github.com/FrankRay78/NetPace/blob/main/src/NetPace.Core/Clients/Ookla/Settings/UploadTestSettings.cs)).
 * Highly reliable, utilises [Ookla's](https://www.speedtest.net/) Speedtest servers.
 
@@ -31,7 +31,7 @@ Built with .NET 8.0 — runs on Windows, Linux, and macOS.
 A cross-platform command-line application for performing network speed tests, including server discovery, latency measurement, download and upload speed testing. 
 The core speed test library, `NetPace.Core`, has been designed for developer use and can be installed via [NuGet](https://www.nuget.org/packages/NetPace.Core/).
 
-NetPace is not endorsed by or related to [Speedtest by Ookla](https://www.speedtest.net/) in any way, although their servers are used under the hood in the `OoklaSpeedtest` implementation (the default speed test provider for NetPace).
+NetPace is not affiliated with or endorsed by Ookla or [Speedtest by Ookla](https://www.speedtest.net/) in any way, although their servers are used by the default speed test provider.
 
 The obligatory screenshot (as of 29 August 2025):
 
@@ -157,6 +157,8 @@ Console.WriteLine($"Download: {downloadResult.GetSpeedString(SpeedUnit.BitsPerSe
 Console.WriteLine($"Upload: {uploadResult.GetSpeedString(SpeedUnit.BitsPerSecond, SpeedUnitSystem.SI)}");
 ```
 
+The example above uses the `OoklaSpeedtest` implementation which uses Ookla Speedtest servers under the hood. Ookla and Speedtest are trademarks of Ookla, LLC; this project is not affiliated with or endorsed by Ookla.
+
 See the [ISpeedTestService](https://github.com/FrankRay78/NetPace/blob/main/src/NetPace.Core/ISpeedTestService.cs) interface for full method details and overloads.
 
 [Example Console App](https://github.com/FrankRay78/NetPace/tree/main/examples/ConsoleApp/Program.cs) is a minimal usage example, and [NetPace command-line application](https://github.com/FrankRay78/NetPace/tree/main/src/NetPace.Console) is an extensive, production-quality usage example.
@@ -173,7 +175,7 @@ NetPace.Core includes test implementations of `ISpeedTestService` so you can tes
 - **`VariableSpeedTester`** - Returns different speeds on each call (simulates variable network conditions)
 - **`FaultySpeedTester`** - Simulates network failures and timeouts (for testing error handling)
 
-See the implementations in [`NetPace.Core.Clients.Testing`](https://github.com/FrankRay78/NetPace/tree/main/src/NetPace.Core/Clients/Testing) and their usage throughout the solution.
+See the implementations in [NetPace.Core.Clients.Testing](https://github.com/FrankRay78/NetPace/tree/main/src/NetPace.Core/Clients/Testing) and their usage throughout the solution.
 
 <br />
 
