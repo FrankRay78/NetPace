@@ -110,5 +110,25 @@ public sealed partial class NetPaceConsoleTests
                 }
             }
         }
+
+        [Fact]
+        public async Task Should_Handle_Error_When_File_Creation_Fails()
+        {
+            // Given
+            var invalidPath = Path.Combine(Path.GetTempPath(), "nonexistent-directory", "output.txt");
+
+            var registrar = new TypeRegistrar();
+            registrar.Register(typeof(ISpeedTestService), typeof(SpeedTestStub));
+            registrar.Register(typeof(IClock), typeof(ClockStub));
+            registrar.Register(typeof(IWaiter), typeof(NoDelayStub));
+            var app = GetCommandAppTester(registrar);
+
+            // When
+            var result = await app.RunAsync("--file", invalidPath, "--verbosity", "Minimal");
+
+            // Then
+            Assert.NotEqual(0, result.ExitCode);
+            await Verify(result.Output);
+        }
     }
 }
