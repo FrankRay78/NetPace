@@ -10,7 +10,7 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
     {
         if (!string.IsNullOrWhiteSpace(settings.OutputFile))
         {
-            // Wrap console with TeeAnsiConsole if file output is requested
+            // Wrap console with TeeAnsiConsole if file output is requested.
             console = new TeeAnsiConsole(console, settings.OutputFile);
         }
 
@@ -122,7 +122,7 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
         {
             if (console is TeeAnsiConsole teeConsole)
             {
-                // Dispose of TeeAnsiConsole to flush and close file
+                // Dispose of TeeAnsiConsole to flush and close file.
                 teeConsole.Dispose();
             }
         }
