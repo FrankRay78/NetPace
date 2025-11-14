@@ -12,7 +12,7 @@ namespace NetPace.Core.Clients.Testing;
 /// </para>
 /// <para>
 /// Default behavior throws an exception when "Test Sponsor 2" is passed into
-/// the <see cref="ISpeedTestService.GetServerLatencyAsync(IServer, CancellationToken)"/> method.
+/// the GetServerLatencyAsync method.
 /// </para>
 /// </remarks>
 public class FaultySpeedTester : ISpeedTestService

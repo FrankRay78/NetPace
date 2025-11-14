@@ -4,7 +4,7 @@
     <LangVersion>12</LangVersion>
     <DebugSymbols>true</DebugSymbols>
     <DebugType>embedded</DebugType>
-    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
     <IsPackable>false</IsPackable>
     <Nullable>enable</Nullable>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
@@ -18,8 +18,6 @@
     <FileVersion>1.0.0</FileVersion>
     <AssemblyVersion>1.0.0</AssemblyVersion>
     <InformationalVersion>1.0.0</InformationalVersion>
-    <!-- Suppress missing XML comment warnings (CS1591) globally -->
-    <NoWarn>$(NoWarn);1591</NoWarn>
   </PropertyGroup>
 
   <PropertyGroup Label="Source Link">
