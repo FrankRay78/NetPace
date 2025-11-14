@@ -5,7 +5,12 @@ Run a simple speed test using the nearest available server:
 NetPace
 ```
 
-Produce CSV output with test results in megabits, suitable for parsing:  
+Write test results to a file, while also displaying them in the console:
+```bash
+NetPace --file results.txt
+```
+
+Produce CSV output with test results in megabits, suitable for parsing:
 ```bash
 NetPace --csv --csv-header-units --unit-scale Mega
 ```
@@ -20,7 +25,7 @@ Run upload test only:
 NetPace --no-download
 ```
 
-Run speed tests continuously, with a 15 minute delay between each:  
+Run speed tests continuously, with a 15 minute delay between each:
 ```bash
 NetPace --loop --delay 00:15:00
 ```

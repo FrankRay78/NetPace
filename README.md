@@ -116,6 +116,7 @@ OPTIONS:
                                                      powers of 1024 (KiB, MiB, GiB), standard in computing and storage.
         --verbosity           Normal                 The verbosity level. <Minimal, Normal, Debug>
                                                      Minimal is ideal for batch scripts and redirected output.
+    -f, --file                                       Write output to file (overwriting existing file).
 
 COMMANDS:
     servers    Show the nearest speed test servers.

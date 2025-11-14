@@ -112,6 +112,42 @@ public sealed partial class NetPaceConsoleTests
         }
 
         [Fact]
+        public async Task Should_Overwrite_Existing_File()
+        {
+            // Given
+            var testFile = Path.Combine(Path.GetTempPath(), $"netpace-test-{Guid.NewGuid()}.txt");
+
+            try
+            {
+                // Create a file with existing content
+                await System.IO.File.WriteAllTextAsync(testFile, "OLD CONTENT THAT SHOULD BE REPLACED");
+
+                var registrar = new TypeRegistrar();
+                registrar.Register(typeof(ISpeedTestService), typeof(SpeedTestStub));
+                registrar.Register(typeof(IClock), typeof(ClockStub));
+                registrar.Register(typeof(IWaiter), typeof(NoDelayStub));
+                var app = GetCommandAppTester(registrar);
+
+                // When
+                var result = await app.RunAsync("--file", testFile);
+
+                // Then
+                Assert.Equal(0, result.ExitCode);
+
+                var fileContent = await System.IO.File.ReadAllTextAsync(testFile);
+                await Verify(fileContent);
+            }
+            finally
+            {
+                if (System.IO.File.Exists(testFile))
+                {
+                    System.IO.File.Delete(testFile);
+                }
+            }
+        }
+
+
+        [Fact]
         public async Task Should_Handle_Error_When_File_Creation_Fails()
         {
             // Given
