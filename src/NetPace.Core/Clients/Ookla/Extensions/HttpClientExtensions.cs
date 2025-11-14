@@ -1,6 +1,6 @@
 namespace NetPace.Core.Clients.Ookla.Extensions;
 
-public static class HttpClientExtensions
+internal static class HttpClientExtensions
 {
     internal static async Task<string> GetStringWithTimeoutAsync(
         this HttpClient client,

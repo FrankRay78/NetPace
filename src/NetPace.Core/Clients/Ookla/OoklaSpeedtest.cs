@@ -18,6 +18,9 @@ public sealed class OoklaSpeedtest : ISpeedTestService
     private readonly HttpClient httpClient;
     private readonly OoklaSpeedtestSettings settings;
 
+    /// <summary>
+    /// Constructs a new instance of the <see cref="OoklaSpeedtest"/> class.
+    /// </summary>
     public OoklaSpeedtest(OoklaSpeedtestSettings? speedtestSettings = null, HttpClient? httpClientOverride = null)
     {
         // Use default settings when none provided

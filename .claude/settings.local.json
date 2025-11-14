@@ -3,7 +3,10 @@
     "allow": [
       "Bash(dotnet test:*)",
       "Bash(dotnet list:*)",
-      "Bash(dotnet build:*)"
+      "Bash(dotnet build:*)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "Bash(dotnet restore:*)"
     ],
     "deny": [],
     "ask": []
