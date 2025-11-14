@@ -18,6 +18,8 @@
     <FileVersion>1.0.0</FileVersion>
     <AssemblyVersion>1.0.0</AssemblyVersion>
     <InformationalVersion>1.0.0</InformationalVersion>
+    <!-- Suppress missing XML comment warnings (CS1591) globally -->
+    <NoWarn>$(NoWarn);1591</NoWarn>
   </PropertyGroup>
 
   <PropertyGroup Label="Source Link">
@@ -26,7 +28,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Roslynator.Analyzers" Version="4.14.1">
+    <PackageReference Include="Roslynator.Analyzers" Version="[4.14.1, )">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
