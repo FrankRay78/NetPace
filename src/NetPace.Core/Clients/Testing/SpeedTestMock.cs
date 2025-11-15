@@ -1,5 +1,3 @@
-#pragma warning disable CS1591
-
 namespace NetPace.Core.Clients.Testing;
 
 /// <summary>
@@ -7,12 +5,40 @@ namespace NetPace.Core.Clients.Testing;
 /// </summary>
 public sealed class SpeedTestMock : ISpeedTestService
 {
-    // Delegates for method behavior
+    /// <summary>
+    /// Gets or sets the delegate that provides behavior for <see cref="GetServersAsync"/>.
+    /// If null, the method will throw <see cref="NotImplementedException"/> when called.
+    /// </summary>
     public Func<CancellationToken, Task<IServer[]>>? GetServersAsyncFunc { get; set; }
+
+    /// <summary>
+    /// Gets or sets the delegate that provides behavior for <see cref="GetServerLatencyAsync(IServer, CancellationToken)"/>.
+    /// If null, the method will throw <see cref="NotImplementedException"/> when called.
+    /// </summary>
     public Func<IServer, CancellationToken, Task<ServerLatencyResult>>? GetServerLatencyAsyncFunc { get; set; }
+
+    /// <summary>
+    /// Gets or sets the delegate that provides behavior for <see cref="GetServerLatencyAsync(string, CancellationToken)"/>.
+    /// If null, the method will throw <see cref="NotImplementedException"/> when called.
+    /// </summary>
     public Func<string, CancellationToken, Task<ServerLatencyResult>>? GetServerLatencyByServerUrlAsyncFunc { get; set; }
+
+    /// <summary>
+    /// Gets or sets the delegate that provides behavior for <see cref="GetFastestServerByLatencyAsync"/>.
+    /// If null, the method will throw <see cref="NotImplementedException"/> when called.
+    /// </summary>
     public Func<IServer[], CancellationToken, Task<ServerLatencyResult>>? GetFastestServerByLatencyAsyncFunc { get; set; }
+
+    /// <summary>
+    /// Gets or sets the delegate that provides behavior for all <c>GetDownloadSpeedAsync</c> overloads.
+    /// If null, the methods will throw <see cref="NotImplementedException"/> when called.
+    /// </summary>
     public Func<IServer, int, Action<SpeedTestProgress>, CancellationToken, Task<SpeedTestResult>>? GetDownloadSpeedAsyncFunc { get; set; }
+
+    /// <summary>
+    /// Gets or sets the delegate that provides behavior for all <c>GetUploadSpeedAsync</c> overloads.
+    /// If null, the methods will throw <see cref="NotImplementedException"/> when called.
+    /// </summary>
     public Func<IServer, int, Action<SpeedTestProgress>, CancellationToken, Task<SpeedTestResult>>? GetUploadSpeedAsyncFunc { get; set; }
 
     /// <inheritdoc/>
