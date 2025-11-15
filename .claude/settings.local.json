@@ -11,7 +11,10 @@
       "WebSearch",
       "Bash(dir /s /b C:UsersinfoDocumentsReposNetPacesrc*.Tests 2)",
       "Bash(nul)",
-      "Bash(findstr:*)"
+      "Bash(findstr:*)",
+      "Bash(dir /s /b C:UsersinfoDocumentsReposNetPacesrcNetPace.Corebin 2)",
+      "Bash(dotnet pack:*)",
+      "Bash(tar:*)"
     ],
     "deny": [],
     "ask": []
