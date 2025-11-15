@@ -781,50 +781,9 @@ public sealed partial class OoklaSpeedtestTests
         result.ElapsedMilliseconds.ShouldBeGreaterThanOrEqualTo(0);
     }
 
-    [Fact(Skip = "BUG: Semaphore deadlock when progress callback throws - see details")]
+    [Fact]
     public async Task GetDownloadSpeedAsync_ShouldPropagateException_WhenProgressCallbackThrows()
     {
-        /*
-         * BUG: Progress callback exception causes semaphore deadlock
-         *
-         * ROOT CAUSE: When UpdateProgress throws an exception inside the finally block,
-         *             the semaphore.Release() at line 341 is not reached, causing deadlock.
-         *
-         * CODE LOCATION: OoklaSpeedtest.cs:301-342 (GenericTestSpeedAsync finally block)
-         *
-         * CURRENT CODE (simplified):
-         *   finally
-         *   {
-         *       lock (lockObject)
-         *       {
-         *           ...
-         *           UpdateProgress(new SpeedTestProgress { ... }); // Lines 315, 335 - can throw
-         *       }
-         *       throttler.Release(); // Line 341 - NOT reached if UpdateProgress throws
-         *   }
-         *
-         * PROPOSED FIX:
-         *   finally
-         *   {
-         *       try
-         *       {
-         *           lock (lockObject)
-         *           {
-         *               ...
-         *               UpdateProgress(new SpeedTestProgress { ... });
-         *           }
-         *       }
-         *       finally
-         *       {
-         *           throttler.Release(); // Always release semaphore
-         *       }
-         *   }
-         *
-         * EXPECTED: Exception propagates, semaphore is released
-         * ACTUAL:   Test hangs indefinitely due to semaphore deadlock
-         *
-         * IMPACT: High - Any exception in progress callback causes application hang
-         */
 
         // Given
         var mockHttp = new MockHttpMessageHandler();
@@ -1235,11 +1194,9 @@ public sealed partial class OoklaSpeedtestTests
         result.ElapsedMilliseconds.ShouldBeGreaterThanOrEqualTo(0);
     }
 
-    [Fact(Skip = "BUG: Semaphore deadlock when progress callback throws - see GetDownloadSpeedAsync test for details")]
+    [Fact]
     public async Task GetUploadSpeedAsync_ShouldPropagateException_WhenProgressCallbackThrows()
     {
-        // Same bug as GetDownloadSpeedAsync - semaphore deadlock when progress callback throws
-        // See detailed bug documentation in GetDownloadSpeedAsync_ShouldPropagateException_WhenProgressCallbackThrows
 
         // Given
         var mockHttp = new MockHttpMessageHandler();
