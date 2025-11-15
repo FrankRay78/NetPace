@@ -13,6 +13,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 		..\.editorconfig = ..\.editorconfig
 		.mcp.json = .mcp.json
 		Directory.Build.props = Directory.Build.props
+		Directory.Packages.props = Directory.Packages.props
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Examples", "Examples", "{5B50E1A6-F719-4846-A09A-19CD71E695A0}"
@@ -38,6 +39,13 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "GitHub Actions", "GitHub Ac
 	EndProjectSection
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NetPace.Benchmarks", "NetPace.Benchmarks\NetPace.Benchmarks.csproj", "{87ED7B25-A461-22AC-8BF1-28076406A3F2}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Claude", "Claude", "{3F0A2AE3-3740-4B23-B699-FF197E71ED24}"
+	ProjectSection(SolutionItems) = preProject
+		..\.claude\CLAUDE.md = ..\.claude\CLAUDE.md
+		..\.claude\agents\test-quality-reviewer.md = ..\.claude\agents\test-quality-reviewer.md
+		..\.claude\agents\xml-doc-checker.md = ..\.claude\agents\xml-doc-checker.md
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

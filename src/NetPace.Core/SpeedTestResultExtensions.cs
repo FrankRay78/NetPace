@@ -2,6 +2,9 @@ using static System.Formats.Asn1.AsnWriter;
 
 namespace NetPace.Core;
 
+/// <summary>
+/// Extension methods for <see cref="SpeedTestResult"/>.
+/// </summary>
 public static class SpeedTestResultExtensions
 {
     private static readonly string[] SI_BitUnits = { "bps", "Kbps", "Mbps", "Gbps", "Tbps", "Pbps" };

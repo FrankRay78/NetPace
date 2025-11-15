@@ -18,6 +18,9 @@ public sealed class OoklaSpeedtest : ISpeedTestService
     private readonly HttpClient httpClient;
     private readonly OoklaSpeedtestSettings settings;
 
+    /// <summary>
+    /// Constructs a new instance of the <see cref="OoklaSpeedtest"/> class.
+    /// </summary>
     public OoklaSpeedtest(OoklaSpeedtestSettings? speedtestSettings = null, HttpClient? httpClientOverride = null)
     {
         // Use default settings when none provided
@@ -297,45 +300,51 @@ public sealed class OoklaSpeedtest : ISpeedTestService
             }
             finally
             {
-                lock (lockObject)
+                try
                 {
-                    if (!cts.IsCancellationRequested)
+                    lock (lockObject)
                     {
-                        completedCount++;
-                        totalBytesReturned += bytesReturned;
-
-                        if (totalBytesReturned >= maxBytes)
+                        if (!cts.IsCancellationRequested)
                         {
-                            // User specified byte limit is hit.
-                            wasCancelledLocally = true;
-                            cts.Cancel();
-                            UpdateProgress(new SpeedTestProgress { PercentageComplete = 100 });
-                        }
-                        else
-                        {
-                            // Update the completion percentage.
-                            var percentageComplete = (int)((double)completedCount / totalCount * 100);
+                            completedCount++;
+                            totalBytesReturned += bytesReturned;
 
-                            if (maxBytes != long.MaxValue)
+                            if (totalBytesReturned >= maxBytes)
                             {
-                                // When a user specified limit has been imposed on the test, 
-                                // we should defer to the greater % complete value.
-
-                                var percentageCompleteMaxBytes = (int)((double)totalBytesReturned / maxBytes * 100);
-
-                                if (percentageCompleteMaxBytes > percentageComplete)
-                                {
-                                    percentageComplete = percentageCompleteMaxBytes;
-                                }
+                                // User specified byte limit is hit.
+                                wasCancelledLocally = true;
+                                cts.Cancel();
+                                UpdateProgress(new SpeedTestProgress { PercentageComplete = 100 });
                             }
+                            else
+                            {
+                                // Update the completion percentage.
+                                var percentageComplete = (int)((double)completedCount / totalCount * 100);
 
-                            UpdateProgress(new SpeedTestProgress { PercentageComplete = percentageComplete });
+                                if (maxBytes != long.MaxValue)
+                                {
+                                    // When a user specified limit has been imposed on the test,
+                                    // we should defer to the greater % complete value.
+
+                                    var percentageCompleteMaxBytes = (int)((double)totalBytesReturned / maxBytes * 100);
+
+                                    if (percentageCompleteMaxBytes > percentageComplete)
+                                    {
+                                        percentageComplete = percentageCompleteMaxBytes;
+                                    }
+                                }
+
+                                UpdateProgress(new SpeedTestProgress { PercentageComplete = percentageComplete });
+                            }
                         }
                     }
                 }
-
-                // Release the semaphore to allow another task to proceed.
-                throttler.Release();
+                finally
+                {
+                    // Release the semaphore to allow another task to proceed.
+                    // This must always execute, even if UpdateProgress throws.
+                    throttler.Release();
+                }
             }
 
             return bytesReturned;

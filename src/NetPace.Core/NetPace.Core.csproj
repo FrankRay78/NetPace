@@ -6,6 +6,9 @@
     <Nullable>enable</Nullable>
     <IsPackable>true</IsPackable>
 
+    <!-- XML Documentation (public API only) -->
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+
     <!-- NuGet metadata -->
     <PackageId>NetPace.Core</PackageId>
     <Title>NetPace.Core</Title>

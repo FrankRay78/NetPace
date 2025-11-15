@@ -22,7 +22,7 @@ public sealed partial class OoklaSpeedtestTests
         </settings>
         """;
 
-        var mockHttp = new MockHttpMessageHandler();
+        using var mockHttp = new MockHttpMessageHandler();
         mockHttp.When("*")
                 .Respond("application/xml", fakeXml);
 
@@ -53,7 +53,7 @@ public sealed partial class OoklaSpeedtestTests
         </settings>
         """;
 
-        var mockHttp = new MockHttpMessageHandler();
+        using var mockHttp = new MockHttpMessageHandler();
         mockHttp.When("*")
                 .Respond("application/xml", fakeXml);
 
@@ -85,7 +85,7 @@ public sealed partial class OoklaSpeedtestTests
         </settings>
         """;
 
-        var mockHttp = new MockHttpMessageHandler();
+        using var mockHttp = new MockHttpMessageHandler();
         mockHttp.When("*")
                 .Respond("application/xml", fakeXml);
 
@@ -106,7 +106,7 @@ public sealed partial class OoklaSpeedtestTests
         // Given
         var invalidXml = "Not XML at all <><>??";
 
-        var mockHttp = new MockHttpMessageHandler();
+        using var mockHttp = new MockHttpMessageHandler();
         mockHttp.When("*")
                 .Respond("application/xml", invalidXml);
 
@@ -125,7 +125,7 @@ public sealed partial class OoklaSpeedtestTests
     public async Task GetServersAsync_ShouldCancel_WhenTokenIsCancelled()
     {
         // Given
-        var mockHttp = new MockHttpMessageHandler();
+        using var mockHttp = new MockHttpMessageHandler();
         mockHttp.When("*").Respond(async _ =>
         {
             // Simulate slow response.
@@ -155,7 +155,7 @@ public sealed partial class OoklaSpeedtestTests
     public async Task GetServerLatencyAsync_ShouldReturnLatency_WhenResponseIsValid()
     {
         // Given
-        var mockHttp = new MockHttpMessageHandler();
+        using var mockHttp = new MockHttpMessageHandler();
         mockHttp.When("http://testserver.com/latency.txt")
                 .Respond("text/plain", "test=test");
 
@@ -176,7 +176,7 @@ public sealed partial class OoklaSpeedtestTests
     public async Task GetServerLatencyAsync_ShouldThrow_WhenLatencyTestFails()
     {
         // Given
-        var mockHttp = new MockHttpMessageHandler();
+        using var mockHttp = new MockHttpMessageHandler();
         mockHttp.When("http://failserver.com/latency.txt")
                 .Throw(new HttpRequestException("Server unreachable"));
 
@@ -197,7 +197,7 @@ public sealed partial class OoklaSpeedtestTests
     public async Task GetServerLatencyAsync_ShouldThrow_WhenResponseIsInvalid()
     {
         // Given
-        var mockHttp = new MockHttpMessageHandler();
+        using var mockHttp = new MockHttpMessageHandler();
         mockHttp.When("http://badserver.com/latency.txt")
                 .Respond("text/plain", "garbage");
 
@@ -217,7 +217,7 @@ public sealed partial class OoklaSpeedtestTests
     public async Task GetServerLatencyAsync_ShouldCancel_WhenTokenIsCancelled()
     {
         // Given
-        var mockHttp = new MockHttpMessageHandler();
+        using var mockHttp = new MockHttpMessageHandler();
         mockHttp.When("*").Respond(async _ =>
         {
             // Simulate slow response.
@@ -248,7 +248,7 @@ public sealed partial class OoklaSpeedtestTests
     public async Task GetFastestServerByLatencyAsync_ShouldReturnServerWithLowestLatency()
     {
         // Given
-        var mockHttp = new MockHttpMessageHandler();
+        using var mockHttp = new MockHttpMessageHandler();
 
         // Fast server responds quickly
         mockHttp.When("http://fastserver.com/latency.txt")
@@ -293,7 +293,7 @@ public sealed partial class OoklaSpeedtestTests
     public async Task GetFastestServerByLatencyAsync_ShouldThrow_WhenAllServersFail()
     {
         // Given
-        var mockHttp = new MockHttpMessageHandler();
+        using var mockHttp = new MockHttpMessageHandler();
 
         mockHttp.When("http://fail1.com/latency.txt")
                 .Throw(new HttpRequestException("Unreachable 1"));
@@ -331,7 +331,7 @@ public sealed partial class OoklaSpeedtestTests
     public async Task GetFastestServerByLatencyAsync_ShouldCancel_WhenTokenIsCancelled()
     {
         // Given
-        var mockHttp = new MockHttpMessageHandler();
+        using var mockHttp = new MockHttpMessageHandler();
         mockHttp.When("*").Respond(async _ =>
         {
             // Simulate slow response.
@@ -366,7 +366,7 @@ public sealed partial class OoklaSpeedtestTests
         // Given
         long actualBytes = 0;
 
-        var mockHttp = new MockHttpMessageHandler();
+        using var mockHttp = new MockHttpMessageHandler();
         mockHttp.When("*").Respond(request =>
         {
             // Respond with fixed 1KB payload for simplicity.
@@ -411,7 +411,7 @@ public sealed partial class OoklaSpeedtestTests
     public async Task GetDownloadSpeedAsync_ShouldRespectDownloadSize(int downloadSizeMb)
     {
         // Given
-        var mockHttp = new MockHttpMessageHandler();
+        using var mockHttp = new MockHttpMessageHandler();
         mockHttp.When("*").Respond(request =>
         {
             // Extract dimensions from URL like: /random1500x1500.jpg
@@ -468,7 +468,7 @@ public sealed partial class OoklaSpeedtestTests
         // Given
         const int downloadSizeMb = 2;
 
-        var mockHttp = new MockHttpMessageHandler();
+        using var mockHttp = new MockHttpMessageHandler();
         mockHttp.When("*").Respond(request =>
         {
             var response = new HttpResponseMessage(HttpStatusCode.OK)
@@ -509,7 +509,7 @@ public sealed partial class OoklaSpeedtestTests
     public async Task GetDownloadSpeedAsync_ShouldCancel_WhenTokenIsCancelled()
     {
         // Given
-        var mockHttp = new MockHttpMessageHandler();
+        using var mockHttp = new MockHttpMessageHandler();
         mockHttp.When("*").Respond(async _ =>
         {
             // Simulate slow response.
@@ -541,7 +541,7 @@ public sealed partial class OoklaSpeedtestTests
     public async Task GetDownloadSpeedAsync_ShouldReportProgress_WhileDownloading()
     {
         // Given
-        var mockHttp = new MockHttpMessageHandler();
+        using var mockHttp = new MockHttpMessageHandler();
         mockHttp.When("*").Respond("text/plain", new string('X', 1024));
 
         var httpClient = mockHttp.ToHttpClient();
@@ -574,7 +574,7 @@ public sealed partial class OoklaSpeedtestTests
     public async Task GetDownloadSpeedAsync_ShouldHandlePartialFailures_AndContinue()
     {
         // Given
-        var mockHttp = new MockHttpMessageHandler();
+        using var mockHttp = new MockHttpMessageHandler();
 
         // Fail the first download attempt
         mockHttp.When("http://example.com/random100x100.jpg?r=0").Throw(new HttpRequestException("Simulated failure"));
@@ -606,6 +606,215 @@ public sealed partial class OoklaSpeedtestTests
         progressReports.ShouldBe(new[] { 50, 100 });
     }
 
+    [Fact]
+    public async Task GetDownloadSpeedAsync_ShouldStopAfterFirstDownload_WhenSizeIsZero()
+    {
+        // Given
+        using var mockHttp = new MockHttpMessageHandler();
+        mockHttp.When("*").Respond(request =>
+        {
+            var response = new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new ByteArrayContent(new byte[1024])
+            };
+            return response;
+        });
+
+        var httpClient = mockHttp.ToHttpClient();
+        var settings = new OoklaSpeedtestSettings
+        {
+            DownloadTest = new()
+            {
+                DownloadSizes = new[] { 100 },
+                DownloadSizeIterations = 10,
+                DownloadParallelTasks = 1
+            }
+        };
+
+        var speedtest = new OoklaSpeedtest(settings, httpClient);
+        var server = new Clients.Testing.Server { Url = "http://example.com/", Sponsor = "Test", Location = "Test" };
+
+        // When
+        var result = await speedtest.GetDownloadSpeedAsync(server, downloadSizeMb: 0);
+
+        // Then
+        result.ShouldNotBeNull();
+        result.BytesProcessed.ShouldBe(1024); // Only first download completes
+        result.ElapsedMilliseconds.ShouldBeGreaterThanOrEqualTo(0);
+    }
+
+    [Fact]
+    public async Task GetDownloadSpeedAsync_ShouldStopAfterFirstDownload_WhenSizeIsNegative()
+    {
+        // Given
+        using var mockHttp = new MockHttpMessageHandler();
+        mockHttp.When("*").Respond(request =>
+        {
+            var response = new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new ByteArrayContent(new byte[2048])
+            };
+            return response;
+        });
+
+        var httpClient = mockHttp.ToHttpClient();
+        var settings = new OoklaSpeedtestSettings
+        {
+            DownloadTest = new()
+            {
+                DownloadSizes = new[] { 100 },
+                DownloadSizeIterations = 10,
+                DownloadParallelTasks = 1
+            }
+        };
+
+        var speedtest = new OoklaSpeedtest(settings, httpClient);
+        var server = new Clients.Testing.Server { Url = "http://example.com/", Sponsor = "Test", Location = "Test" };
+
+        // When
+        var result = await speedtest.GetDownloadSpeedAsync(server, downloadSizeMb: -1);
+
+        // Then
+        result.ShouldNotBeNull();
+        result.BytesProcessed.ShouldBe(2048); // Only first download completes
+        result.ElapsedMilliseconds.ShouldBeGreaterThanOrEqualTo(0);
+    }
+
+    [Fact]
+    public async Task GetDownloadSpeedAsync_ShouldCompleteWithZeroBytes_WhenAllDownloadsFail()
+    {
+        // Given
+        using var mockHttp = new MockHttpMessageHandler();
+        mockHttp.When("*").Throw(new HttpRequestException("Network failure"));
+
+        var httpClient = mockHttp.ToHttpClient();
+        var settings = new OoklaSpeedtestSettings
+        {
+            DownloadTest = new()
+            {
+                DownloadSizes = new[] { 100 },
+                DownloadSizeIterations = 5,
+                DownloadParallelTasks = 1
+            }
+        };
+
+        var speedtest = new OoklaSpeedtest(settings, httpClient);
+        var server = new Clients.Testing.Server { Url = "http://example.com/", Sponsor = "Test", Location = "Test" };
+
+        // When
+        var result = await speedtest.GetDownloadSpeedAsync(server);
+
+        // Then
+        result.ShouldNotBeNull();
+        result.BytesProcessed.ShouldBe(0); // All downloads failed
+        result.ElapsedMilliseconds.ShouldBeGreaterThanOrEqualTo(0);
+    }
+
+    [Theory]
+    [InlineData(HttpStatusCode.NotFound)]
+    [InlineData(HttpStatusCode.InternalServerError)]
+    [InlineData(HttpStatusCode.ServiceUnavailable)]
+    [InlineData(HttpStatusCode.BadGateway)]
+    public async Task GetDownloadSpeedAsync_ShouldTreatErrorResponsesAsFailures(HttpStatusCode errorCode)
+    {
+        // Given
+        using var mockHttp = new MockHttpMessageHandler();
+        mockHttp.When("*").Respond(errorCode);
+
+        var httpClient = mockHttp.ToHttpClient();
+        var settings = new OoklaSpeedtestSettings
+        {
+            DownloadTest = new()
+            {
+                DownloadSizes = new[] { 100 },
+                DownloadSizeIterations = 3,
+                DownloadParallelTasks = 1
+            }
+        };
+
+        var speedtest = new OoklaSpeedtest(settings, httpClient);
+        var server = new Clients.Testing.Server { Url = "http://example.com/", Sponsor = "Test", Location = "Test" };
+
+        // When
+        var result = await speedtest.GetDownloadSpeedAsync(server);
+
+        // Then
+        result.ShouldNotBeNull();
+        result.BytesProcessed.ShouldBe(0); // All downloads returned error status
+        result.ElapsedMilliseconds.ShouldBeGreaterThanOrEqualTo(0);
+    }
+
+    [Fact]
+    public async Task GetDownloadSpeedAsync_ShouldCompleteSuccessfully_WhenServerReturnsZeroBytes()
+    {
+        // Given
+        using var mockHttp = new MockHttpMessageHandler();
+        mockHttp.When("*").Respond(request =>
+        {
+            var response = new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new ByteArrayContent(Array.Empty<byte>())
+            };
+            return response;
+        });
+
+        var httpClient = mockHttp.ToHttpClient();
+        var settings = new OoklaSpeedtestSettings
+        {
+            DownloadTest = new()
+            {
+                DownloadSizes = new[] { 100 },
+                DownloadSizeIterations = 3,
+                DownloadParallelTasks = 1
+            }
+        };
+
+        var speedtest = new OoklaSpeedtest(settings, httpClient);
+        var server = new Clients.Testing.Server { Url = "http://example.com/", Sponsor = "Test", Location = "Test" };
+
+        // When
+        var result = await speedtest.GetDownloadSpeedAsync(server);
+
+        // Then
+        result.ShouldNotBeNull();
+        result.BytesProcessed.ShouldBe(0); // Server returned empty responses
+        result.ElapsedMilliseconds.ShouldBeGreaterThanOrEqualTo(0);
+    }
+
+    [Fact]
+    public async Task GetDownloadSpeedAsync_ShouldPropagateException_WhenProgressCallbackThrows()
+    {
+
+        // Given
+        using var mockHttp = new MockHttpMessageHandler();
+        mockHttp.When("*").Respond("text/plain", new string('X', 1024));
+
+        var httpClient = mockHttp.ToHttpClient();
+        var settings = new OoklaSpeedtestSettings
+        {
+            DownloadTest = new()
+            {
+                DownloadSizes = new[] { 100 },
+                DownloadSizeIterations = 4,
+                DownloadParallelTasks = 1
+            }
+        };
+
+        var speedtest = new OoklaSpeedtest(settings, httpClient);
+        var server = new Clients.Testing.Server { Url = "http://example.com/", Sponsor = "Test", Location = "Test" };
+
+        // When
+        var exception = await Record.ExceptionAsync(() => speedtest.GetDownloadSpeedAsync(server, progress =>
+        {
+            throw new InvalidOperationException("Progress callback failed");
+        }));
+
+        // Then
+        exception.ShouldNotBeNull();
+        exception.ShouldBeOfType<InvalidOperationException>();
+        exception.Message.ShouldBe("Progress callback failed");
+    }
+
     // --- GetUploadSpeedAsync ---
 
     [Fact]
@@ -614,7 +823,7 @@ public sealed partial class OoklaSpeedtestTests
         // Given
         long actualBytes = 0;
 
-        var mockHttp = new MockHttpMessageHandler();
+        using var mockHttp = new MockHttpMessageHandler();
         mockHttp.When("*").Respond(async request =>
         {
             if (request != null && request.Content != null)
@@ -659,7 +868,7 @@ public sealed partial class OoklaSpeedtestTests
         // Given
         long actualBytes = 0;
 
-        var mockHttp = new MockHttpMessageHandler();
+        using var mockHttp = new MockHttpMessageHandler();
         mockHttp.When("*").Respond(async request =>
         {
             if (request?.Content != null)
@@ -700,7 +909,7 @@ public sealed partial class OoklaSpeedtestTests
         // Given
         const int uploadSizeMb = 2;
 
-        var mockHttp = new MockHttpMessageHandler();
+        using var mockHttp = new MockHttpMessageHandler();
         mockHttp.When("*").Respond(_ => new HttpResponseMessage(HttpStatusCode.OK));
 
         var httpClient = mockHttp.ToHttpClient();
@@ -734,7 +943,7 @@ public sealed partial class OoklaSpeedtestTests
     public async Task GetUploadSpeedAsync_ShouldCancel_WhenTokenIsCancelled()
     {
         // Given
-        var mockHttp = new MockHttpMessageHandler();
+        using var mockHttp = new MockHttpMessageHandler();
         mockHttp.When("*").Respond(async _ =>
         {
             // Simulate slow response.
@@ -763,7 +972,7 @@ public sealed partial class OoklaSpeedtestTests
     public async Task GetUploadSpeedAsync_ShouldReportProgress_WhileUploading()
     {
         // Given
-        var mockHttp = new MockHttpMessageHandler();
+        using var mockHttp = new MockHttpMessageHandler();
         mockHttp.When("*").Respond(HttpStatusCode.OK);
 
         var httpClient = mockHttp.ToHttpClient();
@@ -796,7 +1005,7 @@ public sealed partial class OoklaSpeedtestTests
     public async Task GetUploadSpeedAsync_ShouldHandlePartialFailures_AndContinue()
     {
         // Given
-        var mockHttp = new MockHttpMessageHandler();
+        using var mockHttp = new MockHttpMessageHandler();
 
         // Fail the first upload attempt
         var failureTriggered = false;
@@ -835,5 +1044,187 @@ public sealed partial class OoklaSpeedtestTests
         result.ElapsedMilliseconds.ShouldBeGreaterThanOrEqualTo(0);
         progressReports.ShouldNotBeNull();
         progressReports.ShouldBe(new[] { 10, 20, 30, 40, 50, 60, 70, 80, 90, 100 });
+    }
+
+    [Fact]
+    public async Task GetUploadSpeedAsync_ShouldStopAfterFirstUpload_WhenSizeIsZero()
+    {
+        // Given
+        long actualBytes = 0;
+
+        using var mockHttp = new MockHttpMessageHandler();
+        mockHttp.When("*").Respond(async request =>
+        {
+            if (request?.Content != null)
+            {
+                var body = await request.Content.ReadAsByteArrayAsync();
+                Interlocked.Add(ref actualBytes, body.LongLength);
+            }
+            return new HttpResponseMessage(HttpStatusCode.OK);
+        });
+
+        var httpClient = mockHttp.ToHttpClient();
+        var settings = new OoklaSpeedtestSettings
+        {
+            UploadTest = new()
+            {
+                UploadIncrements = 1,
+                UploadSizeIterations = 10,
+                UploadParallelTasks = 1
+            }
+        };
+
+        var speedtest = new OoklaSpeedtest(settings, httpClient);
+        var server = new Clients.Testing.Server { Url = "http://example.com/", Sponsor = "Test", Location = "Test" };
+
+        // When
+        var result = await speedtest.GetUploadSpeedAsync(server, uploadSizeMb: 0);
+
+        // Then
+        result.ShouldNotBeNull();
+        actualBytes.ShouldBeGreaterThan(0); // First upload completed
+        result.BytesProcessed.ShouldBe(actualBytes);
+        result.ElapsedMilliseconds.ShouldBeGreaterThanOrEqualTo(0);
+    }
+
+    [Fact]
+    public async Task GetUploadSpeedAsync_ShouldStopAfterFirstUpload_WhenSizeIsNegative()
+    {
+        // Given
+        long actualBytes = 0;
+
+        using var mockHttp = new MockHttpMessageHandler();
+        mockHttp.When("*").Respond(async request =>
+        {
+            if (request?.Content != null)
+            {
+                var body = await request.Content.ReadAsByteArrayAsync();
+                Interlocked.Add(ref actualBytes, body.LongLength);
+            }
+            return new HttpResponseMessage(HttpStatusCode.OK);
+        });
+
+        var httpClient = mockHttp.ToHttpClient();
+        var settings = new OoklaSpeedtestSettings
+        {
+            UploadTest = new()
+            {
+                UploadIncrements = 1,
+                UploadSizeIterations = 10,
+                UploadParallelTasks = 1
+            }
+        };
+
+        var speedtest = new OoklaSpeedtest(settings, httpClient);
+        var server = new Clients.Testing.Server { Url = "http://example.com/", Sponsor = "Test", Location = "Test" };
+
+        // When
+        var result = await speedtest.GetUploadSpeedAsync(server, uploadSizeMb: -1);
+
+        // Then
+        result.ShouldNotBeNull();
+        actualBytes.ShouldBeGreaterThan(0); // First upload completed
+        result.BytesProcessed.ShouldBe(actualBytes);
+        result.ElapsedMilliseconds.ShouldBeGreaterThanOrEqualTo(0);
+    }
+
+    [Fact]
+    public async Task GetUploadSpeedAsync_ShouldCompleteWithZeroBytes_WhenAllUploadsFail()
+    {
+        // Given
+        using var mockHttp = new MockHttpMessageHandler();
+        mockHttp.When("*").Throw(new HttpRequestException("Network failure"));
+
+        var httpClient = mockHttp.ToHttpClient();
+        var settings = new OoklaSpeedtestSettings
+        {
+            UploadTest = new()
+            {
+                UploadIncrements = 1,
+                UploadSizeIterations = 5,
+                UploadParallelTasks = 1
+            }
+        };
+
+        var speedtest = new OoklaSpeedtest(settings, httpClient);
+        var server = new Clients.Testing.Server { Url = "http://example.com/", Sponsor = "Test", Location = "Test" };
+
+        // When
+        var result = await speedtest.GetUploadSpeedAsync(server);
+
+        // Then
+        result.ShouldNotBeNull();
+        result.BytesProcessed.ShouldBe(0); // All uploads failed
+        result.ElapsedMilliseconds.ShouldBeGreaterThanOrEqualTo(0);
+    }
+
+    [Theory]
+    [InlineData(HttpStatusCode.NotFound)]
+    [InlineData(HttpStatusCode.InternalServerError)]
+    [InlineData(HttpStatusCode.ServiceUnavailable)]
+    [InlineData(HttpStatusCode.BadGateway)]
+    public async Task GetUploadSpeedAsync_ShouldCompleteSuccessfully_EvenWithErrorResponses(HttpStatusCode errorCode)
+    {
+        // Given
+        using var mockHttp = new MockHttpMessageHandler();
+        mockHttp.When("*").Respond(errorCode);
+
+        var httpClient = mockHttp.ToHttpClient();
+        var settings = new OoklaSpeedtestSettings
+        {
+            UploadTest = new()
+            {
+                UploadIncrements = 1,
+                UploadSizeIterations = 3,
+                UploadParallelTasks = 1
+            }
+        };
+
+        var speedtest = new OoklaSpeedtest(settings, httpClient);
+        var server = new Clients.Testing.Server { Url = "http://example.com/", Sponsor = "Test", Location = "Test" };
+
+        // When
+        var result = await speedtest.GetUploadSpeedAsync(server);
+
+        // Then
+        result.ShouldNotBeNull();
+        // Unlike downloads, uploads don't check response status codes
+        // Bytes are counted as uploaded even if server returns error status
+        result.BytesProcessed.ShouldBeGreaterThan(0);
+        result.ElapsedMilliseconds.ShouldBeGreaterThanOrEqualTo(0);
+    }
+
+    [Fact]
+    public async Task GetUploadSpeedAsync_ShouldPropagateException_WhenProgressCallbackThrows()
+    {
+
+        // Given
+        using var mockHttp = new MockHttpMessageHandler();
+        mockHttp.When("*").Respond(HttpStatusCode.OK);
+
+        var httpClient = mockHttp.ToHttpClient();
+        var settings = new OoklaSpeedtestSettings
+        {
+            UploadTest = new()
+            {
+                UploadIncrements = 1,
+                UploadSizeIterations = 4,
+                UploadParallelTasks = 1
+            }
+        };
+
+        var speedtest = new OoklaSpeedtest(settings, httpClient);
+        var server = new Clients.Testing.Server { Url = "http://example.com/", Sponsor = "Test", Location = "Test" };
+
+        // When
+        var exception = await Record.ExceptionAsync(() => speedtest.GetUploadSpeedAsync(server, progress =>
+        {
+            throw new InvalidOperationException("Progress callback failed");
+        }));
+
+        // Then
+        exception.ShouldNotBeNull();
+        exception.ShouldBeOfType<InvalidOperationException>();
+        exception.Message.ShouldBe("Progress callback failed");
     }
 }

@@ -12,7 +12,7 @@ namespace NetPace.Core.Clients.Testing;
 /// </para>
 /// <para>
 /// Default behavior throws an exception when "Test Sponsor 2" is passed into
-/// the <see cref="ISpeedTestService.GetServerLatencyAsync(IServer)"/> method.
+/// the GetServerLatencyAsync method.
 /// </para>
 /// </remarks>
 public class FaultySpeedTester : ISpeedTestService
@@ -20,6 +20,9 @@ public class FaultySpeedTester : ISpeedTestService
     private readonly ISpeedTestService inner;
     private readonly Func<string?, string, bool> IsFaulted;
 
+    /// <summary>
+    /// Constructs a new <see cref="FaultySpeedTester"/> instance.
+    /// </summary>
     public FaultySpeedTester(
         ISpeedTestService? inner = null,
         Func<string?, string, bool>? isFaulted = null)

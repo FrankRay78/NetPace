@@ -9,6 +9,9 @@ public class VariableSpeedTester : ISpeedTestService
     private int callCount = 0;
     private readonly ISpeedTestService inner;
 
+    /// <summary>
+    /// Constructs a new <see cref="VariableSpeedTester"/> instance.
+    /// </summary>
     public VariableSpeedTester()
     {
         // Create a custom speed test service that returns different results for each call

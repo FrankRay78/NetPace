@@ -16,8 +16,14 @@ public sealed class SpeedTestStub : ISpeedTestService
 
     private readonly int delayMilliseconds = 0;
 
+    /// <summary>
+    /// Constructs a new <see cref="SpeedTestStub"/> instance.
+    /// </summary>
     public SpeedTestStub() { }
 
+    /// <summary>
+    /// Constructs a new <see cref="SpeedTestStub"/> instance with a specified delay for progress updates.
+    /// </summary>
     public SpeedTestStub(int delayMilliseconds)
     {
         this.delayMilliseconds = delayMilliseconds;
