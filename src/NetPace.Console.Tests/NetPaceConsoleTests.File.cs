@@ -12,7 +12,7 @@ public sealed partial class NetPaceConsoleTests
         public async Task Should_Write_Output_To_File(string file)
         {
             // Given
-            var testFile = Path.Combine(Path.GetTempPath(), $"netpace-test-{Guid.NewGuid()}.txt");
+            var testFile = Path.Join(Path.GetTempPath(), $"netpace-test-{Guid.NewGuid()}.txt");
 
             try
             {
@@ -47,7 +47,7 @@ public sealed partial class NetPaceConsoleTests
         public async Task Should_Write_CSV_Output_To_File(string file)
         {
             // Given
-            var testFile = Path.Combine(Path.GetTempPath(), $"netpace-test-{Guid.NewGuid()}.txt");
+            var testFile = Path.Join(Path.GetTempPath(), $"netpace-test-{Guid.NewGuid()}.txt");
 
             try
             {
@@ -82,7 +82,7 @@ public sealed partial class NetPaceConsoleTests
         public async Task Should_Write_Json_Output_To_File(string file)
         {
             // Given
-            var testFile = Path.Combine(Path.GetTempPath(), $"netpace-test-{Guid.NewGuid()}.txt");
+            var testFile = Path.Join(Path.GetTempPath(), $"netpace-test-{Guid.NewGuid()}.txt");
 
             try
             {
@@ -115,7 +115,7 @@ public sealed partial class NetPaceConsoleTests
         public async Task Should_Overwrite_Existing_File()
         {
             // Given
-            var testFile = Path.Combine(Path.GetTempPath(), $"netpace-test-{Guid.NewGuid()}.txt");
+            var testFile = Path.Join(Path.GetTempPath(), $"netpace-test-{Guid.NewGuid()}.txt");
 
             try
             {
@@ -151,7 +151,7 @@ public sealed partial class NetPaceConsoleTests
         public async Task Should_Handle_Error_When_File_Creation_Fails()
         {
             // Given
-            var invalidPath = Path.Combine(Path.GetTempPath(), "nonexistent-directory", "output.txt");
+            var invalidPath = Path.Join(Path.GetTempPath(), "nonexistent-directory", "output.txt");
 
             var registrar = new TypeRegistrar();
             registrar.Register(typeof(ISpeedTestService), typeof(SpeedTestStub));

@@ -23,7 +23,7 @@ public sealed partial class OoklaSpeedtestTests
             {
                 var fileName = Path.GetFileName(request?.RequestUri?.AbsolutePath ?? "");
 
-                var fileStream = new FileStream(Path.Combine("Payloads", fileName), FileMode.Open, FileAccess.Read, FileShare.Read,
+                var fileStream = new FileStream(Path.Join("Payloads", fileName), FileMode.Open, FileAccess.Read, FileShare.Read,
                                         bufferSize: 64 * 1024,
                                         options: FileOptions.Asynchronous | FileOptions.SequentialScan);
 
