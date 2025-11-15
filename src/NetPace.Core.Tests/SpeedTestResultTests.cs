@@ -33,9 +33,11 @@ public class SpeedTestResultTests
 
         // When
         var speedString = result.GetSpeedString(SpeedUnit.BytesPerSecond, SpeedUnitSystem.SI);
+        var (speed, unit) = result.GetSpeedStringParts(SpeedUnit.BytesPerSecond, SpeedUnitSystem.SI);
 
         // Then
         Assert.Equal(expected, speedString);
+        Assert.Equal(expected, $"{speed} {unit}");
     }
 
     [InlineData(0, 1000, "0 Bps")]
@@ -69,9 +71,11 @@ public class SpeedTestResultTests
 
         // When
         var speedString = result.GetSpeedString(SpeedUnit.BytesPerSecond, SpeedUnitSystem.IEC);
+        var (speed, unit) = result.GetSpeedStringParts(SpeedUnit.BytesPerSecond, SpeedUnitSystem.IEC);
 
         // Then
         Assert.Equal(expected, speedString);
+        Assert.Equal(expected, $"{speed} {unit}");
     }
 
     [InlineData(0, 1000, "0 bps")]
@@ -101,9 +105,11 @@ public class SpeedTestResultTests
 
         // When
         var speedString = result.GetSpeedString(SpeedUnit.BitsPerSecond, SpeedUnitSystem.SI);
+        var (speed, unit) = result.GetSpeedStringParts(SpeedUnit.BitsPerSecond, SpeedUnitSystem.SI);
 
         // Then
         Assert.Equal(expected, speedString);
+        Assert.Equal(expected, $"{speed} {unit}");
     }
 
     [InlineData(0, 1000, "0 bps")]
@@ -133,9 +139,11 @@ public class SpeedTestResultTests
 
         // When
         var speedString = result.GetSpeedString(SpeedUnit.BitsPerSecond, SpeedUnitSystem.IEC);
+        var (speed, unit) = result.GetSpeedStringParts(SpeedUnit.BitsPerSecond, SpeedUnitSystem.IEC);
 
         // Then
         Assert.Equal(expected, speedString);
+        Assert.Equal(expected, $"{speed} {unit}");
     }
 
     /// <summary>
@@ -203,9 +211,11 @@ public class SpeedTestResultTests
 
         // When
         var speedString = result.GetSpeedString(SpeedUnit.BytesPerSecond, SpeedUnitSystem.SI, scale);
+        var (speed, unit) = result.GetSpeedStringParts(SpeedUnit.BytesPerSecond, SpeedUnitSystem.SI, scale);
 
         // Then
         Assert.Equal(expected, speedString);
+        Assert.Equal(expected, $"{speed} {unit}");
     }
 
     /// <summary>
@@ -280,9 +290,11 @@ public class SpeedTestResultTests
 
         // When
         var speedString = result.GetSpeedString(SpeedUnit.BytesPerSecond, SpeedUnitSystem.IEC, scale);
+        var (speed, unit) = result.GetSpeedStringParts(SpeedUnit.BytesPerSecond, SpeedUnitSystem.IEC, scale);
 
         // Then
         Assert.Equal(expected, speedString);
+        Assert.Equal(expected, $"{speed} {unit}");
     }
 
     /// <summary>
@@ -356,9 +368,11 @@ public class SpeedTestResultTests
 
         // When
         var speedString = result.GetSpeedString(SpeedUnit.BitsPerSecond, SpeedUnitSystem.SI, scale);
+        var (speed, unit) = result.GetSpeedStringParts(SpeedUnit.BitsPerSecond, SpeedUnitSystem.SI, scale);
 
         // Then
         Assert.Equal(expected, speedString);
+        Assert.Equal(expected, $"{speed} {unit}");
     }
 
     /// <summary>
@@ -434,8 +448,10 @@ public class SpeedTestResultTests
 
         // When
         var speedString = result.GetSpeedString(SpeedUnit.BitsPerSecond, SpeedUnitSystem.IEC, scale);
+        var (speed, unit) = result.GetSpeedStringParts(SpeedUnit.BitsPerSecond, SpeedUnitSystem.IEC, scale);
 
         // Then
         Assert.Equal(expected, speedString);
+        Assert.Equal(expected, $"{speed} {unit}");
     }
 }
