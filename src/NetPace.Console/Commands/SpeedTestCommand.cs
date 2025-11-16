@@ -11,7 +11,7 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
         if (!string.IsNullOrWhiteSpace(settings.OutputFile))
         {
             // Wrap console with TeeAnsiConsole if file output is requested.
-            console = new TeeAnsiConsole(console, settings.OutputFile);
+            console = new TeeAnsiConsole(console, settings.OutputFile, settings.FileModeValue);
         }
 
         try

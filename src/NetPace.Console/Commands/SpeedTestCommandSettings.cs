@@ -97,8 +97,13 @@ public sealed class SpeedTestCommandSettings : CommandSettings
     public Verbosity Verbosity { get; set; }
 
     [CommandOption("-f | --file")]
-    [Description("Write output to file (overwriting existing file).")]
+    [Description("Write output to file.")]
     public string? OutputFile { get; set; }
+
+    [CommandOption("--file-mode")]
+    [Description("Determines file output behavior. <Append, Overwrite>")]
+    [DefaultValue(FileMode.Append)]
+    public FileMode FileModeValue { get; set; }
 
 
     /// <summary>

@@ -16,10 +16,12 @@ public sealed class TeeAnsiConsole : IAnsiConsole
     /// </summary>
     /// <param name="inner">The console to wrap.</param>
     /// <param name="filePath">The path to the output file.</param>
-    public TeeAnsiConsole(IAnsiConsole inner, string filePath)
+    /// <param name="fileMode">Determines whether to append to or overwrite the file.</param>
+    public TeeAnsiConsole(IAnsiConsole inner, string filePath, FileMode fileMode)
     {
         _inner = inner ?? throw new ArgumentNullException(nameof(inner));
-        _fileWriter = new StreamWriter(filePath, append: false, Encoding.UTF8) { AutoFlush = true };
+        bool append = fileMode == FileMode.Append;
+        _fileWriter = new StreamWriter(filePath, append: append, Encoding.UTF8) { AutoFlush = true };
     }
 
     /// <summary>
