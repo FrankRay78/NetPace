@@ -10,41 +10,40 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
     /// Writes an error message to the appropriate output stream.
     /// In quiet mode, errors go to stderr. Otherwise, they go through the console.
     /// </summary>
-    private static void WriteError(IAnsiConsole console, string message)
+    private static void WriteError(IAnsiConsole console, string message, bool quiet)
     {
-        // In quiet mode (NullAnsiConsole or FileOnlyConsole), write errors to stderr
-        if (console is NullAnsiConsole or FileOnlyConsole)
+        if (quiet)
         {
+            // Write errors to stderr
             System.Console.Error.WriteLine($"Error: {message}");
         }
         else
         {
-            // Normal mode: write through Spectre.Console with formatting
+            // Write through Spectre.Console with formatting
             console.Markup($"[red]Error:[/] {message.EscapeMarkup()}\n");
         }
     }
 
     protected override async Task<int> ExecuteAsync(CommandContext context, SpeedTestCommandSettings settings, CancellationToken cancellationToken)
     {
-        // Handle quiet mode: suppress console output
-        if (settings.Quiet)
+        if (settings.Quiet || !string.IsNullOrWhiteSpace(settings.OutputFile))
         {
+            var consoles = new List<IAnsiConsole>();
+
+            if (!settings.Quiet)
+            {
+                // Add terminal output
+                consoles.Add(console);
+            }
+
             if (!string.IsNullOrWhiteSpace(settings.OutputFile))
             {
-                // Quiet mode with file output: write only to file, not console
-                var fileWriter = new StreamWriter(settings.OutputFile, append: settings.FileModeValue == FileMode.Append, System.Text.Encoding.UTF8) { AutoFlush = true };
-                console = new FileOnlyConsole(console, fileWriter);
+                // Add file output
+                consoles.Add(new FileConsole(console, settings.OutputFile, settings.FileModeValue));
             }
-            else
-            {
-                // Quiet mode without file: suppress all output
-                console = new NullAnsiConsole(console);
-            }
-        }
-        else if (!string.IsNullOrWhiteSpace(settings.OutputFile))
-        {
-            // Normal mode with file output: write to both console and file
-            console = new TeeAnsiConsole(console, settings.OutputFile, settings.FileModeValue);
+
+            // Composite console based on output targets
+            console = new CompositeAnsiConsole(consoles.ToArray());
         }
 
         try
@@ -75,7 +74,7 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
                     }
                     catch (Exception e)
                     {
-                        WriteError(console, e.Message);
+                        WriteError(console, e.Message, settings.Quiet);
                     }
                     finally
                     {
@@ -112,7 +111,7 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
                     }
                     catch (Exception e)
                     {
-                        WriteError(console, e.Message);
+                        WriteError(console, e.Message, settings.Quiet);
                     }
 
                     if ((i + 1) < settings.Count)
@@ -145,7 +144,7 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
                 }
                 catch (Exception e)
                 {
-                    console.Markup($"[red]Error:[/] {e.Message.EscapeMarkup()}\n");
+                    WriteError(console, e.Message, settings.Quiet);
                 }
             }
 
@@ -153,14 +152,10 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
         }
         finally
         {
-            // Dispose of console wrappers to flush and close file if applicable
-            if (console is TeeAnsiConsole teeConsole)
+            // Dispose of composite console to flush and close file if applicable
+            if (console is IDisposable disposable)
             {
-                teeConsole.Dispose();
-            }
-            else if (console is FileOnlyConsole fileOnlyConsole)
-            {
-                fileOnlyConsole.Dispose();
+                disposable.Dispose();
             }
         }
     }
