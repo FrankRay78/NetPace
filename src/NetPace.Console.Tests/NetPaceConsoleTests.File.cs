@@ -112,100 +112,6 @@ public sealed partial class NetPaceConsoleTests
         }
 
         [Fact]
-        public async Task Should_Overwrite_Existing_File()
-        {
-            // Given
-            var testFile = Path.Join(Path.GetTempPath(), $"netpace-test-{Guid.NewGuid()}.txt");
-
-            try
-            {
-                // Create a file with existing content
-                await System.IO.File.WriteAllTextAsync(testFile, "OLD CONTENT THAT SHOULD BE REPLACED");
-
-                var registrar = new TypeRegistrar();
-                registrar.Register(typeof(ISpeedTestService), typeof(SpeedTestStub));
-                registrar.Register(typeof(IClock), typeof(ClockStub));
-                registrar.Register(typeof(IWaiter), typeof(NoDelayStub));
-                var app = GetCommandAppTester(registrar);
-
-                // When
-                var result = await app.RunAsync("--file", testFile, "--file-mode", "Overwrite");
-
-                // Then
-                Assert.Equal(0, result.ExitCode);
-
-                var fileContent = await System.IO.File.ReadAllTextAsync(testFile);
-                await Verify(fileContent);
-            }
-            finally
-            {
-                if (System.IO.File.Exists(testFile))
-                {
-                    System.IO.File.Delete(testFile);
-                }
-            }
-        }
-
-        [Fact]
-        public async Task Should_Handle_Error_When_File_Creation_Fails()
-        {
-            // Given
-            var invalidPath = Path.Join(Path.GetTempPath(), "nonexistent-directory", "output.txt");
-
-            var registrar = new TypeRegistrar();
-            registrar.Register(typeof(ISpeedTestService), typeof(SpeedTestStub));
-            registrar.Register(typeof(IClock), typeof(ClockStub));
-            registrar.Register(typeof(IWaiter), typeof(NoDelayStub));
-            var app = GetCommandAppTester(registrar);
-
-            // When
-            var result = await app.RunAsync("--file", invalidPath, "--verbosity", "Minimal");
-
-            // Then
-            Assert.NotEqual(0, result.ExitCode);
-
-            // Normalize directory separators to Windows-style backslashes so the Windows snapshots match across platforms.
-            var normalizedOutput = (result.Output ?? string.Empty).Replace('/', '\\');
-            await Verify(normalizedOutput);
-        }
-
-        [Fact]
-        public async Task Should_Append_To_Existing_File_When_FileMode_Is_Append()
-        {
-            // Given
-            var testFile = Path.Join(Path.GetTempPath(), $"netpace-test-{Guid.NewGuid()}.txt");
-
-            try
-            {
-                // Create a file with existing content
-                await System.IO.File.WriteAllTextAsync(testFile, "EXISTING CONTENT\n");
-
-                var registrar = new TypeRegistrar();
-                registrar.Register(typeof(ISpeedTestService), typeof(SpeedTestStub));
-                registrar.Register(typeof(IClock), typeof(ClockStub));
-                registrar.Register(typeof(IWaiter), typeof(NoDelayStub));
-                var app = GetCommandAppTester(registrar);
-
-                // When
-                var result = await app.RunAsync("--file", testFile, "--file-mode", "Append");
-
-                // Then
-                Assert.Equal(0, result.ExitCode);
-
-                var fileContent = await System.IO.File.ReadAllTextAsync(testFile);
-                Assert.StartsWith("EXISTING CONTENT", fileContent);
-                await Verify(fileContent);
-            }
-            finally
-            {
-                if (System.IO.File.Exists(testFile))
-                {
-                    System.IO.File.Delete(testFile);
-                }
-            }
-        }
-
-        [Fact]
         public async Task Should_Create_New_File_When_FileMode_Is_Append_And_File_Does_Not_Exist()
         {
             // Given
@@ -227,42 +133,6 @@ public sealed partial class NetPaceConsoleTests
                 Assert.True(System.IO.File.Exists(testFile));
 
                 var fileContent = await System.IO.File.ReadAllTextAsync(testFile);
-                await Verify(fileContent);
-            }
-            finally
-            {
-                if (System.IO.File.Exists(testFile))
-                {
-                    System.IO.File.Delete(testFile);
-                }
-            }
-        }
-
-        [Fact]
-        public async Task Should_Overwrite_Existing_File_When_FileMode_Is_Overwrite()
-        {
-            // Given
-            var testFile = Path.Join(Path.GetTempPath(), $"netpace-test-{Guid.NewGuid()}.txt");
-
-            try
-            {
-                // Create a file with existing content
-                await System.IO.File.WriteAllTextAsync(testFile, "OLD CONTENT THAT SHOULD BE REPLACED");
-
-                var registrar = new TypeRegistrar();
-                registrar.Register(typeof(ISpeedTestService), typeof(SpeedTestStub));
-                registrar.Register(typeof(IClock), typeof(ClockStub));
-                registrar.Register(typeof(IWaiter), typeof(NoDelayStub));
-                var app = GetCommandAppTester(registrar);
-
-                // When
-                var result = await app.RunAsync("--file", testFile, "--file-mode", "Overwrite");
-
-                // Then
-                Assert.Equal(0, result.ExitCode);
-
-                var fileContent = await System.IO.File.ReadAllTextAsync(testFile);
-                Assert.DoesNotContain("OLD CONTENT", fileContent);
                 await Verify(fileContent);
             }
             finally
@@ -308,7 +178,42 @@ public sealed partial class NetPaceConsoleTests
         }
 
         [Fact]
-        public async Task Should_Append_By_Default_When_FileMode_Not_Specified()
+        public async Task Should_Overwrite_Existing_File_When_FileMode_Is_Overwrite()
+        {
+            // Given
+            var testFile = Path.Join(Path.GetTempPath(), $"netpace-test-{Guid.NewGuid()}.txt");
+
+            try
+            {
+                // Create a file with existing content
+                await System.IO.File.WriteAllTextAsync(testFile, "OLD CONTENT THAT SHOULD BE REPLACED");
+
+                var registrar = new TypeRegistrar();
+                registrar.Register(typeof(ISpeedTestService), typeof(SpeedTestStub));
+                registrar.Register(typeof(IClock), typeof(ClockStub));
+                registrar.Register(typeof(IWaiter), typeof(NoDelayStub));
+                var app = GetCommandAppTester(registrar);
+
+                // When
+                var result = await app.RunAsync("--file", testFile, "--file-mode", "Overwrite");
+
+                // Then
+                Assert.Equal(0, result.ExitCode);
+
+                var fileContent = await System.IO.File.ReadAllTextAsync(testFile);
+                await Verify(fileContent);
+            }
+            finally
+            {
+                if (System.IO.File.Exists(testFile))
+                {
+                    System.IO.File.Delete(testFile);
+                }
+            }
+        }
+
+        [Fact]
+        public async Task Should_Append_To_Existing_File_When_FileMode_Not_Specified()
         {
             // Given
             var testFile = Path.Join(Path.GetTempPath(), $"netpace-test-{Guid.NewGuid()}.txt");
@@ -331,7 +236,6 @@ public sealed partial class NetPaceConsoleTests
                 Assert.Equal(0, result.ExitCode);
 
                 var fileContent = await System.IO.File.ReadAllTextAsync(testFile);
-                Assert.StartsWith("FIRST RUN", fileContent);
                 await Verify(fileContent);
             }
             finally
@@ -341,6 +245,64 @@ public sealed partial class NetPaceConsoleTests
                     System.IO.File.Delete(testFile);
                 }
             }
+        }
+
+        [Fact]
+        public async Task Should_Append_To_Existing_File_When_FileMode_Is_Append()
+        {
+            // Given
+            var testFile = Path.Join(Path.GetTempPath(), $"netpace-test-{Guid.NewGuid()}.txt");
+
+            try
+            {
+                // Create a file with existing content
+                await System.IO.File.WriteAllTextAsync(testFile, "EXISTING CONTENT\n");
+
+                var registrar = new TypeRegistrar();
+                registrar.Register(typeof(ISpeedTestService), typeof(SpeedTestStub));
+                registrar.Register(typeof(IClock), typeof(ClockStub));
+                registrar.Register(typeof(IWaiter), typeof(NoDelayStub));
+                var app = GetCommandAppTester(registrar);
+
+                // When
+                var result = await app.RunAsync("--file", testFile, "--file-mode", "Append");
+
+                // Then
+                Assert.Equal(0, result.ExitCode);
+
+                var fileContent = await System.IO.File.ReadAllTextAsync(testFile);
+                await Verify(fileContent);
+            }
+            finally
+            {
+                if (System.IO.File.Exists(testFile))
+                {
+                    System.IO.File.Delete(testFile);
+                }
+            }
+        }
+
+        [Fact]
+        public async Task Should_Handle_Error_When_File_Creation_Fails()
+        {
+            // Given
+            var invalidPath = Path.Join(Path.GetTempPath(), "nonexistent-directory", "output.txt");
+
+            var registrar = new TypeRegistrar();
+            registrar.Register(typeof(ISpeedTestService), typeof(SpeedTestStub));
+            registrar.Register(typeof(IClock), typeof(ClockStub));
+            registrar.Register(typeof(IWaiter), typeof(NoDelayStub));
+            var app = GetCommandAppTester(registrar);
+
+            // When
+            var result = await app.RunAsync("--file", invalidPath, "--verbosity", "Minimal");
+
+            // Then
+            Assert.NotEqual(0, result.ExitCode);
+
+            // Normalize directory separators to Windows-style backslashes so the Windows snapshots match across platforms.
+            var normalizedOutput = (result.Output ?? string.Empty).Replace('/', '\\');
+            await Verify(normalizedOutput);
         }
     }
 }

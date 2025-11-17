@@ -150,9 +150,6 @@ public sealed partial class NetPaceConsoleTests
 
             // Then
             Assert.Equal(0, result.ExitCode);
-            // Stdout should be empty.
-            // Errors are written to stderr (Console.Error) in quiet mode,
-            // which is not captured by CommandAppTester.
             Assert.Empty(result.Output);
         }
     }
