@@ -6,11 +6,44 @@ namespace NetPace.Console.Commands;
 
 public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService speedTestClient, IClock clock, IWaiter waiter, CancellationToken cancellationToken) : CancelableCommand<SpeedTestCommandSettings>(cancellationToken)
 {
+    /// <summary>
+    /// Writes an error message to the appropriate output stream.
+    /// In quiet mode, errors go to stderr. Otherwise, they go through the console.
+    /// </summary>
+    private static void WriteError(IAnsiConsole console, string message)
+    {
+        // In quiet mode (NullAnsiConsole or FileOnlyConsole), write errors to stderr
+        if (console is NullAnsiConsole or FileOnlyConsole)
+        {
+            System.Console.Error.WriteLine($"Error: {message}");
+        }
+        else
+        {
+            // Normal mode: write through Spectre.Console with formatting
+            console.Markup($"[red]Error:[/] {message.EscapeMarkup()}\n");
+        }
+    }
+
     protected override async Task<int> ExecuteAsync(CommandContext context, SpeedTestCommandSettings settings, CancellationToken cancellationToken)
     {
-        if (!string.IsNullOrWhiteSpace(settings.OutputFile))
+        // Handle quiet mode: suppress console output
+        if (settings.Quiet)
         {
-            // Wrap console with TeeAnsiConsole if file output is requested.
+            if (!string.IsNullOrWhiteSpace(settings.OutputFile))
+            {
+                // Quiet mode with file output: write only to file, not console
+                var fileWriter = new StreamWriter(settings.OutputFile, append: settings.FileModeValue == FileMode.Append, System.Text.Encoding.UTF8) { AutoFlush = true };
+                console = new FileOnlyConsole(console, fileWriter);
+            }
+            else
+            {
+                // Quiet mode without file: suppress all output
+                console = new NullAnsiConsole(console);
+            }
+        }
+        else if (!string.IsNullOrWhiteSpace(settings.OutputFile))
+        {
+            // Normal mode with file output: write to both console and file
             console = new TeeAnsiConsole(console, settings.OutputFile, settings.FileModeValue);
         }
 
@@ -42,7 +75,7 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
                     }
                     catch (Exception e)
                     {
-                        console.Markup($"[red]Error:[/] {e.Message.EscapeMarkup()}\n");
+                        WriteError(console, e.Message);
                     }
                     finally
                     {
@@ -79,7 +112,7 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
                     }
                     catch (Exception e)
                     {
-                        console.Markup($"[red]Error:[/] {e.Message.EscapeMarkup()}\n");
+                        WriteError(console, e.Message);
                     }
 
                     if ((i + 1) < settings.Count)
@@ -120,10 +153,14 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
         }
         finally
         {
+            // Dispose of console wrappers to flush and close file if applicable
             if (console is TeeAnsiConsole teeConsole)
             {
-                // Dispose of TeeAnsiConsole to flush and close file.
                 teeConsole.Dispose();
+            }
+            else if (console is FileOnlyConsole fileOnlyConsole)
+            {
+                fileOnlyConsole.Dispose();
             }
         }
     }
