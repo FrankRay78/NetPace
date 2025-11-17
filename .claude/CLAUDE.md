@@ -48,6 +48,89 @@ TDD provides:
 - **Living documentation** - Tests show how code should be used
 - **Confidence** - Refactor safely knowing tests will catch issues
 
+## Development Workflow
+
+### Planning Before Implementation
+
+**ALWAYS create a plan before writing code.** This ensures we understand the full scope and approach before making changes.
+
+**For any non-trivial change (more than a simple bug fix), follow this workflow:**
+
+1. **PLAN**: Create a detailed implementation plan
+   - Break down the work into steps
+   - Identify files that need changes
+   - List tests that need to be written
+   - Consider edge cases and dependencies
+   - **Present the plan to me for approval**
+
+2. **CONFIRM**: Wait for explicit approval
+   - I will review the plan
+   - I may request changes or clarifications
+   - **Do NOT proceed to implementation without approval**
+
+3. **IMPLEMENT**: Follow the approved plan using TDD
+   - RED: Write failing test
+   - GREEN: Make it pass
+   - REFACTOR: Improve code
+   - Repeat for each step in the plan
+
+### What Requires a Plan
+
+**Always create a plan for:**
+- New features
+- Architectural changes
+- Refactoring multiple files
+- Changes that affect public APIs
+- Bug fixes that require investigation
+- Performance optimizations
+- Any work that will take >30 minutes
+
+**Skip planning for:**
+- Fixing typos
+- Updating documentation
+- Simple one-line bug fixes
+- Formatting changes
+
+### Plan Format
+
+When creating a plan, use this structure:
+```
+## Implementation Plan: [Feature/Bug Name]
+
+### Overview
+[Brief description of what we're doing and why]
+
+### Files to Change
+- File1.cs - [what changes]
+- File2.cs - [what changes]
+
+### Test Strategy
+1. Test A - [what it verifies]
+2. Test B - [what it verifies]
+
+### Implementation Steps (TDD)
+1. RED: Write test for [behavior]
+   - File: TestFile.cs
+   - Method: TestMethodName
+   
+2. GREEN: Implement [behavior]
+   - File: ImplementationFile.cs
+   - Method: MethodName
+   
+3. REFACTOR: [any improvements needed]
+
+4. [Repeat for next behavior]
+
+### Risks/Concerns
+- [Anything to watch out for]
+- [Dependencies or breaking changes]
+
+### Questions Before Starting
+- [Any clarifications needed?]
+```
+
+**After presenting the plan, STOP and wait for approval.**
+
 ## Project Overview
 
 NetPace is a cross-platform network speed testing CLI application built with .NET 8.0, utilizing Ookla's Speedtest servers. It includes both a command-line application and a reusable Core library published to NuGet.
@@ -311,6 +394,7 @@ public async Task<DownloadResult> GetDownloadSpeedAsync(
 ## When Working with Claude Code
 
 ### Claude Must Always
+- **Create a plan and get approval** before implementing non-trivial changes
 - **Follow TDD** - write failing test before any production code
 - Follow the **RED-GREEN-REFACTOR** cycle
 - Add **XML documentation** to public members
@@ -325,6 +409,7 @@ public async Task<DownloadResult> GetDownloadSpeedAsync(
 - Performance requirements
 
 ### Never Let Claude
+- Implement non-trivial changes without presenting a plan first
 - Write production code without a failing test first
 - Skip the RED step (must see test fail)
 - Change public APIs without discussion
