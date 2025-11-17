@@ -24,7 +24,7 @@ public sealed class FileConsole : IAnsiConsole, IDisposable
 
         _fileWriter = new StreamWriter(filePath, append: (fileMode == FileMode.Append), Encoding.UTF8) { AutoFlush = true };
 
-        // Create console settings for plain text output
+        // Create console settings for plain text output.
         var settings = new AnsiConsoleSettings
         {
             Out = new FileConsoleOutput(_fileWriter),
@@ -45,7 +45,7 @@ public sealed class FileConsole : IAnsiConsole, IDisposable
         _fileWriter?.Dispose();
     }
 
-    // IAnsiConsole implementation - delegate to template console for properties
+    // IAnsiConsole implementation - delegate to template console for properties.
     public Profile Profile => _templateConsole.Profile;
     public IAnsiConsoleCursor Cursor => _templateConsole.Cursor;
     public IAnsiConsoleInput Input => _templateConsole.Input;
@@ -57,7 +57,7 @@ public sealed class FileConsole : IAnsiConsole, IDisposable
     /// </summary>
     public void Write(IRenderable renderable)
     {
-        // Capture the output as plain text using template console for rendering
+        // Capture the output as plain text using template console for rendering.
         var builder = new StringBuilder();
         var segments = renderable.GetSegments(_templateConsole);
         foreach (var segment in segments)
@@ -96,7 +96,7 @@ public sealed class FileConsole : IAnsiConsole, IDisposable
 
         public void SetEncoding(Encoding encoding)
         {
-            // Encoding is set on StreamWriter creation
+            // Encoding is set on StreamWriter creation.
         }
     }
 }
