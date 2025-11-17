@@ -325,7 +325,7 @@ public sealed partial class NetPaceConsoleTests
                 registrar.Register(typeof(IWaiter), typeof(NoDelayStub));
                 var app = GetCommandAppTester(registrar);
 
-                // When - no --file-mode specified, should default to Append
+                // When
                 var result = await app.RunAsync("--file", testFile);
 
                 // Then
