@@ -106,7 +106,7 @@ public sealed class SpeedTestCommandSettings : CommandSettings
     public FileMode FileModeValue { get; set; }
 
     [CommandOption("-q | --quiet")]
-    [Description("Suppress console output (errors still shown on stderr, file output still works).")]
+    [Description("Suppress console output (errors shown on stderr, file output still works).")]
     [DefaultValue(false)]
     public bool Quiet { get; set; }
 
