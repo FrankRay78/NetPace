@@ -7,20 +7,11 @@ namespace NetPace.Console.Commands;
 public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService speedTestClient, IClock clock, IWaiter waiter, CancellationToken cancellationToken) : CancelableCommand<SpeedTestCommandSettings>(cancellationToken)
 {
     /// <summary>
-    /// Writes an error message to the appropriate output stream.
+    /// Writes an error message to the console.
     /// </summary>
-    private static void WriteError(IAnsiConsole console, bool quiet, string message)
+    private static void WriteError(IAnsiConsole console, string message)
     {
-        if (quiet)
-        {
-            // Write errors to stderr.
-            System.Console.Error.WriteLine($"Error: {message}");
-        }
-        else
-        {
-            // Write through Spectre.Console with formatting.
-            console.Markup($"[red]Error:[/] {message.EscapeMarkup()}\n");
-        }
+        console.Markup($"[red]Error:[/] {message.EscapeMarkup()}\n");
     }
 
     protected override async Task<int> ExecuteAsync(CommandContext context, SpeedTestCommandSettings settings, CancellationToken cancellationToken)
@@ -73,7 +64,7 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
                     }
                     catch (Exception e)
                     {
-                        WriteError(console, settings.Quiet, e.Message);
+                        WriteError(console, e.Message);
                     }
                     finally
                     {
@@ -110,7 +101,7 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
                     }
                     catch (Exception e)
                     {
-                        WriteError(console, settings.Quiet, e.Message);
+                        WriteError(console, e.Message);
                     }
 
                     if ((i + 1) < settings.Count)
@@ -143,7 +134,7 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
                 }
                 catch (Exception e)
                 {
-                    WriteError(console, settings.Quiet, e.Message);
+                    WriteError(console, e.Message);
                 }
             }
 
