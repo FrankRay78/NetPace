@@ -15,12 +15,10 @@ public sealed class CompositeAnsiConsole : IAnsiConsole, IDisposable
     /// Initializes a new instance of the <see cref="CompositeAnsiConsole"/> class.
     /// </summary>
     /// <param name="consoles">The list of consoles to delegate to. Empty list means no output (quiet mode).</param>
-    public CompositeAnsiConsole(params IAnsiConsole[] consoles)
+    public CompositeAnsiConsole(IAnsiConsole primary, params IAnsiConsole[] consoles)
     {
         _consoles = consoles ?? Array.Empty<IAnsiConsole>();
-
-        // Use first console as primary, or create a minimal console for quiet mode
-        _primary = _consoles.Count > 0 ? _consoles[0] : AnsiConsole.Create(new AnsiConsoleSettings());
+        _primary = primary;
     }
 
     /// <summary>

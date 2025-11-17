@@ -42,7 +42,7 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
             }
 
             // Composite console based on output targets.
-            console = new CompositeAnsiConsole(consoles.ToArray());
+            console = new CompositeAnsiConsole(console, consoles.ToArray());
         }
 
         try
