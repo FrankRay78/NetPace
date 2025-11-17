@@ -146,7 +146,6 @@ public sealed partial class NetPaceConsoleTests
             }
         }
 
-
         [Fact]
         public async Task Should_Handle_Error_When_File_Creation_Fails()
         {

@@ -8,18 +8,17 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
 {
     /// <summary>
     /// Writes an error message to the appropriate output stream.
-    /// In quiet mode, errors go to stderr. Otherwise, they go through the console.
     /// </summary>
-    private static void WriteError(IAnsiConsole console, string message, bool quiet)
+    private static void WriteError(IAnsiConsole console, bool quiet, string message)
     {
         if (quiet)
         {
-            // Write errors to stderr
+            // Write errors to stderr.
             System.Console.Error.WriteLine($"Error: {message}");
         }
         else
         {
-            // Write through Spectre.Console with formatting
+            // Write through Spectre.Console with formatting.
             console.Markup($"[red]Error:[/] {message.EscapeMarkup()}\n");
         }
     }
@@ -32,17 +31,17 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
 
             if (!settings.Quiet)
             {
-                // Add terminal output
+                // Add terminal output.
                 consoles.Add(console);
             }
 
             if (!string.IsNullOrWhiteSpace(settings.OutputFile))
             {
-                // Add file output
-                consoles.Add(new FileConsole(console, settings.OutputFile, settings.FileModeValue));
+                // Add file output.
+                consoles.Add(new FileConsole(settings.OutputFile, settings.FileModeValue));
             }
 
-            // Composite console based on output targets
+            // Composite console based on output targets.
             console = new CompositeAnsiConsole(consoles.ToArray());
         }
 
@@ -74,7 +73,7 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
                     }
                     catch (Exception e)
                     {
-                        WriteError(console, e.Message, settings.Quiet);
+                        WriteError(console, settings.Quiet, e.Message);
                     }
                     finally
                     {
@@ -111,7 +110,7 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
                     }
                     catch (Exception e)
                     {
-                        WriteError(console, e.Message, settings.Quiet);
+                        WriteError(console, settings.Quiet, e.Message);
                     }
 
                     if ((i + 1) < settings.Count)
@@ -144,7 +143,7 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
                 }
                 catch (Exception e)
                 {
-                    WriteError(console, e.Message, settings.Quiet);
+                    WriteError(console, settings.Quiet, e.Message);
                 }
             }
 

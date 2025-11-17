@@ -15,18 +15,25 @@ public sealed class FileConsole : IAnsiConsole, IDisposable
     /// <summary>
     /// Initializes a new instance of the <see cref="FileConsole"/> class.
     /// </summary>
-    /// <param name="templateConsole">A template console used for rendering (typically AnsiConsole.Console).</param>
     /// <param name="filePath">The path to the output file.</param>
     /// <param name="fileMode">Determines whether to append to or overwrite the file.</param>
-    public FileConsole(IAnsiConsole templateConsole, string filePath, FileMode fileMode)
+    public FileConsole(string filePath, FileMode fileMode)
     {
-        _templateConsole = templateConsole ?? throw new ArgumentNullException(nameof(templateConsole));
-
         if (string.IsNullOrWhiteSpace(filePath))
             throw new ArgumentException("File path cannot be null or empty", nameof(filePath));
 
-        bool append = fileMode == FileMode.Append;
-        _fileWriter = new StreamWriter(filePath, append: append, Encoding.UTF8) { AutoFlush = true };
+        _fileWriter = new StreamWriter(filePath, append: (fileMode == FileMode.Append), Encoding.UTF8) { AutoFlush = true };
+
+        // Create console settings for plain text output
+        var settings = new AnsiConsoleSettings
+        {
+            Out = new FileConsoleOutput(_fileWriter),
+            Ansi = AnsiSupport.No,
+            ColorSystem = ColorSystemSupport.NoColors,
+            Interactive = InteractionSupport.No
+        };
+
+        _templateConsole = AnsiConsole.Create(settings);
     }
 
     /// <summary>
@@ -67,6 +74,29 @@ public sealed class FileConsole : IAnsiConsole, IDisposable
     /// </summary>
     public void Clear(bool home)
     {
-        // No-op for file output
+    }
+
+    /// <summary>
+    /// Custom IAnsiConsoleOutput implementation that writes to a file.
+    /// Configures Spectre.Console to treat the output as a non-terminal with fixed dimensions.
+    /// </summary>
+    private sealed class FileConsoleOutput : IAnsiConsoleOutput
+    {
+        private readonly TextWriter _writer;
+
+        public FileConsoleOutput(TextWriter writer)
+        {
+            _writer = writer ?? throw new ArgumentNullException(nameof(writer));
+        }
+
+        public TextWriter Writer => _writer;
+        public bool IsTerminal => false;
+        public int Width => int.MaxValue;
+        public int Height => int.MaxValue;
+
+        public void SetEncoding(Encoding encoding)
+        {
+            // Encoding is set on StreamWriter creation
+        }
     }
 }
