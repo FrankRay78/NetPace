@@ -30,7 +30,7 @@ public sealed partial class NetPaceConsoleTests
                 await Verify(result.Output).DisableRequireUniquePrefix(); ;
 
                 var fileContent = await System.IO.File.ReadAllTextAsync(testFile);
-                await Verify(fileContent).DisableRequireUniquePrefix(); ;
+                await Verify(fileContent).DisableRequireUniquePrefix();
             }
             finally
             {
