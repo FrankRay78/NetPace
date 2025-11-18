@@ -13,7 +13,7 @@ public sealed class FileConsoleTests : IDisposable
     public FileConsoleTests()
     {
         // Create a unique temp file for each test
-        _testFilePath = Path.Combine(Path.GetTempPath(), $"fileconsole-test-{Guid.NewGuid()}.txt");
+        _testFilePath = Path.Join(Path.GetTempPath(), $"fileconsole-test-{Guid.NewGuid()}.txt");
     }
 
     public void Dispose()
