@@ -6,12 +6,34 @@ namespace NetPace.Console.Commands;
 
 public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService speedTestClient, IClock clock, IWaiter waiter, CancellationToken cancellationToken) : CancelableCommand<SpeedTestCommandSettings>(cancellationToken)
 {
+    /// <summary>
+    /// Writes an error message to the console.
+    /// </summary>
+    private static void WriteError(IAnsiConsole console, string message)
+    {
+        console.Markup($"[red]Error:[/] {message.EscapeMarkup()}\n");
+    }
+
     protected override async Task<int> ExecuteAsync(CommandContext context, SpeedTestCommandSettings settings, CancellationToken cancellationToken)
     {
-        if (!string.IsNullOrWhiteSpace(settings.OutputFile))
+        if (settings.Quiet || !string.IsNullOrWhiteSpace(settings.OutputFile))
         {
-            // Wrap console with TeeAnsiConsole if file output is requested.
-            console = new TeeAnsiConsole(console, settings.OutputFile, settings.FileModeValue);
+            var consoles = new List<IAnsiConsole>();
+
+            if (!settings.Quiet)
+            {
+                // Add terminal output.
+                consoles.Add(console);
+            }
+
+            if (!string.IsNullOrWhiteSpace(settings.OutputFile))
+            {
+                // Add file output.
+                consoles.Add(new FileConsole(settings.OutputFile, settings.FileModeValue));
+            }
+
+            // Composite console based on output targets.
+            console = new CompositeAnsiConsole(console, consoles.ToArray());
         }
 
         try
@@ -42,7 +64,7 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
                     }
                     catch (Exception e)
                     {
-                        console.Markup($"[red]Error:[/] {e.Message.EscapeMarkup()}\n");
+                        WriteError(console, e.Message);
                     }
                     finally
                     {
@@ -79,7 +101,7 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
                     }
                     catch (Exception e)
                     {
-                        console.Markup($"[red]Error:[/] {e.Message.EscapeMarkup()}\n");
+                        WriteError(console, e.Message);
                     }
 
                     if ((i + 1) < settings.Count)
@@ -112,7 +134,7 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
                 }
                 catch (Exception e)
                 {
-                    console.Markup($"[red]Error:[/] {e.Message.EscapeMarkup()}\n");
+                    WriteError(console, e.Message);
                 }
             }
 
@@ -120,10 +142,9 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
         }
         finally
         {
-            if (console is TeeAnsiConsole teeConsole)
+            if (console is IDisposable disposable)
             {
-                // Dispose of TeeAnsiConsole to flush and close file.
-                teeConsole.Dispose();
+                disposable.Dispose();
             }
         }
     }
