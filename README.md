@@ -118,7 +118,7 @@ OPTIONS:
                                                      Minimal is ideal for batch scripts and redirected output.
     -f, --file                                       Write output to file.
         --file-mode           Append                 Determines file output behavior. <Append, Overwrite>
-    -q, --quiet                                      Suppress console output (errors shown on stderr, file output still works).
+    -q, --quiet                                      Suppress all normal console output (file output still works).
 
 COMMANDS:
     servers    Show the nearest speed test servers.
