@@ -312,29 +312,6 @@ public sealed partial class NetPaceConsoleTests
     }
 
     [Fact]
-    public async Task Should_Handle_Unknown_Exceptions()
-    {
-        // Given
-        var mock = new SpeedTestMock
-        {
-            GetServersAsyncFunc = (cancellationToken) => throw new HttpRequestException("Could not open socket")
-        };
-
-        var registrar = new TypeRegistrar();
-        registrar.RegisterInstance(typeof(ISpeedTestService), mock);
-        registrar.Register(typeof(IClock), typeof(ClockStub));
-        registrar.Register(typeof(IWaiter), typeof(NoDelayStub));
-        var app = GetCommandAppTester(registrar);
-
-        // When
-        var result = await app.RunAsync();
-
-        // Then
-        Assert.Equal(0, result.ExitCode);
-        await Verify(result.Output);
-    }
-
-    [Fact]
     public async Task Should_Cancel_When_User_Requests()
     {
         // Given
@@ -400,6 +377,47 @@ public sealed partial class NetPaceConsoleTests
 
         // When
         var result = await app.RunAsync("-t", "--count", "100", "--verbosity", "Minimal");
+
+        // Then
+        Assert.Equal(0, result.ExitCode);
+        await Verify(result.Output);
+    }
+
+    [Fact]
+    public async Task Should_Handle_Configuration_Exceptions()
+    {
+        // Given
+        var registrar = new TypeRegistrar();
+        registrar.Register(typeof(ISpeedTestService), typeof(SpeedTestStub));
+        registrar.Register(typeof(IClock), typeof(ClockStub));
+        registrar.Register(typeof(IWaiter), typeof(NoDelayStub));
+        var app = GetCommandAppTester(registrar);
+
+        // When
+        var result = await app.RunAsync("--count", "ABC");
+
+        // Then
+        Assert.NotEqual(0, result.ExitCode);
+        await Verify(result.Output);
+    }
+
+    [Fact]
+    public async Task Should_Handle_Network_Exceptions()
+    {
+        // Given
+        var mock = new SpeedTestMock
+        {
+            GetServersAsyncFunc = (cancellationToken) => throw new HttpRequestException("Could not open socket")
+        };
+
+        var registrar = new TypeRegistrar();
+        registrar.RegisterInstance(typeof(ISpeedTestService), mock);
+        registrar.Register(typeof(IClock), typeof(ClockStub));
+        registrar.Register(typeof(IWaiter), typeof(NoDelayStub));
+        var app = GetCommandAppTester(registrar);
+
+        // When
+        var result = await app.RunAsync();
 
         // Then
         Assert.Equal(0, result.ExitCode);

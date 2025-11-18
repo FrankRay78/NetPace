@@ -142,7 +142,6 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
         }
         finally
         {
-            // Dispose of composite console to flush and close file if applicable
             if (console is IDisposable disposable)
             {
                 disposable.Dispose();

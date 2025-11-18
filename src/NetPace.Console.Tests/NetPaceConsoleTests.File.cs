@@ -283,7 +283,7 @@ public sealed partial class NetPaceConsoleTests
         }
 
         [Fact]
-        public async Task Should_Handle_Error_When_File_Creation_Fails()
+        public async Task Should_Handle_File_Creation_Exception()
         {
             // Given
             var invalidPath = Path.Join(Path.GetTempPath(), "nonexistent-directory", "output.txt");
