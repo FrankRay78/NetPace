@@ -10,7 +10,7 @@ public sealed partial class NetPaceConsoleTests
         [InlineData("-q")]
         [InlineData("--quiet")]
         [Theory]
-        public async Task Should_Suppress_Console_Output_In_Quiet_Mode(string quiet)
+        public async Task Should_Suppress_Console_In_Quiet_Mode(string quiet)
         {
             // Given
             var registrar = new TypeRegistrar();
@@ -48,7 +48,9 @@ public sealed partial class NetPaceConsoleTests
 
                 // Then
                 Assert.Equal(0, result.ExitCode);
-                Assert.Empty(result.Output); // Console should be empty
+
+                // Console should be empty
+                Assert.Empty(result.Output);
 
                 // File should contain output
                 Assert.True(System.IO.File.Exists(testFile));
@@ -131,7 +133,36 @@ public sealed partial class NetPaceConsoleTests
         [InlineData("-q")]
         [InlineData("--quiet")]
         [Theory]
-        public async Task Should_Handle_Errors_In_Quiet_Mode(string quiet)
+        public async Task Should_Handle_Configuration_Exceptions_In_Quiet_Mode(string quiet)
+        {
+            // Given
+            var registrar = new TypeRegistrar();
+            registrar.Register(typeof(ISpeedTestService), typeof(SpeedTestStub));
+            registrar.Register(typeof(IClock), typeof(ClockStub));
+            registrar.Register(typeof(IWaiter), typeof(NoDelayStub));
+            var app = GetCommandAppTester(registrar);
+
+            // When
+            var result = await app.RunAsync(quiet, "--count", "ABC");
+
+            // Then
+            Assert.NotEqual(0, result.ExitCode);
+            await Verify(result.Output).DisableRequireUniquePrefix();
+
+            // Configuration errors that prevent the programme from commencing
+            // are shown on the console, despite the `-q|--quiet` switch.
+            // This is inline with at least grep:
+            // ```bash
+            // C:\Users\frank>grep -q -f NONEXISTANT
+            // grep: NONEXISTANT: No such file or directory
+            // ```
+            // This behaviour can remain under review.
+        }
+
+        [InlineData("-q")]
+        [InlineData("--quiet")]
+        [Theory]
+        public async Task Should_Handle_Network_Exceptions_In_Quiet_Mode(string quiet)
         {
             // Given
             var mock = new SpeedTestMock
