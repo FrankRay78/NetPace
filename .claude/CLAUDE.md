@@ -16,37 +16,13 @@ This document guides Claude Code in maintaining NetPace, a cross-platform .NET 8
 
 ### Test-Driven Development is Mandatory
 
-**TDD is not optional.** Every single change to production code must follow the RED-GREEN-REFACTOR cycle:
+**TDD is non-negotiable.** Every line of production code must be written in response to a failing test following the **RED-GREEN-REFACTOR** cycle:
 
-1. **RED**: Write a failing test first
-   - No production code without a failing test
-   - Test describes the behavior you want
-   - Run test and watch it fail (confirms test is valid)
+1. **RED**: Write failing test → Run and verify failure
+2. **GREEN**: Write minimum code to pass → Run and verify success
+3. **REFACTOR**: Improve design (optional) → Commit first, verify tests still pass
 
-2. **GREEN**: Write minimum code to pass
-   - Write only enough code to make the test pass
-   - Don't add features "while you're there"
-   - Get to green as quickly as possible
-
-3. **REFACTOR**: Improve the code
-   - Only after test passes
-   - Improve design, remove duplication, enhance readability
-   - Tests must still pass after refactoring
-
-**Critical Rules:**
-- **Never write production code without a failing test first**
-- **Never skip the RED step** - you must see the test fail
-- **Never refactor on red** - always get to green first
-- **Commit before refactoring** - so you can safely rollback if needed
-- **Run all tests frequently** - catch regressions immediately
-
-### Why This Matters
-
-TDD provides:
-- **Design feedback** - Hard to test = bad design
-- **Regression protection** - Changes don't break existing behavior
-- **Living documentation** - Tests show how code should be used
-- **Confidence** - Refactor safely knowing tests will catch issues
+Use the **tdd-workflow** agent for detailed step-by-step TDD guidance.
 
 ## Claude Code Agents
 
@@ -147,19 +123,9 @@ NetPace is a cross-platform network speed testing CLI application built with .NE
 ### Test Organization
 - Test project naming: `NetPace.Core.Tests`, `NetPace.Console.Tests`
 - Use **xUnit** for testing framework
-- **Given-When-Then** or **Arrange-Act-Assert** pattern in tests
+- **Given-When-Then** pattern
 - Test file mirrors source: `OoklaSpeedtest.cs` → `OoklaSpeedtestTests.cs`
-
-### TDD Workflow in Practice
-
-Use the **tdd-workflow** agent for detailed step-by-step guidance through RED-GREEN-REFACTOR cycles.
-
-**Quick reference:**
-- Write failing test describing desired behavior
-- Run test and verify failure (confirms test is valid)
-- Write minimum code to make test pass
-- Run test and verify success
-- Optionally refactor (commit first, then improve design)
+- Test naming: `MethodName_Scenario_ExpectedResult`
 
 ### What to Test
 - **NetPace.Core**: Unit tests for all public APIs
@@ -233,16 +199,6 @@ Use the **tdd-workflow** agent for detailed step-by-step guidance through RED-GR
 ```
 
 3. **Review CLAUDE.md** for project standards
-
-### The TDD Cycle
-
-Every change follows the **RED-GREEN-REFACTOR** cycle:
-
-1. **RED**: Write a failing test that describes desired behavior → Run and verify failure
-2. **GREEN**: Write minimum code to make test pass → Run and verify success
-3. **REFACTOR**: Improve code design (optional) → Commit first, refactor, verify tests still pass
-
-For detailed TDD guidance, use the **tdd-workflow** agent.
 
 ### During Development
 1. **Follow TDD cycle** for every behavior change

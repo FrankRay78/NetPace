@@ -292,28 +292,21 @@ Implementation Progress:
 
 ---
 
-## NetPace-Specific TDD Guidelines
+## NetPace Test Conventions
 
-### Test Organization
+**Test Naming:** `MethodName_Scenario_ExpectedResult`
 
-**File Structure:**
-- Production: `src/NetPace.Core/Clients/Ookla/OoklaSpeedtest.cs`
-- Tests: `test/NetPace.Core.Tests/Clients/Ookla/OoklaSpeedtestTests.cs`
-
-**Test Naming:**
 ```csharp
-// ✅ GOOD - Clear behavior description
+// ✅ GOOD
 [Fact]
 public async Task GetServersAsync_WithValidTimeout_ReturnsServers()
 
-// ❌ BAD - Vague or implementation-focused
+// ❌ BAD
 [Fact]
 public async Task TestGetServers()
 ```
 
-### Test Patterns
-
-**Given-When-Then:**
+**Given-When-Then Pattern:**
 ```csharp
 [Fact]
 public async Task GetDownloadSpeed_WhenServerResponds_ReturnsValidSpeed()
@@ -331,135 +324,29 @@ public async Task GetDownloadSpeed_WhenServerResponds_ReturnsValidSpeed()
 }
 ```
 
-### Testing Async Code
+**Async Tests:** Always use `async Task`, never block with `.Result`
 
-Always use async tests properly:
-
-```csharp
-// ✅ GOOD - Proper async test
-[Fact]
-public async Task GetServersAsync_ReturnsServers()
-{
-    var result = await service.GetServersAsync();
-    Assert.NotEmpty(result);
-}
-
-// ❌ BAD - Blocking on async (can cause deadlocks)
-[Fact]
-public void GetServersAsync_ReturnsServers()
-{
-    var result = service.GetServersAsync().Result;  // Don't do this!
-    Assert.NotEmpty(result);
-}
-```
-
-### XML Documentation
-
-Add XML docs in the GREEN or REFACTOR phase:
-
-```csharp
-/// <summary>
-/// Discovers available Ookla Speedtest servers with a specified timeout.
-/// </summary>
-/// <param name="timeout">Maximum time to wait for server discovery. Must be positive.</param>
-/// <returns>A list of available servers, ordered by latency.</returns>
-/// <exception cref="ArgumentException">Thrown when timeout is not positive.</exception>
-public async Task<List<Server>> GetServersAsync(TimeSpan timeout)
-{
-    GuardAgainstInvalidTimeout(timeout);
-    // ...
-}
-```
+**XML Documentation:** Add in GREEN or REFACTOR phase for all public APIs
 
 ---
 
 ## Common TDD Mistakes to Prevent
 
-### Mistake 1: Writing Production Code First
-
-❌ **WRONG:**
-```
-"I'll add the timeout parameter first, then write tests for it."
-```
-
-✅ **CORRECT:**
-```
-"I'll write a test that expects a timeout parameter. It will fail because
-the parameter doesn't exist yet. Then I'll add the parameter."
-```
-
-### Mistake 2: Skipping the RED Phase
-
-❌ **WRONG:**
-```
-"I'll write the test and implementation together since I know they both work."
-```
-
-✅ **CORRECT:**
-```
-"I'll write the test and run it to verify it fails. This confirms the test
-is valid and would catch bugs if the implementation were missing."
-```
-
-### Mistake 3: Adding "Bonus" Features
-
-❌ **WRONG:**
-```
-"While I'm adding timeout validation, I'll also add retry logic."
-```
-
-✅ **CORRECT:**
-```
-"I'll only add timeout validation as specified in the test. Retry logic
-would require its own test first."
-```
-
-### Mistake 4: Refactoring on Red
-
-❌ **WRONG:**
-```
-"The test is failing, but let me clean up this code while I'm here."
-```
-
-✅ **CORRECT:**
-```
-"The test is failing. I'll make it pass first, then refactor."
-```
+**Never**:
+- ❌ Write production code before the failing test
+- ❌ Skip the RED phase (must see test fail)
+- ❌ Add "bonus" features not covered by current test
+- ❌ Refactor while tests are failing (must be GREEN first)
 
 ---
 
 ## Handling Complications
 
-### What if the test is hard to write?
+**Test is hard to write?** Hard-to-test code is a design smell. Refactor to use interfaces/DI while GREEN.
 
-**Hard-to-test code is a design smell.**
+**Discover a bug?** Write failing test for bug → fix → continue original work.
 
-If writing a test is difficult:
-1. Stop and analyze why
-2. Consider if the design needs improvement
-3. Refactor to make code more testable (while tests are GREEN)
-4. Use interfaces and dependency injection
-5. Mock external dependencies
-
-### What if I discover a bug while implementing?
-
-**Handle bugs through TDD too:**
-
-1. Stop current work
-2. Write a failing test that demonstrates the bug
-3. Fix the bug to make test pass
-4. Continue original work
-
-### What if I need to refactor before adding new behavior?
-
-**Refactor from GREEN state:**
-
-1. Ensure all existing tests pass
-2. Commit before refactoring
-3. Refactor to enable new feature
-4. Ensure tests still pass
-5. Commit refactoring
-6. Now write failing test for new behavior
+**Need to refactor first?** Ensure GREEN → commit → refactor → verify GREEN → commit → then add new feature.
 
 ---
 

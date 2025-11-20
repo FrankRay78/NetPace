@@ -194,55 +194,11 @@ The implementation is complete when:
 
 ## Planning Guidelines
 
-### Break Down into TDD Steps
-
-Each implementation step should:
-- Focus on ONE behavior at a time
-- Start with a failing test (RED)
-- Include minimal implementation (GREEN)
-- Identify refactoring opportunities
-
-**Good Step:**
-```
-Step 1: Validate server URL is not null
-1. RED: Write test expecting ArgumentNullException
-2. GREEN: Add null check and throw
-3. REFACTOR: Extract validation to guard clause
-```
-
-**Bad Step (too large):**
-```
-Step 1: Implement server validation
-[Too vague, combines multiple behaviors]
-```
-
-### Identify All File Changes
-
-**Be Specific:**
-- ✅ `src/NetPace.Core/Clients/Ookla/OoklaSpeedtest.cs` - Add timeout parameter to GetServersAsync
-- ❌ `Some files in Core` - Add timeouts
-
-**Don't Forget:**
-- Test files for every production file change
-- Integration tests if needed
-- Console app changes if adding new CLI features
-
-### Surface Risks Early
-
-**Common Risks:**
-- Breaking changes to public APIs (NuGet consumers affected)
-- Performance implications (network-intensive operations)
-- Cross-platform issues (file paths, line endings)
-- External dependencies (new NuGet packages)
-- Async/threading concerns (deadlocks, race conditions)
-
-### Ask Questions
-
-If anything is unclear or ambiguous:
-- List specific questions in "Questions Before Starting"
-- Don't make assumptions about requirements
-- Clarify expected behavior for edge cases
-- Confirm scope boundaries
+- **One behavior per step**: Each TDD step focuses on single behavior (RED → GREEN → REFACTOR)
+- **Be specific**: List exact file paths, not "some files in Core"
+- **Include test files**: Every production file change needs corresponding test file changes
+- **Surface risks**: Breaking changes, performance, cross-platform, async concerns
+- **Ask questions**: List unclear items in "Questions Before Starting" - don't assume
 
 ---
 
@@ -268,33 +224,18 @@ Before presenting the plan, verify:
 ## Implementation Plan: Add Server Timeout Configuration
 
 ### Overview
-Users need the ability to specify custom timeouts when discovering Ookla servers,
-as some networks may require longer wait times. This adds a timeout parameter to
-server discovery with a sensible default of 5 seconds.
+Add timeout parameter to server discovery with default of 5 seconds.
 
 ### Files to Change
-
-**NetPace.Core:**
 - `src/NetPace.Core/Clients/Ookla/OoklaSpeedtest.cs` - Add timeout parameter
-- `src/NetPace.Core/Clients/Ookla/ServerDiscoveryOptions.cs` - New options class
-
-**NetPace.Core.Tests:**
-- `test/NetPace.Core.Tests/Clients/Ookla/OoklaSpeedtestTests.cs` - Timeout tests
+- `test/NetPace.Core.Tests/Clients/Ookla/OoklaSpeedtestTests.cs` - Add timeout tests
 
 ### Implementation Steps (TDD Cycle)
 
 **Step 1: Validate timeout is positive**
-1. **RED**: Write test `GetServersAsync_NegativeTimeout_ThrowsArgumentException`
-   - File: `OoklaSpeedtestTests.cs`
-   - Expected to fail because validation doesn't exist yet
-
-2. **GREEN**: Add guard clause to validate timeout > 0
-   - File: `OoklaSpeedtest.cs`
-   - Throw ArgumentException for timeout <= 0
-
-3. **REFACTOR**: Extract timeout constant for default value
-
-**Step 2: Apply timeout to HTTP requests**
+1. RED: Test `GetServersAsync_NegativeTimeout_ThrowsArgumentException` → fails (no validation)
+2. GREEN: Add guard clause → throws ArgumentException for timeout <= 0
+3. REFACTOR: Extract timeout constant
 [...]
 ```
 
@@ -302,21 +243,10 @@ server discovery with a sensible default of 5 seconds.
 
 ## Communication Style
 
-**Clear and Professional:**
-- Use imperative mood: "Add validation" not "We should add validation"
-- Be specific: "Add timeout parameter to GetServersAsync" not "Support timeouts"
-- Stay focused: Don't include implementation details in the plan
-
-**Structured and Scannable:**
-- Use consistent headings and formatting
-- Bullet points for lists
-- Code blocks for API examples
-- Clear separation between sections
-
-**Thorough but Concise:**
-- Include all necessary information
-- Avoid over-explaining obvious points
-- Focus on what, not how (implementation details come later)
+- Use **imperative mood**: "Add validation" not "We should add"
+- Be **specific**: "Add timeout parameter to GetServersAsync" not "Support timeouts"
+- Stay **focused**: What to do, not how to implement
+- **Scannable**: Consistent headings, bullets, code blocks
 
 ---
 
