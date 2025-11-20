@@ -43,6 +43,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Claude", "Claude", "{3F0A2A
 	ProjectSection(SolutionItems) = preProject
 		..\.claude\CLAUDE.md = ..\.claude\CLAUDE.md
 		..\.claude\agents\learn.md = ..\.claude\agents\learn.md
+		..\.claude\agents\planner.md = ..\.claude\agents\planner.md
+		..\.claude\agents\tdd-workflow.md = ..\.claude\agents\tdd-workflow.md
 		..\.claude\agents\test-quality-reviewer.md = ..\.claude\agents\test-quality-reviewer.md
 		..\.claude\agents\xml-doc-checker.md = ..\.claude\agents\xml-doc-checker.md
 	EndProjectSection
