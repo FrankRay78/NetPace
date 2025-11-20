@@ -16,120 +16,46 @@ This document guides Claude Code in maintaining NetPace, a cross-platform .NET 8
 
 ### Test-Driven Development is Mandatory
 
-**TDD is not optional.** Every single change to production code must follow the RED-GREEN-REFACTOR cycle:
+**TDD is non-negotiable.** Every line of production code must be written in response to a failing test following the **RED-GREEN-REFACTOR** cycle:
 
-1. **RED**: Write a failing test first
-   - No production code without a failing test
-   - Test describes the behavior you want
-   - Run test and watch it fail (confirms test is valid)
+1. **RED**: Write failing test → Run and verify failure
+2. **GREEN**: Write minimum code to pass → Run and verify success
+3. **REFACTOR**: Improve design (optional) → Commit first, verify tests still pass
 
-2. **GREEN**: Write minimum code to pass
-   - Write only enough code to make the test pass
-   - Don't add features "while you're there"
-   - Get to green as quickly as possible
+Use the **tdd-workflow** agent for detailed step-by-step TDD guidance.
 
-3. **REFACTOR**: Improve the code
-   - Only after test passes
-   - Improve design, remove duplication, enhance readability
-   - Tests must still pass after refactoring
+## Claude Code Agents
 
-**Critical Rules:**
-- **Never write production code without a failing test first**
-- **Never skip the RED step** - you must see the test fail
-- **Never refactor on red** - always get to green first
-- **Commit before refactoring** - so you can safely rollback if needed
-- **Run all tests frequently** - catch regressions immediately
+NetPace uses specialized Claude Code agents to handle complex workflows. These agents are invoked automatically or can be called explicitly when needed.
 
-### Why This Matters
+### Available Agents
 
-TDD provides:
-- **Design feedback** - Hard to test = bad design
-- **Regression protection** - Changes don't break existing behavior
-- **Living documentation** - Tests show how code should be used
-- **Confidence** - Refactor safely knowing tests will catch issues
+**planner** - Implementation Planning
+- **Use for**: New features, architectural changes, refactoring multiple files, API changes, complex bug fixes
+- **Purpose**: Creates detailed TDD-focused implementation plans before code is written
+- **Output**: Structured plan with test strategy, file changes, and TDD steps
+- **Required**: Must get approval before proceeding to implementation
 
-## Development Workflow
+**tdd-workflow** - TDD Enforcement
+- **Use for**: Implementing approved plans following strict RED-GREEN-REFACTOR cycle
+- **Purpose**: Guides step-by-step TDD implementation ensuring tests always come first
+- **Enforces**: No production code without failing test first, proper test execution, refactoring only on green
 
-### Planning Before Implementation
+**test-quality-reviewer** - Test Code Review
+- **Use for**: Reviewing test code for quality, effectiveness, and TDD compliance
+- **Purpose**: Ensures tests are high quality, fast, deterministic, and follow NetPace standards
+- **Checks**: Coverage, assertion quality, isolation, naming conventions, best practices
 
-**ALWAYS create a plan before writing code.** This ensures we understand the full scope and approach before making changes.
+### Workflow Integration
 
-**For any non-trivial change (more than a simple bug fix), follow this workflow:**
+**For non-trivial changes:**
+1. **planner** creates detailed implementation plan → get approval
+2. **tdd-workflow** guides RED-GREEN-REFACTOR implementation
+3. **test-quality-reviewer** validates test code quality (optional)
 
-1. **PLAN**: Create a detailed implementation plan
-   - Break down the work into steps
-   - Identify files that need changes
-   - List tests that need to be written
-   - Consider edge cases and dependencies
-   - **Present the plan to me for approval**
-
-2. **CONFIRM**: Wait for explicit approval
-   - I will review the plan
-   - I may request changes or clarifications
-   - **Do NOT proceed to implementation without approval**
-
-3. **IMPLEMENT**: Follow the approved plan using TDD
-   - RED: Write failing test
-   - GREEN: Make it pass
-   - REFACTOR: Improve code
-   - Repeat for each step in the plan
-
-### What Requires a Plan
-
-**Always create a plan for:**
-- New features
-- Architectural changes
-- Refactoring multiple files
-- Changes that affect public APIs
-- Bug fixes that require investigation
-- Performance optimizations
-- Any work that will take >30 minutes
-
-**Skip planning for:**
-- Fixing typos
-- Updating documentation
-- Simple one-line bug fixes
-- Formatting changes
-
-### Plan Format
-
-When creating a plan, use this structure:
-```
-## Implementation Plan: [Feature/Bug Name]
-
-### Overview
-[Brief description of what we're doing and why]
-
-### Files to Change
-- File1.cs - [what changes]
-- File2.cs - [what changes]
-
-### Test Strategy
-1. Test A - [what it verifies]
-2. Test B - [what it verifies]
-
-### Implementation Steps (TDD)
-1. RED: Write test for [behavior]
-   - File: TestFile.cs
-   - Method: TestMethodName
-   
-2. GREEN: Implement [behavior]
-   - File: ImplementationFile.cs
-   - Method: MethodName
-   
-3. REFACTOR: [any improvements needed]
-
-4. [Repeat for next behavior]
-
-### Risks/Concerns
-- [Anything to watch out for]
-- [Dependencies or breaking changes]
-
-### Questions Before Starting
-- [Any clarifications needed?]
-```
-
-**After presenting the plan, STOP and wait for approval.**
+**For simple changes:**
+- Skip planning, follow TDD principles directly
+- Use agents as needed (e.g., xml-doc-checker before commit)
 
 ## Project Overview
 
@@ -197,55 +123,9 @@ NetPace is a cross-platform network speed testing CLI application built with .NE
 ### Test Organization
 - Test project naming: `NetPace.Core.Tests`, `NetPace.Console.Tests`
 - Use **xUnit** for testing framework
-- **Given-When-Then** or **Arrange-Act-Assert** pattern in tests
+- **Given-When-Then** pattern
 - Test file mirrors source: `OoklaSpeedtest.cs` → `OoklaSpeedtestTests.cs`
-
-### TDD Workflow in Practice
-
-For every feature or bug fix:
-```csharp
-// 1. RED - Write the failing test first
-[Fact]
-public async Task GetDownloadSpeed_WhenServerResponds_ReturnsValidSpeed()
-{
-    // Given: A speed test service with a valid server
-    var service = new OoklaSpeedtest();
-    var server = new Server { Url = "http://test.example.com" };
-    
-    // When: We get the download speed
-    var result = await service.GetDownloadSpeedAsync(server);
-    
-    // Then: Result should be valid
-    Assert.NotNull(result);
-    Assert.True(result.SpeedBitsPerSecond > 0);
-}
-
-// Run test - it MUST fail (because GetDownloadSpeedAsync doesn't exist yet)
-
-// 2. GREEN - Write minimum implementation
-public async Task<DownloadResult> GetDownloadSpeedAsync(Server server)
-{
-    // Simplest thing that makes test pass
-    return new DownloadResult { SpeedBitsPerSecond = 1000000 };
-}
-
-// Run test - it should pass now
-
-// 3. REFACTOR - Now improve the implementation
-public async Task<DownloadResult> GetDownloadSpeedAsync(Server server)
-{
-    // Now add proper implementation
-    var client = new HttpClient();
-    var stopwatch = Stopwatch.StartNew();
-    var bytes = await client.GetByteArrayAsync(server.Url);
-    stopwatch.Stop();
-    
-    var bitsPerSecond = (bytes.Length * 8) / stopwatch.Elapsed.TotalSeconds;
-    return new DownloadResult { SpeedBitsPerSecond = bitsPerSecond };
-}
-
-// Run test - still passes after refactoring
-```
+- Test naming: `MethodName_Scenario_ExpectedResult`
 
 ### What to Test
 - **NetPace.Core**: Unit tests for all public APIs
@@ -320,33 +200,6 @@ public async Task<DownloadResult> GetDownloadSpeedAsync(Server server)
 
 3. **Review CLAUDE.md** for project standards
 
-### The TDD Cycle (For Every Change)
-```
-┌─────────────────────────────────────────────┐
-│  1. RED - Write failing test                │
-│     - Describes desired behavior            │
-│     - Run and watch it FAIL                 │
-└──────────────┬──────────────────────────────┘
-               │
-               ▼
-┌─────────────────────────────────────────────┐
-│  2. GREEN - Make test pass                  │
-│     - Write minimum code needed             │
-│     - Run and watch it PASS                 │
-└──────────────┬──────────────────────────────┘
-               │
-               ▼
-┌─────────────────────────────────────────────┐
-│  3. REFACTOR - Improve code (optional)      │
-│     - Commit before refactoring             │
-│     - Improve design/remove duplication     │
-│     - Run tests - still PASS                │
-└──────────────┬──────────────────────────────┘
-               │
-               ▼
-         Back to RED for next behavior
-```
-
 ### During Development
 1. **Follow TDD cycle** for every behavior change
 2. Add **XML documentation** to public APIs as you go
@@ -394,13 +247,12 @@ public async Task<DownloadResult> GetDownloadSpeedAsync(
 ## When Working with Claude Code
 
 ### Claude Must Always
-- **Create a plan and get approval** before implementing non-trivial changes
-- **Follow TDD** - write failing test before any production code
-- Follow the **RED-GREEN-REFACTOR** cycle
-- Add **XML documentation** to public members
-- Consider **cross-platform compatibility**
-- Write **testable code** (interfaces, dependency injection)
-- Ask for clarification if requirements are ambiguous
+- **Use the planner agent** for non-trivial changes before writing code
+- **Follow TDD strictly** - write failing test before any production code (use tdd-workflow agent)
+- **Add XML documentation** to public APIs (validate with xml-doc-checker agent)
+- **Consider cross-platform compatibility** (Windows, Linux, macOS)
+- **Write testable code** (interfaces, dependency injection)
+- **Ask for clarification** if requirements are ambiguous
 
 ### Tell Claude About
 - Which component you're working on (Core vs Console)
@@ -409,33 +261,11 @@ public async Task<DownloadResult> GetDownloadSpeedAsync(
 - Performance requirements
 
 ### Never Let Claude
-- Implement non-trivial changes without presenting a plan first
 - Write production code without a failing test first
 - Skip the RED step (must see test fail)
-- Change public APIs without discussion
-- Add dependencies to Core without good reason
-- Skip error handling
-- Commit code with failing tests
-
-### Example Interaction
-
-**Good:**
-```
-You: Add validation to ensure server URL is not null
-Claude: I'll follow TDD. First, I'll write a test that expects an 
-        ArgumentNullException when server URL is null...
-        [writes failing test]
-        [makes it pass]
-        [suggests refactoring if appropriate]
-```
-
-**Bad:**
-```
-You: Add validation to ensure server URL is not null
-Claude: Here's the updated code with null checking...
-        [provides implementation without test]
-STOP - This violates TDD!
-```
+- Change public APIs without discussion and approval
+- Add dependencies to NetPace.Core without justification
+- Commit code with failing tests or build warnings
 
 ## Resources
 
@@ -448,7 +278,7 @@ STOP - This violates TDD!
 
 ---
 
-**Last Updated**: November 2025  
+**Last Updated**: November 2025 (Agent refactoring)  
 **Maintained by**: Frank Ray  
 **Project**: https://github.com/FrankRay78/NetPace  
 **Philosophy**: Test-Driven Development is non-negotiable
