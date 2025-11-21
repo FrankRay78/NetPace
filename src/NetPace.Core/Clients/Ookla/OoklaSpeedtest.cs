@@ -49,7 +49,7 @@ public sealed class OoklaSpeedtest : ISpeedTestService
     /// <inheritdoc/>
     public async Task<ServerLatencyResult> GetServerLatencyAsync(string serverUrl, CancellationToken cancellationToken = default)
     {
-        var server = new OoklaServer() { Sponsor = "(Unknown)", Url = serverUrl };
+        var server = new Server() { Sponsor = "(Unknown)", Url = serverUrl };
         return await GetServerLatencyAsync(server, httpClient, settings.LatencyTest.DefaultHttpTimeoutMilliseconds, settings.LatencyTest.LatencyTestIterations, cancellationToken);
     }
 

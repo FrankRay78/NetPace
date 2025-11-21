@@ -10,10 +10,6 @@ internal static class ServerSelector
     /// <summary>
     /// Gets the server to use for speed testing based on settings.
     /// </summary>
-    /// <param name="speedTestClient">The speed test service.</param>
-    /// <param name="settings">The command settings.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns>ServerLatencyResult containing the selected server and latency (0 if latency test was skipped).</returns>
     public static async Task<ServerLatencyResult> GetServerAsync(ISpeedTestService speedTestClient, SpeedTestCommandSettings settings, CancellationToken cancellationToken)
     {
         if (settings.NoLatency)
@@ -27,20 +23,9 @@ internal static class ServerSelector
             }
             else
             {
-                // User specified server - create a minimal ServerLatencyResult without testing latency
-                var servers = await speedTestClient.GetServersAsync(cancellationToken);
-                var specifiedServer = servers.FirstOrDefault(s => s.Url == settings.ServerUrl);
-                if (specifiedServer == null)
-                {
-                    // If not in list, create a basic server object
-                    specifiedServer = new NetPace.Core.Clients.Ookla.OoklaServer
-                    {
-                        Url = settings.ServerUrl,
-                        Sponsor = "Unknown",
-                        Location = "Unknown"
-                    };
-                }
-                return new ServerLatencyResult { Server = specifiedServer, Latency = 0 };
+                // Create a minimal speed test server without testing latency.
+                var server = new Server() { Sponsor = "(Unknown)", Url = settings.ServerUrl };
+                return new ServerLatencyResult { Server = server, Latency = 0 };
             }
         }
         else

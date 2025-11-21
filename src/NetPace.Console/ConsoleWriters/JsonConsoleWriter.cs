@@ -8,7 +8,7 @@ public sealed class JsonConsoleWriter : IConsoleWriter
 {
     public async Task PerformSpeedTestAsync(bool initialSpeedTest, IAnsiConsole console, IClock clock, ISpeedTestService speedTestClient, SpeedTestCommandSettings settings, CancellationToken cancellationToken)
     {
-        // Get the server to use for speed testing
+        // Get the server to use for speed testing.
         var fastest = await ServerSelector.GetServerAsync(speedTestClient, settings, cancellationToken);
 
 

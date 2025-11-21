@@ -1,14 +1,14 @@
 namespace NetPace.Core;
 
 /// <inheritdoc/>
-public sealed record Server : IServer
+public class Server : IServer
 {
     /// <inheritdoc/>
-    public required string Location { get; set; }
+    public string Location { get; set; } = string.Empty;
 
     /// <inheritdoc/>
-    public required string Sponsor { get; set; }
+    public string Sponsor { get; set; } = string.Empty;
 
     /// <inheritdoc/>
-    public required string Url { get; set; }
+    public string Url { get; set; } = string.Empty;
 }
