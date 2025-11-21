@@ -14,16 +14,13 @@ internal static class ServerSelector
     /// <param name="settings">The command settings.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>ServerLatencyResult containing the selected server and latency (0 if latency test was skipped).</returns>
-    public static async Task<ServerLatencyResult> GetServerAsync(
-        ISpeedTestService speedTestClient,
-        SpeedTestCommandSettings settings,
-        CancellationToken cancellationToken)
+    public static async Task<ServerLatencyResult> GetServerAsync(ISpeedTestService speedTestClient, SpeedTestCommandSettings settings, CancellationToken cancellationToken)
     {
         if (settings.NoLatency)
         {
-            // Skip latency test - use first available server or specified server
             if (string.IsNullOrEmpty(settings.ServerUrl))
             {
+                // Get the first speed test server.
                 var servers = await speedTestClient.GetServersAsync(cancellationToken);
                 var firstServer = servers.First();
                 return new ServerLatencyResult { Server = firstServer, Latency = 0 };
@@ -46,16 +43,19 @@ internal static class ServerSelector
                 return new ServerLatencyResult { Server = specifiedServer, Latency = 0 };
             }
         }
-        else if (string.IsNullOrEmpty(settings.ServerUrl))
-        {
-            // Get the fastest speed test server.
-            var servers = await speedTestClient.GetServersAsync(cancellationToken);
-            return await speedTestClient.GetFastestServerByLatencyAsync(servers, cancellationToken);
-        }
         else
         {
-            // User specified speed test server.
-            return await speedTestClient.GetServerLatencyAsync(settings.ServerUrl, cancellationToken);
+            if (string.IsNullOrEmpty(settings.ServerUrl))
+            {
+                // Get the fastest speed test server.
+                var servers = await speedTestClient.GetServersAsync(cancellationToken);
+                return await speedTestClient.GetFastestServerByLatencyAsync(servers, cancellationToken);
+            }
+            else
+            {
+                // User specified speed test server.
+                return await speedTestClient.GetServerLatencyAsync(settings.ServerUrl, cancellationToken);
+            }
         }
     }
 }
