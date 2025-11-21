@@ -1,0 +1,2 @@
+﻿Timestamp,Download,Upload
+1980-01-01 10:05:00,8 Kbps,18.67 Kbps

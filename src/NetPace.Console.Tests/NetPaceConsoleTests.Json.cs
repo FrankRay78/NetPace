@@ -155,5 +155,25 @@ public sealed partial class NetPaceConsoleTests
             Assert.Equal(0, result.ExitCode);
             await Verify(result.Output).UseParameters(jsonSwitch);
         }
+
+        [InlineData("--json")]
+        [InlineData("--json-pretty")]
+        [Theory]
+        public async Task Should_Perform_Speed_Test_With_Json_No_Latency(string jsonSwitch)
+        {
+            // Given
+            var registrar = new TypeRegistrar();
+            registrar.Register(typeof(ISpeedTestService), typeof(SpeedTestStub));
+            registrar.Register(typeof(IClock), typeof(ClockStub));
+            registrar.Register(typeof(IWaiter), typeof(NoDelayStub));
+            var app = GetCommandAppTester(registrar);
+
+            // When
+            var result = await app.RunAsync(jsonSwitch, "--no-latency");
+
+            // Then
+            Assert.Equal(0, result.ExitCode);
+            await Verify(result.Output).UseParameters(jsonSwitch);
+        }
     }
 }

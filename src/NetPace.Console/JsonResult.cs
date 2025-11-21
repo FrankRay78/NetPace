@@ -30,7 +30,7 @@ public sealed record JsonResult
     public required string Timestamp { get; init; }
 
     /// <summary>
-    /// Gets the measured latency to the server.
+    /// Gets the measured latency to the server. Null when latency test is skipped.
     /// </summary>
     public required string Latency { get; init; }
 

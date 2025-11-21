@@ -8,19 +8,8 @@ public sealed class DefaultConsoleWriter : IConsoleWriter
 {
     public async Task PerformSpeedTestAsync(bool initialSpeedTest, IAnsiConsole console, IClock clock, ISpeedTestService speedTestClient, SpeedTestCommandSettings settings, CancellationToken cancellationToken)
     {
-        ServerLatencyResult fastest;
-
-        if (string.IsNullOrEmpty(settings.ServerUrl))
-        {
-            // Get the fastest speed test server.
-            var servers = await speedTestClient.GetServersAsync(cancellationToken);
-            fastest = await speedTestClient.GetFastestServerByLatencyAsync(servers, cancellationToken);
-        }
-        else
-        {
-            // User specified speed test server.
-            fastest = await speedTestClient.GetServerLatencyAsync(settings.ServerUrl, cancellationToken);
-        }
+        // Get the server to use for speed testing
+        var fastest = await ServerSelector.GetServerAsync(speedTestClient, settings, cancellationToken);
 
 
         // Display server latency.
@@ -115,7 +104,7 @@ public sealed class DefaultConsoleWriter : IConsoleWriter
         console.WriteLine(string.Join(", ", new[]
         {
             settings.IncludeTimestamp ? clock.Now.ToString(settings.DateTimeFormat) : null,
-            $"Latency: {fastest.Latency} ms",
+            !settings.NoLatency ? $"Latency: {fastest.Latency} ms" : null,
             !settings.NoDownload ? $"Download: {downloadResult.GetSpeedString(settings.SpeedUnit, settings.SpeedUnitSystem, settings.SpeedScale)}" : null,
             !settings.NoUpload ? $"Upload: {uploadResult.GetSpeedString(settings.SpeedUnit, settings.SpeedUnitSystem, settings.SpeedScale)}" : null
         }.Where(s => !string.IsNullOrEmpty(s))));

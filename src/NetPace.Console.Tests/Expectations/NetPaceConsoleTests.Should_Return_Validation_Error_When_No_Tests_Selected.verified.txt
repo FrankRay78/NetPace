@@ -1,0 +1,1 @@
+﻿Error: No tests selected. At least one of --no-latency, --no-download, or --no-upload must be omitted.

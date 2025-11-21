@@ -6,19 +6,8 @@ public sealed class CSVConsoleWriter : IConsoleWriter
 {
     public async Task PerformSpeedTestAsync(bool initialSpeedTest, IAnsiConsole console, IClock clock, ISpeedTestService speedTestClient, SpeedTestCommandSettings settings, CancellationToken cancellationToken)
     {
-        ServerLatencyResult fastest;
-
-        if (string.IsNullOrEmpty(settings.ServerUrl))
-        {
-            // Get the fastest speed test server.
-            var servers = await speedTestClient.GetServersAsync(cancellationToken);
-            fastest = await speedTestClient.GetFastestServerByLatencyAsync(servers, cancellationToken);
-        }
-        else
-        {
-            // User specified speed test server.
-            fastest = await speedTestClient.GetServerLatencyAsync(settings.ServerUrl, cancellationToken);
-        }
+        // Get the server to use for speed testing
+        var fastest = await ServerSelector.GetServerAsync(speedTestClient, settings, cancellationToken);
 
 
         var downloadResult = new SpeedTestResult();
@@ -41,7 +30,7 @@ public sealed class CSVConsoleWriter : IConsoleWriter
                 console.WriteLine(string.Join(settings.CSVDelimiter, new[]
                 {
                     "Timestamp",
-                    "Latency (ms)",
+                    !settings.NoLatency ? "Latency (ms)" : null,
                     !settings.NoDownload ? $"Download ({downloadFormattedParts.unit})" : null,
                     !settings.NoUpload ? $"Upload ({uploadFormattedParts.unit})" : null
                 }.Where(s => !string.IsNullOrEmpty(s))));
@@ -51,7 +40,7 @@ public sealed class CSVConsoleWriter : IConsoleWriter
             console.WriteLine(string.Join(settings.CSVDelimiter, new[]
             {
                 clock.Now.ToString(settings.DateTimeFormat),
-                $"{fastest.Latency}",
+                !settings.NoLatency ? $"{fastest.Latency}" : null,
                 !settings.NoDownload ? downloadFormattedParts.speed : null,
                 !settings.NoUpload ? uploadFormattedParts.speed : null
             }.Where(s => !string.IsNullOrEmpty(s))));
@@ -64,7 +53,7 @@ public sealed class CSVConsoleWriter : IConsoleWriter
                 console.WriteLine(string.Join(settings.CSVDelimiter, new[]
                 {
                     "Timestamp",
-                    "Latency",
+                    !settings.NoLatency ? "Latency" : null,
                     !settings.NoDownload ? "Download" : null,
                     !settings.NoUpload ? "Upload" : null
                 }.Where(s => !string.IsNullOrEmpty(s))));
@@ -74,7 +63,7 @@ public sealed class CSVConsoleWriter : IConsoleWriter
             console.WriteLine(string.Join(settings.CSVDelimiter, new[]
             {
                 clock.Now.ToString(settings.DateTimeFormat),
-                $"{fastest.Latency} ms",
+                !settings.NoLatency ? $"{fastest.Latency} ms" : null,
                 !settings.NoDownload ? downloadResult.GetSpeedString(settings.SpeedUnit, settings.SpeedUnitSystem, settings.SpeedScale) : null,
                 !settings.NoUpload ? uploadResult.GetSpeedString(settings.SpeedUnit, settings.SpeedUnitSystem, settings.SpeedScale) : null
             }.Where(s => !string.IsNullOrEmpty(s))));
