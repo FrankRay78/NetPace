@@ -43,6 +43,11 @@ public sealed class SpeedTestCommandSettings : CommandSettings
     [DefaultValue(false)]
     public bool JsonPretty { get; set; }
 
+    [CommandOption("--no-latency")]
+    [Description("Do not perform latency test.\nWhen used without --server, the first available server is selected.")]
+    [DefaultValue(false)]
+    public bool NoLatency { get; set; }
+
     [CommandOption("--no-download")]
     [Description("Do not perform download test.")]
     [DefaultValue(false)]
@@ -121,6 +126,11 @@ public sealed class SpeedTestCommandSettings : CommandSettings
         if (CSV && CSVHeaderUnits && SpeedScale == SpeedScale.Auto && (Loop || Count > 1))
         {
             return ValidationResult.Error("The --unit-scale option must not be <Auto> for multiple speed tests (eg. --loop or --count).");
+        }
+
+        if (NoLatency && NoDownload && NoUpload)
+        {
+            return ValidationResult.Error("No tests selected. At least one of --no-latency, --no-download, or --no-upload must be omitted.");
         }
 
         return base.Validate();

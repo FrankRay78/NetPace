@@ -8,19 +8,8 @@ public sealed class JsonConsoleWriter : IConsoleWriter
 {
     public async Task PerformSpeedTestAsync(bool initialSpeedTest, IAnsiConsole console, IClock clock, ISpeedTestService speedTestClient, SpeedTestCommandSettings settings, CancellationToken cancellationToken)
     {
-        ServerLatencyResult fastest;
-
-        if (string.IsNullOrEmpty(settings.ServerUrl))
-        {
-            // Get the fastest speed test server.
-            var servers = await speedTestClient.GetServersAsync(cancellationToken);
-            fastest = await speedTestClient.GetFastestServerByLatencyAsync(servers, cancellationToken);
-        }
-        else
-        {
-            // User specified speed test server.
-            fastest = await speedTestClient.GetServerLatencyAsync(settings.ServerUrl, cancellationToken);
-        }
+        // Get the server to use for speed testing.
+        var fastest = await ServerSelector.GetServerAsync(speedTestClient, settings, cancellationToken);
 
 
         var downloadResult = new SpeedTestResult();
@@ -32,6 +21,7 @@ public sealed class JsonConsoleWriter : IConsoleWriter
 
 
         // Display speed test result.
+        var latencyFormatted = !settings.NoLatency ? $"{fastest.Latency} ms" : null;
         var downloadFormatted = !settings.NoDownload ? downloadResult.GetSpeedString(settings.SpeedUnit, settings.SpeedUnitSystem, settings.SpeedScale) : null;
         var uploadFormatted = !settings.NoUpload ? uploadResult.GetSpeedString(settings.SpeedUnit, settings.SpeedUnitSystem, settings.SpeedScale) : null;
 
@@ -41,7 +31,7 @@ public sealed class JsonConsoleWriter : IConsoleWriter
             ServerSponsor = fastest.Server.Sponsor,
             ServerUrl = fastest.Server.Url,
             Timestamp = clock.Now.ToString(settings.DateTimeFormat),
-            Latency = $"{fastest.Latency} ms",
+            Latency = latencyFormatted!,
             DownloadSpeed = downloadFormatted!,
             UploadSpeed = uploadFormatted!
         };

@@ -311,6 +311,45 @@ public sealed partial class NetPaceConsoleTests
         await Verify(result.Output).UseParameters(verbosity);
     }
 
+    [InlineData("Minimal")]
+    [InlineData("Normal")]
+    [InlineData("Debug")]
+    [Theory]
+    public async Task Should_Not_Perform_Latency_Test(string verbosity)
+    {
+        // Given
+        var registrar = new TypeRegistrar();
+        registrar.Register(typeof(ISpeedTestService), typeof(SpeedTestStub));
+        registrar.Register(typeof(IClock), typeof(ClockStub));
+        registrar.Register(typeof(IWaiter), typeof(NoDelayStub));
+        var app = GetCommandAppTester(registrar);
+
+        // When
+        var result = await app.RunAsync("--no-latency", "--verbosity", verbosity);
+
+        // Then
+        Assert.Equal(0, result.ExitCode);
+        await Verify(result.Output).UseParameters(verbosity);
+    }
+
+    [Fact]
+    public async Task Should_Return_Validation_Error_When_No_Tests_Selected()
+    {
+        // Given
+        var registrar = new TypeRegistrar();
+        registrar.Register(typeof(ISpeedTestService), typeof(SpeedTestStub));
+        registrar.Register(typeof(IClock), typeof(ClockStub));
+        registrar.Register(typeof(IWaiter), typeof(NoDelayStub));
+        var app = GetCommandAppTester(registrar);
+
+        // When
+        var result = await app.RunAsync("--no-latency", "--no-download", "--no-upload");
+
+        // Then
+        Assert.NotEqual(0, result.ExitCode);
+        await Verify(result.Output);
+    }
+
     [Fact]
     public async Task Should_Cancel_When_User_Requests()
     {

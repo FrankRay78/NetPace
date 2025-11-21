@@ -212,6 +212,9 @@ NetPace is a cross-platform network speed testing CLI application built with .NE
 - Code follows **naming conventions**
 - Public APIs have **XML documentation**
 - No **commented-out code** (delete it, git remembers)
+- **Documentation is updated**
+   - **README.md** - Contains static `--help` output
+   - **USER_GUIDE.md** - Check if any sections reference the changed options
 
 ### Commit Messages
 - **Clear and concise**: "Add support for custom server URLs"
