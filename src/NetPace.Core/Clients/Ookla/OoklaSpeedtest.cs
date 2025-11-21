@@ -33,7 +33,7 @@ public sealed class OoklaSpeedtest : ISpeedTestService
     public async Task<IServer[]> GetServersAsync(CancellationToken cancellationToken = default)
     {
         var serversXml = await httpClient.GetStringAsync(settings.ServerDiscovery.ServersUrl, cancellationToken).ConfigureAwait(false);
-        var servers = serversXml.DeserializeFromXml<ServerList>()?.Servers ?? Array.Empty<Server>();
+        var servers = serversXml.DeserializeFromXml<OoklaServerList>()?.Servers ?? Array.Empty<OoklaServer>();
         return servers.Where(s =>
                 !string.IsNullOrWhiteSpace(s.Location) &&
                 !string.IsNullOrWhiteSpace(s.Sponsor) &&
@@ -49,7 +49,7 @@ public sealed class OoklaSpeedtest : ISpeedTestService
     /// <inheritdoc/>
     public async Task<ServerLatencyResult> GetServerLatencyAsync(string serverUrl, CancellationToken cancellationToken = default)
     {
-        var server = new Server() { Sponsor = "(Unknown)", Url = serverUrl };
+        var server = new OoklaServer() { Sponsor = "(Unknown)", Url = serverUrl };
         return await GetServerLatencyAsync(server, httpClient, settings.LatencyTest.DefaultHttpTimeoutMilliseconds, settings.LatencyTest.LatencyTestIterations, cancellationToken);
     }
 

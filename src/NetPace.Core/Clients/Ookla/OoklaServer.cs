@@ -3,7 +3,7 @@ namespace NetPace.Core.Clients.Ookla;
 /// <summary>
 /// Represents an Ookla Speedtest server with geographical and network information.
 /// </summary>
-public sealed class Server : IServer
+public sealed class OoklaServer : IServer
 {
     /// <summary>
     /// Gets or sets the unique identifier for this Ookla server.

@@ -33,7 +33,7 @@ internal static class ServerSelector
                 if (specifiedServer == null)
                 {
                     // If not in list, create a basic server object
-                    specifiedServer = new NetPace.Core.Clients.Ookla.Server
+                    specifiedServer = new NetPace.Core.Clients.Ookla.OoklaServer
                     {
                         Url = settings.ServerUrl,
                         Sponsor = "Unknown",
