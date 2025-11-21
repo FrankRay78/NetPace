@@ -161,7 +161,7 @@ public sealed partial class OoklaSpeedtestTests
 
         var httpClient = mockHttp.ToHttpClient();
         var speedtest = new OoklaSpeedtest(httpClientOverride: httpClient);
-        var server = new Clients.Testing.Server { Url = "http://testserver.com/", Sponsor = "Sponsor", Location = "Location" };
+        var server = new Server { Url = "http://testserver.com/", Sponsor = "Sponsor", Location = "Location" };
 
         // When
         var result = await speedtest.GetServerLatencyAsync(server);
@@ -182,7 +182,7 @@ public sealed partial class OoklaSpeedtestTests
 
         var httpClient = mockHttp.ToHttpClient();
         var speedtest = new OoklaSpeedtest(httpClientOverride: httpClient);
-        var server = new Clients.Testing.Server { Url = "http://failserver.com/", Sponsor = "FailSponsor", Location = "FailLocation" };
+        var server = new Server { Url = "http://failserver.com/", Sponsor = "FailSponsor", Location = "FailLocation" };
 
         // When
         var exception = await Record.ExceptionAsync(() => speedtest.GetServerLatencyAsync(server));
@@ -203,7 +203,7 @@ public sealed partial class OoklaSpeedtestTests
 
         var httpClient = mockHttp.ToHttpClient();
         var speedtest = new OoklaSpeedtest(httpClientOverride: httpClient);
-        var server = new Clients.Testing.Server { Url = "http://badserver.com/", Sponsor = "BadSponsor", Location = "BadLocation" };
+        var server = new Server { Url = "http://badserver.com/", Sponsor = "BadSponsor", Location = "BadLocation" };
 
         // When
         var exception = await Record.ExceptionAsync(() => speedtest.GetServerLatencyAsync(server));
@@ -228,7 +228,7 @@ public sealed partial class OoklaSpeedtestTests
 
         var httpClient = mockHttp.ToHttpClient();
         var speedtest = new OoklaSpeedtest(httpClientOverride: httpClient);
-        var server = new Clients.Testing.Server { Url = "http://testserver.com/", Sponsor = "Sponsor", Location = "Location" };
+        var server = new Server { Url = "http://testserver.com/", Sponsor = "Sponsor", Location = "Location" };
 
         using var cts = new CancellationTokenSource();
         cts.CancelAfter(200);
@@ -277,8 +277,8 @@ public sealed partial class OoklaSpeedtestTests
         };
 
         var speedtest = new OoklaSpeedtest(settings, httpClient);
-        var fastServer = new Clients.Testing.Server { Url = "http://fastserver.com/", Sponsor = "FastSponsor", Location = "FastLocation" };
-        var slowServer = new Clients.Testing.Server { Url = "http://slowserver.com/", Sponsor = "SlowSponsor", Location = "SlowLocation" };
+        var fastServer = new Server { Url = "http://fastserver.com/", Sponsor = "FastSponsor", Location = "FastLocation" };
+        var slowServer = new Server { Url = "http://slowserver.com/", Sponsor = "SlowSponsor", Location = "SlowLocation" };
         var servers = new[] { slowServer, fastServer };
 
         // When
@@ -314,8 +314,8 @@ public sealed partial class OoklaSpeedtestTests
         var speedtest = new OoklaSpeedtest(settings, httpClient);
         var servers = new[]
         {
-            new Clients.Testing.Server { Url = "http://fail1.com/", Sponsor = "DeadSponsor1", Location = "DeadLocation1" },
-            new Clients.Testing.Server { Url = "http://fail2.com/", Sponsor = "DeadSponsor2", Location = "DeadLocation2" }
+            new Server { Url = "http://fail1.com/", Sponsor = "DeadSponsor1", Location = "DeadLocation1" },
+            new Server { Url = "http://fail2.com/", Sponsor = "DeadSponsor2", Location = "DeadLocation2" }
         };
 
         // When
@@ -342,8 +342,8 @@ public sealed partial class OoklaSpeedtestTests
 
         var httpClient = mockHttp.ToHttpClient();
         var speedtest = new OoklaSpeedtest(httpClientOverride: httpClient);
-        var fastServer = new Clients.Testing.Server { Url = "http://fastserver.com/", Sponsor = "FastSponsor", Location = "FastLocation" };
-        var slowServer = new Clients.Testing.Server { Url = "http://slowserver.com/", Sponsor = "SlowSponsor", Location = "SlowLocation" };
+        var fastServer = new Server { Url = "http://fastserver.com/", Sponsor = "FastSponsor", Location = "FastLocation" };
+        var slowServer = new Server { Url = "http://slowserver.com/", Sponsor = "SlowSponsor", Location = "SlowLocation" };
         var servers = new[] { slowServer, fastServer };
 
         using var cts = new CancellationTokenSource();
@@ -390,7 +390,7 @@ public sealed partial class OoklaSpeedtestTests
         };
 
         var speedtest = new OoklaSpeedtest(settings, httpClient);
-        var server = new Clients.Testing.Server { Url = "http://example.com/", Sponsor = "Test", Location = "Test" };
+        var server = new Server { Url = "http://example.com/", Sponsor = "Test", Location = "Test" };
 
         // When
         var result = await speedtest.GetDownloadSpeedAsync(server);
@@ -448,7 +448,7 @@ public sealed partial class OoklaSpeedtestTests
         };
 
         var speedtest = new OoklaSpeedtest(settings, httpClient);
-        var server = new Clients.Testing.Server { Url = "http://example.com/", Sponsor = "Test", Location = "Test" };
+        var server = new Server { Url = "http://example.com/", Sponsor = "Test", Location = "Test" };
 
         // When
         var result = await speedtest.GetDownloadSpeedAsync(server, downloadSizeMb);
@@ -491,7 +491,7 @@ public sealed partial class OoklaSpeedtestTests
         };
 
         var speedtest = new OoklaSpeedtest(settings, httpClient);
-        var server = new Clients.Testing.Server { Url = "http://example.com/", Sponsor = "Test", Location = "Test" };
+        var server = new Server { Url = "http://example.com/", Sponsor = "Test", Location = "Test" };
         var progressReports = new List<int>();
 
         // When
@@ -523,7 +523,7 @@ public sealed partial class OoklaSpeedtestTests
 
         var httpClient = mockHttp.ToHttpClient();
         var speedtest = new OoklaSpeedtest(httpClientOverride: httpClient);
-        var server = new Clients.Testing.Server { Url = "http://example.com/", Sponsor = "Test", Location = "Test" };
+        var server = new Server { Url = "http://example.com/", Sponsor = "Test", Location = "Test" };
 
         using var cts = new CancellationTokenSource();
         cts.CancelAfter(200);
@@ -556,7 +556,7 @@ public sealed partial class OoklaSpeedtestTests
         };
 
         var speedtest = new OoklaSpeedtest(settings, httpClient);
-        var server = new Clients.Testing.Server { Url = "http://example.com/", Sponsor = "Test", Location = "Test" };
+        var server = new Server { Url = "http://example.com/", Sponsor = "Test", Location = "Test" };
         var progressReports = new List<int>();
 
         // When
@@ -592,7 +592,7 @@ public sealed partial class OoklaSpeedtestTests
         };
 
         var speedtest = new OoklaSpeedtest(settings, httpClient);
-        var server = new Clients.Testing.Server { Url = "http://example.com/", Sponsor = "Test", Location = "Test" };
+        var server = new Server { Url = "http://example.com/", Sponsor = "Test", Location = "Test" };
         var progressReports = new List<int>();
 
         // When
@@ -632,7 +632,7 @@ public sealed partial class OoklaSpeedtestTests
         };
 
         var speedtest = new OoklaSpeedtest(settings, httpClient);
-        var server = new Clients.Testing.Server { Url = "http://example.com/", Sponsor = "Test", Location = "Test" };
+        var server = new Server { Url = "http://example.com/", Sponsor = "Test", Location = "Test" };
 
         // When
         var result = await speedtest.GetDownloadSpeedAsync(server, downloadSizeMb: 0);
@@ -669,7 +669,7 @@ public sealed partial class OoklaSpeedtestTests
         };
 
         var speedtest = new OoklaSpeedtest(settings, httpClient);
-        var server = new Clients.Testing.Server { Url = "http://example.com/", Sponsor = "Test", Location = "Test" };
+        var server = new Server { Url = "http://example.com/", Sponsor = "Test", Location = "Test" };
 
         // When
         var result = await speedtest.GetDownloadSpeedAsync(server, downloadSizeMb: -1);
@@ -699,7 +699,7 @@ public sealed partial class OoklaSpeedtestTests
         };
 
         var speedtest = new OoklaSpeedtest(settings, httpClient);
-        var server = new Clients.Testing.Server { Url = "http://example.com/", Sponsor = "Test", Location = "Test" };
+        var server = new Server { Url = "http://example.com/", Sponsor = "Test", Location = "Test" };
 
         // When
         var result = await speedtest.GetDownloadSpeedAsync(server);
@@ -733,7 +733,7 @@ public sealed partial class OoklaSpeedtestTests
         };
 
         var speedtest = new OoklaSpeedtest(settings, httpClient);
-        var server = new Clients.Testing.Server { Url = "http://example.com/", Sponsor = "Test", Location = "Test" };
+        var server = new Server { Url = "http://example.com/", Sponsor = "Test", Location = "Test" };
 
         // When
         var result = await speedtest.GetDownloadSpeedAsync(server);
@@ -770,7 +770,7 @@ public sealed partial class OoklaSpeedtestTests
         };
 
         var speedtest = new OoklaSpeedtest(settings, httpClient);
-        var server = new Clients.Testing.Server { Url = "http://example.com/", Sponsor = "Test", Location = "Test" };
+        var server = new Server { Url = "http://example.com/", Sponsor = "Test", Location = "Test" };
 
         // When
         var result = await speedtest.GetDownloadSpeedAsync(server);
@@ -801,7 +801,7 @@ public sealed partial class OoklaSpeedtestTests
         };
 
         var speedtest = new OoklaSpeedtest(settings, httpClient);
-        var server = new Clients.Testing.Server { Url = "http://example.com/", Sponsor = "Test", Location = "Test" };
+        var server = new Server { Url = "http://example.com/", Sponsor = "Test", Location = "Test" };
 
         // When
         var exception = await Record.ExceptionAsync(() => speedtest.GetDownloadSpeedAsync(server, progress =>
@@ -845,7 +845,7 @@ public sealed partial class OoklaSpeedtestTests
         };
 
         var speedtest = new OoklaSpeedtest(settings, httpClient);
-        var server = new Clients.Testing.Server { Url = "http://example.com/", Sponsor = "Test", Location = "Test" };
+        var server = new Server { Url = "http://example.com/", Sponsor = "Test", Location = "Test" };
 
         // When
         var result = await speedtest.GetUploadSpeedAsync(server);
@@ -889,7 +889,7 @@ public sealed partial class OoklaSpeedtestTests
         };
 
         var speedtest = new OoklaSpeedtest(settings, httpClient);
-        var server = new Clients.Testing.Server { Url = "http://example.com/", Sponsor = "Test", Location = "Test" };
+        var server = new Server { Url = "http://example.com/", Sponsor = "Test", Location = "Test" };
 
         // When
         var result = await speedtest.GetUploadSpeedAsync(server, uploadSizeMb);
@@ -925,7 +925,7 @@ public sealed partial class OoklaSpeedtestTests
         };
 
         var speedtest = new OoklaSpeedtest(settings, httpClient);
-        var server = new Clients.Testing.Server { Url = "http://example.com/", Sponsor = "Test", Location = "Test" };
+        var server = new Server { Url = "http://example.com/", Sponsor = "Test", Location = "Test" };
         var progressReports = new List<int>();
 
         // When
@@ -954,7 +954,7 @@ public sealed partial class OoklaSpeedtestTests
 
         var httpClient = mockHttp.ToHttpClient();
         var speedtest = new OoklaSpeedtest(httpClientOverride: httpClient);
-        var server = new Clients.Testing.Server { Url = "http://example.com/", Sponsor = "Test", Location = "Test" };
+        var server = new Server { Url = "http://example.com/", Sponsor = "Test", Location = "Test" };
 
         using var cts = new CancellationTokenSource();
         cts.CancelAfter(200);
@@ -987,7 +987,7 @@ public sealed partial class OoklaSpeedtestTests
         };
 
         var speedtest = new OoklaSpeedtest(settings, httpClient);
-        var server = new Clients.Testing.Server { Url = "http://example.com/", Sponsor = "Test", Location = "Test" };
+        var server = new Server { Url = "http://example.com/", Sponsor = "Test", Location = "Test" };
         var progressReports = new List<int>();
 
         // When
@@ -1032,7 +1032,7 @@ public sealed partial class OoklaSpeedtestTests
         };
 
         var speedtest = new OoklaSpeedtest(settings, httpClient);
-        var server = new Clients.Testing.Server { Url = "http://example.com/", Sponsor = "Test", Location = "Test" };
+        var server = new Server { Url = "http://example.com/", Sponsor = "Test", Location = "Test" };
         var progressReports = new List<int>();
 
         // When
@@ -1075,7 +1075,7 @@ public sealed partial class OoklaSpeedtestTests
         };
 
         var speedtest = new OoklaSpeedtest(settings, httpClient);
-        var server = new Clients.Testing.Server { Url = "http://example.com/", Sponsor = "Test", Location = "Test" };
+        var server = new Server { Url = "http://example.com/", Sponsor = "Test", Location = "Test" };
 
         // When
         var result = await speedtest.GetUploadSpeedAsync(server, uploadSizeMb: 0);
@@ -1116,7 +1116,7 @@ public sealed partial class OoklaSpeedtestTests
         };
 
         var speedtest = new OoklaSpeedtest(settings, httpClient);
-        var server = new Clients.Testing.Server { Url = "http://example.com/", Sponsor = "Test", Location = "Test" };
+        var server = new Server { Url = "http://example.com/", Sponsor = "Test", Location = "Test" };
 
         // When
         var result = await speedtest.GetUploadSpeedAsync(server, uploadSizeMb: -1);
@@ -1147,7 +1147,7 @@ public sealed partial class OoklaSpeedtestTests
         };
 
         var speedtest = new OoklaSpeedtest(settings, httpClient);
-        var server = new Clients.Testing.Server { Url = "http://example.com/", Sponsor = "Test", Location = "Test" };
+        var server = new Server { Url = "http://example.com/", Sponsor = "Test", Location = "Test" };
 
         // When
         var result = await speedtest.GetUploadSpeedAsync(server);
@@ -1181,7 +1181,7 @@ public sealed partial class OoklaSpeedtestTests
         };
 
         var speedtest = new OoklaSpeedtest(settings, httpClient);
-        var server = new Clients.Testing.Server { Url = "http://example.com/", Sponsor = "Test", Location = "Test" };
+        var server = new Server { Url = "http://example.com/", Sponsor = "Test", Location = "Test" };
 
         // When
         var result = await speedtest.GetUploadSpeedAsync(server);
@@ -1214,7 +1214,7 @@ public sealed partial class OoklaSpeedtestTests
         };
 
         var speedtest = new OoklaSpeedtest(settings, httpClient);
-        var server = new Clients.Testing.Server { Url = "http://example.com/", Sponsor = "Test", Location = "Test" };
+        var server = new Server { Url = "http://example.com/", Sponsor = "Test", Location = "Test" };
 
         // When
         var exception = await Record.ExceptionAsync(() => speedtest.GetUploadSpeedAsync(server, progress =>

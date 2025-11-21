@@ -1,4 +1,4 @@
-namespace NetPace.Core.Clients.Testing;
+namespace NetPace.Core;
 
 /// <inheritdoc/>
 public sealed record Server : IServer

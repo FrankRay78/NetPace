@@ -57,10 +57,10 @@ public sealed partial class OoklaSpeedtestTests
             });
 
 
-           using var httpClient = mockHttp.ToHttpClient();
+            using var httpClient = mockHttp.ToHttpClient();
 
             var speedtest = new OoklaSpeedtest(null, httpClient);
-            var server = new Clients.Testing.Server { Url = "http://example.com/", Sponsor = "Test Sponsor", Location = "Test Location" };
+            var server = new Server { Url = "http://example.com/", Sponsor = "Test Sponsor", Location = "Test Location" };
 
 
             // When
