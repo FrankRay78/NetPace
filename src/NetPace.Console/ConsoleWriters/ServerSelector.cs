@@ -10,8 +10,11 @@ internal static class ServerSelector
     /// <summary>
     /// Gets the server to use for speed testing based on settings.
     /// </summary>
-    public static async Task<ServerLatencyResult> GetServerAsync(ISpeedTestService speedTestClient, SpeedTestCommandSettings settings, CancellationToken cancellationToken)
+    public static async Task<ServerLatencyResult> GetServerAsync(ISpeedTestService speedTestClient, SpeedTestCommandSettings settings, CancellationToken cancellationToken = default)
     {
+        ArgumentNullException.ThrowIfNull(speedTestClient);
+        ArgumentNullException.ThrowIfNull(settings);
+
         if (settings.NoLatency)
         {
             if (string.IsNullOrEmpty(settings.ServerUrl))
