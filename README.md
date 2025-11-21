@@ -101,6 +101,8 @@ OPTIONS:
                                                      --unit-scale must not be <Auto> for multiple speed tests (eg. --loop or --count).
         --json                                       Display output in Json format.
         --json-pretty                                Display output in Json format (pretty print).
+        --no-latency                                 Do not perform latency test.                                                                                                                       
+                                                     When used without --server, the first available server is selected.                                                                                
         --no-download                                Do not perform download test.
         --no-upload                                  Do not perform upload test.
         --server                                     The url of a specific speed test sever.
@@ -112,8 +114,8 @@ OPTIONS:
     -u, --unit                BitsPerSecond          The speed unit. <BitsPerSecond, BytesPerSecond>
         --unit-scale          Auto                   The speed unit scale. <Auto, Base, Kilo, Mega, Giga, Tera, Peta>
         --unit-system         SI                     The speed unit system. <SI, IEC>
-                                                     SI steps up in powers of 1000 (KB, MB, GB), common in networking, while IEC uses
-                                                     powers of 1024 (KiB, MiB, GiB), standard in computing and storage.
+                                                     SI steps up in powers of 1000 (KB, MB, GB), common in networking, 
+                                                     while IEC uses powers of 1024 (KiB, MiB, GiB), standard in computing and storage.
         --verbosity           Normal                 The verbosity level. <Minimal, Normal, Debug>
                                                      Minimal is ideal for batch scripts and redirected output.
     -f, --file                                       Write output to file.

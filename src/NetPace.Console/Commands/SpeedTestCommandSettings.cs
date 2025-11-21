@@ -44,7 +44,7 @@ public sealed class SpeedTestCommandSettings : CommandSettings
     public bool JsonPretty { get; set; }
 
     [CommandOption("--no-latency")]
-    [Description("Do not perform latency test. When used without --server, the first available server is selected.")]
+    [Description("Do not perform latency test.\nWhen used without --server, the first available server is selected.")]
     [DefaultValue(false)]
     public bool NoLatency { get; set; }
 

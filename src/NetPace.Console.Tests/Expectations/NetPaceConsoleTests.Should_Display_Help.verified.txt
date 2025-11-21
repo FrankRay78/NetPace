@@ -25,7 +25,8 @@ OPTIONS:
                                                      --unit-scale must not be <Auto> for multiple speed tests (eg. --loop or --count).                                                                  
         --json                                       Display output in Json format.                                                                                                                     
         --json-pretty                                Display output in Json format (pretty print).                                                                                                      
-        --no-latency                                 Do not perform latency test. When used without --server, the first available server is selected.                                                   
+        --no-latency                                 Do not perform latency test.                                                                                                                       
+                                                     When used without --server, the first available server is selected.                                                                                
         --no-download                                Do not perform download test.                                                                                                                      
         --no-upload                                  Do not perform upload test.                                                                                                                        
         --server                                     The url of a specific speed test sever.                                                                                                            
