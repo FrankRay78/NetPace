@@ -43,12 +43,17 @@ public sealed class OoklaSpeedtest : ISpeedTestService
     /// <inheritdoc/>
     public async Task<ServerLatencyResult> GetServerLatencyAsync(IServer server, CancellationToken cancellationToken = default)
     {
+        ArgumentNullException.ThrowIfNull(server);
+        ArgumentException.ThrowIfNullOrWhiteSpace(server.Url);
+
         return await GetServerLatencyAsync(server, httpClient, settings.LatencyTest.DefaultHttpTimeoutMilliseconds, settings.LatencyTest.LatencyTestIterations, cancellationToken);
     }
 
     /// <inheritdoc/>
     public async Task<ServerLatencyResult> GetServerLatencyAsync(string serverUrl, CancellationToken cancellationToken = default)
     {
+        ArgumentException.ThrowIfNullOrWhiteSpace(serverUrl);
+
         var server = new Server() { Sponsor = "(Unknown)", Url = serverUrl };
         return await GetServerLatencyAsync(server, httpClient, settings.LatencyTest.DefaultHttpTimeoutMilliseconds, settings.LatencyTest.LatencyTestIterations, cancellationToken);
     }
@@ -86,6 +91,12 @@ public sealed class OoklaSpeedtest : ISpeedTestService
     /// <inheritdoc/>
     public async Task<ServerLatencyResult> GetFastestServerByLatencyAsync(IServer[] servers, CancellationToken cancellationToken = default)
     {
+        ArgumentNullException.ThrowIfNull(servers);
+        if (servers.Length == 0)
+        {
+            throw new ArgumentException("At least one server must be provided.", nameof(servers));
+        }
+
         var fastestLatency = settings.LatencyTest.DefaultHttpTimeoutMilliseconds;
         ServerLatencyResult? fastestServer = null;
 
@@ -151,15 +162,19 @@ public sealed class OoklaSpeedtest : ISpeedTestService
 
     /// <inheritdoc/>
     /// <remarks>
-    /// In the Ookla implementation, downloads are processed in parallel batches 
-    /// (configured via <see cref="OoklaSpeedtestSettings.DownloadTest"/>). The <paramref name="downloadSizeMb"/> 
-    /// parameter triggers cancellation of the internal <see cref="CancellationTokenSource"/> once the threshold 
+    /// In the Ookla implementation, downloads are processed in parallel batches
+    /// (configured via <see cref="OoklaSpeedtestSettings.DownloadTest"/>). The <paramref name="downloadSizeMb"/>
+    /// parameter triggers cancellation of the internal <see cref="CancellationTokenSource"/> once the threshold
     /// is reached, but all currently executing parallel download tasks will complete before termination.
-    /// The actual bytes processed may significantly exceed the specified limit depending on the number of 
+    /// The actual bytes processed may significantly exceed the specified limit depending on the number of
     /// concurrent downloads and their individual sizes.
     /// </remarks>
     public async Task<SpeedTestResult> GetDownloadSpeedAsync(IServer server, int downloadSizeMb, Action<SpeedTestProgress> UpdateProgress, CancellationToken cancellationToken = default)
     {
+        ArgumentNullException.ThrowIfNull(server);
+        ArgumentException.ThrowIfNullOrWhiteSpace(server.Url);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(downloadSizeMb);
+
         var downloadUrls = GenerateDownloadUrls(server.Url, settings.DownloadTest.DownloadSizes, settings.DownloadTest.DownloadSizeIterations);
 
         // Download content from a specified URL and return the size of the data in bytes.
@@ -223,14 +238,18 @@ public sealed class OoklaSpeedtest : ISpeedTestService
     /// <inheritdoc/>
     /// <remarks>
     /// In the default Ookla implementation, uploads are processed in parallel batches
-    /// (configured via <see cref="OoklaSpeedtestSettings.UploadTest"/>). The <paramref name="uploadSizeMb"/> 
-    /// parameter triggers cancellation of the internal <see cref="CancellationTokenSource"/> once the threshold 
+    /// (configured via <see cref="OoklaSpeedtestSettings.UploadTest"/>). The <paramref name="uploadSizeMb"/>
+    /// parameter triggers cancellation of the internal <see cref="CancellationTokenSource"/> once the threshold
     /// is reached, but all currently executing parallel upload tasks will complete before termination.
-    /// The actual bytes processed may significantly exceed the specified limit depending on the number of 
+    /// The actual bytes processed may significantly exceed the specified limit depending on the number of
     /// concurrent uploads and their individual sizes.
     /// </remarks>
     public async Task<SpeedTestResult> GetUploadSpeedAsync(IServer server, int uploadSizeMb, Action<SpeedTestProgress> UpdateProgress, CancellationToken cancellationToken = default)
     {
+        ArgumentNullException.ThrowIfNull(server);
+        ArgumentException.ThrowIfNullOrWhiteSpace(server.Url);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(uploadSizeMb);
+
         // Generate upload sizes (in bytes) rather than allocating large buffers up-front.
         var testDataLengths = GenerateUploadDataLengths(settings.UploadTest.UploadIncrements, settings.UploadTest.UploadSizeIncrementKb, settings.UploadTest.UploadSizeIterations);
 

@@ -1,0 +1,380 @@
+using NetPace.Core.Clients.Ookla;
+
+namespace NetPace.Core.Tests;
+
+/// <summary>
+/// Guard clause tests for <see cref="OoklaSpeedtest"/>.
+/// </summary>
+public sealed partial class OoklaSpeedtestTests
+{
+    public sealed class Guards
+    {
+        [Fact]
+        public async Task GetServerLatencyAsync_Server_Null_ThrowsArgumentNullException()
+        {
+            // Given
+            var speedtest = new OoklaSpeedtest();
+            IServer? server = null;
+
+            // When
+            var exception = await Assert.ThrowsAsync<ArgumentNullException>(
+                () => speedtest.GetServerLatencyAsync(server!));
+
+            // Then
+            Assert.Equal("server", exception.ParamName);
+        }
+
+        [Fact]
+        public async Task GetServerLatencyAsync_IServer_UrlNull_ThrowsArgumentNullException()
+        {
+            // Given
+            var speedtest = new OoklaSpeedtest();
+            var server = new Server { Url = null!, Sponsor = "Test", Location = "Test" };
+
+            // When
+            var exception = await Assert.ThrowsAsync<ArgumentNullException>(
+                () => speedtest.GetServerLatencyAsync(server));
+
+            // Then
+            Assert.Equal("server.Url", exception.ParamName);
+        }
+
+        [Theory]
+        [InlineData("")]
+        [InlineData("   ")]
+        [InlineData("\t")]
+        public async Task GetServerLatencyAsync_IServer_UrlEmptyOrWhitespace_ThrowsArgumentException(string url)
+        {
+            // Given
+            var speedtest = new OoklaSpeedtest();
+            var server = new Server { Url = url, Sponsor = "Test", Location = "Test" };
+
+            // When
+            var exception = await Assert.ThrowsAsync<ArgumentException>(
+                () => speedtest.GetServerLatencyAsync(server));
+
+            // Then
+            Assert.Contains("server.Url", exception.Message);
+        }
+
+        [Fact]
+        public async Task GetServerLatencyAsync_ServerUrl_Null_ThrowsArgumentNullException()
+        {
+            // Given
+            var speedtest = new OoklaSpeedtest();
+            string? serverUrl = null;
+
+            // When
+            var exception = await Assert.ThrowsAsync<ArgumentNullException>(
+                () => speedtest.GetServerLatencyAsync(serverUrl!));
+
+            // Then
+            Assert.Equal("serverUrl", exception.ParamName);
+        }
+
+        [Theory]
+        [InlineData("")]
+        [InlineData("   ")]
+        [InlineData("\t")]
+        public async Task GetServerLatencyAsync_ServerUrl_EmptyOrWhitespace_ThrowsArgumentException(string serverUrl)
+        {
+            // Given
+            var speedtest = new OoklaSpeedtest();
+
+            // When
+            var exception = await Assert.ThrowsAsync<ArgumentException>(
+                () => speedtest.GetServerLatencyAsync(serverUrl));
+
+            // Then
+            Assert.Equal("serverUrl", exception.ParamName);
+        }
+
+        [Fact]
+        public async Task GetFastestServerByLatencyAsync_Servers_Null_ThrowsArgumentNullException()
+        {
+            // Given
+            var speedtest = new OoklaSpeedtest();
+            IServer[]? servers = null;
+
+            // When
+            var exception = await Assert.ThrowsAsync<ArgumentNullException>(
+                () => speedtest.GetFastestServerByLatencyAsync(servers!));
+
+            // Then
+            Assert.Equal("servers", exception.ParamName);
+        }
+
+        [Fact]
+        public async Task GetFastestServerByLatencyAsync_Servers_Empty_ThrowsArgumentException()
+        {
+            // Given
+            var speedtest = new OoklaSpeedtest();
+            IServer[] servers = Array.Empty<IServer>();
+
+            // When
+            var exception = await Assert.ThrowsAsync<ArgumentException>(
+                () => speedtest.GetFastestServerByLatencyAsync(servers));
+
+            // Then
+            Assert.Equal("servers", exception.ParamName);
+        }
+
+        [Fact]
+        public async Task GetDownloadSpeedAsync_Server_Null_ThrowsArgumentNullException()
+        {
+            // Given
+            var speedtest = new OoklaSpeedtest();
+            IServer? server = null;
+
+            // When
+            var exception = await Assert.ThrowsAsync<ArgumentNullException>(
+                () => speedtest.GetDownloadSpeedAsync(server!));
+
+            // Then
+            Assert.Equal("server", exception.ParamName);
+        }
+
+        [Fact]
+        public async Task GetDownloadSpeedAsync_WithSize_Server_Null_ThrowsArgumentNullException()
+        {
+            // Given
+            var speedtest = new OoklaSpeedtest();
+            IServer? server = null;
+
+            // When
+            var exception = await Assert.ThrowsAsync<ArgumentNullException>(
+                () => speedtest.GetDownloadSpeedAsync(server!, downloadSizeMb: 10));
+
+            // Then
+            Assert.Equal("server", exception.ParamName);
+        }
+
+        [Fact]
+        public async Task GetDownloadSpeedAsync_WithProgress_Server_Null_ThrowsArgumentNullException()
+        {
+            // Given
+            var speedtest = new OoklaSpeedtest();
+            IServer? server = null;
+
+            // When
+            var exception = await Assert.ThrowsAsync<ArgumentNullException>(
+                () => speedtest.GetDownloadSpeedAsync(server!, _ => { }));
+
+            // Then
+            Assert.Equal("server", exception.ParamName);
+        }
+
+        [Fact]
+        public async Task GetDownloadSpeedAsync_WithSizeAndProgress_Server_Null_ThrowsArgumentNullException()
+        {
+            // Given
+            var speedtest = new OoklaSpeedtest();
+            IServer? server = null;
+
+            // When
+            var exception = await Assert.ThrowsAsync<ArgumentNullException>(
+                () => speedtest.GetDownloadSpeedAsync(server!, downloadSizeMb: 10, _ => { }));
+
+            // Then
+            Assert.Equal("server", exception.ParamName);
+        }
+
+        [Fact]
+        public async Task GetDownloadSpeedAsync_ServerUrl_Null_ThrowsArgumentNullException()
+        {
+            // Given
+            var speedtest = new OoklaSpeedtest();
+            var server = new Server { Url = null!, Sponsor = "Test", Location = "Test" };
+
+            // When
+            var exception = await Assert.ThrowsAsync<ArgumentNullException>(
+                () => speedtest.GetDownloadSpeedAsync(server, downloadSizeMb: 10, _ => { }));
+
+            // Then
+            Assert.Equal("server.Url", exception.ParamName);
+        }
+
+        [Theory]
+        [InlineData("")]
+        [InlineData("   ")]
+        [InlineData("\t")]
+        public async Task GetDownloadSpeedAsync_ServerUrl_EmptyOrWhitespace_ThrowsArgumentException(string url)
+        {
+            // Given
+            var speedtest = new OoklaSpeedtest();
+            var server = new Server { Url = url, Sponsor = "Test", Location = "Test" };
+
+            // When
+            var exception = await Assert.ThrowsAsync<ArgumentException>(
+                () => speedtest.GetDownloadSpeedAsync(server, downloadSizeMb: 10, _ => { }));
+
+            // Then
+            Assert.Contains("server.Url", exception.Message);
+        }
+
+        [Theory]
+        [InlineData(0)]
+        [InlineData(-1)]
+        [InlineData(-100)]
+        public async Task GetDownloadSpeedAsync_DownloadSizeMb_ZeroOrNegative_ThrowsArgumentOutOfRangeException(int downloadSizeMb)
+        {
+            // Given
+            var speedtest = new OoklaSpeedtest();
+            var server = new Server { Url = "http://example.com/", Sponsor = "Test", Location = "Test" };
+
+            // When
+            var exception = await Assert.ThrowsAsync<ArgumentOutOfRangeException>(
+                () => speedtest.GetDownloadSpeedAsync(server, downloadSizeMb));
+
+            // Then
+            Assert.Equal("downloadSizeMb", exception.ParamName);
+        }
+
+        [Theory]
+        [InlineData(0)]
+        [InlineData(-1)]
+        [InlineData(-100)]
+        public async Task GetDownloadSpeedAsync_WithProgress_DownloadSizeMb_ZeroOrNegative_ThrowsArgumentOutOfRangeException(int downloadSizeMb)
+        {
+            // Given
+            var speedtest = new OoklaSpeedtest();
+            var server = new Server { Url = "http://example.com/", Sponsor = "Test", Location = "Test" };
+
+            // When
+            var exception = await Assert.ThrowsAsync<ArgumentOutOfRangeException>(
+                () => speedtest.GetDownloadSpeedAsync(server, downloadSizeMb, _ => { }));
+
+            // Then
+            Assert.Equal("downloadSizeMb", exception.ParamName);
+        }
+
+        [Fact]
+        public async Task GetUploadSpeedAsync_Server_Null_ThrowsArgumentNullException()
+        {
+            // Given
+            var speedtest = new OoklaSpeedtest();
+            IServer? server = null;
+
+            // When
+            var exception = await Assert.ThrowsAsync<ArgumentNullException>(
+                () => speedtest.GetUploadSpeedAsync(server!));
+
+            // Then
+            Assert.Equal("server", exception.ParamName);
+        }
+
+        [Fact]
+        public async Task GetUploadSpeedAsync_WithSize_Server_Null_ThrowsArgumentNullException()
+        {
+            // Given
+            var speedtest = new OoklaSpeedtest();
+            IServer? server = null;
+
+            // When
+            var exception = await Assert.ThrowsAsync<ArgumentNullException>(
+                () => speedtest.GetUploadSpeedAsync(server!, uploadSizeMb: 10));
+
+            // Then
+            Assert.Equal("server", exception.ParamName);
+        }
+
+        [Fact]
+        public async Task GetUploadSpeedAsync_WithProgress_Server_Null_ThrowsArgumentNullException()
+        {
+            // Given
+            var speedtest = new OoklaSpeedtest();
+            IServer? server = null;
+
+            // When
+            var exception = await Assert.ThrowsAsync<ArgumentNullException>(
+                () => speedtest.GetUploadSpeedAsync(server!, _ => { }));
+
+            // Then
+            Assert.Equal("server", exception.ParamName);
+        }
+
+        [Fact]
+        public async Task GetUploadSpeedAsync_WithSizeAndProgress_Server_Null_ThrowsArgumentNullException()
+        {
+            // Given
+            var speedtest = new OoklaSpeedtest();
+            IServer? server = null;
+
+            // When
+            var exception = await Assert.ThrowsAsync<ArgumentNullException>(
+                () => speedtest.GetUploadSpeedAsync(server!, uploadSizeMb: 10, _ => { }));
+
+            // Then
+            Assert.Equal("server", exception.ParamName);
+        }
+
+        [Fact]
+        public async Task GetUploadSpeedAsync_ServerUrl_Null_ThrowsArgumentNullException()
+        {
+            // Given
+            var speedtest = new OoklaSpeedtest();
+            var server = new Server { Url = null!, Sponsor = "Test", Location = "Test" };
+
+            // When
+            var exception = await Assert.ThrowsAsync<ArgumentNullException>(
+                () => speedtest.GetUploadSpeedAsync(server, uploadSizeMb: 10, _ => { }));
+
+            // Then
+            Assert.Equal("server.Url", exception.ParamName);
+        }
+
+        [Theory]
+        [InlineData("")]
+        [InlineData("   ")]
+        [InlineData("\t")]
+        public async Task GetUploadSpeedAsync_ServerUrl_EmptyOrWhitespace_ThrowsArgumentException(string url)
+        {
+            // Given
+            var speedtest = new OoklaSpeedtest();
+            var server = new Server { Url = url, Sponsor = "Test", Location = "Test" };
+
+            // When
+            var exception = await Assert.ThrowsAsync<ArgumentException>(
+                () => speedtest.GetUploadSpeedAsync(server, uploadSizeMb: 10, _ => { }));
+
+            // Then
+            Assert.Contains("server.Url", exception.Message);
+        }
+
+        [Theory]
+        [InlineData(0)]
+        [InlineData(-1)]
+        [InlineData(-100)]
+        public async Task GetUploadSpeedAsync_UploadSizeMb_ZeroOrNegative_ThrowsArgumentOutOfRangeException(int uploadSizeMb)
+        {
+            // Given
+            var speedtest = new OoklaSpeedtest();
+            var server = new Server { Url = "http://example.com/", Sponsor = "Test", Location = "Test" };
+
+            // When
+            var exception = await Assert.ThrowsAsync<ArgumentOutOfRangeException>(
+                () => speedtest.GetUploadSpeedAsync(server, uploadSizeMb));
+
+            // Then
+            Assert.Equal("uploadSizeMb", exception.ParamName);
+        }
+
+        [Theory]
+        [InlineData(0)]
+        [InlineData(-1)]
+        [InlineData(-100)]
+        public async Task GetUploadSpeedAsync_WithProgress_UploadSizeMb_ZeroOrNegative_ThrowsArgumentOutOfRangeException(int uploadSizeMb)
+        {
+            // Given
+            var speedtest = new OoklaSpeedtest();
+            var server = new Server { Url = "http://example.com/", Sponsor = "Test", Location = "Test" };
+
+            // When
+            var exception = await Assert.ThrowsAsync<ArgumentOutOfRangeException>(
+                () => speedtest.GetUploadSpeedAsync(server, uploadSizeMb, _ => { }));
+
+            // Then
+            Assert.Equal("uploadSizeMb", exception.ParamName);
+        }
+    }
+}

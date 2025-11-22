@@ -18,6 +18,8 @@ public static class SpeedTestResultExtensions
     /// </summary>
     public static string GetSpeedString(this SpeedTestResult result, SpeedUnit unit, SpeedUnitSystem unitSystem)
     {
+        ArgumentNullException.ThrowIfNull(result);
+
         return GetSpeedString(result, unit, unitSystem, SpeedScale.Auto);
     }
 
@@ -26,6 +28,8 @@ public static class SpeedTestResultExtensions
     /// </summary>
     public static string GetSpeedString(this SpeedTestResult result, SpeedUnit unit, SpeedUnitSystem unitSystem, SpeedScale scale = SpeedScale.Auto)
     {
+        ArgumentNullException.ThrowIfNull(result);
+
         return FormatSpeed(result, unit, unitSystem, scale);
     }
 
@@ -34,6 +38,8 @@ public static class SpeedTestResultExtensions
     /// </summary>
     public static (string speed, string unit) GetSpeedStringParts(this SpeedTestResult result, SpeedUnit unit, SpeedUnitSystem unitSystem)
     {
+        ArgumentNullException.ThrowIfNull(result);
+
         return GetSpeedStringParts(result, unit, unitSystem, SpeedScale.Auto);
     }
 
@@ -42,6 +48,8 @@ public static class SpeedTestResultExtensions
     /// </summary>
     public static (string speed, string unit) GetSpeedStringParts(this SpeedTestResult result, SpeedUnit unit, SpeedUnitSystem unitSystem, SpeedScale scale = SpeedScale.Auto)
     {
+        ArgumentNullException.ThrowIfNull(result);
+
         return FormatSpeedParts(result, unit, unitSystem, scale);
     }
 
@@ -58,6 +66,13 @@ public static class SpeedTestResultExtensions
     {
         var isBits = unit == SpeedUnit.BitsPerSecond;
         double divisor = unitSystem == SpeedUnitSystem.IEC ? 1024 : 1000;
+
+        // Handle division by zero: no time elapsed means no speed measured
+        if (result.ElapsedMilliseconds == 0)
+        {
+            var baseUnit = isBits ? "bps" : "Bps";
+            return ("0", baseUnit);
+        }
 
         var speed = isBits
             ? result.BytesProcessed * 8.0 / ((double)result.ElapsedMilliseconds / 1000)
