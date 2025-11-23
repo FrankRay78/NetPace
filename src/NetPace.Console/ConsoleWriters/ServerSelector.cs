@@ -21,6 +21,10 @@ internal static class ServerSelector
             {
                 // Get the first speed test server.
                 var servers = await speedTestClient.GetServersAsync(cancellationToken);
+                if (servers.Length == 0)
+                {
+                    throw new Exception("No servers available");
+                }
                 var firstServer = servers.First();
                 return new ServerLatencyResult { Server = firstServer, Latency = 0 };
             }

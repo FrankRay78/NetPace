@@ -499,6 +499,29 @@ public sealed partial class NetPaceConsoleTests
         await Verify(result.Output);
     }
 
+    [Fact]
+    public async Task Should_Handle_No_Servers_Available_With_NoLatency()
+    {
+        // Given
+        var mock = new SpeedTestMock
+        {
+            GetServersAsyncFunc = (cancellationToken) => Task.FromResult(Array.Empty<IServer>()),
+        };
+
+        var registrar = new TypeRegistrar();
+        registrar.RegisterInstance(typeof(ISpeedTestService), mock);
+        registrar.Register(typeof(IClock), typeof(ClockStub));
+        registrar.Register(typeof(IWaiter), typeof(NoDelayStub));
+        var app = GetCommandAppTester(registrar);
+
+        // When
+        var result = await app.RunAsync("--no-latency");
+
+        // Then
+        Assert.Equal(0, result.ExitCode);
+        await Verify(result.Output);
+    }
+
     #endregion
 
     #region CommandApp
