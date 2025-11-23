@@ -41,6 +41,10 @@ internal static class ServerSelector
             {
                 // Get the fastest speed test server.
                 var servers = await speedTestClient.GetServersAsync(cancellationToken);
+                if (servers.Length == 0)
+                {
+                    throw new Exception("No servers available");
+                }
                 return await speedTestClient.GetFastestServerByLatencyAsync(servers, cancellationToken);
             }
             else
