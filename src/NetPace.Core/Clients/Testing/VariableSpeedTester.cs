@@ -88,9 +88,21 @@ public class VariableSpeedTester : ISpeedTestService
     }
 
     /// <inheritdoc/>
+    public Task<ServerLatencyResult> GetServerLatencyAsync(IServer server, Action<SpeedTestProgress> UpdateProgress, CancellationToken cancellationToken = default)
+    {
+        return inner.GetServerLatencyAsync(server, UpdateProgress, cancellationToken);
+    }
+
+    /// <inheritdoc/>
     public Task<ServerLatencyResult> GetServerLatencyAsync(string serverUrl, CancellationToken cancellationToken = default)
     {
         return inner.GetServerLatencyAsync(serverUrl, cancellationToken);
+    }
+
+    /// <inheritdoc/>
+    public Task<ServerLatencyResult> GetServerLatencyAsync(string serverUrl, Action<SpeedTestProgress> UpdateProgress, CancellationToken cancellationToken = default)
+    {
+        return inner.GetServerLatencyAsync(serverUrl, UpdateProgress, cancellationToken);
     }
 
     /// <inheritdoc/>

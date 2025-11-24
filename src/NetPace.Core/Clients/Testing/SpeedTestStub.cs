@@ -48,6 +48,24 @@ public sealed class SpeedTestStub : ISpeedTestService
     /// <inheritdoc/>
     public Task<ServerLatencyResult> GetServerLatencyAsync(IServer server, CancellationToken cancellationToken = default)
     {
+        return GetServerLatencyAsync(server, _ => { }, cancellationToken);
+    }
+
+    /// <inheritdoc/>
+    public Task<ServerLatencyResult> GetServerLatencyAsync(IServer server, Action<SpeedTestProgress> UpdateProgress, CancellationToken cancellationToken = default)
+    {
+        if (UpdateProgress is not null)
+        {
+            Task.Delay(delayMilliseconds).Wait();
+            UpdateProgress(new SpeedTestProgress { PercentageComplete = 25 });
+            Task.Delay(delayMilliseconds).Wait();
+            UpdateProgress(new SpeedTestProgress { PercentageComplete = 50 });
+            Task.Delay(delayMilliseconds).Wait();
+            UpdateProgress(new SpeedTestProgress { PercentageComplete = 75 });
+            Task.Delay(delayMilliseconds).Wait();
+            UpdateProgress(new SpeedTestProgress { PercentageComplete = 100 });
+        }
+
         var serverID = GetServerID(server.Url);
 
         var latencyResult = new ServerLatencyResult
@@ -62,15 +80,15 @@ public sealed class SpeedTestStub : ISpeedTestService
     /// <inheritdoc/>
     public Task<ServerLatencyResult> GetServerLatencyAsync(string serverUrl, CancellationToken cancellationToken = default)
     {
-        var serverID = GetServerID(serverUrl);
+        return GetServerLatencyAsync(serverUrl, _ => { }, cancellationToken);
+    }
 
-        var latencyResult = new ServerLatencyResult
-        {
-            Server = new Server() { Location = "(Unknown)", Sponsor = "(Unknown)", Url = serverUrl },
-            Latency = serverID * 100
-        };
+    /// <inheritdoc/>
+    public Task<ServerLatencyResult> GetServerLatencyAsync(string serverUrl, Action<SpeedTestProgress> UpdateProgress, CancellationToken cancellationToken = default)
+    {
+        var server = new Server() { Location = "(Unknown)", Sponsor = "(Unknown)", Url = serverUrl };
 
-        return Task.FromResult(latencyResult);
+        return GetServerLatencyAsync(server, UpdateProgress, cancellationToken);
     }
 
     /// <inheritdoc/>
