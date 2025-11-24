@@ -43,22 +43,34 @@ public sealed class OoklaSpeedtest : ISpeedTestService
     /// <inheritdoc/>
     public async Task<ServerLatencyResult> GetServerLatencyAsync(IServer server, CancellationToken cancellationToken = default)
     {
+        return await GetServerLatencyAsync(server, (_) => { }, cancellationToken);
+    }
+
+    /// <inheritdoc/>
+    public async Task<ServerLatencyResult> GetServerLatencyAsync(IServer server, Action<SpeedTestProgress> UpdateProgress, CancellationToken cancellationToken = default)
+    {
         ArgumentNullException.ThrowIfNull(server);
         ArgumentException.ThrowIfNullOrWhiteSpace(server.Url);
 
-        return await GetServerLatencyAsync(server, httpClient, settings.LatencyTest.DefaultHttpTimeoutMilliseconds, settings.LatencyTest.LatencyTestIterations, cancellationToken);
+        return await GetServerLatencyAsync(server, httpClient, settings.LatencyTest.DefaultHttpTimeoutMilliseconds, settings.LatencyTest.LatencyTestIterations, UpdateProgress, cancellationToken);
     }
 
     /// <inheritdoc/>
     public async Task<ServerLatencyResult> GetServerLatencyAsync(string serverUrl, CancellationToken cancellationToken = default)
     {
+        return await GetServerLatencyAsync(serverUrl, (_) => { }, cancellationToken);
+    }
+
+    /// <inheritdoc/>
+    public async Task<ServerLatencyResult> GetServerLatencyAsync(string serverUrl, Action<SpeedTestProgress> UpdateProgress, CancellationToken cancellationToken = default)
+    {
         ArgumentException.ThrowIfNullOrWhiteSpace(serverUrl);
 
         var server = new Server() { Sponsor = "(Unknown)", Url = serverUrl };
-        return await GetServerLatencyAsync(server, httpClient, settings.LatencyTest.DefaultHttpTimeoutMilliseconds, settings.LatencyTest.LatencyTestIterations, cancellationToken);
+        return await GetServerLatencyAsync(server, httpClient, settings.LatencyTest.DefaultHttpTimeoutMilliseconds, settings.LatencyTest.LatencyTestIterations, UpdateProgress, cancellationToken);
     }
 
-    private static async Task<ServerLatencyResult> GetServerLatencyAsync(IServer server, HttpClient httpClient, int httpTimeoutMilliseconds, int maxIterations, CancellationToken cancellationToken)
+    private static async Task<ServerLatencyResult> GetServerLatencyAsync(IServer server, HttpClient httpClient, int httpTimeoutMilliseconds, int maxIterations, Action<SpeedTestProgress> UpdateProgress, CancellationToken cancellationToken)
     {
         var latencyUrl = GetBaseUrl(server.Url) + "latency.txt";
         var stopwatch = new Stopwatch();
@@ -76,6 +88,10 @@ public sealed class OoklaSpeedtest : ISpeedTestService
             {
                 throw new InvalidOperationException("Server returned incorrect test string for latency.txt");
             }
+
+            // Report progress after each iteration
+            var percentageComplete = (iteration + 1) * 100 / maxIterations;
+            UpdateProgress(new SpeedTestProgress { PercentageComplete = percentageComplete });
         }
 
         // Calculate the average server latency.
@@ -109,7 +125,7 @@ public sealed class OoklaSpeedtest : ISpeedTestService
 
             try
             {
-                var latencyResult = await GetServerLatencyAsync(server, httpClient, httpTimeoutMilliseconds, settings.LatencyTest.LatencyTestIterations, cancellationToken);
+                var latencyResult = await GetServerLatencyAsync(server, httpClient, httpTimeoutMilliseconds, settings.LatencyTest.LatencyTestIterations, _ => { }, cancellationToken);
 
                 if (latencyResult.Latency < fastestLatency)
                 {

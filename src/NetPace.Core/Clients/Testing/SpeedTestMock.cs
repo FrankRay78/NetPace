@@ -18,10 +18,22 @@ public sealed class SpeedTestMock : ISpeedTestService
     public Func<IServer, CancellationToken, Task<ServerLatencyResult>>? GetServerLatencyAsyncFunc { get; set; }
 
     /// <summary>
+    /// Gets or sets the delegate that provides behavior for <see cref="GetServerLatencyAsync(IServer, Action{SpeedTestProgress}, CancellationToken)"/>.
+    /// If null, the method will throw <see cref="NotImplementedException"/> when called.
+    /// </summary>
+    public Func<IServer, Action<SpeedTestProgress>, CancellationToken, Task<ServerLatencyResult>>? GetServerLatencyWithProgressAsyncFunc { get; set; }
+
+    /// <summary>
     /// Gets or sets the delegate that provides behavior for <see cref="GetServerLatencyAsync(string, CancellationToken)"/>.
     /// If null, the method will throw <see cref="NotImplementedException"/> when called.
     /// </summary>
     public Func<string, CancellationToken, Task<ServerLatencyResult>>? GetServerLatencyByServerUrlAsyncFunc { get; set; }
+
+    /// <summary>
+    /// Gets or sets the delegate that provides behavior for <see cref="GetServerLatencyAsync(string, Action{SpeedTestProgress}, CancellationToken)"/>.
+    /// If null, the method will throw <see cref="NotImplementedException"/> when called.
+    /// </summary>
+    public Func<string, Action<SpeedTestProgress>, CancellationToken, Task<ServerLatencyResult>>? GetServerLatencyByServerUrlWithProgressAsyncFunc { get; set; }
 
     /// <summary>
     /// Gets or sets the delegate that provides behavior for <see cref="GetFastestServerByLatencyAsync"/>.
@@ -58,10 +70,26 @@ public sealed class SpeedTestMock : ISpeedTestService
     }
 
     /// <inheritdoc/>
+    public Task<ServerLatencyResult> GetServerLatencyAsync(IServer server, Action<SpeedTestProgress> UpdateProgress, CancellationToken cancellationToken = default)
+    {
+        if (GetServerLatencyWithProgressAsyncFunc != null)
+            return GetServerLatencyWithProgressAsyncFunc(server, UpdateProgress, cancellationToken);
+        throw new NotImplementedException(nameof(GetServerLatencyAsync));
+    }
+
+    /// <inheritdoc/>
     public Task<ServerLatencyResult> GetServerLatencyAsync(string serverUrl, CancellationToken cancellationToken = default)
     {
         if (GetServerLatencyByServerUrlAsyncFunc != null)
             return GetServerLatencyByServerUrlAsyncFunc(serverUrl, cancellationToken);
+        throw new NotImplementedException(nameof(GetServerLatencyAsync));
+    }
+
+    /// <inheritdoc/>
+    public Task<ServerLatencyResult> GetServerLatencyAsync(string serverUrl, Action<SpeedTestProgress> UpdateProgress, CancellationToken cancellationToken = default)
+    {
+        if (GetServerLatencyByServerUrlWithProgressAsyncFunc != null)
+            return GetServerLatencyByServerUrlWithProgressAsyncFunc(serverUrl, UpdateProgress, cancellationToken);
         throw new NotImplementedException(nameof(GetServerLatencyAsync));
     }
 

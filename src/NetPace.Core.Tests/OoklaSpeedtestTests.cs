@@ -242,6 +242,163 @@ public sealed partial class OoklaSpeedtestTests
         cts.IsCancellationRequested.ShouldBeTrue();
     }
 
+    // --- GetServerLatencyAsync with Progress ---
+
+    [Fact]
+    public async Task GetServerLatencyAsync_WithProgress_ShouldReportProgress_ForEachIteration()
+    {
+        // Given
+        using var mockHttp = new MockHttpMessageHandler();
+        mockHttp.When("http://testserver.com/latency.txt")
+                .Respond("text/plain", "test=test");
+
+        var httpClient = mockHttp.ToHttpClient();
+        var settings = new OoklaSpeedtestSettings
+        {
+            LatencyTest = new()
+            {
+                LatencyTestIterations = 4
+            }
+        };
+
+        var speedtest = new OoklaSpeedtest(settings, httpClient);
+        var server = new Server { Url = "http://testserver.com/", Sponsor = "Sponsor", Location = "Location" };
+        var progressReports = new List<int>();
+
+        // When
+        var result = await speedtest.GetServerLatencyAsync(server, progress => progressReports.Add(progress.PercentageComplete));
+
+        // Then
+        result.ShouldNotBeNull();
+        result.Server.ShouldBe(server);
+        result.Latency.ShouldBeGreaterThanOrEqualTo(0);
+        progressReports.ShouldBe(new[] { 25, 50, 75, 100 });
+    }
+
+    [Fact]
+    public async Task GetServerLatencyAsync_ByUrl_WithProgress_ShouldReportProgress_ForEachIteration()
+    {
+        // Given
+        using var mockHttp = new MockHttpMessageHandler();
+        mockHttp.When("http://testserver.com/latency.txt")
+                .Respond("text/plain", "test=test");
+
+        var httpClient = mockHttp.ToHttpClient();
+        var settings = new OoklaSpeedtestSettings
+        {
+            LatencyTest = new()
+            {
+                LatencyTestIterations = 4
+            }
+        };
+
+        var speedtest = new OoklaSpeedtest(settings, httpClient);
+        var progressReports = new List<int>();
+
+        // When
+        var result = await speedtest.GetServerLatencyAsync("http://testserver.com/", progress => progressReports.Add(progress.PercentageComplete));
+
+        // Then
+        result.ShouldNotBeNull();
+        result.Server.Url.ShouldBe("http://testserver.com/");
+        result.Latency.ShouldBeGreaterThanOrEqualTo(0);
+        progressReports.ShouldBe(new[] { 25, 50, 75, 100 });
+    }
+
+    [Theory]
+    [InlineData(1, new[] { 100 })]
+    [InlineData(2, new[] { 50, 100 })]
+    [InlineData(5, new[] { 20, 40, 60, 80, 100 })]
+    [InlineData(10, new[] { 10, 20, 30, 40, 50, 60, 70, 80, 90, 100 })]
+    public async Task GetServerLatencyAsync_WithProgress_CustomIterations_ShouldReportCorrectPercentages(int iterations, int[] expectedProgress)
+    {
+        // Given
+        using var mockHttp = new MockHttpMessageHandler();
+        mockHttp.When("http://testserver.com/latency.txt")
+                .Respond("text/plain", "test=test");
+
+        var httpClient = mockHttp.ToHttpClient();
+        var settings = new OoklaSpeedtestSettings
+        {
+            LatencyTest = new()
+            {
+                LatencyTestIterations = iterations
+            }
+        };
+
+        var speedtest = new OoklaSpeedtest(settings, httpClient);
+        var server = new Server { Url = "http://testserver.com/", Sponsor = "Sponsor", Location = "Location" };
+        var progressReports = new List<int>();
+
+        // When
+        var result = await speedtest.GetServerLatencyAsync(server, progress => progressReports.Add(progress.PercentageComplete));
+
+        // Then
+        result.ShouldNotBeNull();
+        progressReports.ShouldBe(expectedProgress);
+    }
+
+    [Fact]
+    public async Task GetServerLatencyAsync_WithProgress_ShouldCancel_WhenTokenIsCancelled()
+    {
+        // Given
+        using var mockHttp = new MockHttpMessageHandler();
+        mockHttp.When("*").Respond(async _ =>
+        {
+            // Simulate slow response.
+            await Task.Delay(1000);
+            return new HttpResponseMessage(HttpStatusCode.OK);
+        });
+
+        var httpClient = mockHttp.ToHttpClient();
+        var speedtest = new OoklaSpeedtest(httpClientOverride: httpClient);
+        var server = new Server { Url = "http://testserver.com/", Sponsor = "Sponsor", Location = "Location" };
+        var progressReports = new List<int>();
+
+        using var cts = new CancellationTokenSource();
+        cts.CancelAfter(200);
+
+        // When
+        var exception = await Record.ExceptionAsync(() => speedtest.GetServerLatencyAsync(server, progress => progressReports.Add(progress.PercentageComplete), cts.Token));
+
+        // Then
+        exception.ShouldNotBeNull();
+        exception.ShouldBeAssignableTo<OperationCanceledException>();
+        cts.IsCancellationRequested.ShouldBeTrue();
+    }
+
+    [Fact]
+    public async Task GetServerLatencyAsync_WithProgress_ShouldPropagateException_WhenProgressCallbackThrows()
+    {
+        // Given
+        using var mockHttp = new MockHttpMessageHandler();
+        mockHttp.When("http://testserver.com/latency.txt")
+                .Respond("text/plain", "test=test");
+
+        var httpClient = mockHttp.ToHttpClient();
+        var settings = new OoklaSpeedtestSettings
+        {
+            LatencyTest = new()
+            {
+                LatencyTestIterations = 4
+            }
+        };
+
+        var speedtest = new OoklaSpeedtest(settings, httpClient);
+        var server = new Server { Url = "http://testserver.com/", Sponsor = "Sponsor", Location = "Location" };
+
+        // When
+        var exception = await Record.ExceptionAsync(() => speedtest.GetServerLatencyAsync(server, progress =>
+        {
+            throw new InvalidOperationException("Progress callback failed");
+        }));
+
+        // Then
+        exception.ShouldNotBeNull();
+        exception.ShouldBeOfType<InvalidOperationException>();
+        exception.Message.ShouldBe("Progress callback failed");
+    }
+
     // --- GetFastestServerByLatencyAsync ---
 
     [Fact]
