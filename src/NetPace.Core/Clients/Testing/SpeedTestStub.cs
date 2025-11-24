@@ -86,27 +86,9 @@ public sealed class SpeedTestStub : ISpeedTestService
     /// <inheritdoc/>
     public Task<ServerLatencyResult> GetServerLatencyAsync(string serverUrl, Action<SpeedTestProgress> UpdateProgress, CancellationToken cancellationToken = default)
     {
-        if (UpdateProgress is not null)
-        {
-            Task.Delay(delayMilliseconds).Wait();
-            UpdateProgress(new SpeedTestProgress { PercentageComplete = 25 });
-            Task.Delay(delayMilliseconds).Wait();
-            UpdateProgress(new SpeedTestProgress { PercentageComplete = 50 });
-            Task.Delay(delayMilliseconds).Wait();
-            UpdateProgress(new SpeedTestProgress { PercentageComplete = 75 });
-            Task.Delay(delayMilliseconds).Wait();
-            UpdateProgress(new SpeedTestProgress { PercentageComplete = 100 });
-        }
+        var server = new Server() { Location = "(Unknown)", Sponsor = "(Unknown)", Url = serverUrl };
 
-        var serverID = GetServerID(serverUrl);
-
-        var latencyResult = new ServerLatencyResult
-        {
-            Server = new Server() { Location = "(Unknown)", Sponsor = "(Unknown)", Url = serverUrl },
-            Latency = serverID * 100
-        };
-
-        return Task.FromResult(latencyResult);
+        return GetServerLatencyAsync(server, UpdateProgress, cancellationToken);
     }
 
     /// <inheritdoc/>
