@@ -22,7 +22,7 @@ public class VariableSpeedTester : ISpeedTestService
                 new Server { Location = "Test Location", Sponsor = "Test Sponsor", Url = "http://test.com" }
             }),
 
-            GetFastestServerByLatencyAsyncFunc = (servers, _) => 
+            GetFastestServerByLatencyAsyncFunc = (servers, _, _) =>
             {
                 callCount++;
 
@@ -109,6 +109,12 @@ public class VariableSpeedTester : ISpeedTestService
     public Task<ServerLatencyResult> GetFastestServerByLatencyAsync(IServer[] servers, CancellationToken cancellationToken = default)
     {
         return inner.GetFastestServerByLatencyAsync(servers, cancellationToken);
+    }
+
+    /// <inheritdoc/>
+    public Task<ServerLatencyResult> GetFastestServerByLatencyAsync(IServer[] servers, Action<SpeedTestProgress> UpdateProgress, CancellationToken cancellationToken = default)
+    {
+        return inner.GetFastestServerByLatencyAsync(servers, UpdateProgress, cancellationToken);
     }
 
     /// <inheritdoc/>

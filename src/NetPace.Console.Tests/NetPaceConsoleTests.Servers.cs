@@ -79,7 +79,7 @@ public sealed partial class NetPaceConsoleTests
             var mock = new SpeedTestMock
             {
                 GetServersAsyncFunc = (cancellationToken) => Task.FromResult(Array.Empty<IServer>()),
-                GetFastestServerByLatencyAsyncFunc = (servers, cancellationToken) => throw new Exception("No servers available"),
+                GetFastestServerByLatencyAsyncFunc = (_, _, _) => throw new Exception("No servers available"),
             };
 
             var registrar = new TypeRegistrar();

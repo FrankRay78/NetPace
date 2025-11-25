@@ -94,6 +94,22 @@ public sealed class SpeedTestStub : ISpeedTestService
     /// <inheritdoc/>
     public Task<ServerLatencyResult> GetFastestServerByLatencyAsync(IServer[] ignoredServers, CancellationToken cancellationToken = default)
     {
+        return GetFastestServerByLatencyAsync(ignoredServers, _ => { }, cancellationToken);
+    }
+
+    /// <inheritdoc/>
+    public Task<ServerLatencyResult> GetFastestServerByLatencyAsync(IServer[] ignoredServers, Action<SpeedTestProgress> UpdateProgress, CancellationToken cancellationToken = default)
+    {
+        if (UpdateProgress is not null)
+        {
+            Task.Delay(delayMilliseconds).Wait();
+            UpdateProgress(new SpeedTestProgress { PercentageComplete = 33 });
+            Task.Delay(delayMilliseconds).Wait();
+            UpdateProgress(new SpeedTestProgress { PercentageComplete = 66 });
+            Task.Delay(delayMilliseconds).Wait();
+            UpdateProgress(new SpeedTestProgress { PercentageComplete = 100 });
+        }
+
         // The fastest server in this stub is always the first one.
         var server = servers[0];
 
