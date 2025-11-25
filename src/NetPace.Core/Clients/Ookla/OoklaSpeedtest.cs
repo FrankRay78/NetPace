@@ -17,16 +17,18 @@ public sealed class OoklaSpeedtest : ISpeedTestService
 {
     private readonly HttpClient httpClient;
     private readonly OoklaSpeedtestSettings settings;
+    private readonly IDelayProvider delayProvider;
 
     /// <summary>
     /// Constructs a new instance of the <see cref="OoklaSpeedtest"/> class.
     /// </summary>
-    public OoklaSpeedtest(OoklaSpeedtestSettings? speedtestSettings = null, HttpClient? httpClientOverride = null)
+    public OoklaSpeedtest(OoklaSpeedtestSettings? speedtestSettings = null, HttpClient? httpClientOverride = null, IDelayProvider? delayProviderOverride = null)
     {
         // Use default settings when none provided
         settings = speedtestSettings ?? new OoklaSpeedtestSettings();
 
         httpClient = httpClientOverride ?? CreateHttpClient(settings.UseProxy, settings.ProxyAddress, settings.ProxyCredential);
+        delayProvider = delayProviderOverride ?? new DelayProvider();
     }
 
     /// <inheritdoc/>
@@ -52,7 +54,7 @@ public sealed class OoklaSpeedtest : ISpeedTestService
         ArgumentNullException.ThrowIfNull(server);
         ArgumentException.ThrowIfNullOrWhiteSpace(server.Url);
 
-        return await GetServerLatencyAsync(server, httpClient, settings.LatencyTest.DefaultHttpTimeoutMilliseconds, settings.LatencyTest.LatencyTestIterations, UpdateProgress, cancellationToken);
+        return await GetServerLatencyAsync(server, httpClient, delayProvider, settings.LatencyTest.DefaultHttpTimeoutMilliseconds, settings.LatencyTest.LatencyTestIterations, settings.LatencyTest.LatencyTestIntervalMilliseconds, UpdateProgress, cancellationToken);
     }
 
     /// <inheritdoc/>
@@ -67,10 +69,10 @@ public sealed class OoklaSpeedtest : ISpeedTestService
         ArgumentException.ThrowIfNullOrWhiteSpace(serverUrl);
 
         var server = new Server() { Sponsor = "(Unknown)", Url = serverUrl };
-        return await GetServerLatencyAsync(server, httpClient, settings.LatencyTest.DefaultHttpTimeoutMilliseconds, settings.LatencyTest.LatencyTestIterations, UpdateProgress, cancellationToken);
+        return await GetServerLatencyAsync(server, httpClient, delayProvider, settings.LatencyTest.DefaultHttpTimeoutMilliseconds, settings.LatencyTest.LatencyTestIterations, settings.LatencyTest.LatencyTestIntervalMilliseconds, UpdateProgress, cancellationToken);
     }
 
-    private static async Task<ServerLatencyResult> GetServerLatencyAsync(IServer server, HttpClient httpClient, int httpTimeoutMilliseconds, int maxIterations, Action<SpeedTestProgress> UpdateProgress, CancellationToken cancellationToken)
+    private static async Task<ServerLatencyResult> GetServerLatencyAsync(IServer server, HttpClient httpClient, IDelayProvider delayProvider, int httpTimeoutMilliseconds, int maxIterations, int intervalMilliseconds, Action<SpeedTestProgress> UpdateProgress, CancellationToken cancellationToken)
     {
         var latencyUrl = GetBaseUrl(server.Url) + "latency.txt";
         var stopwatch = new Stopwatch();
@@ -79,6 +81,12 @@ public sealed class OoklaSpeedtest : ISpeedTestService
         for (var iteration = 0; iteration < maxIterations; iteration++)
         {
             cancellationToken.ThrowIfCancellationRequested();
+
+            // Add delay between iterations (not before first iteration)
+            if (iteration > 0 && intervalMilliseconds > 0)
+            {
+                await delayProvider.DelayAsync(intervalMilliseconds, cancellationToken).ConfigureAwait(false);
+            }
 
             stopwatch.Start();
             var testString = await httpClient.GetStringWithTimeoutAsync(latencyUrl, TimeSpan.FromMilliseconds(httpTimeoutMilliseconds), cancellationToken).ConfigureAwait(false);
@@ -125,7 +133,7 @@ public sealed class OoklaSpeedtest : ISpeedTestService
 
             try
             {
-                var latencyResult = await GetServerLatencyAsync(server, httpClient, httpTimeoutMilliseconds, settings.LatencyTest.LatencyTestIterations, _ => { }, cancellationToken);
+                var latencyResult = await GetServerLatencyAsync(server, httpClient, delayProvider, httpTimeoutMilliseconds, settings.LatencyTest.LatencyTestIterations, settings.LatencyTest.LatencyTestIntervalMilliseconds, _ => { }, cancellationToken);
 
                 if (latencyResult.Latency < fastestLatency)
                 {

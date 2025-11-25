@@ -21,7 +21,7 @@ Built with .NET 8.0 — runs on Windows, Linux, and macOS.
 * Server discovery, latency measurement, download and upload speed testing.
 * Command-line application and C# Microsoft .Net [NuGet](https://www.nuget.org/packages/NetPace.Core/) library for developers.
 * User configurable output (eg. SI or IEC units, BitsPerSecond or BytesPerSecond, CSV and Json formats).
-* Highly configurable traffic profiles (see [DownloadTestSettings](https://github.com/FrankRay78/NetPace/blob/main/src/NetPace.Core/Clients/Ookla/Settings/DownloadTestSettings.cs) and [UploadTestSettings](https://github.com/FrankRay78/NetPace/blob/main/src/NetPace.Core/Clients/Ookla/Settings/UploadTestSettings.cs)).
+* Highly configurable traffic profiles (see [LatencyTestSettings](https://github.com/FrankRay78/NetPace/blob/main/src/NetPace.Core/Clients/Ookla/Settings/LatencyTestSettings.cs), [DownloadTestSettings](https://github.com/FrankRay78/NetPace/blob/main/src/NetPace.Core/Clients/Ookla/Settings/DownloadTestSettings.cs) and [UploadTestSettings](https://github.com/FrankRay78/NetPace/blob/main/src/NetPace.Core/Clients/Ookla/Settings/UploadTestSettings.cs)).
 * Highly reliable, utilises [Ookla's](https://www.speedtest.net/) Speedtest servers.
 
 <br />

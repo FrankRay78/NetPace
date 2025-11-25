@@ -1,6 +1,7 @@
 using System.Net;
 using System.Text.RegularExpressions;
 using NetPace.Core.Clients.Ookla;
+using NetPace.Core.Clients.Testing;
 using RichardSzalay.MockHttp;
 using Shouldly;
 
@@ -397,6 +398,67 @@ public sealed partial class OoklaSpeedtestTests
         exception.ShouldNotBeNull();
         exception.ShouldBeOfType<InvalidOperationException>();
         exception.Message.ShouldBe("Progress callback failed");
+    }
+
+    [Fact]
+    public async Task GetServerLatencyAsync_WithInterval_ShouldRequestDelayBetweenIterations()
+    {
+        // Given
+        using var mockHttp = new MockHttpMessageHandler();
+        mockHttp.When("http://testserver.com/latency.txt")
+                .Respond("text/plain", "test=test");
+
+        var httpClient = mockHttp.ToHttpClient();
+        var delayStub = new DelayProviderStub();
+        var settings = new OoklaSpeedtestSettings
+        {
+            LatencyTest = new()
+            {
+                LatencyTestIterations = 3,
+                LatencyTestIntervalMilliseconds = 50 // 50ms between iterations
+            }
+        };
+
+        var speedtest = new OoklaSpeedtest(settings, httpClient, delayStub);
+        var server = new Server { Url = "http://testserver.com/", Sponsor = "Sponsor", Location = "Location" };
+
+        // When
+        await speedtest.GetServerLatencyAsync(server);
+
+        // Then
+        // With 3 iterations, we expect 2 delays (between iterations, not before first)
+        delayStub.DelayCallCount.ShouldBe(2);
+        delayStub.RequestedDelays.ShouldAllBe(d => d == 50);
+    }
+
+    [Fact]
+    public async Task GetServerLatencyAsync_WithZeroInterval_ShouldNotRequestDelay()
+    {
+        // Given
+        using var mockHttp = new MockHttpMessageHandler();
+        mockHttp.When("http://testserver.com/latency.txt")
+                .Respond("text/plain", "test=test");
+
+        var httpClient = mockHttp.ToHttpClient();
+        var delayStub = new DelayProviderStub();
+        var settings = new OoklaSpeedtestSettings
+        {
+            LatencyTest = new()
+            {
+                LatencyTestIterations = 3,
+                LatencyTestIntervalMilliseconds = 0 // No delay
+            }
+        };
+
+        var speedtest = new OoklaSpeedtest(settings, httpClient, delayStub);
+        var server = new Server { Url = "http://testserver.com/", Sponsor = "Sponsor", Location = "Location" };
+
+        // When
+        await speedtest.GetServerLatencyAsync(server);
+
+        // Then
+        // With 0ms interval, no delays should be requested
+        delayStub.DelayCallCount.ShouldBe(0);
     }
 
     // --- GetFastestServerByLatencyAsync ---
