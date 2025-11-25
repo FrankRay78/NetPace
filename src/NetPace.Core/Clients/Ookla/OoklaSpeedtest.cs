@@ -137,11 +137,7 @@ public sealed class OoklaSpeedtest : ISpeedTestService
 
             // nb. Bump up the fastest latency/timeout by a slight margin
             // Apply a minimum threshold to prevent timeouts from becoming too aggressive
-            const int MinimumTimeoutMilliseconds = 100;
-            var adaptiveTimeout = (int)(fastestLatency * 1.5);
-            var httpTimeoutMilliseconds = fastestLatency == settings.LatencyTest.DefaultHttpTimeoutMilliseconds
-                ? fastestLatency
-                : Math.Max(adaptiveTimeout, MinimumTimeoutMilliseconds);
+            var httpTimeoutMilliseconds = fastestLatency == settings.LatencyTest.DefaultHttpTimeoutMilliseconds ? fastestLatency : (int)(fastestLatency * 1.5);
 
             try
             {
