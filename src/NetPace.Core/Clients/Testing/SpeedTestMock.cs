@@ -24,10 +24,10 @@ public sealed class SpeedTestMock : ISpeedTestService
     public Func<string, Action<SpeedTestProgress>, CancellationToken, Task<ServerLatencyResult>>? GetServerLatencyByServerUrlAsyncFunc { get; set; }
 
     /// <summary>
-    /// Gets or sets the delegate that provides behavior for <see cref="GetFastestServerByLatencyAsync"/>.
+    /// Gets or sets the delegate that provides behavior for <c>GetFastestServerByLatencyAsync</c> overloads.
     /// If null, the method will throw <see cref="NotImplementedException"/> when called.
     /// </summary>
-    public Func<IServer[], CancellationToken, Task<ServerLatencyResult>>? GetFastestServerByLatencyAsyncFunc { get; set; }
+    public Func<IServer[], Action<SpeedTestProgress>, CancellationToken, Task<ServerLatencyResult>>? GetFastestServerByLatencyAsyncFunc { get; set; }
 
     /// <summary>
     /// Gets or sets the delegate that provides behavior for all <c>GetDownloadSpeedAsync</c> overloads.
@@ -85,7 +85,15 @@ public sealed class SpeedTestMock : ISpeedTestService
     public Task<ServerLatencyResult> GetFastestServerByLatencyAsync(IServer[] servers, CancellationToken cancellationToken = default)
     {
         if (GetFastestServerByLatencyAsyncFunc != null)
-            return GetFastestServerByLatencyAsyncFunc(servers, cancellationToken);
+            return GetFastestServerByLatencyAsyncFunc(servers, _ => { }, cancellationToken);
+        throw new NotImplementedException(nameof(GetFastestServerByLatencyAsync));
+    }
+
+    /// <inheritdoc/>
+    public Task<ServerLatencyResult> GetFastestServerByLatencyAsync(IServer[] servers, Action<SpeedTestProgress> UpdateProgress, CancellationToken cancellationToken = default)
+    {
+        if (GetFastestServerByLatencyAsyncFunc != null)
+            return GetFastestServerByLatencyAsyncFunc(servers, UpdateProgress, cancellationToken);
         throw new NotImplementedException(nameof(GetFastestServerByLatencyAsync));
     }
 

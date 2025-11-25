@@ -60,6 +60,15 @@ public interface ISpeedTestService
     public Task<ServerLatencyResult> GetFastestServerByLatencyAsync(IServer[] servers, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Determines the fastest server based on latency from a given list of servers.
+    /// </summary>
+    /// <param name="servers">An array of servers to test for latency.</param>
+    /// <param name="UpdateProgress">An action that receives the server selection progress percentage (0 to 100).</param>
+    /// <param name="cancellationToken">The token to allow the operation to be cancelled.</param>
+    /// <returns>The server with the lowest latency and its latency in milliseconds.</returns>
+    public Task<ServerLatencyResult> GetFastestServerByLatencyAsync(IServer[] servers, Action<SpeedTestProgress> UpdateProgress, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Measures the download speed of the specified server.
     /// </summary>
     /// <param name="server">The server to measure download speed from.</param>

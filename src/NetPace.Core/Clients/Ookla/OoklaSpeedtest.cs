@@ -115,6 +115,12 @@ public sealed class OoklaSpeedtest : ISpeedTestService
     /// <inheritdoc/>
     public async Task<ServerLatencyResult> GetFastestServerByLatencyAsync(IServer[] servers, CancellationToken cancellationToken = default)
     {
+        return await GetFastestServerByLatencyAsync(servers, _ => { }, cancellationToken);
+    }
+
+    /// <inheritdoc/>
+    public async Task<ServerLatencyResult> GetFastestServerByLatencyAsync(IServer[] servers, Action<SpeedTestProgress> UpdateProgress, CancellationToken cancellationToken = default)
+    {
         ArgumentNullException.ThrowIfNull(servers);
         if (servers.Length == 0)
         {
@@ -123,6 +129,7 @@ public sealed class OoklaSpeedtest : ISpeedTestService
 
         var fastestLatency = settings.LatencyTest.DefaultHttpTimeoutMilliseconds;
         ServerLatencyResult? fastestServer = null;
+        var serversProcessed = 0;
 
         foreach (var server in servers)
         {
@@ -148,6 +155,11 @@ public sealed class OoklaSpeedtest : ISpeedTestService
                 // A exception was thrown when pinging the server
                 // Ignore and continue with the next server
             }
+
+            // Report progress after each server is tested
+            serversProcessed++;
+            var percentageComplete = serversProcessed * 100 / servers.Length;
+            UpdateProgress(new SpeedTestProgress { PercentageComplete = percentageComplete });
         }
 
         if (fastestServer == null)
