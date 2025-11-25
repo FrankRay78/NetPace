@@ -136,7 +136,12 @@ public sealed class OoklaSpeedtest : ISpeedTestService
             cancellationToken.ThrowIfCancellationRequested();
 
             // nb. Bump up the fastest latency/timeout by a slight margin
-            var httpTimeoutMilliseconds = fastestLatency == settings.LatencyTest.DefaultHttpTimeoutMilliseconds ? fastestLatency : (int)(fastestLatency * 1.5);
+            // Apply a minimum threshold to prevent timeouts from becoming too aggressive
+            const int MinimumTimeoutMilliseconds = 100;
+            var adaptiveTimeout = (int)(fastestLatency * 1.5);
+            var httpTimeoutMilliseconds = fastestLatency == settings.LatencyTest.DefaultHttpTimeoutMilliseconds
+                ? fastestLatency
+                : Math.Max(adaptiveTimeout, MinimumTimeoutMilliseconds);
 
             try
             {
@@ -150,8 +155,14 @@ public sealed class OoklaSpeedtest : ISpeedTestService
                     fastestServer = latencyResult;
                 }
             }
-            catch
+            catch (Exception e)
             {
+                if (e is OperationCanceledException)
+                {
+                    // Propagate user cancelled exceptions
+                    throw;
+                }
+
                 // A exception was thrown when pinging the server
                 // Ignore and continue with the next server
             }
