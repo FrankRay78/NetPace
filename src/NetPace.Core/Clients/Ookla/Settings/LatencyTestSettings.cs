@@ -9,10 +9,10 @@ public sealed record LatencyTestSettings
     /// The timeout duration in milliseconds for each individual HTTP request when measuring latency.
     /// </summary>
     /// <remarks>
-    /// The default value is 100,000 milliseconds (100 seconds), which matches the default timeout of <see cref="HttpClient"/>.
-    /// See: https://learn.microsoft.com/en-us/dotnet/api/system.net.http.httpclient.timeout
+    /// The default value is 5,000 milliseconds (5 seconds), which provides a reasonable timeout
+    /// for latency tests while preventing excessive waits for unresponsive servers.
     /// </remarks>
-    public int DefaultHttpTimeoutMilliseconds { get; init; } = 100000;
+    public int DefaultHttpTimeoutMilliseconds { get; init; } = 5000;
 
     /// <summary>
     /// The number of HTTP requests to send when measuring latency to a server.
