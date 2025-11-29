@@ -12,15 +12,14 @@ public sealed partial class NetPaceConsoleTests
     /// </summary>
     public sealed class Integration
     {
-        
-        [Fact (Skip = "for now")]
+        [Fact]
         public async Task Should_Run_NetPace_Test_Command_As_Process()
         {
             // Given
             var exePath = GetNetPaceExecutablePath();
 
             // When
-            var output = await RunNetPaceProcessAsync(exePath, "--test", "--no-upload", "--no-download");
+            var output = await RunNetPaceProcessAsync(exePath, "--test");
 
             // Then
             await Verify(output);
@@ -75,6 +74,7 @@ public sealed partial class NetPaceConsoleTests
 
             // Force Spectre.Console to render as if it's an interactive terminal
             // This ensures we capture the actual output including blank lines and formatting
+            startInfo.EnvironmentVariables["NETPACE_FORCE_INTERACTIVE"] = "true";
             startInfo.EnvironmentVariables["DOTNET_SYSTEM_CONSOLE_ALLOW_ANSI_COLOR_REDIRECTION"] = "1";
             startInfo.EnvironmentVariables["TERM"] = "xterm-256color";
 
