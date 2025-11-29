@@ -251,38 +251,7 @@ public sealed partial class OoklaSpeedtestTests
     #region --- GetServerLatencyAsync with Progress ---
 
     [Fact]
-    public async Task GetServerLatencyAsync_WithProgress_ShouldReportProgress_ForEachIteration()
-    {
-        // Given
-        using var mockHttp = new MockHttpMessageHandler();
-        mockHttp.When("http://testserver.com/latency.txt")
-                .Respond("text/plain", "test=test");
-
-        var httpClient = mockHttp.ToHttpClient();
-        var settings = new OoklaSpeedtestSettings
-        {
-            LatencyTest = new()
-            {
-                LatencyTestIterations = 4
-            }
-        };
-
-        var speedtest = new OoklaSpeedtest(settings, httpClient);
-        var server = new Server { Url = "http://testserver.com/", Sponsor = "Sponsor", Location = "Location" };
-        var progressReports = new List<int>();
-
-        // When
-        var result = await speedtest.GetServerLatencyAsync(server, progress => progressReports.Add(progress.PercentageComplete));
-
-        // Then
-        result.ShouldNotBeNull();
-        result.Server.ShouldBe(server);
-        result.Latency.ShouldBeGreaterThanOrEqualTo(0);
-        progressReports.ShouldBe(new[] { 25, 50, 75, 100 });
-    }
-
-    [Fact]
-    public async Task GetServerLatencyAsync_ByUrl_WithProgress_ShouldReportProgress_ForEachIteration()
+    public async Task GetServerLatencyAsync_WithProgress_ShouldReportPingTimesAndPercentage_ForThreePings()
     {
         // Given
         using var mockHttp = new MockHttpMessageHandler();
@@ -302,33 +271,48 @@ public sealed partial class OoklaSpeedtestTests
         {
             LatencyTest = new()
             {
-                LatencyTestIterations = 4
+                LatencyTestIterations = 3
             }
         };
 
         var speedtest = new OoklaSpeedtest(settings, httpClient);
+        var server = new Server { Url = "http://testserver.com/", Sponsor = "Sponsor", Location = "Location" };
         var progressReports = new List<LatencyTestProgress>();
 
         // When
-        var result = await speedtest.GetServerLatencyAsync("http://testserver.com/", progress => progressReports.Add(progress));
+        var result = await speedtest.GetServerLatencyAsync(server, progress => progressReports.Add(progress));
 
         // Then
         result.ShouldNotBeNull();
-        result.Server.Url.ShouldBe("http://testserver.com/");
-        result.Latency.ShouldBe((int)progressReports[3].Pings.Average());
+        result.Server.ShouldBe(server);
+        result.Latency.ShouldBe((int)progressReports[2].Pings.Average());
 
-        progressReports.Count.ShouldBe(4);
-        progressReports.Select(p => p.PercentageComplete).ShouldBe(new[] { 25, 50, 75, 100 });
-        progressReports[3].Pings.Count.ShouldBe(4);
-        progressReports[3].Pings.ShouldAllBe(p => p >= 50);
+        // Should receive 3 progress reports
+        progressReports.Count.ShouldBe(3);
+
+        // First progress report: 1 ping, 33% complete
+        progressReports[0].Pings.Count.ShouldBe(1);
+        progressReports[0].Pings.ShouldAllBe(p => p >= 50);
+        progressReports[0].PercentageComplete.ShouldBe(33);
+
+        // Second progress report: 2 pings, 66% complete
+        progressReports[1].Pings.Count.ShouldBe(2);
+        progressReports[1].Pings.ShouldAllBe(p => p >= 50);
+        progressReports[1].PercentageComplete.ShouldBe(66);
+
+        // Third progress report: 3 pings, 100% complete
+        progressReports[2].Pings.Count.ShouldBe(3);
+        progressReports[2].Pings.ShouldAllBe(p => p >= 50);
+        progressReports[2].PercentageComplete.ShouldBe(100);
     }
 
     [Theory]
     [InlineData(1, new[] { 100 })]
     [InlineData(2, new[] { 50, 100 })]
+    [InlineData(4, new[] { 25, 50, 75, 100 })]
     [InlineData(5, new[] { 20, 40, 60, 80, 100 })]
     [InlineData(10, new[] { 10, 20, 30, 40, 50, 60, 70, 80, 90, 100 })]
-    public async Task GetServerLatencyAsync_WithProgress_CustomIterations_ShouldReportCorrectPercentages(int iterations, int[] expectedProgress)
+    public async Task GetServerLatencyAsync_WithProgress_ShouldReportCorrectPercentages(int iterations, int[] expectedPercentage)
     {
         // Given
         using var mockHttp = new MockHttpMessageHandler();
@@ -346,14 +330,14 @@ public sealed partial class OoklaSpeedtestTests
 
         var speedtest = new OoklaSpeedtest(settings, httpClient);
         var server = new Server { Url = "http://testserver.com/", Sponsor = "Sponsor", Location = "Location" };
-        var progressReports = new List<int>();
+        var percentageComplete = new List<int>();
 
         // When
-        var result = await speedtest.GetServerLatencyAsync(server, progress => progressReports.Add(progress.PercentageComplete));
+        var result = await speedtest.GetServerLatencyAsync(server, progress => percentageComplete.Add(progress.PercentageComplete));
 
         // Then
         result.ShouldNotBeNull();
-        progressReports.ShouldBe(expectedProgress);
+        percentageComplete.ShouldBe(expectedPercentage);
     }
 
     [Fact]
@@ -464,7 +448,7 @@ public sealed partial class OoklaSpeedtestTests
             LatencyTest = new()
             {
                 LatencyTestIterations = 3,
-                LatencyTestIntervalMilliseconds = 0 // No delay
+                LatencyTestIntervalMilliseconds = 0 // No serverDelay
             }
         };
 
