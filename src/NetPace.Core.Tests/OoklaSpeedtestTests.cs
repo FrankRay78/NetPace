@@ -10,7 +10,7 @@ namespace NetPace.Core.Tests;
 
 public sealed partial class OoklaSpeedtestTests
 {
-    // --- GetServersAsync ---
+    #region --- GetServersAsync ---
 
     [Fact]
     public async Task GetServersAsync_ShouldReturnSingleServer_WhenResponseHasOneServer()
@@ -151,7 +151,9 @@ public sealed partial class OoklaSpeedtestTests
         cts.IsCancellationRequested.ShouldBeTrue();
     }
 
-    // --- GetServerLatencyAsync ---
+    #endregion
+
+    #region --- GetServerLatencyAsync ---
 
     [Fact]
     public async Task GetServerLatencyAsync_ShouldReturnLatency_WhenResponseIsValid()
@@ -244,7 +246,9 @@ public sealed partial class OoklaSpeedtestTests
         cts.IsCancellationRequested.ShouldBeTrue();
     }
 
-    // --- GetServerLatencyAsync with Progress ---
+    #endregion
+
+    #region --- GetServerLatencyAsync with Progress ---
 
     [Fact]
     public async Task GetServerLatencyAsync_WithProgress_ShouldReportProgress_ForEachIteration()
@@ -463,7 +467,9 @@ public sealed partial class OoklaSpeedtestTests
         delayStub.DelayCallCount.ShouldBe(0);
     }
 
-    // --- GetFastestServerByLatencyAsync ---
+    #endregion
+
+    #region --- GetFastestServerByLatencyAsync ---
 
     [Fact]
     public async Task GetFastestServerByLatencyAsync_ShouldReturnServerWithLowestLatency()
@@ -579,7 +585,9 @@ public sealed partial class OoklaSpeedtestTests
         cts.IsCancellationRequested.ShouldBeTrue();
     }
 
-    // --- GetFastestServerByLatencyAsync with Progress ---
+    #endregion
+
+    #region --- GetFastestServerByLatencyAsync with Progress ---
 
     [Fact]
     public async Task GetFastestServerByLatencyAsync_WithProgress_ShouldReportProgress_ForThreeServers()
@@ -760,7 +768,9 @@ public sealed partial class OoklaSpeedtestTests
         progressReports.ShouldBeEmpty();
     }
 
-    // --- GetDownloadSpeedAsync ---
+    #endregion
+
+    #region --- GetDownloadSpeedAsync ---
 
     [Fact]
     public async Task GetDownloadSpeedAsync_ShouldReturnSpeedTestResult_WhenSuccessful()
@@ -1143,7 +1153,9 @@ public sealed partial class OoklaSpeedtestTests
         exception.Message.ShouldBe("Progress callback failed");
     }
 
-    // --- GetUploadSpeedAsync ---
+    #endregion
+
+    #region --- GetUploadSpeedAsync ---
 
     [Fact]
     public async Task GetUploadSpeedAsync_ShouldReturnSpeedTestResult_WhenSuccessful()
@@ -1473,4 +1485,6 @@ public sealed partial class OoklaSpeedtestTests
         exception.ShouldBeOfType<InvalidOperationException>();
         exception.Message.ShouldBe("Progress callback failed");
     }
+
+    #endregion
 }
