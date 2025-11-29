@@ -52,18 +52,18 @@ public sealed class SpeedTestStub : ISpeedTestService
     }
 
     /// <inheritdoc/>
-    public Task<ServerLatencyResult> GetServerLatencyAsync(IServer server, Action<SpeedTestProgress> UpdateProgress, CancellationToken cancellationToken = default)
+    public Task<ServerLatencyResult> GetServerLatencyAsync(IServer server, Action<LatencyTestProgress> UpdateProgress, CancellationToken cancellationToken = default)
     {
         if (UpdateProgress is not null)
         {
             Task.Delay(delayMilliseconds).Wait();
-            UpdateProgress(new SpeedTestProgress { PercentageComplete = 25 });
+            UpdateProgress(new LatencyTestProgress { PercentageComplete = 25 });
             Task.Delay(delayMilliseconds).Wait();
-            UpdateProgress(new SpeedTestProgress { PercentageComplete = 50 });
+            UpdateProgress(new LatencyTestProgress { PercentageComplete = 50 });
             Task.Delay(delayMilliseconds).Wait();
-            UpdateProgress(new SpeedTestProgress { PercentageComplete = 75 });
+            UpdateProgress(new LatencyTestProgress { PercentageComplete = 75 });
             Task.Delay(delayMilliseconds).Wait();
-            UpdateProgress(new SpeedTestProgress { PercentageComplete = 100 });
+            UpdateProgress(new LatencyTestProgress { PercentageComplete = 100 });
         }
 
         var serverID = GetServerID(server.Url);
@@ -84,7 +84,7 @@ public sealed class SpeedTestStub : ISpeedTestService
     }
 
     /// <inheritdoc/>
-    public Task<ServerLatencyResult> GetServerLatencyAsync(string serverUrl, Action<SpeedTestProgress> UpdateProgress, CancellationToken cancellationToken = default)
+    public Task<ServerLatencyResult> GetServerLatencyAsync(string serverUrl, Action<LatencyTestProgress> UpdateProgress, CancellationToken cancellationToken = default)
     {
         var server = new Server() { Location = "(Unknown)", Sponsor = "(Unknown)", Url = serverUrl };
 

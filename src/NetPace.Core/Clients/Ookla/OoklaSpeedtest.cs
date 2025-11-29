@@ -49,7 +49,7 @@ public sealed class OoklaSpeedtest : ISpeedTestService
     }
 
     /// <inheritdoc/>
-    public async Task<ServerLatencyResult> GetServerLatencyAsync(IServer server, Action<SpeedTestProgress> UpdateProgress, CancellationToken cancellationToken = default)
+    public async Task<ServerLatencyResult> GetServerLatencyAsync(IServer server, Action<LatencyTestProgress> UpdateProgress, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(server);
         ArgumentException.ThrowIfNullOrWhiteSpace(server.Url);
@@ -64,7 +64,7 @@ public sealed class OoklaSpeedtest : ISpeedTestService
     }
 
     /// <inheritdoc/>
-    public async Task<ServerLatencyResult> GetServerLatencyAsync(string serverUrl, Action<SpeedTestProgress> UpdateProgress, CancellationToken cancellationToken = default)
+    public async Task<ServerLatencyResult> GetServerLatencyAsync(string serverUrl, Action<LatencyTestProgress> UpdateProgress, CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(serverUrl);
 
@@ -72,11 +72,33 @@ public sealed class OoklaSpeedtest : ISpeedTestService
         return await GetServerLatencyAsync(server, httpClient, delayProvider, settings.LatencyTest.DefaultHttpTimeoutMilliseconds, settings.LatencyTest.LatencyTestIterations, settings.LatencyTest.LatencyTestIntervalMilliseconds, UpdateProgress, cancellationToken);
     }
 
-    private static async Task<ServerLatencyResult> GetServerLatencyAsync(IServer server, HttpClient httpClient, IDelayProvider delayProvider, int httpTimeoutMilliseconds, int maxIterations, int intervalMilliseconds, Action<SpeedTestProgress> UpdateProgress, CancellationToken cancellationToken)
+    private static async Task<ServerLatencyResult> GetServerLatencyAsync(IServer server, HttpClient httpClient, IDelayProvider delayProvider, int httpTimeoutMilliseconds, int maxIterations, int intervalMilliseconds, Action<LatencyTestProgress> UpdateProgress, CancellationToken cancellationToken)
     {
-        var latencyUrl = GetBaseUrl(server.Url) + "latency.txt";
-        var stopwatch = new Stopwatch();
+        // Validate inputs to avoid invalid operation during the latency test
+        ArgumentNullException.ThrowIfNull(server);
+        ArgumentException.ThrowIfNullOrWhiteSpace(server.Url);
+        ArgumentNullException.ThrowIfNull(httpClient);
+        ArgumentNullException.ThrowIfNull(delayProvider);
+        ArgumentNullException.ThrowIfNull(UpdateProgress);
 
+        if (maxIterations < 1)
+        {
+            throw new ArgumentOutOfRangeException(nameof(maxIterations), "maxIterations must be at least 1.");
+        }
+
+        if (httpTimeoutMilliseconds <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(httpTimeoutMilliseconds), "httpTimeoutMilliseconds must be greater than 0.");
+        }
+
+        if (intervalMilliseconds < 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(intervalMilliseconds), "intervalMilliseconds cannot be negative.");
+        }
+
+        var latencyUrl = GetBaseUrl(server.Url) + "latency.txt";
+        var pings = new List<int>();
+        var stopwatch = new Stopwatch();
 
         for (var iteration = 0; iteration < maxIterations; iteration++)
         {
@@ -88,7 +110,7 @@ public sealed class OoklaSpeedtest : ISpeedTestService
                 await delayProvider.DelayAsync(intervalMilliseconds, cancellationToken).ConfigureAwait(false);
             }
 
-            stopwatch.Start();
+            stopwatch.Restart();
             var testString = await httpClient.GetStringWithTimeoutAsync(latencyUrl, TimeSpan.FromMilliseconds(httpTimeoutMilliseconds), cancellationToken).ConfigureAwait(false);
             stopwatch.Stop();
 
@@ -97,16 +119,23 @@ public sealed class OoklaSpeedtest : ISpeedTestService
                 throw new InvalidOperationException("Server returned incorrect test string for latency.txt");
             }
 
+            // Record this ping time
+            pings.Add((int)stopwatch.ElapsedMilliseconds);
+
             // Report progress after each iteration
             var percentageComplete = (iteration + 1) * 100 / maxIterations;
-            UpdateProgress(new SpeedTestProgress { PercentageComplete = percentageComplete });
+            UpdateProgress(new LatencyTestProgress
+            {
+                PercentageComplete = percentageComplete,
+                Pings = new List<int>(pings)
+            });
         }
 
         // Calculate the average server latency.
         var latencyResult = new ServerLatencyResult
         {
             Server = server,
-            Latency = (int)stopwatch.ElapsedMilliseconds / maxIterations
+            Latency = (int)pings.Average()
         };
 
         return latencyResult;
@@ -145,6 +174,8 @@ public sealed class OoklaSpeedtest : ISpeedTestService
 
             try
             {
+                Console.WriteLine($"Testing server {server.Sponsor} ({server.Location}) with timeout {httpTimeoutMilliseconds} ms");
+
                 var latencyResult = await GetServerLatencyAsync(server, httpClient, delayProvider, httpTimeoutMilliseconds, settings.LatencyTest.LatencyTestIterations, settings.LatencyTest.LatencyTestIntervalMilliseconds, _ => { }, cancellationToken);
 
                 if (latencyResult.Latency < fastestLatency)

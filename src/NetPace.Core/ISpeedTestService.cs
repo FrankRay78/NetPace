@@ -32,7 +32,7 @@ public interface ISpeedTestService
     /// <param name="UpdateProgress">An action that receives the latency test progress percentage (0 to 100).</param>
     /// <param name="cancellationToken">The token to allow the operation to be cancelled.</param>
     /// <returns>The server and its latency in milliseconds.</returns>
-    public Task<ServerLatencyResult> GetServerLatencyAsync(IServer server, Action<SpeedTestProgress> UpdateProgress, CancellationToken cancellationToken = default);
+    public Task<ServerLatencyResult> GetServerLatencyAsync(IServer server, Action<LatencyTestProgress> UpdateProgress, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Measures the network latency (ping) to the specified server.
@@ -49,7 +49,7 @@ public interface ISpeedTestService
     /// <param name="UpdateProgress">An action that receives the latency test progress percentage (0 to 100).</param>
     /// <param name="cancellationToken">The token to allow the operation to be cancelled.</param>
     /// <returns>The server and its latency in milliseconds.</returns>
-    public Task<ServerLatencyResult> GetServerLatencyAsync(string serverUrl, Action<SpeedTestProgress> UpdateProgress, CancellationToken cancellationToken = default);
+    public Task<ServerLatencyResult> GetServerLatencyAsync(string serverUrl, Action<LatencyTestProgress> UpdateProgress, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Determines the fastest server based on latency from a given list of servers.
