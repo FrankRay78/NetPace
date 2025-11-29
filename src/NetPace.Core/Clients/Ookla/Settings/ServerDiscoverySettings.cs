@@ -12,4 +12,20 @@ public sealed record ServerDiscoverySettings
     /// Defaults to the official Speedtest.net server list endpoint.
     /// </remarks>
     public string ServersUrl { get; init; } = "http://www.speedtest.net/speedtest-servers.php";
+
+    /// <summary>
+    /// The timeout duration in milliseconds when probing a server.
+    /// </summary>
+    public int ServerTimeoutMilliseconds { get; init; } = 2000;
+
+    /// <summary>
+    /// The number of ping requests to send when probing a server.
+    /// </summary>
+    public int PingIterations { get; init; } = 4;
+
+    /// <summary>
+    /// The delay in milliseconds between each server probe.
+    /// Set to 0 to disable delay between iterations.
+    /// </summary>
+    public int PingIntervalMilliseconds { get; init; } = 0;
 }

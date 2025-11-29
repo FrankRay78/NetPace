@@ -8,7 +8,7 @@ public sealed record LatencyTestSettings
     /// <summary>
     /// The timeout duration in milliseconds for each individual HTTP request when measuring latency.
     /// </summary>
-    public int HttpTimeoutMilliseconds { get; init; } = 5000;
+    public int HttpTimeoutMilliseconds { get; init; } = 2000;
 
     /// <summary>
     /// The number of HTTP requests to send when measuring latency to a server.
