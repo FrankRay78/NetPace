@@ -286,8 +286,16 @@ public sealed partial class OoklaSpeedtestTests
     {
         // Given
         using var mockHttp = new MockHttpMessageHandler();
-        mockHttp.When("http://testserver.com/latency.txt")
-                .Respond("text/plain", "test=test");
+        mockHttp
+            .When("http://testserver.com/latency.txt")
+            .Respond(async _ =>
+            {
+                await Task.Delay(50);
+                return new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = new StringContent("test=test")
+                };
+            });
 
         var httpClient = mockHttp.ToHttpClient();
         var settings = new OoklaSpeedtestSettings
@@ -299,16 +307,20 @@ public sealed partial class OoklaSpeedtestTests
         };
 
         var speedtest = new OoklaSpeedtest(settings, httpClient);
-        var progressReports = new List<int>();
+        var progressReports = new List<LatencyTestProgress>();
 
         // When
-        var result = await speedtest.GetServerLatencyAsync("http://testserver.com/", progress => progressReports.Add(progress.PercentageComplete));
+        var result = await speedtest.GetServerLatencyAsync("http://testserver.com/", progress => progressReports.Add(progress));
 
         // Then
         result.ShouldNotBeNull();
         result.Server.Url.ShouldBe("http://testserver.com/");
-        result.Latency.ShouldBeGreaterThanOrEqualTo(0);
-        progressReports.ShouldBe(new[] { 25, 50, 75, 100 });
+        result.Latency.ShouldBe((int)progressReports[3].Pings.Average());
+
+        progressReports.Count.ShouldBe(4);
+        progressReports.Select(p => p.PercentageComplete).ShouldBe(new[] { 25, 50, 75, 100 });
+        progressReports[3].Pings.Count.ShouldBe(4);
+        progressReports[3].Pings.ShouldAllBe(p => p >= 50);
     }
 
     [Theory]
