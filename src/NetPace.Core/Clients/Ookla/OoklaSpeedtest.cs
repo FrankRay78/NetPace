@@ -54,7 +54,7 @@ public sealed class OoklaSpeedtest : ISpeedTestService
         ArgumentNullException.ThrowIfNull(server);
         ArgumentException.ThrowIfNullOrWhiteSpace(server.Url);
 
-        return await GetServerLatencyAsync(server, httpClient, delayProvider, settings.LatencyTest.DefaultHttpTimeoutMilliseconds, settings.LatencyTest.LatencyTestIterations, settings.LatencyTest.LatencyTestIntervalMilliseconds, UpdateProgress, cancellationToken);
+        return await internalGetServerLatencyAsync(server, httpClient, delayProvider, settings.LatencyTest.HttpTimeoutMilliseconds, settings.LatencyTest.LatencyTestIterations, settings.LatencyTest.LatencyTestIntervalMilliseconds, UpdateProgress, cancellationToken);
     }
 
     /// <inheritdoc/>
@@ -69,10 +69,10 @@ public sealed class OoklaSpeedtest : ISpeedTestService
         ArgumentException.ThrowIfNullOrWhiteSpace(serverUrl);
 
         var server = new Server() { Sponsor = "(Unknown)", Url = serverUrl };
-        return await GetServerLatencyAsync(server, httpClient, delayProvider, settings.LatencyTest.DefaultHttpTimeoutMilliseconds, settings.LatencyTest.LatencyTestIterations, settings.LatencyTest.LatencyTestIntervalMilliseconds, UpdateProgress, cancellationToken);
+        return await internalGetServerLatencyAsync(server, httpClient, delayProvider, settings.LatencyTest.HttpTimeoutMilliseconds, settings.LatencyTest.LatencyTestIterations, settings.LatencyTest.LatencyTestIntervalMilliseconds, UpdateProgress, cancellationToken);
     }
 
-    private static async Task<ServerLatencyResult> GetServerLatencyAsync(IServer server, HttpClient httpClient, IDelayProvider delayProvider, int httpTimeoutMilliseconds, int maxIterations, int intervalMilliseconds, Action<LatencyTestProgress> UpdateProgress, CancellationToken cancellationToken)
+    private static async Task<ServerLatencyResult> internalGetServerLatencyAsync(IServer server, HttpClient httpClient, IDelayProvider delayProvider, int httpTimeoutMilliseconds, int maxIterations, int intervalMilliseconds, Action<LatencyTestProgress> UpdateProgress, CancellationToken cancellationToken)
     {
         // Validate inputs to avoid invalid operation during the latency test
         ArgumentNullException.ThrowIfNull(server);
@@ -156,7 +156,7 @@ public sealed class OoklaSpeedtest : ISpeedTestService
             throw new ArgumentException("At least one server must be provided.", nameof(servers));
         }
 
-        var fastestLatency = settings.LatencyTest.DefaultHttpTimeoutMilliseconds;
+        var fastestLatency = settings.LatencyTest.HttpTimeoutMilliseconds;
         ServerLatencyResult? fastestServer = null;
         var serversProcessed = 0;
 
@@ -168,7 +168,7 @@ public sealed class OoklaSpeedtest : ISpeedTestService
             // Apply a minimum threshold to prevent timeouts from becoming too aggressive
             const int minimumTimeoutMilliseconds = 100;
             var adaptiveTimeout = (int)(fastestLatency * 1.5);
-            var httpTimeoutMilliseconds = fastestLatency == settings.LatencyTest.DefaultHttpTimeoutMilliseconds
+            var httpTimeoutMilliseconds = fastestLatency == settings.LatencyTest.HttpTimeoutMilliseconds
                 ? fastestLatency
                 : Math.Max(adaptiveTimeout, minimumTimeoutMilliseconds);
 
@@ -176,7 +176,7 @@ public sealed class OoklaSpeedtest : ISpeedTestService
             {
                 Console.WriteLine($"Testing server {server.Sponsor} ({server.Location}) with timeout {httpTimeoutMilliseconds} ms");
 
-                var latencyResult = await GetServerLatencyAsync(server, httpClient, delayProvider, httpTimeoutMilliseconds, settings.LatencyTest.LatencyTestIterations, settings.LatencyTest.LatencyTestIntervalMilliseconds, _ => { }, cancellationToken);
+                var latencyResult = await internalGetServerLatencyAsync(server, httpClient, delayProvider, httpTimeoutMilliseconds, settings.LatencyTest.LatencyTestIterations, settings.LatencyTest.LatencyTestIntervalMilliseconds, _ => { }, cancellationToken);
 
                 if (latencyResult.Latency < fastestLatency)
                 {

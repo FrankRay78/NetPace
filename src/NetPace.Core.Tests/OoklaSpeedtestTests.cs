@@ -494,7 +494,7 @@ public sealed partial class OoklaSpeedtestTests
         {
             LatencyTest = new()
             {
-                DefaultHttpTimeoutMilliseconds = 500,
+                HttpTimeoutMilliseconds = 500,
                 LatencyTestIterations = 1
             }
         };
@@ -529,7 +529,7 @@ public sealed partial class OoklaSpeedtestTests
         {
             LatencyTest = new()
             {
-                DefaultHttpTimeoutMilliseconds = 100,
+                HttpTimeoutMilliseconds = 100,
                 LatencyTestIterations = 1
             }
         };
@@ -600,7 +600,7 @@ public sealed partial class OoklaSpeedtestTests
             {
                 LatencyTestIterations = 1,
                 LatencyTestIntervalMilliseconds = 0,
-                DefaultHttpTimeoutMilliseconds = 500
+                HttpTimeoutMilliseconds = 500
             }
         };
 
@@ -636,7 +636,7 @@ public sealed partial class OoklaSpeedtestTests
             {
                 LatencyTestIterations = 1,
                 LatencyTestIntervalMilliseconds = 0,
-                DefaultHttpTimeoutMilliseconds = 500
+                HttpTimeoutMilliseconds = 500
             }
         };
 
@@ -675,7 +675,7 @@ public sealed partial class OoklaSpeedtestTests
             {
                 LatencyTestIterations = 1,
                 LatencyTestIntervalMilliseconds = 0,
-                DefaultHttpTimeoutMilliseconds = 100
+                HttpTimeoutMilliseconds = 100
             }
         };
 
@@ -710,7 +710,7 @@ public sealed partial class OoklaSpeedtestTests
             {
                 LatencyTestIterations = 1,
                 LatencyTestIntervalMilliseconds = 0,
-                DefaultHttpTimeoutMilliseconds = 500
+                HttpTimeoutMilliseconds = 500
             }
         };
 
