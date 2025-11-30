@@ -43,40 +43,62 @@ public sealed class OoklaSpeedtest : ISpeedTestService
     }
 
     /// <inheritdoc/>
-    public async Task<ServerLatencyResult> GetServerLatencyAsync(IServer server, CancellationToken cancellationToken = default)
-    {
-        return await GetServerLatencyAsync(server, (_) => { }, cancellationToken);
-    }
-
-    /// <inheritdoc/>
-    public async Task<ServerLatencyResult> GetServerLatencyAsync(IServer server, Action<SpeedTestProgress> UpdateProgress, CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(server);
-        ArgumentException.ThrowIfNullOrWhiteSpace(server.Url);
-
-        return await GetServerLatencyAsync(server, httpClient, delayProvider, settings.LatencyTest.DefaultHttpTimeoutMilliseconds, settings.LatencyTest.LatencyTestIterations, settings.LatencyTest.LatencyTestIntervalMilliseconds, UpdateProgress, cancellationToken);
-    }
-
-    /// <inheritdoc/>
     public async Task<ServerLatencyResult> GetServerLatencyAsync(string serverUrl, CancellationToken cancellationToken = default)
     {
         return await GetServerLatencyAsync(serverUrl, (_) => { }, cancellationToken);
     }
 
     /// <inheritdoc/>
-    public async Task<ServerLatencyResult> GetServerLatencyAsync(string serverUrl, Action<SpeedTestProgress> UpdateProgress, CancellationToken cancellationToken = default)
+    public async Task<ServerLatencyResult> GetServerLatencyAsync(string serverUrl, Action<LatencyTestProgress> UpdateProgress, CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(serverUrl);
 
         var server = new Server() { Sponsor = "(Unknown)", Url = serverUrl };
-        return await GetServerLatencyAsync(server, httpClient, delayProvider, settings.LatencyTest.DefaultHttpTimeoutMilliseconds, settings.LatencyTest.LatencyTestIterations, settings.LatencyTest.LatencyTestIntervalMilliseconds, UpdateProgress, cancellationToken);
+        return await internalGetServerLatencyAsync(server, httpClient, delayProvider, settings.LatencyTest.HttpTimeoutMilliseconds, settings.LatencyTest.LatencyTestIterations, settings.LatencyTest.LatencyTestIntervalMilliseconds, UpdateProgress, cancellationToken);
     }
 
-    private static async Task<ServerLatencyResult> GetServerLatencyAsync(IServer server, HttpClient httpClient, IDelayProvider delayProvider, int httpTimeoutMilliseconds, int maxIterations, int intervalMilliseconds, Action<SpeedTestProgress> UpdateProgress, CancellationToken cancellationToken)
+    /// <inheritdoc/>
+    public async Task<ServerLatencyResult> GetServerLatencyAsync(IServer server, CancellationToken cancellationToken = default)
     {
-        var latencyUrl = GetBaseUrl(server.Url) + "latency.txt";
-        var stopwatch = new Stopwatch();
+        return await GetServerLatencyAsync(server, (_) => { }, cancellationToken);
+    }
 
+    /// <inheritdoc/>
+    public async Task<ServerLatencyResult> GetServerLatencyAsync(IServer server, Action<LatencyTestProgress> UpdateProgress, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(server);
+        ArgumentException.ThrowIfNullOrWhiteSpace(server.Url);
+
+        return await internalGetServerLatencyAsync(server, httpClient, delayProvider, settings.LatencyTest.HttpTimeoutMilliseconds, settings.LatencyTest.LatencyTestIterations, settings.LatencyTest.LatencyTestIntervalMilliseconds, UpdateProgress, cancellationToken);
+    }
+
+    private static async Task<ServerLatencyResult> internalGetServerLatencyAsync(IServer server, HttpClient httpClient, IDelayProvider delayProvider, int httpTimeoutMilliseconds, int maxIterations, int intervalMilliseconds, Action<LatencyTestProgress> UpdateProgress, CancellationToken cancellationToken)
+    {
+        // Validate inputs to avoid invalid operation during the latency test
+        ArgumentNullException.ThrowIfNull(server);
+        ArgumentException.ThrowIfNullOrWhiteSpace(server.Url);
+        ArgumentNullException.ThrowIfNull(httpClient);
+        ArgumentNullException.ThrowIfNull(delayProvider);
+        ArgumentNullException.ThrowIfNull(UpdateProgress);
+
+        if (maxIterations < 1)
+        {
+            throw new ArgumentOutOfRangeException(nameof(maxIterations), "maxIterations must be at least 1.");
+        }
+
+        if (httpTimeoutMilliseconds <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(httpTimeoutMilliseconds), "httpTimeoutMilliseconds must be greater than 0.");
+        }
+
+        if (intervalMilliseconds < 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(intervalMilliseconds), "intervalMilliseconds cannot be negative.");
+        }
+
+        var latencyUrl = GetBaseUrl(server.Url) + "latency.txt";
+        var pings = new List<int>();
+        var stopwatch = new Stopwatch();
 
         for (var iteration = 0; iteration < maxIterations; iteration++)
         {
@@ -88,7 +110,7 @@ public sealed class OoklaSpeedtest : ISpeedTestService
                 await delayProvider.DelayAsync(intervalMilliseconds, cancellationToken).ConfigureAwait(false);
             }
 
-            stopwatch.Start();
+            stopwatch.Restart();
             var testString = await httpClient.GetStringWithTimeoutAsync(latencyUrl, TimeSpan.FromMilliseconds(httpTimeoutMilliseconds), cancellationToken).ConfigureAwait(false);
             stopwatch.Stop();
 
@@ -97,16 +119,23 @@ public sealed class OoklaSpeedtest : ISpeedTestService
                 throw new InvalidOperationException("Server returned incorrect test string for latency.txt");
             }
 
+            // Record this ping time
+            pings.Add((int)stopwatch.ElapsedMilliseconds);
+
             // Report progress after each iteration
             var percentageComplete = (iteration + 1) * 100 / maxIterations;
-            UpdateProgress(new SpeedTestProgress { PercentageComplete = percentageComplete });
+            UpdateProgress(new LatencyTestProgress
+            {
+                PercentageComplete = percentageComplete,
+                Pings = new List<int>(pings)
+            });
         }
 
         // Calculate the average server latency.
         var latencyResult = new ServerLatencyResult
         {
             Server = server,
-            Latency = (int)stopwatch.ElapsedMilliseconds / maxIterations
+            Latency = (int)pings.Average()
         };
 
         return latencyResult;
@@ -127,37 +156,43 @@ public sealed class OoklaSpeedtest : ISpeedTestService
             throw new ArgumentException("At least one server must be provided.", nameof(servers));
         }
 
-        var fastestLatency = settings.LatencyTest.DefaultHttpTimeoutMilliseconds;
-        ServerLatencyResult? fastestServer = null;
-        var serversProcessed = 0;
+        var serverProbes = new List<ServerLatencyResult>();
 
-        foreach (var server in servers)
+        for (int i = 0; i < servers.Length; i++)
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            // nb. Bump up the fastest latency/timeout by a slight margin
+            // Bump up the fastest server probe by a slight margin
             // Apply a minimum threshold to prevent timeouts from becoming too aggressive
+            var serverTimeoutMilliseconds = serverProbes.Count == 0
+                ? settings.ServerDiscovery.ServerTimeoutMilliseconds
+                : (int)(serverProbes.Min(p => p.Latency) * 1.5);
+
             const int minimumTimeoutMilliseconds = 100;
-            var adaptiveTimeout = (int)(fastestLatency * 1.5);
-            var httpTimeoutMilliseconds = fastestLatency == settings.LatencyTest.DefaultHttpTimeoutMilliseconds
-                ? fastestLatency
-                : Math.Max(adaptiveTimeout, minimumTimeoutMilliseconds);
+            var effectiveTimeout = Math.Max(minimumTimeoutMilliseconds, serverTimeoutMilliseconds);
+
+            // Automatically cancel the server probe ar the effective timeout
+            using var cts = new CancellationTokenSource();
+            cts.CancelAfter(effectiveTimeout);
+            using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cts.Token, cancellationToken);
 
             try
             {
-                var latencyResult = await GetServerLatencyAsync(server, httpClient, delayProvider, httpTimeoutMilliseconds, settings.LatencyTest.LatencyTestIterations, settings.LatencyTest.LatencyTestIntervalMilliseconds, _ => { }, cancellationToken);
+                var latencyResult = await internalGetServerLatencyAsync(
+                    servers[i],
+                    httpClient,
+                    delayProvider,
+                    settings.LatencyTest.HttpTimeoutMilliseconds,
+                    settings.ServerDiscovery.ServerProbeIterations,
+                    settings.ServerDiscovery.ServerProbeIntervalMilliseconds,
+                    _ => { },
+                    linkedCts.Token);
 
-                if (latencyResult.Latency < fastestLatency)
-                {
-                    // Reduce the http timeout to the new fastest latency
-                    // (ie. do not wait for servers that are slower)
-                    fastestLatency = latencyResult.Latency;
-                    fastestServer = latencyResult;
-                }
+                serverProbes.Add(latencyResult);
             }
             catch (Exception e)
             {
-                if (e is OperationCanceledException)
+                if (e is OperationCanceledException && cancellationToken.IsCancellationRequested)
                 {
                     // Propagate user cancelled exceptions
                     throw;
@@ -168,17 +203,19 @@ public sealed class OoklaSpeedtest : ISpeedTestService
             }
 
             // Report progress after each server is tested
-            serversProcessed++;
-            var percentageComplete = serversProcessed * 100 / servers.Length;
+            var percentageComplete = (i + 1) * 100 / servers.Length;
             UpdateProgress(new SpeedTestProgress { PercentageComplete = percentageComplete });
         }
 
-        if (fastestServer == null)
+        // Honour any user cancellations during/after the last probe.
+        cancellationToken.ThrowIfCancellationRequested();
+
+        if (serverProbes.Count == 0)
         {
             throw new Exception("No servers available");
         }
 
-        return fastestServer;
+        return serverProbes.OrderBy(s => s.Latency).First();
     }
 
     /// <inheritdoc/>

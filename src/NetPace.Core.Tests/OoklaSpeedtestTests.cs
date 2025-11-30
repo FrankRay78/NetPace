@@ -10,7 +10,7 @@ namespace NetPace.Core.Tests;
 
 public sealed partial class OoklaSpeedtestTests
 {
-    // --- GetServersAsync ---
+    #region --- GetServersAsync ---
 
     [Fact]
     public async Task GetServersAsync_ShouldReturnSingleServer_WhenResponseHasOneServer()
@@ -151,7 +151,9 @@ public sealed partial class OoklaSpeedtestTests
         cts.IsCancellationRequested.ShouldBeTrue();
     }
 
-    // --- GetServerLatencyAsync ---
+    #endregion
+
+    #region --- GetServerLatencyAsync ---
 
     [Fact]
     public async Task GetServerLatencyAsync_ShouldReturnLatency_WhenResponseIsValid()
@@ -162,7 +164,16 @@ public sealed partial class OoklaSpeedtestTests
                 .Respond("text/plain", "test=test");
 
         var httpClient = mockHttp.ToHttpClient();
-        var speedtest = new OoklaSpeedtest(httpClientOverride: httpClient);
+        var settings = new OoklaSpeedtestSettings
+        {
+            LatencyTest = new()
+            {
+                LatencyTestIterations = 1,
+                LatencyTestIntervalMilliseconds = 0
+            }
+        };
+
+        var speedtest = new OoklaSpeedtest(settings, httpClient);
         var server = new Server { Url = "http://testserver.com/", Sponsor = "Sponsor", Location = "Location" };
 
         // When
@@ -244,75 +255,74 @@ public sealed partial class OoklaSpeedtestTests
         cts.IsCancellationRequested.ShouldBeTrue();
     }
 
-    // --- GetServerLatencyAsync with Progress ---
+    #endregion
+
+    #region --- GetServerLatencyAsync with Progress ---
 
     [Fact]
-    public async Task GetServerLatencyAsync_WithProgress_ShouldReportProgress_ForEachIteration()
+    public async Task GetServerLatencyAsync_WithProgress_ShouldReportPingTimesAndPercentage_ForThreePings()
     {
         // Given
         using var mockHttp = new MockHttpMessageHandler();
-        mockHttp.When("http://testserver.com/latency.txt")
-                .Respond("text/plain", "test=test");
+        mockHttp
+            .When("http://testserver.com/latency.txt")
+            .Respond(async _ =>
+            {
+                await Task.Delay(50);
+                return new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = new StringContent("test=test")
+                };
+            });
 
         var httpClient = mockHttp.ToHttpClient();
         var settings = new OoklaSpeedtestSettings
         {
             LatencyTest = new()
             {
-                LatencyTestIterations = 4
+                LatencyTestIterations = 3,
+                LatencyTestIntervalMilliseconds = 0,
             }
         };
 
         var speedtest = new OoklaSpeedtest(settings, httpClient);
         var server = new Server { Url = "http://testserver.com/", Sponsor = "Sponsor", Location = "Location" };
-        var progressReports = new List<int>();
+        var progressReports = new List<LatencyTestProgress>();
 
         // When
-        var result = await speedtest.GetServerLatencyAsync(server, progress => progressReports.Add(progress.PercentageComplete));
+        var result = await speedtest.GetServerLatencyAsync(server, progress => progressReports.Add(progress));
 
         // Then
         result.ShouldNotBeNull();
         result.Server.ShouldBe(server);
-        result.Latency.ShouldBeGreaterThanOrEqualTo(0);
-        progressReports.ShouldBe(new[] { 25, 50, 75, 100 });
-    }
+        result.Latency.ShouldBe((int)progressReports[2].Pings.Average());
 
-    [Fact]
-    public async Task GetServerLatencyAsync_ByUrl_WithProgress_ShouldReportProgress_ForEachIteration()
-    {
-        // Given
-        using var mockHttp = new MockHttpMessageHandler();
-        mockHttp.When("http://testserver.com/latency.txt")
-                .Respond("text/plain", "test=test");
+        // Should receive 3 progress reports
+        progressReports.Count.ShouldBe(3);
 
-        var httpClient = mockHttp.ToHttpClient();
-        var settings = new OoklaSpeedtestSettings
-        {
-            LatencyTest = new()
-            {
-                LatencyTestIterations = 4
-            }
-        };
+        // First progress report: 1 ping, 33% complete
+        progressReports[0].Pings.Count.ShouldBe(1);
+        progressReports[0].Pings.ShouldAllBe(p => p >= 50);
+        progressReports[0].PercentageComplete.ShouldBe(33);
 
-        var speedtest = new OoklaSpeedtest(settings, httpClient);
-        var progressReports = new List<int>();
+        // Second progress report: 2 pings, 66% complete
+        progressReports[1].Pings.Count.ShouldBe(2);
+        progressReports[1].Pings.ShouldAllBe(p => p >= 50);
+        progressReports[1].PercentageComplete.ShouldBe(66);
 
-        // When
-        var result = await speedtest.GetServerLatencyAsync("http://testserver.com/", progress => progressReports.Add(progress.PercentageComplete));
-
-        // Then
-        result.ShouldNotBeNull();
-        result.Server.Url.ShouldBe("http://testserver.com/");
-        result.Latency.ShouldBeGreaterThanOrEqualTo(0);
-        progressReports.ShouldBe(new[] { 25, 50, 75, 100 });
+        // Third progress report: 3 pings, 100% complete
+        progressReports[2].Pings.Count.ShouldBe(3);
+        progressReports[2].Pings.ShouldAllBe(p => p >= 50);
+        progressReports[2].PercentageComplete.ShouldBe(100);
     }
 
     [Theory]
     [InlineData(1, new[] { 100 })]
     [InlineData(2, new[] { 50, 100 })]
+    [InlineData(4, new[] { 25, 50, 75, 100 })]
     [InlineData(5, new[] { 20, 40, 60, 80, 100 })]
     [InlineData(10, new[] { 10, 20, 30, 40, 50, 60, 70, 80, 90, 100 })]
-    public async Task GetServerLatencyAsync_WithProgress_CustomIterations_ShouldReportCorrectPercentages(int iterations, int[] expectedProgress)
+    public async Task GetServerLatencyAsync_WithProgress_ShouldReportCorrectPercentages(int iterations, int[] expectedPercentage)
     {
         // Given
         using var mockHttp = new MockHttpMessageHandler();
@@ -324,20 +334,21 @@ public sealed partial class OoklaSpeedtestTests
         {
             LatencyTest = new()
             {
-                LatencyTestIterations = iterations
+                LatencyTestIterations = iterations,
+                LatencyTestIntervalMilliseconds = 0,
             }
         };
 
         var speedtest = new OoklaSpeedtest(settings, httpClient);
         var server = new Server { Url = "http://testserver.com/", Sponsor = "Sponsor", Location = "Location" };
-        var progressReports = new List<int>();
+        var percentageComplete = new List<int>();
 
         // When
-        var result = await speedtest.GetServerLatencyAsync(server, progress => progressReports.Add(progress.PercentageComplete));
+        var result = await speedtest.GetServerLatencyAsync(server, progress => percentageComplete.Add(progress.PercentageComplete));
 
         // Then
         result.ShouldNotBeNull();
-        progressReports.ShouldBe(expectedProgress);
+        percentageComplete.ShouldBe(expectedPercentage);
     }
 
     [Fact]
@@ -379,15 +390,7 @@ public sealed partial class OoklaSpeedtestTests
                 .Respond("text/plain", "test=test");
 
         var httpClient = mockHttp.ToHttpClient();
-        var settings = new OoklaSpeedtestSettings
-        {
-            LatencyTest = new()
-            {
-                LatencyTestIterations = 4
-            }
-        };
-
-        var speedtest = new OoklaSpeedtest(settings, httpClient);
+        var speedtest = new OoklaSpeedtest(httpClientOverride: httpClient);
         var server = new Server { Url = "http://testserver.com/", Sponsor = "Sponsor", Location = "Location" };
 
         // When
@@ -448,7 +451,7 @@ public sealed partial class OoklaSpeedtestTests
             LatencyTest = new()
             {
                 LatencyTestIterations = 3,
-                LatencyTestIntervalMilliseconds = 0 // No delay
+                LatencyTestIntervalMilliseconds = 0 // No serverDelay
             }
         };
 
@@ -463,7 +466,9 @@ public sealed partial class OoklaSpeedtestTests
         delayStub.DelayCallCount.ShouldBe(0);
     }
 
-    // --- GetFastestServerByLatencyAsync ---
+    #endregion
+
+    #region --- GetFastestServerByLatencyAsync ---
 
     [Fact]
     public async Task GetFastestServerByLatencyAsync_ShouldReturnServerWithLowestLatency()
@@ -490,10 +495,10 @@ public sealed partial class OoklaSpeedtestTests
         var httpClient = mockHttp.ToHttpClient();
         var settings = new OoklaSpeedtestSettings
         {
-            LatencyTest = new()
+            ServerDiscovery = new()
             {
-                DefaultHttpTimeoutMilliseconds = 500,
-                LatencyTestIterations = 1
+                ServerProbeIterations = 1,
+                ServerProbeIntervalMilliseconds = 0
             }
         };
 
@@ -525,10 +530,10 @@ public sealed partial class OoklaSpeedtestTests
         var httpClient = mockHttp.ToHttpClient();
         var settings = new OoklaSpeedtestSettings
         {
-            LatencyTest = new()
+            ServerDiscovery = new()
             {
-                DefaultHttpTimeoutMilliseconds = 100,
-                LatencyTestIterations = 1
+                ServerProbeIterations = 1,
+                ServerProbeIntervalMilliseconds = 0
             }
         };
 
@@ -579,7 +584,9 @@ public sealed partial class OoklaSpeedtestTests
         cts.IsCancellationRequested.ShouldBeTrue();
     }
 
-    // --- GetFastestServerByLatencyAsync with Progress ---
+    #endregion
+
+    #region --- GetFastestServerByLatencyAsync with Progress ---
 
     [Fact]
     public async Task GetFastestServerByLatencyAsync_WithProgress_ShouldReportProgress_ForThreeServers()
@@ -592,11 +599,10 @@ public sealed partial class OoklaSpeedtestTests
         var httpClient = mockHttp.ToHttpClient();
         var settings = new OoklaSpeedtestSettings
         {
-            LatencyTest = new()
+            ServerDiscovery = new()
             {
-                LatencyTestIterations = 1,
-                LatencyTestIntervalMilliseconds = 0,
-                DefaultHttpTimeoutMilliseconds = 500
+                ServerProbeIterations = 1,
+                ServerProbeIntervalMilliseconds = 0
             }
         };
 
@@ -628,11 +634,10 @@ public sealed partial class OoklaSpeedtestTests
         var httpClient = mockHttp.ToHttpClient();
         var settings = new OoklaSpeedtestSettings
         {
-            LatencyTest = new()
+            ServerDiscovery = new()
             {
-                LatencyTestIterations = 1,
-                LatencyTestIntervalMilliseconds = 0,
-                DefaultHttpTimeoutMilliseconds = 500
+                ServerProbeIterations = 1,
+                ServerProbeIntervalMilliseconds = 0
             }
         };
 
@@ -667,13 +672,12 @@ public sealed partial class OoklaSpeedtestTests
         var httpClient = mockHttp.ToHttpClient();
         var settings = new OoklaSpeedtestSettings
         {
-            LatencyTest = new()
+            ServerDiscovery = new()
             {
-                LatencyTestIterations = 1,
-                LatencyTestIntervalMilliseconds = 0,
-                DefaultHttpTimeoutMilliseconds = 100
+                ServerProbeIterations = 1,
+                ServerProbeIntervalMilliseconds = 0
             }
-        };
+        }; ;
 
         var speedtest = new OoklaSpeedtest(settings, httpClient);
         var failServer1 = new Server { Url = "http://fail1.com/", Sponsor = "Fail1", Location = "Location1" };
@@ -702,11 +706,10 @@ public sealed partial class OoklaSpeedtestTests
         var httpClient = mockHttp.ToHttpClient();
         var settings = new OoklaSpeedtestSettings
         {
-            LatencyTest = new()
+            ServerDiscovery = new()
             {
-                LatencyTestIterations = 1,
-                LatencyTestIntervalMilliseconds = 0,
-                DefaultHttpTimeoutMilliseconds = 500
+                ServerProbeIterations = 1,
+                ServerProbeIntervalMilliseconds = 0
             }
         };
 
@@ -760,7 +763,9 @@ public sealed partial class OoklaSpeedtestTests
         progressReports.ShouldBeEmpty();
     }
 
-    // --- GetDownloadSpeedAsync ---
+    #endregion
+
+    #region --- GetDownloadSpeedAsync ---
 
     [Fact]
     public async Task GetDownloadSpeedAsync_ShouldReturnSpeedTestResult_WhenSuccessful()
@@ -1143,7 +1148,9 @@ public sealed partial class OoklaSpeedtestTests
         exception.Message.ShouldBe("Progress callback failed");
     }
 
-    // --- GetUploadSpeedAsync ---
+    #endregion
+
+    #region --- GetUploadSpeedAsync ---
 
     [Fact]
     public async Task GetUploadSpeedAsync_ShouldReturnSpeedTestResult_WhenSuccessful()
@@ -1473,4 +1480,6 @@ public sealed partial class OoklaSpeedtestTests
         exception.ShouldBeOfType<InvalidOperationException>();
         exception.Message.ShouldBe("Progress callback failed");
     }
+
+    #endregion
 }

@@ -15,13 +15,13 @@ public sealed class SpeedTestMock : ISpeedTestService
     /// Gets or sets the delegate that provides behavior for <see cref="GetServerLatencyAsync(IServer, CancellationToken)"/>.
     /// If null, the method will throw <see cref="NotImplementedException"/> when called.
     /// </summary>
-    public Func<IServer, Action<SpeedTestProgress>, CancellationToken, Task<ServerLatencyResult>>? GetServerLatencyAsyncFunc { get; set; }
+    public Func<IServer, Action<LatencyTestProgress>, CancellationToken, Task<ServerLatencyResult>>? GetServerLatencyAsyncFunc { get; set; }
 
     /// <summary>
     /// Gets or sets the delegate that provides behavior for <see cref="GetServerLatencyAsync(string, CancellationToken)"/>.
     /// If null, the method will throw <see cref="NotImplementedException"/> when called.
     /// </summary>
-    public Func<string, Action<SpeedTestProgress>, CancellationToken, Task<ServerLatencyResult>>? GetServerLatencyByServerUrlAsyncFunc { get; set; }
+    public Func<string, Action<LatencyTestProgress>, CancellationToken, Task<ServerLatencyResult>>? GetServerLatencyByServerUrlAsyncFunc { get; set; }
 
     /// <summary>
     /// Gets or sets the delegate that provides behavior for <c>GetFastestServerByLatencyAsync</c> overloads.
@@ -58,7 +58,7 @@ public sealed class SpeedTestMock : ISpeedTestService
     }
 
     /// <inheritdoc/>
-    public Task<ServerLatencyResult> GetServerLatencyAsync(IServer server, Action<SpeedTestProgress> UpdateProgress, CancellationToken cancellationToken = default)
+    public Task<ServerLatencyResult> GetServerLatencyAsync(IServer server, Action<LatencyTestProgress> UpdateProgress, CancellationToken cancellationToken = default)
     {
         if (GetServerLatencyAsyncFunc != null)
             return GetServerLatencyAsyncFunc(server, UpdateProgress, cancellationToken);
@@ -74,7 +74,7 @@ public sealed class SpeedTestMock : ISpeedTestService
     }
 
     /// <inheritdoc/>
-    public Task<ServerLatencyResult> GetServerLatencyAsync(string serverUrl, Action<SpeedTestProgress> UpdateProgress, CancellationToken cancellationToken = default)
+    public Task<ServerLatencyResult> GetServerLatencyAsync(string serverUrl, Action<LatencyTestProgress> UpdateProgress, CancellationToken cancellationToken = default)
     {
         if (GetServerLatencyByServerUrlAsyncFunc != null)
             return GetServerLatencyByServerUrlAsyncFunc(serverUrl, UpdateProgress, cancellationToken);
