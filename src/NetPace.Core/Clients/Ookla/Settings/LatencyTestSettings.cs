@@ -14,7 +14,7 @@ public sealed record LatencyTestSettings
     /// The number of HTTP requests to send when measuring latency to a server.
     /// The average latency across these iterations will be used.
     /// </summary>
-    public int LatencyTestIterations { get; init; } = 10;
+    public int LatencyTestIterations { get; init; } = 20;
 
     /// <summary>
     /// The delay in milliseconds between each latency test iteration.
