@@ -178,8 +178,6 @@ public sealed class OoklaSpeedtest : ISpeedTestService
 
             try
             {
-                //Console.WriteLine($"Testing server {server.Sponsor} ({server.Location}) with timeout {httpTimeoutMilliseconds} ms");
-
                 var latencyResult = await internalGetServerLatencyAsync(
                     servers[i],
                     httpClient,
