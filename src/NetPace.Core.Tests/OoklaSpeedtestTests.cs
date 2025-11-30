@@ -164,7 +164,16 @@ public sealed partial class OoklaSpeedtestTests
                 .Respond("text/plain", "test=test");
 
         var httpClient = mockHttp.ToHttpClient();
-        var speedtest = new OoklaSpeedtest(httpClientOverride: httpClient);
+        var settings = new OoklaSpeedtestSettings
+        {
+            LatencyTest = new()
+            {
+                LatencyTestIterations = 1,
+                LatencyTestIntervalMilliseconds = 0
+            }
+        };
+
+        var speedtest = new OoklaSpeedtest(settings, httpClient);
         var server = new Server { Url = "http://testserver.com/", Sponsor = "Sponsor", Location = "Location" };
 
         // When
@@ -271,7 +280,8 @@ public sealed partial class OoklaSpeedtestTests
         {
             LatencyTest = new()
             {
-                LatencyTestIterations = 3
+                LatencyTestIterations = 3,
+                LatencyTestIntervalMilliseconds = 0,
             }
         };
 
@@ -324,7 +334,8 @@ public sealed partial class OoklaSpeedtestTests
         {
             LatencyTest = new()
             {
-                LatencyTestIterations = iterations
+                LatencyTestIterations = iterations,
+                LatencyTestIntervalMilliseconds = 0,
             }
         };
 
@@ -379,15 +390,7 @@ public sealed partial class OoklaSpeedtestTests
                 .Respond("text/plain", "test=test");
 
         var httpClient = mockHttp.ToHttpClient();
-        var settings = new OoklaSpeedtestSettings
-        {
-            LatencyTest = new()
-            {
-                LatencyTestIterations = 4
-            }
-        };
-
-        var speedtest = new OoklaSpeedtest(settings, httpClient);
+        var speedtest = new OoklaSpeedtest(httpClientOverride: httpClient);
         var server = new Server { Url = "http://testserver.com/", Sponsor = "Sponsor", Location = "Location" };
 
         // When
