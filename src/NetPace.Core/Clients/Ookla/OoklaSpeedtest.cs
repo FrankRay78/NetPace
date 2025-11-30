@@ -183,8 +183,8 @@ public sealed class OoklaSpeedtest : ISpeedTestService
                     httpClient,
                     delayProvider,
                     settings.LatencyTest.HttpTimeoutMilliseconds,
-                    settings.ServerDiscovery.PingIterations,
-                    settings.ServerDiscovery.PingIntervalMilliseconds,
+                    settings.ServerDiscovery.ServerProbeIterations,
+                    settings.ServerDiscovery.ServerProbeIntervalMilliseconds,
                     _ => { },
                     linkedCts.Token);
 

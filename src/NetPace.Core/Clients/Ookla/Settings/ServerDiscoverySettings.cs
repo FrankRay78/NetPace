@@ -19,13 +19,13 @@ public sealed record ServerDiscoverySettings
     public int ServerTimeoutMilliseconds { get; init; } = 2000;
 
     /// <summary>
-    /// The number of ping requests to send when probing a server.
+    /// The number of times to probe a server.
     /// </summary>
-    public int PingIterations { get; init; } = 4;
+    public int ServerProbeIterations { get; init; } = 4;
 
     /// <summary>
     /// The delay in milliseconds between each server probe.
     /// Set to 0 to disable delay between iterations.
     /// </summary>
-    public int PingIntervalMilliseconds { get; init; } = 0;
+    public int ServerProbeIntervalMilliseconds { get; init; } = 0;
 }
