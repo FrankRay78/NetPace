@@ -10,7 +10,7 @@ internal static class ServerSelector
     /// <summary>
     /// Gets the server to use for speed testing based on settings.
     /// </summary>
-    public static async Task<ServerLatencyResult> GetServerAsync(ISpeedTestService speedTestClient, SpeedTestCommandSettings settings, CancellationToken cancellationToken = default)
+    public static async Task<LatencyTestResult> GetServerAsync(ISpeedTestService speedTestClient, SpeedTestCommandSettings settings, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(speedTestClient);
         ArgumentNullException.ThrowIfNull(settings);
@@ -26,13 +26,13 @@ internal static class ServerSelector
                     throw new Exception("No servers available");
                 }
                 var firstServer = servers.First();
-                return new ServerLatencyResult { Server = firstServer, Latency = 0 };
+                return new LatencyTestResult { Server = firstServer, Latency = 0 };
             }
             else
             {
                 // Create a minimal speed test server without testing latency.
                 var server = new Server() { Sponsor = "(Unknown)", Url = settings.ServerUrl };
-                return new ServerLatencyResult { Server = server, Latency = 0 };
+                return new LatencyTestResult { Server = server, Latency = 0 };
             }
         }
         else

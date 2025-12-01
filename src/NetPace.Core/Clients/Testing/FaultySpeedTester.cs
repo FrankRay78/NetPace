@@ -50,21 +50,21 @@ public class FaultySpeedTester : ISpeedTestService
     }
 
     /// <inheritdoc/>
-    public Task<ServerLatencyResult> GetServerLatencyAsync(IServer server, CancellationToken cancellationToken = default)
+    public Task<LatencyTestResult> GetServerLatencyAsync(IServer server, CancellationToken cancellationToken = default)
     {
         AssertNotFaulted(server, nameof(GetServerLatencyAsync));
         return inner.GetServerLatencyAsync(server, cancellationToken);
     }
 
     /// <inheritdoc/>
-    public Task<ServerLatencyResult> GetServerLatencyAsync(IServer server, Action<LatencyTestProgress> UpdateProgress, CancellationToken cancellationToken = default)
+    public Task<LatencyTestResult> GetServerLatencyAsync(IServer server, Action<LatencyTestProgress> UpdateProgress, CancellationToken cancellationToken = default)
     {
         AssertNotFaulted(server, nameof(GetServerLatencyAsync));
         return inner.GetServerLatencyAsync(server, UpdateProgress, cancellationToken);
     }
 
     /// <inheritdoc/>
-    public async Task<ServerLatencyResult> GetServerLatencyAsync(string serverUrl, CancellationToken cancellationToken = default)
+    public async Task<LatencyTestResult> GetServerLatencyAsync(string serverUrl, CancellationToken cancellationToken = default)
     {
         var result = await inner.GetServerLatencyAsync(serverUrl, cancellationToken);
         AssertNotFaulted(result.Server, nameof(GetServerLatencyAsync));
@@ -72,7 +72,7 @@ public class FaultySpeedTester : ISpeedTestService
     }
 
     /// <inheritdoc/>
-    public async Task<ServerLatencyResult> GetServerLatencyAsync(string serverUrl, Action<LatencyTestProgress> UpdateProgress, CancellationToken cancellationToken = default)
+    public async Task<LatencyTestResult> GetServerLatencyAsync(string serverUrl, Action<LatencyTestProgress> UpdateProgress, CancellationToken cancellationToken = default)
     {
         var result = await inner.GetServerLatencyAsync(serverUrl, UpdateProgress, cancellationToken);
         AssertNotFaulted(result.Server, nameof(GetServerLatencyAsync));
@@ -80,13 +80,13 @@ public class FaultySpeedTester : ISpeedTestService
     }
 
     /// <inheritdoc/>
-    public Task<ServerLatencyResult> GetFastestServerByLatencyAsync(IServer[] servers, CancellationToken cancellationToken = default)
+    public Task<LatencyTestResult> GetFastestServerByLatencyAsync(IServer[] servers, CancellationToken cancellationToken = default)
     {
         return inner.GetFastestServerByLatencyAsync(servers, cancellationToken);
     }
 
     /// <inheritdoc/>
-    public Task<ServerLatencyResult> GetFastestServerByLatencyAsync(IServer[] servers, Action<SpeedTestProgress> UpdateProgress, CancellationToken cancellationToken = default)
+    public Task<LatencyTestResult> GetFastestServerByLatencyAsync(IServer[] servers, Action<SpeedTestProgress> UpdateProgress, CancellationToken cancellationToken = default)
     {
         return inner.GetFastestServerByLatencyAsync(servers, UpdateProgress, cancellationToken);
     }

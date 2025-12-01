@@ -43,62 +43,40 @@ public sealed class OoklaSpeedtest : ISpeedTestService
     }
 
     /// <inheritdoc/>
-    public async Task<ServerLatencyResult> GetServerLatencyAsync(string serverUrl, CancellationToken cancellationToken = default)
+    public async Task<LatencyTestResult> GetServerLatencyAsync(string serverUrl, CancellationToken cancellationToken = default)
     {
         return await GetServerLatencyAsync(serverUrl, (_) => { }, cancellationToken);
     }
 
     /// <inheritdoc/>
-    public async Task<ServerLatencyResult> GetServerLatencyAsync(string serverUrl, Action<LatencyTestProgress> UpdateProgress, CancellationToken cancellationToken = default)
+    public async Task<LatencyTestResult> GetServerLatencyAsync(string serverUrl, Action<LatencyTestProgress> UpdateProgress, CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(serverUrl);
 
         var server = new Server() { Sponsor = "(Unknown)", Url = serverUrl };
-        return await internalGetServerLatencyAsync(server, httpClient, delayProvider, settings.LatencyTest.HttpTimeoutMilliseconds, settings.LatencyTest.LatencyTestIterations, settings.LatencyTest.LatencyTestIntervalMilliseconds, UpdateProgress, cancellationToken);
+        return await GetServerLatencyAsync(server, UpdateProgress, cancellationToken);
     }
 
     /// <inheritdoc/>
-    public async Task<ServerLatencyResult> GetServerLatencyAsync(IServer server, CancellationToken cancellationToken = default)
+    public async Task<LatencyTestResult> GetServerLatencyAsync(IServer server, CancellationToken cancellationToken = default)
     {
         return await GetServerLatencyAsync(server, (_) => { }, cancellationToken);
     }
 
     /// <inheritdoc/>
-    public async Task<ServerLatencyResult> GetServerLatencyAsync(IServer server, Action<LatencyTestProgress> UpdateProgress, CancellationToken cancellationToken = default)
+    public async Task<LatencyTestResult> GetServerLatencyAsync(IServer server, Action<LatencyTestProgress> UpdateProgress, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(server);
         ArgumentException.ThrowIfNullOrWhiteSpace(server.Url);
-
-        return await internalGetServerLatencyAsync(server, httpClient, delayProvider, settings.LatencyTest.HttpTimeoutMilliseconds, settings.LatencyTest.LatencyTestIterations, settings.LatencyTest.LatencyTestIntervalMilliseconds, UpdateProgress, cancellationToken);
-    }
-
-    private static async Task<ServerLatencyResult> internalGetServerLatencyAsync(IServer server, HttpClient httpClient, IDelayProvider delayProvider, int httpTimeoutMilliseconds, int maxIterations, int intervalMilliseconds, Action<LatencyTestProgress> UpdateProgress, CancellationToken cancellationToken)
-    {
-        // Validate inputs to avoid invalid operation during the latency test
-        ArgumentNullException.ThrowIfNull(server);
-        ArgumentException.ThrowIfNullOrWhiteSpace(server.Url);
-        ArgumentNullException.ThrowIfNull(httpClient);
-        ArgumentNullException.ThrowIfNull(delayProvider);
         ArgumentNullException.ThrowIfNull(UpdateProgress);
-
-        if (maxIterations < 1)
-        {
-            throw new ArgumentOutOfRangeException(nameof(maxIterations), "maxIterations must be at least 1.");
-        }
-
-        if (httpTimeoutMilliseconds <= 0)
-        {
-            throw new ArgumentOutOfRangeException(nameof(httpTimeoutMilliseconds), "httpTimeoutMilliseconds must be greater than 0.");
-        }
-
-        if (intervalMilliseconds < 0)
-        {
-            throw new ArgumentOutOfRangeException(nameof(intervalMilliseconds), "intervalMilliseconds cannot be negative.");
-        }
 
         var latencyUrl = GetBaseUrl(server.Url) + "latency.txt";
         var pings = new List<int>();
         var stopwatch = new Stopwatch();
+
+        var maxIterations = settings.LatencyTest.LatencyTestIterations;
+        var intervalMilliseconds = settings.LatencyTest.LatencyTestIntervalMilliseconds;
+        var httpTimeoutMilliseconds = settings.LatencyTest.HttpTimeoutMilliseconds;
 
         for (var iteration = 0; iteration < maxIterations; iteration++)
         {
@@ -132,7 +110,7 @@ public sealed class OoklaSpeedtest : ISpeedTestService
         }
 
         // Calculate the average server latency.
-        var latencyResult = new ServerLatencyResult
+        var latencyResult = new LatencyTestResult
         {
             Server = server,
             Latency = (int)pings.Average()
@@ -142,13 +120,13 @@ public sealed class OoklaSpeedtest : ISpeedTestService
     }
 
     /// <inheritdoc/>
-    public async Task<ServerLatencyResult> GetFastestServerByLatencyAsync(IServer[] servers, CancellationToken cancellationToken = default)
+    public async Task<LatencyTestResult> GetFastestServerByLatencyAsync(IServer[] servers, CancellationToken cancellationToken = default)
     {
         return await GetFastestServerByLatencyAsync(servers, _ => { }, cancellationToken);
     }
 
     /// <inheritdoc/>
-    public async Task<ServerLatencyResult> GetFastestServerByLatencyAsync(IServer[] servers, Action<SpeedTestProgress> UpdateProgress, CancellationToken cancellationToken = default)
+    public async Task<LatencyTestResult> GetFastestServerByLatencyAsync(IServer[] servers, Action<SpeedTestProgress> UpdateProgress, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(servers);
         if (servers.Length == 0)
@@ -156,7 +134,7 @@ public sealed class OoklaSpeedtest : ISpeedTestService
             throw new ArgumentException("At least one server must be provided.", nameof(servers));
         }
 
-        var serverProbes = new List<ServerLatencyResult>();
+        var serverProbes = new List<LatencyTestResult>();
 
         for (int i = 0; i < servers.Length; i++)
         {
@@ -178,15 +156,7 @@ public sealed class OoklaSpeedtest : ISpeedTestService
 
             try
             {
-                var latencyResult = await internalGetServerLatencyAsync(
-                    servers[i],
-                    httpClient,
-                    delayProvider,
-                    settings.LatencyTest.HttpTimeoutMilliseconds,
-                    settings.ServerDiscovery.ServerProbeIterations,
-                    settings.ServerDiscovery.ServerProbeIntervalMilliseconds,
-                    _ => { },
-                    linkedCts.Token);
+                var latencyResult = await GetServerLatencyAsync(servers[i], _ => { }, linkedCts.Token);
 
                 serverProbes.Add(latencyResult);
             }

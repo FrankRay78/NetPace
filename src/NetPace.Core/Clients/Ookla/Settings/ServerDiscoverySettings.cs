@@ -17,15 +17,4 @@ public sealed record ServerDiscoverySettings
     /// The timeout duration in milliseconds when probing a server.
     /// </summary>
     public int ServerTimeoutMilliseconds { get; init; } = 2000;
-
-    /// <summary>
-    /// The number of times to probe a server.
-    /// </summary>
-    public int ServerProbeIterations { get; init; } = 4;
-
-    /// <summary>
-    /// The delay in milliseconds between each server probe.
-    /// Set to 0 to disable delay between iterations.
-    /// </summary>
-    public int ServerProbeIntervalMilliseconds { get; init; } = 0;
 }
