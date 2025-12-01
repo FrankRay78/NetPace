@@ -28,8 +28,8 @@ public sealed class DefaultConsoleWriter : IConsoleWriter
         var uploadResult = new SpeedTestResult();
 
         // Perform speed test
-        if (!(settings.NoLatency && settings.NoDownload && settings.NoUpload))
-        { 
+        if (!(settings.NoDownload && settings.NoUpload))
+        {
             await console.Progress()
                 .AutoClear(false)
                 .Columns(
@@ -40,13 +40,9 @@ public sealed class DefaultConsoleWriter : IConsoleWriter
                 ])
                 .StartAsync(async progress =>
                 {
-                    ProgressTask? latencyProgress = null; ProgressTask? downloadProgress = null; ProgressTask? uploadProgress = null;
+                    ProgressTask? downloadProgress = null; ProgressTask? uploadProgress = null;
 
                     // Create the graphical progress bars
-                    if (!settings.NoLatency)
-                    {
-                        latencyProgress = progress.AddTask("Latency", autoStart: true, maxValue: 100);
-                    }
                     if (!settings.NoDownload)
                     {
                         downloadProgress = progress.AddTask("Downloading", autoStart: true, maxValue: 100);
@@ -57,14 +53,6 @@ public sealed class DefaultConsoleWriter : IConsoleWriter
                     }
 
                     // Perform the speed tests and show progress
-                    if (!settings.NoLatency)
-                    {
-                        // Update the initial server probe result with a more accurate latency
-                        fastest = await speedTestClient.GetServerLatencyAsync(fastest.Server, (LatencyTestProgress progress) =>
-                        {
-                            latencyProgress!.Value = progress.PercentageComplete;
-                        }, cancellationToken);
-                    }
                     if (!settings.NoDownload)
                     {
                         downloadResult = await speedTestClient.GetDownloadSpeedAsync(fastest.Server, settings.DownloadSizeMb, (SpeedTestProgress progress) =>
@@ -105,6 +93,13 @@ public sealed class DefaultConsoleWriter : IConsoleWriter
             {
                 console.WriteLine("");
             }
+        }
+
+
+        if ((settings.NoDownload && settings.NoUpload) && console.Profile.Capabilities.Interactive)
+        {
+            // Latency only test: Add an extra blank line for formatting.
+            console.WriteLine("");
         }
 
 
