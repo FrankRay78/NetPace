@@ -20,7 +20,7 @@ public sealed partial class NetPaceConsoleTests
             var app = GetCommandAppTester(registrar);
 
             // When
-            var result = await app.RunAsync(quiet);
+            var result = await app.RunAsync([ quiet ]);
 
             // Then
             Assert.Equal(0, result.ExitCode);
@@ -44,7 +44,7 @@ public sealed partial class NetPaceConsoleTests
                 var app = GetCommandAppTester(registrar);
 
                 // When
-                var result = await app.RunAsync(quiet, "--file", testFile);
+                var result = await app.RunAsync([ quiet, "--file", testFile ]);
 
                 // Then
                 Assert.Equal(0, result.ExitCode);
@@ -79,7 +79,7 @@ public sealed partial class NetPaceConsoleTests
             var app = GetCommandAppTester(registrar);
 
             // When
-            var result = await app.RunAsync(quiet, "--csv");
+            var result = await app.RunAsync([ quiet, "--csv" ]);
 
             // Then
             Assert.Equal(0, result.ExitCode);
@@ -99,7 +99,7 @@ public sealed partial class NetPaceConsoleTests
             var app = GetCommandAppTester(registrar);
 
             // When
-            var result = await app.RunAsync(quiet, "--json");
+            var result = await app.RunAsync([ quiet, "--json" ]);
 
             // Then
             Assert.Equal(0, result.ExitCode);
@@ -123,7 +123,7 @@ public sealed partial class NetPaceConsoleTests
             var app = GetCommandAppTester(registrar);
 
             // When
-            var result = await app.RunAsync(quiet, "--verbosity", verbosity);
+            var result = await app.RunAsync([ quiet, "--verbosity", verbosity ]);
 
             // Then
             Assert.Equal(0, result.ExitCode);
@@ -143,7 +143,7 @@ public sealed partial class NetPaceConsoleTests
             var app = GetCommandAppTester(registrar);
 
             // When
-            var result = await app.RunAsync(quiet, "--count", "ABC");
+            var result = await app.RunAsync([ quiet, "--count", "ABC" ]);
 
             // Then
             Assert.NotEqual(0, result.ExitCode);
@@ -177,7 +177,7 @@ public sealed partial class NetPaceConsoleTests
             var app = GetCommandAppTester(registrar);
 
             // When
-            var result = await app.RunAsync(quiet);
+            var result = await app.RunAsync([ quiet ]);
 
             // Then
             Assert.Equal(0, result.ExitCode);

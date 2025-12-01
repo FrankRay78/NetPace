@@ -19,7 +19,7 @@ public sealed partial class NetPaceConsoleTests
             var app = GetCommandAppTester(registrar);
 
             // When
-            var result = await app.RunAsync(jsonSwitch);
+            var result = await app.RunAsync([ jsonSwitch ]);
 
             // Then
             Assert.Equal(0, result.ExitCode);
@@ -39,10 +39,10 @@ public sealed partial class NetPaceConsoleTests
             registrar.Register(typeof(ISpeedTestService), typeof(SpeedTestStub));
             registrar.Register(typeof(IClock), typeof(IncrementingClockStub));
             registrar.RegisterInstance(typeof(IWaiter), waiter);
-            var app = GetCommandAppTester(registrar, cancellationTokenSource.Token);
+            var app = GetCommandAppTester(registrar);
 
             // When
-            var result = await app.RunAsync(jsonSwitch, "--loop");
+            var result = await app.RunAsync([ jsonSwitch, "--loop" ], cancellationTokenSource.Token);
 
             // Then
             Assert.Equal(0, result.ExitCode);
@@ -62,7 +62,7 @@ public sealed partial class NetPaceConsoleTests
             var app = GetCommandAppTester(registrar);
 
             // When
-            var result = await app.RunAsync(jsonSwitch, "--count", $"{count}");
+            var result = await app.RunAsync([ jsonSwitch, "--count", $"{count}" ]);
 
             // Then
             Assert.Equal(0, result.ExitCode);
@@ -84,7 +84,7 @@ public sealed partial class NetPaceConsoleTests
             var app = GetCommandAppTester(registrar);
 
             // When
-            var result = await app.RunAsync(jsonSwitch, "--count", $"{count}", "--delay", $"{delay}");
+            var result = await app.RunAsync([ jsonSwitch, "--count", $"{count}", "--delay", $"{delay}" ]);
 
             // Then
             Assert.Equal(count - 1, waiter.CallCount);
@@ -109,7 +109,7 @@ public sealed partial class NetPaceConsoleTests
             var app = GetCommandAppTester(registrar);
 
             // When
-            var result = await app.RunAsync(jsonSwitch, "--count", "3", "--unit-scale", $"{scale}");
+            var result = await app.RunAsync([ jsonSwitch, "--count", "3", "--unit-scale", $"{scale}" ]);
 
             // Then
             Assert.Equal(0, result.ExitCode);
@@ -129,7 +129,7 @@ public sealed partial class NetPaceConsoleTests
             var app = GetCommandAppTester(registrar);
 
             // When
-            var result = await app.RunAsync(jsonSwitch, "--no-download");
+            var result = await app.RunAsync([ jsonSwitch, "--no-download" ]);
 
             // Then
             Assert.Equal(0, result.ExitCode);
@@ -149,7 +149,7 @@ public sealed partial class NetPaceConsoleTests
             var app = GetCommandAppTester(registrar);
 
             // When
-            var result = await app.RunAsync(jsonSwitch, "--no-upload");
+            var result = await app.RunAsync([ jsonSwitch, "--no-upload" ]);
 
             // Then
             Assert.Equal(0, result.ExitCode);
@@ -169,7 +169,7 @@ public sealed partial class NetPaceConsoleTests
             var app = GetCommandAppTester(registrar);
 
             // When
-            var result = await app.RunAsync(jsonSwitch, "--no-latency");
+            var result = await app.RunAsync([ jsonSwitch, "--no-latency" ]);
 
             // Then
             Assert.Equal(0, result.ExitCode);

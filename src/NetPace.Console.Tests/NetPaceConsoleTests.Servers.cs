@@ -17,7 +17,7 @@ public sealed partial class NetPaceConsoleTests
             var app = GetCommandAppTester(registrar);
 
             // When
-            var result = await app.RunAsync("servers", fastest);
+            var result = await app.RunAsync([ "servers", fastest ]);
 
             // Then
             Assert.Equal(0, result.ExitCode);
@@ -33,7 +33,7 @@ public sealed partial class NetPaceConsoleTests
             var app = GetCommandAppTester(registrar);
 
             // When
-            var result = await app.RunAsync("servers");
+            var result = await app.RunAsync([ "servers" ]);
 
             // Then
             Assert.Equal(0, result.ExitCode);
@@ -49,7 +49,7 @@ public sealed partial class NetPaceConsoleTests
             var app = GetCommandAppTester(registrar);
 
             // When
-            var result = await app.RunAsync("servers", "-l");
+            var result = await app.RunAsync([ "servers", "-l" ]);
 
             // Then
             Assert.Equal(0, result.ExitCode);
@@ -65,7 +65,7 @@ public sealed partial class NetPaceConsoleTests
             var app = GetCommandAppTester(registrar);
 
             // When
-            var result = await app.RunAsync("servers", "-l");
+            var result = await app.RunAsync([ "servers", "-l" ]);
 
             // Then
             Assert.Equal(0, result.ExitCode);

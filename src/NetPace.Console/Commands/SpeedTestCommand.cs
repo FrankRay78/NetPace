@@ -1,10 +1,9 @@
 using NetPace.Core;
 using NetPace.Console.ConsoleWriters;
-using Spectre.Console.Extensions;
 
 namespace NetPace.Console.Commands;
 
-public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService speedTestClient, IClock clock, IWaiter waiter, CancellationToken cancellationToken) : CancelableCommand<SpeedTestCommandSettings>(cancellationToken)
+public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService speedTestClient, IClock clock, IWaiter waiter) : AsyncCommand<SpeedTestCommandSettings>()
 {
     /// <summary>
     /// Writes an error message to the console.

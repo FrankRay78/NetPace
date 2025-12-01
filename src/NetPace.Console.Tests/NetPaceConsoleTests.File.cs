@@ -23,7 +23,7 @@ public sealed partial class NetPaceConsoleTests
                 var app = GetCommandAppTester(registrar);
 
                 // When
-                var result = await app.RunAsync(file, testFile);
+                var result = await app.RunAsync([ file, testFile ]);
 
                 // Then
                 Assert.Equal(0, result.ExitCode);
@@ -58,7 +58,7 @@ public sealed partial class NetPaceConsoleTests
                 var app = GetCommandAppTester(registrar);
 
                 // When
-                var result = await app.RunAsync("--csv", file, testFile);
+                var result = await app.RunAsync([ "--csv", file, testFile ]);
 
                 // Then
                 Assert.Equal(0, result.ExitCode);
@@ -93,7 +93,7 @@ public sealed partial class NetPaceConsoleTests
                 var app = GetCommandAppTester(registrar);
 
                 // When
-                var result = await app.RunAsync("--json", file, testFile);
+                var result = await app.RunAsync([ "--json", file, testFile ]);
 
                 // Then
                 Assert.Equal(0, result.ExitCode);
@@ -126,7 +126,7 @@ public sealed partial class NetPaceConsoleTests
                 var app = GetCommandAppTester(registrar);
 
                 // When
-                var result = await app.RunAsync("--file", testFile, "--file-mode", "Append");
+                var result = await app.RunAsync([ "--file", testFile, "--file-mode", "Append" ]);
 
                 // Then
                 Assert.Equal(0, result.ExitCode);
@@ -159,7 +159,7 @@ public sealed partial class NetPaceConsoleTests
                 var app = GetCommandAppTester(registrar);
 
                 // When
-                var result = await app.RunAsync("--file", testFile, "--file-mode", "Overwrite");
+                var result = await app.RunAsync([ "--file", testFile, "--file-mode", "Overwrite" ]);
 
                 // Then
                 Assert.Equal(0, result.ExitCode);
@@ -195,7 +195,7 @@ public sealed partial class NetPaceConsoleTests
                 var app = GetCommandAppTester(registrar);
 
                 // When
-                var result = await app.RunAsync("--file", testFile, "--file-mode", "Overwrite");
+                var result = await app.RunAsync([ "--file", testFile, "--file-mode", "Overwrite" ]);
 
                 // Then
                 Assert.Equal(0, result.ExitCode);
@@ -230,7 +230,7 @@ public sealed partial class NetPaceConsoleTests
                 var app = GetCommandAppTester(registrar);
 
                 // When
-                var result = await app.RunAsync("--file", testFile);
+                var result = await app.RunAsync([ "--file", testFile ]);
 
                 // Then
                 Assert.Equal(0, result.ExitCode);
@@ -265,7 +265,7 @@ public sealed partial class NetPaceConsoleTests
                 var app = GetCommandAppTester(registrar);
 
                 // When
-                var result = await app.RunAsync("--file", testFile, "--file-mode", "Append");
+                var result = await app.RunAsync([ "--file", testFile, "--file-mode", "Append" ]);
 
                 // Then
                 Assert.Equal(0, result.ExitCode);
@@ -295,7 +295,7 @@ public sealed partial class NetPaceConsoleTests
             var app = GetCommandAppTester(registrar);
 
             // When
-            var result = await app.RunAsync("--file", invalidPath);
+            var result = await app.RunAsync([ "--file", invalidPath ]);
 
             // Then
             Assert.NotEqual(0, result.ExitCode);
@@ -323,7 +323,7 @@ public sealed partial class NetPaceConsoleTests
                 var app = GetCommandAppTester(registrar);
 
                 // When
-                var result = await app.RunAsync(quiet, "--count", "ABC", "--file", testFile);
+                var result = await app.RunAsync([ quiet, "--count", "ABC", "--file", testFile ]);
 
                 // Then
                 Assert.NotEqual(0, result.ExitCode);
@@ -365,7 +365,7 @@ public sealed partial class NetPaceConsoleTests
                 var app = GetCommandAppTester(registrar);
 
                 // When
-                var result = await app.RunAsync(quiet, "--file", testFile);
+                var result = await app.RunAsync([ quiet, "--file", testFile ]);
 
                 // Then
                 Assert.Equal(0, result.ExitCode);
