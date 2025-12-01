@@ -3,7 +3,7 @@ namespace NetPace.Core;
 /// <summary>
 /// The latency test result for a specific server.
 /// </summary>
-public sealed record ServerLatencyResult
+public sealed record LatencyTestResult
 {
     /// <summary>
     /// Gets the server that was tested.

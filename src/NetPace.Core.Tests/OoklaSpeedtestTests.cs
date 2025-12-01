@@ -495,10 +495,10 @@ public sealed partial class OoklaSpeedtestTests
         var httpClient = mockHttp.ToHttpClient();
         var settings = new OoklaSpeedtestSettings
         {
-            ServerDiscovery = new()
+            LatencyTest = new()
             {
-                ServerProbeIterations = 1,
-                ServerProbeIntervalMilliseconds = 0
+                LatencyTestIterations = 1,
+                LatencyTestIntervalMilliseconds = 0
             }
         };
 
@@ -530,10 +530,10 @@ public sealed partial class OoklaSpeedtestTests
         var httpClient = mockHttp.ToHttpClient();
         var settings = new OoklaSpeedtestSettings
         {
-            ServerDiscovery = new()
+            LatencyTest = new()
             {
-                ServerProbeIterations = 1,
-                ServerProbeIntervalMilliseconds = 0
+                LatencyTestIterations = 1,
+                LatencyTestIntervalMilliseconds = 0
             }
         };
 
@@ -599,10 +599,10 @@ public sealed partial class OoklaSpeedtestTests
         var httpClient = mockHttp.ToHttpClient();
         var settings = new OoklaSpeedtestSettings
         {
-            ServerDiscovery = new()
+            LatencyTest = new()
             {
-                ServerProbeIterations = 1,
-                ServerProbeIntervalMilliseconds = 0
+                LatencyTestIterations = 1,
+                LatencyTestIntervalMilliseconds = 0
             }
         };
 
@@ -634,10 +634,10 @@ public sealed partial class OoklaSpeedtestTests
         var httpClient = mockHttp.ToHttpClient();
         var settings = new OoklaSpeedtestSettings
         {
-            ServerDiscovery = new()
+            LatencyTest = new()
             {
-                ServerProbeIterations = 1,
-                ServerProbeIntervalMilliseconds = 0
+                LatencyTestIterations = 1,
+                LatencyTestIntervalMilliseconds = 0
             }
         };
 
@@ -672,10 +672,10 @@ public sealed partial class OoklaSpeedtestTests
         var httpClient = mockHttp.ToHttpClient();
         var settings = new OoklaSpeedtestSettings
         {
-            ServerDiscovery = new()
+            LatencyTest = new()
             {
-                ServerProbeIterations = 1,
-                ServerProbeIntervalMilliseconds = 0
+                LatencyTestIterations = 1,
+                LatencyTestIntervalMilliseconds = 0
             }
         }; ;
 
@@ -706,10 +706,10 @@ public sealed partial class OoklaSpeedtestTests
         var httpClient = mockHttp.ToHttpClient();
         var settings = new OoklaSpeedtestSettings
         {
-            ServerDiscovery = new()
+            LatencyTest = new()
             {
-                ServerProbeIterations = 1,
-                ServerProbeIntervalMilliseconds = 0
+                LatencyTestIterations = 1,
+                LatencyTestIntervalMilliseconds = 0
             }
         };
 

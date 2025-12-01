@@ -46,13 +46,13 @@ public sealed class SpeedTestStub : ISpeedTestService
     }
 
     /// <inheritdoc/>
-    public Task<ServerLatencyResult> GetServerLatencyAsync(IServer server, CancellationToken cancellationToken = default)
+    public Task<LatencyTestResult> GetServerLatencyAsync(IServer server, CancellationToken cancellationToken = default)
     {
         return GetServerLatencyAsync(server, _ => { }, cancellationToken);
     }
 
     /// <inheritdoc/>
-    public Task<ServerLatencyResult> GetServerLatencyAsync(IServer server, Action<LatencyTestProgress> UpdateProgress, CancellationToken cancellationToken = default)
+    public Task<LatencyTestResult> GetServerLatencyAsync(IServer server, Action<LatencyTestProgress> UpdateProgress, CancellationToken cancellationToken = default)
     {
         if (UpdateProgress is not null)
         {
@@ -68,7 +68,7 @@ public sealed class SpeedTestStub : ISpeedTestService
 
         var serverID = GetServerID(server.Url);
 
-        var latencyResult = new ServerLatencyResult
+        var latencyResult = new LatencyTestResult
         {
             Server = server,
             Latency = serverID * 100
@@ -78,13 +78,13 @@ public sealed class SpeedTestStub : ISpeedTestService
     }
 
     /// <inheritdoc/>
-    public Task<ServerLatencyResult> GetServerLatencyAsync(string serverUrl, CancellationToken cancellationToken = default)
+    public Task<LatencyTestResult> GetServerLatencyAsync(string serverUrl, CancellationToken cancellationToken = default)
     {
         return GetServerLatencyAsync(serverUrl, _ => { }, cancellationToken);
     }
 
     /// <inheritdoc/>
-    public Task<ServerLatencyResult> GetServerLatencyAsync(string serverUrl, Action<LatencyTestProgress> UpdateProgress, CancellationToken cancellationToken = default)
+    public Task<LatencyTestResult> GetServerLatencyAsync(string serverUrl, Action<LatencyTestProgress> UpdateProgress, CancellationToken cancellationToken = default)
     {
         var server = new Server() { Location = "(Unknown)", Sponsor = "(Unknown)", Url = serverUrl };
 
@@ -92,13 +92,13 @@ public sealed class SpeedTestStub : ISpeedTestService
     }
 
     /// <inheritdoc/>
-    public Task<ServerLatencyResult> GetFastestServerByLatencyAsync(IServer[] ignoredServers, CancellationToken cancellationToken = default)
+    public Task<LatencyTestResult> GetFastestServerByLatencyAsync(IServer[] ignoredServers, CancellationToken cancellationToken = default)
     {
         return GetFastestServerByLatencyAsync(ignoredServers, _ => { }, cancellationToken);
     }
 
     /// <inheritdoc/>
-    public Task<ServerLatencyResult> GetFastestServerByLatencyAsync(IServer[] ignoredServers, Action<SpeedTestProgress> UpdateProgress, CancellationToken cancellationToken = default)
+    public Task<LatencyTestResult> GetFastestServerByLatencyAsync(IServer[] ignoredServers, Action<SpeedTestProgress> UpdateProgress, CancellationToken cancellationToken = default)
     {
         if (UpdateProgress is not null)
         {
@@ -115,7 +115,7 @@ public sealed class SpeedTestStub : ISpeedTestService
 
         var serverID = GetServerID(server.Url);
 
-        var latencyResult = new ServerLatencyResult
+        var latencyResult = new LatencyTestResult
         {
             Server = server,
             Latency = serverID * 100

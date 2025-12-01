@@ -23,7 +23,7 @@ public interface ISpeedTestService
     /// <param name="server">The server to measure latency against.</param>
     /// <param name="cancellationToken">The token to allow the operation to be cancelled.</param>
     /// <returns>The server and its latency in milliseconds.</returns>
-    public Task<ServerLatencyResult> GetServerLatencyAsync(IServer server, CancellationToken cancellationToken = default);
+    public Task<LatencyTestResult> GetServerLatencyAsync(IServer server, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Measures the network latency (ping) to the specified server.
@@ -32,7 +32,7 @@ public interface ISpeedTestService
     /// <param name="UpdateProgress">An action that receives the latency test progress percentage (0 to 100).</param>
     /// <param name="cancellationToken">The token to allow the operation to be cancelled.</param>
     /// <returns>The server and its latency in milliseconds.</returns>
-    public Task<ServerLatencyResult> GetServerLatencyAsync(IServer server, Action<LatencyTestProgress> UpdateProgress, CancellationToken cancellationToken = default);
+    public Task<LatencyTestResult> GetServerLatencyAsync(IServer server, Action<LatencyTestProgress> UpdateProgress, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Measures the network latency (ping) to the specified server.
@@ -40,7 +40,7 @@ public interface ISpeedTestService
     /// <param name="serverUrl">The server to measure latency against.</param>
     /// <param name="cancellationToken">The token to allow the operation to be cancelled.</param>
     /// <returns>The server and its latency in milliseconds.</returns>
-    public Task<ServerLatencyResult> GetServerLatencyAsync(string serverUrl, CancellationToken cancellationToken = default);
+    public Task<LatencyTestResult> GetServerLatencyAsync(string serverUrl, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Measures the network latency (ping) to the specified server.
@@ -49,7 +49,7 @@ public interface ISpeedTestService
     /// <param name="UpdateProgress">An action that receives the latency test progress percentage (0 to 100).</param>
     /// <param name="cancellationToken">The token to allow the operation to be cancelled.</param>
     /// <returns>The server and its latency in milliseconds.</returns>
-    public Task<ServerLatencyResult> GetServerLatencyAsync(string serverUrl, Action<LatencyTestProgress> UpdateProgress, CancellationToken cancellationToken = default);
+    public Task<LatencyTestResult> GetServerLatencyAsync(string serverUrl, Action<LatencyTestProgress> UpdateProgress, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Determines the fastest server based on latency from a given list of servers.
@@ -57,7 +57,7 @@ public interface ISpeedTestService
     /// <param name="servers">An array of servers to test for latency.</param>
     /// <param name="cancellationToken">The token to allow the operation to be cancelled.</param>
     /// <returns>The server with the lowest latency and its latency in milliseconds.</returns>
-    public Task<ServerLatencyResult> GetFastestServerByLatencyAsync(IServer[] servers, CancellationToken cancellationToken = default);
+    public Task<LatencyTestResult> GetFastestServerByLatencyAsync(IServer[] servers, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Determines the fastest server based on latency from a given list of servers.
@@ -66,7 +66,7 @@ public interface ISpeedTestService
     /// <param name="UpdateProgress">An action that receives the server selection progress percentage (0 to 100).</param>
     /// <param name="cancellationToken">The token to allow the operation to be cancelled.</param>
     /// <returns>The server with the lowest latency and its latency in milliseconds.</returns>
-    public Task<ServerLatencyResult> GetFastestServerByLatencyAsync(IServer[] servers, Action<SpeedTestProgress> UpdateProgress, CancellationToken cancellationToken = default);
+    public Task<LatencyTestResult> GetFastestServerByLatencyAsync(IServer[] servers, Action<SpeedTestProgress> UpdateProgress, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Measures the download speed of the specified server.
