@@ -50,19 +50,9 @@ public static class Program
         return app;
     }
 
-    public static int Main(string[] args)
+    public async static Task<int> Main(string[] args)
     {
         var registrar = new TypeRegistrar();
-
-        var cancellationTokenSource = new CancellationTokenSource();
-        registrar.RegisterInstance(typeof(CancellationToken), cancellationTokenSource.Token);
-
-        Console.CancelKeyPress += (_, eventArgs) =>
-        {
-            // Try to cancel gracefully the first time, then abort the process the second time Ctrl+C is pressed
-            eventArgs.Cancel = !cancellationTokenSource.IsCancellationRequested;
-            cancellationTokenSource.Cancel();
-        };
 
         if (args != null && args.Contains("--test"))
         {
@@ -78,8 +68,17 @@ public static class Program
             registrar.Register(typeof(IWaiter), typeof(Waiter));
         }
 
+        using var cancellationTokenSource = new CancellationTokenSource();
+
+        Console.CancelKeyPress += (_, eventArgs) =>
+        {
+            // Try to cancel gracefully the first time, then abort the process the second time Ctrl+C is pressed
+            eventArgs.Cancel = !cancellationTokenSource.IsCancellationRequested;
+            cancellationTokenSource.Cancel();
+        };
+
         var app = GetCommandApp(registrar);
-        var result = app.Run(args ?? Array.Empty<string>());
+        var result = await app.RunAsync(args ?? Array.Empty<string>(), cancellationTokenSource.Token);
         return result;
     }
 }

@@ -268,7 +268,7 @@ public sealed partial class OoklaSpeedtestTests
             .When("http://testserver.com/latency.txt")
             .Respond(async _ =>
             {
-                await Task.Delay(50);
+                await Task.Delay(60);
                 return new HttpResponseMessage(HttpStatusCode.OK)
                 {
                     Content = new StringContent("test=test")

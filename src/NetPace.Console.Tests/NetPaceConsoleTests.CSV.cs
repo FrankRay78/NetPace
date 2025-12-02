@@ -17,7 +17,7 @@ public sealed partial class NetPaceConsoleTests
             var app = GetCommandAppTester(registrar);
 
             // When
-            var result = await app.RunAsync("--csv");
+            var result = await app.RunAsync([ "--csv" ]);
 
             // Then
             Assert.Equal(0, result.ExitCode);
@@ -35,10 +35,10 @@ public sealed partial class NetPaceConsoleTests
             registrar.Register(typeof(ISpeedTestService), typeof(SpeedTestStub));
             registrar.Register(typeof(IClock), typeof(IncrementingClockStub));
             registrar.RegisterInstance(typeof(IWaiter), waiter);
-            var app = GetCommandAppTester(registrar, cancellationTokenSource.Token);
+            var app = GetCommandAppTester(registrar);
 
             // When
-            var result = await app.RunAsync("--csv", "--loop");
+            var result = await app.RunAsync([ "--csv", "--loop" ], cancellationTokenSource.Token);
 
             // Then
             Assert.Equal(0, result.ExitCode);
@@ -57,7 +57,7 @@ public sealed partial class NetPaceConsoleTests
             var app = GetCommandAppTester(registrar);
 
             // When
-            var result = await app.RunAsync("--csv", "--count", $"{count}");
+            var result = await app.RunAsync([ "--csv", "--count", $"{count}" ]);
 
             // Then
             Assert.Equal(0, result.ExitCode);
@@ -78,7 +78,7 @@ public sealed partial class NetPaceConsoleTests
             var app = GetCommandAppTester(registrar);
 
             // When
-            var result = await app.RunAsync("--csv", "--count", $"{count}", "--delay", $"{delay}");
+            var result = await app.RunAsync([ "--csv", "--count", $"{count}", "--delay", $"{delay}" ]);
 
             // Then
             Assert.Equal(count - 1, waiter.CallCount);
@@ -97,7 +97,7 @@ public sealed partial class NetPaceConsoleTests
             var app = GetCommandAppTester(registrar);
 
             // When
-            var result = await app.RunAsync("--csv", "--csv-header-units");
+            var result = await app.RunAsync([ "--csv", "--csv-header-units" ]);
 
             // Then
             Assert.Equal(0, result.ExitCode);
@@ -115,7 +115,7 @@ public sealed partial class NetPaceConsoleTests
             var app = GetCommandAppTester(registrar);
 
             // When
-            var result = await app.RunAsync("--csv", "--count", "3", "--unit-scale", "Mega");
+            var result = await app.RunAsync([ "--csv", "--count", "3", "--unit-scale", "Mega" ]);
 
             // Then
             Assert.Equal(0, result.ExitCode);
@@ -136,7 +136,7 @@ public sealed partial class NetPaceConsoleTests
             var app = GetCommandAppTester(registrar);
 
             // When
-            var result = await app.RunAsync("--csv", "--csv-header-units", "--count", "3", "--unit-scale", $"{scale}");
+            var result = await app.RunAsync([ "--csv", "--csv-header-units", "--count", "3", "--unit-scale", $"{scale}" ]);
 
             // Then
             Assert.Equal(0, result.ExitCode);
@@ -154,7 +154,7 @@ public sealed partial class NetPaceConsoleTests
             var app = GetCommandAppTester(registrar);
 
             // When
-            var result = await app.RunAsync("--csv", "--csv-header-units", "--count", "3", "--unit-scale", "Auto");
+            var result = await app.RunAsync([ "--csv", "--csv-header-units", "--count", "3", "--unit-scale", "Auto" ]);
 
             // Then
             Assert.Equal(-1, result.ExitCode);
@@ -172,7 +172,7 @@ public sealed partial class NetPaceConsoleTests
             var app = GetCommandAppTester(registrar);
 
             // When
-            var result = await app.RunAsync("--csv", "--no-download");
+            var result = await app.RunAsync([ "--csv", "--no-download" ]);
 
             // Then
             Assert.Equal(0, result.ExitCode);
@@ -190,7 +190,7 @@ public sealed partial class NetPaceConsoleTests
             var app = GetCommandAppTester(registrar);
 
             // When
-            var result = await app.RunAsync("--csv", "--no-upload");
+            var result = await app.RunAsync([ "--csv", "--no-upload" ]);
 
             // Then
             Assert.Equal(0, result.ExitCode);
@@ -211,7 +211,7 @@ public sealed partial class NetPaceConsoleTests
             var app = GetCommandAppTester(registrar);
 
             // When
-            var result = await app.RunAsync("--csv", "--csv-delimiter", delimiter.ToString());
+            var result = await app.RunAsync([ "--csv", "--csv-delimiter", delimiter.ToString() ]);
 
             // Then
             Assert.Equal(0, result.ExitCode);
@@ -229,7 +229,7 @@ public sealed partial class NetPaceConsoleTests
             var app = GetCommandAppTester(registrar);
 
             // When
-            var result = await app.RunAsync("--csv", "--no-latency");
+            var result = await app.RunAsync([ "--csv", "--no-latency" ]);
 
             // Then
             Assert.Equal(0, result.ExitCode);
@@ -247,7 +247,7 @@ public sealed partial class NetPaceConsoleTests
             var app = GetCommandAppTester(registrar);
 
             // When
-            var result = await app.RunAsync("--csv", "--csv-header-units", "--no-latency");
+            var result = await app.RunAsync([ "--csv", "--csv-header-units", "--no-latency" ]);
 
             // Then
             Assert.Equal(0, result.ExitCode);

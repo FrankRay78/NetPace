@@ -1,3 +1,4 @@
+using NetPace.Console;
 using NetPace.Console.Commands;
 using NetPace.Console.DependencyInjection;
 using Spectre.Console.Cli;
@@ -9,7 +10,7 @@ public sealed partial class NetPaceConsoleTests
     /// <summary>
     /// Create the CommandAppTester and configure.
     /// </summary>
-    private static CommandAppTester GetCommandAppTester(ITypeRegistrar? registrar = null, CancellationToken cancellationToken = default)
+    private static CommandAppTester GetCommandAppTester(ITypeRegistrar? registrar = null)
     {
         var app = registrar == null ? 
             new CommandAppTester(new CommandAppTesterSettings { TrimConsoleOutput = false }) :
@@ -17,8 +18,6 @@ public sealed partial class NetPaceConsoleTests
 
         app.SetDefaultCommand<SpeedTestCommand>(Program.Description);
         app.Configure(Program.ConfigureAction);
-
-        app.Registrar?.RegisterInstance(typeof(CancellationToken), cancellationToken);
 
         return app;
     }
@@ -36,7 +35,7 @@ public sealed partial class NetPaceConsoleTests
         var app = GetCommandAppTester(registrar);
 
         // When
-        var result = await app.RunAsync();
+        var result = await app.RunAsync([]);
 
         // Then
         Assert.Equal(0, result.ExitCode);
@@ -54,7 +53,7 @@ public sealed partial class NetPaceConsoleTests
         var app = GetCommandAppTester(registrar);
 
         // When
-        var result = await app.RunAsync("--unit-scale", "Mega");
+        var result = await app.RunAsync([ "--unit-scale", "Mega" ]);
 
         // Then
         Assert.Equal(0, result.ExitCode);
@@ -72,10 +71,10 @@ public sealed partial class NetPaceConsoleTests
         registrar.Register(typeof(ISpeedTestService), typeof(SpeedTestStub));
         registrar.Register(typeof(IClock), typeof(IncrementingClockStub));
         registrar.RegisterInstance(typeof(IWaiter), waiter);
-        var app = GetCommandAppTester(registrar, cancellationTokenSource.Token);
+        var app = GetCommandAppTester(registrar);
 
         // When
-        var result = await app.RunAsync("-t", "--loop", "--verbosity", "Minimal");
+        var result = await app.RunAsync([ "-t", "--loop", "--verbosity", "Minimal" ], cancellationTokenSource.Token);
 
         // Then
         Assert.Equal(0, result.ExitCode);
@@ -94,7 +93,7 @@ public sealed partial class NetPaceConsoleTests
         var app = GetCommandAppTester(registrar);
 
         // When
-        var result = await app.RunAsync("-t", "--count", $"{count}", "--verbosity", "Minimal");
+        var result = await app.RunAsync([ "-t", "--count", $"{count}", "--verbosity", "Minimal" ]);
 
         // Then
         Assert.Equal(0, result.ExitCode);
@@ -115,7 +114,7 @@ public sealed partial class NetPaceConsoleTests
         var app = GetCommandAppTester(registrar);
 
         // When
-        var result = await app.RunAsync("-t", "--count", $"{count}", "--delay", $"{delay}", "--verbosity", "Minimal");
+        var result = await app.RunAsync([ "-t", "--count", $"{count}", "--delay", $"{delay}", "--verbosity", "Minimal" ]);
 
         // Then
         Assert.Equal(count - 1, waiter.CallCount);
@@ -134,7 +133,7 @@ public sealed partial class NetPaceConsoleTests
         var app = GetCommandAppTester(registrar);
 
         // When
-        var result = await app.RunAsync("--count", "3", "--unit-scale", "Mega", "--verbosity", "Minimal");
+        var result = await app.RunAsync([ "--count", "3", "--unit-scale", "Mega", "--verbosity", "Minimal" ]);
 
         // Then
         Assert.Equal(0, result.ExitCode);
@@ -155,7 +154,7 @@ public sealed partial class NetPaceConsoleTests
         var app = GetCommandAppTester(registrar);
 
         // When
-        var result = await app.RunAsync("--verbosity", verbosity);
+        var result = await app.RunAsync([ "--verbosity", verbosity ]);
 
         // Then
         Assert.Equal(0, result.ExitCode);
@@ -177,7 +176,7 @@ public sealed partial class NetPaceConsoleTests
         var app = GetCommandAppTester(registrar);
 
         // When
-        var result = await app.RunAsync("--server", url);
+        var result = await app.RunAsync([ "--server", url ]);
 
         // Then
         Assert.Equal(0, result.ExitCode);
@@ -199,7 +198,7 @@ public sealed partial class NetPaceConsoleTests
         var app = GetCommandAppTester(registrar);
 
         // When
-        var result = await app.RunAsync("--csv", "--count", "3", "--unit-scale", "Mega", "--server", url);
+        var result = await app.RunAsync([ "--csv", "--count", "3", "--unit-scale", "Mega", "--server", url ]);
 
         // Then
         Assert.Equal(0, result.ExitCode);
@@ -219,7 +218,7 @@ public sealed partial class NetPaceConsoleTests
         var app = GetCommandAppTester(registrar);
 
         // When
-        var result = await app.RunAsync(timestamp);
+        var result = await app.RunAsync([ timestamp ]);
 
         // Then
         Assert.Equal(0, result.ExitCode);
@@ -241,7 +240,7 @@ public sealed partial class NetPaceConsoleTests
         var app = GetCommandAppTester(registrar);
 
         // When
-        var result = await app.RunAsync("--unit", unit.ToString(), "--unit-system", unitSystem.ToString());
+        var result = await app.RunAsync([ "--unit", unit.ToString(), "--unit-system", unitSystem.ToString() ]);
 
         // Then
         Assert.Equal(0, result.ExitCode);
@@ -262,7 +261,7 @@ public sealed partial class NetPaceConsoleTests
         var app = GetCommandAppTester(registrar);
 
         // When
-        var result = await app.RunAsync("--no-download", "--verbosity", verbosity);
+        var result = await app.RunAsync([ "--no-download", "--verbosity", verbosity ]);
 
         // Then
         Assert.Equal(0, result.ExitCode);
@@ -283,7 +282,7 @@ public sealed partial class NetPaceConsoleTests
         var app = GetCommandAppTester(registrar);
 
         // When
-        var result = await app.RunAsync("--no-upload", "--verbosity", verbosity);
+        var result = await app.RunAsync([ "--no-upload", "--verbosity", verbosity ]);
 
         // Then
         Assert.Equal(0, result.ExitCode);
@@ -304,7 +303,7 @@ public sealed partial class NetPaceConsoleTests
         var app = GetCommandAppTester(registrar);
 
         // When
-        var result = await app.RunAsync("--no-download", "--no-upload", "--verbosity", verbosity);
+        var result = await app.RunAsync([ "--no-download", "--no-upload", "--verbosity", verbosity ]);
 
         // Then
         Assert.Equal(0, result.ExitCode);
@@ -325,7 +324,7 @@ public sealed partial class NetPaceConsoleTests
         var app = GetCommandAppTester(registrar);
 
         // When
-        var result = await app.RunAsync("--no-latency", "--verbosity", verbosity);
+        var result = await app.RunAsync([ "--no-latency", "--verbosity", verbosity ]);
 
         // Then
         Assert.Equal(0, result.ExitCode);
@@ -343,7 +342,7 @@ public sealed partial class NetPaceConsoleTests
         var app = GetCommandAppTester(registrar);
 
         // When
-        var result = await app.RunAsync("--no-latency", "--no-download", "--no-upload");
+        var result = await app.RunAsync([ "--no-latency", "--no-download", "--no-upload" ]);
 
         // Then
         Assert.NotEqual(0, result.ExitCode);
@@ -370,10 +369,10 @@ public sealed partial class NetPaceConsoleTests
         registrar.RegisterInstance(typeof(ISpeedTestService), mock);
         registrar.Register(typeof(IClock), typeof(ClockStub));
         registrar.Register(typeof(IWaiter), typeof(NoDelayStub));
-        var app = GetCommandAppTester(registrar, cancellationTokenSource.Token);
+        var app = GetCommandAppTester(registrar);
 
         // When
-        var result = await app.RunAsync();
+        var result = await app.RunAsync(Array.Empty<string>(), cancellationTokenSource.Token);
 
         // Then
         Assert.Equal(0, result.ExitCode);
@@ -391,10 +390,10 @@ public sealed partial class NetPaceConsoleTests
         registrar.Register(typeof(ISpeedTestService), typeof(SpeedTestStub));
         registrar.Register(typeof(IClock), typeof(IncrementingClockStub));
         registrar.RegisterInstance(typeof(IWaiter), waiter);
-        var app = GetCommandAppTester(registrar, cancellationTokenSource.Token);
+        var app = GetCommandAppTester(registrar);
 
         // When
-        var result = await app.RunAsync("-t", "--loop",  "--verbosity", "Minimal");
+        var result = await app.RunAsync([ "-t", "--loop", "--verbosity", "Minimal" ], cancellationTokenSource.Token);
 
         // Then
         Assert.Equal(0, result.ExitCode);
@@ -412,10 +411,10 @@ public sealed partial class NetPaceConsoleTests
         registrar.Register(typeof(ISpeedTestService), typeof(SpeedTestStub));
         registrar.Register(typeof(IClock), typeof(IncrementingClockStub));
         registrar.RegisterInstance(typeof(IWaiter), waiter);
-        var app = GetCommandAppTester(registrar, cancellationTokenSource.Token);
+        var app = GetCommandAppTester(registrar);
 
         // When
-        var result = await app.RunAsync("-t", "--count", "100", "--verbosity", "Minimal");
+        var result = await app.RunAsync([ "-t", "--count", "100", "--verbosity", "Minimal" ], cancellationTokenSource.Token);
 
         // Then
         Assert.Equal(0, result.ExitCode);
@@ -433,7 +432,7 @@ public sealed partial class NetPaceConsoleTests
         var app = GetCommandAppTester(registrar);
 
         // When
-        var result = await app.RunAsync("--count", "ABC");
+        var result = await app.RunAsync([ "--count", "ABC" ]);
 
         // Then
         Assert.NotEqual(0, result.ExitCode);
@@ -456,7 +455,7 @@ public sealed partial class NetPaceConsoleTests
         var app = GetCommandAppTester(registrar);
 
         // When
-        var result = await app.RunAsync();
+        var result = await app.RunAsync(Array.Empty<string>());
 
         // Then
         Assert.Equal(0, result.ExitCode);
@@ -489,10 +488,10 @@ public sealed partial class NetPaceConsoleTests
         registrar.RegisterInstance(typeof(ISpeedTestService), faultyTester);
         registrar.Register(typeof(IClock), typeof(IncrementingClockStub));
         registrar.RegisterInstance(typeof(IWaiter), waiter);
-        var app = GetCommandAppTester(registrar, cancellationTokenSource.Token);
+        var app = GetCommandAppTester(registrar);
 
         // When
-        var result = await app.RunAsync("-t", "--count", "100", "--verbosity", "Minimal");
+        var result = await app.RunAsync([ "-t", "--count", "100", "--verbosity", "Minimal" ], cancellationTokenSource.Token);
 
         // Then
         Assert.Equal(0, result.ExitCode);
@@ -515,7 +514,7 @@ public sealed partial class NetPaceConsoleTests
         var app = GetCommandAppTester(registrar);
 
         // When
-        var result = await app.RunAsync();
+        var result = await app.RunAsync(Array.Empty<string>());
 
         // Then
         Assert.Equal(0, result.ExitCode);
@@ -538,7 +537,7 @@ public sealed partial class NetPaceConsoleTests
         var app = GetCommandAppTester(registrar);
 
         // When
-        var result = await app.RunAsync("--no-latency");
+        var result = await app.RunAsync([ "--no-latency" ]);
 
         // Then
         Assert.Equal(0, result.ExitCode);
@@ -563,7 +562,7 @@ public sealed partial class NetPaceConsoleTests
         var app = GetCommandAppTester(registrar);
 
         // When
-        var result = await app.RunAsync(help);
+        var result = await app.RunAsync([ help ]);
 
         // Then
         Assert.Equal(0, result.ExitCode);
@@ -583,7 +582,7 @@ public sealed partial class NetPaceConsoleTests
         var app = GetCommandAppTester(registrar);
 
         // When
-        var result = await app.RunAsync(version);
+        var result = await app.RunAsync([ version ]);
 
         // Then
         Assert.Equal(0, result.ExitCode);
