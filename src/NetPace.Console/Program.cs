@@ -68,7 +68,7 @@ public static class Program
             registrar.Register(typeof(IWaiter), typeof(Waiter));
         }
 
-        var cancellationTokenSource = new CancellationTokenSource();
+        using var cancellationTokenSource = new CancellationTokenSource();
 
         Console.CancelKeyPress += (_, eventArgs) =>
         {
