@@ -38,4 +38,9 @@
     <None Include="$(MSBuildThisFileDirectory)..\..\resources\nuget\README.md" Pack="true" PackagePath="" Visible="false" />
     <None Include="$(MSBuildThisFileDirectory)..\..\resources\nuget\logo.png" Pack="true" PackagePath="" Visible="false" />
   </ItemGroup>
+
+  <!-- Expose internals to test assembly -->
+  <ItemGroup>
+    <InternalsVisibleTo Include="NetPace.Core.Tests" />
+  </ItemGroup>
 </Project>
