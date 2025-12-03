@@ -382,7 +382,7 @@ public sealed partial class OoklaSpeedtestTests
     }
 
     [Fact]
-    public async Task GetServerLatencyAsync_WithProgress_ShouldPropagateException_WhenProgressCallbackThrows()
+    public async Task GetServerLatencyAsync_WithProgress_ShouldNotPropagateException_WhenProgressCallbackThrows()
     {
         // Given
         using var mockHttp = new MockHttpMessageHandler();
@@ -396,13 +396,11 @@ public sealed partial class OoklaSpeedtestTests
         // When
         var exception = await Record.ExceptionAsync(() => speedtest.GetServerLatencyAsync(server, new Progress<LatencyTestProgress>(progress =>
         {
-            throw new InvalidOperationException("Progress callback failed");
+            throw new InvalidOperationException();
         })));
 
         // Then
-        exception.ShouldNotBeNull();
-        exception.ShouldBeOfType<InvalidOperationException>();
-        exception.Message.ShouldBe("Progress callback failed");
+        exception.ShouldBeNull();
     }
 
     [Fact]
@@ -696,7 +694,7 @@ public sealed partial class OoklaSpeedtestTests
     }
 
     [Fact]
-    public async Task GetFastestServerByLatencyAsync_WithProgress_ShouldPropagateException_WhenProgressCallbackThrows()
+    public async Task GetFastestServerByLatencyAsync_WithProgress_ShouldNotPropagateException_WhenProgressCallbackThrows()
     {
         // Given
         using var mockHttp = new MockHttpMessageHandler();
@@ -720,13 +718,11 @@ public sealed partial class OoklaSpeedtestTests
         // When
         var exception = await Record.ExceptionAsync(() => speedtest.GetFastestServerByLatencyAsync(servers, new Progress<SpeedTestProgress>(progress =>
         {
-            throw new InvalidOperationException("Progress callback failed");
+            throw new InvalidOperationException();
         })));
 
         // Then
-        exception.ShouldNotBeNull();
-        exception.ShouldBeOfType<InvalidOperationException>();
-        exception.Message.ShouldBe("Progress callback failed");
+        exception.ShouldBeNull();
     }
 
     [Fact]
@@ -1115,7 +1111,7 @@ public sealed partial class OoklaSpeedtestTests
     }
 
     [Fact]
-    public async Task GetDownloadSpeedAsync_ShouldPropagateException_WhenProgressCallbackThrows()
+    public async Task GetDownloadSpeedAsync_WithProgress_ShouldNotPropagateException_WhenProgressCallbackThrows()
     {
 
         // Given
@@ -1139,13 +1135,11 @@ public sealed partial class OoklaSpeedtestTests
         // When
         var exception = await Record.ExceptionAsync(() => speedtest.GetDownloadSpeedAsync(server, new Progress<SpeedTestProgress>(progress =>
         {
-            throw new InvalidOperationException("Progress callback failed");
+            throw new InvalidOperationException();
         })));
 
         // Then
-        exception.ShouldNotBeNull();
-        exception.ShouldBeOfType<InvalidOperationException>();
-        exception.Message.ShouldBe("Progress callback failed");
+        exception.ShouldBeNull();
     }
 
     #endregion
@@ -1448,7 +1442,7 @@ public sealed partial class OoklaSpeedtestTests
     }
 
     [Fact]
-    public async Task GetUploadSpeedAsync_ShouldPropagateException_WhenProgressCallbackThrows()
+    public async Task GetUploadSpeedAsync_WithProgress_ShouldNotPropagateException_WhenProgressCallbackThrows()
     {
 
         // Given
@@ -1472,13 +1466,11 @@ public sealed partial class OoklaSpeedtestTests
         // When
         var exception = await Record.ExceptionAsync(() => speedtest.GetUploadSpeedAsync(server, new Progress<SpeedTestProgress>(progress =>
         {
-            throw new InvalidOperationException("Progress callback failed");
+            throw new InvalidOperationException();
         })));
 
         // Then
-        exception.ShouldNotBeNull();
-        exception.ShouldBeOfType<InvalidOperationException>();
-        exception.Message.ShouldBe("Progress callback failed");
+        exception.ShouldBeNull();
     }
 
     #endregion
