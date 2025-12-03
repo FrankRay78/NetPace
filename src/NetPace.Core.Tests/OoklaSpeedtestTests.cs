@@ -290,7 +290,7 @@ public sealed partial class OoklaSpeedtestTests
         var progressReports = new List<LatencyTestProgress>();
 
         // When
-        var result = await speedtest.GetServerLatencyAsync(server, progress => progressReports.Add(progress));
+        var result = await speedtest.GetServerLatencyAsync(server, new Progress<LatencyTestProgress>(progress => progressReports.Add(progress)));
 
         // Then
         result.ShouldNotBeNull();
@@ -344,7 +344,7 @@ public sealed partial class OoklaSpeedtestTests
         var percentageComplete = new List<int>();
 
         // When
-        var result = await speedtest.GetServerLatencyAsync(server, progress => percentageComplete.Add(progress.PercentageComplete));
+        var result = await speedtest.GetServerLatencyAsync(server, new Progress<LatencyTestProgress>(progress => percentageComplete.Add(progress.PercentageComplete)));
 
         // Then
         result.ShouldNotBeNull();
@@ -372,7 +372,7 @@ public sealed partial class OoklaSpeedtestTests
         cts.CancelAfter(200);
 
         // When
-        var exception = await Record.ExceptionAsync(() => speedtest.GetServerLatencyAsync(server, progress => progressReports.Add(progress.PercentageComplete), cts.Token));
+        var exception = await Record.ExceptionAsync(() => speedtest.GetServerLatencyAsync(server, new Progress<LatencyTestProgress>(progress => progressReports.Add(progress.PercentageComplete)), cts.Token));
 
         // Then
         exception.ShouldNotBeNull();
@@ -394,10 +394,10 @@ public sealed partial class OoklaSpeedtestTests
         var server = new Server { Url = "http://testserver.com/", Sponsor = "Sponsor", Location = "Location" };
 
         // When
-        var exception = await Record.ExceptionAsync(() => speedtest.GetServerLatencyAsync(server, progress =>
+        var exception = await Record.ExceptionAsync(() => speedtest.GetServerLatencyAsync(server, new Progress<LatencyTestProgress>(progress =>
         {
             throw new InvalidOperationException("Progress callback failed");
-        }));
+        })));
 
         // Then
         exception.ShouldNotBeNull();
@@ -615,7 +615,7 @@ public sealed partial class OoklaSpeedtestTests
         var progressReports = new List<int>();
 
         // When
-        var result = await speedtest.GetFastestServerByLatencyAsync(servers, progress => progressReports.Add(progress.PercentageComplete));
+        var result = await speedtest.GetFastestServerByLatencyAsync(servers, new Progress<SpeedTestProgress>(progress => progressReports.Add(progress.PercentageComplete)));
 
         // Then
         result.ShouldNotBeNull();
@@ -647,7 +647,7 @@ public sealed partial class OoklaSpeedtestTests
         var progressReports = new List<int>();
 
         // When
-        var result = await speedtest.GetFastestServerByLatencyAsync(servers, progress => progressReports.Add(progress.PercentageComplete));
+        var result = await speedtest.GetFastestServerByLatencyAsync(servers, new Progress<SpeedTestProgress>(progress => progressReports.Add(progress.PercentageComplete)));
 
         // Then
         result.ShouldNotBeNull();
@@ -687,7 +687,7 @@ public sealed partial class OoklaSpeedtestTests
         var progressReports = new List<int>();
 
         // When
-        var result = await speedtest.GetFastestServerByLatencyAsync(servers, progress => progressReports.Add(progress.PercentageComplete));
+        var result = await speedtest.GetFastestServerByLatencyAsync(servers, new Progress<SpeedTestProgress>(progress => progressReports.Add(progress.PercentageComplete)));
 
         // Then
         result.ShouldNotBeNull();
@@ -718,10 +718,10 @@ public sealed partial class OoklaSpeedtestTests
         var servers = new[] { server };
 
         // When
-        var exception = await Record.ExceptionAsync(() => speedtest.GetFastestServerByLatencyAsync(servers, progress =>
+        var exception = await Record.ExceptionAsync(() => speedtest.GetFastestServerByLatencyAsync(servers, new Progress<SpeedTestProgress>(progress =>
         {
             throw new InvalidOperationException("Progress callback failed");
-        }));
+        })));
 
         // Then
         exception.ShouldNotBeNull();
@@ -754,7 +754,7 @@ public sealed partial class OoklaSpeedtestTests
         cts.CancelAfter(200);
 
         // When
-        var exception = await Record.ExceptionAsync(() => speedtest.GetFastestServerByLatencyAsync(servers, progress => progressReports.Add(progress.PercentageComplete), cts.Token));
+        var exception = await Record.ExceptionAsync(() => speedtest.GetFastestServerByLatencyAsync(servers, new Progress<SpeedTestProgress>(progress => progressReports.Add(progress.PercentageComplete)), cts.Token));
 
         // Then
         exception.ShouldNotBeNull();
@@ -902,7 +902,7 @@ public sealed partial class OoklaSpeedtestTests
         var progressReports = new List<int>();
 
         // When
-        var result = await speedtest.GetDownloadSpeedAsync(server, downloadSizeMb, progress => progressReports.Add(progress.PercentageComplete));
+        var result = await speedtest.GetDownloadSpeedAsync(server, downloadSizeMb, new Progress<SpeedTestProgress>(progress => progressReports.Add(progress.PercentageComplete)));
 
         // Then
         result.ShouldNotBeNull();
@@ -967,10 +967,10 @@ public sealed partial class OoklaSpeedtestTests
         var progressReports = new List<int>();
 
         // When
-        await speedtest.GetDownloadSpeedAsync(server, progress =>
+        await speedtest.GetDownloadSpeedAsync(server, new Progress<SpeedTestProgress>(progress =>
         {
             progressReports.Add(progress.PercentageComplete);
-        });
+        }));
 
         // Then
         progressReports.ShouldNotBeNull();
@@ -1003,7 +1003,7 @@ public sealed partial class OoklaSpeedtestTests
         var progressReports = new List<int>();
 
         // When
-        var result = await speedtest.GetDownloadSpeedAsync(server, progress => progressReports.Add(progress.PercentageComplete));
+        var result = await speedtest.GetDownloadSpeedAsync(server, new Progress<SpeedTestProgress>(progress => progressReports.Add(progress.PercentageComplete)));
 
         // Then
         result.ShouldNotBeNull();
@@ -1137,10 +1137,10 @@ public sealed partial class OoklaSpeedtestTests
         var server = new Server { Url = "http://example.com/", Sponsor = "Test", Location = "Test" };
 
         // When
-        var exception = await Record.ExceptionAsync(() => speedtest.GetDownloadSpeedAsync(server, progress =>
+        var exception = await Record.ExceptionAsync(() => speedtest.GetDownloadSpeedAsync(server, new Progress<SpeedTestProgress>(progress =>
         {
             throw new InvalidOperationException("Progress callback failed");
-        }));
+        })));
 
         // Then
         exception.ShouldNotBeNull();
@@ -1264,7 +1264,7 @@ public sealed partial class OoklaSpeedtestTests
         var progressReports = new List<int>();
 
         // When
-        var result = await speedtest.GetUploadSpeedAsync(server, uploadSizeMb, progress => progressReports.Add(progress.PercentageComplete));
+        var result = await speedtest.GetUploadSpeedAsync(server, uploadSizeMb, new Progress<SpeedTestProgress>(progress => progressReports.Add(progress.PercentageComplete)));
 
         // Then
         result.ShouldNotBeNull();
@@ -1326,10 +1326,10 @@ public sealed partial class OoklaSpeedtestTests
         var progressReports = new List<int>();
 
         // When
-        await speedtest.GetUploadSpeedAsync(server, progress =>
+        await speedtest.GetUploadSpeedAsync(server, new Progress<SpeedTestProgress>(progress =>
         {
             progressReports.Add(progress.PercentageComplete);
-        });
+        }));
 
         // Then
         progressReports.ShouldNotBeNull();
@@ -1371,7 +1371,7 @@ public sealed partial class OoklaSpeedtestTests
         var progressReports = new List<int>();
 
         // When
-        var result = await speedtest.GetUploadSpeedAsync(server, progress => progressReports.Add(progress.PercentageComplete));
+        var result = await speedtest.GetUploadSpeedAsync(server, new Progress<SpeedTestProgress>(progress => progressReports.Add(progress.PercentageComplete)));
 
         // Then
         result.ShouldNotBeNull();
@@ -1470,10 +1470,10 @@ public sealed partial class OoklaSpeedtestTests
         var server = new Server { Url = "http://example.com/", Sponsor = "Test", Location = "Test" };
 
         // When
-        var exception = await Record.ExceptionAsync(() => speedtest.GetUploadSpeedAsync(server, progress =>
+        var exception = await Record.ExceptionAsync(() => speedtest.GetUploadSpeedAsync(server, new Progress<SpeedTestProgress>(progress =>
         {
             throw new InvalidOperationException("Progress callback failed");
-        }));
+        })));
 
         // Then
         exception.ShouldNotBeNull();

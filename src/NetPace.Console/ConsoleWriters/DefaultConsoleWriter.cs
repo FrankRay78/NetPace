@@ -74,17 +74,13 @@ public sealed class DefaultConsoleWriter : IConsoleWriter
                     // Perform the speed tests and show progress
                     if (!settings.NoDownload)
                     {
-                        downloadResult = await speedTestClient.GetDownloadSpeedAsync(fastest.Server, settings.DownloadSizeMb, (SpeedTestProgress progress) =>
-                        {
-                            downloadProgress!.Value = progress.PercentageComplete;
-                        }, cancellationToken);
+                        var downloadProgressReporter = new Progress<SpeedTestProgress>(p => downloadProgress!.Value = p.PercentageComplete);
+                        downloadResult = await speedTestClient.GetDownloadSpeedAsync(fastest.Server, settings.DownloadSizeMb, downloadProgressReporter, cancellationToken);
                     }
                     if (!settings.NoUpload)
                     {
-                        uploadResult = await speedTestClient.GetUploadSpeedAsync(fastest.Server, settings.UploadSizeMb, (SpeedTestProgress progress) =>
-                        {
-                            uploadProgress!.Value = progress.PercentageComplete;
-                        }, cancellationToken);
+                        var uploadProgressReporter = new Progress<SpeedTestProgress>(p => uploadProgress!.Value = p.PercentageComplete);
+                        uploadResult = await speedTestClient.GetUploadSpeedAsync(fastest.Server, settings.UploadSizeMb, uploadProgressReporter, cancellationToken);
                     }
                 });
         }
