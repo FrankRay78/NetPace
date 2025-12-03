@@ -27,7 +27,7 @@ public sealed partial class NetPaceConsoleTests
 
                 // Then
                 Assert.Equal(0, result.ExitCode);
-                await Verify(result.Output).DisableRequireUniquePrefix(); ;
+                await Verify(result.Output).DisableRequireUniquePrefix();
 
                 var fileContent = await System.IO.File.ReadAllTextAsync(testFile);
                 await Verify(fileContent).DisableRequireUniquePrefix();

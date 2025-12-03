@@ -9,7 +9,26 @@ public sealed class DefaultConsoleWriter : IConsoleWriter
     public async Task PerformSpeedTestAsync(bool initialSpeedTest, IAnsiConsole console, IClock clock, ISpeedTestService speedTestClient, SpeedTestCommandSettings settings, CancellationToken cancellationToken)
     {
         // Get the server to use for speed testing.
-        var fastest = await ServerSelector.GetServerAsync(speedTestClient, settings, cancellationToken);
+        var fastest = await console.Progress()
+            .AutoClear(true)
+            .Columns(
+            [
+                new SpinnerColumn(),
+                new TaskDescriptionColumn(),
+            ])
+            .StartAsync(async progress =>
+            {
+                var fastestServerProgress = progress.AddTask("Choosing server", autoStart: true, maxValue: 100);
+
+                try
+                { 
+                    return await ServerSelector.GetServerAsync(speedTestClient, settings, cancellationToken);
+                }
+                finally
+                { 
+                    fastestServerProgress.StopTask();
+                }
+            });
 
 
         // Display server latency.
