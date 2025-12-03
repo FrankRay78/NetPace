@@ -45,30 +45,29 @@ public sealed class OoklaSpeedtest : ISpeedTestService
     /// <inheritdoc/>
     public async Task<LatencyTestResult> GetServerLatencyAsync(string serverUrl, CancellationToken cancellationToken = default)
     {
-        return await GetServerLatencyAsync(serverUrl, (_) => { }, cancellationToken);
+        return await GetServerLatencyAsync(serverUrl, new NullProgress<LatencyTestProgress>(), cancellationToken);
     }
 
     /// <inheritdoc/>
-    public async Task<LatencyTestResult> GetServerLatencyAsync(string serverUrl, Action<LatencyTestProgress> UpdateProgress, CancellationToken cancellationToken = default)
+    public async Task<LatencyTestResult> GetServerLatencyAsync(string serverUrl, IProgress<LatencyTestProgress> progress, CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(serverUrl);
 
         var server = new Server() { Sponsor = "(Unknown)", Url = serverUrl };
-        return await GetServerLatencyAsync(server, UpdateProgress, cancellationToken);
+        return await GetServerLatencyAsync(server, progress, cancellationToken);
     }
 
     /// <inheritdoc/>
     public async Task<LatencyTestResult> GetServerLatencyAsync(IServer server, CancellationToken cancellationToken = default)
     {
-        return await GetServerLatencyAsync(server, (_) => { }, cancellationToken);
+        return await GetServerLatencyAsync(server, new NullProgress<LatencyTestProgress>(), cancellationToken);
     }
 
     /// <inheritdoc/>
-    public async Task<LatencyTestResult> GetServerLatencyAsync(IServer server, Action<LatencyTestProgress> UpdateProgress, CancellationToken cancellationToken = default)
+    public async Task<LatencyTestResult> GetServerLatencyAsync(IServer server, IProgress<LatencyTestProgress> progress, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(server);
         ArgumentException.ThrowIfNullOrWhiteSpace(server.Url);
-        ArgumentNullException.ThrowIfNull(UpdateProgress);
 
         var latencyUrl = GetBaseUrl(server.Url) + "latency.txt";
         var pings = new List<int>();
@@ -102,7 +101,7 @@ public sealed class OoklaSpeedtest : ISpeedTestService
 
             // Report progress after each iteration
             var percentageComplete = (iteration + 1) * 100 / maxIterations;
-            UpdateProgress(new LatencyTestProgress
+            progress.Report(new LatencyTestProgress
             {
                 PercentageComplete = percentageComplete,
                 Pings = new List<int>(pings)
@@ -122,11 +121,11 @@ public sealed class OoklaSpeedtest : ISpeedTestService
     /// <inheritdoc/>
     public async Task<LatencyTestResult> GetFastestServerByLatencyAsync(IServer[] servers, CancellationToken cancellationToken = default)
     {
-        return await GetFastestServerByLatencyAsync(servers, _ => { }, cancellationToken);
+        return await GetFastestServerByLatencyAsync(servers, new NullProgress<SpeedTestProgress>(), cancellationToken);
     }
 
     /// <inheritdoc/>
-    public async Task<LatencyTestResult> GetFastestServerByLatencyAsync(IServer[] servers, Action<SpeedTestProgress> UpdateProgress, CancellationToken cancellationToken = default)
+    public async Task<LatencyTestResult> GetFastestServerByLatencyAsync(IServer[] servers, IProgress<SpeedTestProgress> progress, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(servers);
         if (servers.Length == 0)
@@ -156,7 +155,7 @@ public sealed class OoklaSpeedtest : ISpeedTestService
 
             try
             {
-                var latencyResult = await GetServerLatencyAsync(servers[i], _ => { }, linkedCts.Token);
+                var latencyResult = await GetServerLatencyAsync(servers[i], linkedCts.Token);
 
                 serverProbes.Add(latencyResult);
             }
@@ -174,7 +173,7 @@ public sealed class OoklaSpeedtest : ISpeedTestService
 
             // Report progress after each server is tested
             var percentageComplete = (i + 1) * 100 / servers.Length;
-            UpdateProgress(new SpeedTestProgress { PercentageComplete = percentageComplete });
+            progress.Report(new SpeedTestProgress { PercentageComplete = percentageComplete });
         }
 
         // Honour any user cancellations during/after the last probe.
@@ -191,27 +190,7 @@ public sealed class OoklaSpeedtest : ISpeedTestService
     /// <inheritdoc/>
     public async Task<SpeedTestResult> GetDownloadSpeedAsync(IServer server, CancellationToken cancellationToken = default)
     {
-        return await GetDownloadSpeedAsync(server, (_) => { }, cancellationToken);
-    }
-
-    /// <inheritdoc/>
-    /// <remarks>
-    /// In the Ookla implementation, downloads are processed in parallel batches 
-    /// (configured via <see cref="OoklaSpeedtestSettings.DownloadTest"/>). The <paramref name="downloadSizeMb"/> 
-    /// parameter triggers cancellation of the internal <see cref="CancellationTokenSource"/> once the threshold 
-    /// is reached, but all currently executing parallel download tasks will complete before termination.
-    /// The actual bytes processed may significantly exceed the specified limit depending on the number of 
-    /// concurrent downloads and their individual sizes.
-    /// </remarks>
-    public async Task<SpeedTestResult> GetDownloadSpeedAsync(IServer server, int downloadSizeMb, CancellationToken cancellationToken = default)
-    {
-        return await GetDownloadSpeedAsync(server, downloadSizeMb, (_) => { }, cancellationToken);
-    }
-
-    /// <inheritdoc/>
-    public async Task<SpeedTestResult> GetDownloadSpeedAsync(IServer server, Action<SpeedTestProgress> UpdateProgress, CancellationToken cancellationToken = default)
-    {
-        return await GetDownloadSpeedAsync(server, int.MaxValue, UpdateProgress, cancellationToken);
+        return await GetDownloadSpeedAsync(server, new NullProgress<SpeedTestProgress>(), cancellationToken);
     }
 
     /// <inheritdoc/>
@@ -223,7 +202,27 @@ public sealed class OoklaSpeedtest : ISpeedTestService
     /// The actual bytes processed may significantly exceed the specified limit depending on the number of
     /// concurrent downloads and their individual sizes.
     /// </remarks>
-    public async Task<SpeedTestResult> GetDownloadSpeedAsync(IServer server, int downloadSizeMb, Action<SpeedTestProgress> UpdateProgress, CancellationToken cancellationToken = default)
+    public async Task<SpeedTestResult> GetDownloadSpeedAsync(IServer server, int downloadSizeMb, CancellationToken cancellationToken = default)
+    {
+        return await GetDownloadSpeedAsync(server, downloadSizeMb, new NullProgress<SpeedTestProgress>(), cancellationToken);
+    }
+
+    /// <inheritdoc/>
+    public async Task<SpeedTestResult> GetDownloadSpeedAsync(IServer server, IProgress<SpeedTestProgress> progress, CancellationToken cancellationToken = default)
+    {
+        return await GetDownloadSpeedAsync(server, int.MaxValue, progress, cancellationToken);
+    }
+
+    /// <inheritdoc/>
+    /// <remarks>
+    /// In the Ookla implementation, downloads are processed in parallel batches
+    /// (configured via <see cref="OoklaSpeedtestSettings.DownloadTest"/>). The <paramref name="downloadSizeMb"/>
+    /// parameter triggers cancellation of the internal <see cref="CancellationTokenSource"/> once the threshold
+    /// is reached, but all currently executing parallel download tasks will complete before termination.
+    /// The actual bytes processed may significantly exceed the specified limit depending on the number of
+    /// concurrent downloads and their individual sizes.
+    /// </remarks>
+    public async Task<SpeedTestResult> GetDownloadSpeedAsync(IServer server, int downloadSizeMb, IProgress<SpeedTestProgress> progress, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(server);
         ArgumentException.ThrowIfNullOrWhiteSpace(server.Url);
@@ -258,7 +257,7 @@ public sealed class OoklaSpeedtest : ISpeedTestService
             }
         };
 
-        var downloadResult = await GenericTestSpeedAsync(downloadUrls, DownloadAndMeasureAsync, UpdateProgress, settings.DownloadTest.DownloadParallelTasks, downloadSizeMb * 1024L * 1024L, cancellationToken);
+        var downloadResult = await GenericTestSpeedAsync(downloadUrls, DownloadAndMeasureAsync, progress, settings.DownloadTest.DownloadParallelTasks, downloadSizeMb * 1024L * 1024L, cancellationToken);
 
         return downloadResult;
     }
@@ -266,27 +265,7 @@ public sealed class OoklaSpeedtest : ISpeedTestService
     /// <inheritdoc/>
     public async Task<SpeedTestResult> GetUploadSpeedAsync(IServer server, CancellationToken cancellationToken = default)
     {
-        return await GetUploadSpeedAsync(server, int.MaxValue, (_) => { }, cancellationToken);
-    }
-
-    /// <inheritdoc/>
-    /// <remarks>
-    /// In the default Ookla implementation, uploads are processed in parallel batches
-    /// (configured via <see cref="OoklaSpeedtestSettings.UploadTest"/>). The <paramref name="uploadSizeMb"/> 
-    /// parameter triggers cancellation of the internal <see cref="CancellationTokenSource"/> once the threshold 
-    /// is reached, but all currently executing parallel upload tasks will complete before termination.
-    /// The actual bytes processed may significantly exceed the specified limit depending on the number of 
-    /// concurrent uploads and their individual sizes.
-    /// </remarks>
-    public async Task<SpeedTestResult> GetUploadSpeedAsync(IServer server, int uploadSizeMb, CancellationToken cancellationToken = default)
-    {
-        return await GetUploadSpeedAsync(server, uploadSizeMb, (_) => { }, cancellationToken);
-    }
-
-    /// <inheritdoc/>
-    public async Task<SpeedTestResult> GetUploadSpeedAsync(IServer server, Action<SpeedTestProgress> UpdateProgress, CancellationToken cancellationToken = default)
-    {
-        return await GetUploadSpeedAsync(server, int.MaxValue, UpdateProgress, cancellationToken);
+        return await GetUploadSpeedAsync(server, int.MaxValue, new NullProgress<SpeedTestProgress>(), cancellationToken);
     }
 
     /// <inheritdoc/>
@@ -298,7 +277,27 @@ public sealed class OoklaSpeedtest : ISpeedTestService
     /// The actual bytes processed may significantly exceed the specified limit depending on the number of
     /// concurrent uploads and their individual sizes.
     /// </remarks>
-    public async Task<SpeedTestResult> GetUploadSpeedAsync(IServer server, int uploadSizeMb, Action<SpeedTestProgress> UpdateProgress, CancellationToken cancellationToken = default)
+    public async Task<SpeedTestResult> GetUploadSpeedAsync(IServer server, int uploadSizeMb, CancellationToken cancellationToken = default)
+    {
+        return await GetUploadSpeedAsync(server, uploadSizeMb, new NullProgress<SpeedTestProgress>(), cancellationToken);
+    }
+
+    /// <inheritdoc/>
+    public async Task<SpeedTestResult> GetUploadSpeedAsync(IServer server, IProgress<SpeedTestProgress> progress, CancellationToken cancellationToken = default)
+    {
+        return await GetUploadSpeedAsync(server, int.MaxValue, progress, cancellationToken);
+    }
+
+    /// <inheritdoc/>
+    /// <remarks>
+    /// In the default Ookla implementation, uploads are processed in parallel batches
+    /// (configured via <see cref="OoklaSpeedtestSettings.UploadTest"/>). The <paramref name="uploadSizeMb"/>
+    /// parameter triggers cancellation of the internal <see cref="CancellationTokenSource"/> once the threshold
+    /// is reached, but all currently executing parallel upload tasks will complete before termination.
+    /// The actual bytes processed may significantly exceed the specified limit depending on the number of
+    /// concurrent uploads and their individual sizes.
+    /// </remarks>
+    public async Task<SpeedTestResult> GetUploadSpeedAsync(IServer server, int uploadSizeMb, IProgress<SpeedTestProgress> progress, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(server);
         ArgumentException.ThrowIfNullOrWhiteSpace(server.Url);
@@ -316,19 +315,19 @@ public sealed class OoklaSpeedtest : ISpeedTestService
             return length;
         };
 
-        var uploadResult = await GenericTestSpeedAsync(testDataLengths, UploadAndMeasureAsync, UpdateProgress, settings.UploadTest.UploadParallelTasks, uploadSizeMb * 1024L * 1024L, cancellationToken);
+        var uploadResult = await GenericTestSpeedAsync(testDataLengths, UploadAndMeasureAsync, progress, settings.UploadTest.UploadParallelTasks, uploadSizeMb * 1024L * 1024L, cancellationToken);
 
         return uploadResult;
     }
 
     /// <summary>
-    /// Executes a generic speed test by processing a collection of test data in parallel, 
+    /// Executes a generic speed test by processing a collection of test data in parallel,
     /// measuring total bytes processed and elapsed time.
     /// </summary>
     private async Task<SpeedTestResult> GenericTestSpeedAsync<T>(
         IEnumerable<T> testData,
         Func<HttpClient, T, CancellationToken, Task<int>> doWork,
-        Action<SpeedTestProgress> UpdateProgress,
+        IProgress<SpeedTestProgress> progress,
         int parallelTasks,
         long maxBytes,
         CancellationToken cancellationToken)
@@ -369,7 +368,7 @@ public sealed class OoklaSpeedtest : ISpeedTestService
                 {
                     // Propagate user cancelled exceptions
                     throw;
-                }    
+                }
             }
             finally
             {
@@ -387,7 +386,7 @@ public sealed class OoklaSpeedtest : ISpeedTestService
                                 // User specified byte limit is hit.
                                 wasCancelledLocally = true;
                                 cts.Cancel();
-                                UpdateProgress(new SpeedTestProgress { PercentageComplete = 100 });
+                                progress.Report(new SpeedTestProgress { PercentageComplete = 100 });
                             }
                             else
                             {
@@ -407,7 +406,7 @@ public sealed class OoklaSpeedtest : ISpeedTestService
                                     }
                                 }
 
-                                UpdateProgress(new SpeedTestProgress { PercentageComplete = percentageComplete });
+                                progress.Report(new SpeedTestProgress { PercentageComplete = percentageComplete });
                             }
                         }
                     }
