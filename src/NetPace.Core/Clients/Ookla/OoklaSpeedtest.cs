@@ -112,7 +112,7 @@ public sealed class OoklaSpeedtest : ISpeedTestService
         var latencyResult = new LatencyTestResult
         {
             Server = server,
-            Latency = (int)pings.Average()
+            LatencyMilliseconds = (int)pings.Average()
         };
 
         return latencyResult;
@@ -143,7 +143,7 @@ public sealed class OoklaSpeedtest : ISpeedTestService
             // Apply a minimum threshold to prevent timeouts from becoming too aggressive
             var serverTimeoutMilliseconds = serverProbes.Count == 0
                 ? settings.ServerDiscovery.ServerTimeoutMilliseconds
-                : (int)(serverProbes.Min(p => p.Latency) * 1.5);
+                : (int)(serverProbes.Min(p => p.LatencyMilliseconds) * 1.5);
 
             const int minimumTimeoutMilliseconds = 100;
             var effectiveTimeout = Math.Max(minimumTimeoutMilliseconds, serverTimeoutMilliseconds);
@@ -184,7 +184,7 @@ public sealed class OoklaSpeedtest : ISpeedTestService
             throw new Exception("No servers available");
         }
 
-        return serverProbes.OrderBy(s => s.Latency).First();
+        return serverProbes.OrderBy(s => s.LatencyMilliseconds).First();
     }
 
     /// <inheritdoc/>

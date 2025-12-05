@@ -68,7 +68,7 @@ public sealed class SpeedTestStub : ISpeedTestService
         var latencyResult = new LatencyTestResult
         {
             Server = server,
-            Latency = serverID * 100
+            LatencyMilliseconds = serverID * 100
         };
 
         return Task.FromResult(latencyResult);
@@ -115,7 +115,7 @@ public sealed class SpeedTestStub : ISpeedTestService
         var latencyResult = new LatencyTestResult
         {
             Server = server,
-            Latency = serverID * 100
+            LatencyMilliseconds = serverID * 100
         };
 
         return Task.FromResult(latencyResult);

@@ -17,6 +17,6 @@ var downloadResult = await speedTester.GetDownloadSpeedAsync(fastest.Server);
 var uploadResult = await speedTester.GetUploadSpeedAsync(fastest.Server);
 
 // Display the server, latency, download and upload speeds.
-Console.WriteLine($"{fastest.Server.Sponsor} ({fastest.Latency} ms)");
+Console.WriteLine($"{fastest.Server.Sponsor} ({fastest.LatencyMilliseconds} ms)");
 Console.WriteLine($"Download: {downloadResult.GetSpeedString(SpeedUnit.BitsPerSecond, SpeedUnitSystem.SI)}");
 Console.WriteLine($"Upload: {uploadResult.GetSpeedString(SpeedUnit.BitsPerSecond, SpeedUnitSystem.SI)}");

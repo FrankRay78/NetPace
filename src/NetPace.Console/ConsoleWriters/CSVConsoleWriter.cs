@@ -40,7 +40,7 @@ public sealed class CSVConsoleWriter : IConsoleWriter
             console.WriteLine(string.Join(settings.CSVDelimiter, new[]
             {
                 clock.Now.ToString(settings.DateTimeFormat),
-                !settings.NoLatency ? $"{fastest.Latency}" : null,
+                !settings.NoLatency ? $"{fastest.LatencyMilliseconds}" : null,
                 !settings.NoDownload ? downloadFormattedParts.speed : null,
                 !settings.NoUpload ? uploadFormattedParts.speed : null
             }.Where(s => !string.IsNullOrEmpty(s))));
@@ -63,7 +63,7 @@ public sealed class CSVConsoleWriter : IConsoleWriter
             console.WriteLine(string.Join(settings.CSVDelimiter, new[]
             {
                 clock.Now.ToString(settings.DateTimeFormat),
-                !settings.NoLatency ? $"{fastest.Latency} ms" : null,
+                !settings.NoLatency ? $"{fastest.LatencyMilliseconds} ms" : null,
                 !settings.NoDownload ? downloadResult.GetSpeedString(settings.SpeedUnit, settings.SpeedUnitSystem, settings.SpeedScale) : null,
                 !settings.NoUpload ? uploadResult.GetSpeedString(settings.SpeedUnit, settings.SpeedUnitSystem, settings.SpeedScale) : null
             }.Where(s => !string.IsNullOrEmpty(s))));

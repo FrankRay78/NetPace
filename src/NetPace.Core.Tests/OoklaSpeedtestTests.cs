@@ -182,7 +182,7 @@ public sealed partial class OoklaSpeedtestTests
         // Then
         result.ShouldNotBeNull();
         result.Server.ShouldBe(server);
-        result.Latency.ShouldBeGreaterThanOrEqualTo(0);
+        result.LatencyMilliseconds.ShouldBeGreaterThanOrEqualTo(0);
     }
 
     [Fact]
@@ -295,7 +295,7 @@ public sealed partial class OoklaSpeedtestTests
         // Then
         result.ShouldNotBeNull();
         result.Server.ShouldBe(server);
-        result.Latency.ShouldBe((int)progressReports[2].Pings.Average());
+        result.LatencyMilliseconds.ShouldBe((int)progressReports[2].Pings.Average());
 
         // Should receive 3 progress reports
         progressReports.Count.ShouldBe(3);
