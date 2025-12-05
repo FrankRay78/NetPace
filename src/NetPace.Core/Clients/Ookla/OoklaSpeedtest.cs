@@ -70,7 +70,7 @@ public sealed class OoklaSpeedtest : ISpeedTestService
         ArgumentException.ThrowIfNullOrWhiteSpace(server.Url);
 
         var latencyUrl = GetBaseUrl(server.Url) + "latency.txt";
-        var pings = new List<int>();
+        var pings = new List<long>();
         var stopwatch = new Stopwatch();
 
         var maxIterations = settings.LatencyTest.LatencyTestIterations;
@@ -97,14 +97,14 @@ public sealed class OoklaSpeedtest : ISpeedTestService
             }
 
             // Record this ping time
-            pings.Add((int)stopwatch.ElapsedMilliseconds);
+            pings.Add(stopwatch.ElapsedMilliseconds);
 
             // Report progress after each iteration
             var percentageComplete = (iteration + 1) * 100 / maxIterations;
             progress.Report(new LatencyTestProgress
             {
                 PercentageComplete = percentageComplete,
-                Pings = new List<int>(pings)
+                Pings = new List<long>(pings)
             });
         }
 
@@ -112,7 +112,7 @@ public sealed class OoklaSpeedtest : ISpeedTestService
         var latencyResult = new LatencyTestResult
         {
             Server = server,
-            LatencyMilliseconds = (int)pings.Average()
+            LatencyMilliseconds = (long)pings.Average()
         };
 
         return latencyResult;
