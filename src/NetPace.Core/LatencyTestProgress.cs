@@ -8,7 +8,7 @@ public sealed record LatencyTestProgress
     /// <summary>
     /// Gets the list of individual ping results in milliseconds.
     /// </summary>
-    public List<int> Pings { get; init; } = [];
+    public List<long> Pings { get; init; } = [];
 
     /// <summary>
     /// Gets the percentage complete.

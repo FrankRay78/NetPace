@@ -31,10 +31,10 @@ public class VariableSpeedTester : ISpeedTestService
 
                 LatencyTestResult result = callCount switch
                 {
-                    1 => new LatencyTestResult { Server = server, Latency = 75 },
-                    2 => new LatencyTestResult { Server = server, Latency = 100 },
-                    3 => new LatencyTestResult { Server = server, Latency = 150 },
-                    _ => new LatencyTestResult { Server = server, Latency = 100 },
+                    1 => new LatencyTestResult { Server = server, LatencyMilliseconds = 75 },
+                    2 => new LatencyTestResult { Server = server, LatencyMilliseconds = 100 },
+                    3 => new LatencyTestResult { Server = server, LatencyMilliseconds = 150 },
+                    _ => new LatencyTestResult { Server = server, LatencyMilliseconds = 100 },
                 };
                 return Task.FromResult(result);
             },

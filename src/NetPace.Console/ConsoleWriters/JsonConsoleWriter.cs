@@ -21,7 +21,7 @@ public sealed class JsonConsoleWriter : IConsoleWriter
 
 
         // Display speed test result.
-        var latencyFormatted = !settings.NoLatency ? $"{fastest.Latency} ms" : null;
+        var latencyFormatted = !settings.NoLatency ? $"{fastest.LatencyMilliseconds} ms" : null;
         var downloadFormatted = !settings.NoDownload ? downloadResult.GetSpeedString(settings.SpeedUnit, settings.SpeedUnitSystem, settings.SpeedScale) : null;
         var uploadFormatted = !settings.NoUpload ? uploadResult.GetSpeedString(settings.SpeedUnit, settings.SpeedUnitSystem, settings.SpeedScale) : null;
 

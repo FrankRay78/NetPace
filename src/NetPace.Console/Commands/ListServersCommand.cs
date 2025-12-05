@@ -42,7 +42,7 @@ public sealed class ListServersCommand(IAnsiConsole console, ISpeedTestService s
             .AddColumn(new TableColumn("Url"))
             .AddColumn(new TableColumn("Latency"));
 
-        table.AddRow(fastestLatencyResult.Server.Location ?? string.Empty, fastestLatencyResult.Server.Sponsor ?? string.Empty, fastestLatencyResult.Server.Url ?? string.Empty, $"{fastestLatencyResult.Latency}ms");
+        table.AddRow(fastestLatencyResult.Server.Location ?? string.Empty, fastestLatencyResult.Server.Sponsor ?? string.Empty, fastestLatencyResult.Server.Url ?? string.Empty, $"{fastestLatencyResult.LatencyMilliseconds}ms");
 
         console.WriteLine("");
         console.Write(table);
@@ -100,7 +100,7 @@ public sealed class ListServersCommand(IAnsiConsole console, ISpeedTestService s
                     {
                         var latencyResult = await speedTestClient.GetServerLatencyAsync(server, cancellationToken);
 
-                        table.UpdateCell(i, 3, $"{latencyResult.Latency}ms");
+                        table.UpdateCell(i, 3, $"{latencyResult.LatencyMilliseconds}ms");
                     }
                     catch
                     {

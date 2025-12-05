@@ -70,7 +70,7 @@ public sealed class OoklaSpeedtest : ISpeedTestService
         ArgumentException.ThrowIfNullOrWhiteSpace(server.Url);
 
         var latencyUrl = GetBaseUrl(server.Url) + "latency.txt";
-        var pings = new List<int>();
+        var pings = new List<long>();
         var stopwatch = new Stopwatch();
 
         var maxIterations = settings.LatencyTest.LatencyTestIterations;
@@ -97,14 +97,14 @@ public sealed class OoklaSpeedtest : ISpeedTestService
             }
 
             // Record this ping time
-            pings.Add((int)stopwatch.ElapsedMilliseconds);
+            pings.Add(stopwatch.ElapsedMilliseconds);
 
             // Report progress after each iteration
             var percentageComplete = (iteration + 1) * 100 / maxIterations;
             progress.Report(new LatencyTestProgress
             {
                 PercentageComplete = percentageComplete,
-                Pings = new List<int>(pings)
+                Pings = new List<long>(pings)
             });
         }
 
@@ -112,7 +112,7 @@ public sealed class OoklaSpeedtest : ISpeedTestService
         var latencyResult = new LatencyTestResult
         {
             Server = server,
-            Latency = (int)pings.Average()
+            LatencyMilliseconds = (long)pings.Average()
         };
 
         return latencyResult;
@@ -143,7 +143,7 @@ public sealed class OoklaSpeedtest : ISpeedTestService
             // Apply a minimum threshold to prevent timeouts from becoming too aggressive
             var serverTimeoutMilliseconds = serverProbes.Count == 0
                 ? settings.ServerDiscovery.ServerTimeoutMilliseconds
-                : (int)(serverProbes.Min(p => p.Latency) * 1.5);
+                : (int)(serverProbes.Min(p => p.LatencyMilliseconds) * 1.5);
 
             const int minimumTimeoutMilliseconds = 100;
             var effectiveTimeout = Math.Max(minimumTimeoutMilliseconds, serverTimeoutMilliseconds);
@@ -184,7 +184,7 @@ public sealed class OoklaSpeedtest : ISpeedTestService
             throw new Exception("No servers available");
         }
 
-        return serverProbes.OrderBy(s => s.Latency).First();
+        return serverProbes.OrderBy(s => s.LatencyMilliseconds).First();
     }
 
     /// <inheritdoc/>

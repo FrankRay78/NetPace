@@ -24,7 +24,7 @@ public sealed class MinimalConsoleWriter : IConsoleWriter
         console.WriteLine(string.Join(", ", new[]
         {
             settings.IncludeTimestamp ? clock.Now.ToString(settings.DateTimeFormat) : null,
-            !settings.NoLatency ? $"Latency: {fastest.Latency} ms" : null,
+            !settings.NoLatency ? $"Latency: {fastest.LatencyMilliseconds} ms" : null,
             !settings.NoDownload ? $"Download: {downloadResult.GetSpeedString(settings.SpeedUnit, settings.SpeedUnitSystem, settings.SpeedScale)}" : null,
             !settings.NoUpload ? $"Upload: {uploadResult.GetSpeedString(settings.SpeedUnit, settings.SpeedUnitSystem, settings.SpeedScale)}" : null
         }.Where(s => !string.IsNullOrEmpty(s))));

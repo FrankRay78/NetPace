@@ -26,13 +26,13 @@ internal static class ServerSelector
                     throw new Exception("No servers available");
                 }
                 var firstServer = servers.First();
-                return new LatencyTestResult { Server = firstServer, Latency = 0 };
+                return new LatencyTestResult { Server = firstServer, LatencyMilliseconds = 0 };
             }
             else
             {
                 // Create a minimal speed test server without testing latency.
                 var server = new Server() { Sponsor = "(Unknown)", Url = settings.ServerUrl };
-                return new LatencyTestResult { Server = server, Latency = 0 };
+                return new LatencyTestResult { Server = server, LatencyMilliseconds = 0 };
             }
         }
         else
