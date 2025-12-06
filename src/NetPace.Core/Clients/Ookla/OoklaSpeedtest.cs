@@ -104,7 +104,6 @@ public sealed class OoklaSpeedtest : ISpeedTestService
             progress.Report(new LatencyTestProgress
             {
                 PercentageComplete = percentageComplete,
-                Pings = new List<long>(pings)
             });
         }
 
