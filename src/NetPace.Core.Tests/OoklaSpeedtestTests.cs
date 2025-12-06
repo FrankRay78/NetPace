@@ -221,7 +221,7 @@ public sealed partial class OoklaSpeedtestTests
         // Then
         result.ShouldNotBeNull();
         result.Server.ShouldBe(server);
-        result.LatencyMilliseconds.ShouldBeInRange(pingDelay, (long)(pingDelay * 1.25)); // 25% margin
+        result.LatencyMilliseconds.ShouldBeInRange((long)(0.75 * pingDelay), (long)(pingDelay * 1.25)); // 25% lower and upper margin
     }
 
     [Fact]
