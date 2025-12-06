@@ -186,6 +186,45 @@ public sealed partial class OoklaSpeedtestTests
     }
 
     [Fact]
+    public async Task GetServerLatencyAsync_ShouldReturnLatency_WhenResponseIsValid_MultipleTestIterations()
+    {
+        // Given
+        const int pingDelay = 60;
+        using var mockHttp = new MockHttpMessageHandler();
+        mockHttp
+            .When("http://testserver.com/latency.txt")
+            .Respond(async _ =>
+            {
+                await Task.Delay(pingDelay);
+                return new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = new StringContent("test=test")
+                };
+            });
+
+        var httpClient = mockHttp.ToHttpClient();
+        var settings = new OoklaSpeedtestSettings
+        {
+            LatencyTest = new()
+            {
+                LatencyTestIterations = 10,
+                LatencyTestIntervalMilliseconds = 0,
+            }
+        };
+
+        var speedtest = new OoklaSpeedtest(settings, httpClient);
+        var server = new Server { Url = "http://testserver.com/", Sponsor = "Sponsor", Location = "Location" };
+
+        // When
+        var result = await speedtest.GetServerLatencyAsync(server);
+
+        // Then
+        result.ShouldNotBeNull();
+        result.Server.ShouldBe(server);
+        result.LatencyMilliseconds.ShouldBeInRange((long)(0.75 * pingDelay), (long)(pingDelay * 1.25)); // 25% lower and upper margin
+    }
+
+    [Fact]
     public async Task GetServerLatencyAsync_ShouldThrow_WhenLatencyTestFails()
     {
         // Given
@@ -258,63 +297,6 @@ public sealed partial class OoklaSpeedtestTests
     #endregion
 
     #region --- GetServerLatencyAsync with Progress ---
-
-    [Fact]
-    public async Task GetServerLatencyAsync_WithProgress_ShouldReportPingTimesAndPercentage_ForThreePings()
-    {
-        // Given
-        using var mockHttp = new MockHttpMessageHandler();
-        mockHttp
-            .When("http://testserver.com/latency.txt")
-            .Respond(async _ =>
-            {
-                await Task.Delay(60);
-                return new HttpResponseMessage(HttpStatusCode.OK)
-                {
-                    Content = new StringContent("test=test")
-                };
-            });
-
-        var httpClient = mockHttp.ToHttpClient();
-        var settings = new OoklaSpeedtestSettings
-        {
-            LatencyTest = new()
-            {
-                LatencyTestIterations = 3,
-                LatencyTestIntervalMilliseconds = 0,
-            }
-        };
-
-        var speedtest = new OoklaSpeedtest(settings, httpClient);
-        var server = new Server { Url = "http://testserver.com/", Sponsor = "Sponsor", Location = "Location" };
-        var progressReports = new List<LatencyTestProgress>();
-
-        // When
-        var result = await speedtest.GetServerLatencyAsync(server, new Progress<LatencyTestProgress>(progress => progressReports.Add(progress)));
-
-        // Then
-        result.ShouldNotBeNull();
-        result.Server.ShouldBe(server);
-        result.LatencyMilliseconds.ShouldBe((int)progressReports[2].Pings.Average());
-
-        // Should receive 3 progress reports
-        progressReports.Count.ShouldBe(3);
-
-        // First progress report: 1 ping, 33% complete
-        progressReports[0].Pings.Count.ShouldBe(1);
-        progressReports[0].Pings.ShouldAllBe(p => p >= 50);
-        progressReports[0].PercentageComplete.ShouldBe(33);
-
-        // Second progress report: 2 pings, 66% complete
-        progressReports[1].Pings.Count.ShouldBe(2);
-        progressReports[1].Pings.ShouldAllBe(p => p >= 50);
-        progressReports[1].PercentageComplete.ShouldBe(66);
-
-        // Third progress report: 3 pings, 100% complete
-        progressReports[2].Pings.Count.ShouldBe(3);
-        progressReports[2].Pings.ShouldAllBe(p => p >= 50);
-        progressReports[2].PercentageComplete.ShouldBe(100);
-    }
 
     [Theory]
     [InlineData(1, new[] { 100 })]
