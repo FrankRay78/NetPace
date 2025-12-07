@@ -1,9 +1,9 @@
 namespace NetPace.Core.Tests;
 
 /// <summary>
-/// Guard clause tests for <see cref="SpeedTestResultExtensions"/>.
+/// Guard clause tests for <see cref="SpeedTestExtensions"/>.
 /// </summary>
-public sealed class SpeedTestResultExtensionsTests
+public sealed class SpeedTestExtensionsTests
 {
     public sealed class Guards
     {

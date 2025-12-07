@@ -1124,6 +1124,51 @@ public sealed partial class OoklaSpeedtestTests
         exception.ShouldBeNull();
     }
 
+    [Fact]
+    public async Task GetDownloadSpeedAsync_WithProgress_ShouldReportBytesAndElapsedTime()
+    {
+        // Given
+        using var mockHttp = new MockHttpMessageHandler();
+        mockHttp.When("*").Respond("text/plain", new string('X', 1024));
+
+        var httpClient = mockHttp.ToHttpClient();
+        var settings = new OoklaSpeedtestSettings
+        {
+            DownloadTest = new()
+            {
+                DownloadSizes = new[] { 100 },
+                DownloadSizeIterations = 4,
+                DownloadParallelTasks = 1
+            }
+        };
+
+        var speedtest = new OoklaSpeedtest(settings, httpClient);
+        var server = new Server { Url = "http://example.com/", Sponsor = "Test", Location = "Test" };
+        var progressReports = new List<SpeedTestProgress>();
+
+        // When
+        await speedtest.GetDownloadSpeedAsync(server, new Progress<SpeedTestProgress>(progress =>
+        {
+            progressReports.Add(progress);
+        }));
+
+        // Then
+        progressReports.ShouldNotBeEmpty();
+        progressReports.Count.ShouldBe(4);
+
+        // Validate BytesProcessed grows by 1024 on each progress report
+        progressReports[0].BytesProcessed.ShouldBe(1024);
+        progressReports[1].BytesProcessed.ShouldBe(2048);
+        progressReports[2].BytesProcessed.ShouldBe(3072);
+        progressReports[3].BytesProcessed.ShouldBe(4096);
+
+        // Validate ElapsedMilliseconds increases on each progress report
+        progressReports[0].ElapsedMilliseconds.ShouldBeGreaterThanOrEqualTo(0);
+        progressReports[1].ElapsedMilliseconds.ShouldBeGreaterThanOrEqualTo(progressReports[0].ElapsedMilliseconds);
+        progressReports[2].ElapsedMilliseconds.ShouldBeGreaterThanOrEqualTo(progressReports[1].ElapsedMilliseconds);
+        progressReports[3].ElapsedMilliseconds.ShouldBeGreaterThanOrEqualTo(progressReports[2].ElapsedMilliseconds);
+    }
+
     #endregion
 
     #region --- GetUploadSpeedAsync ---
@@ -1453,6 +1498,52 @@ public sealed partial class OoklaSpeedtestTests
 
         // Then
         exception.ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task GetUploadSpeedAsync_WithProgress_ShouldReportBytesAndElapsedTime()
+    {
+        // Given
+        using var mockHttp = new MockHttpMessageHandler();
+        mockHttp.When("*").Respond(HttpStatusCode.OK);
+
+        var httpClient = mockHttp.ToHttpClient();
+        var settings = new OoklaSpeedtestSettings
+        {
+            UploadTest = new()
+            {
+                UploadIncrements = 1,
+                UploadSizeIncrementKb = 1,
+                UploadSizeIterations = 4,
+                UploadParallelTasks = 1
+            }
+        };
+
+        var speedtest = new OoklaSpeedtest(settings, httpClient);
+        var server = new Server { Url = "http://example.com/", Sponsor = "Test", Location = "Test" };
+        var progressReports = new List<SpeedTestProgress>();
+
+        // When
+        await speedtest.GetUploadSpeedAsync(server, new Progress<SpeedTestProgress>(progress =>
+        {
+            progressReports.Add(progress);
+        }));
+
+        // Then
+        progressReports.ShouldNotBeEmpty();
+        progressReports.Count.ShouldBe(4);
+
+        // Validate BytesProcessed grows by 1024 on each progress report
+        progressReports[0].BytesProcessed.ShouldBe(1024);
+        progressReports[1].BytesProcessed.ShouldBe(2048);
+        progressReports[2].BytesProcessed.ShouldBe(3072);
+        progressReports[3].BytesProcessed.ShouldBe(4096);
+
+        // Validate ElapsedMilliseconds increases on each progress report
+        progressReports[0].ElapsedMilliseconds.ShouldBeGreaterThanOrEqualTo(0);
+        progressReports[1].ElapsedMilliseconds.ShouldBeGreaterThanOrEqualTo(progressReports[0].ElapsedMilliseconds);
+        progressReports[2].ElapsedMilliseconds.ShouldBeGreaterThanOrEqualTo(progressReports[1].ElapsedMilliseconds);
+        progressReports[3].ElapsedMilliseconds.ShouldBeGreaterThanOrEqualTo(progressReports[2].ElapsedMilliseconds);
     }
 
     #endregion
