@@ -385,7 +385,12 @@ public sealed class OoklaSpeedtest : ISpeedTestService
                                 // User specified byte limit is hit.
                                 wasCancelledLocally = true;
                                 cts.Cancel();
-                                progress.Report(new SpeedTestProgress { PercentageComplete = 100 });
+                                progress.Report(new SpeedTestProgress
+                                {
+                                    PercentageComplete = 100,
+                                    BytesProcessed = totalBytesReturned,
+                                    ElapsedMilliseconds = timer.ElapsedMilliseconds
+                                });
                             }
                             else
                             {
@@ -405,7 +410,12 @@ public sealed class OoklaSpeedtest : ISpeedTestService
                                     }
                                 }
 
-                                progress.Report(new SpeedTestProgress { PercentageComplete = percentageComplete });
+                                progress.Report(new SpeedTestProgress
+                                {
+                                    PercentageComplete = percentageComplete,
+                                    BytesProcessed = totalBytesReturned,
+                                    ElapsedMilliseconds = timer.ElapsedMilliseconds
+                                });
                             }
                         }
                     }
