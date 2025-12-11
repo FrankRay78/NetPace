@@ -308,9 +308,9 @@ git worktree add ../netpace-location feature/location-support
 ---
 
 ### Package D: Cellular Signal Metrics
-**Owner**: Developer 3 (can start parallel with C, but merge after C)
+**Owner**: Developer 1 (after Package C merges)
 **Duration**: Week 4-6 (10 days)
-**Dependencies**: Package C should merge before D's CLI integration
+**Dependencies**: Package C should merge first
 **Size**: Large
 
 **Tasks**:
@@ -389,10 +389,9 @@ git worktree add ../netpace-docs docs/iot-guide
 
 ### Week 3-4: Core IoT Features
 - **Day 15-21**: Package C (Location) → Developer 1
-- **Day 15-24**: Package D (Cellular - core interfaces) → Developer 3
-- **Day 24**: Merge Package C to main
-- **Day 25-28**: Package D (Cellular - CLI integration) → Developer 3
-- **Day 28**: Merge Package D to main (careful merge of SpeedTestResult)
+- **Day 22**: Merge Package C to main
+- **Day 23-28**: Package D (Cellular) → Developer 1
+- **Day 28**: Merge Package D to main
 
 ### Week 5-6: Polish & Integration
 - **Day 29-35**: Package E (Documentation) → Developer 4
