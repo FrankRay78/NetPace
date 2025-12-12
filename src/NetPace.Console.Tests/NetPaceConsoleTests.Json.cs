@@ -1,5 +1,3 @@
-using NetPace.Console.DependencyInjection;
-
 namespace NetPace.Console.Tests;
 
 public sealed partial class NetPaceConsoleTests
@@ -12,14 +10,14 @@ public sealed partial class NetPaceConsoleTests
         public async Task Should_Perform_Speed_Test_With_Json(string jsonSwitch)
         {
             // Given
-            var registrar = new TypeRegistrar();
-            registrar.Register(typeof(ISpeedTestService), typeof(SpeedTestStub));
-            registrar.Register(typeof(IClock), typeof(ClockStub));
-            registrar.Register(typeof(IWaiter), typeof(NoDelayStub));
-            var app = GetCommandAppTester(registrar);
+            var services = new ServiceCollection();
+            services.AddSingleton<ISpeedTestService, SpeedTestStub>();
+            services.AddSingleton<IClock, ClockStub>();
+            services.AddSingleton<IWaiter, NoDelayStub>();
+            var host = GetCommandLineTestHost(services);
 
             // When
-            var result = await app.RunAsync([ jsonSwitch ]);
+            var result = await host.RunAsync([ jsonSwitch ]);
 
             // Then
             Assert.Equal(0, result.ExitCode);
@@ -35,14 +33,14 @@ public sealed partial class NetPaceConsoleTests
             var cancellationTokenSource = new CancellationTokenSource();
             var waiter = new SelfCancellingWaiter(10, cancellationTokenSource);
 
-            var registrar = new TypeRegistrar();
-            registrar.Register(typeof(ISpeedTestService), typeof(SpeedTestStub));
-            registrar.Register(typeof(IClock), typeof(IncrementingClockStub));
-            registrar.RegisterInstance(typeof(IWaiter), waiter);
-            var app = GetCommandAppTester(registrar);
+            var services = new ServiceCollection();
+            services.AddSingleton<ISpeedTestService, SpeedTestStub>();
+            services.AddSingleton<IClock, IncrementingClockStub>();
+            services.AddSingleton<IWaiter>(waiter);
+            var host = GetCommandLineTestHost(services);
 
             // When
-            var result = await app.RunAsync([ jsonSwitch, "--loop" ], cancellationTokenSource.Token);
+            var result = await host.RunAsync([ jsonSwitch, "--loop" ], cancellationTokenSource.Token);
 
             // Then
             Assert.Equal(0, result.ExitCode);
@@ -55,14 +53,14 @@ public sealed partial class NetPaceConsoleTests
         public async Task Should_Perform_Speed_Test_With_Json_Multiple_Times(string jsonSwitch, int count)
         {
             // Given
-            var registrar = new TypeRegistrar();
-            registrar.Register(typeof(ISpeedTestService), typeof(SpeedTestStub));
-            registrar.Register(typeof(IClock), typeof(IncrementingClockStub));
-            registrar.Register(typeof(IWaiter), typeof(NoDelayStub));
-            var app = GetCommandAppTester(registrar);
+            var services = new ServiceCollection();
+            services.AddSingleton<ISpeedTestService, SpeedTestStub>();
+            services.AddSingleton<IClock, IncrementingClockStub>();
+            services.AddSingleton<IWaiter, NoDelayStub>();
+            var host = GetCommandLineTestHost(services);
 
             // When
-            var result = await app.RunAsync([ jsonSwitch, "--count", $"{count}" ]);
+            var result = await host.RunAsync([ jsonSwitch, "--count", $"{count}" ]);
 
             // Then
             Assert.Equal(0, result.ExitCode);
@@ -77,14 +75,14 @@ public sealed partial class NetPaceConsoleTests
             // Given
             var waiter = new NoDelayStub();
 
-            var registrar = new TypeRegistrar();
-            registrar.Register(typeof(ISpeedTestService), typeof(SpeedTestStub));
-            registrar.Register(typeof(IClock), typeof(IncrementingClockStub));
-            registrar.RegisterInstance(typeof(IWaiter), waiter);
-            var app = GetCommandAppTester(registrar);
+            var services = new ServiceCollection();
+            services.AddSingleton<ISpeedTestService, SpeedTestStub>();
+            services.AddSingleton<IClock, IncrementingClockStub>();
+            services.AddSingleton<IWaiter>(waiter);
+            var host = GetCommandLineTestHost(services);
 
             // When
-            var result = await app.RunAsync([ jsonSwitch, "--count", $"{count}", "--delay", $"{delay}" ]);
+            var result = await host.RunAsync([ jsonSwitch, "--count", $"{count}", "--delay", $"{delay}" ]);
 
             // Then
             Assert.Equal(count - 1, waiter.CallCount);
@@ -102,14 +100,14 @@ public sealed partial class NetPaceConsoleTests
         public async Task Should_Perform_Speed_Test_With_Json_Multiple_Times_With_Fixed_Scale(string jsonSwitch, string scale)
         {
             // Given
-            var registrar = new TypeRegistrar();
-            registrar.Register(typeof(ISpeedTestService), typeof(VariableSpeedTester));
-            registrar.Register(typeof(IClock), typeof(IncrementingClockStub));
-            registrar.Register(typeof(IWaiter), typeof(NoDelayStub));
-            var app = GetCommandAppTester(registrar);
+            var services = new ServiceCollection();
+            services.AddSingleton<ISpeedTestService, VariableSpeedTester>();
+            services.AddSingleton<IClock, IncrementingClockStub>();
+            services.AddSingleton<IWaiter, NoDelayStub>();
+            var host = GetCommandLineTestHost(services);
 
             // When
-            var result = await app.RunAsync([ jsonSwitch, "--count", "3", "--unit-scale", $"{scale}" ]);
+            var result = await host.RunAsync([ jsonSwitch, "--count", "3", "--unit-scale", $"{scale}" ]);
 
             // Then
             Assert.Equal(0, result.ExitCode);
@@ -122,14 +120,14 @@ public sealed partial class NetPaceConsoleTests
         public async Task Should_Perform_Speed_Test_With_Json_No_Download(string jsonSwitch)
         {
             // Given
-            var registrar = new TypeRegistrar();
-            registrar.Register(typeof(ISpeedTestService), typeof(SpeedTestStub));
-            registrar.Register(typeof(IClock), typeof(ClockStub));
-            registrar.Register(typeof(IWaiter), typeof(NoDelayStub));
-            var app = GetCommandAppTester(registrar);
+            var services = new ServiceCollection();
+            services.AddSingleton<ISpeedTestService, SpeedTestStub>();
+            services.AddSingleton<IClock, ClockStub>();
+            services.AddSingleton<IWaiter, NoDelayStub>();
+            var host = GetCommandLineTestHost(services);
 
             // When
-            var result = await app.RunAsync([ jsonSwitch, "--no-download" ]);
+            var result = await host.RunAsync([ jsonSwitch, "--no-download" ]);
 
             // Then
             Assert.Equal(0, result.ExitCode);
@@ -142,14 +140,14 @@ public sealed partial class NetPaceConsoleTests
         public async Task Should_Perform_Speed_Test_With_Json_No_Upload(string jsonSwitch)
         {
             // Given
-            var registrar = new TypeRegistrar();
-            registrar.Register(typeof(ISpeedTestService), typeof(SpeedTestStub));
-            registrar.Register(typeof(IClock), typeof(ClockStub));
-            registrar.Register(typeof(IWaiter), typeof(NoDelayStub));
-            var app = GetCommandAppTester(registrar);
+            var services = new ServiceCollection();
+            services.AddSingleton<ISpeedTestService, SpeedTestStub>();
+            services.AddSingleton<IClock, ClockStub>();
+            services.AddSingleton<IWaiter, NoDelayStub>();
+            var host = GetCommandLineTestHost(services);
 
             // When
-            var result = await app.RunAsync([ jsonSwitch, "--no-upload" ]);
+            var result = await host.RunAsync([ jsonSwitch, "--no-upload" ]);
 
             // Then
             Assert.Equal(0, result.ExitCode);
@@ -162,14 +160,14 @@ public sealed partial class NetPaceConsoleTests
         public async Task Should_Perform_Speed_Test_With_Json_No_Latency(string jsonSwitch)
         {
             // Given
-            var registrar = new TypeRegistrar();
-            registrar.Register(typeof(ISpeedTestService), typeof(SpeedTestStub));
-            registrar.Register(typeof(IClock), typeof(ClockStub));
-            registrar.Register(typeof(IWaiter), typeof(NoDelayStub));
-            var app = GetCommandAppTester(registrar);
+            var services = new ServiceCollection();
+            services.AddSingleton<ISpeedTestService, SpeedTestStub>();
+            services.AddSingleton<IClock, ClockStub>();
+            services.AddSingleton<IWaiter, NoDelayStub>();
+            var host = GetCommandLineTestHost(services);
 
             // When
-            var result = await app.RunAsync([ jsonSwitch, "--no-latency" ]);
+            var result = await host.RunAsync([ jsonSwitch, "--no-latency" ]);
 
             // Then
             Assert.Equal(0, result.ExitCode);
