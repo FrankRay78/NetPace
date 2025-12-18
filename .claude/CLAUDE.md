@@ -18,44 +18,50 @@ This document guides Claude Code in maintaining NetPace, a cross-platform .NET 8
 
 **TDD is non-negotiable.** Every line of production code must be written in response to a failing test following the **RED-GREEN-REFACTOR** cycle:
 
-1. **RED**: Write failing test → Run and verify failure
-2. **GREEN**: Write minimum code to pass → Run and verify success
-3. **REFACTOR**: Improve design (optional) → Commit first, verify tests still pass
+```
+┌─────────────────────────────────────────────┐
+│  1. RED - Write failing test                │
+│     - Describes desired behavior            │
+│     - Run and watch it FAIL                 │
+└──────────────┬──────────────────────────────┘
+               │
+               ▼
+┌─────────────────────────────────────────────┐
+│  2. GREEN - Make test pass                  │
+│     - Write minimum code needed             │
+│     - Run and watch it PASS                 │
+└──────────────┬──────────────────────────────┘
+               │
+               ▼
+┌─────────────────────────────────────────────┐
+│  3. REFACTOR - Improve code (optional)      │
+│     - Commit before refactoring             │
+│     - Improve design/remove duplication     │
+│     - Run tests - still PASS                │
+└──────────────┬──────────────────────────────┘
+               │
+               ▼
+         Back to RED for next behavior
+```
 
-Use the **tdd-workflow** agent for detailed step-by-step TDD guidance.
+**Critical Rules:**
 
-## Claude Code Agents
+You **MUST NEVER**:
+- ❌ Write production code without a failing test first
+- ❌ Skip the RED step (must see test fail)
+- ❌ Refactor on red (always get to green first)
+- ❌ Add "bonus" features not covered by tests
+- ❌ Proceed if tests are failing
 
-NetPace uses specialized Claude Code agents to handle complex workflows. These agents are invoked automatically or can be called explicitly when needed.
+You **MUST ALWAYS**:
+- ✅ Start with a failing test (RED)
+- ✅ Run the test and verify it fails
+- ✅ Write minimal code to pass (GREEN)
+- ✅ Run all tests before refactoring
+- ✅ Commit before refactoring
+- ✅ Run all tests after refactoring
 
-### Available Agents
-
-**planner** - Implementation Planning
-- **Use for**: New features, architectural changes, refactoring multiple files, API changes, complex bug fixes
-- **Purpose**: Creates detailed TDD-focused implementation plans before code is written
-- **Output**: Structured plan with test strategy, file changes, and TDD steps
-- **Required**: Must get approval before proceeding to implementation
-
-**tdd-workflow** - TDD Enforcement
-- **Use for**: Implementing approved plans following strict RED-GREEN-REFACTOR cycle
-- **Purpose**: Guides step-by-step TDD implementation ensuring tests always come first
-- **Enforces**: No production code without failing test first, proper test execution, refactoring only on green
-
-**test-quality-reviewer** - Test Code Review
-- **Use for**: Reviewing test code for quality, effectiveness, and TDD compliance
-- **Purpose**: Ensures tests are high quality, fast, deterministic, and follow NetPace standards
-- **Checks**: Coverage, assertion quality, isolation, naming conventions, best practices
-
-### Workflow Integration
-
-**For non-trivial changes:**
-1. **planner** creates detailed implementation plan → get approval
-2. **tdd-workflow** guides RED-GREEN-REFACTOR implementation
-3. **test-quality-reviewer** validates test code quality (optional)
-
-**For simple changes:**
-- Skip planning, follow TDD principles directly
-- Use agents as needed (e.g., xml-doc-checker before commit)
+**Claude MUST refuse to write production code without a failing test first.** This is non-negotiable.
 
 ## Project Overview
 
@@ -250,12 +256,12 @@ public async Task<DownloadResult> GetDownloadSpeedAsync(
 ## When Working with Claude Code
 
 ### Claude Must Always
-- **Use the planner agent** for non-trivial changes before writing code
-- **Follow TDD strictly** - write failing test before any production code (use tdd-workflow agent)
-- **Add XML documentation** to public APIs (validate with xml-doc-checker agent)
+- **Follow TDD strictly** - write failing test before any production code (RED-GREEN-REFACTOR cycle)
+- **Add XML documentation** to all public APIs (methods, properties, classes)
 - **Consider cross-platform compatibility** (Windows, Linux, macOS)
 - **Write testable code** (interfaces, dependency injection)
 - **Ask for clarification** if requirements are ambiguous
+- **Use built-in planning tools** for non-trivial changes before writing code
 
 ### Tell Claude About
 - Which component you're working on (Core vs Console)
@@ -281,7 +287,7 @@ public async Task<DownloadResult> GetDownloadSpeedAsync(
 
 ---
 
-**Last Updated**: November 2025 (Agent refactoring)  
-**Maintained by**: Frank Ray  
-**Project**: https://github.com/FrankRay78/NetPace  
+**Last Updated**: December 2025 (Simplified - removed custom agents)
+**Maintained by**: Frank Ray
+**Project**: https://github.com/FrankRay78/NetPace
 **Philosophy**: Test-Driven Development is non-negotiable
