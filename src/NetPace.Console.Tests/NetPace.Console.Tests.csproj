@@ -7,7 +7,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.3.0" />
     <PackageReference Include="Spectre.Console.Cli" Version="1.0.0-alpha.0.11" />
     <PackageReference Include="Spectre.Console.Cli.Testing" Version="1.0.0-alpha.0.11" />
     <PackageReference Include="Spectre.Console.Testing" Version="0.54.0" />
