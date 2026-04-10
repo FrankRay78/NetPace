@@ -210,6 +210,25 @@ dotnet build
 dotnet test
 ```
 
+## Detailed References
+
+For deeper guidance on specific topics, see:
+
+**C# Style Details** (`docs/conventions/csharp-style.md`)
+- Underscore field naming conventions (`_camelCase`, `s_camelCase`, `t_camelCase`)
+- File-scoped namespaces
+- ConfigureAwait patterns for library code
+- Collection expressions (C# 12)
+- Allman braces and member ordering
+- Primary constructor parameters
+
+**Change Intent Records** (`docs/conventions/change-intent-records.md`)
+- When to create CIRs
+- CIR template and examples
+- Documenting architectural decisions
+
+**AI Agents**: Read these files when working on C# code or making architectural decisions.
+
 ## Resources
 
 - [.NET API Documentation](https://learn.microsoft.com/en-us/dotnet/api/)
