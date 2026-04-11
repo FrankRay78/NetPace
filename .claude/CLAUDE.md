@@ -187,7 +187,7 @@ When making changes, update relevant documentation:
 
 ### Running /speckit.specify
 
-Prepend the following instruction before your feature description so acceptance
+**Important** Prepend the following instruction before your feature description so acceptance
 scenarios have named labels — required for `/speckit.testchecklist` traceability:
 
 ```
@@ -197,8 +197,6 @@ followed by: Given [state], When [action], Then [outcome]
 
 Include at least one failure/error scenario and one boundary scenario per user
 story — not just the happy path.
-
-Feature description: <your description here>
 ```
 
 ## Quick Command Reference
