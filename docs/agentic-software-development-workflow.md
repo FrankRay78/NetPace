@@ -114,7 +114,8 @@ Run in Claude Code once per project:
 /speckit.constitution
 ```
 
-The constitution needs exactly four sections — everything else is enforced mechanically:
+In addition to the automatically generated constitution (which is normally pretty good), 
+the following sections should be added:
 
 **1. Testing (NON-NEGOTIABLE)**
 ```
@@ -137,47 +138,11 @@ Do not skip, trivially mock, or special-case tests to make them pass.
   to PROGRESS.md: "T### completed — <what was done and any key decisions>"
 ```
 
-**3. Technology stack**
-```
-[Your specific language, framework, toolchain]
-```
-
-**4. Code standards**
-```
-[Your naming conventions, error handling approach, project-specific rules]
-```
-
 > **Note:** Do not add rules that duplicate what the workflow already enforces. Worktree
 > isolation handles scope, `/speckit.implement` handles task ordering, CI enforces
 > suite-green, and the test checklist enforces coverage.
 
-### 0.3 Create the spec template override
-
-Save as `.specify/templates/overrides/spec-template.md`. Ensures `/speckit.specify` produces
-clean requirements only — no test scenarios.
-
-```markdown
-# Feature Specification: {{FEATURE_NAME}}
-
-## Overview
-[Capability, user need, and scope.]
-
-## Goals
-- [What this feature achieves]
-
-## Non-Goals
-- [Explicit exclusions]
-
-## Requirements
-
-### Requirement: [Behaviour Name]
-The system SHALL [normative statement].
-
-## Open Questions
-- [ ] [Unresolved decisions]
-```
-
-### 0.4 Create Claude Code hooks
+### 0.3 Create Claude Code hooks
 
 Hooks enforce constitution rules deterministically — the agent cannot bypass them.
 All hooks live in `.claude/hooks/` and are registered in `.claude/settings.json`.
@@ -283,7 +248,7 @@ Register them in `.claude/settings.json`:
 Verify with `/hooks` inside Claude Code — you should see PostToolUse (1), PreToolUse (1),
 and Stop (1).
 
-### 0.5 Create the git pre-commit hook
+### 0.4 Create the git pre-commit hook
 
 This runs at the git level and catches compile errors at every commit.
 
@@ -310,7 +275,7 @@ chmod +x .git/hooks/pre-commit
 > **Note:** `.git/hooks/` is not committed to the repository. For worktrees, git hooks are
 > shared from the main `.git` directory — install once, applies everywhere.
 
-### 0.6 Create the worktree setup script
+### 0.5 Create the worktree setup script
 
 Save as `scripts/setup-worktree.sh` and make it executable. This works around Claude Code
 bug #28041 where worktrees do not receive `.claude/` config by default.
@@ -364,7 +329,7 @@ echo "   Run: cd $WORKTREE_DIR && SPECIFY_FEATURE=${FEATURE} claude"
 chmod +x scripts/setup-worktree.sh
 ```
 
-### 0.7 Configure CI
+### 0.6 Configure CI
 
 In GitHub → Settings → Branches, add a branch protection rule for main: require status
 checks to pass. Save as `.github/workflows/test.yml`:
@@ -734,7 +699,6 @@ catches refactored functions whose old versions were never removed.
 | Command | Purpose |
 |---------|---------|
 | `/speckit.testplan` | Generate test-plan.md from spec + plan |
-| `/speckit.redphase` | Commit test-plan.md as red-phase baseline |
 | `/speckit.testchecklist` | Static analysis: verify test plan is fully honoured |
 | `/review-slop` | Flag AI-generated code that compiles but degrades the codebase |
 | `/audit-deadcode` | Find unused code from entry points (run periodically) |
@@ -769,185 +733,3 @@ scripts/setup-worktree.sh                         — worktree creation + PROGRE
 .github/workflows/test.yml                        — CI: suite green required on PR
 PROGRESS.md                                       — per-worktree handoff and progress log
 ```
-
-### Commit conventions
-
-```
-test: red phase — test plan for <feature>   — baseline commit: test-plan.md only
-feat: <description>                          — implementation commits (one per task)
-```
-
-Use the HEREDOC format to avoid formatting issues:
-
-```bash
-git commit -m "$(cat <<'EOF'
-feat: implement rate limiting for login attempts
-
-Adds threshold-based blocking with configurable window.
-EOF
-)"
-```
-
-### Directory conventions
-
-```
-<feature-id>               — feature branch name (e.g. 001-auth)
-../<project>-<feature-id>  — worktree sibling directory
-```
-
-### About subagents vs slash commands
-
-**Slash commands / skills** (`.claude/commands/*.md`) run inside the current session's
-context window. They inject instructions but share the parent's context and tools.
-
-**Subagents** (`.claude/agents/*.md`) are separate Claude instances with their own
-fresh context window, their own system prompt, and optionally restricted tools and a
-different model. The parent delegates a task, the subagent works independently, and
-returns a result. The subagent does not inherit the parent's conversation history —
-it reads from disk only.
-
-The `pr-review-toolkit` agents are subagents: each specialist (code-reviewer,
-silent-failure-hunter, etc.) runs in fresh context, reads the diff from disk, and
-returns findings. This is why they give unbiased "fresh eyes" results.
-
-
----
-
-## Design Decisions
-
-### test-plan.md as the red-phase baseline (not compiled test files)
-
-In a statically-typed language like C#, test files referencing unimplemented classes will
-not compile. A non-compiling test suite cannot be run, cannot provide a failure signal, and
-defeats the purpose of a red-phase baseline. test-plan.md committed before implementation
-provides the same audit capability — it locks the verification intent and can be diffed at
-PR time — without the compilation problem. The `/speckit.testchecklist` command performs the
-post-implementation verification that the locked intent was honoured.
-
-> **Decision:** test-plan.md is the red-phase commit. Test files are written during
-> implementation alongside the code they test.
-
-### Test plan before tasks
-
-Tasks are the implementation decomposition. If tasks are generated before the test plan
-exists, the agent decomposes work without knowing the full verification surface. Some tasks
-only become visible once you see the failure-mode scenarios — particularly tasks handling
-error paths and edge cases that do not appear in the happy-path architecture.
-
-> **Decision:** Generate test plan immediately after `/speckit.plan`, before `/speckit.tasks`.
-
-### test-plan.md co-located with spec artifacts
-
-The test plan is a specification artifact — it describes intended behaviour. It belongs with
-spec.md and plan.md in `.specify/specs/<feature>/`, not in a tests/ directory. Co-locating
-it makes the feature directory a self-contained package. The PR integrity check is also
-cleaner: test-plan.md lives in `.specify/`; test code lives in the test directory.
-
-> **Decision:** test-plan.md lives at `.specify/specs/<feature>/test-plan.md`.
-
-### Single branch per feature
-
-An earlier version used two branches per feature: a locked -tests branch and an -impl
-branch. This was rejected because forcing the suite green after each task is architecturally
-wrong — tests for an endpoint may only pass after a data model task, a service task, and the
-endpoint task are all complete.
-
-> **Decision:** Single feature branch. Red-phase commit is the audit baseline. PR review is
-> the integrity gate.
-
-### Spec and test plan are separate activities
-
-An earlier version embedded test scenarios inside spec.md. This was removed because
-requirements gathering and test design have different goals — mixing them biases requirements
-toward what is easy to test rather than what is actually needed.
-
-> **Decision:** spec.md contains only `### Requirement:` blocks. test-plan.md is generated
-> separately by `/speckit.testplan`.
-
-### Claude Code hooks over constitution rules for mechanical enforcement
-
-Constitution rules are guidance — the agent can choose to ignore them under pressure.
-Hooks are deterministic: the formatter runs on every file edit, test-plan.md cannot be
-written during implementation, and the agent cannot declare completion with a failing suite.
-This converts the three most important process rules from guidelines into enforced
-constraints.
-
-> **Decision:** Use PostToolUse, PreToolUse, and Stop hooks to enforce formatting,
-> test-plan.md protection, and suite-green respectively.
-
-### Separate spec, implementation, and QA review passes
-
-Running a single combined review is faster but noisier. The three-pass approach — slop
-reviewer (AI code quality), pr-review-toolkit (bugs, silent failures, simplification), and
-testchecklist (test coverage integrity) — catches distinct categories of problems with
-specialist tools, giving actionable findings in each category rather than a mixed report.
-
-> **Decision:** Run testchecklist, pr-review-toolkit:review-pr all, and review-slop as
-> separate pre-PR steps.
-
-
----
-
-## Troubleshooting
-
-### Spec-kit does not find the spec in a worktree
-
-Spec-kit detects the active feature from the git branch name. If it fails, set the override:
-
-```bash
-SPECIFY_FEATURE=001-auth claude
-```
-
-### Slash commands or hooks missing in worktree
-
-The setup script creates `.claude/` and copies all files, but if it was run before the
-`mkdir -p` fix was applied, re-copy manually:
-
-```bash
-mkdir -p ../my-project-001-auth/.claude
-cp -r .claude/commands  ../my-project-001-auth/.claude/commands
-cp    .claude/settings.json ../my-project-001-auth/.claude/settings.json
-cp -r .claude/hooks     ../my-project-001-auth/.claude/hooks
-```
-
-### Agent stops mid-implementation because tests are failing
-
-Partial failures are expected. Add a note to that feature's tasks.md:
-
-```
-NOTE: Many tests will remain failing until later tasks are complete.
-Continue through all tasks. Suite-green at the end is the contract.
-```
-
-### Agent loses context after compaction mid-feature
-
-Read PROGRESS.md and the completed `[x]` tasks in tasks.md to re-orient. Start the new
-session with: "Read PROGRESS.md and tasks.md to understand the current state, then continue
-from the first incomplete task."
-
-### Merge conflicts on shared files
-
-Merge in dependency order, then rebase:
-
-```bash
-git fetch origin && git rebase origin/main
-```
-
-Re-run the full suite after rebase before opening the PR.
-
-### /speckit.testchecklist reports missing SCENARIO comments
-
-The agent wrote tests without the `// SCENARIO:` traceability comment, or used different
-wording from the scenario name in test-plan.md. Add or correct the comments — they are the
-link between test code and the verified contract.
-
-### /speckit.testplan produces thin scenarios
-
-The input spec has vague requirements. Run `/speckit.checklist` first, resolve all flagged
-ambiguities in spec.md, then re-run `/speckit.testplan`. The test plan is only as specific
-as the requirements it is derived from.
-
-### /pr-review-toolkit:review-pr all modified files unexpectedly
-
-The code-simplifier agent modifies files. After the full toolkit run, always re-run
-`dotnet test` to confirm the suite is still green before opening the PR.
