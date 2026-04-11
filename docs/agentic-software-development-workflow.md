@@ -142,6 +142,56 @@ Do not skip, trivially mock, or special-case tests to make them pass.
 > isolation handles scope, `/speckit.implement` handles task ordering, CI enforces
 > suite-green, and the test checklist enforces coverage.
 
+
+#### Add this to CLAUDE.md
+
+```
+### Recording Decisions
+
+During implementation, route decisions as follows:
+
+- **Task completion notes** → append one line to
+  `.specify/specs/<feature>/progress.md`:
+  `"T### — <what was done>"`
+
+- **Architectural decisions** (chose between alternatives, worked around a
+  constraint, affects future work) → create a CIR in
+  `docs/change-intent-records/` using the template in
+  `docs/conventions/change-intent-records.md`
+
+When in doubt: if a future developer or agent might wonder *why* something
+was done this way, it's a CIR. If it's just *what* was done, it's a
+progress.md note.
+```
+
+#### Add this to constitution.md
+
+```
+## Testing (NON-NEGOTIABLE)
+
+No implementation code before a test plan exists for that behaviour.
+Do not skip, trivially mock, or special-case tests to make them pass.
+
+## Implementation loop
+
+- Run the full test suite after each task for signal
+- Partial failures mid-branch are expected — do not mock to hide them
+- The branch is not complete until the full suite is green
+- Do not open a PR until all tests pass
+- Commit after each completed task using the HEREDOC format:
+    git commit -m "$(cat <<'EOF'
+    feat: description of what and why
+    EOF
+    )"
+- After each commit, mark the task [x] in tasks.md and append one line
+  to .specify/specs/$FEATURE/progress.md:
+  "T### — <what was done>"
+- If a decision involved choosing between viable alternatives, working around
+  a constraint, or affects future work: create a CIR in
+  docs/change-intent-records/ instead of a progress.md note
+```
+
+
 ### 0.3 Create Claude Code hooks
 
 Hooks enforce constitution rules deterministically — the agent cannot bypass them.
