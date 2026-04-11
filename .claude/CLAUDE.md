@@ -76,6 +76,9 @@ NetPace is a cross-platform network speed testing CLI application built with .NE
 - **Fast**: Entire test suite runs in seconds
 - **Deterministic**: Same input = same result, every time
 - **Mock externals**: Mock network, filesystem, time for unit tests
+- **SCENARIO comments**: Every test method must have a `// SCENARIO:` comment
+  matching the scenario name from the feature's test-plan.md exactly,
+  e.g. `// SCENARIO: Login rejected for unknown email`
 
 ## NetPace-Specific Patterns
 
@@ -181,6 +184,22 @@ When making changes, update relevant documentation:
 - Change public APIs without discussion and approval
 - Add dependencies to NetPace.Core without justification
 - Commit code with failing tests or build warnings
+
+### Running /speckit.specify
+
+Prepend the following instruction before your feature description so acceptance
+scenarios have named labels — required for `/speckit.testchecklist` traceability:
+
+```
+Each acceptance scenario must have a descriptive name label on its own line,
+formatted as: **Scenario: [Descriptive name]**
+followed by: Given [state], When [action], Then [outcome]
+
+Include at least one failure/error scenario and one boundary scenario per user
+story — not just the happy path.
+
+Feature description: <your description here>
+```
 
 ## Quick Command Reference
 
