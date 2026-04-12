@@ -10,6 +10,46 @@ generate tasks → implement feature by feature in parallel worktrees → verify
 statically → PR review → merge.
 
 
+## SDD Workflow Execution Order
+
+### One-time project setup (run once, never again)
+1. `/speckit.constitution`
+
+### Per-feature — Spec & planning (on main branch)
+2. `/speckit.specify`          ← prepend scenario naming instruction
+3. `/speckit.clarify`          ← iterate until spec feels complete
+4. `/speckit.checklist`        ← resolve all gaps before continuing
+5. `/speckit.plan`
+6. `/speckit.testplan`         ← review output carefully before continuing
+7. `/speckit.tasks`
+8. `/speckit.analyze`          ← resolve HIGH/CRITICAL before branching
+
+### Per-feature — Red-phase (on feature branch)
+9.  `git checkout -b <feature-id>`
+10. `git add .specify/specs/<feature>/test-plan.md`
+11. `git commit -m "test: red phase — test plan for <feature>"`
+12. `git push -u origin <feature-id>`
+
+### Per-feature — Implementation (in worktree)
+13. `./scripts/setup-worktree.sh <feature-id>`
+14. `cd ../<project>-<feature-id> && SPECIFY_FEATURE=<feature-id> claude`
+15. `/speckit.implement`        ← agent runs to suite-green
+
+### Per-feature — Pre-PR (back in worktree)
+16. `/speckit.testchecklist <feature-id>`   ← resolve CRITICAL before continuing
+17. `/pr-review-toolkit:review-pr all`      ← re-run dotnet test after simplifier
+18. `/review-slop`
+
+### Per-feature — PR
+19. `gh pr create --draft ...`
+20. Manual review: diff test-plan.md from red-phase commit
+21. Merge (sequential for features sharing files)
+22. `git worktree remove ...` + `git branch -d <feature-id>`
+
+### Periodic (not per-feature)
+∞  `/audit-deadcode`           ← run every few features or before a release
+
+
 ### Separation of concerns
 
 - **Spec (what & why):** requirements as normative SHALL/MUST statements. No test scenarios.
