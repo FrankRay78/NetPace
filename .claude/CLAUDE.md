@@ -1,139 +1,61 @@
 # NetPace Development Guide
 
-## Summary
+## Quick Reference
 
-**TDD (Test-Driven Development) is non-negotiable.** Every line of production code must be written in response to a failing test. No exceptions.
+**For Core Principles & Governance**: See `.specify/memory/constitution.md`
 
-This document guides Claude Code in maintaining NetPace, a cross-platform .NET 8.0 CLI application for network speed testing. Follow these standards strictly:
-
-- **RED-GREEN-REFACTOR**: Write failing test → Make it pass → Improve code
-- **C# best practices**: XML docs, async/await, nullable reference types
-- **CLI excellence**: Follow clig.dev guidelines, Spectre.Console for UI
-- **Clean architecture**: Core library separate from Console application
-- **Cross-platform**: Windows, Linux, macOS support
-
-## Core Philosophy
-
-### Test-Driven Development is Mandatory
-
-**TDD is non-negotiable.** Every line of production code must be written in response to a failing test following the **RED-GREEN-REFACTOR** cycle:
-
-```
-┌─────────────────────────────────────────────┐
-│  1. RED - Write failing test                │
-│     - Describes desired behavior            │
-│     - Run and watch it FAIL                 │
-└──────────────┬──────────────────────────────┘
-               │
-               ▼
-┌─────────────────────────────────────────────┐
-│  2. GREEN - Make test pass                  │
-│     - Write minimum code needed             │
-│     - Run and watch it PASS                 │
-└──────────────┬──────────────────────────────┘
-               │
-               ▼
-┌─────────────────────────────────────────────┐
-│  3. REFACTOR - Improve code (optional)      │
-│     - Commit before refactoring             │
-│     - Improve design/remove duplication     │
-│     - Run tests - still PASS                │
-└──────────────┬──────────────────────────────┘
-               │
-               ▼
-         Back to RED for next behavior
-```
-
-**Critical Rules:**
-
-You **MUST NEVER**:
-- ❌ Write production code without a failing test first
-- ❌ Skip the RED step (must see test fail)
-- ❌ Refactor on red (always get to green first)
-- ❌ Add "bonus" features not covered by tests
-- ❌ Proceed if tests are failing
-
-You **MUST ALWAYS**:
-- ✅ Start with a failing test (RED)
-- ✅ Run the test and verify it fails
-- ✅ Write minimal code to pass (GREEN)
-- ✅ Run all tests before refactoring
-- ✅ Commit before refactoring
-- ✅ Run all tests after refactoring
-
-**Claude MUST refuse to write production code without a failing test first.** This is non-negotiable.
+This guide provides implementation-specific details for developing NetPace. The constitution defines **WHAT** and **WHY** (principles, governance), while this guide covers **HOW** (C# specifics, code patterns, NetPace domain knowledge).
 
 ## Project Overview
 
-NetPace is a cross-platform network speed testing CLI application built with .NET 8.0, utilizing Ookla's Speedtest servers. It includes both a command-line application and a reusable Core library published to NuGet.
+NetPace is a cross-platform network speed testing CLI application built with .NET 8.0, utilizing Ookla's Speedtest servers.
 
 **Key Components:**
 - `NetPace.Console` - Command-line application using Spectre.Console
-- `NetPace.Core` - Reusable library with `ISpeedTestService` interface
-- `NetPace.Core` published as NuGet package
+- `NetPace.Core` - Reusable library with `ISpeedTestService` interface (published to NuGet)
 
-## C# and .NET Standards
+**Technology Stack:**
+- Framework: .NET 8.0
+- Language: C# 12
+- CLI Library: Spectre.Console
+- Testing: xUnit
+- Nullable Reference Types: Enabled
 
-### Language and Framework
-- Target Framework: **.NET 8.0**
-- Language Version: **C# 12** (latest for .NET 8)
-- Nullable Reference Types: **Enabled** (helps prevent null reference exceptions)
+## C# Implementation Details
 
 ### Naming Conventions
-- **PascalCase** for: Classes, methods, properties, namespaces, public fields
-- **camelCase** for: Private fields, local variables, parameters
+
+- **PascalCase**: Classes, methods, properties, namespaces, public fields
+- **camelCase**: Private fields, local variables, parameters
 - **Interfaces** start with `I`: `ISpeedTestService`
 - **Async methods** end with `Async`: `GetServersAsync()`
 
 ### Code Organization
-- **One class per file** (with exceptions for small, tightly related types)
+
+- **One class per file** (exceptions for small, tightly related types)
 - **File names match type names**: `OoklaSpeedtest.cs` contains `OoklaSpeedtest` class
 - **Namespace matches folder structure**: `NetPace.Core.Clients.Ookla`
 
-### Best Practices
-- **Use interfaces** for abstraction and testability (like `ISpeedTestService`)
-- **Favor immutability**: Use `readonly` fields, consider `record` types for DTOs
-- **Avoid magic strings/numbers**: Use constants or enums
+### C# Best Practices
+
 - **Use `var`** when type is obvious: `var result = GetResult();`
 - **Explicit types** when clarity helps: `ISpeedTestService speedTester = ...`
-- **XML documentation** on all public APIs (methods, properties, classes)
-- **Async all the way**: Network operations should be async with proper cancellation token support
+- **Favor immutability**: Use `readonly` fields, consider `record` types for DTOs
+- **Avoid magic strings/numbers**: Use constants or enums
+- **Guard clauses**: Validate inputs early at method start
 
-### Error Handling
-- **Don't swallow exceptions** - let them bubble unless you can meaningfully handle them
-- **Use specific exception types** when creating custom exceptions
-- **Validate inputs** early (guard clauses at method start)
-
-## CLI Application Specific Guidelines
-
-### Command-Line Interface
-- Follow **[CLI Guidelines](https://clig.dev/)** (as per project philosophy)
-- Use **Spectre.Console** for all console output and interaction
-- Support **`--help`** and **`--version`** flags
-- Provide **clear error messages** with actionable guidance
-- Support **multiple output formats** (normal, CSV, JSON) for scripting
-
-### User Experience
-- **Default behavior should work for most users**: `NetPace` runs a simple test
-- **Progress indication** for long-running operations
-- **Verbosity levels**: Minimal (scripts), Normal (users), Debug (troubleshooting)
-- **Cross-platform** considerations: file paths, line endings, console encoding
-
-### Configuration
-- Use **command-line options** over config files (CLI app principle)
-- **Sensible defaults** - users shouldn't need to specify everything
-- **Validate user input** and provide helpful error messages
-
-## Testing
+## Testing Implementation
 
 ### Test Organization
-- Test project naming: `NetPace.Core.Tests`, `NetPace.Console.Tests`
-- Use **xUnit** for testing framework
-- **Given-When-Then** pattern
-- Test file mirrors source: `OoklaSpeedtest.cs` → `OoklaSpeedtestTests.cs`
-- Test naming: `MethodName_Scenario_ExpectedResult`
+
+- **Test project naming**: `NetPace.Core.Tests`, `NetPace.Console.Tests`
+- **Framework**: xUnit
+- **Test file mirrors source**: `OoklaSpeedtest.cs` → `OoklaSpeedtestTests.cs`
+- **Test naming**: `MethodName_Scenario_ExpectedResult`
+- **Pattern**: Given-When-Then
 
 ### What to Test
+
 - **NetPace.Core**: Unit tests for all public APIs
 - **Business logic**: Speed calculations, unit conversions, server selection
 - **Happy paths**: Normal successful scenarios
@@ -142,121 +64,106 @@ NetPace is a cross-platform network speed testing CLI application built with .NE
 - **Integration tests**: Real network calls (consider separate test category)
 
 ### What NOT to Test
+
 - **Spectre.Console output** - trust the library works
 - **Simple property getters/setters** with no logic
 - **Third-party libraries** - assume they work
 
-### Test Quality Standards
-- Tests should be **readable** - another developer should understand what's being tested
-- Tests should be **independent** - can run in any order
-- Tests should be **fast** - entire test suite runs in seconds
-- Tests should be **deterministic** - same input = same result, every time
-- Mock external dependencies (network, filesystem, time) for unit tests
+### Test Quality Expectations
 
-## Architecture Principles
+- **Readable**: Another developer should understand what's being tested
+- **Independent**: Can run in any order
+- **Fast**: Entire test suite runs in seconds
+- **Deterministic**: Same input = same result, every time
+- **Mock externals**: Mock network, filesystem, time for unit tests
+- **SCENARIO comments**: Every test method must have a `// SCENARIO:` comment
+  matching the scenario name from the feature's test-plan.md exactly,
+  e.g. `// SCENARIO: Login rejected for unknown email`
 
-### Separation of Concerns
-- **NetPace.Core**: Business logic, no UI, no console output
-- **NetPace.Console**: User interaction, parsing args, formatting output
-- Core library should be **usable in any context** (console, web API, GUI)
-
-### Dependency Injection Ready
-- Design with DI in mind even if not using a container
-- Depend on **interfaces, not concrete implementations**
-- Constructor injection for dependencies
-
-### NuGet Package Considerations
-- **Keep Core library dependencies minimal** (fewer version conflicts for consumers)
-- **Document breaking changes** in release notes
-- **Semantic versioning**: MAJOR.MINOR.PATCH
-
-## Project-Specific Guidelines
+## NetPace-Specific Patterns
 
 ### Speed Test Provider Pattern
-- All speed test implementations should implement `ISpeedTestService`
+
+All speed test implementations must implement `ISpeedTestService`:
+
+```csharp
+public interface ISpeedTestService
+{
+    Task<IEnumerable<Server>> GetServersAsync(...);
+    Task<LatencyResult> GetLatencyAsync(Server server, ...);
+    Task<DownloadResult> GetDownloadSpeedAsync(Server server, ...);
+    Task<UploadResult> GetUploadSpeedAsync(Server server, ...);
+}
+```
+
 - Currently using Ookla, but architecture allows for alternatives
 - Keep provider-specific code isolated in `Clients/{ProviderName}/`
 
 ### Units and Formatting
-- Support both **SI (1000-based)** and **IEC (1024-based)** unit systems
-- Support both **BitsPerSecond** and **BytesPerSecond**
-- Auto-scale by default (Mbps, Gbps) but allow user override
-- Consistent formatting across output modes (normal, CSV, JSON)
 
-### Performance
-- **Async operations** for all network calls
-- Consider **HttpClient best practices** (singleton, pooling)
-- **CancellationToken** support for long operations
-- Measure and optimize **hot paths** (speed test loops)
+NetPace supports flexible unit configurations:
 
-## Development Workflow
+- **Unit systems**: SI (1000-based: KB, MB, GB) and IEC (1024-based: KiB, MiB, GiB)
+- **Speed units**: BitsPerSecond and BytesPerSecond
+- **Scaling**: Auto-scale by default (Mbps, Gbps) but allow user override via `--unit-scale`
+- **Consistency**: Same formatting across all output modes (normal, CSV, JSON)
 
-### Starting New Work
+### Common Code Patterns
 
-1. **Pull latest from main**
-```bash
-   git checkout main
-   git pull origin main
-```
+#### Result Objects
 
-2. **Create feature branch**
-```bash
-   git checkout -b feature/your-feature-name
-```
+Return rich result objects with full test information:
 
-3. **Review CLAUDE.md** for project standards
-
-### During Development
-1. **Follow TDD cycle** for every behavior change
-2. Add **XML documentation** to public APIs as you go
-3. **Commit frequently** - especially before refactoring
-4. Run **full test suite** regularly
-
-### Before Committing
-- Build succeeds with **no warnings**
-- **All tests pass**
-- Code follows **naming conventions**
-- Public APIs have **XML documentation**
-- No **commented-out code** (delete it, git remembers)
-- **Documentation is updated**
-   - **README.md** - Contains static `--help` output
-   - **USER_GUIDE.md** - Check if any sections reference the changed options
-
-### Commit Messages
-- **Clear and concise**: "Add support for custom server URLs"
-- **Imperative mood**: "Add feature" not "Added feature"
-- **Reference issues** if applicable: "Fix #123: Handle null server response"
-
-## Common Patterns in This Project
-
-### Result Objects
-Prefer returning result objects with rich information:
 ```csharp
 public class DownloadResult
 {
     public double SpeedBitsPerSecond { get; init; }
     public TimeSpan Duration { get; init; }
     public long BytesTransferred { get; init; }
-    
+
     public string GetSpeedString(SpeedUnit unit, SpeedUnitSystem system) { ... }
 }
 ```
 
-### Extension Methods
-Use extension methods for formatting and conversion logic that doesn't belong in core types.
+#### Extension Methods
 
-### Options Pattern
-For complex configuration, use options objects instead of many parameters:
+Use extension methods for formatting and conversion logic that doesn't belong in core types:
+
 ```csharp
-public async Task<DownloadResult> GetDownloadSpeedAsync(
-    Server server, 
-    DownloadTestSettings? settings = null)
+public static class SpeedResultExtensions
+{
+    public static string GetSpeedString(this DownloadResult result, ...) { ... }
+}
 ```
 
-## When Working with Claude Code
+#### Options Pattern
+
+For complex configuration, use options objects instead of many parameters:
+
+```csharp
+public async Task<DownloadResult> GetDownloadSpeedAsync(
+    Server server,
+    DownloadTestSettings? settings = null,
+    CancellationToken cancellationToken = default)
+{
+    settings ??= DownloadTestSettings.Default;
+    // ...
+}
+```
+
+## Documentation Maintenance
+
+When making changes, update relevant documentation:
+
+- **README.md** - Contains static `--help` output (update if CLI options change)
+- **USER_GUIDE.md** - Check if sections reference changed options or features
+- **XML documentation** - All public APIs must have XML docs
+
+## Working with Claude Code
 
 ### Claude Must Always
-- **Follow TDD strictly** - write failing test before any production code (RED-GREEN-REFACTOR cycle)
+
+- **Follow TDD strictly** - Write failing test first (RED-GREEN-REFACTOR cycle from constitution)
 - **Add XML documentation** to all public APIs (methods, properties, classes)
 - **Consider cross-platform compatibility** (Windows, Linux, macOS)
 - **Write testable code** (interfaces, dependency injection)
@@ -264,17 +171,80 @@ public async Task<DownloadResult> GetDownloadSpeedAsync(
 - **Use built-in planning tools** for non-trivial changes before writing code
 
 ### Tell Claude About
-- Which component you're working on (Core vs Console)
-- Whether changes affect the public API (NuGet consumers)
-- Platform-specific considerations
-- Performance requirements
+
+- **Which component** you're working on (Core vs Console)
+- **Public API changes** - affects NuGet consumers, requires discussion
+- **Platform-specific considerations** - if code behavior varies by OS
+- **Performance requirements** - if optimization is needed
 
 ### Never Let Claude
+
 - Write production code without a failing test first
 - Skip the RED step (must see test fail)
 - Change public APIs without discussion and approval
 - Add dependencies to NetPace.Core without justification
 - Commit code with failing tests or build warnings
+
+### Running /speckit.specify
+
+**Important** Prepend the following instruction before your feature description so acceptance
+scenarios have named labels — required for `/speckit.testchecklist` traceability:
+
+```
+Each acceptance scenario must have a descriptive name label on its own line,
+formatted as: **Scenario: [Descriptive name]**
+followed by: Given [state], When [action], Then [outcome]
+
+Include at least one failure/error scenario and one boundary scenario per user
+story — not just the happy path.
+```
+
+## Quick Command Reference
+
+### Build and Test
+
+```bash
+# Build solution
+dotnet build
+
+# Run all tests
+dotnet test
+
+# Run tests with coverage
+dotnet test --collect:"XPlat Code Coverage"
+```
+
+### Git Workflow
+
+```bash
+# Start new work
+git checkout main
+git pull origin main
+git checkout -b feature/your-feature-name
+
+# Before committing: verify build and tests pass
+dotnet build
+dotnet test
+```
+
+## Detailed References
+
+For deeper guidance on specific topics, see:
+
+**C# Style Details** (`docs/conventions/csharp-style.md`)
+- Underscore field naming conventions (`_camelCase`, `s_camelCase`, `t_camelCase`)
+- File-scoped namespaces
+- ConfigureAwait patterns for library code
+- Collection expressions (C# 12)
+- Allman braces and member ordering
+- Primary constructor parameters
+
+**Change Intent Records** (`docs/conventions/change-intent-records.md`)
+- When to create CIRs
+- CIR template and examples
+- Documenting architectural decisions
+
+**AI Agents**: Read these files when working on C# code or making architectural decisions.
 
 ## Resources
 
@@ -287,7 +257,7 @@ public async Task<DownloadResult> GetDownloadSpeedAsync(
 
 ---
 
-**Last Updated**: December 2025 (Simplified - removed custom agents)
+**Last Updated**: April 2026 (Streamlined - core principles moved to constitution)
 **Maintained by**: Frank Ray
 **Project**: https://github.com/FrankRay78/NetPace
-**Philosophy**: Test-Driven Development is non-negotiable
+**Constitution**: `.specify/memory/constitution.md`
