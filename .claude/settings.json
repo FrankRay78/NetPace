@@ -1,4 +1,109 @@
 {
+  "permissions": {
+    "allow": [
+      "Read(**)",
+      "Glob(**)",
+      "Grep(**)",
+      "LS(**)",
+      "Edit(**)",
+      "MultiEdit(**)",
+      "Write(**)",
+      "Bash(git status:*)",
+      "Bash(git rev-parse:*)",
+      "Bash(git log:*)",
+      "Bash(git diff:*)",
+      "Bash(git branch:*)",
+      "Bash(git show:*)",
+      "Bash(git stash:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git checkout:*)",
+      "Bash(git restore:*)",
+      "Bash(cd \"d:/Source/Repos/NetPace\":*)",
+      "Bash(powershell.exe -ExecutionPolicy Bypass -File .specify/:*)",
+      "Bash(dotnet build:*)",
+      "Bash(dotnet run:*)",
+      "Bash(dotnet test:*)",
+      "Bash(dotnet restore:*)",
+      "Bash(dotnet add:*)",
+      "Bash(dotnet remove:*)",
+      "Bash(dotnet list:*)",
+      "Bash(dotnet format:*)",
+      "Bash(dotnet clean:*)",
+      "Bash(dotnet publish:*)",
+      "Bash(dotnet new:*)",
+      "Bash(dotnet tool:*)",
+      "Bash(dotnet package:*)",
+      "Bash(dotnet-coverage:*)",
+      "Bash(reportgenerator:*)",
+      "Bash(gh pr create:*)",
+      "Bash(gh pr view:*)",
+      "Bash(gh pr list:*)",
+      "Bash(gh run view:*)",
+      "Bash(ls:*)",
+      "Bash(find:*)",
+      "Bash(grep:*)",
+      "Bash(cat:*)",
+      "Bash(echo:*)",
+      "Bash(mkdir:*)",
+      "Bash(touch:*)",
+      "Bash(mv:*)",
+      "Bash(cp:*)",
+      "Bash(head:*)",
+      "Bash(tail:*)",
+      "WebFetch(domain:*)",
+      "WebSearch"
+    ],
+    "deny": [
+      "Bash(sudo:*)",
+      "Bash(su:*)",
+      "Bash(chmod:*)",
+      "Bash(chown:*)",
+      "Bash(curl:*)",
+      "Bash(wget:*)",
+      "Bash(ssh:*)",
+      "Bash(scp:*)",
+      "Read(**/.env)",
+      "Read(**/.env.*)",
+      "Read(**/secrets.*)",
+      "Read(**/.ssh/**)",
+      "Read(**/appsettings.*.json)",
+      "Read(**/appsettings.json)"
+    ],
+    "ask": [
+      "Bash(rm:*)",
+      "Bash(rmdir:*)",
+      "Bash(git push:*)",
+      "Bash(git pull:*)",
+      "Bash(git merge:*)",
+      "Bash(git rebase:*)",
+      "Bash(git reset:*)",
+      "Bash(git tag:*)"
+    ],
+    "defaultMode": "acceptEdits",
+    "disableBypassPermissionsMode": "disable"
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "STAGED=$(git diff --cached --name-only | grep \"[.]cs$\"); [ -z \"$STAGED\" ] && exit 0; INCLUDE=$(echo \"$STAGED\" | tr '\\n' ' '); dotnet format style --include $INCLUDE && dotnet format whitespace --include $INCLUDE && echo \"$STAGED\" | xargs -d '\\n' git add",
+            "if": "Bash(git commit:*)",
+            "statusMessage": "Formatting staged .cs files..."
+          },
+          {
+            "type": "command",
+            "command": "dotnet build ./src && dotnet test ./src",
+            "if": "Bash(gh pr create:*)",
+            "statusMessage": "Running build and tests before PR creation..."
+          }
+        ]
+      }
+    ]
+  },
   "enabledPlugins": {
     "pr-review-toolkit@claude-plugins-official": true
   }
