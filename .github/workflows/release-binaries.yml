@@ -95,6 +95,22 @@ jobs:
         with:
           path: ./artifacts
 
+      - name: Verify framework-dependent binaries are smaller than standalone
+        run: |
+          failed=false
+          for runtime in win-x64 win-arm64 linux-x64 linux-arm64 osx-x64 osx-arm64; do
+            net8=$(find ./artifacts/netpace-$runtime-framework-dependent -type f | head -1)
+            standalone=$(find ./artifacts/netpace-$runtime-self-contained -type f | head -1)
+            net8_size=$(stat -c%s "$net8")
+            standalone_size=$(stat -c%s "$standalone")
+            echo "$runtime: net8=${net8_size} bytes, standalone=${standalone_size} bytes"
+            if [ "$net8_size" -ge "$standalone_size" ]; then
+              echo "FAIL: $runtime net8 (${net8_size}) is not smaller than standalone (${standalone_size})"
+              failed=true
+            fi
+          done
+          if [ "$failed" = "true" ]; then exit 1; fi
+
       - name: Attach binaries to existing release
         uses: softprops/action-gh-release@v1
         with:
