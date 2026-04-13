@@ -6,17 +6,17 @@ Read `CLAUDE.md` and `docs/conventions/*.md` for project context before proceedi
 
 ## Steps
 
-1. **Get branch name**: Run `git rev-parse --abbrev-ref HEAD`. If the result is `master`, stop immediately and output: "Run /raise-pr from a feature branch, not master."
+1. **Get branch name**: Run `git rev-parse --abbrev-ref HEAD`. If the result is `main`, stop immediately and output: "Run /raise-pr from a feature branch, not main."
 
-2. **Check for commits**: Run `git log master..HEAD --oneline`. If the output is empty, stop immediately and output: "No commits found on this branch compared to master — nothing to raise a PR for."
+2. **Check for commits**: Run `git log main..HEAD --oneline`. If the output is empty, stop immediately and output: "No commits found on this branch compared to main — nothing to raise a PR for."
 
-3. **Get all changed files**: Run `git diff master...HEAD --name-only` to list every file changed on this branch.
+3. **Get all changed files**: Run `git diff main...HEAD --name-only` to list every file changed on this branch.
 
-4. **Get added files**: Run `git diff master...HEAD --diff-filter=A --name-only` to list only files new to this branch.
+4. **Get added files**: Run `git diff main...HEAD --diff-filter=A --name-only` to list only files new to this branch.
 
 5. **Extract artifacts** from the added files (step 4):
    - Spec folders: find any matching `specs/*/spec.md` and extract the parent folder (e.g. `specs/004-raise-pr-command`)
-   - CIR files: find any matching `docs/change-intent-records/*.md` and use the full path (e.g. `docs/docs/change-intent-records/006-slug.md`)
+   - CIR files: find any matching `docs/change-intent-records/*.md` and use the full path (e.g. `docs/change-intent-records/006-slug.md`)
 
 6. **Infer PR title**: Take the branch name from step 1, strip any leading `NNN-` numeric prefix, replace hyphens with spaces, and apply title case. Examples: `004-raise-pr-command` → `Raise PR Command`; `add-glider-pattern` → `Add Glider Pattern`.
 

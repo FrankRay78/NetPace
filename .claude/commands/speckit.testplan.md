@@ -20,7 +20,7 @@ This command translates completed, clarified requirements into named, verifiable
 scenarios. It is **not** requirements gathering (that is `/speckit.specify` and
 `/speckit.clarify`) and it is **not** test code generation.
 
-Its sole output is `.specify/specs/$ARGUMENTS/test-plan.md` — a human-readable contract
+Its sole output is `specs/$ARGUMENTS/test-plan.md` — a human-readable contract
 between the specification and the implementation, reviewed and approved before any test
 code is written.
 
@@ -28,7 +28,7 @@ code is written.
 
 ## Pre-Generation Quality Check
 
-Before generating any scenarios, read `.specify/specs/$ARGUMENTS/spec.md` and assess
+Before generating any scenarios, read `specs/$ARGUMENTS/spec.md` and assess
 the quality of each `### Requirement:` block.
 
 Flag and report any requirement that exhibits one or more of these problems:
@@ -134,7 +134,7 @@ testable without reading implementation code.
 
 ## Format
 
-Output to `.specify/specs/$ARGUMENTS/test-plan.md`.
+Output to `specs/$ARGUMENTS/test-plan.md`.
 
 The file must follow this structure exactly:
 
@@ -230,5 +230,5 @@ like a gap.
 - THEN lines describe observable outputs — never internal state or side effects
 - Each scenario must be independently executable (no scenario depends on another
   having run first)
-- test-plan.md lives alongside spec.md and plan.md in `.specify/specs/$ARGUMENTS/`
+- test-plan.md lives alongside spec.md and plan.md in `specs/$ARGUMENTS/`
   — it is a specification artifact, not a test artifact

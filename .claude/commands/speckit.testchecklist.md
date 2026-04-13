@@ -43,11 +43,11 @@ derivable from static source analysis alone.
 ## Pre-Execution Checks
 
 1. **Verify test-plan.md exists**:
-   Path: `.specify/specs/$ARGUMENTS/test-plan.md`
+   Path: `specs/$ARGUMENTS/test-plan.md`
    If missing: stop — the test plan is the source of truth. Cannot check without it.
 
 2. **Locate the test directory**:
-   Determine the test file location from `.specify/specs/$ARGUMENTS/plan.md`.
+   Determine the test file location from `specs/$ARGUMENTS/plan.md`.
    Common patterns: `tests/`, `src/__tests__/`, `NetPace.Tests/`, `MyProject.Tests/`.
    If ambiguous, search for files matching the test framework naming convention
    (`*Tests.cs`, `*.test.ts`, `test_*.py`) from the repo root.

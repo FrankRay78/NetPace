@@ -419,7 +419,7 @@ listed here as a reference — the setup is already complete.
 **[`.claude/settings.json`](.claude/settings.json)**
 Permissions allowlist/denylist and two inline hooks:
 - *Format on commit* — runs `dotnet format style` and `dotnet format whitespace` on staged
-  `.cs` files before every `git commit`
+  `.cs` files before any `git commit` Claude Code issues
 - *Build and test before PR* — runs `dotnet build` + `dotnet test` before any
   `gh pr create` command executes, blocking PR creation if either fails
 - Enables the `pr-review-toolkit` plugin
