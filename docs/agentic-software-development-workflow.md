@@ -35,7 +35,9 @@ for the files that make the workflow run.
 10. `git commit -m "test: red phase — test plan for <feature>"`
 11. `git push -u origin <feature-id>`
 
- .\scripts\git-red-phase-commit.ps1
+`powershell -ExecutionPolicy Bypass -File scripts\git-red-phase-commit.ps1`
+
+
 
 ### Per-feature — Implementation
 12. `/speckit.implement`       ← agent runs to suite-green
