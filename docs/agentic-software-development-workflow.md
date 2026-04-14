@@ -25,7 +25,7 @@ for the files that make the workflow run.
 2. `/speckit.clarify`          ← iterate until spec feels complete
 3. `/speckit.checklist`        ← resolve all gaps before continuing
 4. `/speckit.plan`
-5. `/speckit.testplan <feature-id>`   ← review output carefully before continuing
+5. `/speckit.testplan`         ← review output carefully before continuing
 6. `/speckit.tasks`
 7. `/speckit.analyze`          ← resolve HIGH/CRITICAL before branching
 
@@ -34,6 +34,8 @@ for the files that make the workflow run.
 9.  `git add .specify/specs/<feature>/test-plan.md`
 10. `git commit -m "test: red phase — test plan for <feature>"`
 11. `git push -u origin <feature-id>`
+
+ .\scripts\git-red-phase-commit.ps1
 
 ### Per-feature — Implementation
 12. `/speckit.implement`       ← agent runs to suite-green
