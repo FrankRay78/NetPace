@@ -13,4 +13,4 @@ if (-not (Test-Path $planFile)) {
 
 git add $planFile
 git commit -m "test: red phase - test plan for $branch"
-git push -u origin $branch
+#git push -u origin $branch

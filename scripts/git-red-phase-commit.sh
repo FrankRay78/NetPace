@@ -14,4 +14,4 @@ fi
 
 git add "${PLAN_FILE}"
 git commit -m "test: red phase - test plan for ${BRANCH}"
-git push -u origin "${BRANCH}"
+#git push -u origin "${BRANCH}"
