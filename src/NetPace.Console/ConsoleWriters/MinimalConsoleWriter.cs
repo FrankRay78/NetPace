@@ -6,7 +6,7 @@ namespace NetPace.Console.ConsoleWriters;
 
 public sealed class MinimalConsoleWriter : IConsoleWriter
 {
-    public async Task PerformSpeedTestAsync(bool initialSpeedTest, IAnsiConsole console, IClock clock, ISpeedTestService speedTestClient, SpeedTestCommandSettings settings, CancellationToken cancellationToken)
+    public async Task PerformSpeedTestAsync(bool initialSpeedTest, IAnsiConsole console, IClock clock, IClientInfoProvider clientInfoProvider, ISpeedTestService speedTestClient, SpeedTestCommandSettings settings, CancellationToken cancellationToken)
     {
         // Get the server to use for speed testing.
         var fastest = await ServerSelector.GetServerAsync(speedTestClient, settings, cancellationToken);

@@ -13,6 +13,7 @@ public sealed partial class NetPaceConsoleTests
             var registrar = new TypeRegistrar();
             registrar.Register(typeof(ISpeedTestService), typeof(SpeedTestStub));
             registrar.Register(typeof(IClock), typeof(ClockStub));
+            registrar.Register(typeof(IClientInfoProvider), typeof(ClientInfoProviderStub));
             registrar.Register(typeof(IWaiter), typeof(NoDelayStub));
             var app = GetCommandAppTester(registrar);
 
@@ -34,6 +35,7 @@ public sealed partial class NetPaceConsoleTests
             var registrar = new TypeRegistrar();
             registrar.Register(typeof(ISpeedTestService), typeof(SpeedTestStub));
             registrar.Register(typeof(IClock), typeof(IncrementingClockStub));
+            registrar.Register(typeof(IClientInfoProvider), typeof(ClientInfoProviderStub));
             registrar.RegisterInstance(typeof(IWaiter), waiter);
             var app = GetCommandAppTester(registrar);
 
@@ -53,6 +55,7 @@ public sealed partial class NetPaceConsoleTests
             var registrar = new TypeRegistrar();
             registrar.Register(typeof(ISpeedTestService), typeof(SpeedTestStub));
             registrar.Register(typeof(IClock), typeof(IncrementingClockStub));
+            registrar.Register(typeof(IClientInfoProvider), typeof(ClientInfoProviderStub));
             registrar.Register(typeof(IWaiter), typeof(NoDelayStub));
             var app = GetCommandAppTester(registrar);
 
@@ -74,6 +77,7 @@ public sealed partial class NetPaceConsoleTests
             var registrar = new TypeRegistrar();
             registrar.Register(typeof(ISpeedTestService), typeof(SpeedTestStub));
             registrar.Register(typeof(IClock), typeof(IncrementingClockStub));
+            registrar.Register(typeof(IClientInfoProvider), typeof(ClientInfoProviderStub));
             registrar.RegisterInstance(typeof(IWaiter), waiter);
             var app = GetCommandAppTester(registrar);
 
@@ -93,6 +97,7 @@ public sealed partial class NetPaceConsoleTests
             var registrar = new TypeRegistrar();
             registrar.Register(typeof(ISpeedTestService), typeof(VariableSpeedTester));
             registrar.Register(typeof(IClock), typeof(IncrementingClockStub));
+            registrar.Register(typeof(IClientInfoProvider), typeof(ClientInfoProviderStub));
             registrar.Register(typeof(IWaiter), typeof(NoDelayStub));
             var app = GetCommandAppTester(registrar);
 
@@ -111,6 +116,7 @@ public sealed partial class NetPaceConsoleTests
             var registrar = new TypeRegistrar();
             registrar.Register(typeof(ISpeedTestService), typeof(VariableSpeedTester));
             registrar.Register(typeof(IClock), typeof(IncrementingClockStub));
+            registrar.Register(typeof(IClientInfoProvider), typeof(ClientInfoProviderStub));
             registrar.Register(typeof(IWaiter), typeof(NoDelayStub));
             var app = GetCommandAppTester(registrar);
 
@@ -132,6 +138,7 @@ public sealed partial class NetPaceConsoleTests
             var registrar = new TypeRegistrar();
             registrar.Register(typeof(ISpeedTestService), typeof(VariableSpeedTester));
             registrar.Register(typeof(IClock), typeof(IncrementingClockStub));
+            registrar.Register(typeof(IClientInfoProvider), typeof(ClientInfoProviderStub));
             registrar.Register(typeof(IWaiter), typeof(NoDelayStub));
             var app = GetCommandAppTester(registrar);
 
@@ -150,6 +157,7 @@ public sealed partial class NetPaceConsoleTests
             var registrar = new TypeRegistrar();
             registrar.Register(typeof(ISpeedTestService), typeof(VariableSpeedTester));
             registrar.Register(typeof(IClock), typeof(IncrementingClockStub));
+            registrar.Register(typeof(IClientInfoProvider), typeof(ClientInfoProviderStub));
             registrar.Register(typeof(IWaiter), typeof(NoDelayStub));
             var app = GetCommandAppTester(registrar);
 
@@ -168,6 +176,7 @@ public sealed partial class NetPaceConsoleTests
             var registrar = new TypeRegistrar();
             registrar.Register(typeof(ISpeedTestService), typeof(SpeedTestStub));
             registrar.Register(typeof(IClock), typeof(ClockStub));
+            registrar.Register(typeof(IClientInfoProvider), typeof(ClientInfoProviderStub));
             registrar.Register(typeof(IWaiter), typeof(NoDelayStub));
             var app = GetCommandAppTester(registrar);
 
@@ -186,6 +195,7 @@ public sealed partial class NetPaceConsoleTests
             var registrar = new TypeRegistrar();
             registrar.Register(typeof(ISpeedTestService), typeof(SpeedTestStub));
             registrar.Register(typeof(IClock), typeof(ClockStub));
+            registrar.Register(typeof(IClientInfoProvider), typeof(ClientInfoProviderStub));
             registrar.Register(typeof(IWaiter), typeof(NoDelayStub));
             var app = GetCommandAppTester(registrar);
 
@@ -207,6 +217,7 @@ public sealed partial class NetPaceConsoleTests
             var registrar = new TypeRegistrar();
             registrar.Register(typeof(ISpeedTestService), typeof(SpeedTestStub));
             registrar.Register(typeof(IClock), typeof(ClockStub));
+            registrar.Register(typeof(IClientInfoProvider), typeof(ClientInfoProviderStub));
             registrar.Register(typeof(IWaiter), typeof(NoDelayStub));
             var app = GetCommandAppTester(registrar);
 
@@ -225,6 +236,7 @@ public sealed partial class NetPaceConsoleTests
             var registrar = new TypeRegistrar();
             registrar.Register(typeof(ISpeedTestService), typeof(SpeedTestStub));
             registrar.Register(typeof(IClock), typeof(ClockStub));
+            registrar.Register(typeof(IClientInfoProvider), typeof(ClientInfoProviderStub));
             registrar.Register(typeof(IWaiter), typeof(NoDelayStub));
             var app = GetCommandAppTester(registrar);
 
@@ -243,6 +255,7 @@ public sealed partial class NetPaceConsoleTests
             var registrar = new TypeRegistrar();
             registrar.Register(typeof(ISpeedTestService), typeof(SpeedTestStub));
             registrar.Register(typeof(IClock), typeof(ClockStub));
+            registrar.Register(typeof(IClientInfoProvider), typeof(ClientInfoProviderStub));
             registrar.Register(typeof(IWaiter), typeof(NoDelayStub));
             var app = GetCommandAppTester(registrar);
 
@@ -252,6 +265,74 @@ public sealed partial class NetPaceConsoleTests
             // Then
             Assert.Equal(0, result.ExitCode);
             await Verify(result.Output);
+        }
+        [Fact]
+        public async Task Should_Include_IPAddress_And_Hostname_Columns_In_CSV_Output()
+        {
+            // SCENARIO: CSV header row ends with IPAddress then Hostname columns
+            // SCENARIO: CSV data row contains IPAddress and Hostname values matching device identity
+
+            // Given
+            var registrar = new TypeRegistrar();
+            registrar.Register(typeof(ISpeedTestService), typeof(SpeedTestStub));
+            registrar.Register(typeof(IClock), typeof(ClockStub));
+            registrar.RegisterInstance(typeof(IClientInfoProvider), new ClientInfoProviderStub { IPAddress = "10.0.0.1", Hostname = "router-a" });
+            registrar.Register(typeof(IWaiter), typeof(NoDelayStub));
+            var app = GetCommandAppTester(registrar);
+
+            // When
+            var result = await app.RunAsync([ "--csv" ]);
+
+            // Then
+            Assert.Equal(0, result.ExitCode);
+            var lines = result.Output!.Split('\n', StringSplitOptions.RemoveEmptyEntries);
+            Assert.EndsWith(",IPAddress,Hostname", lines[0]);
+            Assert.EndsWith(",10.0.0.1,router-a", lines[1]);
+        }
+
+        [Fact]
+        public async Task Should_Include_Empty_IPAddress_And_Hostname_In_CSV_When_Device_Identity_Unavailable()
+        {
+            // SCENARIO: CSV IPAddress and Hostname columns contain empty values when device identity is unavailable
+
+            // Given
+            var registrar = new TypeRegistrar();
+            registrar.Register(typeof(ISpeedTestService), typeof(SpeedTestStub));
+            registrar.Register(typeof(IClock), typeof(ClockStub));
+            registrar.RegisterInstance(typeof(IClientInfoProvider), new ClientInfoProviderStub { IPAddress = "", Hostname = "" });
+            registrar.Register(typeof(IWaiter), typeof(NoDelayStub));
+            var app = GetCommandAppTester(registrar);
+
+            // When
+            var result = await app.RunAsync([ "--csv" ]);
+
+            // Then
+            Assert.Equal(0, result.ExitCode);
+            var lines = result.Output!.Split('\n', StringSplitOptions.RemoveEmptyEntries);
+            Assert.EndsWith(",,", lines[1]);
+        }
+
+        [Fact]
+        public async Task Should_Include_Error_Hostname_In_CSV_When_Hostname_Retrieval_Fails()
+        {
+            // SCENARIO: CSV Hostname column contains ERROR when hostname retrieval raises an exception
+
+            // Given
+            var registrar = new TypeRegistrar();
+            registrar.Register(typeof(ISpeedTestService), typeof(SpeedTestStub));
+            registrar.Register(typeof(IClock), typeof(ClockStub));
+            registrar.RegisterInstance(typeof(IClientInfoProvider), new ClientInfoProviderStub { IPAddress = "192.168.1.1", Hostname = "ERROR" });
+            registrar.Register(typeof(IWaiter), typeof(NoDelayStub));
+            var app = GetCommandAppTester(registrar);
+
+            // When
+            var result = await app.RunAsync([ "--csv" ]);
+
+            // Then
+            Assert.Equal(0, result.ExitCode);
+            var lines = result.Output!.Split('\n', StringSplitOptions.RemoveEmptyEntries);
+            Assert.EndsWith(",192.168.1.1,ERROR", lines[1]);
+            Assert.EndsWith(",IPAddress,Hostname", lines[0]);
         }
     }
 }

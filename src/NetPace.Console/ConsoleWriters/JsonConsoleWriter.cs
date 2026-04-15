@@ -6,7 +6,7 @@ namespace NetPace.Console.ConsoleWriters;
 
 public sealed class JsonConsoleWriter : IConsoleWriter
 {
-    public async Task PerformSpeedTestAsync(bool initialSpeedTest, IAnsiConsole console, IClock clock, ISpeedTestService speedTestClient, SpeedTestCommandSettings settings, CancellationToken cancellationToken)
+    public async Task PerformSpeedTestAsync(bool initialSpeedTest, IAnsiConsole console, IClock clock, IClientInfoProvider clientInfoProvider, ISpeedTestService speedTestClient, SpeedTestCommandSettings settings, CancellationToken cancellationToken)
     {
         // Get the server to use for speed testing.
         var fastest = await ServerSelector.GetServerAsync(speedTestClient, settings, cancellationToken);
@@ -33,7 +33,9 @@ public sealed class JsonConsoleWriter : IConsoleWriter
             Timestamp = clock.Now.ToString(settings.DateTimeFormat),
             Latency = latencyFormatted!,
             DownloadSpeed = downloadFormatted!,
-            UploadSpeed = uploadFormatted!
+            UploadSpeed = uploadFormatted!,
+            IPAddress = clientInfoProvider.GetIPAddress(),
+            Hostname = clientInfoProvider.GetHostname()
         };
 
         var options = new JsonSerializerOptions { WriteIndented = settings.JsonPretty, DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull };

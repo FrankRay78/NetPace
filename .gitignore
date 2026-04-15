@@ -2,6 +2,10 @@
 # Ignore temporary Verify files
 *.received.*
 
+# Ignore Vim swap files
+*.swp
+*.swo
+
 
 
 ## Ignore Visual Studio temporary files, build results, and

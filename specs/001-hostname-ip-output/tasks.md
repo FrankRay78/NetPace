@@ -20,7 +20,7 @@
 
 **Purpose**: Confirm baseline before starting
 
-- [ ] T001 Verify dotnet build and dotnet test pass cleanly in the repository root before starting
+- [X] T001 Verify dotnet build and dotnet test pass cleanly in the repository root before starting
 
 **Checkpoint**: Build is green — implementation can begin
 
@@ -36,13 +36,13 @@
 
 > **NOTE: Write T002 first and confirm it FAILS before implementing T003**
 
-- [ ] T002 Write 2 smoke tests for `ClientInfoProvider` covering the deterministic happy path on any machine: `GetIPAddress_ReturnsNonNullNonErrorString` and `GetHostname_ReturnsNonNullNonErrorString` — assert each result is not null and not `"ERROR"` in `tests/NetPace.Console.Tests/ClientInfoProviderTests.cs`. Note: edge-case behaviours (IPv6 fallback, empty IP, empty hostname, ERROR values) are covered deterministically via `ClientInfoProviderStub` in T009 and T013 — do not attempt to replicate those conditions by calling real OS APIs in unit tests
-- [ ] T003 Create `src/NetPace.Console/IClientInfoProvider.cs` with: `IClientInfoProvider` interface (XML docs on interface and both methods), `ClientInfoProvider` sealed production implementation (IPv4→IPv6→empty→ERROR logic using `NetworkInterface.GetAllNetworkInterfaces()` and `Dns.GetHostName()`; all exceptions caught internally — never throws), `ClientInfoProviderStub` with hardcoded defaults `IPAddress = "192.168.1.1"` and `Hostname = "test-host"` (configurable via `init` setters for edge-case variants), and `ClientInfoProviderErrorStub` that returns `"ERROR"` for both fields — simulating what `ClientInfoProvider` returns when its internal exception handling fires
-- [ ] T004 Update `IConsoleWriter.PerformSpeedTestAsync` signature to add `IClientInfoProvider clientInfoProvider` parameter after `IClock clock` and before `ISpeedTestService speedTestClient` in `src/NetPace.Console/IConsoleWriter.cs`
-- [ ] T005 [P] Update `DefaultConsoleWriter.PerformSpeedTestAsync` to accept the new `IClientInfoProvider clientInfoProvider` parameter (parameter is accepted but not used) in `src/NetPace.Console/ConsoleWriters/DefaultConsoleWriter.cs`
-- [ ] T006 [P] Update `MinimalConsoleWriter.PerformSpeedTestAsync` to accept the new `IClientInfoProvider clientInfoProvider` parameter (parameter is accepted but not used) in `src/NetPace.Console/ConsoleWriters/MinimalConsoleWriter.cs`
-- [ ] T007 Update `SpeedTestCommand` to inject `IClientInfoProvider` via constructor and pass it to all `PerformSpeedTestAsync` calls in `src/NetPace.Console/Commands/SpeedTestCommand.cs`
-- [ ] T008 Register `IClientInfoProvider → ClientInfoProvider` (production path) and `IClientInfoProvider → ClientInfoProviderStub` (test path via `--test` flag) in `src/NetPace.Console/Program.cs` following the existing `IClock` registration pattern
+- [X] T002 Write 2 smoke tests for `ClientInfoProvider` covering the deterministic happy path on any machine: `GetIPAddress_ReturnsNonNullNonErrorString` and `GetHostname_ReturnsNonNullNonErrorString` — assert each result is not null and not `"ERROR"` in `tests/NetPace.Console.Tests/ClientInfoProviderTests.cs`. Note: edge-case behaviours (IPv6 fallback, empty IP, empty hostname, ERROR values) are covered deterministically via `ClientInfoProviderStub` in T009 and T013 — do not attempt to replicate those conditions by calling real OS APIs in unit tests
+- [X] T003 Create `src/NetPace.Console/IClientInfoProvider.cs` with: `IClientInfoProvider` interface (XML docs on interface and both methods), `ClientInfoProvider` sealed production implementation (IPv4→IPv6→empty→ERROR logic using `NetworkInterface.GetAllNetworkInterfaces()` and `Dns.GetHostName()`; all exceptions caught internally — never throws), `ClientInfoProviderStub` with hardcoded defaults `IPAddress = "192.168.1.1"` and `Hostname = "test-host"` (configurable via `init` setters for edge-case variants), and `ClientInfoProviderErrorStub` that returns `"ERROR"` for both fields — simulating what `ClientInfoProvider` returns when its internal exception handling fires
+- [X] T004 Update `IConsoleWriter.PerformSpeedTestAsync` signature to add `IClientInfoProvider clientInfoProvider` parameter after `IClock clock` and before `ISpeedTestService speedTestClient` in `src/NetPace.Console/IConsoleWriter.cs`
+- [X] T005 [P] Update `DefaultConsoleWriter.PerformSpeedTestAsync` to accept the new `IClientInfoProvider clientInfoProvider` parameter (parameter is accepted but not used) in `src/NetPace.Console/ConsoleWriters/DefaultConsoleWriter.cs`
+- [X] T006 [P] Update `MinimalConsoleWriter.PerformSpeedTestAsync` to accept the new `IClientInfoProvider clientInfoProvider` parameter (parameter is accepted but not used) in `src/NetPace.Console/ConsoleWriters/MinimalConsoleWriter.cs`
+- [X] T007 Update `SpeedTestCommand` to inject `IClientInfoProvider` via constructor and pass it to all `PerformSpeedTestAsync` calls in `src/NetPace.Console/Commands/SpeedTestCommand.cs`
+- [X] T008 Register `IClientInfoProvider → ClientInfoProvider` (production path) and `IClientInfoProvider → ClientInfoProviderStub` (test path via `--test` flag) in `src/NetPace.Console/Program.cs` following the existing `IClock` registration pattern
 
 **Checkpoint**: `dotnet build` passes and all pre-existing tests pass — user story work can now begin
 
@@ -56,10 +56,10 @@
 
 > **NOTE: Write T009 first and confirm it FAILS before implementing T010 and T011**
 
-- [ ] T009 [US1] Write failing JSON integration tests covering all 6 scenarios from `test-plan.md`: (1) `ClientInfoProviderStub` defaults — normal IPv4 + hostname, (2) `ClientInfoProviderStub { IPAddress = "2001:db8::1" }` — IPv6 fallback, (3) `ClientInfoProviderStub { IPAddress = "" }` — empty IP, (4) `ClientInfoProviderStub { IPAddress = "ERROR", Hostname = "test-host" }` — IP exception scenario, (5) `ClientInfoProviderStub { IPAddress = "192.168.1.1", Hostname = "ERROR" }` — hostname exception scenario, (6) `ClientInfoProviderStub { Hostname = "" }` — empty hostname — each as a separate test method with `// SCENARIO:` comment matching the scenario name from the feature's `test-plan.md` exactly in `tests/NetPace.Console.Tests/NetPaceConsoleTests.Json.cs`
-- [ ] T010 [US1] Add `IPAddress` (string, required) and `Hostname` (string, required) properties to `JsonResult` after `UploadSpeed` with XML documentation in `src/NetPace.Console/JsonResult.cs`
-- [ ] T011 [US1] Update `JsonConsoleWriter.PerformSpeedTestAsync` to call `clientInfoProvider.GetIPAddress()` and `clientInfoProvider.GetHostname()` and populate the new `JsonResult.IPAddress` and `JsonResult.Hostname` properties in `src/NetPace.Console/ConsoleWriters/JsonConsoleWriter.cs`
-- [ ] T012 [US1] Update existing JSON snapshot `.verified.txt` files in `tests/NetPace.Console.Tests/Expectations/` to include the new `IPAddress` and `Hostname` fields (run `dotnet test -- --verify-accept-snapshots` after confirming the new output is correct)
+- [X] T009 [US1] Write failing JSON integration tests covering all 6 scenarios from `test-plan.md`: (1) `ClientInfoProviderStub` defaults — normal IPv4 + hostname, (2) `ClientInfoProviderStub { IPAddress = "2001:db8::1" }` — IPv6 fallback, (3) `ClientInfoProviderStub { IPAddress = "" }` — empty IP, (4) `ClientInfoProviderStub { IPAddress = "ERROR", Hostname = "test-host" }` — IP exception scenario, (5) `ClientInfoProviderStub { IPAddress = "192.168.1.1", Hostname = "ERROR" }` — hostname exception scenario, (6) `ClientInfoProviderStub { Hostname = "" }` — empty hostname — each as a separate test method with `// SCENARIO:` comment matching the scenario name from the feature's `test-plan.md` exactly in `tests/NetPace.Console.Tests/NetPaceConsoleTests.Json.cs`
+- [X] T010 [US1] Add `IPAddress` (string, required) and `Hostname` (string, required) properties to `JsonResult` after `UploadSpeed` with XML documentation in `src/NetPace.Console/JsonResult.cs`
+- [X] T011 [US1] Update `JsonConsoleWriter.PerformSpeedTestAsync` to call `clientInfoProvider.GetIPAddress()` and `clientInfoProvider.GetHostname()` and populate the new `JsonResult.IPAddress` and `JsonResult.Hostname` properties in `src/NetPace.Console/ConsoleWriters/JsonConsoleWriter.cs`
+- [X] T012 [US1] Update existing JSON snapshot `.verified.txt` files in `tests/NetPace.Console.Tests/Expectations/` to include the new `IPAddress` and `Hostname` fields (run `dotnet test -- --verify-accept-snapshots` after confirming the new output is correct)
 
 **Checkpoint**: All JSON tests pass including snapshots — US1 is fully functional and independently testable
 
@@ -73,10 +73,10 @@
 
 > **NOTE: Write T013 first and confirm it FAILS before implementing T014 and T015**
 
-- [ ] T013 [US2] Write failing CSV integration tests covering all scenarios from `test-plan.md`: (1) `ClientInfoProviderStub` defaults — normal IPv4 + hostname columns, (2) `ClientInfoProviderStub { IPAddress = "", Hostname = "" }` — empty values, (3) `ClientInfoProviderStub { IPAddress = "192.168.1.1", Hostname = "ERROR" }` — hostname exception scenario — each as a separate test method with `// SCENARIO:` comment matching the scenario name from the feature's `test-plan.md` exactly in `tests/NetPace.Console.Tests/NetPaceConsoleTests.CSV.cs`
-- [ ] T014 [US2] Update `CSVConsoleWriter` to append `IPAddress` and `Hostname` to the header row in both with-units and without-units modes in `src/NetPace.Console/ConsoleWriters/CSVConsoleWriter.cs`
-- [ ] T015 [US2] Update `CSVConsoleWriter` to append `clientInfoProvider.GetIPAddress()` and `clientInfoProvider.GetHostname()` values to each data row in `src/NetPace.Console/ConsoleWriters/CSVConsoleWriter.cs`
-- [ ] T016 [US2] Update existing CSV snapshot `.verified.txt` files in `tests/NetPace.Console.Tests/Expectations/` to include the new `IPAddress` and `Hostname` columns (run `dotnet test -- --verify-accept-snapshots` after confirming the new output is correct)
+- [X] T013 [US2] Write failing CSV integration tests covering all scenarios from `test-plan.md`: (1) `ClientInfoProviderStub` defaults — normal IPv4 + hostname columns, (2) `ClientInfoProviderStub { IPAddress = "", Hostname = "" }` — empty values, (3) `ClientInfoProviderStub { IPAddress = "192.168.1.1", Hostname = "ERROR" }` — hostname exception scenario — each as a separate test method with `// SCENARIO:` comment matching the scenario name from the feature's `test-plan.md` exactly in `tests/NetPace.Console.Tests/NetPaceConsoleTests.CSV.cs`
+- [X] T014 [US2] Update `CSVConsoleWriter` to append `IPAddress` and `Hostname` to the header row in both with-units and without-units modes in `src/NetPace.Console/ConsoleWriters/CSVConsoleWriter.cs`
+- [X] T015 [US2] Update `CSVConsoleWriter` to append `clientInfoProvider.GetIPAddress()` and `clientInfoProvider.GetHostname()` values to each data row in `src/NetPace.Console/ConsoleWriters/CSVConsoleWriter.cs`
+- [X] T016 [US2] Update existing CSV snapshot `.verified.txt` files in `tests/NetPace.Console.Tests/Expectations/` to include the new `IPAddress` and `Hostname` columns (run `dotnet test -- --verify-accept-snapshots` after confirming the new output is correct)
 
 **Checkpoint**: All CSV tests pass including snapshots — US2 is fully functional and independently testable
 
@@ -92,8 +92,8 @@
 
 > **NOTE: Write T017 and T018 first and confirm they FAIL before running the suite (or confirm they pass immediately, verifying no regression was introduced)**
 
-- [ ] T017 [P] [US3] Write regression tests verifying `DefaultConsoleWriter` output does not contain the text `"IPAddress"` or `"Hostname"` for 2 spec scenarios: default output unchanged, using `ClientInfoProviderStub` in `tests/NetPace.Console.Tests/NetPaceConsoleTests.Default.cs`
-- [ ] T018 [P] [US3] Write regression tests verifying `MinimalConsoleWriter` output does not contain the text `"IPAddress"` or `"Hostname"` for 2 spec scenarios: minimal output unchanged, using `ClientInfoProviderStub` in `tests/NetPace.Console.Tests/NetPaceConsoleTests.Minimal.cs`
+- [X] T017 [P] [US3] Write regression tests verifying `DefaultConsoleWriter` output does not contain the text `"IPAddress"` or `"Hostname"` for 2 spec scenarios: default output unchanged, using `ClientInfoProviderStub` in `tests/NetPace.Console.Tests/NetPaceConsoleTests.Default.cs`
+- [X] T018 [P] [US3] Write regression tests verifying `MinimalConsoleWriter` output does not contain the text `"IPAddress"` or `"Hostname"` for 2 spec scenarios: minimal output unchanged, using `ClientInfoProviderStub` in `tests/NetPace.Console.Tests/NetPaceConsoleTests.Minimal.cs`
 
 **Checkpoint**: All user stories are independently functional and tested
 
@@ -103,8 +103,8 @@
 
 **Purpose**: Final validation and documentation completeness
 
-- [ ] T019 Run full test suite and confirm all tests pass: `dotnet build && dotnet test` — zero failures, zero warnings
-- [ ] T020 [P] Verify XML documentation is complete on `IClientInfoProvider` interface, both methods, `ClientInfoProvider`, `ClientInfoProviderStub`, and the new `IPAddress`/`Hostname` properties on `JsonResult` in `src/NetPace.Console/IClientInfoProvider.cs` and `src/NetPace.Console/JsonResult.cs`
+- [X] T019 Run full test suite and confirm all tests pass: `dotnet build && dotnet test` — zero failures, zero warnings
+- [X] T020 [P] Verify XML documentation is complete on `IClientInfoProvider` interface, both methods, `ClientInfoProvider`, `ClientInfoProviderStub`, and the new `IPAddress`/`Hostname` properties on `JsonResult` in `src/NetPace.Console/IClientInfoProvider.cs` and `src/NetPace.Console/JsonResult.cs`
 
 ---
 

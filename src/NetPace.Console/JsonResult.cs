@@ -43,4 +43,16 @@ public sealed record JsonResult
     /// Gets the measured upload speed.
     /// </summary>
     public required string UploadSpeed { get; init; }
+
+    // Device identity
+
+    /// <summary>
+    /// Gets the IP address of the device running the speed test.
+    /// </summary>
+    public required string IPAddress { get; init; }
+
+    /// <summary>
+    /// Gets the hostname of the device running the speed test.
+    /// </summary>
+    public required string Hostname { get; init; }
 }
