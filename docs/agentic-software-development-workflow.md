@@ -73,7 +73,7 @@ for the files that make the workflow run.
 ## Documentation Hierarchy
 
 - Tier 1: GOVERNANCE          → `.specify/memory/constitution.md` (principles)
-- Tier 2: IMPLEMENTATION      → `.claude/CLAUDE.md` (essential patterns + signposts)
+- Tier 2: IMPLEMENTATION      → `CLAUDE.md` (essential patterns + signposts)
 - Tier 3: DETAILED REFERENCES → `docs/conventions/*` (deep guidance)
 
 

@@ -1,7 +1,7 @@
 # C# Style Guide
 
 **Scope**: Detailed C# coding conventions for NetPace
-**Extends**: `.claude/CLAUDE.md` (read that first for essential patterns)
+**Extends**: `CLAUDE.md` (read that first for essential patterns)
 **Audience**: Reference for detailed style questions during code writing/review
 
 ---
