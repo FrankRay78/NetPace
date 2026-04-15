@@ -41,7 +41,7 @@ public sealed partial class NetPaceConsoleTests
                 var registrar = new TypeRegistrar();
                 registrar.Register(typeof(ISpeedTestService), typeof(SpeedTestStub));
                 registrar.Register(typeof(IClock), typeof(ClockStub));
-            registrar.Register(typeof(IClientInfoProvider), typeof(ClientInfoProviderStub));
+                registrar.Register(typeof(IClientInfoProvider), typeof(ClientInfoProviderStub));
                 registrar.Register(typeof(IWaiter), typeof(NoDelayStub));
                 var app = GetCommandAppTester(registrar);
 
