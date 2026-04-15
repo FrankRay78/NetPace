@@ -10,15 +10,12 @@ namespace NetPace.Console;
 public interface IClientInfoProvider
 {
     /// <summary>
-    /// Returns the device's first available IPv4 address; falls back to the first available IPv6
-    /// address; returns an empty string if no unicast addresses are found; returns <c>"ERROR"</c>
-    /// if an exception occurs during retrieval.
+    /// Returns the device's IP address.
     /// </summary>
     string GetIPAddress();
 
     /// <summary>
-    /// Returns the device hostname as reported by the OS; returns an empty string if the hostname
-    /// resolves to empty; returns <c>"ERROR"</c> if an exception occurs during retrieval.
+    /// Returns the device hostname.
     /// </summary>
     string GetHostname();
 }
@@ -32,6 +29,11 @@ public interface IClientInfoProvider
 public sealed class ClientInfoProvider : IClientInfoProvider
 {
     /// <inheritdoc />
+    /// <remarks>
+    /// Returns the first available IPv4 address; falls back to the first available IPv6 address;
+    /// returns an empty string if no unicast addresses are found; returns <c>"ERROR"</c>
+    /// if an exception occurs during retrieval.
+    /// </remarks>
     public string GetIPAddress()
     {
         try
@@ -59,6 +61,10 @@ public sealed class ClientInfoProvider : IClientInfoProvider
     }
 
     /// <inheritdoc />
+    /// <remarks>
+    /// Returns the hostname as reported by the OS; returns an empty string if the hostname
+    /// resolves to empty; returns <c>"ERROR"</c> if an exception occurs during retrieval.
+    /// </remarks>
     public string GetHostname()
     {
         try
