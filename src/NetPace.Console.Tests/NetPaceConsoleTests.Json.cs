@@ -253,6 +253,7 @@ public sealed partial class NetPaceConsoleTests
         public async Task Should_Include_Error_IPAddress_In_Json_Output_When_IP_Retrieval_Fails()
         {
             // SCENARIO: JSON IPAddress field contains ERROR when IP address retrieval raises an exception
+            // SCENARIO: JSON speed test completes and writes output when IP address retrieval raises an exception
 
             // Given
             var registrar = new TypeRegistrar();
@@ -280,6 +281,27 @@ public sealed partial class NetPaceConsoleTests
             registrar.Register(typeof(ISpeedTestService), typeof(SpeedTestStub));
             registrar.Register(typeof(IClock), typeof(ClockStub));
             registrar.RegisterInstance(typeof(IClientInfoProvider), new ClientInfoProviderStub { IPAddress = "192.168.1.1", Hostname = "ERROR" });
+            registrar.Register(typeof(IWaiter), typeof(NoDelayStub));
+            var app = GetCommandAppTester(registrar);
+
+            // When
+            var result = await app.RunAsync([ "--json" ]);
+
+            // Then
+            Assert.Equal(0, result.ExitCode);
+            await Verify(result.Output);
+        }
+
+        [Fact]
+        public async Task Should_Include_Error_IPAddress_And_Hostname_In_Json_Output_When_Both_Retrievals_Fail()
+        {
+            // SCENARIO: JSON speed test completes and writes output when both device identity lookups raise exceptions
+
+            // Given
+            var registrar = new TypeRegistrar();
+            registrar.Register(typeof(ISpeedTestService), typeof(SpeedTestStub));
+            registrar.Register(typeof(IClock), typeof(ClockStub));
+            registrar.RegisterInstance(typeof(IClientInfoProvider), new ClientInfoProviderStub { IPAddress = "ERROR", Hostname = "ERROR" });
             registrar.Register(typeof(IWaiter), typeof(NoDelayStub));
             var app = GetCommandAppTester(registrar);
 

@@ -310,9 +310,31 @@ public sealed partial class NetPaceConsoleTests
         }
 
         [Fact]
+        public async Task Should_Include_Error_IPAddress_In_CSV_When_IP_Retrieval_Fails()
+        {
+            // SCENARIO: CSV IPAddress column contains ERROR when IP address retrieval raises an exception
+
+            // Given
+            var registrar = new TypeRegistrar();
+            registrar.Register(typeof(ISpeedTestService), typeof(SpeedTestStub));
+            registrar.Register(typeof(IClock), typeof(ClockStub));
+            registrar.RegisterInstance(typeof(IClientInfoProvider), new ClientInfoProviderStub { IPAddress = "ERROR", Hostname = "router-a" });
+            registrar.Register(typeof(IWaiter), typeof(NoDelayStub));
+            var app = GetCommandAppTester(registrar);
+
+            // When
+            var result = await app.RunAsync([ "--csv" ]);
+
+            // Then
+            Assert.Equal(0, result.ExitCode);
+            await Verify(result.Output);
+        }
+
+        [Fact]
         public async Task Should_Include_Error_Hostname_In_CSV_When_Hostname_Retrieval_Fails()
         {
             // SCENARIO: CSV Hostname column contains ERROR when hostname retrieval raises an exception
+            // SCENARIO: CSV speed test completes and writes output when hostname retrieval raises an exception
 
             // Given
             var registrar = new TypeRegistrar();
