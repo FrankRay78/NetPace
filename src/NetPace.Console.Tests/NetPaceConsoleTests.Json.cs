@@ -225,7 +225,7 @@ public sealed partial class NetPaceConsoleTests
 
             // Then
             Assert.Equal(0, result.ExitCode);
-            Assert.Contains("\"IPAddress\":\"2001:db8::1\"", result.Output);
+            await Verify(result.Output);
         }
 
         [Fact]
@@ -246,7 +246,7 @@ public sealed partial class NetPaceConsoleTests
 
             // Then
             Assert.Equal(0, result.ExitCode);
-            Assert.Contains("\"IPAddress\":\"\"", result.Output);
+            await Verify(result.Output);
         }
 
         [Fact]
@@ -267,8 +267,7 @@ public sealed partial class NetPaceConsoleTests
 
             // Then
             Assert.Equal(0, result.ExitCode);
-            Assert.Contains("\"IPAddress\":\"ERROR\"", result.Output);
-            Assert.Contains("\"Hostname\"", result.Output);
+            await Verify(result.Output);
         }
 
         [Fact]
@@ -289,8 +288,7 @@ public sealed partial class NetPaceConsoleTests
 
             // Then
             Assert.Equal(0, result.ExitCode);
-            Assert.Contains("\"Hostname\":\"ERROR\"", result.Output);
-            Assert.Contains("\"IPAddress\"", result.Output);
+            await Verify(result.Output);
         }
 
         [Fact]
@@ -311,7 +309,7 @@ public sealed partial class NetPaceConsoleTests
 
             // Then
             Assert.Equal(0, result.ExitCode);
-            Assert.Contains("\"Hostname\":\"\"", result.Output);
+            await Verify(result.Output);
         }
     }
 }

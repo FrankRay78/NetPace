@@ -24,8 +24,7 @@ public sealed partial class NetPaceConsoleTests
 
             // Then
             Assert.Equal(0, result.ExitCode);
-            Assert.DoesNotContain("IPAddress", result.Output);
-            Assert.DoesNotContain("Hostname", result.Output);
+            await Verify(result.Output);
         }
 
         [Fact]
@@ -46,8 +45,7 @@ public sealed partial class NetPaceConsoleTests
 
             // Then
             Assert.Equal(0, result.ExitCode);
-            Assert.DoesNotContain("IPAddress", result.Output);
-            Assert.DoesNotContain("Hostname", result.Output);
+            await Verify(result.Output);
         }
     }
 }

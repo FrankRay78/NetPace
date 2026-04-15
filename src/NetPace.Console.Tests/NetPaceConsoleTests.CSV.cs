@@ -285,9 +285,7 @@ public sealed partial class NetPaceConsoleTests
 
             // Then
             Assert.Equal(0, result.ExitCode);
-            var lines = result.Output!.Split('\n', StringSplitOptions.RemoveEmptyEntries);
-            Assert.EndsWith(",IPAddress,Hostname", lines[0]);
-            Assert.EndsWith(",10.0.0.1,router-a", lines[1]);
+            await Verify(result.Output);
         }
 
         [Fact]
@@ -308,8 +306,7 @@ public sealed partial class NetPaceConsoleTests
 
             // Then
             Assert.Equal(0, result.ExitCode);
-            var lines = result.Output!.Split('\n', StringSplitOptions.RemoveEmptyEntries);
-            Assert.EndsWith(",,", lines[1]);
+            await Verify(result.Output);
         }
 
         [Fact]
@@ -330,9 +327,7 @@ public sealed partial class NetPaceConsoleTests
 
             // Then
             Assert.Equal(0, result.ExitCode);
-            var lines = result.Output!.Split('\n', StringSplitOptions.RemoveEmptyEntries);
-            Assert.EndsWith(",192.168.1.1,ERROR", lines[1]);
-            Assert.EndsWith(",IPAddress,Hostname", lines[0]);
+            await Verify(result.Output);
         }
     }
 }
