@@ -41,6 +41,15 @@ jobs:
           additional_permissions: |
             actions: read
 
+          prompt: |
+            Review this pull request. Analyse the code changes and provide feedback covering:
+            - Bugs or correctness issues
+            - Security concerns (including any flagged by static analysis)
+            - Adherence to the project conventions in CLAUDE.md and the C# style guide
+            - Test coverage — do the tests adequately cover the new behaviour?
+            - Any spec/test-plan mismatches
+            Post your review as a comment on the PR.
+
           # Optional: Give a custom prompt to Claude. If this is not specified, Claude will perform the instructions specified in the comment that tagged it.
           # prompt: 'Update the pull request description to include a summary of changes.'
 
