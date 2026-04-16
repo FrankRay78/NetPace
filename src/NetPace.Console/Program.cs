@@ -59,12 +59,14 @@ public static class Program
             // Executes NetPace against stub service implementations.
             registrar.RegisterInstance(typeof(ISpeedTestService), new SpeedTestStub(250));
             registrar.Register(typeof(IClock), typeof(ClockStub));
+            registrar.Register(typeof(IClientInfoProvider), typeof(ClientInfoProviderStub));
             registrar.Register(typeof(IWaiter), typeof(NoDelayStub));
         }
         else
         {
             registrar.Register(typeof(ISpeedTestService), typeof(OoklaSpeedtest));
             registrar.Register(typeof(IClock), typeof(Clock));
+            registrar.Register(typeof(IClientInfoProvider), typeof(ClientInfoProvider));
             registrar.Register(typeof(IWaiter), typeof(Waiter));
         }
 

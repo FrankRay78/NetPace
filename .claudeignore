@@ -1,0 +1,26 @@
+# .claudeignore — files Claude Code should never read or index
+# Uses gitignore pattern syntax.
+
+# Build & NuGet restore artifacts
+**/obj/
+
+# Visual Studio IDE cache
+.vs/
+src/.vs/
+
+# User-specific VS project overrides
+*.csproj.user
+
+# Binary assets
+resources/images/
+resources/NetPace.snk
+
+# Large binary test payloads (JPEGs used as simulated network traffic)
+src/NetPace.Core.Tests/Payloads/
+
+# Verify transient output files
+*.received.txt
+
+# Editor swap files
+*.swp
+*.swo

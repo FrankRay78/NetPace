@@ -1,4 +1,4 @@
-Timestamp,Latency,Download,Upload
-1980-01-01 10:05:00,200 ms,0 Mbps,0.01 Mbps
-1980-01-01 10:05:00,200 ms,0 Mbps,0.01 Mbps
-1980-01-01 10:05:00,200 ms,0 Mbps,0.01 Mbps
+﻿Timestamp,Latency,Download,Upload,IPAddress,Hostname
+1980-01-01 10:05:00,200 ms,0 Mbps,0.01 Mbps,192.168.1.1,test-host
+1980-01-01 10:05:00,200 ms,0 Mbps,0.01 Mbps,192.168.1.1,test-host
+1980-01-01 10:05:00,200 ms,0 Mbps,0.01 Mbps,192.168.1.1,test-host

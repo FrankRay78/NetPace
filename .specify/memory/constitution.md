@@ -191,6 +191,6 @@ This constitution supersedes all other development practices and guides. All dev
 
 - All pull requests MUST verify constitutional compliance
 - Complexity MUST be justified against simplicity principles
-- For runtime development guidance, refer to `.claude/CLAUDE.md`
+- For runtime development guidance, refer to `CLAUDE.md`
 
 **Version**: 1.0.0 | **Ratified**: 2026-04-10 | **Last Amended**: 2026-04-10

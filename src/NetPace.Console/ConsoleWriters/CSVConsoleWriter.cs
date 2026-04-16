@@ -4,7 +4,7 @@ namespace NetPace.Console.ConsoleWriters;
 
 public sealed class CSVConsoleWriter : IConsoleWriter
 {
-    public async Task PerformSpeedTestAsync(bool initialSpeedTest, IAnsiConsole console, IClock clock, ISpeedTestService speedTestClient, SpeedTestCommandSettings settings, CancellationToken cancellationToken)
+    public async Task PerformSpeedTestAsync(bool initialSpeedTest, IAnsiConsole console, IClock clock, IClientInfoProvider clientInfoProvider, ISpeedTestService speedTestClient, SpeedTestCommandSettings settings, CancellationToken cancellationToken)
     {
         // Get the server to use for speed testing.
         var fastest = await ServerSelector.GetServerAsync(speedTestClient, settings, cancellationToken);
@@ -32,8 +32,10 @@ public sealed class CSVConsoleWriter : IConsoleWriter
                     "Timestamp",
                     !settings.NoLatency ? "Latency (ms)" : null,
                     !settings.NoDownload ? $"Download ({downloadFormattedParts.unit})" : null,
-                    !settings.NoUpload ? $"Upload ({uploadFormattedParts.unit})" : null
-                }.Where(s => !string.IsNullOrEmpty(s))));
+                    !settings.NoUpload ? $"Upload ({uploadFormattedParts.unit})" : null,
+                    "IPAddress",
+                    "Hostname"
+                }.Where(s => s is not null)));
             }
 
             // Data row.
@@ -42,8 +44,10 @@ public sealed class CSVConsoleWriter : IConsoleWriter
                 clock.Now.ToString(settings.DateTimeFormat),
                 !settings.NoLatency ? $"{fastest.LatencyMilliseconds}" : null,
                 !settings.NoDownload ? downloadFormattedParts.speed : null,
-                !settings.NoUpload ? uploadFormattedParts.speed : null
-            }.Where(s => !string.IsNullOrEmpty(s))));
+                !settings.NoUpload ? uploadFormattedParts.speed : null,
+                clientInfoProvider.GetIPAddress(),
+                clientInfoProvider.GetHostname()
+            }.Where(s => s is not null)));
         }
         else
         {
@@ -55,8 +59,10 @@ public sealed class CSVConsoleWriter : IConsoleWriter
                     "Timestamp",
                     !settings.NoLatency ? "Latency" : null,
                     !settings.NoDownload ? "Download" : null,
-                    !settings.NoUpload ? "Upload" : null
-                }.Where(s => !string.IsNullOrEmpty(s))));
+                    !settings.NoUpload ? "Upload" : null,
+                    "IPAddress",
+                    "Hostname"
+                }.Where(s => s is not null)));
             }
 
             // Data row.
@@ -65,8 +71,10 @@ public sealed class CSVConsoleWriter : IConsoleWriter
                 clock.Now.ToString(settings.DateTimeFormat),
                 !settings.NoLatency ? $"{fastest.LatencyMilliseconds} ms" : null,
                 !settings.NoDownload ? downloadResult.GetSpeedString(settings.SpeedUnit, settings.SpeedUnitSystem, settings.SpeedScale) : null,
-                !settings.NoUpload ? uploadResult.GetSpeedString(settings.SpeedUnit, settings.SpeedUnitSystem, settings.SpeedScale) : null
-            }.Where(s => !string.IsNullOrEmpty(s))));
+                !settings.NoUpload ? uploadResult.GetSpeedString(settings.SpeedUnit, settings.SpeedUnitSystem, settings.SpeedScale) : null,
+                clientInfoProvider.GetIPAddress(),
+                clientInfoProvider.GetHostname()
+            }.Where(s => s is not null)));
         }
     }
 }

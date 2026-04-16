@@ -1,11 +1,13 @@
-{
+﻿{
   "ServerLocation": "Test Location",
   "ServerSponsor": "Test Sponsor",
   "ServerUrl": "http://test.com",
   "Timestamp": "1980-01-01 10:05:00",
   "Latency": "75 ms",
   "DownloadSpeed": "250 Kbps",
-  "UploadSpeed": "500 Kbps"
+  "UploadSpeed": "500 Kbps",
+  "IPAddress": "192.168.1.1",
+  "Hostname": "test-host"
 }
 {
   "ServerLocation": "Test Location",
@@ -14,7 +16,9 @@
   "Timestamp": "1980-01-01 10:05:05",
   "Latency": "100 ms",
   "DownloadSpeed": "1000 Kbps",
-  "UploadSpeed": "3000 Kbps"
+  "UploadSpeed": "3000 Kbps",
+  "IPAddress": "192.168.1.1",
+  "Hostname": "test-host"
 }
 {
   "ServerLocation": "Test Location",
@@ -23,5 +27,7 @@
   "Timestamp": "1980-01-01 10:05:10",
   "Latency": "150 ms",
   "DownloadSpeed": "2750 Kbps",
-  "UploadSpeed": "1330 Kbps"
+  "UploadSpeed": "1330 Kbps",
+  "IPAddress": "192.168.1.1",
+  "Hostname": "test-host"
 }
