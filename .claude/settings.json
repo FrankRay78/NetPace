@@ -1,5 +1,4 @@
 {
-  "model": "sonnet",
   "env": {
     "MAX_THINKING_TOKENS": "10000",
     "CLAUDE_AUTOCOMPACT_PCT_OVERRIDE": "50",
@@ -89,6 +88,7 @@
     "defaultMode": "acceptEdits",
     "disableBypassPermissionsMode": "disable"
   },
+  "model": "sonnet",
   "hooks": {
     "PreToolUse": [
       {
@@ -111,6 +111,7 @@
     ]
   },
   "enabledPlugins": {
-    "pr-review-toolkit@claude-plugins-official": true
+    "pr-review-toolkit@claude-plugins-official": true,
+    "context-mode@context-mode": true
   }
 }

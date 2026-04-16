@@ -163,3 +163,20 @@ collection expressions, brace style, member ordering.
 When and how to write a Change Intent Record (CIR) — for decisions involving viable
 alternatives, constraint workarounds, or anything that affects future work.
 CIRs live in `docs/change-intent-records/`.
+
+
+---
+
+## Claude Token Management Plugins
+
+### read-once
+
+https://github.com/Bande-a-Bonnot/Boucle-framework/blob/main/tools/read-once/README.md
+
+`C:\Users\frank\.claude\read-once\read-once.ps1 stats`
+
+### context-mode
+
+https://github.com/mksglu/context-mode
+
+`/context-mode:ctx-stats`
