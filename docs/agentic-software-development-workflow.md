@@ -40,6 +40,7 @@ for the files that make the workflow run.
 
 ### Per-feature — PR
 16. `/raise-pr`
+17. `/capture-learnings`    ← optional; run after PR is raised
 
 ### Periodic (not per-feature)
 ∞  `/audit-deadcode`           ← run every few features or before a release
@@ -116,6 +117,11 @@ a `DEADCODE.md` report of unused code.
 Custom `/raise-pr` command. Reads the branch name, commit history, and changed files to
 auto-generate a PR title and body (using `.github/pull_request_template.md`), then runs
 `gh pr create`.
+
+**[`.claude/commands/capture-learnings.md`](.claude/commands/capture-learnings.md)**
+Custom `/capture-learnings` command. Scans the branch's commit messages and diff for
+signals of corrections, decisions, and gotchas, then surfaces candidates for the user to
+approve and persist as memory entries.
 
 ### spec-kit configuration (`.specify/`)
 
