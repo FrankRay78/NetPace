@@ -351,5 +351,26 @@ public sealed partial class NetPaceConsoleTests
             Assert.Equal(0, result.ExitCode);
             await Verify(result.Output);
         }
+
+        [Fact]
+        public async Task Should_Include_Error_IPAddress_And_Hostname_In_CSV_When_Both_Retrievals_Fail()
+        {
+            // SCENARIO: CSV speed test completes and writes output when both device identity lookups raise exceptions
+
+            // Given
+            var registrar = new TypeRegistrar();
+            registrar.Register(typeof(ISpeedTestService), typeof(SpeedTestStub));
+            registrar.Register(typeof(IClock), typeof(ClockStub));
+            registrar.RegisterInstance(typeof(IClientInfoProvider), new ClientInfoProviderErrorStub());
+            registrar.Register(typeof(IWaiter), typeof(NoDelayStub));
+            var app = GetCommandAppTester(registrar);
+
+            // When
+            var result = await app.RunAsync([ "--csv" ]);
+
+            // Then
+            Assert.Equal(0, result.ExitCode);
+            await Verify(result.Output);
+        }
     }
 }

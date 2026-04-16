@@ -54,7 +54,7 @@ public sealed class ClientInfoProvider : IClientInfoProvider
 
             return ipv6Address ?? string.Empty;
         }
-        catch
+        catch (Exception)
         {
             return "ERROR";
         }
@@ -72,7 +72,7 @@ public sealed class ClientInfoProvider : IClientInfoProvider
             var hostname = Dns.GetHostName();
             return string.IsNullOrEmpty(hostname) ? string.Empty : hostname;
         }
-        catch
+        catch (Exception)
         {
             return "ERROR";
         }

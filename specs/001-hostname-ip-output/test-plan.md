@@ -171,6 +171,12 @@ FR-012. Failures to retrieve hostname or IP address MUST NOT result in unhandled
 - **AND** a CSV header row and data row are written to stdout
 - **AND** the data row contains `ERROR` in the Hostname column position
 
+#### Scenario: CSV speed test completes and writes output when both device identity lookups raise exceptions
+- **WHEN** a speed test is run with `--csv` output and both the IP address lookup and hostname lookup raise exceptions
+- **THEN** the process exits with exit code `0`
+- **AND** a CSV header row and data row are written to stdout
+- **AND** the data row contains `ERROR` in both the IPAddress and Hostname column positions
+
 #### Scenario: JSON speed test completes and writes output when both device identity lookups raise exceptions
 - **WHEN** a speed test is run with `--json` output and both the IP address lookup and hostname lookup raise exceptions
 - **THEN** the process exits with exit code `0`
