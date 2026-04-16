@@ -51,6 +51,7 @@ jobs:
             -p:AssemblyVersion=${{ steps.get_version.outputs.version }} \
             -p:FileVersion=${{ steps.get_version.outputs.version }} \
             -p:InformationalVersion=${{ steps.get_version.outputs.version }} \
+            -p:SelfContained=${{ steps.deployment_flags.outputs.self_contained }} \
             -p:PublishSingleFile=true
 
       - name: Build NetPace.Core.dll (library) with version
