@@ -180,3 +180,9 @@ https://github.com/Bande-a-Bonnot/Boucle-framework/blob/main/tools/read-once/REA
 https://github.com/mksglu/context-mode
 
 `/context-mode:ctx-stats`
+
+### rkt
+
+https://github.com/rtk-ai/rtk
+
+`rtk gain`
