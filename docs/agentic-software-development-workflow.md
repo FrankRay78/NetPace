@@ -40,7 +40,7 @@ for the files that make the workflow run.
 
 ### Per-feature — PR
 16. `/raise-pr`
-17. `/capture-learnings`    ← optional; run after PR is raised
+17. `/capture-learnings`       ← optional; run after PR is raised
 
 ### Periodic (not per-feature)
 ∞  `/audit-deadcode`           ← run every few features or before a release
@@ -174,6 +174,7 @@ CIRs live in `docs/change-intent-records/`.
 https://github.com/Bande-a-Bonnot/Boucle-framework/blob/main/tools/read-once/README.md
 
 `C:\Users\frank\.claude\read-once\read-once.ps1 stats`
+`~/.claude/read-once/read-once stats`
 
 ### context-mode
 
