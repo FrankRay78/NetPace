@@ -24,3 +24,9 @@ src/NetPace.Core.Tests/Payloads/
 # Editor swap files
 *.swp
 *.swo
+
+# Archived specs (implemented features)
+specs/archive/
+
+# Git internals
+.git/

@@ -232,3 +232,33 @@ like a gap.
   having run first)
 - test-plan.md lives alongside spec.md and plan.md in `specs/$ARGUMENTS/`
   — it is a specification artifact, not a test artifact
+
+---
+
+## Implementation Guidance Footer
+
+After writing all scenarios and the coverage summary, append the following section
+verbatim to the end of `test-plan.md`:
+
+```markdown
+---
+
+## Implementation guidance
+
+Every test method that implements a scenario in this plan MUST include a `// SCENARIO:`
+comment whose value matches the `#### Scenario:` name above **exactly** — character for
+character, including case and punctuation:
+
+```csharp
+[Fact]
+public void Login_UnknownEmail_Returns401()
+{
+    // SCENARIO: Login rejected for unknown email
+
+    // ...
+}
+```
+
+`/speckit.testchecklist` validates these comments against the scenario names in this
+file. A test without a matching `// SCENARIO:` comment is reported as untraced.
+```

@@ -131,6 +131,13 @@ hooks:
     description: Auto-commit after checklist generation
     condition: null
   after_analyze:
+  - extension: testplan
+    command: speckit.analyze.testplan
+    enabled: true
+    optional: false
+    prompt: null
+    description: Cross-check test-plan.md against spec.md and tasks.md
+    condition: null
   - extension: git
     command: speckit.git.commit
     enabled: true
