@@ -182,38 +182,6 @@ When making changes, update relevant documentation:
 - Add dependencies to NetPace.Core without justification
 - Commit code with failing tests or build warnings
 
-## Speckit Workflow Integration
-
-### Running /speckit.specify
-
-**Important** Prepend the following instruction before your feature description so acceptance
-scenarios have named labels — required for `/speckit.testchecklist` traceability:
-
-```
-Each acceptance scenario must have a descriptive name label on its own line,
-formatted as: **Scenario: [Descriptive name]**
-followed by: Given [state], When [action], Then [outcome]
-
-Include at least one failure/error scenario and one boundary scenario per user
-story — not just the happy path.
-```
-
-For example:
-
-```
-**Scenario: Login rejected for unknown email**
-Given a user with an unregistered email, When they attempt to login, Then they receive an error message
-```
-
-### Writing tests after /speckit.testplan
-
-Every test method must include a `// SCENARIO:` comment matching the scenario label
-from `test-plan.md` exactly — this is what `/speckit.testchecklist` validates against.
-
-```csharp
-// SCENARIO: Login rejected for unknown email
-```
-
 ## Quick Command Reference
 
 ### Build and Test

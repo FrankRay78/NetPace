@@ -1,9 +1,4 @@
 {
-  "env": {
-    "MAX_THINKING_TOKENS": "10000",
-    "CLAUDE_AUTOCOMPACT_PCT_OVERRIDE": "50",
-    "CLAUDE_CODE_SUBAGENT_MODEL": "haiku"
-  },
   "permissions": {
     "allow": [
       "Read(**)",
@@ -41,10 +36,7 @@
       "Bash(dotnet package:*)",
       "Bash(dotnet-coverage:*)",
       "Bash(reportgenerator:*)",
-      "Bash(gh pr create:*)",
-      "Bash(gh pr view:*)",
-      "Bash(gh pr list:*)",
-      "Bash(gh run view:*)",
+      "Bash(gh:*)",
       "Bash(ls:*)",
       "Bash(find:*)",
       "Bash(grep:*)",
@@ -58,6 +50,12 @@
       "Bash(tail:*)",
       "WebFetch(domain:*)",
       "WebSearch",
+      "mcp__plugin_context-mode_context-mode__ctx_doctor",
+      "mcp__plugin_context-mode_context-mode__ctx_upgrade",
+      "mcp__plugin_context-mode_context-mode__ctx_stats",
+      "mcp__plugin_context-mode_context-mode__ctx_search",
+      "mcp__plugin_context-mode_context-mode__ctx_batch_execute",
+      "mcp__plugin_context-mode_context-mode__ctx_execute",
       "mcp__plugin_context-mode_context-mode__ctx_fetch_and_index",
       "mcp__plugin_context-mode_context-mode__ctx_search"
     ],
@@ -90,7 +88,6 @@
     "defaultMode": "acceptEdits",
     "disableBypassPermissionsMode": "disable"
   },
-  "model": "sonnet",
   "hooks": {
     "PreToolUse": [
       {

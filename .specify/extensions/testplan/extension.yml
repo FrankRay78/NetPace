@@ -1,0 +1,29 @@
+schema_version: "1.0"
+
+extension:
+  id: testplan
+  name: "Test Plan Cross-Check"
+  version: "1.0.0"
+  description: "Cross-checks test-plan.md scenarios against spec.md and tasks.md after /speckit.analyze"
+  author: netpace
+  license: MIT
+
+requires:
+  speckit_version: ">=0.2.0"
+
+provides:
+  commands:
+    - name: speckit.analyze.testplan
+      file: commands/speckit.analyze.testplan.md
+      description: "Cross-check test-plan.md against spec.md and tasks.md, appending findings to the analyze report"
+
+hooks:
+  after_analyze:
+    command: speckit.analyze.testplan
+    optional: false
+    description: "Cross-check test-plan.md against spec and tasks after analysis"
+
+tags:
+  - "testplan"
+  - "traceability"
+  - "analysis"

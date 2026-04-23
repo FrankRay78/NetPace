@@ -1,6 +1,20 @@
 {
   "schema_version": "1.0",
   "extensions": {
+    "testplan": {
+      "version": "1.0.0",
+      "source": "local",
+      "manifest_hash": null,
+      "enabled": true,
+      "priority": 20,
+      "registered_commands": {
+        "claude": [
+          "speckit.analyze.testplan"
+        ]
+      },
+      "registered_skills": [],
+      "installed_at": "2026-04-21T00:00:00.000000+00:00"
+    },
     "git": {
       "version": "1.0.0",
       "source": "local",

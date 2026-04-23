@@ -1,8 +1,8 @@
 <!--
 Sync Impact Report:
-Version: 1.0.0 (initial version)
-Modified Principles: N/A (initial creation)
-Added Sections: All sections (initial creation)
+Version: 1.1.0
+Modified Principles: N/A
+Added Sections: VIII. AC-to-Test Traceability
 Removed Sections: N/A
 Templates Requiring Updates:
   ✅ .specify/templates/plan-template.md - Reviewed, constitution check section aligns
@@ -107,6 +107,20 @@ All releases MUST follow semantic versioning (MAJOR.MINOR.PATCH):
 
 **Rationale**: NuGet consumers depend on predictable versioning to avoid breaking changes. Semantic versioning is industry standard for package distribution.
 
+### VIII. AC-to-Test Traceability
+
+All acceptance scenarios in `spec.md` MUST carry a `**Scenario:**` label:
+
+```
+**Scenario: [Descriptive name]**
+Given [state], When [action], Then [outcome]
+```
+
+Label names MUST match the `#### Scenario:` headers in `test-plan.md` exactly —
+they are the traceability key linking acceptance criteria → test scenarios → test code.
+
+**Rationale**: Consistent labels enable `/speckit.testchecklist` to verify end-to-end coverage automatically. Violations are flagged CRITICAL by `/speckit.analyze`.
+
 ## Development Workflow
 
 ### Git Workflow
@@ -193,4 +207,4 @@ This constitution supersedes all other development practices and guides. All dev
 - Complexity MUST be justified against simplicity principles
 - For runtime development guidance, refer to `CLAUDE.md`
 
-**Version**: 1.0.0 | **Ratified**: 2026-04-10 | **Last Amended**: 2026-04-10
+**Version**: 1.1.0 | **Ratified**: 2026-04-10 | **Last Amended**: 2026-04-21
