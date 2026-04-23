@@ -1,0 +1,9 @@
+services:
+  ooklaserver:
+    build: .
+    image: local-ooklaserver
+    container_name: ooklaserver
+    ports:
+      - "18080:8080/tcp"
+      - "18080:8080/udp"
+    restart: unless-stopped
