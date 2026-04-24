@@ -30,7 +30,7 @@ public sealed class CommandLineTestHost
     public async Task<TestResult> RunAsync(string[] args, CancellationToken cancellationToken = default)
     {
         // Register AnsiConsole with maximum width to prevent text wrapping
-        var testConsole = new TestConsole().Width(int.MaxValue);
+        using var testConsole = new TestConsole().Width(int.MaxValue);
         serviceCollection.TryAddSingleton<IAnsiConsole>(testConsole);
 
         // Default IClientInfoProvider stub unless a test already registered one
