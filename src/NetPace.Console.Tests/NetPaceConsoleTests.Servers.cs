@@ -1,5 +1,3 @@
-using NetPace.Console.DependencyInjection;
-
 namespace NetPace.Console.Tests;
 
 public sealed partial class NetPaceConsoleTests
@@ -12,12 +10,12 @@ public sealed partial class NetPaceConsoleTests
         public async Task Should_Display_Fastest_Speed_Test_Server(string fastest)
         {
             // Given
-            var registrar = new TypeRegistrar();
-            registrar.Register(typeof(ISpeedTestService), typeof(SpeedTestStub));
-            var app = GetCommandAppTester(registrar);
+            var services = new ServiceCollection();
+            services.AddSingleton<ISpeedTestService, SpeedTestStub>();
+            var host = GetCommandLineTestHost(services);
 
             // When
-            var result = await app.RunAsync([ "servers", fastest ]);
+            var result = await host.RunAsync([ "servers", fastest ]);
 
             // Then
             Assert.Equal(0, result.ExitCode);
@@ -28,12 +26,12 @@ public sealed partial class NetPaceConsoleTests
         public async Task Should_Display_Speed_Test_Servers()
         {
             // Given
-            var registrar = new TypeRegistrar();
-            registrar.Register(typeof(ISpeedTestService), typeof(SpeedTestStub));
-            var app = GetCommandAppTester(registrar);
+            var services = new ServiceCollection();
+            services.AddSingleton<ISpeedTestService, SpeedTestStub>();
+            var host = GetCommandLineTestHost(services);
 
             // When
-            var result = await app.RunAsync([ "servers" ]);
+            var result = await host.RunAsync([ "servers" ]);
 
             // Then
             Assert.Equal(0, result.ExitCode);
@@ -44,12 +42,12 @@ public sealed partial class NetPaceConsoleTests
         public async Task Should_Display_Speed_Test_Servers_With_Latency()
         {
             // Given
-            var registrar = new TypeRegistrar();
-            registrar.Register(typeof(ISpeedTestService), typeof(SpeedTestStub));
-            var app = GetCommandAppTester(registrar);
+            var services = new ServiceCollection();
+            services.AddSingleton<ISpeedTestService, SpeedTestStub>();
+            var host = GetCommandLineTestHost(services);
 
             // When
-            var result = await app.RunAsync([ "servers", "-l" ]);
+            var result = await host.RunAsync([ "servers", "-l" ]);
 
             // Then
             Assert.Equal(0, result.ExitCode);
@@ -60,12 +58,12 @@ public sealed partial class NetPaceConsoleTests
         public async Task Should_Display_Speed_Test_Servers_With_Latency_With_Faulty_Server_Ping()
         {
             // Given
-            var registrar = new TypeRegistrar();
-            registrar.RegisterInstance(typeof(ISpeedTestService), new FaultySpeedTester());
-            var app = GetCommandAppTester(registrar);
+            var services = new ServiceCollection();
+            services.AddSingleton<ISpeedTestService>(new FaultySpeedTester());
+            var host = GetCommandLineTestHost(services);
 
             // When
-            var result = await app.RunAsync([ "servers", "-l" ]);
+            var result = await host.RunAsync([ "servers", "-l" ]);
 
             // Then
             Assert.Equal(0, result.ExitCode);
@@ -82,19 +80,39 @@ public sealed partial class NetPaceConsoleTests
                 GetFastestServerByLatencyAsyncFunc = (_, _, _) => throw new Exception("No servers available"),
             };
 
-            var registrar = new TypeRegistrar();
-            registrar.RegisterInstance(typeof(ISpeedTestService), mock);
-            registrar.Register(typeof(IClock), typeof(ClockStub));
-            registrar.Register(typeof(IClientInfoProvider), typeof(ClientInfoProviderStub));
-            registrar.Register(typeof(IWaiter), typeof(NoDelayStub));
-            var app = GetCommandAppTester(registrar);
+            var services = new ServiceCollection();
+            services.AddSingleton<ISpeedTestService>(mock);
+            services.AddSingleton<IClock, ClockStub>();
+            services.AddSingleton<IWaiter, NoDelayStub>();
+            var host = GetCommandLineTestHost(services);
 
             // When
-            var result = await app.RunAsync();
+            var result = await host.RunAsync([ "servers" ]);
+
+            // Then
+            Assert.Equal(1, result.ExitCode);
+            await Verify(result.Output);
+        }
+
+        [InlineData("-h")]
+        [InlineData("--help")]
+        [InlineData("-?")]
+        [Theory]
+        public async Task Should_Display_Help(string help)
+        {
+            // Given
+            var services = new ServiceCollection();
+            services.AddSingleton<ISpeedTestService, SpeedTestStub>();
+            services.AddSingleton<IClock, ClockStub>();
+            services.AddSingleton<IWaiter, NoDelayStub>();
+            var host = GetCommandLineTestHost(services);
+
+            // When
+            var result = await host.RunAsync([ "servers", help ]);
 
             // Then
             Assert.Equal(0, result.ExitCode);
-            await Verify(result.Output);
+            await Verify(result.Output).DisableRequireUniquePrefix();
         }
     }
 }

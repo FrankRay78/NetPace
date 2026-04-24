@@ -1,4 +1,3 @@
-using NetPace.Console.DependencyInjection;
 using static NetPace.Console.Tests.NetPaceConsoleTests;
 
 namespace NetPace.Console.Tests;
@@ -13,15 +12,14 @@ public sealed partial class NetPaceConsoleTests
         public async Task Should_Suppress_Console_In_Quiet_Mode(string quiet)
         {
             // Given
-            var registrar = new TypeRegistrar();
-            registrar.Register(typeof(ISpeedTestService), typeof(SpeedTestStub));
-            registrar.Register(typeof(IClock), typeof(ClockStub));
-            registrar.Register(typeof(IClientInfoProvider), typeof(ClientInfoProviderStub));
-            registrar.Register(typeof(IWaiter), typeof(NoDelayStub));
-            var app = GetCommandAppTester(registrar);
+            var services = new ServiceCollection();
+            services.AddSingleton<ISpeedTestService, SpeedTestStub>();
+            services.AddSingleton<IClock, ClockStub>();
+            services.AddSingleton<IWaiter, NoDelayStub>();
+            var host = GetCommandLineTestHost(services);
 
             // When
-            var result = await app.RunAsync([ quiet ]);
+            var result = await host.RunAsync([ quiet ]);
 
             // Then
             Assert.Equal(0, result.ExitCode);
@@ -38,15 +36,14 @@ public sealed partial class NetPaceConsoleTests
 
             try
             {
-                var registrar = new TypeRegistrar();
-                registrar.Register(typeof(ISpeedTestService), typeof(SpeedTestStub));
-                registrar.Register(typeof(IClock), typeof(ClockStub));
-                registrar.Register(typeof(IClientInfoProvider), typeof(ClientInfoProviderStub));
-                registrar.Register(typeof(IWaiter), typeof(NoDelayStub));
-                var app = GetCommandAppTester(registrar);
+                var services = new ServiceCollection();
+                services.AddSingleton<ISpeedTestService, SpeedTestStub>();
+                services.AddSingleton<IClock, ClockStub>();
+                services.AddSingleton<IWaiter, NoDelayStub>();
+                var host = GetCommandLineTestHost(services);
 
                 // When
-                var result = await app.RunAsync([ quiet, "--file", testFile ]);
+                var result = await host.RunAsync([ quiet, "--file", testFile ]);
 
                 // Then
                 Assert.Equal(0, result.ExitCode);
@@ -74,15 +71,14 @@ public sealed partial class NetPaceConsoleTests
         public async Task Should_Suppress_Console_With_CSV_Format_In_Quiet_Mode(string quiet)
         {
             // Given
-            var registrar = new TypeRegistrar();
-            registrar.Register(typeof(ISpeedTestService), typeof(SpeedTestStub));
-            registrar.Register(typeof(IClock), typeof(ClockStub));
-            registrar.Register(typeof(IClientInfoProvider), typeof(ClientInfoProviderStub));
-            registrar.Register(typeof(IWaiter), typeof(NoDelayStub));
-            var app = GetCommandAppTester(registrar);
+            var services = new ServiceCollection();
+            services.AddSingleton<ISpeedTestService, SpeedTestStub>();
+            services.AddSingleton<IClock, ClockStub>();
+            services.AddSingleton<IWaiter, NoDelayStub>();
+            var host = GetCommandLineTestHost(services);
 
             // When
-            var result = await app.RunAsync([ quiet, "--csv" ]);
+            var result = await host.RunAsync([ quiet, "--csv" ]);
 
             // Then
             Assert.Equal(0, result.ExitCode);
@@ -95,15 +91,14 @@ public sealed partial class NetPaceConsoleTests
         public async Task Should_Suppress_Console_With_Json_Format_In_Quiet_Mode(string quiet)
         {
             // Given
-            var registrar = new TypeRegistrar();
-            registrar.Register(typeof(ISpeedTestService), typeof(SpeedTestStub));
-            registrar.Register(typeof(IClock), typeof(ClockStub));
-            registrar.Register(typeof(IClientInfoProvider), typeof(ClientInfoProviderStub));
-            registrar.Register(typeof(IWaiter), typeof(NoDelayStub));
-            var app = GetCommandAppTester(registrar);
+            var services = new ServiceCollection();
+            services.AddSingleton<ISpeedTestService, SpeedTestStub>();
+            services.AddSingleton<IClock, ClockStub>();
+            services.AddSingleton<IWaiter, NoDelayStub>();
+            var host = GetCommandLineTestHost(services);
 
             // When
-            var result = await app.RunAsync([ quiet, "--json" ]);
+            var result = await host.RunAsync([ quiet, "--json" ]);
 
             // Then
             Assert.Equal(0, result.ExitCode);
@@ -120,15 +115,14 @@ public sealed partial class NetPaceConsoleTests
         public async Task Should_Suppress_Console_With_Verbosity_In_Quiet_Mode(string quiet, string verbosity)
         {
             // Given
-            var registrar = new TypeRegistrar();
-            registrar.Register(typeof(ISpeedTestService), typeof(SpeedTestStub));
-            registrar.Register(typeof(IClock), typeof(ClockStub));
-            registrar.Register(typeof(IClientInfoProvider), typeof(ClientInfoProviderStub));
-            registrar.Register(typeof(IWaiter), typeof(NoDelayStub));
-            var app = GetCommandAppTester(registrar);
+            var services = new ServiceCollection();
+            services.AddSingleton<ISpeedTestService, SpeedTestStub>();
+            services.AddSingleton<IClock, ClockStub>();
+            services.AddSingleton<IWaiter, NoDelayStub>();
+            var host = GetCommandLineTestHost(services);
 
             // When
-            var result = await app.RunAsync([ quiet, "--verbosity", verbosity ]);
+            var result = await host.RunAsync([ quiet, "--verbosity", verbosity ]);
 
             // Then
             Assert.Equal(0, result.ExitCode);
@@ -141,18 +135,17 @@ public sealed partial class NetPaceConsoleTests
         public async Task Should_Handle_Configuration_Exceptions_In_Quiet_Mode(string quiet)
         {
             // Given
-            var registrar = new TypeRegistrar();
-            registrar.Register(typeof(ISpeedTestService), typeof(SpeedTestStub));
-            registrar.Register(typeof(IClock), typeof(ClockStub));
-            registrar.Register(typeof(IClientInfoProvider), typeof(ClientInfoProviderStub));
-            registrar.Register(typeof(IWaiter), typeof(NoDelayStub));
-            var app = GetCommandAppTester(registrar);
+            var services = new ServiceCollection();
+            services.AddSingleton<ISpeedTestService, SpeedTestStub>();
+            services.AddSingleton<IClock, ClockStub>();
+            services.AddSingleton<IWaiter, NoDelayStub>();
+            var host = GetCommandLineTestHost(services);
 
             // When
-            var result = await app.RunAsync([ quiet, "--count", "ABC" ]);
+            var result = await host.RunAsync([ quiet, "--count", "ABC" ]);
 
             // Then
-            Assert.NotEqual(0, result.ExitCode);
+            Assert.Equal(1, result.ExitCode);
             await Verify(result.Output).DisableRequireUniquePrefix();
 
             // Configuration errors that prevent the programme from commencing
@@ -176,15 +169,14 @@ public sealed partial class NetPaceConsoleTests
                 GetServersAsyncFunc = (cancellationToken) => throw new HttpRequestException("Could not connect to server")
             };
 
-            var registrar = new TypeRegistrar();
-            registrar.RegisterInstance(typeof(ISpeedTestService), mock);
-            registrar.Register(typeof(IClock), typeof(ClockStub));
-            registrar.Register(typeof(IClientInfoProvider), typeof(ClientInfoProviderStub));
-            registrar.Register(typeof(IWaiter), typeof(NoDelayStub));
-            var app = GetCommandAppTester(registrar);
+            var services = new ServiceCollection();
+            services.AddSingleton<ISpeedTestService>(mock);
+            services.AddSingleton<IClock, ClockStub>();
+            services.AddSingleton<IWaiter, NoDelayStub>();
+            var host = GetCommandLineTestHost(services);
 
             // When
-            var result = await app.RunAsync([ quiet ]);
+            var result = await host.RunAsync([ quiet ]);
 
             // Then
             Assert.Equal(0, result.ExitCode);

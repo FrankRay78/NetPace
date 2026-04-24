@@ -3,7 +3,7 @@ using NetPace.Console.ConsoleWriters;
 
 namespace NetPace.Console.Commands;
 
-public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService speedTestClient, IClock clock, IClientInfoProvider clientInfoProvider, IWaiter waiter) : AsyncCommand<SpeedTestCommandSettings>()
+public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService speedTestClient, IClock clock, IClientInfoProvider clientInfoProvider, IWaiter waiter)
 {
     /// <summary>
     /// Writes an error message to the console.
@@ -13,7 +13,7 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
         console.Markup($"[red]Error:[/] {message.EscapeMarkup()}\n");
     }
 
-    protected override async Task<int> ExecuteAsync(CommandContext context, SpeedTestCommandSettings settings, CancellationToken cancellationToken)
+    public async Task<int> ExecuteAsync(SpeedTestCommandSettings settings, CancellationToken cancellationToken)
     {
         if (settings.Quiet || !string.IsNullOrWhiteSpace(settings.OutputFile))
         {

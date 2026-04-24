@@ -2,13 +2,19 @@ using NetPace.Core;
 
 namespace NetPace.Console.Commands;
 
-public sealed class ListServersCommand(IAnsiConsole console, ISpeedTestService speedTestClient) : AsyncCommand<ListServersCommandSettings>()
+public sealed class ListServersCommand(IAnsiConsole console, ISpeedTestService speedTestClient)
 {
-    protected override async Task<int> ExecuteAsync(CommandContext context, ListServersCommandSettings settings, CancellationToken cancellationToken)
+    public async Task<int> ExecuteAsync(ListServersCommandSettings settings, CancellationToken cancellationToken)
     {
         var servers = await speedTestClient.GetServersAsync(cancellationToken);
 
         var serversList = servers.OrderBy(servers => servers.Location).ToList();
+
+        // Check if any servers are available
+        if (serversList.Count == 0)
+        {
+            throw new Exception("No servers available");
+        }
 
         if (settings.Fastest != null && settings.Fastest.HasValue && settings.Fastest.Value)
         {

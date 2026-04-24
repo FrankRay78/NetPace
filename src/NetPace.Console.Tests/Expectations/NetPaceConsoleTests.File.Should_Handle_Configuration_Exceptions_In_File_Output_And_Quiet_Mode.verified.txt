@@ -1,1 +1,1 @@
-Error: Failed to convert 'ABC' to Int32.
+Error: Cannot parse argument 'ABC' for option '--count' as expected type 'System.Int32'.

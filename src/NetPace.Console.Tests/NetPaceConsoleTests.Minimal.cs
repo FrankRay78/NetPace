@@ -1,4 +1,4 @@
-using NetPace.Console.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace NetPace.Console.Tests;
 
@@ -12,15 +12,36 @@ public sealed partial class NetPaceConsoleTests
             // SCENARIO: Minimal output does not include IPAddress or Hostname
 
             // Given
-            var registrar = new TypeRegistrar();
-            registrar.Register(typeof(ISpeedTestService), typeof(SpeedTestStub));
-            registrar.Register(typeof(IClock), typeof(ClockStub));
-            registrar.RegisterInstance(typeof(IClientInfoProvider), new ClientInfoProviderStub());
-            registrar.Register(typeof(IWaiter), typeof(NoDelayStub));
-            var app = GetCommandAppTester(registrar);
+            var services = new ServiceCollection();
+            services.AddSingleton<ISpeedTestService, SpeedTestStub>();
+            services.AddSingleton<IClock, ClockStub>();
+            services.AddSingleton<IClientInfoProvider>(new ClientInfoProviderStub());
+            services.AddSingleton<IWaiter, NoDelayStub>();
+            var host = GetCommandLineTestHost(services);
 
             // When
-            var result = await app.RunAsync([ "--verbosity", "Minimal" ]);
+            var result = await host.RunAsync([ "--verbosity", "Minimal" ]);
+
+            // Then
+            Assert.Equal(0, result.ExitCode);
+            await Verify(result.Output);
+        }
+
+        [Fact]
+        public async Task Should_Not_Include_IPAddress_Or_Hostname_In_Minimal_Output_With_Stub_Providing_Error_Values()
+        {
+            // SCENARIO: Minimal output remains clean even when IClientInfoProvider reports ERROR values
+
+            // Given
+            var services = new ServiceCollection();
+            services.AddSingleton<ISpeedTestService, SpeedTestStub>();
+            services.AddSingleton<IClock, ClockStub>();
+            services.AddSingleton<IClientInfoProvider>(new ClientInfoProviderErrorStub());
+            services.AddSingleton<IWaiter, NoDelayStub>();
+            var host = GetCommandLineTestHost(services);
+
+            // When
+            var result = await host.RunAsync([ "--verbosity", "Minimal" ]);
 
             // Then
             Assert.Equal(0, result.ExitCode);
