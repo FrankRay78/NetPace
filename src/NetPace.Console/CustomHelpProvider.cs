@@ -60,11 +60,11 @@ internal static class CustomHelpProvider
         console.MarkupLine("[bold yellow]USAGE:[/]");
         if (command is RootCommand)
         {
-            console.WriteLine("    NetPace [OPTIONS] [COMMAND]");
+            console.MarkupLine("    NetPace [grey][[OPTIONS]][/] [cyan][[COMMAND]][/]");
         }
         else
         {
-            console.WriteLine($"    NetPace {command.Name} [OPTIONS]");
+            console.MarkupLine($"    NetPace {command.Name} [grey][[OPTIONS]][/]");
         }
         console.WriteLine();
     }
@@ -118,7 +118,7 @@ internal static class CustomHelpProvider
         // Add header row if we have defaults
         if (hasDefaults)
         {
-            grid.AddRow("", "DEFAULT", "");
+            grid.AddRow("", "[lime]DEFAULT[/]", "");
         }
 
         foreach (var option in sortedOptions)
@@ -167,7 +167,7 @@ internal static class CustomHelpProvider
             if (hasDefaults)
             {
                 // First line
-                grid.AddRow($"[cyan]{displayName}[/]", defaultValue, descriptionLines[0]);
+                grid.AddRow($"[silver]{displayName}[/]", $"[bold]{defaultValue}[/]", descriptionLines[0]);
 
                 // Subsequent lines (empty option and default columns, just description)
                 for (int i = 1; i < descriptionLines.Length; i++)
@@ -178,7 +178,7 @@ internal static class CustomHelpProvider
             else
             {
                 // First line (no default column)
-                grid.AddRow($"[cyan]{displayName}[/]", descriptionLines[0]);
+                grid.AddRow($"[silver]{displayName}[/]", descriptionLines[0]);
 
                 // Subsequent lines
                 for (int i = 1; i < descriptionLines.Length; i++)
