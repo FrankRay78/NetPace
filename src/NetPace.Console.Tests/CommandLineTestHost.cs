@@ -31,12 +31,12 @@ public sealed class CommandLineTestHost
     {
         // Register AnsiConsole with maximum width to prevent text wrapping
         var testConsole = new TestConsole().Width(int.MaxValue);
-        serviceCollection.AddSingleton<IAnsiConsole>(testConsole);
+        serviceCollection.TryAddSingleton<IAnsiConsole>(testConsole);
 
         // Default IClientInfoProvider stub unless a test already registered one
         serviceCollection.TryAddSingleton<IClientInfoProvider, ClientInfoProviderStub>();
 
-        using var serviceProvider = serviceCollection.BuildServiceProvider();
+        await using var serviceProvider = serviceCollection.BuildServiceProvider();
         var exitCode = await Program.RunAsync(serviceProvider, args, cancellationToken);
 
         return new TestResult

@@ -4,6 +4,9 @@ namespace NetPace.Console.Commands;
 
 public sealed class ListServersCommand(IAnsiConsole console, ISpeedTestService speedTestClient)
 {
+    /// <summary>
+    /// Executes the list servers command, displaying available speed test servers.
+    /// </summary>
     public async Task<int> ExecuteAsync(ListServersCommandSettings settings, CancellationToken cancellationToken)
     {
         var servers = await speedTestClient.GetServersAsync(cancellationToken);
@@ -16,11 +19,11 @@ public sealed class ListServersCommand(IAnsiConsole console, ISpeedTestService s
             throw new Exception("No servers available");
         }
 
-        if (settings.Fastest != null && settings.Fastest.HasValue && settings.Fastest.Value)
+        if (settings.Fastest)
         {
             await DisplayFastestServer(serversList, speedTestClient, cancellationToken);
         }
-        else if (settings.ShowLatency == null || !settings.ShowLatency.HasValue || !settings.ShowLatency.Value)
+        else if (!settings.ShowLatency)
         {
             DisplayServers(serversList);
         }
@@ -108,9 +111,8 @@ public sealed class ListServersCommand(IAnsiConsole console, ISpeedTestService s
 
                         table.UpdateCell(i, 3, $"{latencyResult.LatencyMilliseconds}ms");
                     }
-                    catch
+                    catch (Exception)
                     {
-                        // A exception was thrown when pinging the server
                         table.UpdateCell(i, 3, "-");
                     }
 

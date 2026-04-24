@@ -8,10 +8,10 @@ public sealed class ListServersCommandSettings
     /// <summary>
     /// Include server latency in the results.
     /// </summary>
-    public bool? ShowLatency { get; set; } = false;
+    public bool ShowLatency { get; set; } = false;
 
     /// <summary>
     /// Show the fastest server details, selected by lowest latency.
     /// </summary>
-    public bool? Fastest { get; set; } = false;
+    public bool Fastest { get; set; } = false;
 }

@@ -30,7 +30,7 @@ public sealed class SpeedTestCommandSettings
     /// <summary>
     /// Single character delimiter to use in CSV output.
     /// </summary>
-    public required string CSVDelimiter { get; init; }
+    public required char CSVDelimiter { get; init; }
 
     /// <summary>
     /// Display speed test units (eg. Mbps) in the CSV header row, not the data rows.

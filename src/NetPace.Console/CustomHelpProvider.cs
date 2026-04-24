@@ -212,7 +212,7 @@ internal static class CustomHelpProvider
                 _ => defaultValue.ToString() ?? ""
             };
         }
-        catch
+        catch (Exception)
         {
             return "";
         }

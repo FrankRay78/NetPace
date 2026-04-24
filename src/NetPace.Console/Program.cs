@@ -60,6 +60,14 @@ public static class Program
             Description = "Single character delimiter to use in CSV output.",
             DefaultValueFactory = _ => ","
         };
+        csvDelimiterOption.Validators.Add(result =>
+        {
+            var value = result.GetValueOrDefault<string>();
+            if (value != null && value.Length != 1)
+            {
+                result.AddError("--csv-delimiter must be a single character.");
+            }
+        });
 
         var csvHeaderUnitsOption = new Option<bool>("--csv-header-units")
         {
@@ -211,7 +219,7 @@ public static class Program
                     Count = parseResult.GetValue(countOption),
                     Delay = parseResult.GetValue(delayOption),
                     CSV = parseResult.GetValue(csvOption),
-                    CSVDelimiter = parseResult.GetValue(csvDelimiterOption) ?? string.Empty,
+                    CSVDelimiter = (parseResult.GetValue(csvDelimiterOption) ?? ",")[0],
                     CSVHeaderUnits = parseResult.GetValue(csvHeaderUnitsOption),
                     Json = parseResult.GetValue(jsonOption),
                     JsonPretty = parseResult.GetValue(jsonPrettyOption),
@@ -343,7 +351,7 @@ public static class Program
             services.AddSingleton<IWaiter, Waiter>();
         }
 
-        var serviceProvider = services.BuildServiceProvider();
+        await using var serviceProvider = services.BuildServiceProvider();
 
         using var cancellationTokenSource = new CancellationTokenSource();
 
@@ -356,7 +364,7 @@ public static class Program
 
         return await RunAsync(
             serviceProvider,
-            args!.Where(s => !s.Equals("--test"))!.ToArray() ?? Array.Empty<string>(),
+            args!.Where(s => !s.Equals("--test")).ToArray(),
             cancellationTokenSource.Token);
     }
 

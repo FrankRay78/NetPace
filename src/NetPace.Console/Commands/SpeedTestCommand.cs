@@ -13,6 +13,9 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
         console.Markup($"[red]Error:[/] {message.EscapeMarkup()}\n");
     }
 
+    /// <summary>
+    /// Executes the speed test command using the provided settings.
+    /// </summary>
     public async Task<int> ExecuteAsync(SpeedTestCommandSettings settings, CancellationToken cancellationToken)
     {
         if (settings.Quiet || !string.IsNullOrWhiteSpace(settings.OutputFile))

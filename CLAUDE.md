@@ -96,6 +96,14 @@ public interface ISpeedTestService
 - Currently using Ookla, but architecture allows for alternatives
 - Keep provider-specific code isolated in `Clients/{ProviderName}/`
 
+### CLI Help Behaviour
+
+`--help` (and its aliases `-h`, `-?`) is intercepted manually in `Program.RunAsync` before `System.CommandLine` parses the argument list. This keeps help rendering under full control of `CustomHelpProvider`.
+
+**Intentional constraint**: help is only recognised at position 0 (root help) or as the second token when the first token is a subcommand name (e.g. `netpace servers --help`). Flags placed before `--help` (e.g. `netpace --csv --help`) are not treated as a help request; `--help` is silently ignored in that position. This is a deliberate trade-off to keep the help-interception logic simple.
+
+Do not add tests for the `--flag --help` pattern — it is not expected to work.
+
 ### Units and Formatting
 
 NetPace supports flexible unit configurations:
