@@ -13,7 +13,9 @@ generate tasks → implement → verify test coverage → PR review → merge.
 The one-time project setup is already done. See the [Appendix](#appendix--codebase-setup)
 for the files that make the workflow run.
 
-*Inspired by [Harness Engineering](https://openai.com/index/harness-engineering/) — OpenAI, 2026.*
+*Inspired by:*
+- [Harness Engineering](https://openai.com/index/harness-engineering/) — OpenAI, 2026.
+- [Effective harnesses for long-running agents](https://www.anthropic.com/engineering/effective-harnesses-for-long-running-agents) - Anthropic, 2025.
 
 
 ---
@@ -21,6 +23,7 @@ for the files that make the workflow run.
 ## Workflow Execution Order
 
 ### Per-feature — Spec & planning (on main branch)
+0. `/speckit.reviewissue`      ← pre-specification gate; resolve ambiguities before spec work
 1. `/speckit.specify`          ← prepend scenario naming instruction (see CLAUDE.md)
 2. `/speckit.clarify`          ← iterate until spec feels complete
 3. `/speckit.checklist`        ← resolve all gaps before continuing
@@ -28,7 +31,9 @@ for the files that make the workflow run.
 5. `/speckit.testplan`         ← review output carefully before continuing
 6. `powershell -ExecutionPolicy Bypass -File scripts\git-red-phase-commit.ps1`
 7. `/speckit.tasks`
-8. `/speckit.analyze`          ← resolve HIGH/CRITICAL before branching
+8. `/speckit.analyze`          ← resolve HIGH/CRITICAL before branching; auto-runs
+                                 `/speckit.analyze.testplan` via the `after_analyze` hook,
+                                 appending a test-plan cross-check to the analyze report
 
 ### Per-feature — Implementation
 12. `/speckit.implement`       ← agent runs to suite-green
@@ -95,6 +100,13 @@ Permissions allowlist/denylist and two inline hooks:
   `gh pr create` command executes, blocking PR creation if either fails
 - Enables the `pr-review-toolkit` plugin
 
+**[`.claude/commands/speckit.reviewissue.md`](.claude/commands/speckit.reviewissue.md)**
+Custom `/speckit.reviewissue` command. Pre-specification gate that sits *before*
+`/speckit.specify`. Reads an unrefined GitHub issue, cross-references it against the current
+codebase (architecture, existing services, test data, docs), and surfaces ambiguities in
+scope and undefined semantics (matching rules, thresholds, field lists) that would otherwise
+block or distort a specification run.
+
 **[`.claude/commands/speckit.testplan.md`](.claude/commands/speckit.testplan.md)**
 Custom `/speckit.testplan` command. Translates completed spec.md requirements into named
 WHEN/THEN test scenarios and writes them to `.specify/specs/<feature>/test-plan.md`.
@@ -123,6 +135,12 @@ Custom `/capture-learnings` command. Scans the branch's commit messages and diff
 signals of corrections, decisions, and gotchas, then surfaces candidates for the user to
 approve and persist as memory entries.
 
+**[`.claudeignore`](.claudeignore)**
+Files Claude Code should never read or index (gitignore-style syntax). Excludes build
+artefacts (`obj/`), IDE caches (`.vs/`), binary assets (`resources/images/`,
+`NetPace.snk`), large test payloads (`src/NetPace.Core.Tests/Payloads/`), archived specs
+(`specs/archive/`), and editor/transient files.
+
 ### spec-kit configuration (`.specify/`)
 
 **[`.specify/memory/constitution.md`](.specify/memory/constitution.md)**
@@ -131,11 +149,37 @@ cross-platform compatibility, code quality standards, and semantic versioning. S
 all other guides. Versioned; amendments require documented rationale.
 
 **[`.specify/extensions.yml`](.specify/extensions.yml)** +
+**[`.specify/extensions/.registry`](.specify/extensions/.registry)**
+Spec-kit extension configuration and registry. `extensions.yml` declares lifecycle hooks
+(before_*/after_* phases) bound to extension commands; `.registry` tracks installed
+extensions with version, priority, and registered commands.
+
 **[`.specify/extensions/git/`](.specify/extensions/git/)**
 Git integration extension for spec-kit. Hooks into the spec-kit lifecycle to auto-commit
 before and after each spec-kit command (e.g. commit after `/speckit.specify`, commit before
 `/speckit.clarify`). Also provides `/speckit.git.feature` to create feature branches and
 `/speckit.git.initialize` for project setup. Scripts provided in both Bash and PowerShell.
+
+**[`.specify/extensions/testplan/`](.specify/extensions/testplan/)**
+Test-plan cross-check extension. Provides `/speckit.analyze.testplan`, which runs
+automatically as an `after_analyze` hook. It cross-checks `test-plan.md` scenarios against
+`spec.md` and `tasks.md` for the current feature and appends a *Test Plan Cross-Check*
+findings table to the analyze report.
+
+### Spec archive convention (`specs/archive/`)
+
+Once a feature's implementation ships and the branch is merged, its spec folder is moved
+from `specs/<NNN-feature-name>/` into `specs/archive/<NNN-feature-name>/`. The folder
+structure and files are preserved verbatim — the move is the only change.
+
+- **Why archive rather than delete:** the spec, test plan, tasks, and analyze report are
+  the historical record of *what* was built and *why*. `git log` captures the code change;
+  the spec folder captures the intent and verification surface behind it.
+- **Why a dedicated `archive/` folder:** it keeps `specs/` uncluttered so active features
+  are obvious, while preserving the artefacts for future reference.
+- **Claude Code exclusion:** `.claudeignore` lists `specs/archive/` so archived specs never
+  enter the agent's working context. They remain in the repo and in git history, but the
+  agent sees only in-flight work under `specs/`.
 
 ### GitHub integration (`.github/`)
 
