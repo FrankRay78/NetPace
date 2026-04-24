@@ -36,7 +36,7 @@ public sealed class CommandLineTestHost
         // Default IClientInfoProvider stub unless a test already registered one
         serviceCollection.TryAddSingleton<IClientInfoProvider, ClientInfoProviderStub>();
 
-        var serviceProvider = serviceCollection.BuildServiceProvider();
+        using var serviceProvider = serviceCollection.BuildServiceProvider();
         var exitCode = await Program.RunAsync(serviceProvider, args, cancellationToken);
 
         return new TestResult
