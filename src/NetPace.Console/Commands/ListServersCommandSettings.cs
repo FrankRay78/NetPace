@@ -1,14 +1,17 @@
-using System.ComponentModel;
-
 namespace NetPace.Console.Commands;
 
-public sealed class ListServersCommandSettings : CommandSettings
+/// <summary>
+/// Settings for the ListServersCommand.
+/// </summary>
+public sealed class ListServersCommandSettings
 {
-    [CommandOption("-l|--latency")]
-    [Description("Include server latency in the results.")]
-    public bool? ShowLatency { get; set; } = false;
+    /// <summary>
+    /// Include server latency in the results.
+    /// </summary>
+    public bool ShowLatency { get; set; } = false;
 
-    [CommandOption("-f|--fastest")]
-    [Description("Show the fastest server details, selected by lowest latency.")]
-    public bool? Fastest { get; set; } = false;
+    /// <summary>
+    /// Show the fastest server details, selected by lowest latency.
+    /// </summary>
+    public bool Fastest { get; set; } = false;
 }

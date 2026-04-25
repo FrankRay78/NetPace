@@ -1,138 +1,147 @@
-using System.ComponentModel;
 using NetPace.Core;
 
 namespace NetPace.Console.Commands;
 
-public sealed class SpeedTestCommandSettings : CommandSettings
+/// <summary>
+/// Settings for the SpeedTestCommand.
+/// </summary>
+public sealed class SpeedTestCommandSettings
 {
-    [CommandOption("--loop")]
-    [Description("Performs the speed test on continuous loop.")]
-    [DefaultValue(false)]
-    public bool Loop { get; set; }
-
-    [CommandOption("--count")]
-    [Description("Stop speed testing after this many times.")]
-    public int Count { get; set; } = 1;
-
-    [CommandOption("--delay")]
-    [Description("Time between multiple speed tests (HH:MM:SS).")]
-    public TimeSpan Delay { get; set; } = TimeSpan.Zero;
-
-    [CommandOption("--csv")]
-    [Description("Display minimal output in CSV format (always includes timestamp).")]
-    [DefaultValue(false)]
-    public bool CSV { get; set; }
-
-    [CommandOption("--csv-delimiter")]
-    [Description("Single character delimiter to use in CSV output.")]
-    [DefaultValue(',')]
-    public char CSVDelimiter { get; set; }
-
-    [CommandOption("--csv-header-units")]
-    [Description("Display speed test units (eg. Mbps) in the CSV header row, not the data rows.\n--unit-scale must not be <Auto> for multiple speed tests (eg. --loop or --count).")]
-    [DefaultValue(false)]
-    public bool CSVHeaderUnits { get; set; }
-
-    [CommandOption("--json")]
-    [Description("Display output in Json format.")]
-    [DefaultValue(false)]
-    public bool Json { get; set; }
-
-    [CommandOption("--json-pretty")]
-    [Description("Display output in Json format (pretty print).")]
-    [DefaultValue(false)]
-    public bool JsonPretty { get; set; }
-
-    [CommandOption("--no-latency")]
-    [Description("Do not perform latency test.\nWhen used without --server, the first available server is selected.")]
-    [DefaultValue(false)]
-    public bool NoLatency { get; set; }
-
-    [CommandOption("--no-download")]
-    [Description("Do not perform download test.")]
-    [DefaultValue(false)]
-    public bool NoDownload { get; set; }
-
-    [CommandOption("--no-upload")]
-    [Description("Do not perform upload test.")]
-    [DefaultValue(false)]
-    public bool NoUpload { get; set; }
-
-    [CommandOption("--server")]
-    [Description("The url of a specific speed test sever. \n'NetPace servers -l' will return your nearest servers.")]
-    public string ServerUrl { get; set; } = string.Empty;
-
-    [CommandOption("-t | --timestamp")]
-    [Description("Include a timestamp in the output.")]
-    [DefaultValue(false)]
-    public bool IncludeTimestamp { get; set; }
-
-    [CommandOption("--datetimeformat")]
-    [Description("The datetime format string, as defined by Microsoft.Net.")]
-    [DefaultValue("yyyy-MM-dd HH:mm:ss")]
-    //ref: https://learn.microsoft.com/en-us/dotnet/standard/base-types/standard-date-and-time-format-strings
-    public string? DateTimeFormat { get; set; }
-
-    [CommandOption("--downloadsize")]
-    [Description("Stop the download test after this many megabytes (IEC MiB).")]
-    public int DownloadSizeMb { get; set; } = int.MaxValue;
-
-    [CommandOption("--uploadsize")]
-    [Description("Stop the upload test after this many megabytes (IEC MiB).")]
-    public int UploadSizeMb { get; set; } = int.MaxValue;
-
-    [CommandOption("-u | --unit")]
-    [Description("The speed unit. <BitsPerSecond, BytesPerSecond>")]
-    [DefaultValue(SpeedUnit.BitsPerSecond)]
-    public SpeedUnit SpeedUnit { get; set; }
-
-    [CommandOption("--unit-scale")]
-    [Description("The speed unit scale. <Auto, Base, Kilo, Mega, Giga, Tera, Peta>")]
-    [DefaultValue(SpeedScale.Auto)]
-    public SpeedScale SpeedScale { get; set; }
-
-    [CommandOption("--unit-system")]
-    [Description("The speed unit system. <SI, IEC>\nSI steps up in powers of 1000 (KB, MB, GB), common in networking, while IEC uses powers of 1024 (KiB, MiB, GiB), standard in computing and storage.")]
-    [DefaultValue(SpeedUnitSystem.SI)]
-    public SpeedUnitSystem SpeedUnitSystem { get; set; }
-
-    [CommandOption("--verbosity")]
-    [Description("The verbosity level. <Minimal, Normal, Debug>\nMinimal is ideal for batch scripts and redirected output.")]
-    [DefaultValue(Verbosity.Normal)]
-    public Verbosity Verbosity { get; set; }
-
-    [CommandOption("-f | --file")]
-    [Description("Write output to file.")]
-    public string? OutputFile { get; set; }
-
-    [CommandOption("--file-mode")]
-    [Description("Determines file output behavior. <Append, Overwrite>")]
-    [DefaultValue(FileMode.Append)]
-    public FileMode FileModeValue { get; set; }
-
-    [CommandOption("-q | --quiet")]
-    [Description("Suppress all normal console output (file output still works).")]
-    [DefaultValue(false)]
-    public bool Quiet { get; set; }
-
+    /// <summary>
+    /// Performs the speed test on continuous loop.
+    /// </summary>
+    public required bool Loop { get; init; }
 
     /// <summary>
-    /// Validate the settings.
+    /// Stop speed testing after this many times.
     /// </summary>
-    public override ValidationResult Validate()
+    public required int Count { get; init; }
+
+    /// <summary>
+    /// Time between multiple speed tests.
+    /// </summary>
+    public required TimeSpan Delay { get; init; }
+
+    /// <summary>
+    /// Display minimal output in CSV format.
+    /// </summary>
+    public required bool CSV { get; init; }
+
+    /// <summary>
+    /// Single character delimiter to use in CSV output.
+    /// </summary>
+    public required char CSVDelimiter { get; init; }
+
+    /// <summary>
+    /// Display speed test units (eg. Mbps) in the CSV header row, not the data rows.
+    /// </summary>
+    public required bool CSVHeaderUnits { get; init; }
+
+    /// <summary>
+    /// Display output in Json format.
+    /// </summary>
+    public required bool Json { get; init; }
+
+    /// <summary>
+    /// Display output in Json format (pretty print).
+    /// </summary>
+    public required bool JsonPretty { get; init; }
+
+    /// <summary>
+    /// Do not perform latency test.
+    /// </summary>
+    public required bool NoLatency { get; init; }
+
+    /// <summary>
+    /// Do not perform download test.
+    /// </summary>
+    public required bool NoDownload { get; init; }
+
+    /// <summary>
+    /// Do not perform upload test.
+    /// </summary>
+    public required bool NoUpload { get; init; }
+
+    /// <summary>
+    /// The url of a specific speed test sever.
+    /// </summary>
+    public required string ServerUrl { get; init; }
+
+    /// <summary>
+    /// Include a timestamp in the output.
+    /// </summary>
+    public required bool IncludeTimestamp { get; init; }
+
+    /// <summary>
+    /// The datetime format string, as defined by Microsoft.Net.
+    /// </summary>
+    /// <remarks>
+    /// See https://learn.microsoft.com/en-us/dotnet/standard/base-types/standard-date-and-time-format-strings
+    /// </remarks>
+    public required string DateTimeFormat { get; init; }
+
+    /// <summary>
+    /// Stop the download test after this many megabytes (IEC MiB).
+    /// </summary>
+    public required int DownloadSizeMb { get; init; }
+
+    /// <summary>
+    /// Stop the upload test after this many megabytes (IEC MiB).
+    /// </summary>
+    public required int UploadSizeMb { get; init; }
+
+    /// <summary>
+    /// The speed unit.
+    /// </summary>
+    public required SpeedUnit SpeedUnit { get; init; }
+
+    /// <summary>
+    /// The speed unit scale.
+    /// </summary>
+    public required SpeedScale SpeedScale { get; init; }
+
+    /// <summary>
+    /// The speed unit system.
+    /// </summary>
+    public required SpeedUnitSystem SpeedUnitSystem { get; init; }
+
+    /// <summary>
+    /// The verbosity level.
+    /// </summary>
+    public required Verbosity Verbosity { get; init; }
+
+    /// <summary>
+    /// Write output to file.
+    /// </summary>
+    public required string OutputFile { get; init; }
+
+    /// <summary>
+    /// Determines file output behavior.
+    /// </summary>
+    public required FileMode FileModeValue { get; init; }
+
+    /// <summary>
+    /// Suppress all normal console output.
+    /// </summary>
+    public required bool Quiet { get; init; }
+}
+
+public static class SpeedTestCommandSettingsExtensions
+{
+    /// <summary>
+    /// Validate SpeedTestCommandSettings.
+    /// </summary>
+    /// <returns>Throws an exception if validation fails.</returns>
+    public static void Validate(this SpeedTestCommandSettings settings)
     {
-        // Add settings validations here.
-
-        if (CSV && CSVHeaderUnits && SpeedScale == SpeedScale.Auto && (Loop || Count > 1))
+        if (settings.CSV && settings.CSVHeaderUnits && settings.SpeedScale == SpeedScale.Auto && (settings.Loop || settings.Count > 1))
         {
-            return ValidationResult.Error("The --unit-scale option must not be <Auto> for multiple speed tests (eg. --loop or --count).");
+            throw new ArgumentException("The --unit-scale option must not be <Auto> for multiple speed tests (eg. --loop or --count).");
         }
 
-        if (NoLatency && NoDownload && NoUpload)
+        if (settings.NoLatency && settings.NoDownload && settings.NoUpload)
         {
-            return ValidationResult.Error("No tests selected. At least one of --no-latency, --no-download, or --no-upload must be omitted.");
+            throw new ArgumentException("No tests selected. At least one of --no-latency, --no-download, or --no-upload must be omitted.");
         }
-
-        return base.Validate();
     }
 }

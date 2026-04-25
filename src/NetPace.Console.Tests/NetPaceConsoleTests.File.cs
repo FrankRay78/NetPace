@@ -1,5 +1,3 @@
-using NetPace.Console.DependencyInjection;
-
 namespace NetPace.Console.Tests;
 
 public sealed partial class NetPaceConsoleTests
@@ -16,15 +14,14 @@ public sealed partial class NetPaceConsoleTests
 
             try
             {
-                var registrar = new TypeRegistrar();
-                registrar.Register(typeof(ISpeedTestService), typeof(SpeedTestStub));
-                registrar.Register(typeof(IClock), typeof(ClockStub));
-                registrar.Register(typeof(IClientInfoProvider), typeof(ClientInfoProviderStub));
-                registrar.Register(typeof(IWaiter), typeof(NoDelayStub));
-                var app = GetCommandAppTester(registrar);
+                var services = new ServiceCollection();
+                services.AddSingleton<ISpeedTestService, SpeedTestStub>();
+                services.AddSingleton<IClock, ClockStub>();
+                services.AddSingleton<IWaiter, NoDelayStub>();
+                var host = GetCommandLineTestHost(services);
 
                 // When
-                var result = await app.RunAsync([ file, testFile ]);
+                var result = await host.RunAsync([ file, testFile ]);
 
                 // Then
                 Assert.Equal(0, result.ExitCode);
@@ -52,15 +49,14 @@ public sealed partial class NetPaceConsoleTests
 
             try
             {
-                var registrar = new TypeRegistrar();
-                registrar.Register(typeof(ISpeedTestService), typeof(SpeedTestStub));
-                registrar.Register(typeof(IClock), typeof(ClockStub));
-                registrar.Register(typeof(IClientInfoProvider), typeof(ClientInfoProviderStub));
-                registrar.Register(typeof(IWaiter), typeof(NoDelayStub));
-                var app = GetCommandAppTester(registrar);
+                var services = new ServiceCollection();
+                services.AddSingleton<ISpeedTestService, SpeedTestStub>();
+                services.AddSingleton<IClock, ClockStub>();
+                services.AddSingleton<IWaiter, NoDelayStub>();
+                var host = GetCommandLineTestHost(services);
 
                 // When
-                var result = await app.RunAsync([ "--csv", file, testFile ]);
+                var result = await host.RunAsync([ "--csv", file, testFile ]);
 
                 // Then
                 Assert.Equal(0, result.ExitCode);
@@ -88,15 +84,14 @@ public sealed partial class NetPaceConsoleTests
 
             try
             {
-                var registrar = new TypeRegistrar();
-                registrar.Register(typeof(ISpeedTestService), typeof(SpeedTestStub));
-                registrar.Register(typeof(IClock), typeof(ClockStub));
-                registrar.Register(typeof(IClientInfoProvider), typeof(ClientInfoProviderStub));
-                registrar.Register(typeof(IWaiter), typeof(NoDelayStub));
-                var app = GetCommandAppTester(registrar);
+                var services = new ServiceCollection();
+                services.AddSingleton<ISpeedTestService, SpeedTestStub>();
+                services.AddSingleton<IClock, ClockStub>();
+                services.AddSingleton<IWaiter, NoDelayStub>();
+                var host = GetCommandLineTestHost(services);
 
                 // When
-                var result = await app.RunAsync([ "--json", file, testFile ]);
+                var result = await host.RunAsync([ "--json", file, testFile ]);
 
                 // Then
                 Assert.Equal(0, result.ExitCode);
@@ -122,15 +117,14 @@ public sealed partial class NetPaceConsoleTests
 
             try
             {
-                var registrar = new TypeRegistrar();
-                registrar.Register(typeof(ISpeedTestService), typeof(SpeedTestStub));
-                registrar.Register(typeof(IClock), typeof(ClockStub));
-                registrar.Register(typeof(IClientInfoProvider), typeof(ClientInfoProviderStub));
-                registrar.Register(typeof(IWaiter), typeof(NoDelayStub));
-                var app = GetCommandAppTester(registrar);
+                var services = new ServiceCollection();
+                services.AddSingleton<ISpeedTestService, SpeedTestStub>();
+                services.AddSingleton<IClock, ClockStub>();
+                services.AddSingleton<IWaiter, NoDelayStub>();
+                var host = GetCommandLineTestHost(services);
 
                 // When
-                var result = await app.RunAsync([ "--file", testFile, "--file-mode", "Append" ]);
+                var result = await host.RunAsync([ "--file", testFile, "--file-mode", "Append" ]);
 
                 // Then
                 Assert.Equal(0, result.ExitCode);
@@ -156,15 +150,14 @@ public sealed partial class NetPaceConsoleTests
 
             try
             {
-                var registrar = new TypeRegistrar();
-                registrar.Register(typeof(ISpeedTestService), typeof(SpeedTestStub));
-                registrar.Register(typeof(IClock), typeof(ClockStub));
-                registrar.Register(typeof(IClientInfoProvider), typeof(ClientInfoProviderStub));
-                registrar.Register(typeof(IWaiter), typeof(NoDelayStub));
-                var app = GetCommandAppTester(registrar);
+                var services = new ServiceCollection();
+                services.AddSingleton<ISpeedTestService, SpeedTestStub>();
+                services.AddSingleton<IClock, ClockStub>();
+                services.AddSingleton<IWaiter, NoDelayStub>();
+                var host = GetCommandLineTestHost(services);
 
                 // When
-                var result = await app.RunAsync([ "--file", testFile, "--file-mode", "Overwrite" ]);
+                var result = await host.RunAsync([ "--file", testFile, "--file-mode", "Overwrite" ]);
 
                 // Then
                 Assert.Equal(0, result.ExitCode);
@@ -193,15 +186,14 @@ public sealed partial class NetPaceConsoleTests
                 // Create a file with existing content
                 await System.IO.File.WriteAllTextAsync(testFile, "OLD CONTENT THAT SHOULD BE REPLACED");
 
-                var registrar = new TypeRegistrar();
-                registrar.Register(typeof(ISpeedTestService), typeof(SpeedTestStub));
-                registrar.Register(typeof(IClock), typeof(ClockStub));
-                registrar.Register(typeof(IClientInfoProvider), typeof(ClientInfoProviderStub));
-                registrar.Register(typeof(IWaiter), typeof(NoDelayStub));
-                var app = GetCommandAppTester(registrar);
+                var services = new ServiceCollection();
+                services.AddSingleton<ISpeedTestService, SpeedTestStub>();
+                services.AddSingleton<IClock, ClockStub>();
+                services.AddSingleton<IWaiter, NoDelayStub>();
+                var host = GetCommandLineTestHost(services);
 
                 // When
-                var result = await app.RunAsync([ "--file", testFile, "--file-mode", "Overwrite" ]);
+                var result = await host.RunAsync([ "--file", testFile, "--file-mode", "Overwrite" ]);
 
                 // Then
                 Assert.Equal(0, result.ExitCode);
@@ -229,15 +221,14 @@ public sealed partial class NetPaceConsoleTests
                 // Create a file with existing content
                 await System.IO.File.WriteAllTextAsync(testFile, "FIRST RUN\n");
 
-                var registrar = new TypeRegistrar();
-                registrar.Register(typeof(ISpeedTestService), typeof(SpeedTestStub));
-                registrar.Register(typeof(IClock), typeof(ClockStub));
-                registrar.Register(typeof(IClientInfoProvider), typeof(ClientInfoProviderStub));
-                registrar.Register(typeof(IWaiter), typeof(NoDelayStub));
-                var app = GetCommandAppTester(registrar);
+                var services = new ServiceCollection();
+                services.AddSingleton<ISpeedTestService, SpeedTestStub>();
+                services.AddSingleton<IClock, ClockStub>();
+                services.AddSingleton<IWaiter, NoDelayStub>();
+                var host = GetCommandLineTestHost(services);
 
                 // When
-                var result = await app.RunAsync([ "--file", testFile ]);
+                var result = await host.RunAsync([ "--file", testFile ]);
 
                 // Then
                 Assert.Equal(0, result.ExitCode);
@@ -265,15 +256,14 @@ public sealed partial class NetPaceConsoleTests
                 // Create a file with existing content
                 await System.IO.File.WriteAllTextAsync(testFile, "EXISTING CONTENT\n");
 
-                var registrar = new TypeRegistrar();
-                registrar.Register(typeof(ISpeedTestService), typeof(SpeedTestStub));
-                registrar.Register(typeof(IClock), typeof(ClockStub));
-                registrar.Register(typeof(IClientInfoProvider), typeof(ClientInfoProviderStub));
-                registrar.Register(typeof(IWaiter), typeof(NoDelayStub));
-                var app = GetCommandAppTester(registrar);
+                var services = new ServiceCollection();
+                services.AddSingleton<ISpeedTestService, SpeedTestStub>();
+                services.AddSingleton<IClock, ClockStub>();
+                services.AddSingleton<IWaiter, NoDelayStub>();
+                var host = GetCommandLineTestHost(services);
 
                 // When
-                var result = await app.RunAsync([ "--file", testFile, "--file-mode", "Append" ]);
+                var result = await host.RunAsync([ "--file", testFile, "--file-mode", "Append" ]);
 
                 // Then
                 Assert.Equal(0, result.ExitCode);
@@ -296,18 +286,17 @@ public sealed partial class NetPaceConsoleTests
             // Given
             var invalidPath = Path.Join(Path.GetTempPath(), "nonexistent-directory", "output.txt");
 
-            var registrar = new TypeRegistrar();
-            registrar.Register(typeof(ISpeedTestService), typeof(SpeedTestStub));
-            registrar.Register(typeof(IClock), typeof(ClockStub));
-            registrar.Register(typeof(IClientInfoProvider), typeof(ClientInfoProviderStub));
-            registrar.Register(typeof(IWaiter), typeof(NoDelayStub));
-            var app = GetCommandAppTester(registrar);
+            var services = new ServiceCollection();
+            services.AddSingleton<ISpeedTestService, SpeedTestStub>();
+            services.AddSingleton<IClock, ClockStub>();
+            services.AddSingleton<IWaiter, NoDelayStub>();
+            var host = GetCommandLineTestHost(services);
 
             // When
-            var result = await app.RunAsync([ "--file", invalidPath ]);
+            var result = await host.RunAsync([ "--file", invalidPath ]);
 
             // Then
-            Assert.NotEqual(0, result.ExitCode);
+            Assert.Equal(1, result.ExitCode);
 
             // Normalize directory separators to Windows-style backslashes so the Windows snapshots match across platforms.
             var normalizedOutput = (result.Output ?? string.Empty).Replace('/', '\\');
@@ -325,18 +314,17 @@ public sealed partial class NetPaceConsoleTests
             try
             {
                 // Given
-                var registrar = new TypeRegistrar();
-                registrar.Register(typeof(ISpeedTestService), typeof(SpeedTestStub));
-                registrar.Register(typeof(IClock), typeof(ClockStub));
-                registrar.Register(typeof(IClientInfoProvider), typeof(ClientInfoProviderStub));
-                registrar.Register(typeof(IWaiter), typeof(NoDelayStub));
-                var app = GetCommandAppTester(registrar);
+                var services = new ServiceCollection();
+                services.AddSingleton<ISpeedTestService, SpeedTestStub>();
+                services.AddSingleton<IClock, ClockStub>();
+                services.AddSingleton<IWaiter, NoDelayStub>();
+                var host = GetCommandLineTestHost(services);
 
                 // When
-                var result = await app.RunAsync([ quiet, "--count", "ABC", "--file", testFile ]);
+                var result = await host.RunAsync([ quiet, "--count", "ABC", "--file", testFile ]);
 
                 // Then
-                Assert.NotEqual(0, result.ExitCode);
+                Assert.Equal(1, result.ExitCode);
                 await Verify(result.Output).DisableRequireUniquePrefix();
 
                 // NetPace terminates when trying to parse the commandline arguments,
@@ -368,15 +356,14 @@ public sealed partial class NetPaceConsoleTests
                     GetServersAsyncFunc = (cancellationToken) => throw new HttpRequestException("Could not connect to server")
                 };
 
-                var registrar = new TypeRegistrar();
-                registrar.RegisterInstance(typeof(ISpeedTestService), mock);
-                registrar.Register(typeof(IClock), typeof(ClockStub));
-                registrar.Register(typeof(IClientInfoProvider), typeof(ClientInfoProviderStub));
-                registrar.Register(typeof(IWaiter), typeof(NoDelayStub));
-                var app = GetCommandAppTester(registrar);
+                var services = new ServiceCollection();
+                services.AddSingleton<ISpeedTestService>(mock);
+                services.AddSingleton<IClock, ClockStub>();
+                services.AddSingleton<IWaiter, NoDelayStub>();
+                var host = GetCommandLineTestHost(services);
 
                 // When
-                var result = await app.RunAsync([ quiet, "--file", testFile ]);
+                var result = await host.RunAsync([ quiet, "--file", testFile ]);
 
                 // Then
                 Assert.Equal(0, result.ExitCode);
