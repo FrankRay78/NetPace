@@ -71,15 +71,17 @@ public sealed class DefaultConsoleWriter : IConsoleWriter
                         uploadProgress = progress.AddTask("Uploading", autoStart: true, maxValue: 100);
                     }
 
-                    // Perform the speed tests and show progress
+                    // Perform the speed tests and show progress.
+                    // Note: SyncProgress applies reports inline; Progress<T> posts them via the
+                    // SyncContext/thread pool, which races Spectre's renderer and drops updates.
                     if (!settings.NoDownload)
                     {
-                        var downloadProgressReporter = new Progress<SpeedTestProgress>(p => downloadProgress!.Value = p.PercentageComplete);
+                        var downloadProgressReporter = new SyncProgress<SpeedTestProgress>(p => downloadProgress!.Value = p.PercentageComplete);
                         downloadResult = await speedTestClient.GetDownloadSpeedAsync(fastest.Server, settings.DownloadSizeMb, downloadProgressReporter, cancellationToken);
                     }
                     if (!settings.NoUpload)
                     {
-                        var uploadProgressReporter = new Progress<SpeedTestProgress>(p => uploadProgress!.Value = p.PercentageComplete);
+                        var uploadProgressReporter = new SyncProgress<SpeedTestProgress>(p => uploadProgress!.Value = p.PercentageComplete);
                         uploadResult = await speedTestClient.GetUploadSpeedAsync(fastest.Server, settings.UploadSizeMb, uploadProgressReporter, cancellationToken);
                     }
                 });
@@ -129,5 +131,10 @@ public sealed class DefaultConsoleWriter : IConsoleWriter
 
 
         console.WriteLine("\nTry 'NetPace --help' for more information.");
+    }
+
+    private sealed class SyncProgress<T>(Action<T> handler) : IProgress<T>
+    {
+        public void Report(T value) => handler(value);
     }
 }
