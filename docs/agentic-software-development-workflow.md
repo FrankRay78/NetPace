@@ -23,15 +23,23 @@ for the files that make the workflow run.
 ## Workflow Execution Order
 
 ### Per-feature — Spec & planning (on main branch)
-0. `/speckit.reviewissue`      ← pre-specification gate; resolve ambiguities before spec work
-1. `/speckit.specify`          ← prepend scenario naming instruction (see CLAUDE.md)
-2. `/speckit.clarify`          ← iterate until spec feels complete
-3. `/speckit.checklist`        ← resolve all gaps before continuing
-4. `/speckit.plan`
-5. `/speckit.testplan`         ← review output carefully before continuing
-6. `powershell -ExecutionPolicy Bypass -File scripts\git-red-phase-commit.ps1`
-7. `/speckit.tasks`
-8. `/speckit.analyze`          ← resolve HIGH/CRITICAL before branching; auto-runs
+1.  `/speckit.draftissue`      ← optional; turn an unstructured brief into a well-formed
+                                 GitHub issue before review
+2.  `/speckit.reviewissue`     ← pre-specification gate; posts gaps + recommendations as an
+                                 issue comment. Re-run to expand any question the author
+                                 hedged on (`not sure`, `more options`, etc.) — the same
+                                 comment is edited in place
+3.  `/speckit.confirmissue`    ← fold answered review comment into a `## Confirmed decisions`
+                                 section on the issue body, so spec consumes decisions, not
+                                 deliberation
+4.  `/speckit.specify`         ← prepend scenario naming instruction (see CLAUDE.md)
+5.  `/speckit.clarify`         ← iterate until spec feels complete
+6.  `/speckit.checklist`       ← resolve all gaps before continuing
+7.  `/speckit.plan`
+8.  `/speckit.testplan`        ← review output carefully before continuing
+9.  `powershell -ExecutionPolicy Bypass -File scripts\git-red-phase-commit.ps1`
+10. `/speckit.tasks`
+11. `/speckit.analyze`         ← resolve HIGH/CRITICAL before branching; auto-runs
                                  `/speckit.analyze.testplan` via the `after_analyze` hook,
                                  appending a test-plan cross-check to the analyze report
 
@@ -100,12 +108,33 @@ Permissions allowlist/denylist and two inline hooks:
   `gh pr create` command executes, blocking PR creation if either fails
 - Enables the `pr-review-toolkit` plugin
 
+**[`.claude/commands/speckit.draftissue.md`](.claude/commands/speckit.draftissue.md)**
+Custom `/speckit.draftissue` command. Pre-issue gate that sits *before*
+`/speckit.reviewissue`. Takes an unstructured feature brief, grounds it in the codebase,
+surfaces the ~5–10 decisions the brief leaves open (with concrete leans), iterates with the
+user to lock them, then writes a structured issue body to a transient file and posts it via
+`gh issue create`. Output is an issue with substantive scope, acceptance criteria, and an
+explicit out-of-scope list — the raw material `/speckit.reviewissue` needs to do useful
+cross-checking.
+
 **[`.claude/commands/speckit.reviewissue.md`](.claude/commands/speckit.reviewissue.md)**
 Custom `/speckit.reviewissue` command. Pre-specification gate that sits *before*
 `/speckit.specify`. Reads an unrefined GitHub issue, cross-references it against the current
 codebase (architecture, existing services, test data, docs), and surfaces ambiguities in
 scope and undefined semantics (matching rules, thresholds, field lists) that would otherwise
-block or distort a specification run.
+block or distort a specification run. Each gap ends with a concrete `**Recommendation:**`
+the author can accept or redirect. The posted comment carries a `<!-- speckit:review -->`
+marker; re-runs **edit the same comment in place** to expand any question where the author
+hedged (`not sure`, `more options`, `idk`, etc.) — substantive answers are left untouched
+for `/speckit.confirmissue` to pick up.
+
+**[`.claude/commands/speckit.confirmissue.md`](.claude/commands/speckit.confirmissue.md)**
+Custom `/speckit.confirmissue` command. Sits *between* `/speckit.reviewissue` and
+`/speckit.specify`. Reads the answered review comment, pairs each gap's recommendation with
+the author's inline answer (accepted / accepted-with-rider / redirected / out-of-scope),
+and appends a `## Confirmed decisions` section to the issue body so the spec author
+consumes resolved decisions rather than re-reading deliberation. Stops if any answer is
+empty or still hedging. The original review comment is left intact as the audit trail.
 
 **[`.claude/commands/speckit.testplan.md`](.claude/commands/speckit.testplan.md)**
 Custom `/speckit.testplan` command. Translates completed spec.md requirements into named
