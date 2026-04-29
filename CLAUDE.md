@@ -235,6 +235,11 @@ For deeper guidance on specific topics, see:
 - CIR template and examples
 - Documenting architectural decisions
 
+**Ookla Download/Upload Sizing** (`docs/architecture/download-upload-size-controls.md`)
+- How `OoklaSpeedtestSettings` shapes per-request sizing, iteration counts, and parallelism
+- What `--downloadsize` / `--uploadsize` actually do (total-byte budget caps, not per-request controls)
+- Docker OoklaServer endpoints available for local verification
+
 **AI Agents**: Read these files when working on C# code or making architectural decisions.
 
 ## Resources
