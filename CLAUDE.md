@@ -257,3 +257,13 @@ For deeper guidance on specific topics, see:
 **Maintained by**: Frank Ray
 **Project**: https://github.com/FrankRay78/NetPace
 **Constitution**: `.specify/memory/constitution.md`
+
+---
+
+## Project Memory
+
+Feedback and project memory for this repo lives **in this repo** at [.claude/memory/](.claude/memory/) — git-tracked, visible in diffs, travels with the codebase.
+
+@.claude/memory/MEMORY.md
+
+**For future Claude sessions:** when capturing learnings or writing new memory entries, write them to `.claude/memory/` in this repo. Claude user-level memory is deprecated for this project in favour of repo-tracked memory.
