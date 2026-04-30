@@ -4,78 +4,25 @@
 
 **For Core Principles & Governance**: See `.specify/memory/constitution.md`
 
-This guide provides implementation-specific details for developing NetPace. The constitution defines **WHAT** and **WHY** (principles, governance), while this guide covers **HOW** (C# specifics, code patterns, NetPace domain knowledge).
+This guide covers **HOW** (NetPace patterns, conventions, gotchas). The constitution covers **WHAT** and **WHY** (principles, governance). Generic C# style lives in `docs/conventions/csharp-style.md` — read that for naming, async, LINQ, member ordering, etc.
 
 ## Project Overview
 
-NetPace is a cross-platform network speed testing CLI application built with .NET 8.0, utilizing Ookla's Speedtest servers.
+NetPace is a cross-platform network speed testing CLI built with .NET 8.0, using Ookla's Speedtest servers.
 
 **Key Components:**
-- `NetPace.Console` - Command-line application using Spectre.Console
-- `NetPace.Core` - Reusable library with `ISpeedTestService` interface (published to NuGet)
+- `NetPace.Console` — CLI app using Spectre.Console
+- `NetPace.Core` — Reusable library with `ISpeedTestService` interface (published to NuGet)
 
-**Technology Stack:**
-- Framework: .NET 8.0
-- Language: C# 12
-- CLI Library: Spectre.Console
-- Testing: xUnit
-- Nullable Reference Types: Enabled
+**Stack:** .NET 8.0 · C# 12 · Spectre.Console · xUnit · Nullable reference types enabled
 
-## C# Implementation Details
+## Testing
 
-### Naming Conventions
+Project layout: `NetPace.Core.Tests`, `NetPace.Console.Tests`. Test file mirrors source (`OoklaSpeedtest.cs` → `OoklaSpeedtestTests.cs`). xUnit, Given-When-Then, naming `MethodName_Scenario_ExpectedResult`.
 
-- **PascalCase**: Classes, methods, properties, namespaces, public fields
-- **camelCase**: Private fields, local variables, parameters
-- **Interfaces** start with `I`: `ISpeedTestService`
-- **Async methods** end with `Async`: `GetServersAsync()`
+**Test in NetPace.Core:** all public APIs; speed calculations, unit conversions, server selection; happy paths, alternative configurations, and error scenarios (invalid input, network failures, timeouts). Real-network integration tests live in a separate test category.
 
-### Code Organization
-
-- **One class per file** (exceptions for small, tightly related types)
-- **File names match type names**: `OoklaSpeedtest.cs` contains `OoklaSpeedtest` class
-- **Namespace matches folder structure**: `NetPace.Core.Clients.Ookla`
-
-### C# Best Practices
-
-- **Use `var`** when type is obvious: `var result = GetResult();`
-- **Explicit types** when clarity helps: `ISpeedTestService speedTester = ...`
-- **Favor immutability**: Use `readonly` fields, consider `record` types for DTOs
-- **Avoid magic strings/numbers**: Use constants or enums
-- **Guard clauses**: Validate inputs early at method start
-
-## Testing Implementation
-
-### Test Organization
-
-- **Test project naming**: `NetPace.Core.Tests`, `NetPace.Console.Tests`
-- **Framework**: xUnit
-- **Test file mirrors source**: `OoklaSpeedtest.cs` → `OoklaSpeedtestTests.cs`
-- **Test naming**: `MethodName_Scenario_ExpectedResult`
-- **Pattern**: Given-When-Then
-
-### What to Test
-
-- **NetPace.Core**: Unit tests for all public APIs
-- **Business logic**: Speed calculations, unit conversions, server selection
-- **Happy paths**: Normal successful scenarios
-- **Alternative scenarios**: Different configurations, edge cases
-- **Error scenarios**: Invalid input, network failures, timeouts
-- **Integration tests**: Real network calls (consider separate test category)
-
-### What NOT to Test
-
-- **Spectre.Console output** - trust the library works
-- **Simple property getters/setters** with no logic
-- **Third-party libraries** - assume they work
-
-### Test Quality Expectations
-
-- **Readable**: Another developer should understand what's being tested
-- **Independent**: Can run in any order
-- **Fast**: Entire test suite runs in seconds
-- **Deterministic**: Same input = same result, every time
-- **Mock externals**: Mock network, filesystem, time for unit tests
+**Don't test:** Spectre.Console output (trust the library); simple getters/setters with no logic; third-party library behaviour.
 
 ## NetPace-Specific Patterns
 
@@ -93,25 +40,23 @@ public interface ISpeedTestService
 }
 ```
 
-- Currently using Ookla, but architecture allows for alternatives
-- Keep provider-specific code isolated in `Clients/{ProviderName}/`
+- Currently using Ookla; architecture allows alternatives
+- Provider-specific code stays isolated in `Clients/{ProviderName}/`
 
 ### CLI Help Behaviour
 
-`--help` (and its aliases `-h`, `-?`) is intercepted manually in `Program.RunAsync` before `System.CommandLine` parses the argument list. This keeps help rendering under full control of `CustomHelpProvider`.
+`--help` (and `-h`, `-?`) is intercepted manually in `Program.RunAsync` before `System.CommandLine` parses arguments. This keeps help rendering under full control of `CustomHelpProvider`.
 
-**Intentional constraint**: help is only recognised at position 0 (root help) or as the second token when the first token is a subcommand name (e.g. `netpace servers --help`). Flags placed before `--help` (e.g. `netpace --csv --help`) are not treated as a help request; `--help` is silently ignored in that position. This is a deliberate trade-off to keep the help-interception logic simple.
+**Intentional constraint**: help is only recognised at position 0 (root help) or as the second token after a subcommand name (e.g. `netpace servers --help`). Flags placed before `--help` (e.g. `netpace --csv --help`) are silently ignored. Deliberate trade-off to keep the help-interception logic simple.
 
 Do not add tests for the `--flag --help` pattern — it is not expected to work.
 
 ### Units and Formatting
 
-NetPace supports flexible unit configurations:
-
 - **Unit systems**: SI (1000-based: KB, MB, GB) and IEC (1024-based: KiB, MiB, GiB)
 - **Speed units**: BitsPerSecond and BytesPerSecond
-- **Scaling**: Auto-scale by default (Mbps, Gbps) but allow user override via `--unit-scale`
-- **Consistency**: Same formatting across all output modes (normal, CSV, JSON)
+- **Scaling**: auto-scale by default (Mbps, Gbps); user override via `--unit-scale`
+- **Consistency**: same formatting across normal, CSV, and JSON output
 
 ### Common Code Patterns
 
@@ -132,7 +77,7 @@ public class DownloadResult
 
 #### Extension Methods
 
-Use extension methods for formatting and conversion logic that doesn't belong in core types:
+Use extension methods for formatting and conversion logic that doesn't belong on the core type:
 
 ```csharp
 public static class SpeedResultExtensions
@@ -156,107 +101,41 @@ public async Task<DownloadResult> GetDownloadSpeedAsync(
 }
 ```
 
-## Documentation Maintenance
-
-When making changes, update relevant documentation:
-
-- **README.md** - Contains static `--help` output (update if CLI options change)
-- **USER_GUIDE.md** - Check if sections reference changed options or features
-- **XML documentation** - All public APIs must have XML docs
-
 ## Working with Claude Code
 
-### Claude Must Always
+Paired rules — `Don't` X → `Do` Y instead:
 
-- **Follow TDD strictly** - Write failing test first (RED-GREEN-REFACTOR cycle from constitution)
-- **Add XML documentation** to all public APIs (methods, properties, classes)
-- **Consider cross-platform compatibility** (Windows, Linux, macOS)
-- **Write testable code** (interfaces, dependency injection)
-- **Ask for clarification** if requirements are ambiguous
-- **Use built-in planning tools** for non-trivial changes before writing code
-
-### Tell Claude About
-
-- **Which component** you're working on (Core vs Console)
-- **Public API changes** - affects NuGet consumers, requires discussion
-- **Platform-specific considerations** - if code behavior varies by OS
-- **Performance requirements** - if optimization is needed
-
-### Never Let Claude
-
-- Write production code without a failing test first
-- Skip the RED step (must see test fail)
-- Change public APIs without discussion and approval
-- Add dependencies to NetPace.Core without justification
-- Commit code with failing tests or build warnings
+- **Don't write production code without a failing test** → write a RED test first, watch it fail, *then* implement (RED-GREEN-REFACTOR; see constitution).
+- **Don't change public APIs in `NetPace.Core` without discussion** → public-API changes affect NuGet consumers; raise the change for approval before implementing.
+- **Don't ship a public `NetPace.Core` API without XML docs** → all public methods, properties, and classes in `NetPace.Core` need `///` XML docs (they ship to NuGet consumers).
+- **Don't add a `NetPace.Core` dependency without justification** → keep the library lean; if a new dep is needed, justify it explicitly in the PR or CIR.
+- **Don't commit with failing tests or build warnings** → run `dotnet build` and `dotnet test` clean before committing.
+- **Don't change a CLI option without updating user-facing docs** → README.md `--help` snapshot, USER_GUIDE.md, and CHANGELOG all need updating; design-doc cross-ref where applicable.
 
 ## Quick Command Reference
 
-### Build and Test
-
 ```bash
-# Build solution
+# Build & test
 dotnet build
-
-# Run all tests
 dotnet test
-
-# Run tests with coverage
 dotnet test --collect:"XPlat Code Coverage"
-```
 
-### Git Workflow
-
-```bash
 # Start new work
-git checkout main
-git pull origin main
+git checkout main && git pull origin main
 git checkout -b feature/your-feature-name
-
-# Before committing: verify build and tests pass
-dotnet build
-dotnet test
 ```
 
 ## Detailed References
 
-For deeper guidance on specific topics, see:
+Load these on demand for the matching topic:
 
-**C# Style Details** (`docs/conventions/csharp-style.md`)
-- Underscore field naming conventions (`_camelCase`, `s_camelCase`, `t_camelCase`)
-- File-scoped namespaces
-- ConfigureAwait patterns for library code
-- Collection expressions (C# 12)
-- Allman braces and member ordering
-- Primary constructor parameters
-
-**Change Intent Records** (`docs/conventions/change-intent-records.md`)
-- When to create CIRs
-- CIR template and examples
-- Documenting architectural decisions
-
-**Ookla Download/Upload Sizing** (`docs/architecture/download-upload-size-controls.md`)
-- How `OoklaSpeedtestSettings` shapes per-request sizing, iteration counts, and parallelism
-- What `--downloadsize` / `--uploadsize` actually do (total-byte budget caps, not per-request controls)
-- Docker OoklaServer endpoints available for local verification
-
-**AI Agents**: Read these files when working on C# code or making architectural decisions.
-
-## Resources
-
-- [.NET API Documentation](https://learn.microsoft.com/en-us/dotnet/api/)
-- [C# Coding Conventions](https://learn.microsoft.com/en-us/dotnet/csharp/fundamentals/coding-style/coding-conventions)
-- [CLI Guidelines](https://clig.dev/)
-- [Spectre.Console Documentation](https://spectreconsole.net/)
-- [xUnit Documentation](https://xunit.net/)
-- [Test-Driven Development by Example (Kent Beck)](https://www.amazon.com/Test-Driven-Development-Kent-Beck/dp/0321146530)
+- **C# Style** — `docs/conventions/csharp-style.md` — naming (`_camelCase`/`s_camelCase`/`t_camelCase`), `var` rules, async/`ConfigureAwait`, immutability, LINQ, member ordering, primary-constructor parameter casing, xUnit conventions.
+- **Change Intent Records** — `docs/conventions/change-intent-records.md` — decision table for whether to write one, template, worked example.
+- **Ookla Download/Upload Sizing** — `docs/architecture/download-upload-size-controls.md` — how `OoklaSpeedtestSettings` shapes per-request sizing, iterations, and parallelism; what `--downloadsize`/`--uploadsize` actually cap (total-byte budget); Docker OoklaServer endpoints for local verification.
 
 ---
 
-**Last Updated**: April 2026 (Streamlined - core principles moved to constitution)
-**Maintained by**: Frank Ray
-**Project**: https://github.com/FrankRay78/NetPace
-**Constitution**: `.specify/memory/constitution.md`
+**Last Updated**: April 2026 · **Maintained by**: Frank Ray · **Constitution**: `.specify/memory/constitution.md`
 
 ---
 

@@ -46,6 +46,11 @@
 - Prefer `IEnumerable<T>`, `IReadOnlyList<T>` for method parameters
 - Use concrete types (`List<T>`, `Dictionary<T>`) for internal implementation
 
+## Immutability & Constants
+
+- **Favor immutability**: prefer `readonly` fields, `init`-only properties, and `record` types for DTOs
+- **No magic strings/numbers**: extract to a `const`, `static readonly`, or `enum` — even one-off values gain meaning from a name
+
 ## Async
 
 - **Async methods must have the Async suffix** (e.g. `GetServersAsync`)

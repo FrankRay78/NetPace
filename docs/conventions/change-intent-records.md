@@ -10,17 +10,19 @@
 
 Change Intent Records capture the **why** behind non-obvious decisions made during development. They complement code comments (which explain "how") by documenting the reasoning, alternatives considered, and constraints that led to a particular implementation choice.
 
-**When to Create a CIR**:
-- When you choose between multiple viable technical approaches
-- When implementing something that might seem counterintuitive
-- When working around a limitation or constraint
-- When making architectural decisions that affect future work
-- When trade-offs were made (performance vs. readability, etc.)
+**Decision table** — does this change need a CIR?
 
-**When NOT to Create a CIR**:
-- Obvious or standard implementations
-- Following established patterns already documented
-- Temporary workarounds (document those in code comments instead)
+| Question | → CIR | → No CIR |
+| --- | --- | --- |
+| Choosing between multiple viable approaches a future maintainer would reasonably question? | ✅ | |
+| Working around a limitation or constraint the code itself won't make obvious? | ✅ | |
+| Architectural decision that constrains future work (public API, dependency direction, framework choice)? | ✅ | |
+| Trade-off made (performance vs. readability, simplicity vs. flexibility) where the rejected option is plausible? | ✅ | |
+| Following an established pattern already documented elsewhere in the repo? | | ✅ |
+| Obvious or standard implementation with no real alternative? | | ✅ |
+| Temporary workaround you expect to remove? | | ✅ (code comment + TODO instead) |
+
+If any `→ CIR` row is ✅, write one.
 
 ## CIR Template
 
@@ -68,14 +70,6 @@ without changing client code.
 
 **Date:** 2024-08-15
 ```
-
-## Benefits
-
-1. **Knowledge Transfer**: New team members understand the "why"
-2. **AI Context**: LLMs can understand constraints when suggesting changes
-3. **Prevent Regressions**: Avoid re-litigating settled decisions
-4. **Audit Trail**: Track architectural evolution over time
-5. **Code Review**: Reviewers understand trade-offs made
 
 ## References
 
