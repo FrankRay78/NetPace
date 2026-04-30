@@ -32,7 +32,7 @@ for the files that make the workflow run.
 3.  `/speckit.confirmissue`    ← fold answered review comment into a `## Confirmed decisions`
                                  section on the issue body, so spec consumes decisions, not
                                  deliberation
-4.  `/speckit.specify`         ← prepend scenario naming instruction (see CLAUDE.md)
+4.  `/speckit.specify`
 5.  `/speckit.clarify`         ← iterate until spec feels complete
 6.  `/speckit.checklist`       ← resolve all gaps before continuing
 7.  `/speckit.plan`
@@ -57,6 +57,7 @@ for the files that make the workflow run.
 
 ### Periodic (not per-feature)
 ∞  `/audit-deadcode`           ← run every few features or before a release
+∞  `/context-gardening`        ← run quarterly or after a big architectural shift
 
 
 ---
@@ -154,15 +155,23 @@ code patterns that compile and pass lint but degrade the codebase.
 Custom `/audit-deadcode` command. Walks the call graph from CLI entry points and produces
 a `DEADCODE.md` report of unused code.
 
+**[`.claude/commands/context-gardening.md`](.claude/commands/context-gardening.md)**
+Custom `/context-gardening` command. Audits `CLAUDE.md`, its linked docs, and
+`.claude/memory/` against the patterns from "A good AGENTS.md is a model upgrade" — flags
+bloat, stale references, mis-fit patterns, and verbose passages, then applies approved
+edits. Advisory: candidates are surfaced with rationale; the user picks which to apply.
+Run quarterly, after a big architectural shift, or whenever `CLAUDE.md` feels stale.
+
 **[`.claude/commands/raise-pr.md`](.claude/commands/raise-pr.md)**
 Custom `/raise-pr` command. Reads the branch name, commit history, and changed files to
 auto-generate a PR title and body (using `.github/pull_request_template.md`), then runs
 `gh pr create`.
 
 **[`.claude/commands/capture-learnings.md`](.claude/commands/capture-learnings.md)**
-Custom `/capture-learnings` command. Scans the branch's commit messages and diff for
-signals of corrections, decisions, and gotchas, then surfaces candidates for the user to
-approve and persist as memory entries.
+Custom `/capture-learnings` command. Scans the current conversation (and, on a feature
+branch, commits since the branch point as secondary corroboration) for corrections,
+decisions, and gotchas, then surfaces candidates for the user to approve and persist as
+memory entries.
 
 ### spec-kit configuration (`.specify/`)
 
