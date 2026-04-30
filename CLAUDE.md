@@ -14,7 +14,7 @@ NetPace is a cross-platform network speed testing CLI built with .NET 8.0, using
 - `NetPace.Console` — CLI app using Spectre.Console
 - `NetPace.Core` — Reusable library with `ISpeedTestService` interface (published to NuGet)
 
-**Stack:** .NET 8.0 · C# 12 · Spectre.Console · xUnit · Nullable reference types enabled
+**Stack:** .NET 8.0 · C# 12 · Spectre.Console · System.CommandLine · xUnit · Nullable reference types enabled
 
 ## Testing
 
@@ -111,6 +111,7 @@ Paired rules — `Don't` X → `Do` Y instead:
 - **Don't add a `NetPace.Core` dependency without justification** → keep the library lean; if a new dep is needed, justify it explicitly in the PR or CIR.
 - **Don't commit with failing tests or build warnings** → run `dotnet build` and `dotnet test` clean before committing.
 - **Don't change a CLI option without updating user-facing docs** → README.md `--help` snapshot, USER_GUIDE.md, and CHANGELOG all need updating; design-doc cross-ref where applicable.
+- **Don't introduce reflection-heavy or non-trim-safe code** → NetPace targets AOT-trimmable builds (Spectre.Console.Cli was replaced for this reason); avoid runtime reflection, keep types annotation-clean.
 
 ## Quick Command Reference
 
@@ -141,8 +142,6 @@ Load these on demand for the matching topic:
 
 ## Project Memory
 
-Feedback and project memory for this repo lives **in this repo** at [.claude/memory/](.claude/memory/) — git-tracked, visible in diffs, travels with the codebase.
+Feedback and project memory live in [.claude/memory/](.claude/memory/) — git-tracked, visible in diffs, travels with the codebase. Write new entries there; user-level memory is deprecated for this project.
 
 @.claude/memory/MEMORY.md
-
-**For future Claude sessions:** when capturing learnings or writing new memory entries, write them to `.claude/memory/` in this repo. Claude user-level memory is deprecated for this project in favour of repo-tracked memory.
