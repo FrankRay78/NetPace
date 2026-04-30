@@ -164,12 +164,6 @@ Custom `/capture-learnings` command. Scans the branch's commit messages and diff
 signals of corrections, decisions, and gotchas, then surfaces candidates for the user to
 approve and persist as memory entries.
 
-**[`.claudeignore`](.claudeignore)**
-Files Claude Code should never read or index (gitignore-style syntax). Excludes build
-artefacts (`obj/`), IDE caches (`.vs/`), binary assets (`resources/images/`,
-`NetPace.snk`), large test payloads (`src/NetPace.Core.Tests/Payloads/`), archived specs
-(`specs/archive/`), and editor/transient files.
-
 ### spec-kit configuration (`.specify/`)
 
 **[`.specify/memory/constitution.md`](.specify/memory/constitution.md)**
@@ -194,21 +188,6 @@ Test-plan cross-check extension. Provides `/speckit.analyze.testplan`, which run
 automatically as an `after_analyze` hook. It cross-checks `test-plan.md` scenarios against
 `spec.md` and `tasks.md` for the current feature and appends a *Test Plan Cross-Check*
 findings table to the analyze report.
-
-### Spec archive convention (`specs/archive/`)
-
-Once a feature's implementation ships and the branch is merged, its spec folder is moved
-from `specs/<NNN-feature-name>/` into `specs/archive/<NNN-feature-name>/`. The folder
-structure and files are preserved verbatim — the move is the only change.
-
-- **Why archive rather than delete:** the spec, test plan, tasks, and analyze report are
-  the historical record of *what* was built and *why*. `git log` captures the code change;
-  the spec folder captures the intent and verification surface behind it.
-- **Why a dedicated `archive/` folder:** it keeps `specs/` uncluttered so active features
-  are obvious, while preserving the artefacts for future reference.
-- **Claude Code exclusion:** `.claudeignore` lists `specs/archive/` so archived specs never
-  enter the agent's working context. They remain in the repo and in git history, but the
-  agent sees only in-flight work under `specs/`.
 
 ### GitHub integration (`.github/`)
 
