@@ -76,9 +76,17 @@ Capture answers. Where the user delegates back ("you advise", "what's best?"), g
 
 ### 5. Draft to a transient file
 
-Pick a scratch location appropriate to the host OS — typically the system temp directory (`/tmp` on Linux / macOS / WSL, the OS temp dir on native Windows). Resolve it however is most reliable for the current shell; if you genuinely can't determine one, fall back to `~/.claude/` which exists wherever Claude Code is installed. Write the draft to `<scratch_dir>/gh-issue-body-{slug}.md` using the native `Write` tool, where `{slug}` is a short kebab-case derivation of the title. Tell the user the resolved absolute path so they can open it in their editor for review.
+Write the draft to `.claude/scratch/gh-issue-body-{slug}.md` using the native `Write` tool, where `{slug}` is a short kebab-case derivation of the title. Run `mkdir -p .claude/scratch` first if the directory does not yet exist. The path is **repo-relative** — `.claude/scratch/` is the project's canonical scratch location (it is git-ignored). Do not use `/tmp`, the system temp dir, or `~/.claude/`. Tell the user the path so they can open the file in their editor for review.
 
-The file is the issue body verbatim — what we write is what we post. Write all internal links as **paths relative to the repository root** (e.g. `[architecture](docs/ARCHITECTURE.md)`, `[handler](src/api/handler.ts)`), which is how GitHub resolves links in issue bodies. Do **not** include an H1 title in the file — that goes on the `gh issue create --title` flag, not in the body.
+The file is the issue body verbatim — what we write is what we post. Do **not** include an H1 title in the file — that goes on the `gh issue create --title` flag, not in the body.
+
+**Link rules** — GitHub's relative-link resolution against issue page URLs is unreliable across surfaces and renderers (broken in comments, inconsistent in bodies, ignored by many third-party renderers — mobile clients, RSS, scrapers). Every link to a file, directory, or line range **must** be an absolute GitHub URL:
+
+- File: `https://github.com/<owner>/<repo>/blob/<default-branch>/<path>`
+- File with line: append `#L<line>` or `#L<start>-L<end>`
+- Directory: `https://github.com/<owner>/<repo>/tree/<default-branch>/<path>`
+
+Resolve `<owner>/<repo>` from `gh repo view --json nameWithOwner` and `<default-branch>` from `gh repo view --json defaultBranchRef --jq .defaultBranchRef.name` once at the start of step 5 — reuse the result for every link in the draft. The link *text* can stay short (e.g. `[handler.ts:42](https://github.com/owner/repo/blob/main/src/api/handler.ts#L42)`) so readability is unaffected.
 
 Use this template:
 
@@ -110,7 +118,7 @@ Bullets. Things that don't need to be answered to ship the feature but should be
 
 ## Related
 
-- Links to architecture docs, testing conventions, and the source files most relevant to the work — paths relative to the repository root.
+- Links to architecture docs, testing conventions, and the source files most relevant to the work — written as absolute GitHub URLs (see Link rules above).
 ```
 
 ### 6. User review
@@ -121,10 +129,10 @@ The user can also edit the temp file directly in their editor. If they do, `Read
 
 ### 7. Raise the issue and clean up
 
-When the user approves, create the issue and delete the temp file in a single step, using the absolute path resolved in step 5:
+When the user approves, create the issue and delete the temp file in a single step:
 
 ```bash
-gh issue create --title "<title>" --body-file <scratch_dir>/gh-issue-body-<slug>.md && rm <scratch_dir>/gh-issue-body-<slug>.md
+gh issue create --title "<title>" --body-file .claude/scratch/gh-issue-body-<slug>.md && rm .claude/scratch/gh-issue-body-<slug>.md
 ```
 
 Verify auth and target repo first with `gh auth status` and `gh repo view --json nameWithOwner` if you're not certain.

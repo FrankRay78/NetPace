@@ -409,3 +409,6 @@ FodyWeavers.xsd
 
 # Claude Code local settings
 .claude/settings.local.json
+
+# Speckit / Claude scratch and staging files (transient drafts, not source)
+.claude/scratch/

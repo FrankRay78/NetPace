@@ -166,6 +166,23 @@ trade-offs; don't fake confidence. The *Reason* cites the evidence that led
 you there (existing convention in the codebase, Fabric/framework behaviour,
 POC posture, etc.), not a restatement of the recommendation.
 
+**Link rules** — the comment is rendered on `https://github.com/<owner>/<repo>/issues/<N>`,
+so GitHub resolves relative paths against the *issue URL*, not the repo root
+(`[foo](src/Foo.cs)` becomes `…/issues/src/Foo.cs` — broken). Every link to a
+file, directory, or line range **must** be an absolute GitHub URL:
+
+- File: `https://github.com/<owner>/<repo>/blob/<default-branch>/<path>`
+- File with line: append `#L<line>` or `#L<start>-L<end>`
+- Directory: `https://github.com/<owner>/<repo>/tree/<default-branch>/<path>`
+
+Resolve `<owner>/<repo>` from the issue (already known from step 1) and
+`<default-branch>` via `gh repo view <owner>/<repo> --json defaultBranchRef --jq .defaultBranchRef.name`
+once at the start of step 4 — reuse the result for every link in the body.
+The link *text* can stay short (e.g. `[Program.cs:232-233](https://github.com/owner/repo/blob/main/src/NetPace.Console/Program.cs#L232-L233)`) so readability is unaffected.
+
+This rule applies equally to refine-run edits in step 6 — any new links added
+during re-framing must use the same absolute form.
+
 ### 5. Post the comment (first run only)
 
 Post via `gh issue comment <number> --repo <owner/repo> --body "$(cat <<'EOF' ... EOF)"`.
@@ -213,12 +230,15 @@ If no gap qualifies for re-framing, **make no edit** and report that in chat (th
 
 **How to write the edit:**
 
-Write the full updated comment body to a temp file with the **Write tool** (never via shell heredoc — it'll bite you on backticks), then:
+Write the full updated comment body to `.claude/scratch/speckit-reviewissue-body.md` with the **Write tool** (never via shell heredoc — it'll bite you on backticks). Run `mkdir -p .claude/scratch` first if the directory does not yet exist (it is git-ignored). Then:
 
 ```bash
-gh api -X PATCH /repos/<owner>/<repo>/issues/comments/<id> \
-  -F body=@/tmp/speckit-reviewissue-body.md
+gh api -X PATCH repos/<owner>/<repo>/issues/comments/<id> \
+  -F body=@.claude/scratch/speckit-reviewissue-body.md
 ```
+
+(Omit the leading `/` on the endpoint — Git Bash on Windows rewrites `/repos/...`
+as a filesystem path. `gh api` accepts both forms on Linux/macOS.)
 
 ### 7. Do not modify the issue body
 

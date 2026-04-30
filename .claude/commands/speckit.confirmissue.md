@@ -130,14 +130,19 @@ Preserve everything above the section byte-for-byte. Do not "tidy" the original 
 
 ### 5. Patch the issue body
 
-Use the JSON-via-jq pattern to avoid any shell escaping pitfalls (backticks, `$`, etc.):
+**Link rules** — when extracting `**Recommendation:**` and answer text into bullets, preserve any GitHub URLs verbatim. If you find yourself authoring a *new* link (rare — only if you decompose a multi-part recommendation and need to re-cite a path), use an absolute GitHub URL: `https://github.com/<owner>/<repo>/blob/<default-branch>/<path>` (or `tree/...` for directories, `#L<n>` for line ranges). Never introduce a relative path — the same authored bullet may end up quoted in PR descriptions, comments, or third-party renderers where relative paths break. Resolve `<owner>/<repo>` from step 1's `gh issue view` invocation; resolve `<default-branch>` via `gh repo view <owner>/<repo> --json defaultBranchRef --jq .defaultBranchRef.name`.
+
+Write the new body to `.claude/scratch/speckit-confirmissue-body.md` with the **Write tool**, never via shell heredoc. Run `mkdir -p .claude/scratch` first if the directory does not yet exist (it is git-ignored).
+
+Then use the JSON-via-jq pattern to avoid any shell escaping pitfalls (backticks, `$`, etc.):
 
 ```bash
-jq -n --rawfile b /tmp/speckit-confirmissue-body.md '{body: $b}' > /tmp/speckit-confirmissue-patch.json
-gh api --method PATCH /repos/<owner>/<repo>/issues/<number> --input /tmp/speckit-confirmissue-patch.json --jq .html_url
+jq -n --rawfile b .claude/scratch/speckit-confirmissue-body.md '{body: $b}' > .claude/scratch/speckit-confirmissue-patch.json
+gh api --method PATCH repos/<owner>/<repo>/issues/<number> --input .claude/scratch/speckit-confirmissue-patch.json --jq .html_url
 ```
 
-Write the new body to a temp file with the **Write tool**, never via shell heredoc.
+(Omit the leading `/` on the endpoint — Git Bash on Windows rewrites `/repos/...`
+as a filesystem path. `gh api` accepts both forms on Linux/macOS.)
 
 ### 6. Do not touch the review comment
 

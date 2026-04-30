@@ -1,12 +1,19 @@
 ---
-description: After completing a feature, scan the conversation history for corrections and redirections you gave Claude — then capture the ones worth keeping as memory entries.
+description: Scan the current conversation (and, on a feature branch, the commits since branching) for corrections and redirections you gave Claude — then capture the ones worth keeping as memory entries.
 ---
 
-Run this command at the end of a feature or after `/raise-pr`. It scans the current conversation for moments where you corrected or re-steered Claude, asks a few discovery questions to catch anything the transcript missed, then writes approved candidates to the memory system.
+Run this command at the end of a working session, after completing a feature, or after `/raise-pr`. It always scans the current conversation for moments where you corrected or re-steered Claude; if you're on a non-default branch, it also looks at commits since the branch point as a secondary corroboration source. It then asks a few discovery questions, lists candidate learnings, and writes approved ones to the memory system.
 
 ## Steps
 
-1. **Guard**: Run `git rev-parse --abbrev-ref HEAD`. If the result is `main`, stop and output: "Run /capture-learnings from a feature branch, not main." Run `git log main..HEAD --oneline`. If empty, stop and output: "No commits on this branch — nothing to scan."
+1. **Detect branch context (no hard gate — always proceed)**: The conversation scan is the primary source and runs unconditionally.
+
+   Determine the **default branch** (first non-empty wins):
+   - `git symbolic-ref refs/remotes/origin/HEAD --short 2>/dev/null | sed 's|^origin/||'`
+   - `gh repo view --json defaultBranchRef --jq .defaultBranchRef.name 2>/dev/null`
+   - fall back to `main`
+
+   Then run `git rev-parse --abbrev-ref HEAD` for the **current branch**. Set `has_branch_context = true` when the current branch differs from the default *and* `git log <default>..HEAD --oneline` is non-empty; otherwise `has_branch_context = false`. Do not stop in any case — an empty branch context just means the conversation is the only source.
 
 2. **Scan conversation for correction signals**: Read backwards through the current conversation looking for moments where the user corrected, redirected, or re-steered Claude. Classify each as one of:
 
@@ -26,13 +33,15 @@ Run this command at the end of a feature or after `/raise-pr`. It scans the curr
    - User said: "yes exactly", "perfect", "keep doing that", "that's the right approach"
    - User accepted an unusual or counter-intuitive decision without pushback
 
-3. **Gather git corroboration** (secondary source): Run:
-   - `git log main..HEAD --oneline --reverse`
-   - `git diff main...HEAD --name-status`
+3. **Gather git corroboration** (secondary source — only when `has_branch_context` is true): Run:
+   - `git log <default>..HEAD --oneline --reverse`
+   - `git diff <default>...HEAD --name-status`
 
    Use this to *corroborate* conversation signals, not generate new ones. A chat correction backed by a rework commit is a higher-confidence candidate. Also check for:
    - Renamed or moved files (R status) — especially CLAUDE.md, docs, or config files
    - Modifications to `CLAUDE.md` or `.specify/memory/constitution.md`
+
+   When `has_branch_context` is false (running on the default branch, or feature branch with no commits yet), skip this step — only Confidence levels reachable in step 5 are `Medium (chat only)`.
 
 4. **Ask discovery questions**: Before synthesising candidates, ask the user:
 
