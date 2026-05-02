@@ -45,6 +45,7 @@ jobs:
       - name: Set deployment flags
         id: deployment_flags
         run: |
+          set -euo pipefail
           if [ "${{ matrix.deployment }}" = "self-contained" ]; then
             echo "self_contained=true" >> $GITHUB_OUTPUT
             echo "suffix=-standalone" >> $GITHUB_OUTPUT
@@ -58,6 +59,7 @@ jobs:
 
       - name: Publish Console App
         run: |
+          set -euo pipefail
           if [ "${{ matrix.deployment }}" = "aot" ]; then
             dotnet publish src/NetPace.Console/NetPace.Console.csproj \
               --configuration Release \
@@ -97,6 +99,7 @@ jobs:
 
       - name: Create archive
         run: |
+          set -euo pipefail
           cd ./publish/${{ matrix.runtime }}-${{ matrix.deployment }}
           if [[ "${{ matrix.runtime }}" == win-* ]]; then
             zip -r ../../netpace-${{ steps.get_version.outputs.version }}-${{ matrix.runtime }}${{ steps.deployment_flags.outputs.suffix }}.zip .
@@ -107,7 +110,7 @@ jobs:
       - name: Smoke test (AOT only)
         if: matrix.deployment == 'aot'
         run: |
-          set -e
+          set -euo pipefail
           archive="netpace-${{ steps.get_version.outputs.version }}-${{ matrix.runtime }}-aot.tar.gz"
           smoke_dir="$(mktemp -d)"
           tar -xzf "$archive" -C "$smoke_dir"
@@ -142,14 +145,25 @@ jobs:
 
       - name: Verify framework-dependent and AOT binaries are smaller than standalone
         run: |
+          set -euo pipefail
           failed=false
           for runtime in win-x64 win-arm64 linux-x64 linux-arm64 osx-x64 osx-arm64; do
-            standalone=$(find ./artifacts/netpace-$runtime-self-contained -type f | head -1)
+            standalone=$(find "./artifacts/netpace-$runtime-self-contained" -type f 2>/dev/null | head -1 || true)
+            if [ -z "$standalone" ]; then
+              echo "FAIL: standalone artifact missing for $runtime"
+              failed=true
+              continue
+            fi
             standalone_size=$(stat -c%s "$standalone")
             for variant in framework-dependent aot; do
               # AOT variant exists for Linux RIDs only
               if [ "$variant" = "aot" ] && [[ "$runtime" != linux-* ]]; then continue; fi
-              target=$(find ./artifacts/netpace-$runtime-$variant -type f | head -1)
+              target=$(find "./artifacts/netpace-$runtime-$variant" -type f 2>/dev/null | head -1 || true)
+              if [ -z "$target" ]; then
+                echo "FAIL: $variant artifact missing for $runtime"
+                failed=true
+                continue
+              fi
               target_size=$(stat -c%s "$target")
               echo "$runtime $variant: ${target_size} bytes (standalone=${standalone_size} bytes)"
               if [ "$target_size" -ge "$standalone_size" ]; then

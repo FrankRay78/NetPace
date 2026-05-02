@@ -5,8 +5,9 @@ namespace NetPace.Console.Tests.ConsoleWriters;
 
 public class TimeSpanFormatterTests
 {
-    // Tests below assert against real Humanizer.TimeSpan.Humanize(precision: 1) behaviour:
-    // largest non-zero unit, truncated (never rounded), with a Millisecond minUnit (so zero → "0 milliseconds").
+    // Replacement formatter mirrors the prior Humanizer(precision:1) contract: largest non-zero
+    // unit, truncated (never rounded). Zero/negative spans are coerced defensively to "0 seconds"
+    // (test-plan FR-011 contract).
 
     [Fact]
     public void Humanize_OneSecond_ReturnsSingularForm()
@@ -33,11 +34,11 @@ public class TimeSpanFormatterTests
     }
 
     [Fact]
-    public void Humanize_ZeroTimeSpan_ReturnsZeroMillisecondsString()
+    public void Humanize_ZeroTimeSpan_ReturnsZeroSecondsString()
     {
         // SCENARIO: Replacement formatter handles zero TimeSpan defensively
 
-        Assert.Equal("0 milliseconds", TimeSpan.Zero.Humanize());
+        Assert.Equal("0 seconds", TimeSpan.Zero.Humanize());
     }
 
     // Full unit-ladder coverage: Year → Month → Week → Day → Hour → Minute → Second → Millisecond.
@@ -135,6 +136,6 @@ public class TimeSpanFormatterTests
     // Defensive cases.
 
     [Fact]
-    public void Humanize_NegativeTimeSpan_ReturnsZeroMillisecondsDefensively() =>
-        Assert.Equal("0 milliseconds", TimeSpan.FromSeconds(-5).Humanize());
+    public void Humanize_NegativeTimeSpan_ReturnsZeroSecondsDefensively() =>
+        Assert.Equal("0 seconds", TimeSpan.FromSeconds(-5).Humanize());
 }

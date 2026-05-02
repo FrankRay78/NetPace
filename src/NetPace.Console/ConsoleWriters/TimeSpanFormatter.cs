@@ -9,7 +9,7 @@ internal static class TimeSpanFormatter
 
     internal static string Humanize(this TimeSpan ts)
     {
-        if (ts <= TimeSpan.Zero) return "0 milliseconds";
+        if (ts <= TimeSpan.Zero) return "0 seconds";
 
         var totalDays = ts.TotalDays;
 
