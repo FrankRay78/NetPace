@@ -36,15 +36,12 @@ Native AOT cannot be cross-compiled across operating systems — `dotnet publish
 
 ## Smoke-test contract (AOT only)
 
-Each AOT matrix entry runs three commands against the freshly extracted archive on its native runner. All three MUST exit `0` for the matrix job to succeed; non-zero exit aborts the release.
+Each AOT matrix entry runs two local-only commands against the freshly extracted archive on its native runner. Both MUST exit `0` for the matrix job to succeed; non-zero exit aborts the release.
 
 ```bash
 ./netpace --version
 ./netpace --help
-./netpace servers
 ```
-
-`servers` exercises the AOT-safe XML parser (`XmlExtensions.DeserializeFromXml<OoklaServerList>`) end-to-end against the real Ookla wire format — catches AOT-only regressions that don't surface in normal builds.
 
 ## Size-assertion contract
 
