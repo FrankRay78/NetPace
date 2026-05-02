@@ -6,14 +6,8 @@ namespace NetPace.Core.Clients.Ookla.Extensions;
 
 internal static class XmlExtensions
 {
-    internal static T? DeserializeFromXml<T>(this string data)
+    internal static OoklaServerList? DeserializeFromXml(this string data)
     {
-        if (typeof(T) != typeof(OoklaServerList))
-        {
-            throw new NotSupportedException(
-                $"DeserializeFromXml only supports {nameof(OoklaServerList)}; requested {typeof(T).FullName}.");
-        }
-
         var doc = XDocument.Parse(data);
         var settings = doc.Element("settings")
             ?? throw new XmlException("Expected <settings> root element.");
@@ -23,14 +17,14 @@ internal static class XmlExtensions
 
         if (serversElement is null)
         {
-            return (T)serverList;
+            return serverList;
         }
 
         var serverElements = serversElement.Elements("server").ToArray();
         if (serverElements.Length == 0)
         {
             serverList.Servers = Array.Empty<OoklaServer>();
-            return (T)serverList;
+            return serverList;
         }
 
         var servers = new OoklaServer[serverElements.Length];
@@ -40,7 +34,7 @@ internal static class XmlExtensions
         }
 
         serverList.Servers = servers;
-        return (T)serverList;
+        return serverList;
     }
 
     private static OoklaServer ParseServer(XElement element)

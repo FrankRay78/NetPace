@@ -26,7 +26,7 @@ public class XmlExtensionsTests
             </settings>
             """;
 
-        var result = Xml.DeserializeFromXml<OoklaServerList>();
+        var result = Xml.DeserializeFromXml();
 
         result.ShouldNotBeNull();
         result.Servers.ShouldNotBeNull();
@@ -55,7 +55,7 @@ public class XmlExtensionsTests
             </settings>
             """;
 
-        var result = Xml.DeserializeFromXml<OoklaServerList>();
+        var result = Xml.DeserializeFromXml();
 
         var server = result!.Servers!.Single();
         server.Country.ShouldBe("United Kingdom");
@@ -76,7 +76,7 @@ public class XmlExtensionsTests
             </settings>
             """;
 
-        var result = Xml.DeserializeFromXml<OoklaServerList>();
+        var result = Xml.DeserializeFromXml();
 
         var server = result!.Servers!.Single();
         server.Country.ShouldBeNull();
@@ -102,7 +102,7 @@ public class XmlExtensionsTests
         {
             CultureInfo.CurrentCulture = new CultureInfo("de-DE");
 
-            var result = Xml.DeserializeFromXml<OoklaServerList>();
+            var result = Xml.DeserializeFromXml();
 
             var server = result!.Servers!.Single();
             server.Latitude.ShouldBe(51.5074);
@@ -126,7 +126,7 @@ public class XmlExtensionsTests
             </settings>
             """;
 
-        var result = Xml.DeserializeFromXml<OoklaServerList>();
+        var result = Xml.DeserializeFromXml();
 
         result.ShouldNotBeNull();
         (result.Servers is null || result.Servers.Length == 0).ShouldBeTrue();
@@ -139,7 +139,7 @@ public class XmlExtensionsTests
 
         const string Xml = "<settings><servers><server id=\"1\" /></servers"; // unclosed
 
-        var thrown = Should.Throw<Exception>(() => Xml.DeserializeFromXml<OoklaServerList>());
+        var thrown = Should.Throw<Exception>(() => Xml.DeserializeFromXml());
 
         // Accept either an XmlException directly or an InvalidOperationException wrapping one
         var isXmlOrWrapped = thrown is XmlException
