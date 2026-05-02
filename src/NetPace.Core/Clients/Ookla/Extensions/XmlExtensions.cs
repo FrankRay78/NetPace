@@ -23,14 +23,14 @@ internal static class XmlExtensions
 
         if (serversElement is null)
         {
-            return (T)(object)serverList;
+            return (T)serverList;
         }
 
         var serverElements = serversElement.Elements("server").ToArray();
         if (serverElements.Length == 0)
         {
             serverList.Servers = Array.Empty<OoklaServer>();
-            return (T)(object)serverList;
+            return (T)serverList;
         }
 
         var servers = new OoklaServer[serverElements.Length];
@@ -40,7 +40,7 @@ internal static class XmlExtensions
         }
 
         serverList.Servers = servers;
-        return (T)(object)serverList;
+        return (T)serverList;
     }
 
     private static OoklaServer ParseServer(XElement element)
