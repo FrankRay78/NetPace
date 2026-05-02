@@ -1,5 +1,4 @@
 using System.Text.Json;
-using System.Text.Json.Serialization;
 using NetPace.Core;
 
 namespace NetPace.Console.ConsoleWriters;
@@ -38,8 +37,10 @@ public sealed class JsonConsoleWriter : IConsoleWriter
             Hostname = clientInfoProvider.GetHostname()
         };
 
-        var options = new JsonSerializerOptions { WriteIndented = settings.JsonPretty, DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull };
-        string jsonString = JsonSerializer.Serialize(jsonResult, options);
+        var typeInfo = settings.JsonPretty
+            ? JsonResultIndentedContext.Default.JsonResult
+            : JsonResultCompactContext.Default.JsonResult;
+        string jsonString = JsonSerializer.Serialize(jsonResult, typeInfo);
 
         console.WriteLine(jsonString);
     }

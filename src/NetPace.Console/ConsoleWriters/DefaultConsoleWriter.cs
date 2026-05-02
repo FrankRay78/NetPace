@@ -1,5 +1,5 @@
 using ByteSizeLib;
-using Humanizer;
+using NetPace.Console.ConsoleWriters;
 using NetPace.Core;
 
 namespace NetPace.Console.ConsoleWriters;

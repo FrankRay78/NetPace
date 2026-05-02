@@ -205,8 +205,8 @@ The Ookla XML response parser used by `NetPace.Core` MUST be implemented without
 
 #### Scenario: Parser uses invariant culture for numeric attribute parsing
 - **WHEN** the parser is given XML in which a `<server>` element has `lat="51.5074"` and `lon="-0.1278"` and the current thread's `CurrentCulture` is set to a comma-decimal locale (e.g. `de-DE`)
-- **THEN** the resulting `OoklaServer.Latitude` equals `51.5074` (within `1e-9`)
-- **AND** the resulting `OoklaServer.Longitude` equals `-0.1278` (within `1e-9`)
+- **THEN** the resulting `OoklaServer.Latitude` equals exactly `51.5074`
+- **AND** the resulting `OoklaServer.Longitude` equals exactly `-0.1278`
 
 #### Scenario: Parser handles an empty servers element
 - **WHEN** the parser is given XML containing `<settings><servers></servers></settings>`

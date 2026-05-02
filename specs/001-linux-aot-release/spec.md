@@ -17,11 +17,16 @@ An operator provisioning a Raspberry Pi, Jetson, or similar arm64/x64 Linux boar
 
 **Acceptance Scenarios**:
 
-1. **Given** a tag is pushed to `main`, **When** the release pipeline completes, **Then** the resulting GitHub Release exposes 14 archives — the 12 existing variants unchanged plus `netpace-{tag}-linux-x64-aot.tar.gz` and `netpace-{tag}-linux-arm64-aot.tar.gz`.
-2. **Given** the `linux-x64-aot` archive is extracted on a Linux x64 host with no .NET runtime installed, **When** the user runs `./netpace --version`, **Then** the command exits with status `0` and prints the release version.
-3. **Given** the same archive, **When** the user runs `./netpace --help`, **Then** the command exits with status `0` and prints help output equivalent to the other Linux variants.
-4. **Given** the same archive, **When** the user runs `netpace servers`, **Then** the command performs an HTTPS request to the Ookla server endpoint, parses the XML response, and exits with status `0`.
-5. **Given** the archive contents, **When** the user inspects them, **Then** the archive contains a single native ELF binary (no `.dll`, no embedded runtime, no `.deps.json`).
+1. **Scenario:** Tag push produces both new AOT archives  
+   **Given** a tag is pushed to `main`, **When** the release pipeline completes, **Then** the resulting GitHub Release exposes 14 archives — the 12 existing variants unchanged plus `netpace-{tag}-linux-x64-aot.tar.gz` and `netpace-{tag}-linux-arm64-aot.tar.gz`.
+2. **Scenario:** Smoke test --version exits zero on AOT archive  
+   **Given** the `linux-x64-aot` archive is extracted on a Linux x64 host with no .NET runtime installed, **When** the user runs `./netpace --version`, **Then** the command exits with status `0` and prints the release version.
+3. **Scenario:** Smoke test --help exits zero on AOT archive  
+   **Given** the same archive, **When** the user runs `./netpace --help`, **Then** the command exits with status `0` and prints help output equivalent to the other Linux variants.
+4. **Scenario:** Smoke test servers exits zero on AOT archive  
+   **Given** the same archive, **When** the user runs `netpace servers`, **Then** the command performs an HTTPS request to the Ookla server endpoint, parses the XML response, and exits with status `0`.
+5. **Scenario:** AOT archive contains no managed-runtime artefacts  
+   **Given** the archive contents, **When** the user inspects them, **Then** the archive contains a single native ELF binary (no `.dll`, no embedded runtime, no `.deps.json`).
 
 ---
 
@@ -35,9 +40,12 @@ Users (and downstream packaging — Homebrew, AUR, install scripts, internal doc
 
 **Acceptance Scenarios**:
 
-1. **Given** a release tag, **When** the pipeline runs, **Then** all 12 pre-existing archive names (6 RIDs × `-standalone` and `-net8`) appear on the GitHub Release with their existing naming.
-2. **Given** a user installs from a pre-existing `-standalone` archive on any supported RID, **When** they run NetPace, **Then** behaviour is unchanged from the prior release.
-3. **Given** the `publish-nuget.yml` workflow runs against the same tag, **When** it completes, **Then** a `NetPace.Core` NuGet package is published using the same workflow as before.
+1. **Scenario:** All 12 pre-existing archive filenames present after change  
+   **Given** a release tag, **When** the pipeline runs, **Then** all 12 pre-existing archive names (6 RIDs × `-standalone` and `-net8`) appear on the GitHub Release with their existing naming.
+2. **Scenario:** Pre-existing matrix entries produce the same publish output  
+   **Given** a user installs from a pre-existing `-standalone` archive on any supported RID, **When** they run NetPace, **Then** behaviour is unchanged from the prior release.
+3. **Scenario:** publish-nuget.yml contents unchanged  
+   **Given** the `publish-nuget.yml` workflow runs against the same tag, **When** it completes, **Then** a `NetPace.Core` NuGet package is published using the same workflow as before.
 
 ---
 
@@ -51,8 +59,10 @@ A developer building an AOT-published .NET application that depends on `NetPace.
 
 **Acceptance Scenarios**:
 
-1. **Given** the `NetPace.Core` project is built, **When** it produces a NuGet package, **Then** the package metadata declares AOT compatibility.
-2. **Given** an AOT-published consumer project references the new `NetPace.Core` package, **When** the consumer publishes with AOT enabled, **Then** no AOT trim or dynamic-code warnings originate from `NetPace.Core`.
+1. **Scenario:** Published NetPace.Core nupkg declares AOT compatibility  
+   **Given** the `NetPace.Core` project is built, **When** it produces a NuGet package, **Then** the package metadata declares AOT compatibility.
+2. **Scenario:** AOT consumer of NetPace.Core sees no AOT warnings from the package  
+   **Given** an AOT-published consumer project references the new `NetPace.Core` package, **When** the consumer publishes with AOT enabled, **Then** no AOT trim or dynamic-code warnings originate from `NetPace.Core`.
 
 ---
 
@@ -64,11 +74,12 @@ A future contributor adding the next AOT target (Windows or macOS), or debugging
 
 **Independent Test**: A contributor unfamiliar with the project reads `docs/RELEASING.md` and can answer: how many archives a release produces, what each suffix means, which runners build which RID, and where to add a new RID — without opening the workflow YAML.
 
-**Acceptance Scenarios**:
+**Acceptance Scenarios** (documentation-only — covered by FR-016/FR-017; intentionally excluded from `test-plan.md`):
 
-1. **Given** a new contributor, **When** they read `docs/RELEASING.md`, **Then** they can list the variants, naming pattern, and rationale for each.
-2. **Given** the README install table, **When** a Linux/IoT user reads it, **Then** they can identify the AOT artefact as the recommended download for IoT/embedded deployments.
-3. **Given** `CHANGELOG.md`, **When** the next release ships, **Then** an entry describes the new AOT artefacts.
+1. **Scenario:** Contributor identifies variants, runners and naming from RELEASING.md  
+   **Given** a new contributor, **When** they read `docs/RELEASING.md`, **Then** they can list the variants, naming pattern, and rationale for each.
+2. **Scenario:** README install table flags AOT as the IoT recommendation  
+   **Given** the README install table, **When** a Linux/IoT user reads it, **Then** they can identify the AOT artefact as the recommended download for IoT/embedded deployments.
 
 ---
 
@@ -103,8 +114,8 @@ A future contributor adding the next AOT target (Windows or macOS), or debugging
 - **FR-016**: User-facing documentation MUST be updated:
   - `README.md` install table MUST list the new AOT artefacts and call out AOT as the recommended download for IoT/embedded deployments.
   - `USER_GUIDE.md` MUST include a short section on choosing between AOT, self-contained, and framework-dependent.
-  - `CHANGELOG.md` MUST include an entry for the next release describing the new artefacts.
   - A new `docs/RELEASING.md` MUST document the release matrix, naming convention, and per-variant rationale.
+  - Per-release "what changed" notes are GitHub-auto-generated from merged PRs (the `NetPace.Core.csproj` `<PackageReleaseNotes>` URL already points to GitHub Releases). No `CHANGELOG.md` is maintained.
 - **FR-017**: A single Change Intent Record MUST accompany the implementation PR covering the `IsAotCompatible` public-API metadata change on `NetPace.Core`, the XML parser rewrite, and the release-pipeline extension.
 - **FR-018**: The existing NuGet publish workflow MUST run unchanged on the same tag and publish a `NetPace.Core` package that declares AOT compatibility.
 - **FR-019**: All existing tests in `NetPace.Core.Tests` and `NetPace.Console.Tests` MUST continue to pass.
