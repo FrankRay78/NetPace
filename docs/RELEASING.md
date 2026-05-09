@@ -39,11 +39,11 @@ Native AOT cannot be cross-compiled across operating systems — `dotnet publish
 Each AOT matrix entry runs two local-only commands against the freshly extracted archive on its native runner. Both MUST exit `0` for the matrix job to succeed; non-zero exit aborts the release.
 
 ```bash
-./netpace --version
-./netpace --help
+./NetPace --version
+./NetPace --help
 ```
 
-The AOT binary is named `netpace` (lowercase) because `AssemblyName` is overridden to `netpace` inside the `Condition="'$(PublishAot)' == 'true'"` PropertyGroup in `NetPace.Console.csproj`. Non-AOT builds (self-contained, framework-dependent) use the default `NetPace` name (`NetPace.exe` on Windows).
+The AOT binary is named `NetPace` (same as all other variants). On Windows the binary is `NetPace.exe`; on Linux/macOS it is `NetPace`.
 
 ## Size-assertion contract
 

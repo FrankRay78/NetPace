@@ -10,7 +10,6 @@
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(PublishAot)' == 'true'">
-    <AssemblyName>netpace</AssemblyName>
     <WarningsAsErrors>IL2026;IL2090;IL3050;IL3056</WarningsAsErrors>
   </PropertyGroup>
 
