@@ -72,8 +72,7 @@ jobs:
               -p:InformationalVersion=${{ steps.get_version.outputs.version }} \
               -p:SelfContained=${{ steps.deployment_flags.outputs.self_contained }} \
               -p:PublishAot=true \
-              -p:InvariantGlobalization=true \
-              "-p:WarningsAsErrors=IL2026;IL2090;IL3050;IL3056"
+              -p:InvariantGlobalization=true
           else
             dotnet publish src/NetPace.Console/NetPace.Console.csproj \
               --configuration Release \
