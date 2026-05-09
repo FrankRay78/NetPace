@@ -43,6 +43,8 @@ Each AOT matrix entry runs two local-only commands against the freshly extracted
 ./netpace --help
 ```
 
+The AOT binary is named `netpace` (lowercase) because `AssemblyName` is overridden to `netpace` inside the `Condition="'$(PublishAot)' == 'true'"` PropertyGroup in `NetPace.Console.csproj`. Non-AOT builds (self-contained, framework-dependent) use the default `NetPace` name (`NetPace.exe` on Windows).
+
 ## Size-assertion contract
 
 The `attach-to-release` job validates two relative size invariants before attaching any archive to the release:
