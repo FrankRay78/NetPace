@@ -114,8 +114,8 @@ jobs:
           smoke_dir="$(mktemp -d)"
           tar -xzf "$archive" -C "$smoke_dir"
           cd "$smoke_dir"
-          ./netpace --version
-          ./netpace --help
+          ./NetPace --version
+          ./NetPace --help
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4

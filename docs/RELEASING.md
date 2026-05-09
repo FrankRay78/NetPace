@@ -39,9 +39,11 @@ Native AOT cannot be cross-compiled across operating systems — `dotnet publish
 Each AOT matrix entry runs two local-only commands against the freshly extracted archive on its native runner. Both MUST exit `0` for the matrix job to succeed; non-zero exit aborts the release.
 
 ```bash
-./netpace --version
-./netpace --help
+./NetPace --version
+./NetPace --help
 ```
+
+The AOT binary is named `NetPace` (same as all other variants). On Windows the binary is `NetPace.exe`; on Linux/macOS it is `NetPace`.
 
 ## Size-assertion contract
 
@@ -55,7 +57,7 @@ Either invariant failing fails the entire release job; no archives are attached.
 ## Build-time AOT gating
 
 - `<IsAotCompatible>true</IsAotCompatible>` is declared in both `src/NetPace.Core/NetPace.Core.csproj` and `src/NetPace.Console/NetPace.Console.csproj`. This activates the AOT/trim analyzers continuously during `dotnet build` and surfaces `IL2026`/`IL2090`/`IL3050`/`IL3056` warnings at compile time, not just at publish time.
-- AOT publishes additionally pass `-p:WarningsAsErrors=IL2026,IL2090,IL3050,IL3056` and `-p:InvariantGlobalization=true`. `-p:PublishSingleFile=true` is **not** passed for AOT — native AOT already produces a single executable.
+- AOT publishes set `PublishAot=true`, which activates a conditional `<WarningsAsErrors>IL2026;IL2090;IL3050;IL3056</WarningsAsErrors>` block in `NetPace.Console.csproj`. The workflow also passes `-p:InvariantGlobalization=true`. `-p:PublishSingleFile=true` is **not** passed for AOT — native AOT already produces a single executable.
 - `<PublishAot>` is **never** set as a static property in any csproj. AOT is opt-in via the workflow's `-p:PublishAot=true` flag; dev-machine builds remain non-AOT.
 
 ## NuGet metadata
