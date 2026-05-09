@@ -1,0 +1,11 @@
+---
+name: Spec-kit task lists prescribe tactics — treat them as suggestions
+description: tasks.md and test-plan.md frequently prescribe implementation tactics (embedded resources, specific fixtures, specific tolerances, named helper methods) rather than just outcomes; prefer the simpler equivalent unless growth justifies the prescribed shape.
+type: feedback
+---
+
+Spec-kit task lists (`tasks.md`) and test plans (`test-plan.md`) often prescribe **implementation tactics** (embedded resource + reflection helper, specific tolerance, specific test fixtures, named helper methods) rather than just **outcomes**. Treat these prescriptions as suggestions: prefer the simpler equivalent (inline test data, exact equality, no reflection helper) unless a second consumer or non-trivial growth justifies the prescribed shape. Don't follow `tasks.md` so literally that you ship an over-engineered solution.
+
+**Why:** During feature 001-linux-aot-release, T003 prescribed: *"Capture a representative Ookla `/speedtest-config.php` response and add it as an embedded resource at `src/NetPace.Core.Tests/Clients/Ookla/Resources/ookla-servers-sample.xml`"*. Following it verbatim produced an XML file + `<EmbeddedResource>` csproj entry + a `LoadSampleXml()` reflection helper for **one** test consumer. The other 5 tests in the same file used inline XML strings cleanly. User flagged it at review: *"This method is used once and introduces an embedded resource - better to just the embedded xml in the test method like the other methods?"* Inlining was a strict simplification: 1 file deleted, 1 csproj entry removed, 1 helper method gone, traceability comment preserved. Same pattern recurred with the `1e-9` tolerance prescribed by FR-010 (see `feedback_speccheck_numeric_tolerance.md`).
+
+**How to apply:** When implementing `tasks.md` or test-plan scenarios, distinguish prescribed *outcome* (the test must pin behaviour X) from prescribed *tactic* (use mechanism Y to do it). Outcomes are non-negotiable; tactics are open to simpler equivalents at code-review time. Flags that a tactic is over-prescribed: single consumer with no reuse, introduces machinery (reflection / embedded resource / helper class) for a one-line equivalent, or breaks consistency with sibling tests/code in the same file. Pick the simpler equivalent and note the substitution in the PR description.

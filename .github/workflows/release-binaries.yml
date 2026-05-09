@@ -7,12 +7,25 @@ on:
 
 jobs:
   build-cross-platform:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.runs_on || 'ubuntu-latest' }}
     strategy:
       matrix:
         runtime: [win-x64, win-arm64, linux-x64, linux-arm64, osx-x64, osx-arm64]
         deployment: [self-contained, framework-dependent]
-    
+        include:
+          - runtime: linux-x64
+            deployment: aot
+            runs_on: ubuntu-latest
+            publish_aot: true
+            publish_single_file: false
+            invariant_globalization: true
+          - runtime: linux-arm64
+            deployment: aot
+            runs_on: ubuntu-24.04-arm
+            publish_aot: true
+            publish_single_file: false
+            invariant_globalization: true
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -32,9 +45,13 @@ jobs:
       - name: Set deployment flags
         id: deployment_flags
         run: |
+          set -euo pipefail
           if [ "${{ matrix.deployment }}" = "self-contained" ]; then
             echo "self_contained=true" >> $GITHUB_OUTPUT
             echo "suffix=-standalone" >> $GITHUB_OUTPUT
+          elif [ "${{ matrix.deployment }}" = "aot" ]; then
+            echo "self_contained=true" >> $GITHUB_OUTPUT
+            echo "suffix=-aot" >> $GITHUB_OUTPUT
           else
             echo "self_contained=false" >> $GITHUB_OUTPUT
             echo "suffix=-net8" >> $GITHUB_OUTPUT
@@ -42,17 +59,34 @@ jobs:
 
       - name: Publish Console App
         run: |
-          dotnet publish src/NetPace.Console/NetPace.Console.csproj \
-            --configuration Release \
-            --runtime ${{ matrix.runtime }} \
-            --self-contained ${{ steps.deployment_flags.outputs.self_contained }} \
-            --output ./publish/${{ matrix.runtime }}-${{ matrix.deployment }} \
-            -p:Version=${{ steps.get_version.outputs.version }} \
-            -p:AssemblyVersion=${{ steps.get_version.outputs.version }} \
-            -p:FileVersion=${{ steps.get_version.outputs.version }} \
-            -p:InformationalVersion=${{ steps.get_version.outputs.version }} \
-            -p:SelfContained=${{ steps.deployment_flags.outputs.self_contained }} \
-            -p:PublishSingleFile=true
+          set -euo pipefail
+          if [ "${{ matrix.deployment }}" = "aot" ]; then
+            dotnet publish src/NetPace.Console/NetPace.Console.csproj \
+              --configuration Release \
+              --runtime ${{ matrix.runtime }} \
+              --self-contained ${{ steps.deployment_flags.outputs.self_contained }} \
+              --output ./publish/${{ matrix.runtime }}-${{ matrix.deployment }} \
+              -p:Version=${{ steps.get_version.outputs.version }} \
+              -p:AssemblyVersion=${{ steps.get_version.outputs.version }} \
+              -p:FileVersion=${{ steps.get_version.outputs.version }} \
+              -p:InformationalVersion=${{ steps.get_version.outputs.version }} \
+              -p:SelfContained=${{ steps.deployment_flags.outputs.self_contained }} \
+              -p:PublishAot=true \
+              -p:InvariantGlobalization=true \
+              -p:WarningsAsErrors=IL2026,IL2090,IL3050,IL3056
+          else
+            dotnet publish src/NetPace.Console/NetPace.Console.csproj \
+              --configuration Release \
+              --runtime ${{ matrix.runtime }} \
+              --self-contained ${{ steps.deployment_flags.outputs.self_contained }} \
+              --output ./publish/${{ matrix.runtime }}-${{ matrix.deployment }} \
+              -p:Version=${{ steps.get_version.outputs.version }} \
+              -p:AssemblyVersion=${{ steps.get_version.outputs.version }} \
+              -p:FileVersion=${{ steps.get_version.outputs.version }} \
+              -p:InformationalVersion=${{ steps.get_version.outputs.version }} \
+              -p:SelfContained=${{ steps.deployment_flags.outputs.self_contained }} \
+              -p:PublishSingleFile=true
+          fi
 
       - name: Build NetPace.Core.dll (library) with version
         run: |
@@ -65,12 +99,24 @@ jobs:
 
       - name: Create archive
         run: |
+          set -euo pipefail
           cd ./publish/${{ matrix.runtime }}-${{ matrix.deployment }}
           if [[ "${{ matrix.runtime }}" == win-* ]]; then
             zip -r ../../netpace-${{ steps.get_version.outputs.version }}-${{ matrix.runtime }}${{ steps.deployment_flags.outputs.suffix }}.zip .
           else
             tar -czf ../../netpace-${{ steps.get_version.outputs.version }}-${{ matrix.runtime }}${{ steps.deployment_flags.outputs.suffix }}.tar.gz .
           fi
+
+      - name: Smoke test (AOT only)
+        if: matrix.deployment == 'aot'
+        run: |
+          set -euo pipefail
+          archive="netpace-${{ steps.get_version.outputs.version }}-${{ matrix.runtime }}-aot.tar.gz"
+          smoke_dir="$(mktemp -d)"
+          tar -xzf "$archive" -C "$smoke_dir"
+          cd "$smoke_dir"
+          ./netpace --version
+          ./netpace --help
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
@@ -85,7 +131,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-    
+
     steps:
       - name: Extract version from tag
         id: get_version
@@ -96,19 +142,34 @@ jobs:
         with:
           path: ./artifacts
 
-      - name: Verify framework-dependent binaries are smaller than standalone
+      - name: Verify framework-dependent and AOT binaries are smaller than standalone
         run: |
+          set -euo pipefail
           failed=false
           for runtime in win-x64 win-arm64 linux-x64 linux-arm64 osx-x64 osx-arm64; do
-            net8=$(find ./artifacts/netpace-$runtime-framework-dependent -type f | head -1)
-            standalone=$(find ./artifacts/netpace-$runtime-self-contained -type f | head -1)
-            net8_size=$(stat -c%s "$net8")
-            standalone_size=$(stat -c%s "$standalone")
-            echo "$runtime: net8=${net8_size} bytes, standalone=${standalone_size} bytes"
-            if [ "$net8_size" -ge "$standalone_size" ]; then
-              echo "FAIL: $runtime net8 (${net8_size}) is not smaller than standalone (${standalone_size})"
+            standalone=$(find "./artifacts/netpace-$runtime-self-contained" -type f 2>/dev/null | head -1 || true)
+            if [ -z "$standalone" ]; then
+              echo "FAIL: standalone artifact missing for $runtime"
               failed=true
+              continue
             fi
+            standalone_size=$(stat -c%s "$standalone")
+            for variant in framework-dependent aot; do
+              # AOT variant exists for Linux RIDs only
+              if [ "$variant" = "aot" ] && [[ "$runtime" != linux-* ]]; then continue; fi
+              target=$(find "./artifacts/netpace-$runtime-$variant" -type f 2>/dev/null | head -1 || true)
+              if [ -z "$target" ]; then
+                echo "FAIL: $variant artifact missing for $runtime"
+                failed=true
+                continue
+              fi
+              target_size=$(stat -c%s "$target")
+              echo "$runtime $variant: ${target_size} bytes (standalone=${standalone_size} bytes)"
+              if [ "$target_size" -ge "$standalone_size" ]; then
+                echo "FAIL: $runtime $variant (${target_size}) is not smaller than standalone (${standalone_size})"
+                failed=true
+              fi
+            done
           done
           if [ "$failed" = "true" ]; then exit 1; fi
 

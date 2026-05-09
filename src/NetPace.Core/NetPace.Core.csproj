@@ -5,6 +5,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <IsPackable>true</IsPackable>
+    <IsAotCompatible>true</IsAotCompatible>
 
     <!-- XML Documentation (public API only) -->
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
@@ -37,5 +38,9 @@
   <ItemGroup>
     <None Include="$(MSBuildThisFileDirectory)..\..\resources\nuget\README.md" Pack="true" PackagePath="" Visible="false" />
     <None Include="$(MSBuildThisFileDirectory)..\..\resources\nuget\logo.png" Pack="true" PackagePath="" Visible="false" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="NetPace.Core.Tests" />
   </ItemGroup>
 </Project>

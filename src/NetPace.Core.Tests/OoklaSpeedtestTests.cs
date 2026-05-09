@@ -1,6 +1,7 @@
 using System;
 using System.Net;
 using System.Text.RegularExpressions;
+using System.Xml;
 using NetPace.Core.Clients.Ookla;
 using NetPace.Core.Clients.Testing;
 using RichardSzalay.MockHttp;
@@ -120,7 +121,7 @@ public sealed partial class OoklaSpeedtestTests
 
         // Then
         exception.ShouldNotBeNull();
-        exception.ShouldBeOfType<InvalidOperationException>();
+        exception.ShouldBeOfType<XmlException>();
     }
 
     [Fact]

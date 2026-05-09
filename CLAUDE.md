@@ -110,7 +110,8 @@ Paired rules — `Don't` X → `Do` Y instead:
 - **Don't ship a public `NetPace.Core` API without XML docs** → all public methods, properties, and classes in `NetPace.Core` need `///` XML docs (they ship to NuGet consumers).
 - **Don't add a `NetPace.Core` dependency without justification** → keep the library lean; if a new dep is needed, justify it explicitly in the PR or CIR.
 - **Don't commit with failing tests or build warnings** → run `dotnet build` and `dotnet test` clean before committing.
-- **Don't change a CLI option without updating user-facing docs** → README.md `--help` snapshot, USER_GUIDE.md, and CHANGELOG all need updating; design-doc cross-ref where applicable.
+- **Don't change a CLI option without updating user-facing docs** → README.md `--help` snapshot and USER_GUIDE.md need updating; design-doc cross-ref where applicable. (Per-release "what changed" notes are GitHub-auto-generated from merged PRs — no CHANGELOG.md to maintain.)
+- **Don't change `release-binaries.yml` (or other release-pipeline scope) without updating `docs/RELEASING.md`** → the release matrix, runner-per-RID rationale, naming convention, smoke-test contract, and size-assertion contract live there. Out-of-sync release docs make adding a new RID/variant cost extra.
 - **Don't introduce reflection-heavy or non-trim-safe code** → NetPace targets AOT-trimmable builds (Spectre.Console.Cli was replaced for this reason); avoid runtime reflection, keep types annotation-clean.
 
 ## Quick Command Reference
@@ -132,6 +133,7 @@ Load these on demand for the matching topic:
 
 - **C# Style** — `docs/conventions/csharp-style.md` — naming (`_camelCase`/`s_camelCase`/`t_camelCase`), `var` rules, async/`ConfigureAwait`, immutability, LINQ, member ordering, primary-constructor parameter casing, xUnit conventions.
 - **Change Intent Records** — `docs/conventions/change-intent-records.md` — decision table for whether to write one, template, worked example.
+- **Release Pipeline** — `docs/RELEASING.md` — release matrix (RIDs × variants), naming convention, runner-per-RID rationale, smoke-test contract, size-assertion contract. Update whenever you touch `release-binaries.yml`.
 - **Ookla Download/Upload Sizing** — `docs/architecture/download-upload-size-controls.md` — how `OoklaSpeedtestSettings` shapes per-request sizing, iterations, and parallelism; what `--downloadsize`/`--uploadsize` actually cap (total-byte budget); Docker OoklaServer endpoints for local verification.
 
 ---
