@@ -4,7 +4,7 @@ description: Use .claude/scratch/ in the current repo as the required scratch lo
 type: feedback
 ---
 
-The required scratch location for any transient or staging file (issue drafts, spec drafts, working notes, intermediate API payloads) is **`.claude/scratch/`** in the current repo. Do **not** use `/tmp`, the system temp dir (`%TEMP%`, `$TMPDIR`), or the user-level `~/.claude/` (`C:\Users\frank\.claude\`) directory.
+The required scratch location for any transient or staging file (issue drafts, spec drafts, working notes, intermediate API payloads) is **`.claude/scratch/`** in the current repo. Do **not** use `/tmp`, the system temp dir (`%TEMP%`, `$TMPDIR`), the user-level `~/.claude/` (`C:\Users\frank\.claude\`) directory, **or a top-level `.scratch/` at the repo root** — only `.claude/scratch/` is gitignored, so a root-level `.scratch/` leaks into `git status` and clutters the working tree across sessions.
 
 The directory is git-ignored (`.claude/scratch/` is listed in `.gitignore`), so files written there will not show up in `git status`. Run `mkdir -p .claude/scratch` before writing if you're not certain the directory exists yet.
 
