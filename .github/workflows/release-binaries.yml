@@ -25,6 +25,20 @@ jobs:
             publish_aot: true
             publish_single_file: false
             invariant_globalization: true
+          - runtime: win-x64
+            deployment: aot
+            runs_on: windows-latest
+            publish_aot: true
+            publish_single_file: false
+            invariant_globalization: true
+          # windows-11-arm runner is GA (April 2025) and free for public repos. Native ARM64 host preserves the
+          # same-job smoke test; cross-compile from windows-latest is rejected — see docs/RELEASING.md §Runner per RID.
+          - runtime: win-arm64
+            deployment: aot
+            runs_on: windows-11-arm
+            publish_aot: true
+            publish_single_file: false
+            invariant_globalization: true
 
     steps:
       - name: Checkout code
@@ -97,10 +111,15 @@ jobs:
             -p:InformationalVersion=${{ steps.get_version.outputs.version }}
 
       - name: Create archive
+        shell: bash
         run: |
           set -euo pipefail
           cd ./publish/${{ matrix.runtime }}-${{ matrix.deployment }}
           if [[ "${{ matrix.runtime }}" == win-* ]]; then
+            if [ "${{ matrix.deployment }}" = "aot" ]; then
+              # Strip debug symbols from Windows AOT archives — release contract: archive contains only NetPace.exe.
+              rm -f ./*.pdb
+            fi
             zip -r ../../netpace-${{ steps.get_version.outputs.version }}-${{ matrix.runtime }}${{ steps.deployment_flags.outputs.suffix }}.zip .
           else
             tar -czf ../../netpace-${{ steps.get_version.outputs.version }}-${{ matrix.runtime }}${{ steps.deployment_flags.outputs.suffix }}.tar.gz .
@@ -108,14 +127,23 @@ jobs:
 
       - name: Smoke test (AOT only)
         if: matrix.deployment == 'aot'
+        shell: bash
         run: |
           set -euo pipefail
-          archive="netpace-${{ steps.get_version.outputs.version }}-${{ matrix.runtime }}-aot.tar.gz"
           smoke_dir="$(mktemp -d)"
-          tar -xzf "$archive" -C "$smoke_dir"
-          cd "$smoke_dir"
-          ./NetPace --version
-          ./NetPace --help
+          if [[ "${{ matrix.runtime }}" == win-* ]]; then
+            archive="netpace-${{ steps.get_version.outputs.version }}-${{ matrix.runtime }}-aot.zip"
+            unzip -q "$archive" -d "$smoke_dir"
+            cd "$smoke_dir"
+            ./NetPace.exe --version
+            ./NetPace.exe --help
+          else
+            archive="netpace-${{ steps.get_version.outputs.version }}-${{ matrix.runtime }}-aot.tar.gz"
+            tar -xzf "$archive" -C "$smoke_dir"
+            cd "$smoke_dir"
+            ./NetPace --version
+            ./NetPace --help
+          fi
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
@@ -154,8 +182,8 @@ jobs:
             fi
             standalone_size=$(stat -c%s "$standalone")
             for variant in framework-dependent aot; do
-              # AOT variant exists for Linux RIDs only
-              if [ "$variant" = "aot" ] && [[ "$runtime" != linux-* ]]; then continue; fi
+              # AOT variant exists for Linux and Windows RIDs only (macOS AOT is out of scope)
+              if [ "$variant" = "aot" ] && [[ "$runtime" != linux-* && "$runtime" != win-* ]]; then continue; fi
               target=$(find "./artifacts/netpace-$runtime-$variant" -type f 2>/dev/null | head -1 || true)
               if [ -z "$target" ]; then
                 echo "FAIL: $variant artifact missing for $runtime"

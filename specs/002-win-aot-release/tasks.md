@@ -28,7 +28,7 @@ This feature edits four files only — `.github/workflows/release-binaries.yml`,
 
 **Purpose**: Confirm the working tree is clean and the branch is in the expected state.
 
-- [ ] T001 Confirm current branch is `002-win-aot-release` and working tree is clean (`git status` reports no uncommitted changes outside this feature's spec/plan/tasks artefacts) before any workflow edits begin.
+- [X] T001 Confirm current branch is `002-win-aot-release` and working tree is clean (`git status` reports no uncommitted changes outside this feature's spec/plan/tasks artefacts) before any workflow edits begin.
 
 ---
 
@@ -38,9 +38,9 @@ This feature edits four files only — `.github/workflows/release-binaries.yml`,
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete.
 
-- [ ] T002 Update the smoke-test step at `.github/workflows/release-binaries.yml:109-118` to handle Windows archives: branch the extraction on archive format (`unzip` for `*.zip`, existing `tar -xzf` for `*.tar.gz`), and invoke the binary as `./NetPace.exe` on Windows runners (`./NetPace` elsewhere). Keep `shell: bash` (Git Bash ships on both `windows-latest` and `windows-11-arm` per research R4).
-- [ ] T003 Update the archive step at `.github/workflows/release-binaries.yml:99-107` to exclude `*.pdb` from Windows AOT zips: when `matrix.deployment == 'aot'` and `matrix.runtime` matches `win-*`, remove or omit `*.pdb` files before invoking `zip -r`. Linux/macOS branches and Windows non-AOT branches remain unchanged.
-- [ ] T004 Widen the size-assertion guard at `.github/workflows/release-binaries.yml:158` from `if [ "$variant" = "aot" ] && [[ "$runtime" != linux-* ]]; then continue; fi` to allow `win-*` AOT entries through (e.g. `if [ "$variant" = "aot" ] && [[ "$runtime" != linux-* && "$runtime" != win-* ]]; then continue; fi`, or rewrite as an explicit allow-list of the four AOT-bearing RIDs). Either tactic produces the same observable behaviour per research R9.
+- [X] T002 Update the smoke-test step at `.github/workflows/release-binaries.yml:109-118` to handle Windows archives: branch the extraction on archive format (`unzip` for `*.zip`, existing `tar -xzf` for `*.tar.gz`), and invoke the binary as `./NetPace.exe` on Windows runners (`./NetPace` elsewhere). Keep `shell: bash` (Git Bash ships on both `windows-latest` and `windows-11-arm` per research R4).
+- [X] T003 Update the archive step at `.github/workflows/release-binaries.yml:99-107` to exclude `*.pdb` from Windows AOT zips: when `matrix.deployment == 'aot'` and `matrix.runtime` matches `win-*`, remove or omit `*.pdb` files before invoking `zip -r`. Linux/macOS branches and Windows non-AOT branches remain unchanged.
+- [X] T004 Widen the size-assertion guard at `.github/workflows/release-binaries.yml:158` from `if [ "$variant" = "aot" ] && [[ "$runtime" != linux-* ]]; then continue; fi` to allow `win-*` AOT entries through (e.g. `if [ "$variant" = "aot" ] && [[ "$runtime" != linux-* && "$runtime" != win-* ]]; then continue; fi`, or rewrite as an explicit allow-list of the four AOT-bearing RIDs). Either tactic produces the same observable behaviour per research R9.
 
 **Checkpoint**: Foundational workflow shape is ready. US1 and US2 can now add their matrix entries and have them flow through extract → smoke → size-check correctly.
 
@@ -54,12 +54,12 @@ This feature edits four files only — `.github/workflows/release-binaries.yml`,
 
 ### Implementation for User Story 1
 
-- [ ] T005 [US1] Add the `win-x64-aot` entry to `jobs.build-cross-platform.strategy.matrix.include` in `.github/workflows/release-binaries.yml`: `runtime: win-x64`, `deployment: aot`, `runs_on: windows-latest`, `publish_aot: true`, `publish_single_file: false`, `invariant_globalization: true`. Match the field shape of the existing `linux-x64-aot` entry exactly (data-model.md §Entity 1).
-- [ ] T006 [P] [US1] Add `netpace-{ver}-win-x64-aot.zip` to the install table in `README.md` (alongside the existing `win-x64-standalone.zip` and `win-x64-net8.zip` rows).
-- [ ] T007 [P] [US1] Update `docs/RELEASING.md` §Release matrix table: replace the `_(out of scope)_` cell at the (`win-x64`, Native AOT) intersection with `netpace-{ver}-win-x64-aot.zip`. Update the table-summary line above ("Each tag produces **14 archives**...") to reflect the new total of 16 (do this once for both Windows entries; if T013 has already been done, skip the count edit here).
-- [ ] T008 [P] [US1] Add a row to `docs/RELEASING.md` §Runner per RID for `win-x64-aot` with runner `windows-latest` and rationale text matching the existing `linux-x64-aot` row's shape ("Native x64 host — no cross-compile toolchain needed; `windows-latest` ships MSVC v143 and the Windows 11 SDK pre-installed.").
-- [ ] T009 [P] [US1] Update `docs/RELEASING.md` §Runner per RID prose paragraph to extend "Native AOT cannot be cross-compiled across operating systems" to explicitly cover Windows ("...hence the per-RID native runners on both Linux and Windows."). One sentence; preserve the existing wording.
-- [ ] T010 [P] [US1] Update the AOT-availability note in `USER_GUIDE.md` to mention Windows alongside Linux ("AOT builds are available for Linux and Windows; macOS AOT remains a future release."). One line edit.
+- [X] T005 [US1] Add the `win-x64-aot` entry to `jobs.build-cross-platform.strategy.matrix.include` in `.github/workflows/release-binaries.yml`: `runtime: win-x64`, `deployment: aot`, `runs_on: windows-latest`, `publish_aot: true`, `publish_single_file: false`, `invariant_globalization: true`. Match the field shape of the existing `linux-x64-aot` entry exactly (data-model.md §Entity 1).
+- [X] T006 [P] [US1] Add `netpace-{ver}-win-x64-aot.zip` to the install table in `README.md` (alongside the existing `win-x64-standalone.zip` and `win-x64-net8.zip` rows). _(Adapted: README has no install table — only prose at line 54. Updated the prose to cover Windows AOT.)_
+- [X] T007 [P] [US1] Update `docs/RELEASING.md` §Release matrix table: replace the `_(out of scope)_` cell at the (`win-x64`, Native AOT) intersection with `netpace-{ver}-win-x64-aot.zip`. Update the table-summary line above ("Each tag produces **14 archives**...") to reflect the new total of 16 (do this once for both Windows entries; if T013 has already been done, skip the count edit here).
+- [X] T008 [P] [US1] Add a row to `docs/RELEASING.md` §Runner per RID for `win-x64-aot` with runner `windows-latest` and rationale text matching the existing `linux-x64-aot` row's shape ("Native x64 host — no cross-compile toolchain needed; `windows-latest` ships MSVC v143 and the Windows 11 SDK pre-installed.").
+- [X] T009 [P] [US1] Update `docs/RELEASING.md` §Runner per RID prose paragraph to extend "Native AOT cannot be cross-compiled across operating systems" to explicitly cover Windows ("...hence the per-RID native runners on both Linux and Windows."). One sentence; preserve the existing wording.
+- [ ] T010 [P] [US1] Update the AOT-availability note in `USER_GUIDE.md` to mention Windows alongside Linux ("AOT builds are available for Linux and Windows; macOS AOT remains a future release."). One line edit. _(Skipped: USER_GUIDE.md has no AOT-availability note — it's a usage doc, not an install doc. The README prose update in T006 covers user-facing AOT availability.)_
 
 **Checkpoint**: At this point, the release pipeline produces a working `win-x64-aot.zip` on every tag, the size-assertion gate enforces it, and all four user-facing doc files reflect the new artefact. US1 is independently testable via a pre-release tag.
 
@@ -73,10 +73,10 @@ This feature edits four files only — `.github/workflows/release-binaries.yml`,
 
 ### Implementation for User Story 2
 
-- [ ] T011 [US2] Add the `win-arm64-aot` entry to `jobs.build-cross-platform.strategy.matrix.include` in `.github/workflows/release-binaries.yml`: `runtime: win-arm64`, `deployment: aot`, `runs_on: windows-11-arm`, `publish_aot: true`, `publish_single_file: false`, `invariant_globalization: true`. Above the entry, add an inline YAML comment capturing the runner-availability confirmation per FR-011 — wording suggestion: `# windows-11-arm runner is GA (April 2025) and free for public repos. Native ARM64 host preserves the same-job smoke test; cross-compile from windows-latest is rejected — see docs/RELEASING.md §Runner per RID.`
-- [ ] T012 [P] [US2] Add `netpace-{ver}-win-arm64-aot.zip` to the install table in `README.md` (alongside the existing `win-arm64-standalone.zip` and `win-arm64-net8.zip` rows).
-- [ ] T013 [P] [US2] Update `docs/RELEASING.md` §Release matrix table: replace the `_(out of scope)_` cell at the (`win-arm64`, Native AOT) intersection with `netpace-{ver}-win-arm64-aot.zip`. Update the table-summary line to reflect the new total of 16 archives (skip if already done in T007).
-- [ ] T014 [P] [US2] Add a row to `docs/RELEASING.md` §Runner per RID for `win-arm64-aot` with runner `windows-11-arm` and rationale matching the `linux-arm64-aot` row's shape ("Native ARM64 host — AOT cross-compilation across architectures is fragile, smoke test must run natively. `windows-11-arm` runners became free for public repos in April 2025.").
+- [X] T011 [US2] Add the `win-arm64-aot` entry to `jobs.build-cross-platform.strategy.matrix.include` in `.github/workflows/release-binaries.yml`: `runtime: win-arm64`, `deployment: aot`, `runs_on: windows-11-arm`, `publish_aot: true`, `publish_single_file: false`, `invariant_globalization: true`. Above the entry, add an inline YAML comment capturing the runner-availability confirmation per FR-011 — wording suggestion: `# windows-11-arm runner is GA (April 2025) and free for public repos. Native ARM64 host preserves the same-job smoke test; cross-compile from windows-latest is rejected — see docs/RELEASING.md §Runner per RID.`
+- [X] T012 [P] [US2] Add `netpace-{ver}-win-arm64-aot.zip` to the install table in `README.md` (alongside the existing `win-arm64-standalone.zip` and `win-arm64-net8.zip` rows). _(Covered by T006's prose update — README has no install table.)_
+- [X] T013 [P] [US2] Update `docs/RELEASING.md` §Release matrix table: replace the `_(out of scope)_` cell at the (`win-arm64`, Native AOT) intersection with `netpace-{ver}-win-arm64-aot.zip`. Update the table-summary line to reflect the new total of 16 archives (skip if already done in T007).
+- [X] T014 [P] [US2] Add a row to `docs/RELEASING.md` §Runner per RID for `win-arm64-aot` with runner `windows-11-arm` and rationale matching the `linux-arm64-aot` row's shape ("Native ARM64 host — AOT cross-compilation across architectures is fragile, smoke test must run natively. `windows-11-arm` runners became free for public repos in April 2025.").
 
 **Checkpoint**: At this point, both US1 and US2 archives ship; the release matrix is at 16 entries; size-assertion enforces both new RIDs; documentation reflects both new artefacts. US2 is independently testable via a pre-release tag.
 
@@ -104,8 +104,8 @@ This feature edits four files only — `.github/workflows/release-binaries.yml`,
 
 **Purpose**: Pre-PR hygiene — confirm the build is still clean, the docs cross-reference correctly, and the PR description gives a future contributor everything they need.
 
-- [ ] T020 Run `dotnet build` and `dotnet test` from repo root; both must exit `0` with zero warnings (project memory: "Don't commit with failing tests or build warnings"). The feature ships no source-code changes but the AOT analyzers run on every build, so this is a no-regression check on the trim/AOT clean-tree posture.
-- [ ] T021 Cross-check the four edited docs (`README.md`, `docs/RELEASING.md`, `USER_GUIDE.md`, plus the workflow-comment text from T011) against `specs/002-win-aot-release/contracts/release-matrix.md`. Confirm filenames, RID names, runner names, and the 16-archive total are consistent across all five surfaces.
+- [X] T020 Run `dotnet build` and `dotnet test` from repo root; both must exit `0` with zero warnings (project memory: "Don't commit with failing tests or build warnings"). The feature ships no source-code changes but the AOT analyzers run on every build, so this is a no-regression check on the trim/AOT clean-tree posture. _(Build: 0 warnings, 0 errors. Tests: 583 passed, 0 failed.)_
+- [X] T021 Cross-check the four edited docs (`README.md`, `docs/RELEASING.md`, `USER_GUIDE.md`, plus the workflow-comment text from T011) against `specs/002-win-aot-release/contracts/release-matrix.md`. Confirm filenames, RID names, runner names, and the 16-archive total are consistent across all five surfaces.
 - [ ] T022 Open the PR for `002-win-aot-release` against `main`. PR description must reference issue #177, link to the rehearsal-tag URL recorded in T015, list all four edited files, and call out that no source-code changes were made. The `/raise-pr` skill is the standard helper; a plain `gh pr create` works equally well.
 
 ---

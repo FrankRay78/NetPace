@@ -51,7 +51,7 @@ I am no longer the `Spectre.Console` CLI sub-system maintainer, but this project
 ## Getting Started
 Each release contains precompiled binaries you can simply [download](https://github.com/FrankRay78/NetPace/releases), unzip and run. 
 
-Choose from Windows, Linux and macOS; standalone (large file but includes all dependencies), net8 (small file but requires [Microsoft .NET 8.0 runtime](https://dotnet.microsoft.com/en-us/download/dotnet/8.0)) to already be installed, or AOT compiled for bare metal execution (Linux only). 
+Choose from Windows, Linux and macOS; standalone (large file but includes all dependencies), net8 (small file but requires [Microsoft .NET 8.0 runtime](https://dotnet.microsoft.com/en-us/download/dotnet/8.0)) to already be installed, or AOT compiled for bare metal execution (Linux and Windows; macOS AOT remains a future release). 
 
 Alternatively, clone this repository locally and build.
 

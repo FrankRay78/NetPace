@@ -61,7 +61,9 @@
       "mcp__plugin_context-mode_context-mode__ctx_execute_file",
       "Bash(rtk gh *)",
       "Bash(powershell -ExecutionPolicy Bypass -File .specify/scripts/powershell/update-agent-context.ps1 -AgentType claude)",
-      "Bash(powershell -ExecutionPolicy Bypass -File .specify/scripts/powershell/check-prerequisites.ps1 -Json)"
+      "Bash(powershell -ExecutionPolicy Bypass -File .specify/scripts/powershell/check-prerequisites.ps1 -Json)",
+      "Bash(pwsh -NoProfile -Command \".specify/scripts/powershell/check-prerequisites.ps1 -Json -RequireTasks -IncludeTasks\")",
+      "Bash(pwsh -NoProfile -File .specify/extensions/git/scripts/powershell/auto-commit.ps1 before_implement)"
     ],
     "deny": [
       "Bash(sudo:*)",
