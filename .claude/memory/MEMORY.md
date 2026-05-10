@@ -8,3 +8,4 @@
 - [Challenge speculative numeric tolerances in test plans](feedback_speccheck_numeric_tolerance.md) — exact equality by default; only add tolerance when the operation actually introduces FP error
 - [Spec-kit task lists prescribe tactics — treat them as suggestions](feedback_speckit_implementation_prescriptions.md) — distinguish prescribed *outcome* from prescribed *tactic*; prefer the simpler equivalent
 - [Don't introduce column-aligned whitespace in code](feedback_no_column_alignment.md) — single-space tokens; aligned blocks cause diff churn and break outside the editor
+- [Prompts favour locality over DRY](feedback_prompts_locality_over_dry.md) — inline short rules in each slash-command prompt; skip canonical-section + cross-refs and defensive specs for cases the generator can't produce

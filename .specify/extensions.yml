@@ -136,7 +136,7 @@ hooks:
     enabled: true
     optional: false
     prompt: null
-    description: Cross-check test-plan.md against spec.md and tasks.md
+    description: Cross-check test-plan.md against spec.md `**Scenario:**` labels
     condition: null
   - extension: git
     command: speckit.git.commit

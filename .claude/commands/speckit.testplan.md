@@ -278,7 +278,8 @@ verbatim to the end of `test-plan.md`:
 
 Every test method that implements a scenario in this plan MUST include a `// SCENARIO:`
 comment whose value matches the `#### Scenario:` name above **exactly** — character for
-character, including case and punctuation:
+character, including case, punctuation, and internal whitespace. Leading and trailing
+whitespace on the scenario name is trimmed before comparison.
 
 ```csharp
 [Fact]

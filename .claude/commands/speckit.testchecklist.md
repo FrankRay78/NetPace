@@ -72,7 +72,8 @@ Store as a flat list of (user story, scenario) pairs. This is the **expected set
 
 Store scenario names exactly as they appear (trimmed only). The traceability key is
 **case-sensitive**: a `// SCENARIO:` comment in test code must match the
-`#### Scenario:` heading in test-plan.md character-for-character after trim.
+`#### Scenario:` heading in test-plan.md character-for-character after trim,
+including internal whitespace.
 
 ### Step 2 — Build the test inventory from source files
 
