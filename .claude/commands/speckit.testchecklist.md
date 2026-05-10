@@ -55,10 +55,10 @@ derivable from static source analysis alone.
 
 3. **Parse test-plan.md — extract the scenario inventory**:
    Collect every `#### Scenario:` header from test-plan.md.
-   Record: requirement name (parent `### Requirement:` header) and scenario name.
+   Record: user story name (parent `### User Story:` header) and scenario name.
    This is the **expected set**. Report the count before proceeding:
    ```
-   Test plan: 4 requirements, 18 scenarios
+   Test plan: 4 user stories, 18 scenarios
    ```
 
 ---
@@ -67,27 +67,32 @@ derivable from static source analysis alone.
 
 ### Step 1 — Build the scenario inventory from test-plan.md
 
-For each `### Requirement:` block, collect all `#### Scenario:` names beneath it.
-Store as a flat list of (requirement, scenario) pairs. This is the **expected set**.
+For each `### User Story:` block, collect all `#### Scenario:` names beneath it.
+Store as a flat list of (user story, scenario) pairs. This is the **expected set**.
 
-Normalise scenario names for matching: lowercase, collapse whitespace, strip
-punctuation. Store both the normalised and original forms.
+Store scenario names exactly as they appear (trimmed only). The traceability key is
+**case-sensitive**: a `// SCENARIO:` comment in test code must match the
+`#### Scenario:` heading in test-plan.md character-for-character after trim.
 
 ### Step 2 — Build the test inventory from source files
 
 Read every test file in the test directory. For each file:
 
 1. **Extract `// SCENARIO:` comments** — these are the explicit traceability markers.
-   Capture the full text after `// SCENARIO:` on each line. Normalise as above.
+   Capture the full text after `// SCENARIO:` on each line, **trimmed only** — this
+   is the traceability key and must match the `#### Scenario:` heading
+   character-for-character.
 
 2. **Extract test method names** — collect every test method/function name regardless
-   of whether it has a `// SCENARIO:` comment. Normalise to readable form
-   (convert `Login_Rejected_For_Unknown_Email` to "login rejected for unknown email").
+   of whether it has a `// SCENARIO:` comment. Convert to readable form for the
+   **fuzzy-match fallback only** (e.g. `Login_Rejected_For_Unknown_Email` →
+   "login rejected for unknown email"). This readable form is **not** used for the
+   primary traceability match.
 
 3. **Record per test**:
    - File path and line number
-   - Test method name (normalised)
-   - `// SCENARIO:` comment text (normalised), or MISSING if absent
+   - Test method name (readable form, for fuzzy fallback)
+   - `// SCENARIO:` comment text (trimmed), or MISSING if absent
    - Integrity flags (see Step 3)
 
 ### Step 3 — Flag integrity problems in each test
@@ -106,8 +111,9 @@ The test has no `// SCENARIO:` comment. It cannot be traced back to test-plan.md
 
 #### 3b. SCENARIO comment does not match any scenario in test-plan.md
 
-The `// SCENARIO:` text (after normalisation) does not match any scenario name in
-test-plan.md. Likely a renamed scenario, typo, or undocumented addition.
+The `// SCENARIO:` text (after trim) does not match any scenario name in
+test-plan.md character-for-character. Likely a renamed scenario, typo, case drift,
+or undocumented addition.
 
 ```
 ⚠ UNMATCHED SCENARIO REFERENCE
@@ -191,13 +197,15 @@ HIGH — STUB NOT REPLACED
 For each scenario in the expected set, attempt to find a corresponding test using
 this matching order:
 
-1. **Exact match on `// SCENARIO:` comment** (normalised) — highest confidence
-2. **Fuzzy match on test method name** (normalised) — medium confidence, flag for review
+1. **Exact match on `// SCENARIO:` comment** (case-sensitive after trim) — highest
+   confidence; this is the primary traceability key
+2. **Fuzzy match on test method name** (readable form) — medium confidence, flag
+   for review; only used when no exact `// SCENARIO:` match exists
 3. **No match found** — scenario is uncovered
 
 Build a coverage table:
 
-| Requirement | Scenario | Coverage | Confidence | File | Line |
+| User Story | Scenario | Coverage | Confidence | File | Line |
 |---|---|---|---|---|---|
 | User Login | Successful login with valid credentials | ✓ | Exact | AuthTests.cs | 23 |
 | User Login | Login rejected for unknown email | ✓ | Exact | AuthTests.cs | 47 |

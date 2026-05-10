@@ -46,8 +46,8 @@ hooks:
   - extension: git
     command: speckit.git.commit
     enabled: true
-    optional: true
-    prompt: Commit outstanding changes before implementation?
+    optional: false
+    prompt: null
     description: Auto-commit before implementation
     condition: null
   before_checklist:
