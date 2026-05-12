@@ -1,5 +1,7 @@
 # C# Style Guide
 
+> This document elaborates Section V of the constitution and must remain consistent with it.
+
 **Scope**: Detailed C# coding conventions for NetPace
 **Extends**: `CLAUDE.md` (read that first for essential patterns)
 **Audience**: Reference for detailed style questions during code writing/review
