@@ -7,4 +7,4 @@ After `/speckit.analyze` emits `EXECUTE_COMMAND: speckit.analyze.testplan` in th
 
 **Why:** the speckit parent skill has no follow-through for prompt-only extensions (testplan has no bash script). Editing speckit core would break the upstream-upgrade path.
 
-**How to apply:** only this hook. Other speckit hooks are git-backed and self-execute via [feedback_speckit_hooks.md](feedback_speckit_hooks.md).
+**How to apply:** only this hook. Other speckit hooks are git-backed and self-execute via [speckit hook execution](feedback_speckit_hooks.md).
