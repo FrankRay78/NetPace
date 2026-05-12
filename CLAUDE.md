@@ -1,4 +1,4 @@
-﻿# NetPace Development Guide
+# NetPace Development Guide
 
 ## Quick Reference
 
