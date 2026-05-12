@@ -4,12 +4,12 @@ This document describes the release pipeline that builds and attaches downloadab
 
 ## Release matrix
 
-Each tag produces **14 archives** — 12 pre-existing variants plus 2 new Linux Native AOT variants.
+Each tag produces one archive per cell of the matrix below — currently 16 (4 Native AOT plus 12 non-AOT).
 
 | Runtime ID | Self-contained | Framework-dependent | Native AOT |
 |------------|----------------|---------------------|------------|
-| `win-x64` | `netpace-{ver}-win-x64-standalone.zip` | `netpace-{ver}-win-x64-net8.zip` | _(out of scope)_ |
-| `win-arm64` | `netpace-{ver}-win-arm64-standalone.zip` | `netpace-{ver}-win-arm64-net8.zip` | _(out of scope)_ |
+| `win-x64` | `netpace-{ver}-win-x64-standalone.zip` | `netpace-{ver}-win-x64-net8.zip` | `netpace-{ver}-win-x64-aot.zip` |
+| `win-arm64` | `netpace-{ver}-win-arm64-standalone.zip` | `netpace-{ver}-win-arm64-net8.zip` | `netpace-{ver}-win-arm64-aot.zip` |
 | `linux-x64` | `netpace-{ver}-linux-x64-standalone.tar.gz` | `netpace-{ver}-linux-x64-net8.tar.gz` | `netpace-{ver}-linux-x64-aot.tar.gz` |
 | `linux-arm64` | `netpace-{ver}-linux-arm64-standalone.tar.gz` | `netpace-{ver}-linux-arm64-net8.tar.gz` | `netpace-{ver}-linux-arm64-aot.tar.gz` |
 | `osx-x64` | `netpace-{ver}-osx-x64-standalone.tar.gz` | `netpace-{ver}-osx-x64-net8.tar.gz` | _(out of scope)_ |
@@ -31,8 +31,10 @@ Each tag produces **14 archives** — 12 pre-existing variants plus 2 new Linux 
 | All non-AOT entries | `ubuntu-latest` | Cross-compiles fine for non-AOT publishes; matches pre-feature behaviour. |
 | `linux-x64-aot` | `ubuntu-latest` | Native x64 host — no cross-compile toolchain needed. |
 | `linux-arm64-aot` | `ubuntu-24.04-arm` | Native ARM64 host — AOT cross-compilation is fragile, smoke test must run natively. GitHub-hosted ARM64 runners became free for public repos in January 2025. |
+| `win-x64-aot` | `windows-latest` | Native x64 host — no cross-compile toolchain needed; `windows-latest` ships MSVC v143 and the Windows 11 SDK pre-installed. |
+| `win-arm64-aot` | `windows-11-arm` | Native ARM64 host — AOT cross-compilation across architectures is fragile, smoke test must run natively. `windows-11-arm` runners became free for public repos in April 2025. |
 
-Native AOT cannot be cross-compiled across operating systems — `dotnet publish` errors out with `Cross-OS native compilation is not supported`. Hence the per-RID native runners.
+Native AOT cannot be cross-compiled across operating systems — `dotnet publish` errors out with `Cross-OS native compilation is not supported`. Hence the per-RID native runners on both Linux and Windows.
 
 ## Smoke-test contract (AOT only)
 
@@ -45,12 +47,23 @@ Each AOT matrix entry runs two local-only commands against the freshly extracted
 
 The AOT binary is named `NetPace` (same as all other variants). On Windows the binary is `NetPace.exe`; on Linux/macOS it is `NetPace`.
 
+## Archive-contents contract
+
+Every release archive contains **exactly one entry** — the executable. A "Verify archive contents" workflow step asserts this on every archive before upload; non-zero exit aborts the release.
+
+How each variant satisfies the contract:
+
+- **Non-AOT (standalone, net8)** — `-p:PublishSingleFile=true` bundles managed assemblies, runtime config, and native libraries into the host executable. `<DebugType>embedded</DebugType>` in both `NetPace.Console.csproj` and `NetPace.Core.csproj` embeds portable PDBs inside the assembly so no managed `.pdb` side file is produced.
+- **AOT** — native AOT produces a single native binary by design. The Windows linker emits a `.pdb` side file regardless of `DebugType`; the Create archive step scrubs `*.pdb` before zipping. Linux AOT debug info is embedded in the ELF.
+
+End-user CLI binaries don't ship symbols — maintainers reproduce locally with their own debug build. If customer crash-dump symbolication is ever needed, push symbols to a workflow artefact rather than into the user-facing archive.
+
 ## Size-assertion contract
 
 The `attach-to-release` job validates two relative size invariants before attaching any archive to the release:
 
 1. For every RID: `framework-dependent < self-contained` (existing pre-feature check).
-2. For Linux x64 and arm64: `aot < self-contained`.
+2. For Linux x64/arm64 and Windows x64/arm64: `aot < self-contained`.
 
 Either invariant failing fails the entire release job; no archives are attached.
 

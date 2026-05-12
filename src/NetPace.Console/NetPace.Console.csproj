@@ -7,6 +7,8 @@
     <Nullable>enable</Nullable>
     <AssemblyName>NetPace</AssemblyName>
     <IsAotCompatible>true</IsAotCompatible>
+    <!-- Embed portable PDBs inside the assembly so non-AOT release archives ship no side .pdb files. -->
+    <DebugType>embedded</DebugType>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(PublishAot)' == 'true'">

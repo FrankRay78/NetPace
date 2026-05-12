@@ -6,6 +6,8 @@
     <Nullable>enable</Nullable>
     <IsPackable>true</IsPackable>
     <IsAotCompatible>true</IsAotCompatible>
+    <!-- Embed portable PDBs inside the assembly — NuGet consumers get symbolicated stack traces without a side .pdb. -->
+    <DebugType>embedded</DebugType>
 
     <!-- XML Documentation (public API only) -->
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
