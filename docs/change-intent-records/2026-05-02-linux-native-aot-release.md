@@ -42,6 +42,6 @@
 
 5. **Per-RID relative size assertion (`aot < standalone`)** rather than absolute thresholds — mirrors the existing `framework-dependent < self-contained` check; no maintenance burden as .NET evolves.
 
-6. **No support for cross-OS native compilation** — local AOT validation on a Windows dev box is acknowledged as out of scope; CI's native runners are the validation gate (smoke tests + size assertion).
+6. **No support for cross-OS native compilation** — local AOT validation on a Windows dev box is acknowledged as out of scope; CI's native runners are the validation gate (smoke tests + size assertion). _(Note: this CIR is scoped to Linux AOT only. Windows AOT — `win-x64-aot` and `win-arm64-aot` — is added later under [`specs/002-win-aot-release/`](../../specs/002-win-aot-release/); the cross-OS-cannot-cross-compile rationale carried over unchanged.)_
 
 **Date:** 2026-05-02

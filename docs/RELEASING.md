@@ -4,7 +4,7 @@ This document describes the release pipeline that builds and attaches downloadab
 
 ## Release matrix
 
-Each tag produces **16 archives** — 12 pre-existing variants plus 4 Native AOT variants (Linux x64/arm64, Windows x64/arm64).
+Each tag produces one archive per cell of the matrix below — currently 16 (4 Native AOT plus 12 non-AOT).
 
 | Runtime ID | Self-contained | Framework-dependent | Native AOT |
 |------------|----------------|---------------------|------------|
@@ -46,6 +46,17 @@ Each AOT matrix entry runs two local-only commands against the freshly extracted
 ```
 
 The AOT binary is named `NetPace` (same as all other variants). On Windows the binary is `NetPace.exe`; on Linux/macOS it is `NetPace`.
+
+## Archive-contents contract
+
+Every release archive contains **exactly one entry** — the executable. A "Verify archive contents" workflow step asserts this on every archive before upload; non-zero exit aborts the release.
+
+How each variant satisfies the contract:
+
+- **Non-AOT (standalone, net8)** — `-p:PublishSingleFile=true` bundles managed assemblies, runtime config, and native libraries into the host executable. `<DebugType>embedded</DebugType>` in both `NetPace.Console.csproj` and `NetPace.Core.csproj` embeds portable PDBs inside the assembly so no managed `.pdb` side file is produced.
+- **AOT** — native AOT produces a single native binary by design. The Windows linker emits a `.pdb` side file regardless of `DebugType`; the Create archive step scrubs `*.pdb` before zipping. Linux AOT debug info is embedded in the ELF.
+
+End-user CLI binaries don't ship symbols — maintainers reproduce locally with their own debug build. If customer crash-dump symbolication is ever needed, push symbols to a workflow artefact rather than into the user-facing archive.
 
 ## Size-assertion contract
 
