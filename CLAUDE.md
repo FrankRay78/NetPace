@@ -4,9 +4,7 @@
 
 ## Quick Reference
 
-**For Core Principles & Governance**: See `.specify/memory/constitution.md`
-
-This guide covers **HOW** (NetPace patterns, conventions, gotchas). The constitution covers **WHAT** and **WHY** (principles, governance). Generic C# style lives in `docs/conventions/csharp-style.md` — read that for naming, async, LINQ, member ordering, etc.
+This guide covers **HOW** (NetPace patterns, conventions, gotchas). The constitution covers **WHAT** and **WHY** (principles, governance).
 
 ## Project Overview
 
@@ -146,6 +144,6 @@ Load these on demand for the matching topic:
 
 ## Project Memory
 
-Feedback and project memory live in [.claude/memory/](.claude/memory/) — git-tracked, visible in diffs, travels with the codebase. Write new entries there; user-level memory is deprecated for this project.
+Project memory lives in [.claude/memory/](.claude/memory/) — git-tracked, written here (not user-level) so it travels with the codebase.
 
 @.claude/memory/MEMORY.md
