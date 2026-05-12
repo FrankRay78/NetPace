@@ -3,7 +3,7 @@ name: speckit hook execution
 description: How to correctly execute speckit git hooks — bash script directly, never via Skill tool
 type: feedback
 ---
-All speckit skills have `disable-model-invocation: true`. They are user-invocable only (user types `/speckit.specify`, etc). NEVER call them via the Skill tool.
+All speckit skills have `disable-model-invocation: true`. They are user-invocable only (user types `/speckit.specify`, etc). Never call speckit.* skills via the Skill tool.
 
 **Why:** The Skill tool invocation is blocked by `disable-model-invocation: true`. The skills load as prompts injected by the Claude Code harness when the user types the slash command — they are not callable by the model.
 
