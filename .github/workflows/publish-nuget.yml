@@ -21,11 +21,12 @@ jobs:
         id: core_changed
         run: |
           set -euo pipefail
-          PREV_TAG=$(git describe --tags --abbrev=0 "${GITHUB_REF}^" 2>/dev/null || echo "")
+          TAG_COMMIT=$(git rev-parse "${GITHUB_REF}^0")
+          PREV_TAG=$(git describe --tags --abbrev=0 "${TAG_COMMIT}^" 2>/dev/null || echo "")
           if [ -z "$PREV_TAG" ]; then
             echo "No previous tag found — treating as first release, will publish."
             echo "changed=true" >> $GITHUB_OUTPUT
-          elif git diff --quiet "$PREV_TAG"..."${GITHUB_REF}" -- src/NetPace.Core; then
+          elif git diff --quiet "$PREV_TAG".."${GITHUB_REF}" -- src/NetPace.Core; then
             echo "NetPace.Core unchanged since $PREV_TAG — skipping NuGet pack/push."
             echo "changed=false" >> $GITHUB_OUTPUT
           else
