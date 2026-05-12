@@ -9,3 +9,8 @@
 - [Spec-kit task lists prescribe tactics — treat them as suggestions](feedback_speckit_implementation_prescriptions.md) — distinguish prescribed *outcome* from prescribed *tactic*; prefer the simpler equivalent
 - [Don't introduce column-aligned whitespace in code](feedback_no_column_alignment.md) — single-space tokens; aligned blocks cause diff churn and break outside the editor
 - [Prompts favour locality over DRY](feedback_prompts_locality_over_dry.md) — inline short rules in each slash-command prompt; skip canonical-section + cross-refs and defensive specs for cases the generator can't produce
+- [Speckit git hooks: call bash script directly, never Skill tool](feedback_speckit_hooks.md) — all speckit skills have disable-model-invocation: true; run `.specify/extensions/git/scripts/bash/auto-commit.sh <event>`
+- [Speckit testplan after_analyze hook self-executes inline](feedback_speckit_testplan_hook.md) — /speckit.analyze emits EXECUTE_COMMAND for testplan but never runs it; read the .md and follow its steps inline before ending the response
+- [Codebase must not reference specs/ paths](feedback_no_spec_references.md) — specs are deleted post-merge; any `specs/<NNN>-…` link in source/tests/docs becomes a dead reference
+- [Docs describe current codebase only — no forward references](feedback_docs_no_forward_references.md) — push back on task plans that mandate doc sections about unimplemented features tracked only by open issues
+- [After simplifying, grep the whole repo for the removed concept](feedback_grep_after_simplifying.md) — diff misses stale comments and docs in files you didn't directly touch
