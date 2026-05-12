@@ -10,8 +10,7 @@ public sealed partial class OoklaSpeedtestTests
     [Fact]
     public async Task GetServersAsync_RepresentativeOoklaResponse_ReturnsAllRequiredAttributes()
     {
-        // SCENARIO: Parser deserializes a representative Ookla server-list response
-
+        // Given
         const string Xml = """
             <?xml version="1.0" encoding="UTF-8"?>
             <settings>
@@ -25,10 +24,14 @@ public sealed partial class OoklaSpeedtestTests
             </settings>
             """;
 
-        var speedtest = BuildSpeedtestWithXmlResponse(Xml);
+        using var mockHttp = new MockHttpMessageHandler();
+        mockHttp.When("*").Respond("application/xml", Xml);
+        var speedtest = new OoklaSpeedtest(httpClientOverride: mockHttp.ToHttpClient());
 
+        // When
         var servers = await speedtest.GetServersAsync();
 
+        // Then
         servers.Length.ShouldBe(5);
 
         var first = servers[0].ShouldBeOfType<OoklaServer>();
@@ -43,8 +46,7 @@ public sealed partial class OoklaSpeedtestTests
     [Fact]
     public async Task GetServersAsync_OptionalAttributesPresent_PopulatesCountryAndHost()
     {
-        // SCENARIO: Parser populates optional attributes when present
-
+        // Given
         const string Xml = """
             <?xml version="1.0" encoding="UTF-8"?>
             <settings>
@@ -54,10 +56,14 @@ public sealed partial class OoklaSpeedtestTests
             </settings>
             """;
 
-        var speedtest = BuildSpeedtestWithXmlResponse(Xml);
+        using var mockHttp = new MockHttpMessageHandler();
+        mockHttp.When("*").Respond("application/xml", Xml);
+        var speedtest = new OoklaSpeedtest(httpClientOverride: mockHttp.ToHttpClient());
 
+        // When
         var servers = await speedtest.GetServersAsync();
 
+        // Then
         var server = servers.ShouldHaveSingleItem().ShouldBeOfType<OoklaServer>();
         server.Country.ShouldBe("United Kingdom");
         server.Host.ShouldBe("host.example.com:8080");
@@ -66,8 +72,7 @@ public sealed partial class OoklaSpeedtestTests
     [Fact]
     public async Task GetServersAsync_OptionalAttributesAbsent_LeavesCountryAndHostNull()
     {
-        // SCENARIO: Parser leaves optional attributes null when absent
-
+        // Given
         const string Xml = """
             <?xml version="1.0" encoding="UTF-8"?>
             <settings>
@@ -77,10 +82,14 @@ public sealed partial class OoklaSpeedtestTests
             </settings>
             """;
 
-        var speedtest = BuildSpeedtestWithXmlResponse(Xml);
+        using var mockHttp = new MockHttpMessageHandler();
+        mockHttp.When("*").Respond("application/xml", Xml);
+        var speedtest = new OoklaSpeedtest(httpClientOverride: mockHttp.ToHttpClient());
 
+        // When
         var servers = await speedtest.GetServersAsync();
 
+        // Then
         var server = servers.ShouldHaveSingleItem().ShouldBeOfType<OoklaServer>();
         server.Country.ShouldBeNull();
         server.Host.ShouldBeNull();
@@ -89,8 +98,6 @@ public sealed partial class OoklaSpeedtestTests
     [Fact]
     public async Task GetServersAsync_NumericAttributes_UsesInvariantCultureUnderCommaDecimalLocale()
     {
-        // SCENARIO: Parser uses invariant culture for numeric attribute parsing
-
         const string Xml = """
             <?xml version="1.0" encoding="UTF-8"?>
             <settings>
@@ -103,12 +110,17 @@ public sealed partial class OoklaSpeedtestTests
         var originalCulture = CultureInfo.CurrentCulture;
         try
         {
+            // Given
             CultureInfo.CurrentCulture = new CultureInfo("de-DE");
 
-            var speedtest = BuildSpeedtestWithXmlResponse(Xml);
+            using var mockHttp = new MockHttpMessageHandler();
+            mockHttp.When("*").Respond("application/xml", Xml);
+            var speedtest = new OoklaSpeedtest(httpClientOverride: mockHttp.ToHttpClient());
 
+            // When
             var servers = await speedtest.GetServersAsync();
 
+            // Then
             var server = servers.ShouldHaveSingleItem().ShouldBeOfType<OoklaServer>();
             server.Latitude.ShouldBe(51.5074);
             server.Longitude.ShouldBe(-0.1278);
@@ -122,8 +134,7 @@ public sealed partial class OoklaSpeedtestTests
     [Fact]
     public async Task GetServersAsync_EmptyServersElement_ReturnsEmptyCollection()
     {
-        // SCENARIO: Parser handles an empty servers element
-
+        // Given
         const string Xml = """
             <?xml version="1.0" encoding="UTF-8"?>
             <settings>
@@ -131,17 +142,14 @@ public sealed partial class OoklaSpeedtestTests
             </settings>
             """;
 
-        var speedtest = BuildSpeedtestWithXmlResponse(Xml);
+        using var mockHttp = new MockHttpMessageHandler();
+        mockHttp.When("*").Respond("application/xml", Xml);
+        var speedtest = new OoklaSpeedtest(httpClientOverride: mockHttp.ToHttpClient());
 
+        // When
         var servers = await speedtest.GetServersAsync();
 
+        // Then
         servers.ShouldBeEmpty();
-    }
-
-    private static OoklaSpeedtest BuildSpeedtestWithXmlResponse(string xml)
-    {
-        var mockHttp = new MockHttpMessageHandler();
-        mockHttp.When("*").Respond("application/xml", xml);
-        return new OoklaSpeedtest(httpClientOverride: mockHttp.ToHttpClient());
     }
 }
