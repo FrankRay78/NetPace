@@ -1,3 +1,5 @@
+@.specify/memory/constitution.md
+
 # NetPace Development Guide
 
 ## Quick Reference
@@ -131,8 +133,8 @@ git checkout -b feature/your-feature-name
 
 Load these on demand for the matching topic:
 
-- **C# Style** — `docs/conventions/csharp-style.md` — naming (`_camelCase`/`s_camelCase`/`t_camelCase`), `var` rules, async/`ConfigureAwait`, immutability, LINQ, member ordering, primary-constructor parameter casing, xUnit conventions.
-- **Change Intent Records** — `docs/conventions/change-intent-records.md` — decision table for whether to write one, template, worked example.
+- **C# Style** — `docs/conventions/csharp-style.md` — read before writing or reviewing any .cs file.
+- **Change Intent Records** — `docs/conventions/change-intent-records.md` — read when deciding whether a change warrants documenting intent.
 - **Release Pipeline** — `docs/RELEASING.md` — release matrix (RIDs × variants), naming convention, runner-per-RID rationale, smoke-test contract, size-assertion contract. Update whenever you touch `release-binaries.yml`.
 - **Ookla Download/Upload Sizing** — `docs/architecture/download-upload-size-controls.md` — how `OoklaSpeedtestSettings` shapes per-request sizing, iterations, and parallelism; what `--downloadsize`/`--uploadsize` actually cap (total-byte budget); Docker OoklaServer endpoints for local verification.
 

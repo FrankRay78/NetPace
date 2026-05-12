@@ -1,13 +1,18 @@
 <!--
 Sync Impact Report:
-Version: 1.1.0
+Version: 1.1.0 → 1.2.0
+Bump rationale: MINOR — Amendment Process gains a new procedural clause requiring
+amendments that touch principles with downstream references in CLAUDE.md or
+docs/conventions/ to note which downstream documents were reviewed. Materially
+expands governance guidance; no existing principle redefined.
+
 Modified Principles: N/A
-Added Sections: VIII. AC-to-Test Traceability
+Added Sections: N/A (procedural clause added to existing Governance > Amendment Process)
 Removed Sections: N/A
 Templates Requiring Updates:
-  ✅ .specify/templates/plan-template.md - Reviewed, constitution check section aligns
-  ✅ .specify/templates/spec-template.md - Reviewed, requirements align with principles
-  ✅ .specify/templates/tasks-template.md - Reviewed, task categories align with principles
+  ✅ .specify/templates/plan-template.md — amendment-process clause does not affect plan structure
+  ✅ .specify/templates/spec-template.md — amendment-process clause does not affect spec structure
+  ✅ .specify/templates/tasks-template.md — amendment-process clause does not affect task structure
   ⚠ No command files found in .specify/templates/commands/
 Follow-up TODOs: None
 -->
@@ -200,6 +205,7 @@ This constitution supersedes all other development practices and guides. All dev
    - **MAJOR**: Backward incompatible governance/principle removals or redefinitions
    - **MINOR**: New principle/section added or materially expanded guidance
    - **PATCH**: Clarifications, wording, typo fixes, non-semantic refinements
+4. Any amendment to a principle that has a corresponding detailed reference in `CLAUDE.md` or `docs/conventions/` MUST note which downstream documents were reviewed.
 
 ### Compliance Review
 
@@ -207,4 +213,4 @@ This constitution supersedes all other development practices and guides. All dev
 - Complexity MUST be justified against simplicity principles
 - For runtime development guidance, refer to `CLAUDE.md`
 
-**Version**: 1.1.0 | **Ratified**: 2026-04-10 | **Last Amended**: 2026-04-21
+**Version**: 1.2.0 | **Ratified**: 2026-04-10 | **Last Amended**: 2026-05-12
