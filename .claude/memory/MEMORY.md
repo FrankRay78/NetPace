@@ -4,8 +4,8 @@
 
 Generic workflow, speckit, docs, and code-hygiene rules — portable across repos.
 
-- [Speckit git hooks: call bash script directly, never Skill tool](process/feedback_speckit_hooks.md) — all speckit skills have disable-model-invocation: true; run `.specify/extensions/git/scripts/bash/auto-commit.sh <event>`
-- [Speckit testplan after_analyze hook self-executes inline](process/feedback_speckit_testplan_hook.md) — /speckit.analyze emits EXECUTE_COMMAND for testplan but never runs it; read the .md and follow its steps inline before ending the response
+- [Speckit git hooks: run auto-commit.sh directly, not via Skill tool](process/feedback_speckit_hooks.md) — disable-model-invocation: true blocks Skill; call the bash script directly
+- [Speckit testplan: after_analyze hook has no bash script — execute inline](process/feedback_speckit_testplan_hook.md) — read the .md and follow its steps before ending the response
 - [Spec-kit task lists prescribe tactics — treat them as suggestions](process/feedback_speckit_implementation_prescriptions.md) — distinguish prescribed *outcome* from prescribed *tactic*; prefer the simpler equivalent
 - [Challenge speculative numeric tolerances in test plans](process/feedback_speccheck_numeric_tolerance.md) — exact equality by default; only add tolerance when the operation actually introduces FP error
 - [Prompts favour locality over DRY](process/feedback_prompts_locality_over_dry.md) — inline short rules in each slash-command prompt; skip canonical-section + cross-refs and defensive specs for cases the generator can't produce
