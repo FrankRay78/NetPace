@@ -6,7 +6,37 @@ on:
       - '*'  # Match any tag like 0.4.0, 1.0.0, etc.
 
 jobs:
-  build-and-publish:
+  check:
+    runs-on: ubuntu-latest
+    outputs:
+      changed: ${{ steps.core_changed.outputs.changed }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Need full history + tags for diff against previous tag
+
+      - name: Check if NetPace.Core changed since previous tag
+        id: core_changed
+        run: |
+          set -euo pipefail
+          TAG_COMMIT=$(git rev-parse "${GITHUB_REF}^0")
+          PREV_TAG=$(git describe --tags --abbrev=0 "${TAG_COMMIT}^" 2>/dev/null || echo "")
+          if [ -z "$PREV_TAG" ]; then
+            echo "No previous tag found — treating as first release, will publish."
+            echo "changed=true" >> $GITHUB_OUTPUT
+          elif git diff --quiet "$PREV_TAG".."${GITHUB_REF}" -- src/NetPace.Core; then
+            echo "NetPace.Core unchanged since $PREV_TAG — skipping NuGet pack/push."
+            echo "changed=false" >> $GITHUB_OUTPUT
+          else
+            echo "NetPace.Core changed since $PREV_TAG — will publish."
+            echo "changed=true" >> $GITHUB_OUTPUT
+          fi
+
+  publish:
+    needs: check
+    if: needs.check.outputs.changed == 'true'
     runs-on: ubuntu-latest
 
     steps:

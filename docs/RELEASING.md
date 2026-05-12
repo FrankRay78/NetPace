@@ -77,6 +77,16 @@ Either invariant failing fails the entire release job; no archives are attached.
 
 The `IsAotCompatible=true` property on `NetPace.Core.csproj` causes `dotnet pack` to emit `[assembly: AssemblyMetadata("IsTrimmable", "True")]` into the packaged DLL — the standard .NET 8 marker NuGet uses to surface AOT compatibility to consumers. The `publish-nuget.yml` workflow is unchanged by this feature and continues to consume the property transparently.
 
+## Conditional NuGet publish
+
+`publish-nuget.yml` only packs and pushes `NetPace.Core` when `src/NetPace.Core/**` has changed between the current tag and the previous tag. On CLI-only tags (the common case — ~90% of releases), the workflow logs a skip message and exits successfully without invoking `dotnet pack` or `nuget push`.
+
+**Why**: each tag would otherwise produce a new `NetPace.Core` version on nuget.org byte-equivalent to the previous one, eroding SemVer meaning for library consumers.
+
+**Consequence**: `NetPace.Core` versions published to nuget.org may skip values (e.g. `0.5.0` → `0.7.0`) when intermediate tags were CLI-only. This is intentional — the published version always reflects a real Core change.
+
+The GitHub Release / binary-attachment flow via `release-binaries.yml` is unaffected and ships every tag.
+
 ## Release notes
 
 Per-release "what changed" notes are **GitHub-auto-generated from the PRs merged since the last tag** — there is no `CHANGELOG.md` to maintain. The `NetPace.Core.csproj` `<PackageReleaseNotes>` property already points NuGet consumers to <https://github.com/FrankRay78/NetPace/releases>, so the auto-generated notes are the single source of truth for both CLI and library audiences. Edit the GitHub Release body manually only when a particular change deserves prose framing the auto-generated PR list can't supply.
