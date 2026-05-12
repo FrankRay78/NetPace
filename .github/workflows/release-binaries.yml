@@ -40,6 +40,10 @@ jobs:
             publish_single_file: false
             invariant_globalization: true
 
+    defaults:
+      run:
+        shell: bash
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
