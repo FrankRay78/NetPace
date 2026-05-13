@@ -8,9 +8,9 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
-    <PackageReference Include="Spectre.Console.Cli" Version="1.0.0-alpha.0.11" />
-    <PackageReference Include="Spectre.Console.Cli.Testing" Version="1.0.0-alpha.0.11" />
-    <PackageReference Include="Spectre.Console.Testing" Version="0.54.0" />
+    <PackageReference Include="Spectre.Console.Cli" Version="1.0.0-alpha.0.16" />
+    <PackageReference Include="Spectre.Console.Cli.Testing" Version="1.0.0-alpha.0.16" />
+    <PackageReference Include="Spectre.Console.Testing" Version="0.55.2" />
     <PackageReference Include="System.CommandLine" Version="2.0.1" />
     <PackageReference Include="Verify" Version="30.19.2" />
     <PackageReference Include="Verify.Xunit" Version="30.19.2" />
