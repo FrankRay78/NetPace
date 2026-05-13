@@ -9,6 +9,9 @@
     <IsAotCompatible>true</IsAotCompatible>
     <!-- Embed portable PDBs inside the assembly so non-AOT release archives ship no side .pdb files. -->
     <DebugType>embedded</DebugType>
+    <!-- Prevent NetPace.Core.xml from landing in publish output — PublishSingleFile bundles the DLL but not XML,
+         so without this the documentation file appears as a stray second entry in every release archive. -->
+    <AllowedReferenceRelatedFileExtensions>.pdb</AllowedReferenceRelatedFileExtensions>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(PublishAot)' == 'true'">
