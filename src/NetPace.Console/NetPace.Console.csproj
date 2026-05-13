@@ -34,4 +34,13 @@
 	<InternalsVisibleTo Include="NetPace.Console.Tests" />
   </ItemGroup>
 
+  <!-- Remove XML documentation files from publish output: PublishSingleFile bundles DLLs but not XML files,
+       so NetPace.Core.xml would land loose in every archive and break the "exactly 1 entry" contract. -->
+  <Target Name="ExcludeDocXmlFromPublish" AfterTargets="ComputeFilesToPublish">
+    <ItemGroup>
+      <ResolvedFileToPublish Remove="@(ResolvedFileToPublish)"
+        Condition="'%(Extension)' == '.xml'" />
+    </ItemGroup>
+  </Target>
+
 </Project>
