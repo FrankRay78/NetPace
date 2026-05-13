@@ -1,18 +1,16 @@
 using System.Globalization;
-using System.Xml;
 using NetPace.Core.Clients.Ookla;
-using NetPace.Core.Clients.Ookla.Extensions;
+using RichardSzalay.MockHttp;
 using Shouldly;
 
-namespace NetPace.Core.Tests.Clients.Ookla.Extensions;
+namespace NetPace.Core.Tests;
 
-public class XmlExtensionsTests
+public sealed partial class OoklaSpeedtestTests
 {
     [Fact]
-    public void Deserialize_RepresentativeOoklaResponse_PopulatesAllRequiredAttributes()
+    public async Task GetServersAsync_RepresentativeOoklaResponse_ReturnsAllRequiredAttributes()
     {
-        // SCENARIO: Parser deserializes a representative Ookla server-list response
-
+        // Given
         const string Xml = """
             <?xml version="1.0" encoding="UTF-8"?>
             <settings>
@@ -26,13 +24,17 @@ public class XmlExtensionsTests
             </settings>
             """;
 
-        var result = Xml.DeserializeFromXml();
+        using var mockHttp = new MockHttpMessageHandler();
+        mockHttp.When("*").Respond("application/xml", Xml);
+        var speedtest = new OoklaSpeedtest(httpClientOverride: mockHttp.ToHttpClient());
 
-        result.ShouldNotBeNull();
-        result.Servers.ShouldNotBeNull();
-        result.Servers.Length.ShouldBe(5);
+        // When
+        var servers = await speedtest.GetServersAsync();
 
-        var first = result.Servers[0];
+        // Then
+        servers.Length.ShouldBe(5);
+
+        var first = servers[0].ShouldBeOfType<OoklaServer>();
         first.Id.ShouldBe(1234);
         first.Location.ShouldBe("London");
         first.Sponsor.ShouldBe("Acme ISP");
@@ -42,10 +44,9 @@ public class XmlExtensionsTests
     }
 
     [Fact]
-    public void Deserialize_OptionalAttributesPresent_PopulatesCountryAndHost()
+    public async Task GetServersAsync_OptionalAttributesPresent_PopulatesCountryAndHost()
     {
-        // SCENARIO: Parser populates optional attributes when present
-
+        // Given
         const string Xml = """
             <?xml version="1.0" encoding="UTF-8"?>
             <settings>
@@ -55,18 +56,23 @@ public class XmlExtensionsTests
             </settings>
             """;
 
-        var result = Xml.DeserializeFromXml();
+        using var mockHttp = new MockHttpMessageHandler();
+        mockHttp.When("*").Respond("application/xml", Xml);
+        var speedtest = new OoklaSpeedtest(httpClientOverride: mockHttp.ToHttpClient());
 
-        var server = result!.Servers!.Single();
+        // When
+        var servers = await speedtest.GetServersAsync();
+
+        // Then
+        var server = servers.ShouldHaveSingleItem().ShouldBeOfType<OoklaServer>();
         server.Country.ShouldBe("United Kingdom");
         server.Host.ShouldBe("host.example.com:8080");
     }
 
     [Fact]
-    public void Deserialize_OptionalAttributesAbsent_LeavesCountryAndHostNull()
+    public async Task GetServersAsync_OptionalAttributesAbsent_LeavesCountryAndHostNull()
     {
-        // SCENARIO: Parser leaves optional attributes null when absent
-
+        // Given
         const string Xml = """
             <?xml version="1.0" encoding="UTF-8"?>
             <settings>
@@ -76,18 +82,22 @@ public class XmlExtensionsTests
             </settings>
             """;
 
-        var result = Xml.DeserializeFromXml();
+        using var mockHttp = new MockHttpMessageHandler();
+        mockHttp.When("*").Respond("application/xml", Xml);
+        var speedtest = new OoklaSpeedtest(httpClientOverride: mockHttp.ToHttpClient());
 
-        var server = result!.Servers!.Single();
+        // When
+        var servers = await speedtest.GetServersAsync();
+
+        // Then
+        var server = servers.ShouldHaveSingleItem().ShouldBeOfType<OoklaServer>();
         server.Country.ShouldBeNull();
         server.Host.ShouldBeNull();
     }
 
     [Fact]
-    public void Deserialize_NumericAttributes_UsesInvariantCultureUnderCommaDecimalLocale()
+    public async Task GetServersAsync_NumericAttributes_UsesInvariantCultureUnderCommaDecimalLocale()
     {
-        // SCENARIO: Parser uses invariant culture for numeric attribute parsing
-
         const string Xml = """
             <?xml version="1.0" encoding="UTF-8"?>
             <settings>
@@ -100,11 +110,18 @@ public class XmlExtensionsTests
         var originalCulture = CultureInfo.CurrentCulture;
         try
         {
+            // Given
             CultureInfo.CurrentCulture = new CultureInfo("de-DE");
 
-            var result = Xml.DeserializeFromXml();
+            using var mockHttp = new MockHttpMessageHandler();
+            mockHttp.When("*").Respond("application/xml", Xml);
+            var speedtest = new OoklaSpeedtest(httpClientOverride: mockHttp.ToHttpClient());
 
-            var server = result!.Servers!.Single();
+            // When
+            var servers = await speedtest.GetServersAsync();
+
+            // Then
+            var server = servers.ShouldHaveSingleItem().ShouldBeOfType<OoklaServer>();
             server.Latitude.ShouldBe(51.5074);
             server.Longitude.ShouldBe(-0.1278);
         }
@@ -115,10 +132,9 @@ public class XmlExtensionsTests
     }
 
     [Fact]
-    public void Deserialize_EmptyServersElement_ReturnsEmptyOrNullCollection()
+    public async Task GetServersAsync_EmptyServersElement_ReturnsEmptyCollection()
     {
-        // SCENARIO: Parser handles an empty servers element
-
+        // Given
         const string Xml = """
             <?xml version="1.0" encoding="UTF-8"?>
             <settings>
@@ -126,24 +142,14 @@ public class XmlExtensionsTests
             </settings>
             """;
 
-        var result = Xml.DeserializeFromXml();
+        using var mockHttp = new MockHttpMessageHandler();
+        mockHttp.When("*").Respond("application/xml", Xml);
+        var speedtest = new OoklaSpeedtest(httpClientOverride: mockHttp.ToHttpClient());
 
-        result.ShouldNotBeNull();
-        (result.Servers is null || result.Servers.Length == 0).ShouldBeTrue();
-    }
+        // When
+        var servers = await speedtest.GetServersAsync();
 
-    [Fact]
-    public void Deserialize_MalformedXml_ThrowsXmlException()
-    {
-        // SCENARIO: Parser throws on malformed XML
-
-        const string Xml = "<settings><servers><server id=\"1\" /></servers"; // unclosed
-
-        var thrown = Should.Throw<Exception>(() => Xml.DeserializeFromXml());
-
-        // Accept either an XmlException directly or an InvalidOperationException wrapping one
-        var isXmlOrWrapped = thrown is XmlException
-            || (thrown is InvalidOperationException && thrown.InnerException is XmlException);
-        isXmlOrWrapped.ShouldBeTrue($"Expected XmlException or InvalidOperationException(XmlException), got {thrown.GetType()}");
+        // Then
+        servers.ShouldBeEmpty();
     }
 }

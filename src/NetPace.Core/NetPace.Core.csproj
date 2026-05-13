@@ -42,7 +42,4 @@
     <None Include="$(MSBuildThisFileDirectory)..\..\resources\nuget\logo.png" Pack="true" PackagePath="" Visible="false" />
   </ItemGroup>
 
-  <ItemGroup>
-    <InternalsVisibleTo Include="NetPace.Core.Tests" />
-  </ItemGroup>
 </Project>
