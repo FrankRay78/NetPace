@@ -131,20 +131,22 @@ jobs:
             -p:FileVersion=${{ steps.get_version.outputs.version }} \
             -p:InformationalVersion=${{ steps.get_version.outputs.version }}
 
-      # shell: bash forces Git Bash on the Windows runners so the same script (zip vs tar, glob branching) runs uniformly across all matrix entries.
+      # shell: bash forces Git Bash on the Windows runners so the same script (zip vs tar) runs uniformly across all matrix entries.
+      # Whitelist approach: archive the executable by name rather than the entire publish directory. All variants
+      # (PublishSingleFile and Native AOT) produce a single binary by design; the publish dir may also contain
+      # toolchain by-products (NetPace.Core.xml, NetPace.pdb on Windows AOT, NetPace.dbg on Linux AOT) that
+      # must never ship to end users. Archiving by name keeps the release contract immune to whatever the
+      # next toolchain version decides to emit alongside the binary.
       - name: Create archive
         shell: bash
         run: |
           set -euo pipefail
           cd ./publish/${{ matrix.runtime }}-${{ matrix.deployment }}
+          archive_stem="../../netpace-${{ steps.get_version.outputs.version }}-${{ matrix.runtime }}${{ steps.deployment_flags.outputs.suffix }}"
           if [[ "${{ matrix.runtime }}" == win-* ]]; then
-            if [ "${{ matrix.deployment }}" = "aot" ]; then
-              # Strip debug symbols from Windows AOT archives — release contract: archive contains only NetPace.exe.
-              rm -f ./*.pdb
-            fi
-            zip -r ../../netpace-${{ steps.get_version.outputs.version }}-${{ matrix.runtime }}${{ steps.deployment_flags.outputs.suffix }}.zip .
+            zip "${archive_stem}.zip" NetPace.exe
           else
-            tar -czf ../../netpace-${{ steps.get_version.outputs.version }}-${{ matrix.runtime }}${{ steps.deployment_flags.outputs.suffix }}.tar.gz .
+            tar -czf "${archive_stem}.tar.gz" NetPace
           fi
 
       - name: Verify archive contents
@@ -160,7 +162,8 @@ jobs:
           echo "Archive contents:"
           echo "$listing"
           # Every release archive contains exactly one entry — the executable.
-          # AOT: native single binary. Non-AOT: PublishSingleFile=true bundle. DebugType=embedded suppresses side .pdb files.
+          # The Create archive step archives the binary by name, so this verifies the whitelist held and that
+          # the executable was actually present in the publish dir (catches a silent build failure that produced no binary).
           entries=$(echo "$listing" | grep -vE '/$' | grep -c . || true)
           if [ "$entries" -ne 1 ]; then
             echo "FAIL: archive ${archive_stem} must contain exactly 1 entry, found $entries"

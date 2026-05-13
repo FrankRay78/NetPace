@@ -49,12 +49,19 @@ The AOT binary is named `NetPace` (same as all other variants). On Windows the b
 
 ## Archive-contents contract
 
-Every release archive contains **exactly one entry** — the executable. A "Verify archive contents" workflow step asserts this on every archive before upload; non-zero exit aborts the release.
+Every release archive contains **exactly one entry** — the executable.
 
-How each variant satisfies the contract:
+The "Create archive" workflow step uses a **whitelist** approach: it archives the binary by name (`NetPace.exe` on Windows, `NetPace` elsewhere) rather than zipping/tarring the entire publish directory. All variants are designed to produce a single binary — `-p:PublishSingleFile=true` for non-AOT, native AOT for the AOT variants — but the publish directory also contains toolchain by-products that must not ship to end users:
 
-- **Non-AOT (standalone, net8)** — `-p:PublishSingleFile=true` bundles managed assemblies, runtime config, and native libraries into the host executable. `<DebugType>embedded</DebugType>` in both `NetPace.Console.csproj` and `NetPace.Core.csproj` embeds portable PDBs inside the assembly so no managed `.pdb` side file is produced.
-- **AOT** — native AOT produces a single native binary by design. The Windows linker emits a `.pdb` side file regardless of `DebugType`; the Create archive step scrubs `*.pdb` before zipping. Linux AOT debug info is embedded in the ELF.
+- `NetPace.Core.xml` — emitted because `NetPace.Core.csproj` sets `<GenerateDocumentationFile>true</GenerateDocumentationFile>` for NuGet consumers.
+- `NetPace.pdb` — emitted by the Windows linker for AOT builds regardless of `<DebugType>`.
+- `NetPace.dbg` — emitted by the Linux AOT toolchain when `StripSymbols` is on (the default for Release).
+
+Archiving by name keeps the release contract immune to whatever the next toolchain version decides to emit alongside the binary — no per-extension scrub logic to maintain.
+
+A "Verify archive contents" step asserts the one-entry invariant on every archive before upload as a safety net (it also catches a silent build failure that produced no binary); non-zero exit aborts the release.
+
+`<DebugType>embedded</DebugType>` in both `NetPace.Console.csproj` and `NetPace.Core.csproj` is still set as belt-and-braces — it embeds portable PDBs inside the assembly so the publish directory has no managed `.pdb` side files even for local `dotnet publish` invocations.
 
 End-user CLI binaries don't ship symbols — maintainers reproduce locally with their own debug build. If customer crash-dump symbolication is ever needed, push symbols to a workflow artefact rather than into the user-facing archive.
 
