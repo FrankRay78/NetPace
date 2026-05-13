@@ -144,7 +144,7 @@ jobs:
           cd ./publish/${{ matrix.runtime }}-${{ matrix.deployment }}
           archive_stem="../../netpace-${{ steps.get_version.outputs.version }}-${{ matrix.runtime }}${{ steps.deployment_flags.outputs.suffix }}"
           if [[ "${{ matrix.runtime }}" == win-* ]]; then
-            zip "${archive_stem}.zip" NetPace.exe
+            7z a "${archive_stem}.zip" NetPace.exe
           else
             tar -czf "${archive_stem}.tar.gz" NetPace
           fi
