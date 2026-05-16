@@ -162,6 +162,43 @@ testable without reading implementation code.
 
 ---
 
+## Tests verify outcome, not mechanism
+
+A scenario's THEN clauses must describe an outcome an outside observer can verify,
+not the specific mechanism the implementation chose to deliver it. This is the
+test-plan-layer expression of Principle IX (Behavioural Specification) in
+`.specify/memory/constitution.md`.
+
+**The independence test**: would this scenario still hold under a different
+reasonable implementation of the same AC? If no, the scenario is testing
+mechanism, not outcome — rewrite it before generating test code from it.
+
+| Avoid (mechanism, brittle) | Prefer (outcome, durable) |
+|---|---|
+| THEN: response body contains the literal string `"Invalid email address"` | THEN: caller is told the input was rejected and given an error code identifying the validation failure |
+| THEN: response body is `{"status":"ok","data":[...]}` with HTTP 200 | THEN: caller can retrieve the current list of services in a single successful response |
+| THEN: setting is written to the `user_preferences` table and cached in Redis | THEN: setting is remembered across sessions and visible on the next sign-in |
+| THEN: endpoint returns `[]` when no records match | THEN: caller is shown a clear empty-result state when no records match |
+| THEN: stdout contains the literal string `"Mbps"` | THEN: output presents the measured throughput in a unit the caller can interpret |
+| THEN: result row is rendered via `Spectre.Console.Table` with column widths 12/8/8 | THEN: results are presented as a tabular summary readable in a terminal |
+
+**Do not write into THEN clauses**: CSS classes, DOM IDs or element types,
+animation specifics, font names/weights/colours, and pixel measurements;
+HTTP methods, endpoint paths, and status codes; response/payload schemas
+(JSON keys, field names); database tables, collections, columns, or indexes;
+algorithm or protocol choices (hash functions, signature schemes, encryption
+modes); framework or library picks; storage technology; specific URLs or
+ports; timing values (Ns / Nms) and polling cadences; exact error message
+strings; and log line formats or log levels. These are implementation choices
+— they belong in implementation notes, not in the test plan.
+
+**Regression exception**: a scenario that pins a specific mechanism is permitted
+only when it exists to prevent a named, previously-fixed bug. Reference the bug
+in the scenario name (e.g. `Scenario: GH#176 — release archive omits .pdb after
+AOT publish`).
+
+---
+
 ## Format
 
 Output to `specs/$ARGUMENTS/test-plan.md`.
