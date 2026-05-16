@@ -71,10 +71,9 @@ that path already exists and what conventions its siblings follow.
 
 ### 3. Identify gaps
 
-Group findings into two sections:
+Group findings into two gap sections — **Requirements gaps** and **Technical gaps** — plus a **Notes for SDD** section for non-question observations.
 
-**Core gaps / clarifications** — questions the spec author *must* answer before
-`/speckit.specify` can produce a sound spec. Each gap must:
+Each gap (in either group) must:
 
 - be answerable with a short written response (not "go figure it out")
 - cite concrete evidence from the issue or codebase where relevant
@@ -84,26 +83,30 @@ Group findings into two sections:
   affirmative answer) or redirect it (record their chosen alternative). A
   gap without a recommendation forces the author to originate the answer
   from scratch, which is exactly the work this command is meant to front-load.
-- cover at least these categories when applicable:
-  - **Scope & constraints** — contradictions between stated scope and available
-    test data / reality (e.g. "issue says X-only, but test data is mostly Y")
-  - **Semantics** — matching rules, comparison scope, case/whitespace handling,
-    tolerance for errors
-  - **Thresholds & numeric criteria** — confirm exact values, whether they
-    reuse existing constants, what happens at boundaries
-  - **Integration** — which existing endpoint/service/flow is extended vs.
-    new; who calls whom; which org(s) are involved
-  - **Data** — seeding strategy, source of truth, storage choice (match
-    existing patterns unless there is a reason not to)
-  - **Security boundary** — how access is enforced between services; auth
-    mechanism (current codebase may have none)
-  - **Failure modes** — unreachable dependencies, rate limits, retry policy,
-    fail-open vs fail-closed
-  - **Operational** — ports, migrations, docker compose entries, deploy scripts
 
-**Notes for SDD** — things the spec author should *know* but don't need to
-answer. These are observations that will shape the spec without being open
-questions:
+**Number gaps contiguously across both groups** (1, 2, 3, … not 1a, 1b). This keeps `/speckit.confirmissue` parsing simple and lets the author refer to questions by a single number in chat.
+
+**Requirements gaps** — probe these before any technical question. Cover at least these categories when applicable:
+
+- **User & persona** — who uses this, in what context. The issue may name a feature without naming the person.
+- **Job-to-be-done** — the user-visible outcome that means "done"; contradictions between the stated outcome and the proposed mechanism.
+- **Scenarios** — the 1–3 user-action / system-response flows the feature must support; missing edge scenarios (empty state, error states from the user's POV).
+- **Scope & constraints** — contradictions between stated scope and available test data / reality (e.g. "issue says X-only, but test data is mostly Y"); items in Acceptance Criteria that are project-housekeeping rather than user-observable.
+- **Semantics of user-visible behaviour** — matching rules, comparison scope, case/whitespace handling, what the user sees at boundaries.
+- **Acceptance criteria from outside** — whether existing ACs are observable from outside the implementation by a user or external test; flag project-housekeeping items (project exists, sln updated, test scaffolding) — they belong in `/speckit.tasks`.
+- **User-visible failure modes** — what the user sees when a dependency is unreachable, slow, or rejects them; fail-open vs fail-closed *from the user's viewpoint*.
+
+**Technical gaps** — surface gaps suggested by Step 2 (codebase grounding) plus any tech shape the issue itself already commits to. Let the author set the depth: they may want extensive tech review or none. Items the author wants tracked but not answered now belong in **Notes for SDD**.
+
+- **Where it lives** — existing endpoint/service/flow extended vs. new; who calls whom; which org(s) are involved.
+- **Integration** — interface contracts with existing components, event/data flow, ordering.
+- **Data shape** — seeding strategy, source of truth, storage choice (match existing patterns unless there is a reason not to).
+- **Thresholds & numeric criteria** — confirm exact values, whether they reuse existing constants, what happens at boundaries.
+- **Security boundary** — how access is enforced between services; auth mechanism (current codebase may have none).
+- **Operational** — ports, migrations, docker compose entries, deploy scripts.
+- **Tech failure modes** — unreachable dependencies, rate limits, retry policy, fail-open vs fail-closed at the system level.
+
+**Notes for SDD** — things the spec author should *know* but doesn't need to answer here. Two flavours land in this section: passive observations that will shape the spec, and items the author chose to defer to `/speckit.specify` rather than resolve at issue level. Both are written as bullets, not questions:
 
 - Port allocation suggestions based on existing assignments
 - Reuse opportunities (existing classes/modules the new work can share)
@@ -131,7 +134,7 @@ Before taking this into SDD, the following points need answers. Please record re
 >
 > When all answers are concrete, run `/speckit.confirmissue #N` to fold them into the issue body as **Confirmed decisions**.
 
-### Core gaps / clarifications
+### Requirements gaps
 
 **1. <short title>**
 <concrete framing of the gap, including any evidence from issue/codebase>
@@ -143,6 +146,17 @@ Before taking this into SDD, the following points need answers. Please record re
 > _Answer:_
 
 **2. <short title>**
+...
+
+> _**Recommendation:**_ ... Reason: ...
+
+> _Answer:_
+
+### Technical gaps
+
+> Omit this section entirely if no technical gaps were identified — do not emit an empty heading. Gap numbering continues from the Requirements section (3, 4, …), not restarting at 1.
+
+**N. <short title>**
 ...
 
 > _**Recommendation:**_ ... Reason: ...
