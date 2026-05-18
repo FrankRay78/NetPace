@@ -1,19 +1,21 @@
 <!--
 Sync Impact Report:
-Version: 1.1.0 → 1.2.0
-Bump rationale: MINOR — Amendment Process gains a new procedural clause requiring
-amendments that touch principles with downstream references in CLAUDE.md or
-docs/conventions/ to note which downstream documents were reviewed. Materially
-expands governance guidance; no existing principle redefined.
+Version: 1.2.0 → 1.3.0
+Bump rationale: MINOR — adds Principle IX (Behavioural Specification) requiring
+ACs and tests to describe outcomes rather than mechanisms. Materially expands
+guidance and gives /speckit.analyze a new enforceable rule; no existing
+principle redefined.
 
 Modified Principles: N/A
-Added Sections: N/A (procedural clause added to existing Governance > Amendment Process)
+Added Sections: Principle IX — Behavioural Specification (NON-NEGOTIABLE)
 Removed Sections: N/A
-Templates Requiring Updates:
-  ✅ .specify/templates/plan-template.md — amendment-process clause does not affect plan structure
-  ✅ .specify/templates/spec-template.md — amendment-process clause does not affect spec structure
-  ✅ .specify/templates/tasks-template.md — amendment-process clause does not affect task structure
-  ⚠ No command files found in .specify/templates/commands/
+Downstream documents reviewed (per Amendment Process clause 4):
+  ✅ .claude/commands/speckit.draftissue.md — updated in lockstep (avoid/prefer table + independence test added to step 5)
+  ✅ .claude/commands/speckit.testplan.md — updated in lockstep (mechanism-vs-outcome section + table added before Format)
+  ✅ CLAUDE.md — reviewed; intentionally not duplicated (locality-over-DRY; existing "Don't test" block already covers ad-hoc test writing scope)
+  ✅ .specify/templates/plan-template.md — Principle IX does not affect plan structure
+  ✅ .specify/templates/spec-template.md — Principle IX consumed at AC drafting time via /speckit.draftissue, not in spec template
+  ✅ .specify/templates/tasks-template.md — housekeeping-belongs-in-tasks clarification already implicit
 Follow-up TODOs: None
 -->
 
@@ -126,6 +128,23 @@ they are the traceability key linking acceptance criteria → test scenarios →
 
 **Rationale**: Consistent labels enable `/speckit.testchecklist` to verify end-to-end coverage automatically. Violations are flagged CRITICAL by `/speckit.analyze`.
 
+### IX. Behavioural Specification (NON-NEGOTIABLE)
+
+Acceptance criteria and tests MUST describe outcomes an outside observer can verify, not the mechanism that delivers them. Multiple reasonable implementations of the same feature MUST satisfy the same ACs and pass the same tests.
+
+**The independence test**: would this AC (or test) still hold under a different reasonable implementation of the same feature? If no, it is describing the mechanism, not the outcome.
+
+**Critical Rules:**
+
+- ACs MUST be phrased as user-observable outcomes. Mechanism details MUST NOT appear in ACs, including: CSS classes, DOM IDs or element types, animation specifics, font names/weights/colours, and pixel measurements; HTTP methods, endpoint paths, and status codes; response/payload schemas (JSON keys, field names); database tables, collections, columns, or indexes; algorithm or protocol choices (hash functions, signature schemes, encryption modes); framework or library picks; storage technology; specific URLs or ports; timing values (Ns / Nms) and polling cadences; exact error message strings; and log line formats or log levels.
+- Tests MUST verify the AC as written, not the chosen implementation. A test that would fail under a different reasonable implementation of the same AC is testing mechanism, not outcome.
+- Project housekeeping (project exists, sln updated, scaffolding created) belongs in `tasks.md`, not in ACs.
+- **Regression exception**: an AC or test that pins a specific mechanism is permitted only when it exists to prevent a named, previously-fixed bug. Reference the bug in the AC text, scenario name, or a one-line comment in the test so future readers understand why the coupling exists.
+
+**Rationale**: Mechanism-coupled ACs invite brittle, implementation-mirroring tests that lock the codebase to its current shape and make refactors expensive. Outcome-level ACs preserve the implementer's freedom to choose the simplest mechanism, keep the test suite meaningful through refactors, and give `/speckit.analyze` an enforceable rule rather than style guidance.
+
+**Downstream references**: detailed avoid/prefer guidance lives in `.claude/commands/speckit.draftissue.md` (AC drafting) and `.claude/commands/speckit.testplan.md` (test scenario authoring). Update those in lockstep with any change to this principle.
+
 ## Development Workflow
 
 ### Git Workflow
@@ -213,4 +232,4 @@ This constitution supersedes all other development practices and guides. All dev
 - Complexity MUST be justified against simplicity principles
 - For runtime development guidance, refer to `CLAUDE.md`
 
-**Version**: 1.2.0 | **Ratified**: 2026-04-10 | **Last Amended**: 2026-05-12
+**Version**: 1.3.0 | **Ratified**: 2026-04-10 | **Last Amended**: 2026-05-16

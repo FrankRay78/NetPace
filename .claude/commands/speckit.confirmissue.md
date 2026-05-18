@@ -121,10 +121,24 @@ The new section is structured as:
 
 <!-- speckit:confirmed-decisions -->
 
+### Requirements    <!-- omit this sub-heading entirely if no requirements decisions -->
+
 - **<title>:** <decision>.
 - **<title>:** <decision>.
-- ...
+
+### Technical    <!-- omit this sub-heading entirely if no technical decisions -->
+
+- **<title>:** <decision>.
+- **<title>:** <decision>.
 ```
+
+Routing rules:
+
+- Bullets corresponding to gaps under `### Requirements gaps` in the review comment go under `### Requirements` here.
+- Bullets corresponding to gaps under `### Technical gaps` in the review comment go under `### Technical` here.
+- If one group has no decisions, **omit its sub-heading entirely** — do not emit an empty `### Technical` section.
+- Strip the gap numbers from the review comment (1, 2, 3, …) when emitting confirmed decisions — bullets here are unordered.
+- **Backwards compatibility:** if the review comment has no `### Requirements gaps` / `### Technical gaps` sub-headings (i.e. it was authored before this convention), emit all decisions as a flat bullet list with no sub-headings (the pre-split format).
 
 Preserve everything above the section byte-for-byte. Do not "tidy" the original proposal.
 

@@ -33,8 +33,19 @@
 
 **Acceptance Scenarios**:
 
-1. **Given** [initial state], **When** [action], **Then** [expected outcome]
-2. **Given** [initial state], **When** [action], **Then** [expected outcome]
+<!--
+  CONVENTION (Constitution principle VIII — AC-to-test traceability):
+  Every scenario MUST carry a `**Scenario: [Descriptive name]**` label.
+  The label MUST match the `#### Scenario: [Descriptive name]` header in test-plan.md
+  exactly — this is the traceability key linking AC → test scenario → test code.
+  `/speckit-analyze` will flag mismatches as CRITICAL.
+-->
+
+**Scenario: [Descriptive name]**
+Given [initial state], When [action], Then [expected outcome]
+
+**Scenario: [Another descriptive name]**
+Given [initial state], When [action], Then [expected outcome]
 
 ---
 
@@ -48,7 +59,8 @@
 
 **Acceptance Scenarios**:
 
-1. **Given** [initial state], **When** [action], **Then** [expected outcome]
+**Scenario: [Descriptive name]**
+Given [initial state], When [action], Then [expected outcome]
 
 ---
 
@@ -62,7 +74,8 @@
 
 **Acceptance Scenarios**:
 
-1. **Given** [initial state], **When** [action], **Then** [expected outcome]
+**Scenario: [Descriptive name]**
+Given [initial state], When [action], Then [expected outcome]
 
 ---
 

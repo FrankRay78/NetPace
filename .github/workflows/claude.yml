@@ -1,45 +1,10 @@
 name: Claude Code
 
 on:
-  pull_request:
-    types: [opened]
   issue_comment:
     types: [created]
 
 jobs:
-  auto-review:
-    if: |
-      github.event_name == 'pull_request' &&
-      github.event.pull_request.user.login == 'FrankRay78'
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      pull-requests: write
-      issues: write
-      id-token: write
-      actions: read
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 1
-
-      - name: Run Claude Code
-        id: claude
-        uses: anthropics/claude-code-action@v1
-        with:
-          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          additional_permissions: |
-            actions: read
-          prompt: |
-            Review this pull request. Analyse the code changes and provide feedback covering:
-            - Bugs or correctness issues
-            - Security concerns (including any flagged by static analysis)
-            - Adherence to the project conventions in CLAUDE.md and the C# style guide
-            - Test coverage — do the tests adequately cover the new behaviour?
-            - Any spec/test-plan mismatches
-            Post your review as a comment on the PR.
-
   respond:
     if: |
       github.event_name == 'issue_comment' &&
@@ -56,7 +21,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 1
+          fetch-depth: 0
 
       - name: Run Claude Code
         id: claude

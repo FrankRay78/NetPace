@@ -412,3 +412,5 @@ FodyWeavers.xsd
 
 # Speckit / Claude scratch and staging files (transient drafts, not source)
 .claude/scratch/
+
+*.lscache

@@ -41,15 +41,9 @@ Run this command at the end of a working session, after completing a feature, or
    - Renamed or moved files (R status) — especially CLAUDE.md, docs, or config files
    - Modifications to `CLAUDE.md` or `.specify/memory/constitution.md`
 
-   When `has_branch_context` is false (running on the default branch, or feature branch with no commits yet), skip this step — only Confidence levels reachable in step 5 are `Medium (chat only)`.
+   When `has_branch_context` is false (running on the default branch, or feature branch with no commits yet), skip this step — only Confidence levels reachable in step 4 are `Medium (chat only)`.
 
-4. **Ask discovery questions**: Before synthesising candidates, ask the user:
-
-   > "Before I write up candidates — was there anything surprising, a wrong assumption I made, or something that took longer than expected that didn't show up clearly in our conversation?"
-
-   Wait for a reply. Incorporate any freeform input as additional candidates.
-
-5. **Synthesise candidates**: Produce at most 5 candidates. Fewer is fine — only include signals that are non-obvious, generalisable, and likely to recur. Skip signals that are clearly one-off, feature-specific, or already documented.
+4. **Synthesise candidates**: Produce at most 5 candidates. Fewer is fine — only include signals that are non-obvious, generalisable, and likely to recur. Skip signals that are clearly one-off, feature-specific, or already documented.
 
    For each candidate write:
 
@@ -68,15 +62,15 @@ Run this command at the end of a working session, after completing a feature, or
    - Structural decision → `.claude/memory/project_*.md`, or note a suggested CLAUDE.md edit
    - Confirmed approach → `.claude/memory/feedback_*.md`
 
-6. **Confirm with the user**: After listing the candidates, ask:
+5. **Confirm with the user**: After listing the candidates, ask:
 
    > "Which of these are worth keeping? Reply with the numbers (e.g. `1 3`), or `none`."
 
    Wait for the reply before writing anything.
 
-7. **Check for duplicates**: For each approved candidate, grep `.claude/memory/` for related terms. If a closely related memory already exists, note whether this should *update* the existing file rather than create a new one.
+6. **Check for duplicates**: For each approved candidate, grep `.claude/memory/` for related terms. If a closely related memory already exists, note whether this should *update* the existing file rather than create a new one.
 
-8. **Write approved learnings**: For each approved candidate, write (or update) a memory file in `.claude/memory/` using this format:
+7. **Write approved learnings**: For each approved candidate, write (or update) a memory file in `.claude/memory/` using this format:
 
    ```markdown
    ---
@@ -85,7 +79,7 @@ Run this command at the end of a working session, after completing a feature, or
    type: feedback | project
    ---
 
-   [Draft from step 5]
+   [Draft from step 4]
 
    **Why:** [inferred from the evidence — the conversation moment or constraint that caused it]
    **How to apply:** [when this should influence future behaviour]
@@ -95,4 +89,4 @@ Run this command at the end of a working session, after completing a feature, or
 
    If the candidate's target was a CLAUDE.md edit rather than a memory file, describe the suggested edit and ask the user whether to apply it.
 
-9. **Output result**: List the files written or updated (or edits proposed). If nothing was approved, output: "No learnings captured."
+8. **Output result**: List the files written or updated (or edits proposed). If nothing was approved, output: "No learnings captured."
