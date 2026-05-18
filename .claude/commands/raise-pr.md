@@ -2,6 +2,8 @@
 description: Raise a PR for the current feature branch — cleans up the spec folder, composes a PR body sized to the change, and requests an @claude review.
 ---
 
+Read `CLAUDE.md` for project context before proceeding.
+
 ## Steps
 
 1. **Get branch name**: Run `git rev-parse --abbrev-ref HEAD`. If the result is `main`, stop immediately and output: "Run /raise-pr from a feature branch, not main."
