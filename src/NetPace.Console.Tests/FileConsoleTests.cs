@@ -39,4 +39,14 @@ public sealed class FileConsoleTests : IDisposable
         var fileContent = File.ReadAllText(_testFilePath);
         Assert.Equal("Error: Something went wrong", fileContent);
     }
+
+    [Fact]
+    public void WriteAnsi_DoesNotThrow_ForFileConsole()
+    {
+        // Given
+        using var fileConsole = new FileConsole(_testFilePath, FileMode.Overwrite);
+
+        // When / Then
+        fileConsole.WriteAnsi(_ => { });
+    }
 }
