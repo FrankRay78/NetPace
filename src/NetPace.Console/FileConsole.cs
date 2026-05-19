@@ -11,6 +11,8 @@ public sealed class FileConsole : IAnsiConsole, IDisposable
 {
     private readonly StreamWriter _fileWriter;
     private readonly IAnsiConsole _templateConsole;
+    private readonly object _writeLock = new();
+    private bool _disposed;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="FileConsole"/> class.
@@ -41,8 +43,13 @@ public sealed class FileConsole : IAnsiConsole, IDisposable
     /// </summary>
     public void Dispose()
     {
-        _fileWriter?.Flush();
-        _fileWriter?.Dispose();
+        lock (_writeLock)
+        {
+            if (_disposed) return;
+            _disposed = true;
+            _fileWriter?.Flush();
+            _fileWriter?.Dispose();
+        }
     }
 
     // IAnsiConsole implementation - delegate to template console for properties.
@@ -57,7 +64,7 @@ public sealed class FileConsole : IAnsiConsole, IDisposable
     /// </summary>
     public void Write(IRenderable renderable)
     {
-        // Capture the output as plain text using template console for rendering.
+        // Render outside the lock — GetSegments has no side-effects on the writer.
         var builder = new StringBuilder();
         var segments = renderable.GetSegments(_templateConsole);
         foreach (var segment in segments)
@@ -66,13 +73,26 @@ public sealed class FileConsole : IAnsiConsole, IDisposable
         }
 
         var text = builder.ToString();
-        _fileWriter.Write(text);
+
+        // Guard against Spectre.Console's background ProgressRefreshThread firing after disposal.
+        lock (_writeLock)
+        {
+            if (_disposed) return;
+            _fileWriter.Write(text);
+        }
     }
 
     /// <summary>
     /// Clear operations are ignored for file output.
     /// </summary>
     public void Clear(bool home)
+    {
+    }
+
+    /// <summary>
+    /// Raw ANSI escape writes are ignored for file output (file output is plain text only).
+    /// </summary>
+    public void WriteAnsi(Action<AnsiWriter> action)
     {
     }
 

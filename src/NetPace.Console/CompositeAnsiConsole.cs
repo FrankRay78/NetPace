@@ -63,4 +63,15 @@ public sealed class CompositeAnsiConsole : IAnsiConsole, IDisposable
             console.Clear(home);
         }
     }
+
+    /// <summary>
+    /// Writes raw ANSI to all inner consoles.
+    /// </summary>
+    public void WriteAnsi(Action<AnsiWriter> action)
+    {
+        foreach (var console in _consoles)
+        {
+            console.WriteAnsi(action);
+        }
+    }
 }

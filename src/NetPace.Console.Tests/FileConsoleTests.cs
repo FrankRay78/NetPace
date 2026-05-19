@@ -39,4 +39,25 @@ public sealed class FileConsoleTests : IDisposable
         var fileContent = File.ReadAllText(_testFilePath);
         Assert.Equal("Error: Something went wrong", fileContent);
     }
+
+    [Fact]
+    public void WriteAnsi_DoesNotThrow_ForFileConsole()
+    {
+        // Given
+        using var fileConsole = new FileConsole(_testFilePath, FileMode.Overwrite);
+
+        // When / Then
+        fileConsole.WriteAnsi(_ => { });
+    }
+
+    [Fact]
+    public void Write_AfterDispose_DoesNotThrow()
+    {
+        // Given — simulates Spectre.Console's ProgressRefreshThread firing after disposal
+        var fileConsole = new FileConsole(_testFilePath, FileMode.Overwrite);
+        fileConsole.Dispose();
+
+        // When / Then
+        fileConsole.Write(new Markup("late write"));
+    }
 }
