@@ -77,6 +77,13 @@ public sealed class FileConsole : IAnsiConsole, IDisposable
     }
 
     /// <summary>
+    /// Raw ANSI escape writes are ignored for file output (file output is plain text only).
+    /// </summary>
+    public void WriteAnsi(Action<AnsiWriter> action)
+    {
+    }
+
+    /// <summary>
     /// Custom IAnsiConsoleOutput implementation that writes to a file.
     /// Configures Spectre.Console to treat the output as a non-terminal with fixed dimensions.
     /// </summary>
