@@ -77,12 +77,12 @@ public sealed class DefaultConsoleWriter : IConsoleWriter
                     if (!settings.NoDownload)
                     {
                         var downloadProgressReporter = new SyncProgress<SpeedTestProgress>(p => downloadProgress!.Value = p.PercentageComplete);
-                        downloadResult = await speedTestClient.GetDownloadSpeedAsync(fastest.Server, settings.DownloadSizeMb, downloadProgressReporter, cancellationToken);
+                        downloadResult = await speedTestClient.GetDownloadSpeedAsync(fastest.Server, downloadProgressReporter, cancellationToken);
                     }
                     if (!settings.NoUpload)
                     {
                         var uploadProgressReporter = new SyncProgress<SpeedTestProgress>(p => uploadProgress!.Value = p.PercentageComplete);
-                        uploadResult = await speedTestClient.GetUploadSpeedAsync(fastest.Server, settings.UploadSizeMb, uploadProgressReporter, cancellationToken);
+                        uploadResult = await speedTestClient.GetUploadSpeedAsync(fastest.Server, uploadProgressReporter, cancellationToken);
                     }
                 });
         }

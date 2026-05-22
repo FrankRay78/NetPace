@@ -39,7 +39,7 @@ public class VariableSpeedTester : ISpeedTestService
                 return Task.FromResult(result);
             },
 
-            GetDownloadSpeedAsyncFunc = (server, _, _, _) =>
+            GetDownloadSpeedAsyncFunc = (server, _, _) =>
             {
                 // Call 1: 31,250 bytes in 1 second = 250,000 bits/second = 0.25 Mbps
                 // Call 2: 125,000 bytes in 1 second = 1,000,000 bits/second = 1.0 Mbps
@@ -56,7 +56,7 @@ public class VariableSpeedTester : ISpeedTestService
                 return Task.FromResult(result);
             },
 
-            GetUploadSpeedAsyncFunc = (server, _, _, _) =>
+            GetUploadSpeedAsyncFunc = (server, _, _) =>
             {
                 // Call 1: 62,500 bytes in 1 second = 500,000 bits/second = 0.5 Mbps
                 // Call 2: 375,000 bytes in 1 second = 3,000,000 bits/second = 3.0 Mbps
@@ -124,21 +124,9 @@ public class VariableSpeedTester : ISpeedTestService
     }
 
     /// <inheritdoc/>
-    public Task<SpeedTestResult> GetDownloadSpeedAsync(IServer server, int downloadSizeMb, CancellationToken cancellationToken = default)
-    {
-        return inner.GetDownloadSpeedAsync(server, downloadSizeMb, cancellationToken);
-    }
-
-    /// <inheritdoc/>
     public Task<SpeedTestResult> GetDownloadSpeedAsync(IServer server, IProgress<SpeedTestProgress> progress, CancellationToken cancellationToken = default)
     {
         return inner.GetDownloadSpeedAsync(server, progress, cancellationToken);
-    }
-
-    /// <inheritdoc/>
-    public Task<SpeedTestResult> GetDownloadSpeedAsync(IServer server, int downloadSizeMb, IProgress<SpeedTestProgress> progress, CancellationToken cancellationToken = default)
-    {
-        return inner.GetDownloadSpeedAsync(server, downloadSizeMb, progress, cancellationToken);
     }
 
     /// <inheritdoc/>
@@ -148,21 +136,8 @@ public class VariableSpeedTester : ISpeedTestService
     }
 
     /// <inheritdoc/>
-    public Task<SpeedTestResult> GetUploadSpeedAsync(IServer server, int uploadSizeMb, CancellationToken cancellationToken = default)
-    {
-        return inner.GetUploadSpeedAsync(server, uploadSizeMb, cancellationToken);
-    }
-
-    /// <inheritdoc/>
     public Task<SpeedTestResult> GetUploadSpeedAsync(IServer server, IProgress<SpeedTestProgress> progress, CancellationToken cancellationToken = default)
     {
         return inner.GetUploadSpeedAsync(server, progress, cancellationToken);
     }
-
-    /// <inheritdoc/>
-    public Task<SpeedTestResult> GetUploadSpeedAsync(IServer server, int uploadSizeMb, IProgress<SpeedTestProgress> progress, CancellationToken cancellationToken = default)
-    {
-        return inner.GetUploadSpeedAsync(server, uploadSizeMb, progress, cancellationToken);
-    }
 }
-

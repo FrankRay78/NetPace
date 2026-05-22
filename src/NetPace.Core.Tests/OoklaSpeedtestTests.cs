@@ -829,7 +829,8 @@ public sealed partial class OoklaSpeedtestTests
             DownloadTest = new()
             {
                 DownloadSizes = new[] { 100, 200, 500, 1000, 1500, 2000, 3000, 3500, 4000 },
-                DownloadParallelTasks = 1
+                DownloadParallelTasks = 1,
+                DownloadSizeMb = downloadSizeMb
             }
         };
 
@@ -837,7 +838,7 @@ public sealed partial class OoklaSpeedtestTests
         var server = new Server { Url = "http://example.com/", Sponsor = "Test", Location = "Test" };
 
         // When
-        var result = await speedtest.GetDownloadSpeedAsync(server, downloadSizeMb);
+        var result = await speedtest.GetDownloadSpeedAsync(server);
 
         // Then
         result.ShouldNotBeNull();
@@ -872,7 +873,8 @@ public sealed partial class OoklaSpeedtestTests
             {
                 DownloadSizes = new[] { 100 },
                 DownloadSizeIterations = 10,
-                DownloadParallelTasks = 1
+                DownloadParallelTasks = 1,
+                DownloadSizeMb = downloadSizeMb
             }
         };
 
@@ -881,7 +883,7 @@ public sealed partial class OoklaSpeedtestTests
         var progressReports = new List<int>();
 
         // When
-        var result = await speedtest.GetDownloadSpeedAsync(server, downloadSizeMb, new Progress<SpeedTestProgress>(progress => progressReports.Add(progress.PercentageComplete)));
+        var result = await speedtest.GetDownloadSpeedAsync(server, new Progress<SpeedTestProgress>(progress => progressReports.Add(progress.PercentageComplete)));
 
         // Then
         result.ShouldNotBeNull();
@@ -1241,7 +1243,8 @@ public sealed partial class OoklaSpeedtestTests
         {
             UploadTest = new()
             {
-                UploadParallelTasks = 1
+                UploadParallelTasks = 1,
+                UploadSizeMb = uploadSizeMb
             }
         };
 
@@ -1249,7 +1252,7 @@ public sealed partial class OoklaSpeedtestTests
         var server = new Server { Url = "http://example.com/", Sponsor = "Test", Location = "Test" };
 
         // When
-        var result = await speedtest.GetUploadSpeedAsync(server, uploadSizeMb);
+        var result = await speedtest.GetUploadSpeedAsync(server);
 
         // Then
         result.ShouldNotBeNull();
@@ -1277,7 +1280,8 @@ public sealed partial class OoklaSpeedtestTests
                 UploadIncrements = 1,
                 UploadSizeIncrementKb = 512,
                 UploadSizeIterations = 10,
-                UploadParallelTasks = 1
+                UploadParallelTasks = 1,
+                UploadSizeMb = uploadSizeMb
             }
         };
 
@@ -1286,7 +1290,7 @@ public sealed partial class OoklaSpeedtestTests
         var progressReports = new List<int>();
 
         // When
-        var result = await speedtest.GetUploadSpeedAsync(server, uploadSizeMb, new Progress<SpeedTestProgress>(progress => progressReports.Add(progress.PercentageComplete)));
+        var result = await speedtest.GetUploadSpeedAsync(server, new Progress<SpeedTestProgress>(progress => progressReports.Add(progress.PercentageComplete)));
 
         // Then
         result.ShouldNotBeNull();

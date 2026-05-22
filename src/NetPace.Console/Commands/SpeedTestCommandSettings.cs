@@ -81,6 +81,11 @@ public sealed class SpeedTestCommandSettings
     public required string DateTimeFormat { get; init; }
 
     /// <summary>
+    /// The traffic-load profile that bundles per-request shape and total-byte cap defaults.
+    /// </summary>
+    public required Profile Profile { get; init; }
+
+    /// <summary>
     /// Stop the download test after this many megabytes (IEC MiB).
     /// </summary>
     public required int DownloadSizeMb { get; init; }

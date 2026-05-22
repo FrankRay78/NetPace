@@ -68,7 +68,13 @@ For most users, running a simple speed test is as easy as:
 NetPace
 ```
 
-For common scenarios and advanced usage (such as scripting, restricting payload size, or customising output), see the [User Guide](https://github.com/FrankRay78/NetPace/blob/main/USER_GUIDE.md).
+On a metered or IoT connection? Use the Tiny profile (≤ 1 MiB total per run):
+
+```bash
+NetPace --profile tiny
+```
+
+For common scenarios and advanced usage (such as scripting, restricting payload size, choosing a traffic profile, or customising output), see the [User Guide](https://github.com/FrankRay78/NetPace/blob/main/USER_GUIDE.md).
 
 `NetPace --help` will display detailed usage instructions.
 
@@ -109,6 +115,7 @@ OPTIONS:
                                                      'NetPace servers -l' will return your nearest servers.
     -t, --timestamp                                  Include a timestamp in the output.
         --datetimeformat      yyyy-MM-dd HH:mm:ss    The datetime format string, as defined by Microsoft.Net.
+        --profile             Medium                 Profile bundle of payload settings (Tiny | Small | Medium | Large | Mega).
         --downloadsize                               Stop the download test after this many megabytes (IEC MiB).
         --uploadsize                                 Stop the upload test after this many megabytes (IEC MiB).
     -u, --unit                BitsPerSecond          The speed unit. <BitsPerSecond, BytesPerSecond>

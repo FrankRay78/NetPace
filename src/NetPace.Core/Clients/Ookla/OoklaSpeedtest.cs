@@ -195,37 +195,17 @@ public sealed class OoklaSpeedtest : ISpeedTestService
     /// <inheritdoc/>
     /// <remarks>
     /// In the Ookla implementation, downloads are processed in parallel batches
-    /// (configured via <see cref="OoklaSpeedtestSettings.DownloadTest"/>). The <paramref name="downloadSizeMb"/>
-    /// parameter triggers cancellation of the internal <see cref="CancellationTokenSource"/> once the threshold
-    /// is reached, but all currently executing parallel download tasks will complete before termination.
-    /// The actual bytes processed may significantly exceed the specified limit depending on the number of
-    /// concurrent downloads and their individual sizes.
+    /// (configured via <see cref="OoklaSpeedtestSettings.DownloadTest"/>). The total-byte
+    /// budget cap is read from <see cref="Settings.DownloadTestSettings.DownloadSizeMb"/>;
+    /// once the running total crosses that threshold the internal
+    /// <see cref="CancellationTokenSource"/> is cancelled, but in-flight parallel downloads
+    /// complete first, so the actual bytes processed may exceed the cap depending on
+    /// parallelism and per-request size.
     /// </remarks>
-    public async Task<SpeedTestResult> GetDownloadSpeedAsync(IServer server, int downloadSizeMb, CancellationToken cancellationToken = default)
-    {
-        return await GetDownloadSpeedAsync(server, downloadSizeMb, new NullProgress<SpeedTestProgress>(), cancellationToken);
-    }
-
-    /// <inheritdoc/>
     public async Task<SpeedTestResult> GetDownloadSpeedAsync(IServer server, IProgress<SpeedTestProgress> progress, CancellationToken cancellationToken = default)
-    {
-        return await GetDownloadSpeedAsync(server, int.MaxValue, progress, cancellationToken);
-    }
-
-    /// <inheritdoc/>
-    /// <remarks>
-    /// In the Ookla implementation, downloads are processed in parallel batches
-    /// (configured via <see cref="OoklaSpeedtestSettings.DownloadTest"/>). The <paramref name="downloadSizeMb"/>
-    /// parameter triggers cancellation of the internal <see cref="CancellationTokenSource"/> once the threshold
-    /// is reached, but all currently executing parallel download tasks will complete before termination.
-    /// The actual bytes processed may significantly exceed the specified limit depending on the number of
-    /// concurrent downloads and their individual sizes.
-    /// </remarks>
-    public async Task<SpeedTestResult> GetDownloadSpeedAsync(IServer server, int downloadSizeMb, IProgress<SpeedTestProgress> progress, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(server);
         ArgumentException.ThrowIfNullOrWhiteSpace(server.Url);
-        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(downloadSizeMb);
 
         var downloadUrls = GenerateDownloadUrls(server.Url, settings.DownloadTest.DownloadSizes, settings.DownloadTest.DownloadSizeIterations);
 
@@ -256,7 +236,8 @@ public sealed class OoklaSpeedtest : ISpeedTestService
             }
         };
 
-        var downloadResult = await GenericTestSpeedAsync(downloadUrls, DownloadAndMeasureAsync, progress, settings.DownloadTest.DownloadParallelTasks, downloadSizeMb * 1024L * 1024L, cancellationToken);
+        var maxBytes = (long)settings.DownloadTest.DownloadSizeMb * 1024L * 1024L;
+        var downloadResult = await GenericTestSpeedAsync(downloadUrls, DownloadAndMeasureAsync, progress, settings.DownloadTest.DownloadParallelTasks, maxBytes, cancellationToken);
 
         return downloadResult;
     }
@@ -264,43 +245,23 @@ public sealed class OoklaSpeedtest : ISpeedTestService
     /// <inheritdoc/>
     public async Task<SpeedTestResult> GetUploadSpeedAsync(IServer server, CancellationToken cancellationToken = default)
     {
-        return await GetUploadSpeedAsync(server, int.MaxValue, new NullProgress<SpeedTestProgress>(), cancellationToken);
+        return await GetUploadSpeedAsync(server, new NullProgress<SpeedTestProgress>(), cancellationToken);
     }
 
     /// <inheritdoc/>
     /// <remarks>
     /// In the default Ookla implementation, uploads are processed in parallel batches
-    /// (configured via <see cref="OoklaSpeedtestSettings.UploadTest"/>). The <paramref name="uploadSizeMb"/>
-    /// parameter triggers cancellation of the internal <see cref="CancellationTokenSource"/> once the threshold
-    /// is reached, but all currently executing parallel upload tasks will complete before termination.
-    /// The actual bytes processed may significantly exceed the specified limit depending on the number of
-    /// concurrent uploads and their individual sizes.
+    /// (configured via <see cref="OoklaSpeedtestSettings.UploadTest"/>). The total-byte
+    /// budget cap is read from <see cref="Settings.UploadTestSettings.UploadSizeMb"/>;
+    /// once the running total crosses that threshold the internal
+    /// <see cref="CancellationTokenSource"/> is cancelled, but in-flight parallel uploads
+    /// complete first, so the actual bytes processed may exceed the cap depending on
+    /// parallelism and per-request size.
     /// </remarks>
-    public async Task<SpeedTestResult> GetUploadSpeedAsync(IServer server, int uploadSizeMb, CancellationToken cancellationToken = default)
-    {
-        return await GetUploadSpeedAsync(server, uploadSizeMb, new NullProgress<SpeedTestProgress>(), cancellationToken);
-    }
-
-    /// <inheritdoc/>
     public async Task<SpeedTestResult> GetUploadSpeedAsync(IServer server, IProgress<SpeedTestProgress> progress, CancellationToken cancellationToken = default)
-    {
-        return await GetUploadSpeedAsync(server, int.MaxValue, progress, cancellationToken);
-    }
-
-    /// <inheritdoc/>
-    /// <remarks>
-    /// In the default Ookla implementation, uploads are processed in parallel batches
-    /// (configured via <see cref="OoklaSpeedtestSettings.UploadTest"/>). The <paramref name="uploadSizeMb"/>
-    /// parameter triggers cancellation of the internal <see cref="CancellationTokenSource"/> once the threshold
-    /// is reached, but all currently executing parallel upload tasks will complete before termination.
-    /// The actual bytes processed may significantly exceed the specified limit depending on the number of
-    /// concurrent uploads and their individual sizes.
-    /// </remarks>
-    public async Task<SpeedTestResult> GetUploadSpeedAsync(IServer server, int uploadSizeMb, IProgress<SpeedTestProgress> progress, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(server);
         ArgumentException.ThrowIfNullOrWhiteSpace(server.Url);
-        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(uploadSizeMb);
 
         // Generate upload sizes (in bytes) rather than allocating large buffers up-front.
         var testDataLengths = GenerateUploadDataLengths(settings.UploadTest.UploadIncrements, settings.UploadTest.UploadSizeIncrementKb, settings.UploadTest.UploadSizeIterations);
@@ -314,7 +275,8 @@ public sealed class OoklaSpeedtest : ISpeedTestService
             return length;
         };
 
-        var uploadResult = await GenericTestSpeedAsync(testDataLengths, UploadAndMeasureAsync, progress, settings.UploadTest.UploadParallelTasks, uploadSizeMb * 1024L * 1024L, cancellationToken);
+        var maxBytes = (long)settings.UploadTest.UploadSizeMb * 1024L * 1024L;
+        var uploadResult = await GenericTestSpeedAsync(testDataLengths, UploadAndMeasureAsync, progress, settings.UploadTest.UploadParallelTasks, maxBytes, cancellationToken);
 
         return uploadResult;
     }

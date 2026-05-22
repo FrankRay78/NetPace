@@ -10,8 +10,6 @@ public sealed partial class NetPaceConsoleTests
         return new CommandLineTestHost(serviceCollection);
     }
 
-    //#region Speed Test
-
     [Fact]
     public async Task Should_Perform_Speed_Test()
     {
@@ -532,10 +530,6 @@ public sealed partial class NetPaceConsoleTests
         await Verify(result.Output);
     }
 
-//#endregion
-
-    #region CommandApp
-
     [InlineData("-h")]
     [InlineData("--help")]
     [InlineData("-?")]
@@ -577,5 +571,4 @@ public sealed partial class NetPaceConsoleTests
         await Verify(result.Output).DisableRequireUniquePrefix();
     }
 
-    #endregion
 }

@@ -46,7 +46,7 @@ public sealed class CompositeAnsiConsoleTests
         public int WriteCallCount { get; private set; }
         public int WriteAnsiCallCount { get; private set; }
 
-        public Profile Profile => AnsiConsole.Console.Profile;
+        public Spectre.Console.Profile Profile => AnsiConsole.Console.Profile;
         public IAnsiConsoleCursor Cursor => AnsiConsole.Console.Cursor;
         public IAnsiConsoleInput Input => AnsiConsole.Console.Input;
         public IExclusivityMode ExclusivityMode => AnsiConsole.Console.ExclusivityMode;

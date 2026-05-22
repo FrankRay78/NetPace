@@ -1,5 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using NetPace.Console;
 using Spectre.Console;
 using Spectre.Console.Testing;
 
@@ -35,6 +36,10 @@ public sealed class CommandLineTestHost
 
         // Default IClientInfoProvider stub unless a test already registered one
         serviceCollection.TryAddSingleton<IClientInfoProvider, ClientInfoProviderStub>();
+
+        // Default OoklaSpeedtestSettingsAccessor (matches production DI). Tests that want to
+        // inspect the bound settings register their own instance before calling RunAsync.
+        serviceCollection.TryAddSingleton<OoklaSpeedtestSettingsAccessor>();
 
         await using var serviceProvider = serviceCollection.BuildServiceProvider();
         var exitCode = await Program.RunAsync(serviceProvider, args, cancellationToken);

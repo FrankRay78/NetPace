@@ -36,7 +36,7 @@ public sealed class CompositeAnsiConsole : IAnsiConsole, IDisposable
     }
 
     // Delegate properties to primary console
-    public Profile Profile => _primary.Profile;
+    public Spectre.Console.Profile Profile => _primary.Profile;
     public IAnsiConsoleCursor Cursor => _primary.Cursor;
     public IAnsiConsoleInput Input => _primary.Input;
     public IExclusivityMode ExclusivityMode => _primary.ExclusivityMode;
