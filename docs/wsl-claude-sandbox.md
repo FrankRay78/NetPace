@@ -167,7 +167,7 @@ Why: minimal stack for .NET development plus Claude Code.
 
 ```
 sudo apt update
-sudo apt install -y curl git build-essential ca-certificates
+sudo apt install -y curl git build-essential ca-certificates nodejs npm
 
 # .NET SDK (Ubuntu 24.04 ships .NET in its own repos — no Microsoft repo needed)
 sudo apt install -y dotnet-sdk-8.0
@@ -183,6 +183,8 @@ claude --version
 ```
 
 First run of `claude` will walk you through authentication via browser.
+
+Node.js and npm are installed alongside the rest because the optional Claude productivity tooling in step 7 needs them. If you don't plan to install that tooling, you can omit `nodejs npm` from the apt line.
 
 ---
 
@@ -271,7 +273,79 @@ The PAT expires on the date you chose. When that day comes, GitHub will email yo
 
 ---
 
-## Step 7: Connect VS Code
+## Step 7: Install Claude productivity tooling (optional but recommended)
+
+Why: three small tools that meaningfully reduce token usage and improve session continuity during long Claude sessions — exactly the workload this sandbox is designed for. Skip this step if you're using Claude lightly or want the cleanest possible install.
+
+### 7a. RTK — command output filter
+
+[RTK](https://github.com/rtk-ai/rtk) intercepts shell commands (`git status`, `cargo test`, `ls`, etc.) and returns compact output, cutting 60–90% of the tokens those commands would otherwise consume. RTK explicitly states WSL is the recommended environment — the auto-rewrite hook works here but not on native Windows.
+
+```
+curl -fsSL https://raw.githubusercontent.com/rtk-ai/rtk/refs/heads/master/install.sh | sh
+echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc
+source ~/.bashrc
+rtk --version
+
+# Wire RTK into Claude Code (writes a PreToolUse hook into ~/.claude/settings.json)
+rtk init -g
+```
+
+### 7b. read-once — file read deduplication
+
+[read-once](https://github.com/Bande-a-Bonnot/Boucle-framework/tree/main/tools/read-once) is a PreToolUse hook that stops Claude re-reading files it already has in context. Saves ~2000 tokens per prevented re-read.
+
+```
+curl -fsSL https://raw.githubusercontent.com/Bande-a-Bonnot/Boucle-framework/main/tools/read-once/install.sh | bash
+```
+
+The installer adds both hooks (`PreToolUse: Read` and `PostCompact`) to `~/.claude/settings.json` and downloads the scripts to `~/.claude/read-once/`. Verify with:
+
+```
+~/.claude/read-once/read-once verify
+```
+
+### 7c. context-mode — MCP server for context window optimization
+
+[context-mode](https://github.com/mksglu/context-mode) sandboxes tool output (Playwright snapshots, log files, large JSON responses) outside the context window and reports back only what's relevant. Up to 98% reduction on tool-heavy workflows.
+
+> **Gotcha:** the marketplace install command tries SSH by default, and SSH won't work in this sandbox (step 6 deliberately replaced SSH with an HTTPS PAT). Use the HTTPS URL instead.
+
+Start Claude:
+
+```
+claude
+```
+
+Inside Claude, run:
+
+```
+/plugin marketplace add https://github.com/mksglu/context-mode
+/plugin install context-mode@context-mode
+/reload-plugins
+```
+
+Then verify:
+
+```
+/context-mode:ctx-doctor
+```
+
+All checks should show `[x]`. If any fail, `ctx-doctor` will tell you what to fix.
+
+### 7d. Verify the combined config
+
+After all three tools are installed, your `~/.claude/settings.json` should contain hooks from both RTK and read-once. Check it parses cleanly:
+
+```
+cat ~/.claude/settings.json | jq .
+```
+
+If `jq` reports a syntax error, the installers have stepped on each other — open the file in an editor and merge the `hooks` sections by hand.
+
+---
+
+## Step 8: Connect VS Code
 
 Why: VS Code's WSL extension installs a server inside the sandbox and connects to it. Editor, terminal, debugger all run with the sandbox as backend.
 
@@ -285,7 +359,7 @@ The integrated terminal (`Ctrl+``) runs inside the sandbox. Confirm by checking 
 
 ---
 
-## Step 8: Take snapshots
+## Step 9: Take snapshots
 
 Why: rollback insurance. If Claude trashes the instance later, restore from a snapshot in one command.
 
@@ -299,8 +373,8 @@ wsl --export Ubuntu-Claude C:\WSL\backups\ubuntu-claude-final.tar
 Recommended snapshots to keep:
 
 - **Baseline** — after Step 4 (isolation done, no tooling yet). Useful for rebuilds with different tooling.
-- **Working** — after Step 5 (tooling installed). Useful if a later config change breaks things.
-- **Final** — after Step 7 (fully configured). Your day-to-day rollback point.
+- **Working** — after Step 5 (dev tooling installed). Useful if a later config change breaks things.
+- **Final** — after Step 8 (fully configured). Your day-to-day rollback point.
 
 Restore any snapshot with:
 
@@ -314,7 +388,7 @@ Note: snapshots include `~/.bashrc` with the PAT in it. Treat the tar files as s
 
 ---
 
-## Step 9: Run Claude
+## Step 10: Run Claude
 
 ```
 cd ~/projects/<repo>
