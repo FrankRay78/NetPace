@@ -3,6 +3,7 @@ using System.CommandLine;
 using Microsoft.Extensions.DependencyInjection;
 using NetPace.Console.Commands;
 using NetPace.Core;
+using NetPace.Core.Clients.Ookla;
 using Spectre.Console;
 
 namespace NetPace.Console;
@@ -124,6 +125,12 @@ public static class Program
             DefaultValueFactory = _ => "yyyy-MM-dd HH:mm:ss"
         };
 
+        var profileOption = new Option<Profile>("--profile")
+        {
+            Description = "Profile bundle of payload settings (Tiny | Small | Medium | Large | Mega).",
+            DefaultValueFactory = _ => Profile.Medium
+        };
+
         var downloadSizeOption = new Option<int>("--downloadsize")
         {
             Description = "Stop the download test after this many megabytes (IEC MiB).",
@@ -197,6 +204,7 @@ public static class Program
         command.Options.Add(serverOption);
         command.Options.Add(timestampOption);
         command.Options.Add(datetimeFormatOption);
+        command.Options.Add(profileOption);
         command.Options.Add(downloadSizeOption);
         command.Options.Add(uploadSizeOption);
         command.Options.Add(unitOption);
@@ -229,6 +237,7 @@ public static class Program
                     ServerUrl = parseResult.GetValue(serverOption) ?? string.Empty,
                     IncludeTimestamp = parseResult.GetValue(timestampOption),
                     DateTimeFormat = parseResult.GetValue(datetimeFormatOption)!,
+                    Profile = parseResult.GetValue(profileOption),
                     DownloadSizeMb = parseResult.GetValue(downloadSizeOption),
                     UploadSizeMb = parseResult.GetValue(uploadSizeOption),
                     SpeedUnit = parseResult.GetValue(unitOption),
@@ -242,6 +251,12 @@ public static class Program
 
                 // Validate settings
                 settings.Validate();
+
+                // Build the OoklaSpeedtestSettings from --profile + per-cap overrides.
+                // The settings accessor is the test seam: production resolves OoklaSpeedtest from it;
+                // tests inspect Settings post-run to verify CLI → settings binding.
+                var accessor = serviceProvider.GetRequiredService<OoklaSpeedtestSettingsAccessor>();
+                accessor.Settings = BuildOoklaSettings(settings);
 
                 // Get services from DI
                 var ansiConsole = serviceProvider.GetRequiredService<IAnsiConsole>();
@@ -267,6 +282,34 @@ public static class Program
         command.Subcommands.Add(listServersCommand);
 
         return command;
+    }
+
+    /// <summary>
+    /// Build the <see cref="OoklaSpeedtestSettings"/> from the parsed CLI settings.
+    /// Profile sets per-request shape and cap defaults; explicit --downloadsize / --uploadsize
+    /// override only the cap via with-expressions.
+    /// </summary>
+    internal static OoklaSpeedtestSettings BuildOoklaSettings(SpeedTestCommandSettings settings)
+    {
+        var ooklaSettings = new OoklaSpeedtestSettings(settings.Profile);
+
+        if (settings.DownloadSizeMb != int.MaxValue)
+        {
+            ooklaSettings = ooklaSettings with
+            {
+                DownloadTest = ooklaSettings.DownloadTest with { DownloadSizeMb = settings.DownloadSizeMb }
+            };
+        }
+
+        if (settings.UploadSizeMb != int.MaxValue)
+        {
+            ooklaSettings = ooklaSettings with
+            {
+                UploadTest = ooklaSettings.UploadTest with { UploadSizeMb = settings.UploadSizeMb }
+            };
+        }
+
+        return ooklaSettings;
     }
 
     /// <summary>
@@ -345,7 +388,8 @@ public static class Program
         }
         else
         {
-            services.AddSingleton<ISpeedTestService, OoklaSpeedtest>();
+            services.AddSingleton<OoklaSpeedtestSettingsAccessor>();
+            services.AddSingleton<ISpeedTestService>(sp => new OoklaSpeedtest(sp.GetRequiredService<OoklaSpeedtestSettingsAccessor>().Settings));
             services.AddSingleton<IClock, Clock>();
             services.AddSingleton<IClientInfoProvider, ClientInfoProvider>();
             services.AddSingleton<IWaiter, Waiter>();

@@ -33,6 +33,7 @@ OPTIONS:
                                                      'NetPace servers -l' will return your nearest servers.                                                                                             
     -t, --timestamp                                  Include a timestamp in the output.                                                                                                                 
         --datetimeformat      yyyy-MM-dd HH:mm:ss    The datetime format string, as defined by Microsoft.Net.                                                                                           
+        --profile             Medium                 Profile bundle of payload settings (Tiny | Small | Medium | Large | Mega).                                                                         
         --downloadsize                               Stop the download test after this many megabytes (IEC MiB).                                                                                        
         --uploadsize                                 Stop the upload test after this many megabytes (IEC MiB).                                                                                          
     -u, --unit                BitsPerSecond          The speed unit. <BitsPerSecond, BytesPerSecond>                                                                                                    

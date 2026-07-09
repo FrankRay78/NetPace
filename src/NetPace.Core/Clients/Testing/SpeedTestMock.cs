@@ -33,13 +33,13 @@ public sealed class SpeedTestMock : ISpeedTestService
     /// Gets or sets the delegate that provides behavior for all <c>GetDownloadSpeedAsync</c> overloads.
     /// If null, the methods will throw <see cref="NotImplementedException"/> when called.
     /// </summary>
-    public Func<IServer, int, IProgress<SpeedTestProgress>?, CancellationToken, Task<SpeedTestResult>>? GetDownloadSpeedAsyncFunc { get; set; }
+    public Func<IServer, IProgress<SpeedTestProgress>?, CancellationToken, Task<SpeedTestResult>>? GetDownloadSpeedAsyncFunc { get; set; }
 
     /// <summary>
     /// Gets or sets the delegate that provides behavior for all <c>GetUploadSpeedAsync</c> overloads.
     /// If null, the methods will throw <see cref="NotImplementedException"/> when called.
     /// </summary>
-    public Func<IServer, int, IProgress<SpeedTestProgress>?, CancellationToken, Task<SpeedTestResult>>? GetUploadSpeedAsyncFunc { get; set; }
+    public Func<IServer, IProgress<SpeedTestProgress>?, CancellationToken, Task<SpeedTestResult>>? GetUploadSpeedAsyncFunc { get; set; }
 
     /// <inheritdoc/>
     public Task<IServer[]> GetServersAsync(CancellationToken cancellationToken = default)
@@ -101,15 +101,7 @@ public sealed class SpeedTestMock : ISpeedTestService
     public Task<SpeedTestResult> GetDownloadSpeedAsync(IServer server, CancellationToken cancellationToken = default)
     {
         if (GetDownloadSpeedAsyncFunc != null)
-            return GetDownloadSpeedAsyncFunc(server, int.MaxValue, null, cancellationToken);
-        throw new NotImplementedException(nameof(GetDownloadSpeedAsync));
-    }
-
-    /// <inheritdoc/>
-    public Task<SpeedTestResult> GetDownloadSpeedAsync(IServer server, int downloadSizeMb, CancellationToken cancellationToken = default)
-    {
-        if (GetDownloadSpeedAsyncFunc != null)
-            return GetDownloadSpeedAsyncFunc(server, downloadSizeMb, null, cancellationToken);
+            return GetDownloadSpeedAsyncFunc(server, null, cancellationToken);
         throw new NotImplementedException(nameof(GetDownloadSpeedAsync));
     }
 
@@ -117,15 +109,7 @@ public sealed class SpeedTestMock : ISpeedTestService
     public Task<SpeedTestResult> GetDownloadSpeedAsync(IServer server, IProgress<SpeedTestProgress> progress, CancellationToken cancellationToken = default)
     {
         if (GetDownloadSpeedAsyncFunc != null)
-            return GetDownloadSpeedAsyncFunc(server, int.MaxValue, progress, cancellationToken);
-        throw new NotImplementedException(nameof(GetDownloadSpeedAsync));
-    }
-
-    /// <inheritdoc/>
-    public Task<SpeedTestResult> GetDownloadSpeedAsync(IServer server, int downloadSizeMb, IProgress<SpeedTestProgress> progress, CancellationToken cancellationToken = default)
-    {
-        if (GetDownloadSpeedAsyncFunc != null)
-            return GetDownloadSpeedAsyncFunc(server, downloadSizeMb, progress, cancellationToken);
+            return GetDownloadSpeedAsyncFunc(server, progress, cancellationToken);
         throw new NotImplementedException(nameof(GetDownloadSpeedAsync));
     }
 
@@ -133,15 +117,7 @@ public sealed class SpeedTestMock : ISpeedTestService
     public Task<SpeedTestResult> GetUploadSpeedAsync(IServer server, CancellationToken cancellationToken = default)
     {
         if (GetUploadSpeedAsyncFunc != null)
-            return GetUploadSpeedAsyncFunc(server, int.MaxValue, null, cancellationToken);
-        throw new NotImplementedException(nameof(GetUploadSpeedAsync));
-    }
-
-    /// <inheritdoc/>
-    public Task<SpeedTestResult> GetUploadSpeedAsync(IServer server, int uploadSizeMb, CancellationToken cancellationToken = default)
-    {
-        if (GetUploadSpeedAsyncFunc != null)
-            return GetUploadSpeedAsyncFunc(server, uploadSizeMb, null, cancellationToken);
+            return GetUploadSpeedAsyncFunc(server, null, cancellationToken);
         throw new NotImplementedException(nameof(GetUploadSpeedAsync));
     }
 
@@ -149,15 +125,7 @@ public sealed class SpeedTestMock : ISpeedTestService
     public Task<SpeedTestResult> GetUploadSpeedAsync(IServer server, IProgress<SpeedTestProgress> progress, CancellationToken cancellationToken = default)
     {
         if (GetUploadSpeedAsyncFunc != null)
-            return GetUploadSpeedAsyncFunc(server, int.MaxValue, progress, cancellationToken);
-        throw new NotImplementedException(nameof(GetUploadSpeedAsync));
-    }
-
-    /// <inheritdoc/>
-    public Task<SpeedTestResult> GetUploadSpeedAsync(IServer server, int uploadSizeMb, IProgress<SpeedTestProgress> progress, CancellationToken cancellationToken = default)
-    {
-        if (GetUploadSpeedAsyncFunc != null)
-            return GetUploadSpeedAsyncFunc(server, uploadSizeMb, progress, cancellationToken);
+            return GetUploadSpeedAsyncFunc(server, progress, cancellationToken);
         throw new NotImplementedException(nameof(GetUploadSpeedAsync));
     }
 }

@@ -53,7 +53,7 @@ public sealed class FileConsole : IAnsiConsole, IDisposable
     }
 
     // IAnsiConsole implementation - delegate to template console for properties.
-    public Profile Profile => _templateConsole.Profile;
+    public Spectre.Console.Profile Profile => _templateConsole.Profile;
     public IAnsiConsoleCursor Cursor => _templateConsole.Cursor;
     public IAnsiConsoleInput Input => _templateConsole.Input;
     public IExclusivityMode ExclusivityMode => _templateConsole.ExclusivityMode;

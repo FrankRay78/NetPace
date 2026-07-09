@@ -17,7 +17,7 @@ public sealed record UploadTestSettings
     /// The number of incremental upload sizes to generate for the test.
     /// </summary>
     /// <remarks>
-    /// Each increment increases the payload size by <see cref="UploadSizeIncrementKb"/>. For example, if set to 6 and 
+    /// Each increment increases the payload size by <see cref="UploadSizeIncrementKb"/>. For example, if set to 6 and
     /// <c>BaseSizeKb</c> is 200, it generates sizes of 200KB, 400KB, ..., up to 1.2MB.
     /// </remarks>
     public int UploadIncrements { get; init; } = 6;
@@ -34,4 +34,18 @@ public sealed record UploadTestSettings
     /// The number of parallel tasks used to upload test data concurrently.
     /// </summary>
     public int UploadParallelTasks { get; init; } = 8;
+
+    /// <summary>
+    /// Total-byte budget cap for the upload phase, in IEC MiB. Once the running total of
+    /// bytes uploaded across all parallel uploads reaches this value, the phase is cancelled:
+    /// in-flight uploads are cancelled rather than awaited (their bytes are excluded) and no
+    /// further uploads are scheduled. Actual bytes processed may still exceed the cap
+    /// depending on parallelism and per-request size.
+    /// </summary>
+    /// <remarks>
+    /// Distinct from the per-request size, which is derived from
+    /// <see cref="UploadSizeIncrementKb"/> × <see cref="UploadIncrements"/>.
+    /// The default <see cref="int.MaxValue"/> sentinel means "no cap".
+    /// </remarks>
+    public int UploadSizeMb { get; init; } = int.MaxValue;
 }

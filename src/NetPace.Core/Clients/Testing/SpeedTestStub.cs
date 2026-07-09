@@ -128,19 +128,7 @@ public sealed class SpeedTestStub : ISpeedTestService
     }
 
     /// <inheritdoc/>
-    public Task<SpeedTestResult> GetDownloadSpeedAsync(IServer server, int downloadSizeMb, CancellationToken cancellationToken = default)
-    {
-        return GetDownloadSpeedAsync(server, downloadSizeMb, new NullProgress<SpeedTestProgress>(), cancellationToken);
-    }
-
-    /// <inheritdoc/>
     public Task<SpeedTestResult> GetDownloadSpeedAsync(IServer server, IProgress<SpeedTestProgress> progress, CancellationToken cancellationToken = default)
-    {
-        return GetDownloadSpeedAsync(server, int.MaxValue, progress, cancellationToken);
-    }
-
-    /// <inheritdoc/>
-    public Task<SpeedTestResult> GetDownloadSpeedAsync(IServer server, int downloadSizeMb, IProgress<SpeedTestProgress> progress, CancellationToken cancellationToken = default)
     {
         if (progress is not null)
         {
@@ -166,19 +154,7 @@ public sealed class SpeedTestStub : ISpeedTestService
     }
 
     /// <inheritdoc/>
-    public Task<SpeedTestResult> GetUploadSpeedAsync(IServer server, int uploadSizeMb, CancellationToken cancellationToken = default)
-    {
-        return GetUploadSpeedAsync(server, uploadSizeMb, new NullProgress<SpeedTestProgress>(), cancellationToken);
-    }
-
-    /// <inheritdoc/>
     public Task<SpeedTestResult> GetUploadSpeedAsync(IServer server, IProgress<SpeedTestProgress> progress, CancellationToken cancellationToken = default)
-    {
-        return GetUploadSpeedAsync(server, int.MaxValue, progress, cancellationToken);
-    }
-
-    /// <inheritdoc/>
-    public Task<SpeedTestResult> GetUploadSpeedAsync(IServer server, int uploadSizeMb, IProgress<SpeedTestProgress> progress, CancellationToken cancellationToken = default)
     {
         if (progress is not null)
         {

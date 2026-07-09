@@ -99,24 +99,10 @@ public class FaultySpeedTester : ISpeedTestService
     }
 
     /// <inheritdoc/>
-    public Task<SpeedTestResult> GetDownloadSpeedAsync(IServer server, int downloadSizeMb, CancellationToken cancellationToken = default)
-    {
-        AssertNotFaulted(server, nameof(GetDownloadSpeedAsync));
-        return inner.GetDownloadSpeedAsync(server, downloadSizeMb, cancellationToken);
-    }
-
-    /// <inheritdoc/>
     public Task<SpeedTestResult> GetDownloadSpeedAsync(IServer server, IProgress<SpeedTestProgress> progress, CancellationToken cancellationToken = default)
     {
         AssertNotFaulted(server, nameof(GetDownloadSpeedAsync));
         return inner.GetDownloadSpeedAsync(server, progress, cancellationToken);
-    }
-
-    /// <inheritdoc/>
-    public Task<SpeedTestResult> GetDownloadSpeedAsync(IServer server, int downloadSizeMb, IProgress<SpeedTestProgress> progress, CancellationToken cancellationToken = default)
-    {
-        AssertNotFaulted(server, nameof(GetDownloadSpeedAsync));
-        return inner.GetDownloadSpeedAsync(server, downloadSizeMb, progress, cancellationToken);
     }
 
     /// <inheritdoc/>
@@ -127,24 +113,9 @@ public class FaultySpeedTester : ISpeedTestService
     }
 
     /// <inheritdoc/>
-    public Task<SpeedTestResult> GetUploadSpeedAsync(IServer server, int uploadSizeMb, CancellationToken cancellationToken = default)
-    {
-        AssertNotFaulted(server, nameof(GetUploadSpeedAsync));
-        return inner.GetUploadSpeedAsync(server, uploadSizeMb, cancellationToken);
-    }
-
-    /// <inheritdoc/>
     public Task<SpeedTestResult> GetUploadSpeedAsync(IServer server, IProgress<SpeedTestProgress> progress, CancellationToken cancellationToken = default)
     {
         AssertNotFaulted(server, nameof(GetUploadSpeedAsync));
         return inner.GetUploadSpeedAsync(server, progress, cancellationToken);
     }
-
-    /// <inheritdoc/>
-    public Task<SpeedTestResult> GetUploadSpeedAsync(IServer server, int uploadSizeMb, IProgress<SpeedTestProgress> progress, CancellationToken cancellationToken = default)
-    {
-        AssertNotFaulted(server, nameof(GetUploadSpeedAsync));
-        return inner.GetUploadSpeedAsync(server, uploadSizeMb, progress, cancellationToken);
-    }
 }
-

@@ -25,26 +25,32 @@ Source: [`OoklaSpeedtestSettings.cs`](../../src/NetPace.Core/Clients/Ookla/Ookla
 
 Source: [`Settings/DownloadTestSettings.cs`](../../src/NetPace.Core/Clients/Ookla/Settings/DownloadTestSettings.cs).
 
-| Property                 | Default                          | Meaning                                                                                |
+Defaults below are the values supplied by `new OoklaSpeedtestSettings()` (which chains to `Profile.Medium`). A bare `new DownloadTestSettings()` uses the type's field initializers (`DownloadSizeIterations = 4`, `DownloadParallelTasks = 8`, `DownloadSizeMb = int.MaxValue`); see §5 for per-profile values.
+
+| Property                 | Default (Medium profile)         | Meaning                                                                                |
 | ------------------------ | -------------------------------- | -------------------------------------------------------------------------------------- |
 | `DownloadSizes`          | `[1500, 2000, 3000, 3500, 4000]` | Pixel sizes used to build URLs of the form `random{N}x{N}.jpg`. Bigger N → bigger file. The default is the larger half of the historic ten-element Ookla Flash-client array (see §2.1). |
-| `DownloadSizeIterations` | `4`                              | How many times each size is requested (URL gets a `?r={i}` cache-buster).              |
-| `DownloadParallelTasks`  | `8`                              | Concurrent HTTP GETs.                                                                  |
+| `DownloadSizeIterations` | `2`                              | How many times each size is requested (URL gets a `?r={i}` cache-buster).              |
+| `DownloadParallelTasks`  | `4`                              | Concurrent HTTP GETs.                                                                  |
+| `DownloadSizeMb`         | `100`                            | Total-byte budget cap in IEC MiB. The download loop terminates once cumulative bytes received reach this threshold. Default sentinel for a bare record is `int.MaxValue` (no cap). |
 
-Total candidate requests = `DownloadSizes.Length × DownloadSizeIterations` (default = 5 × 4 = **20**).
+Total candidate requests = `DownloadSizes.Length × DownloadSizeIterations` (Medium default = 5 × 2 = **10**).
 
 ### 1.2 `UploadTestSettings`
 
 Source: [`Settings/UploadTestSettings.cs`](../../src/NetPace.Core/Clients/Ookla/Settings/UploadTestSettings.cs).
 
-| Property                | Default | Meaning                                                                              |
-| ----------------------- | ------- | ------------------------------------------------------------------------------------ |
-| `UploadSizeIncrementKb` | `200`   | Step size between successive increments, in KB (binary, ×1024).                      |
-| `UploadIncrements`      | `6`     | Number of increments (200 KB, 400 KB, 600 KB, 800 KB, 1 MB, 1.2 MB).                 |
-| `UploadSizeIterations`  | `10`    | How many times each increment is repeated.                                           |
-| `UploadParallelTasks`   | `8`     | Concurrent HTTP POSTs.                                                               |
+Defaults below are the values supplied by `new OoklaSpeedtestSettings()` (Medium profile). A bare `new UploadTestSettings()` uses the type's field initializers (`UploadSizeIterations = 10`, `UploadParallelTasks = 8`, `UploadSizeMb = int.MaxValue`); see §5 for per-profile values.
 
-Total candidate requests = `UploadIncrements × UploadSizeIterations` (default = 6 × 10 = **60**).
+| Property                | Default (Medium profile) | Meaning                                                                              |
+| ----------------------- | ------------------------ | ------------------------------------------------------------------------------------ |
+| `UploadSizeIncrementKb` | `200`                    | Step size between successive increments, in KB (binary, ×1024).                      |
+| `UploadIncrements`      | `6`                      | Number of increments (200 KB, 400 KB, 600 KB, 800 KB, 1 MB, 1.2 MB).                 |
+| `UploadSizeIterations`  | `5`                      | How many times each increment is repeated.                                           |
+| `UploadParallelTasks`   | `4`                      | Concurrent HTTP POSTs.                                                               |
+| `UploadSizeMb`          | `25`                     | Total-byte budget cap in IEC MiB. Default sentinel for a bare record is `int.MaxValue` (no cap). |
+
+Total candidate requests = `UploadIncrements × UploadSizeIterations` (Medium default = 6 × 5 = **30**).
 
 ## 2. How the settings shape network behaviour
 
@@ -175,16 +181,19 @@ Unlike download, this total is fully deterministic — NetPace generates the pay
 
 ## 3. CLI surface
 
-[`Program.cs`](../../src/NetPace.Console/Program.cs) exposes only the two budget caps, wired into [`SpeedTestCommandSettings`](../../src/NetPace.Console/Commands/SpeedTestCommandSettings.cs):
+[`Program.cs`](../../src/NetPace.Console/Program.cs) exposes one profile selector and two budget-cap overrides, wired into [`SpeedTestCommandSettings`](../../src/NetPace.Console/Commands/SpeedTestCommandSettings.cs):
 
-| Switch           | Property         | Default        | Effect                                                                                |
-| ---------------- | ---------------- | -------------- | ------------------------------------------------------------------------------------- |
-| `--downloadsize` | `DownloadSizeMb` | `int.MaxValue` | Stops the download test after N MiB total. Does **not** change per-request file size. |
-| `--uploadsize`   | `UploadSizeMb`   | `int.MaxValue` | Stops the upload test after N MiB total. Does **not** change per-request payload.     |
+| Switch           | Property         | Default                | Effect                                                                                                                                  |
+| ---------------- | ---------------- | ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| `--profile`      | `Profile`        | `Medium`               | Sets per-request shape (`DownloadSizes`, iterations, parallel tasks) and total-byte cap defaults via `new OoklaSpeedtestSettings(p)`.    |
+| `--downloadsize` | `DownloadSizeMb` | (profile-supplied)     | Overrides the download cap via a `with`-expression. Does **not** change per-request file size — the profile remains authoritative for shape. |
+| `--uploadsize`   | `UploadSizeMb`   | (profile-supplied)     | Overrides the upload cap via a `with`-expression. Does **not** change per-request payload — the profile remains authoritative for shape.     |
 
-> **Important distinction:** these are **total-byte budget caps**, not per-request size controls. The per-request sizes (`DownloadSizes`, `UploadSizeIncrementKb`, etc.) are hard-wired to the defaults above and are reachable only via the `NetPace.Core` library API, not the CLI.
+> **Important distinction:** `--downloadsize` / `--uploadsize` are **total-byte budget caps**, not per-request size controls. The per-request sizes (`DownloadSizes`, `UploadSizeIncrementKb`, etc.) are set by the chosen profile and are otherwise reachable only via the `NetPace.Core` library API, not the CLI.
 >
-> Both defaults are `int.MaxValue` MiB, which is far larger than any iteration would ever transfer — so the cap is **inactive by default**. With defaults, NetPace will transfer the full totals computed in §2.1 and §2.2 (≈ 328 MiB down, ≈ 41 MiB up).
+> When `--downloadsize` / `--uploadsize` are omitted, the profile-supplied caps apply (e.g. Medium = 100 MiB down + 25 MiB up). To see all five profile shapes at once, see §5.
+
+The library-level cap-removal default — a fresh `new DownloadTestSettings()` literal (no profile) — is `int.MaxValue` MiB, which is far larger than any iteration would ever transfer, so the cap is **inactive** in that bare-record case.
 
 ## 4. Local verification
 
@@ -207,3 +216,33 @@ curl -sS -o /dev/null -w '%{size_download} bytes in %{time_total}s\n' \
 head -c 1048576 /dev/urandom | curl -sS -o /dev/null -w '%{http_code}\n' \
   --data-binary @- http://localhost:18080/speedtest/upload.php
 ```
+
+## 5. Profile-driven defaults
+
+[`Profile`](../../src/NetPace.Core/Profile.cs) is the public, provider-agnostic vocabulary surfaced via `--profile`. [`OoklaSpeedtestSettings(Profile)`](../../src/NetPace.Core/Clients/Ookla/OoklaSpeedtestSettings.cs) maps each profile to a complete `DownloadTestSettings` / `UploadTestSettings` pair via an inline switch — the single source of truth for "what does Tiny mean, in Ookla terms?".
+
+### 5.1 Download (per profile)
+
+| Profile  | `DownloadSizes`                     | Iterations | Parallel | `DownloadSizeMb` cap |
+| -------- | ----------------------------------- | ---------- | -------- | -------------------- |
+| `Tiny`   | `[350]`                             | 1          | 1        | 1                    |
+| `Small`  | `[1000, 1500]`                      | 2          | 2        | 10                   |
+| `Medium` | `[1500, 2000, 3000, 3500, 4000]`    | 2          | 4        | 100                  |
+| `Large`  | `[2000, 2500, 3000, 3500, 4000]`    | 12         | 16       | 1024                 |
+| `Mega`   | `[3000, 4000, 5000, 6000, 7000]`    | 40         | 32       | 10240                |
+
+### 5.2 Upload (per profile)
+
+| Profile  | `UploadSizeIncrementKb` | `UploadIncrements` | Iterations | Parallel | `UploadSizeMb` cap |
+| -------- | ----------------------- | ------------------ | ---------- | -------- | ------------------ |
+| `Tiny`   | 50                      | 1                  | 1          | 1        | 1                  |
+| `Small`  | 100                     | 4                  | 2          | 2        | 2                  |
+| `Medium` | 200                     | 6                  | 5          | 4        | 25                 |
+| `Large`  | 500                     | 8                  | 12         | 16       | 256                |
+| `Mega`   | 1024                    | 16                 | 16         | 32       | 2048               |
+
+### 5.3 Mega is the only profile relying on the bonus payloads
+
+The `5000`, `6000`, `7000` pixel-size payloads identified in §2.1 are **only used by `Mega`**. The other four profiles stay within the historic Flash-client `random{N}x{N}.jpg` array, so they are guaranteed to work against any OoklaServer that ships those URLs (every server we've probed — see §2.1 Cross-server validation).
+
+If a future OoklaServer release drops the bonus payloads, Mega will see 404s on those URLs and fall back to whatever the surviving subset returns. The current Mega arm is tuned for the bonus payloads being present; the *documented fallback strategy* — revert Mega to the historic-10 array with higher iteration counts to keep total transfer in the ~10 GiB band — is tracked but **not implemented in the 003-profile-cli-switch change**. Users who hit Mega-specific 404s should switch to `--profile large` until the fallback lands.
