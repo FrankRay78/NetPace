@@ -26,8 +26,10 @@ public sealed record DownloadTestSettings
 
     /// <summary>
     /// Total-byte budget cap for the download phase, in IEC MiB. Once the running total of
-    /// bytes returned across all parallel downloads reaches this value, in-flight downloads
-    /// are allowed to complete and no further downloads are scheduled.
+    /// bytes returned across all parallel downloads reaches this value, the phase is cancelled:
+    /// in-flight downloads are cancelled rather than awaited (their bytes are excluded) and no
+    /// further downloads are scheduled. Actual bytes processed may still exceed the cap
+    /// depending on parallelism and per-request size.
     /// </summary>
     /// <remarks>
     /// Distinct from <see cref="DownloadSizes"/>, which sets the per-request pixel sizes

@@ -324,5 +324,81 @@ public sealed partial class OoklaSpeedtestTests
             // Then
             Assert.Contains("server.Url", exception.Message);
         }
+
+        [Theory]
+        [InlineData(0)]
+        [InlineData(-1)]
+        [InlineData(-100)]
+        public async Task GetDownloadSpeedAsync_DownloadSizeMb_ZeroOrNegative_ThrowsArgumentOutOfRangeException(int downloadSizeMb)
+        {
+            // Given
+            var settings = new OoklaSpeedtestSettings { DownloadTest = new() { DownloadSizeMb = downloadSizeMb } };
+            var speedtest = new OoklaSpeedtest(settings);
+            var server = new Server { Url = "http://example.com/", Sponsor = "Test", Location = "Test" };
+
+            // When
+            var exception = await Assert.ThrowsAsync<ArgumentOutOfRangeException>(
+                () => speedtest.GetDownloadSpeedAsync(server));
+
+            // Then
+            Assert.Equal("DownloadSizeMb", exception.ParamName);
+        }
+
+        [Theory]
+        [InlineData(0)]
+        [InlineData(-1)]
+        [InlineData(-100)]
+        public async Task GetDownloadSpeedAsync_WithProgress_DownloadSizeMb_ZeroOrNegative_ThrowsArgumentOutOfRangeException(int downloadSizeMb)
+        {
+            // Given
+            var settings = new OoklaSpeedtestSettings { DownloadTest = new() { DownloadSizeMb = downloadSizeMb } };
+            var speedtest = new OoklaSpeedtest(settings);
+            var server = new Server { Url = "http://example.com/", Sponsor = "Test", Location = "Test" };
+
+            // When
+            var exception = await Assert.ThrowsAsync<ArgumentOutOfRangeException>(
+                () => speedtest.GetDownloadSpeedAsync(server, new NullProgress<SpeedTestProgress>()));
+
+            // Then
+            Assert.Equal("DownloadSizeMb", exception.ParamName);
+        }
+
+        [Theory]
+        [InlineData(0)]
+        [InlineData(-1)]
+        [InlineData(-100)]
+        public async Task GetUploadSpeedAsync_UploadSizeMb_ZeroOrNegative_ThrowsArgumentOutOfRangeException(int uploadSizeMb)
+        {
+            // Given
+            var settings = new OoklaSpeedtestSettings { UploadTest = new() { UploadSizeMb = uploadSizeMb } };
+            var speedtest = new OoklaSpeedtest(settings);
+            var server = new Server { Url = "http://example.com/", Sponsor = "Test", Location = "Test" };
+
+            // When
+            var exception = await Assert.ThrowsAsync<ArgumentOutOfRangeException>(
+                () => speedtest.GetUploadSpeedAsync(server));
+
+            // Then
+            Assert.Equal("UploadSizeMb", exception.ParamName);
+        }
+
+        [Theory]
+        [InlineData(0)]
+        [InlineData(-1)]
+        [InlineData(-100)]
+        public async Task GetUploadSpeedAsync_WithProgress_UploadSizeMb_ZeroOrNegative_ThrowsArgumentOutOfRangeException(int uploadSizeMb)
+        {
+            // Given
+            var settings = new OoklaSpeedtestSettings { UploadTest = new() { UploadSizeMb = uploadSizeMb } };
+            var speedtest = new OoklaSpeedtest(settings);
+            var server = new Server { Url = "http://example.com/", Sponsor = "Test", Location = "Test" };
+
+            // When
+            var exception = await Assert.ThrowsAsync<ArgumentOutOfRangeException>(
+                () => speedtest.GetUploadSpeedAsync(server, new NullProgress<SpeedTestProgress>()));
+
+            // Then
+            Assert.Equal("UploadSizeMb", exception.ParamName);
+        }
     }
 }

@@ -198,14 +198,15 @@ public sealed class OoklaSpeedtest : ISpeedTestService
     /// (configured via <see cref="OoklaSpeedtestSettings.DownloadTest"/>). The total-byte
     /// budget cap is read from <see cref="Settings.DownloadTestSettings.DownloadSizeMb"/>;
     /// once the running total crosses that threshold the internal
-    /// <see cref="CancellationTokenSource"/> is cancelled, but in-flight parallel downloads
-    /// complete first, so the actual bytes processed may exceed the cap depending on
-    /// parallelism and per-request size.
+    /// <see cref="CancellationTokenSource"/> is cancelled, so in-flight parallel downloads are
+    /// cancelled rather than awaited and their bytes excluded. The actual bytes processed may
+    /// still exceed the cap depending on parallelism and per-request size.
     /// </remarks>
     public async Task<SpeedTestResult> GetDownloadSpeedAsync(IServer server, IProgress<SpeedTestProgress> progress, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(server);
         ArgumentException.ThrowIfNullOrWhiteSpace(server.Url);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(settings.DownloadTest.DownloadSizeMb, nameof(settings.DownloadTest.DownloadSizeMb));
 
         var downloadUrls = GenerateDownloadUrls(server.Url, settings.DownloadTest.DownloadSizes, settings.DownloadTest.DownloadSizeIterations);
 
@@ -236,7 +237,9 @@ public sealed class OoklaSpeedtest : ISpeedTestService
             }
         };
 
-        var maxBytes = (long)settings.DownloadTest.DownloadSizeMb * 1024L * 1024L;
+        var maxBytes = settings.DownloadTest.DownloadSizeMb == int.MaxValue
+            ? long.MaxValue
+            : (long)settings.DownloadTest.DownloadSizeMb * 1024L * 1024L;
         var downloadResult = await GenericTestSpeedAsync(downloadUrls, DownloadAndMeasureAsync, progress, settings.DownloadTest.DownloadParallelTasks, maxBytes, cancellationToken);
 
         return downloadResult;
@@ -254,14 +257,15 @@ public sealed class OoklaSpeedtest : ISpeedTestService
     /// (configured via <see cref="OoklaSpeedtestSettings.UploadTest"/>). The total-byte
     /// budget cap is read from <see cref="Settings.UploadTestSettings.UploadSizeMb"/>;
     /// once the running total crosses that threshold the internal
-    /// <see cref="CancellationTokenSource"/> is cancelled, but in-flight parallel uploads
-    /// complete first, so the actual bytes processed may exceed the cap depending on
-    /// parallelism and per-request size.
+    /// <see cref="CancellationTokenSource"/> is cancelled, so in-flight parallel uploads are
+    /// cancelled rather than awaited and their bytes excluded. The actual bytes processed may
+    /// still exceed the cap depending on parallelism and per-request size.
     /// </remarks>
     public async Task<SpeedTestResult> GetUploadSpeedAsync(IServer server, IProgress<SpeedTestProgress> progress, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(server);
         ArgumentException.ThrowIfNullOrWhiteSpace(server.Url);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(settings.UploadTest.UploadSizeMb, nameof(settings.UploadTest.UploadSizeMb));
 
         // Generate upload sizes (in bytes) rather than allocating large buffers up-front.
         var testDataLengths = GenerateUploadDataLengths(settings.UploadTest.UploadIncrements, settings.UploadTest.UploadSizeIncrementKb, settings.UploadTest.UploadSizeIterations);
@@ -275,7 +279,9 @@ public sealed class OoklaSpeedtest : ISpeedTestService
             return length;
         };
 
-        var maxBytes = (long)settings.UploadTest.UploadSizeMb * 1024L * 1024L;
+        var maxBytes = settings.UploadTest.UploadSizeMb == int.MaxValue
+            ? long.MaxValue
+            : (long)settings.UploadTest.UploadSizeMb * 1024L * 1024L;
         var uploadResult = await GenericTestSpeedAsync(testDataLengths, UploadAndMeasureAsync, progress, settings.UploadTest.UploadParallelTasks, maxBytes, cancellationToken);
 
         return uploadResult;
@@ -344,7 +350,7 @@ public sealed class OoklaSpeedtest : ISpeedTestService
 
                             if (totalBytesReturned >= maxBytes)
                             {
-                                // User specified byte limit is hit.
+                                // Configured byte cap is hit.
                                 wasCancelledLocally = true;
                                 cts.Cancel();
                                 progress.Report(new SpeedTestProgress
@@ -361,7 +367,7 @@ public sealed class OoklaSpeedtest : ISpeedTestService
 
                                 if (maxBytes != long.MaxValue)
                                 {
-                                    // When a user specified limit has been imposed on the test,
+                                    // When a configured byte cap is in effect,
                                     // we should defer to the greater % complete value.
 
                                     var percentageCompleteMaxBytes = (int)((double)totalBytesReturned / maxBytes * 100);

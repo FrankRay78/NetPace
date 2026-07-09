@@ -52,7 +52,7 @@ public sealed partial class NetPaceConsoleTests
     [Fact]
     public async Task Profile_UnknownValue_ExitsNonZeroAndMentionsBadValue()
     {
-        // SCENARIO: Invalid --profile value is rejected by argument parsing (FR-013)
+        // SCENARIO: Invalid --profile value is rejected by argument parsing
 
         // Given
         var (services, _) = BuildServicesWithSettingsAccessor();

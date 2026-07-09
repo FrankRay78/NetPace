@@ -5,7 +5,7 @@ namespace NetPace.Core.Tests;
 
 /// <summary>
 /// Per-profile field-equality assertions for <see cref="OoklaSpeedtestSettings"/>'s
-/// inline switch. Values mirror data-model.md exactly.
+/// inline switch. Each test pins the exact settings a profile is expected to produce.
 /// </summary>
 public sealed partial class OoklaSpeedtestSettingsTests
 {
@@ -15,8 +15,8 @@ public sealed partial class OoklaSpeedtestSettingsTests
         // SCENARIO: Tiny profile stays within IoT budget
         //
         // Natural-transfer budget proxy: ≤ 1 MiB total per run, ≈ 245 KB down + 50 KB up ±10 %.
-        // Proxy is recorded here for future readers; not asserted at runtime (no Docker integration
-        // test per design decision D8).
+        // Proxy is recorded here for future readers; not asserted at runtime (there is no
+        // Docker integration test that exercises real transfer sizes).
 
         // Given / When
         var s = new OoklaSpeedtestSettings(Profile.Tiny);
@@ -112,6 +112,24 @@ public sealed partial class OoklaSpeedtestSettingsTests
         s.UploadTest.UploadSizeIterations.ShouldBe(16);
         s.UploadTest.UploadParallelTasks.ShouldBe(32);
         s.UploadTest.UploadSizeMb.ShouldBe(2048);
+    }
+
+    [Fact]
+    public void DefaultConstructor_CombinedByteCap_Is125MiB()
+    {
+        // SCENARIO: the default run (no --profile) caps total traffic at the reduced Medium budget.
+        //
+        // The parameterless constructor resolves to Medium, whose download + upload caps sum to
+        // 125 MiB (100 + 25) — a >= 65 % reduction from the pre-profile ~370 MiB default run.
+        // This pins the headline figure so a later widening of either Medium cap fails a test.
+
+        // Given / When
+        var s = new OoklaSpeedtestSettings();
+
+        // Then
+        s.DownloadTest.DownloadSizeMb.ShouldBe(100);
+        s.UploadTest.UploadSizeMb.ShouldBe(25);
+        (s.DownloadTest.DownloadSizeMb + s.UploadTest.UploadSizeMb).ShouldBe(125);
     }
 
     [Fact]

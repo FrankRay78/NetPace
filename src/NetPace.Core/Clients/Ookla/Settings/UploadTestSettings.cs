@@ -37,8 +37,10 @@ public sealed record UploadTestSettings
 
     /// <summary>
     /// Total-byte budget cap for the upload phase, in IEC MiB. Once the running total of
-    /// bytes uploaded across all parallel uploads reaches this value, in-flight uploads
-    /// are allowed to complete and no further uploads are scheduled.
+    /// bytes uploaded across all parallel uploads reaches this value, the phase is cancelled:
+    /// in-flight uploads are cancelled rather than awaited (their bytes are excluded) and no
+    /// further uploads are scheduled. Actual bytes processed may still exceed the cap
+    /// depending on parallelism and per-request size.
     /// </summary>
     /// <remarks>
     /// Distinct from the per-request size, which is derived from

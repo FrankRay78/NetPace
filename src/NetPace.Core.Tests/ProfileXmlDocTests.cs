@@ -5,7 +5,7 @@ namespace NetPace.Core.Tests;
 
 /// <summary>
 /// Verifies <see cref="Profile.Mega"/>'s XML documentation includes the undocumented-payload
-/// caveat (FR-021), so the warning ships to NuGet consumers via NetPace.Core.xml.
+/// caveat, so the warning ships to NuGet consumers via NetPace.Core.xml.
 /// </summary>
 public sealed class ProfileXmlDocTests
 {
