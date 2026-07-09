@@ -94,8 +94,7 @@
       "Bash(git reset:*)",
       "Bash(git tag:*)"
     ],
-    "defaultMode": "acceptEdits",
-    "disableBypassPermissionsMode": "disable"
+    "defaultMode": "acceptEdits"
   },
   "hooks": {
     "PreToolUse": [
