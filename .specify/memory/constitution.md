@@ -1,21 +1,18 @@
 <!--
 Sync Impact Report:
-Version: 1.2.0 → 1.3.0
-Bump rationale: MINOR — adds Principle IX (Behavioural Specification) requiring
-ACs and tests to describe outcomes rather than mechanisms. Materially expands
-guidance and gives /speckit.analyze a new enforceable rule; no existing
-principle redefined.
+Version: 1.3.1 → 1.4.0
+Bump rationale: MINOR — adds Principle X (No Skipped Tests), a new
+NON-NEGOTIABLE principle banning the xUnit skip-family (Assert.Skip,
+Skip.If/IfNot/Always/Unless, [Fact/Theory(Skip=...)], SkippableFact/Theory).
+Backed by a gate-enforced hook (landing in the next commit), not just guidance.
 
 Modified Principles: N/A
-Added Sections: Principle IX — Behavioural Specification (NON-NEGOTIABLE)
+Added Sections: Principle X — No Skipped Tests (NON-NEGOTIABLE)
 Removed Sections: N/A
 Downstream documents reviewed (per Amendment Process clause 4):
-  ✅ .claude/commands/speckit.draftissue.md — updated in lockstep (avoid/prefer table + independence test added to step 5)
-  ✅ .claude/commands/speckit.testplan.md — updated in lockstep (mechanism-vs-outcome section + table added before Format)
-  ✅ CLAUDE.md — reviewed; intentionally not duplicated (locality-over-DRY; existing "Don't test" block already covers ad-hoc test writing scope)
-  ✅ .specify/templates/plan-template.md — Principle IX does not affect plan structure
-  ✅ .specify/templates/spec-template.md — Principle IX consumed at AC drafting time via /speckit.draftissue, not in spec template
-  ✅ .specify/templates/tasks-template.md — housekeeping-belongs-in-tasks clarification already implicit
+  ✅ CLAUDE.md — will get a paired Don't/Do rule referencing this principle in the next commit.
+  ✅ .claude/hooks/no-skipped-tests.sh — new hook enforcing this principle, next commit.
+  ✅ .claude/settings.json — hook wiring, next commit.
 Follow-up TODOs: None
 -->
 
@@ -145,6 +142,19 @@ Acceptance criteria and tests MUST describe outcomes an outside observer can ver
 
 **Downstream references**: detailed avoid/prefer guidance lives in `.claude/commands/speckit.draftissue.md` (AC drafting) and `.claude/commands/speckit.testplan.md` (test scenario authoring). Update those in lockstep with any change to this principle.
 
+### X. No Skipped Tests (NON-NEGOTIABLE)
+
+No test in the suite may be skipped. A skipped test reports green while verifying nothing — silent non-coverage that hides regressions behind a passing run. The entire skip family is prohibited: `[Fact(Skip=…)]` / `[Theory(Skip=…)]`, `Assert.Skip`, `Skip.If` / `Skip.IfNot` / `Skip.Always` / `Skip.Unless`, and `[SkippableFact]` / `[SkippableTheory]`.
+
+**Critical Rules:**
+
+- A missing runtime dependency or unavailable external resource MUST fail loudly, not skip.
+- A destructive or environment-specific opt-in suite MUST be gated by `[Trait("Category", …)]` and excluded by default in the test runner, then included on demand — never conditioned on a runtime skip.
+- A genuinely untestable branch MUST be documented with a comment at the site explaining why (referencing this principle), not silently skipped.
+- Enforcement is a gate, not advisory guidance: `.claude/hooks/no-skipped-tests.sh` blocks any commit introducing a skip-family construct under `src/`, with a `--check` mode for CI/manual scans.
+
+**Rationale**: A skipped test is worse than a missing one — it occupies a coverage slot and shows green, so the gap it leaves is invisible in every report. Making the ban constitutional and gate-enforced keeps the signal honest without relying on anyone remembering not to reach for `Skip`.
+
 ## Development Workflow
 
 ### Git Workflow
@@ -153,7 +163,6 @@ Acceptance criteria and tests MUST describe outcomes an outside observer can ver
 - Commit frequently, especially before refactoring
 - Use clear, concise commit messages in imperative mood
 - Reference issues when applicable: "Fix #123: Handle null server response"
-- Do not commit code with failing tests or build warnings
 
 ### Code Review Standards
 
@@ -232,4 +241,4 @@ This constitution supersedes all other development practices and guides. All dev
 - Complexity MUST be justified against simplicity principles
 - For runtime development guidance, refer to `CLAUDE.md`
 
-**Version**: 1.3.0 | **Ratified**: 2026-04-10 | **Last Amended**: 2026-05-16
+**Version**: 1.4.0 | **Ratified**: 2026-04-10 | **Last Amended**: 2026-07-10
