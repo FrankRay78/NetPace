@@ -14,3 +14,4 @@
 - [NetPace CLI feature issues must scope user-facing docs from the start](feedback_cli_feature_doc_scope.md) — first draft must include README --help, USER_GUIDE, design-doc cross-refs (no CHANGELOG — release notes are GitHub-auto-generated)
 - [Release-pipeline changes must update docs/RELEASING.md](feedback_release_pipeline_doc.md) — release matrix, runner-per-RID, naming convention, smoke-test contract live there; out-of-sync = future RID work costs extra
 - [Verify-snapshot tests count as coverage in NetPace.Console.Tests](feedback_console_output_snapshot_coverage.md) — check Expectations/*.verified.txt before reporting an output mode as untested
+- [Spec-kit upgrade procedure](speckit_upgrade_procedure.md) — stock github/spec-kit via `specify` CLI; `init --here --force --integration claude --script sh` is additive/hash-guarded
