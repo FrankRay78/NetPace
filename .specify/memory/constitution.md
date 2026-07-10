@@ -1,21 +1,16 @@
 <!--
 Sync Impact Report:
-Version: 1.2.0 → 1.3.0
-Bump rationale: MINOR — adds Principle IX (Behavioural Specification) requiring
-ACs and tests to describe outcomes rather than mechanisms. Materially expands
-guidance and gives /speckit.analyze a new enforceable rule; no existing
-principle redefined.
+Version: 1.3.0 → 1.3.1
+Bump rationale: PATCH — removes a duplicate restatement of "no failing tests or
+build warnings" from Development Workflow > Git Workflow. The rule is retained
+once, in CLAUDE.md's "Working with Claude Code" list (the actionable, Claude-
+facing copy). No principle redefined, no governance change, no new obligation.
 
 Modified Principles: N/A
-Added Sections: Principle IX — Behavioural Specification (NON-NEGOTIABLE)
-Removed Sections: N/A
+Added Sections: N/A
+Removed Sections: Git Workflow bullet ("Do not commit code with failing tests or build warnings")
 Downstream documents reviewed (per Amendment Process clause 4):
-  ✅ .claude/commands/speckit.draftissue.md — updated in lockstep (avoid/prefer table + independence test added to step 5)
-  ✅ .claude/commands/speckit.testplan.md — updated in lockstep (mechanism-vs-outcome section + table added before Format)
-  ✅ CLAUDE.md — reviewed; intentionally not duplicated (locality-over-DRY; existing "Don't test" block already covers ad-hoc test writing scope)
-  ✅ .specify/templates/plan-template.md — Principle IX does not affect plan structure
-  ✅ .specify/templates/spec-template.md — Principle IX consumed at AC drafting time via /speckit.draftissue, not in spec template
-  ✅ .specify/templates/tasks-template.md — housekeeping-belongs-in-tasks clarification already implicit
+  ✅ CLAUDE.md — confirmed the rule remains stated there; no change needed.
 Follow-up TODOs: None
 -->
 
@@ -153,7 +148,6 @@ Acceptance criteria and tests MUST describe outcomes an outside observer can ver
 - Commit frequently, especially before refactoring
 - Use clear, concise commit messages in imperative mood
 - Reference issues when applicable: "Fix #123: Handle null server response"
-- Do not commit code with failing tests or build warnings
 
 ### Code Review Standards
 
@@ -232,4 +226,4 @@ This constitution supersedes all other development practices and guides. All dev
 - Complexity MUST be justified against simplicity principles
 - For runtime development guidance, refer to `CLAUDE.md`
 
-**Version**: 1.3.0 | **Ratified**: 2026-04-10 | **Last Amended**: 2026-05-16
+**Version**: 1.3.1 | **Ratified**: 2026-04-10 | **Last Amended**: 2026-07-10
