@@ -116,6 +116,7 @@ Paired rules — `Don't` X → `Do` Y instead:
 - **Don't hard-wrap markdown prose** → write one line per paragraph, bullet, and table row and let the viewer soft-wrap it; a fixed-column hard wrap reflows the whole block on a one-word edit and buries the real change in a noisy diff.
 - **Don't frame a decision in implementation jargon** → when putting a choice to Frank (an `AskUserQuestion`, a spec tradeoff), lead with plain-language consequences — what it costs, what it unlocks — before the mechanism.
 - **Don't fold a second, unrelated mission into an in-flight branch** → ship the original branch with a documented known-issue and open a separate branch/issue for the new mission instead.
+- **Don't skip a test** (`Assert.Skip`, `Skip.If`/`IfNot`/`Always`/`Unless`, `[Fact(Skip=...)]`, `[SkippableFact]`) → fix it or make it fail loudly instead; blocked by the no-skipped-tests hook (Constitution Principle X).
 
 ## Quick Command Reference
 

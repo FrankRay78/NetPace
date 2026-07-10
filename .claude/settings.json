@@ -111,6 +111,12 @@
         "hooks": [
           {
             "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/no-skipped-tests.sh\"",
+            "if": "Bash(git commit:*)",
+            "statusMessage": "Checking for banned skipped-test constructs..."
+          },
+          {
+            "type": "command",
             "command": "STAGED=$(git diff --cached --name-only | grep \"[.]cs$\"); [ -z \"$STAGED\" ] && exit 0; INCLUDE=$(echo \"$STAGED\" | tr '\\n' ' '); dotnet format style --include $INCLUDE && dotnet format whitespace --include $INCLUDE && echo \"$STAGED\" | xargs -d '\\n' git add",
             "if": "Bash(git commit:*)",
             "statusMessage": "Formatting staged .cs files..."
