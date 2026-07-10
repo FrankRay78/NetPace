@@ -10,11 +10,10 @@ Read `CLAUDE.md` for project context before proceeding.
 
 2. **Check for commits**: Run `git log main..HEAD --oneline`. If the output is empty, stop immediately and output: "No commits found on this branch compared to main — nothing to raise a PR for."
 
-3. **Detect spec folder for this branch**: Run whichever spec-kit prerequisites helper is present in the repo:
-   - POSIX: `bash .specify/scripts/bash/check-prerequisites.sh --json --paths-only`
-   - Windows / pwsh: `pwsh .specify/scripts/powershell/check-prerequisites.ps1 -Json -PathsOnly`
+3. **Detect spec folder for this branch**: Run the spec-kit prerequisites helper if present in the repo:
+   - `bash .specify/scripts/bash/check-prerequisites.sh --json --paths-only`
 
-   If neither script exists, or the command exits non-zero (non-feature branch), skip to step 5.
+   If the script does not exist, or the command exits non-zero (non-feature branch), skip to step 5.
 
    Otherwise parse `FEATURE_DIR` from the JSON output. If `FEATURE_DIR` does not exist on disk, skip to step 5. Otherwise keep it for step 4.
 
@@ -24,6 +23,7 @@ Read `CLAUDE.md` for project context before proceeding.
 
    If "Delete and commit":
    - Run `git rm -r <FEATURE_DIR>`
+   - Clear the spec-kit feature pointer so it doesn't dangle at a deleted folder on `main`: if `.specify/feature.json` exists and its `feature_directory` points at `<FEATURE_DIR>`, reset it to `{"feature_directory": ""}` and `git add .specify/feature.json`. (A stale pointer makes `check-prerequisites.sh` hard-fail and lets `setup-plan.sh` silently recreate the deleted folder.)
    - Run `git commit -m "chore: remove <FEATURE_DIR>"`
 
    If "Skip", proceed without changes.

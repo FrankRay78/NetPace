@@ -7,7 +7,7 @@ metadata:
   author: "github-spec-kit"
   source: "templates/commands/checklist.md"
 user-invocable: true
-disable-model-invocation: false
+disable-model-invocation: true
 ---
 
 
