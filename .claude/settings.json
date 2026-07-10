@@ -20,7 +20,7 @@
       "Bash(git checkout:*)",
       "Bash(git restore:*)",
       "Bash(cd \"d:/Source/Repos/NetPace\":*)",
-      "Bash(powershell.exe -ExecutionPolicy Bypass -File .specify/:*)",
+      "Bash(.specify/scripts/bash/:*)",
       "Bash(dotnet build:*)",
       "Bash(dotnet run:*)",
       "Bash(dotnet test:*)",
@@ -63,10 +63,9 @@
       "Bash(rtk git status:*)",
       "Bash(rtk git log:*)",
       "Bash(rtk git diff:*)",
-      "Bash(powershell -ExecutionPolicy Bypass -File .specify/scripts/powershell/update-agent-context.ps1 -AgentType claude)",
-      "Bash(powershell -ExecutionPolicy Bypass -File .specify/scripts/powershell/check-prerequisites.ps1 -Json)",
-      "Bash(pwsh -NoProfile -Command \".specify/scripts/powershell/check-prerequisites.ps1 -Json -RequireTasks -IncludeTasks\")",
-      "Bash(pwsh -NoProfile -File .specify/extensions/git/scripts/powershell/auto-commit.ps1 before_implement)"
+      "Bash(bash .specify/scripts/bash/:*)",
+      "Bash(.specify/extensions/git/scripts/bash/:*)",
+      "Bash(bash .specify/extensions/git/scripts/bash/:*)"
     ],
     "deny": [
       "Bash(sudo:*)",
