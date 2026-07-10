@@ -81,7 +81,16 @@
       "Read(**/secrets.*)",
       "Read(**/.ssh/**)",
       "Read(**/appsettings.*.json)",
-      "Read(**/appsettings.json)"
+      "Read(**/appsettings.json)",
+      "Edit(.claude/skills/speckit-*/SKILL.md)",
+      "Write(.claude/skills/speckit-*/SKILL.md)",
+      "MultiEdit(.claude/skills/speckit-*/SKILL.md)",
+      "Edit(.specify/templates/*.md)",
+      "Write(.specify/templates/*.md)",
+      "MultiEdit(.specify/templates/*.md)",
+      "Edit(.specify/scripts/bash/*.sh)",
+      "Write(.specify/scripts/bash/*.sh)",
+      "MultiEdit(.specify/scripts/bash/*.sh)"
     ],
     "ask": [
       "Bash(rm:*)",
