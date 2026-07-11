@@ -8,12 +8,12 @@ Each tag produces one archive per cell of the matrix below — currently 16 (4 N
 
 | Runtime ID | Self-contained | Framework-dependent | Native AOT |
 |------------|----------------|---------------------|------------|
-| `win-x64` | `netpace-{ver}-win-x64-standalone.zip` | `netpace-{ver}-win-x64-net8.zip` | `netpace-{ver}-win-x64-aot.zip` |
-| `win-arm64` | `netpace-{ver}-win-arm64-standalone.zip` | `netpace-{ver}-win-arm64-net8.zip` | `netpace-{ver}-win-arm64-aot.zip` |
-| `linux-x64` | `netpace-{ver}-linux-x64-standalone.tar.gz` | `netpace-{ver}-linux-x64-net8.tar.gz` | `netpace-{ver}-linux-x64-aot.tar.gz` |
-| `linux-arm64` | `netpace-{ver}-linux-arm64-standalone.tar.gz` | `netpace-{ver}-linux-arm64-net8.tar.gz` | `netpace-{ver}-linux-arm64-aot.tar.gz` |
-| `osx-x64` | `netpace-{ver}-osx-x64-standalone.tar.gz` | `netpace-{ver}-osx-x64-net8.tar.gz` | _(out of scope)_ |
-| `osx-arm64` | `netpace-{ver}-osx-arm64-standalone.tar.gz` | `netpace-{ver}-osx-arm64-net8.tar.gz` | _(out of scope)_ |
+| `win-x64` | `netpace-{ver}-win-x64-standalone.zip` | `netpace-{ver}-win-x64-net10.zip` | `netpace-{ver}-win-x64-aot.zip` |
+| `win-arm64` | `netpace-{ver}-win-arm64-standalone.zip` | `netpace-{ver}-win-arm64-net10.zip` | `netpace-{ver}-win-arm64-aot.zip` |
+| `linux-x64` | `netpace-{ver}-linux-x64-standalone.tar.gz` | `netpace-{ver}-linux-x64-net10.tar.gz` | `netpace-{ver}-linux-x64-aot.tar.gz` |
+| `linux-arm64` | `netpace-{ver}-linux-arm64-standalone.tar.gz` | `netpace-{ver}-linux-arm64-net10.tar.gz` | `netpace-{ver}-linux-arm64-aot.tar.gz` |
+| `osx-x64` | `netpace-{ver}-osx-x64-standalone.tar.gz` | `netpace-{ver}-osx-x64-net10.tar.gz` | _(out of scope)_ |
+| `osx-arm64` | `netpace-{ver}-osx-arm64-standalone.tar.gz` | `netpace-{ver}-osx-arm64-net10.tar.gz` | _(out of scope)_ |
 
 ## Naming convention
 
@@ -21,7 +21,7 @@ Each tag produces one archive per cell of the matrix below — currently 16 (4 N
 
 - `version` — semver tag (e.g. `0.6.0`), no `v` prefix.
 - `runtime-id` — .NET RID (`win-x64`, `linux-arm64`, …).
-- `variant` — `standalone` (self-contained), `net8` (framework-dependent), or `aot` (native AOT).
+- `variant` — `standalone` (self-contained), `net10` (framework-dependent), or `aot` (native AOT).
 - `archive-format` — `.zip` for Windows, `.tar.gz` everywhere else.
 
 ## Runner per RID
@@ -82,7 +82,7 @@ Either invariant failing fails the entire release job; no archives are attached.
 
 ## NuGet metadata
 
-The `IsAotCompatible=true` property on `NetPace.Core.csproj` causes `dotnet pack` to emit `[assembly: AssemblyMetadata("IsTrimmable", "True")]` into the packaged DLL — the standard .NET 8 marker NuGet uses to surface AOT compatibility to consumers. The `publish-nuget.yml` workflow is unchanged by this feature and continues to consume the property transparently.
+The `IsAotCompatible=true` property on `NetPace.Core.csproj` causes `dotnet pack` to emit `[assembly: AssemblyMetadata("IsTrimmable", "True")]` into the packaged DLL — the standard .NET marker NuGet uses to surface AOT compatibility to consumers. The `publish-nuget.yml` workflow is unchanged by this feature and continues to consume the property transparently.
 
 ## Conditional NuGet publish
 
@@ -93,6 +93,15 @@ The `IsAotCompatible=true` property on `NetPace.Core.csproj` causes `dotnet pack
 **Consequence**: `NetPace.Core` versions published to nuget.org may skip values (e.g. `0.5.0` → `0.7.0`) when intermediate tags were CLI-only. This is intentional — the published version always reflects a real Core change.
 
 The GitHub Release / binary-attachment flow via `release-binaries.yml` is unaffected and ships every tag.
+
+## SDK version pinning
+
+The .NET SDK version is encoded in two places, both targeting **.NET 10 (LTS)**:
+
+- **`global.json`** (repo root) pins `"version": "10.0.0"` with `"rollForward": "latestFeature"`, so local and CI builds resolve to the latest installed 10.0.x feature band — reproducible without hard-pinning a patch that may not be on every runner.
+- **Each workflow** (`dotnet.yml`, `codeql.yml`, `publish-nuget.yml`, `release-binaries.yml`) sets `dotnet-version: 10.0.x` on `actions/setup-dotnet`, which installs a 10.0 SDK that `global.json` then honours.
+
+When bumping the SDK major, update both places in lockstep.
 
 ## Release notes
 

@@ -1,18 +1,23 @@
 <!--
 Sync Impact Report:
-Version: 1.3.1 → 1.4.0
-Bump rationale: MINOR — adds Principle X (No Skipped Tests), a new
-NON-NEGOTIABLE principle banning the xUnit skip-family (Assert.Skip,
-Skip.If/IfNot/Always/Unless, [Fact/Theory(Skip=...)], SkippableFact/Theory).
-Backed by a gate-enforced hook (landing in the next commit), not just guidance.
+Version: 1.4.0 → 1.5.0
+Bump rationale: MINOR — updates the mandated target framework from .NET 8.0 to
+.NET 10.0 (the clean LTS→LTS hop; .NET 8 reaches end of support ~November 2026).
+This updates a technology constraint rather than removing or inverting a principle,
+so it is materially updated guidance (MINOR), not a governance redefinition (MAJOR).
+The mandated language baseline is bumped in lockstep to C# 14 (unlocked by .NET 10).
 
-Modified Principles: N/A
-Added Sections: Principle X — No Skipped Tests (NON-NEGOTIABLE)
+Modified Principles: IV — Cross-Platform Compatibility (target .NET 10.0)
+Modified Sections: Technology Constraints → Required Technologies (Framework .NET 10.0, Language C# 14)
+Added Sections: N/A
 Removed Sections: N/A
 Downstream documents reviewed (per Amendment Process clause 4):
-  ✅ CLAUDE.md — will get a paired Don't/Do rule referencing this principle in the next commit.
-  ✅ .claude/hooks/no-skipped-tests.sh — new hook enforcing this principle, next commit.
-  ✅ .claude/settings.json — hook wiring, next commit.
+  ✅ CLAUDE.md — Project Overview / Stack line updated to .NET 10.0 · C# 14.
+  ✅ README.md — build-with line, release-variant name/link, developed-with line updated.
+  ✅ docs/conventions/csharp-style.md — Target Framework line updated to .NET 10.0 (C# 14).
+  ✅ docs/RELEASING.md — framework-dependent artifact name (-net8 → -net10), .NET marker wording, global.json note.
+  ✅ 6 project files + 4 CI workflows — TargetFramework net10.0, SDK pins 10.0.x.
+  ✅ global.json — new SDK pin (10.0.x, rollForward latestFeature).
 Follow-up TODOs: None
 -->
 
@@ -67,7 +72,7 @@ The command-line interface MUST follow industry best practices:
 
 All code MUST run on Windows, Linux, and macOS without platform-specific workarounds:
 
-- Target .NET 8.0 for cross-platform support
+- Target .NET 10.0 for cross-platform support
 - Consider file paths, line endings, console encoding
 - Test on multiple platforms before release
 - Avoid platform-specific APIs unless absolutely necessary
@@ -189,8 +194,8 @@ Before committing, verify:
 
 ### Required Technologies
 
-- **Framework**: .NET 8.0 (cross-platform)
-- **Language**: C# 12
+- **Framework**: .NET 10.0 (cross-platform)
+- **Language**: C# 14
 - **CLI Library**: Spectre.Console
 - **Testing**: xUnit
 - **Package Distribution**: NuGet (NetPace.Core)
@@ -241,4 +246,4 @@ This constitution supersedes all other development practices and guides. All dev
 - Complexity MUST be justified against simplicity principles
 - For runtime development guidance, refer to `CLAUDE.md`
 
-**Version**: 1.4.0 | **Ratified**: 2026-04-10 | **Last Amended**: 2026-07-10
+**Version**: 1.5.0 | **Ratified**: 2026-04-10 | **Last Amended**: 2026-07-11

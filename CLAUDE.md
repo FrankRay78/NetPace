@@ -8,13 +8,13 @@ This guide covers **HOW** (NetPace patterns, conventions, gotchas). The constitu
 
 ## Project Overview
 
-NetPace is a cross-platform network speed testing CLI built with .NET 8.0, using Ookla's Speedtest servers.
+NetPace is a cross-platform network speed testing CLI built with .NET 10.0, using Ookla's Speedtest servers.
 
 **Key Components:**
 - `NetPace.Console` — CLI app using Spectre.Console
 - `NetPace.Core` — Reusable library with `ISpeedTestService` interface (published to NuGet)
 
-**Stack:** .NET 8.0 · C# 12 · Spectre.Console · System.CommandLine · xUnit · Nullable reference types enabled
+**Stack:** .NET 10.0 · C# 14 · Spectre.Console · System.CommandLine · xUnit · Nullable reference types enabled
 
 ## Testing
 

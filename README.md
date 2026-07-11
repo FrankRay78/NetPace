@@ -5,7 +5,7 @@
 
 Network speed tester including server discovery, latency measurement, download and upload speed testing.
 
-Built with .NET 8.0 — runs on Windows, Linux, and macOS.
+Built with .NET 10.0 — runs on Windows, Linux, and macOS.
 
 <p align="left">
     <a href="https://github.com/FrankRay78/NetPace/issues/new?labels=needs%20triage,bug&template=bug-report---.md">Report Bug</a>
@@ -51,11 +51,11 @@ I am no longer the `Spectre.Console` CLI sub-system maintainer, but this project
 ## Getting Started
 Each release contains precompiled binaries you can simply [download](https://github.com/FrankRay78/NetPace/releases), unzip and run. 
 
-Choose from Windows, Linux and macOS; standalone (large file but includes all dependencies), net8 (small file but requires [Microsoft .NET 8.0 runtime](https://dotnet.microsoft.com/en-us/download/dotnet/8.0)) to already be installed, or AOT compiled for bare metal execution (Linux and Windows; macOS AOT remains a future release). 
+Choose from Windows, Linux and macOS; standalone (large file but includes all dependencies), net10 (small file but requires [Microsoft .NET 10.0 runtime](https://dotnet.microsoft.com/en-us/download/dotnet/10.0)) to already be installed, or AOT compiled for bare metal execution (Linux and Windows; macOS AOT remains a future release). 
 
 Alternatively, clone this repository locally and build.
 
-Developed with Microsoft .NET 8.0 on Windows 10 using Visual Studio 2022 Community. Other modern environments should work fine.
+Developed with Microsoft .NET 10.0 on Windows 10 using Visual Studio 2022 Community. Other modern environments should work fine.
 
 <br />
 
