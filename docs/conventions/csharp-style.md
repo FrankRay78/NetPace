@@ -124,4 +124,4 @@ Within a class, order members as follows:
 ---
 
 **Last Updated**: April 2026
-**Target Framework**: .NET 8.0 (C# 12)
+**Target Framework**: .NET 10.0 (C# 14)

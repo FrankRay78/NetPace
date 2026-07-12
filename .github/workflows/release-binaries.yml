@@ -68,7 +68,7 @@ jobs:
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: 8.0.x
+          dotnet-version: 10.0.x
 
       - name: Extract version from tag
         id: get_version
@@ -89,7 +89,7 @@ jobs:
             echo "suffix=-aot" >> $GITHUB_OUTPUT
           else
             echo "self_contained=false" >> $GITHUB_OUTPUT
-            echo "suffix=-net8" >> $GITHUB_OUTPUT
+            echo "suffix=-net10" >> $GITHUB_OUTPUT
           fi
 
       - name: Publish Console App

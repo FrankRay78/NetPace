@@ -101,7 +101,7 @@ public sealed class OoklaSpeedtest : ISpeedTestService
 
             // Report progress after each iteration
             var percentageComplete = (iteration + 1) * 100 / maxIterations;
-            progress.Report(new LatencyTestProgress
+            ReportProgress(progress, new LatencyTestProgress
             {
                 PercentageComplete = percentageComplete,
             });
@@ -172,7 +172,7 @@ public sealed class OoklaSpeedtest : ISpeedTestService
 
             // Report progress after each server is tested
             var percentageComplete = (i + 1) * 100 / servers.Length;
-            progress.Report(new SpeedTestProgress { PercentageComplete = percentageComplete });
+            ReportProgress(progress, new SpeedTestProgress { PercentageComplete = percentageComplete });
         }
 
         // Honour any user cancellations during/after the last probe.
@@ -353,7 +353,7 @@ public sealed class OoklaSpeedtest : ISpeedTestService
                                 // Configured byte cap is hit.
                                 wasCancelledLocally = true;
                                 cts.Cancel();
-                                progress.Report(new SpeedTestProgress
+                                ReportProgress(progress, new SpeedTestProgress
                                 {
                                     PercentageComplete = 100,
                                     BytesProcessed = totalBytesReturned,
@@ -378,7 +378,7 @@ public sealed class OoklaSpeedtest : ISpeedTestService
                                     }
                                 }
 
-                                progress.Report(new SpeedTestProgress
+                                ReportProgress(progress, new SpeedTestProgress
                                 {
                                     PercentageComplete = percentageComplete,
                                     BytesProcessed = totalBytesReturned,
@@ -411,6 +411,25 @@ public sealed class OoklaSpeedtest : ISpeedTestService
     }
 
     #region Static Functions
+
+    /// <summary>
+    /// Reports progress to the consumer, isolating the operation from a throwing callback.
+    /// Progress is best-effort telemetry for the caller's UI; a callback that throws is the
+    /// consumer's bug and MUST NOT fault the running speed test, so its exception is swallowed.
+    /// </summary>
+    private static void ReportProgress<T>(IProgress<T> progress, T value)
+    {
+        try
+        {
+            progress.Report(value);
+        }
+        catch
+        {
+            // Intentionally swallowed: a misbehaving consumer progress callback must never
+            // break the measurement. This is the one legitimate catch-all — isolating
+            // caller-supplied callback code — not a swallowed internal error.
+        }
+    }
 
     private static HttpClient CreateHttpClient(bool useProxy, Uri? proxyAddress, NetworkCredential? proxyCredential)
     {

@@ -327,7 +327,7 @@ public sealed partial class OoklaSpeedtestTests
         var percentageComplete = new List<int>();
 
         // When
-        var result = await speedtest.GetServerLatencyAsync(server, new Progress<LatencyTestProgress>(progress => percentageComplete.Add(progress.PercentageComplete)));
+        var result = await speedtest.GetServerLatencyAsync(server, new SynchronousProgress<LatencyTestProgress>(progress => percentageComplete.Add(progress.PercentageComplete)));
 
         // Then
         result.ShouldNotBeNull();
@@ -355,7 +355,7 @@ public sealed partial class OoklaSpeedtestTests
         cts.CancelAfter(200);
 
         // When
-        var exception = await Record.ExceptionAsync(() => speedtest.GetServerLatencyAsync(server, new Progress<LatencyTestProgress>(progress => progressReports.Add(progress.PercentageComplete)), cts.Token));
+        var exception = await Record.ExceptionAsync(() => speedtest.GetServerLatencyAsync(server, new SynchronousProgress<LatencyTestProgress>(progress => progressReports.Add(progress.PercentageComplete)), cts.Token));
 
         // Then
         exception.ShouldNotBeNull();
@@ -377,8 +377,11 @@ public sealed partial class OoklaSpeedtestTests
         var server = new Server { Url = "http://testserver.com/", Sponsor = "Sponsor", Location = "Location" };
 
         // When
-        var exception = await Record.ExceptionAsync(() => speedtest.GetServerLatencyAsync(server, new Progress<LatencyTestProgress>(progress =>
+        var exception = await Record.ExceptionAsync(() => speedtest.GetServerLatencyAsync(server, new SynchronousProgress<LatencyTestProgress>(progress =>
         {
+            // A throwing progress callback is the consumer's bug; OoklaSpeedtest must isolate it
+            // so the measurement still completes. SynchronousProgress runs the throw inline, so
+            // this exercises production isolation (not System.Progress<T>'s async swallowing).
             throw new InvalidOperationException();
         })));
 
@@ -596,7 +599,7 @@ public sealed partial class OoklaSpeedtestTests
         var progressReports = new List<int>();
 
         // When
-        var result = await speedtest.GetFastestServerByLatencyAsync(servers, new Progress<SpeedTestProgress>(progress => progressReports.Add(progress.PercentageComplete)));
+        var result = await speedtest.GetFastestServerByLatencyAsync(servers, new SynchronousProgress<SpeedTestProgress>(progress => progressReports.Add(progress.PercentageComplete)));
 
         // Then
         result.ShouldNotBeNull();
@@ -628,7 +631,7 @@ public sealed partial class OoklaSpeedtestTests
         var progressReports = new List<int>();
 
         // When
-        var result = await speedtest.GetFastestServerByLatencyAsync(servers, new Progress<SpeedTestProgress>(progress => progressReports.Add(progress.PercentageComplete)));
+        var result = await speedtest.GetFastestServerByLatencyAsync(servers, new SynchronousProgress<SpeedTestProgress>(progress => progressReports.Add(progress.PercentageComplete)));
 
         // Then
         result.ShouldNotBeNull();
@@ -668,7 +671,7 @@ public sealed partial class OoklaSpeedtestTests
         var progressReports = new List<int>();
 
         // When
-        var result = await speedtest.GetFastestServerByLatencyAsync(servers, new Progress<SpeedTestProgress>(progress => progressReports.Add(progress.PercentageComplete)));
+        var result = await speedtest.GetFastestServerByLatencyAsync(servers, new SynchronousProgress<SpeedTestProgress>(progress => progressReports.Add(progress.PercentageComplete)));
 
         // Then
         result.ShouldNotBeNull();
@@ -699,8 +702,11 @@ public sealed partial class OoklaSpeedtestTests
         var servers = new[] { server };
 
         // When
-        var exception = await Record.ExceptionAsync(() => speedtest.GetFastestServerByLatencyAsync(servers, new Progress<SpeedTestProgress>(progress =>
+        var exception = await Record.ExceptionAsync(() => speedtest.GetFastestServerByLatencyAsync(servers, new SynchronousProgress<SpeedTestProgress>(progress =>
         {
+            // A throwing progress callback is the consumer's bug; OoklaSpeedtest must isolate it
+            // so the measurement still completes. SynchronousProgress runs the throw inline, so
+            // this exercises production isolation (not System.Progress<T>'s async swallowing).
             throw new InvalidOperationException();
         })));
 
@@ -733,7 +739,7 @@ public sealed partial class OoklaSpeedtestTests
         cts.CancelAfter(200);
 
         // When
-        var exception = await Record.ExceptionAsync(() => speedtest.GetFastestServerByLatencyAsync(servers, new Progress<SpeedTestProgress>(progress => progressReports.Add(progress.PercentageComplete)), cts.Token));
+        var exception = await Record.ExceptionAsync(() => speedtest.GetFastestServerByLatencyAsync(servers, new SynchronousProgress<SpeedTestProgress>(progress => progressReports.Add(progress.PercentageComplete)), cts.Token));
 
         // Then
         exception.ShouldNotBeNull();
@@ -883,7 +889,7 @@ public sealed partial class OoklaSpeedtestTests
         var progressReports = new List<int>();
 
         // When
-        var result = await speedtest.GetDownloadSpeedAsync(server, new Progress<SpeedTestProgress>(progress => progressReports.Add(progress.PercentageComplete)));
+        var result = await speedtest.GetDownloadSpeedAsync(server, new SynchronousProgress<SpeedTestProgress>(progress => progressReports.Add(progress.PercentageComplete)));
 
         // Then
         result.ShouldNotBeNull();
@@ -948,7 +954,7 @@ public sealed partial class OoklaSpeedtestTests
         var progressReports = new List<int>();
 
         // When
-        await speedtest.GetDownloadSpeedAsync(server, new Progress<SpeedTestProgress>(progress =>
+        await speedtest.GetDownloadSpeedAsync(server, new SynchronousProgress<SpeedTestProgress>(progress =>
         {
             progressReports.Add(progress.PercentageComplete);
         }));
@@ -984,7 +990,7 @@ public sealed partial class OoklaSpeedtestTests
         var progressReports = new List<int>();
 
         // When
-        var result = await speedtest.GetDownloadSpeedAsync(server, new Progress<SpeedTestProgress>(progress => progressReports.Add(progress.PercentageComplete)));
+        var result = await speedtest.GetDownloadSpeedAsync(server, new SynchronousProgress<SpeedTestProgress>(progress => progressReports.Add(progress.PercentageComplete)));
 
         // Then
         result.ShouldNotBeNull();
@@ -1118,8 +1124,11 @@ public sealed partial class OoklaSpeedtestTests
         var server = new Server { Url = "http://example.com/", Sponsor = "Test", Location = "Test" };
 
         // When
-        var exception = await Record.ExceptionAsync(() => speedtest.GetDownloadSpeedAsync(server, new Progress<SpeedTestProgress>(progress =>
+        var exception = await Record.ExceptionAsync(() => speedtest.GetDownloadSpeedAsync(server, new SynchronousProgress<SpeedTestProgress>(progress =>
         {
+            // A throwing progress callback is the consumer's bug; OoklaSpeedtest must isolate it
+            // so the measurement still completes. SynchronousProgress runs the throw inline, so
+            // this exercises production isolation (not System.Progress<T>'s async swallowing).
             throw new InvalidOperationException();
         })));
 
@@ -1150,7 +1159,7 @@ public sealed partial class OoklaSpeedtestTests
         var progressReports = new List<SpeedTestProgress>();
 
         // When
-        await speedtest.GetDownloadSpeedAsync(server, new Progress<SpeedTestProgress>(progress =>
+        await speedtest.GetDownloadSpeedAsync(server, new SynchronousProgress<SpeedTestProgress>(progress =>
         {
             progressReports.Add(progress);
         }));
@@ -1290,7 +1299,7 @@ public sealed partial class OoklaSpeedtestTests
         var progressReports = new List<int>();
 
         // When
-        var result = await speedtest.GetUploadSpeedAsync(server, new Progress<SpeedTestProgress>(progress => progressReports.Add(progress.PercentageComplete)));
+        var result = await speedtest.GetUploadSpeedAsync(server, new SynchronousProgress<SpeedTestProgress>(progress => progressReports.Add(progress.PercentageComplete)));
 
         // Then
         result.ShouldNotBeNull();
@@ -1352,7 +1361,7 @@ public sealed partial class OoklaSpeedtestTests
         var progressReports = new List<int>();
 
         // When
-        await speedtest.GetUploadSpeedAsync(server, new Progress<SpeedTestProgress>(progress =>
+        await speedtest.GetUploadSpeedAsync(server, new SynchronousProgress<SpeedTestProgress>(progress =>
         {
             progressReports.Add(progress.PercentageComplete);
         }));
@@ -1397,7 +1406,7 @@ public sealed partial class OoklaSpeedtestTests
         var progressReports = new List<int>();
 
         // When
-        var result = await speedtest.GetUploadSpeedAsync(server, new Progress<SpeedTestProgress>(progress => progressReports.Add(progress.PercentageComplete)));
+        var result = await speedtest.GetUploadSpeedAsync(server, new SynchronousProgress<SpeedTestProgress>(progress => progressReports.Add(progress.PercentageComplete)));
 
         // Then
         result.ShouldNotBeNull();
@@ -1496,8 +1505,11 @@ public sealed partial class OoklaSpeedtestTests
         var server = new Server { Url = "http://example.com/", Sponsor = "Test", Location = "Test" };
 
         // When
-        var exception = await Record.ExceptionAsync(() => speedtest.GetUploadSpeedAsync(server, new Progress<SpeedTestProgress>(progress =>
+        var exception = await Record.ExceptionAsync(() => speedtest.GetUploadSpeedAsync(server, new SynchronousProgress<SpeedTestProgress>(progress =>
         {
+            // A throwing progress callback is the consumer's bug; OoklaSpeedtest must isolate it
+            // so the measurement still completes. SynchronousProgress runs the throw inline, so
+            // this exercises production isolation (not System.Progress<T>'s async swallowing).
             throw new InvalidOperationException();
         })));
 
@@ -1529,7 +1541,7 @@ public sealed partial class OoklaSpeedtestTests
         var progressReports = new List<SpeedTestProgress>();
 
         // When
-        await speedtest.GetUploadSpeedAsync(server, new Progress<SpeedTestProgress>(progress =>
+        await speedtest.GetUploadSpeedAsync(server, new SynchronousProgress<SpeedTestProgress>(progress =>
         {
             progressReports.Add(progress);
         }));
