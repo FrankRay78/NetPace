@@ -15,7 +15,7 @@ Read `CLAUDE.md` for project context before proceeding.
 0. **Preconditions (before any suite run or review).**
    - Run `git rev-parse --abbrev-ref HEAD`. If it is `main`, STOP immediately and report: "Run /ship from a feature branch, not main." Do not run the suite, do not spawn reviewers.
    - Run `git log main..HEAD --oneline`. If empty, STOP immediately and report: "No commits on this branch over main — nothing to ship." Do not run the suite or spawn reviewers.
-   - Capture the working-tree baseline so step 3 can tell review edits apart from pre-existing local changes: record `git status --short` and the tracked-tree content hash `git diff HEAD | git hash-object --stdin` as `PRE_HASH`. A dirty tree is allowed but note it in the final report.
+   - Capture the working-tree baseline so step 3 can detect what the review changed: snapshot the **whole** working tree — tracked content *and* untracked files — as `PRE_HASH = { git diff HEAD; git status --short; } | git hash-object --stdin`. `git diff HEAD` captures tracked content (incl. staged, and further edits to an already-dirty file); `git status --short` adds the presence of new untracked files, which `git diff HEAD` alone omits. A dirty tree is allowed but note it in the final report.
 
    The precondition guard runs up front deliberately: `/raise-pr`'s own late branch check must not be the first line of defence, or the full suite and full review would run pointlessly first.
 
@@ -34,11 +34,11 @@ Read `CLAUDE.md` for project context before proceeding.
    Apply the warranted edits to the working tree. Every applied edit is re-verified by step 3's suite re-run, so a bad fix cannot ship green-unchecked.
    - If a review subagent errors, STOP and report (stop-on-failure).
 
-3. **Conditional re-verify + commit the fixes.** Detect whether step 2 changed tracked code by a **content diff of the whole tracked working tree**, not a `*.cs`-only `git status` filter: compute `POST_HASH = git diff HEAD | git hash-object --stdin` and compare to `PRE_HASH` from step 0. This covers **all** tracked files (`.cs`, `.csproj`, `Directory.Packages.props`, `.json`, …) and correctly ignores files that were already dirty before step 2. Never use a marker mtime.
+3. **Conditional re-verify + commit the fixes.** Detect whether step 2 changed anything by re-computing the step-0 whole-tree snapshot — `POST_HASH = { git diff HEAD; git status --short; } | git hash-object --stdin` — and comparing to `PRE_HASH`. Hashing `git diff HEAD` covers tracked content across **all** file types (`.cs`, `.csproj`, `Directory.Packages.props`, `.json`, …) and distinguishes a further edit to an already-dirty file; adding `git status --short` covers **new untracked files** a review may create (a new test, an extracted helper) — which `git diff HEAD` alone silently omits, and missing one means the fix never reaches the PR. Never a `*.cs`-only filter, never a marker mtime.
    - **If `POST_HASH == PRE_HASH` (step 2 changed nothing):** skip both the re-run and the commit — go to step 4. (No spurious second suite run.)
    - **If `POST_HASH != PRE_HASH` (step 2 applied edits):**
      - Re-run `dotnet build ./src && dotnet test ./src`. Not green ⇒ STOP and report.
-     - Once green, **commit the applied edits** with a clear message (e.g. `fix: apply /ship review findings`). This is what makes the fixes reach the pushed PR — `/raise-pr` pushes *commits*, so uncommitted working-tree edits would silently never ship. If the baseline tree was already dirty, stage only the review edits, not unrelated pre-existing local changes.
+     - Once green, **commit the applied edits** with a clear message (e.g. `fix: apply /ship review findings`). This is what makes the fixes reach the pushed PR — `/raise-pr` pushes *commits*, so uncommitted or untracked working-tree edits would silently never ship. Stage **the specific paths step 2's loop edited or created** (`git add <those paths>` — the loop knows them, and this includes any new files), not `git add -A`; on an already-dirty baseline this keeps unrelated pre-existing changes out of the commit without needing to isolate hunks.
 
 4. **Raise the PR (final step).** Compose and open the PR via `/raise-pr`. It pushes the branch (now carrying the step-3 fix commit, if any) and requests the async `@claude` GitHub-action review. If `/raise-pr` aborts (push rejected, `gh pr create` fails because the PR already exists), STOP here and report.
 
