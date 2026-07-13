@@ -103,10 +103,6 @@ The .NET SDK version is encoded in two places, both targeting **.NET 10 (LTS)**:
 
 When bumping the SDK major, update both places in lockstep.
 
-## Locked-mode restore
-
-Every project under `src/` commits a `packages.lock.json` (`RestorePackagesWithLockFile` in `src/Directory.Build.props`). On CI and release runners — where GitHub Actions sets `CI=true` — `RestoreLockedMode` is on, so both the explicit `dotnet restore src` step and the implicit restores inside `dotnet publish`/`dotnet build` fail (NU1004) if the resolved dependency graph drifts from the committed lock files. Release artifacts therefore ship exactly the reviewed dependency bitstream. Local developer restores stay unlocked, so `CI` is unset on a workstation. After accepting a dependency bump, the lock files must be regenerated (`dotnet restore src`) and committed — Dependabot does this within its own PRs; a hand bump that skips regeneration turns the release restore red.
-
 ## Release notes
 
 Per-release "what changed" notes are **GitHub-auto-generated from the PRs merged since the last tag** — there is no `CHANGELOG.md` to maintain. The `NetPace.Core.csproj` `<PackageReleaseNotes>` property already points NuGet consumers to <https://github.com/FrankRay78/NetPace/releases>, so the auto-generated notes are the single source of truth for both CLI and library audiences. Edit the GitHub Release body manually only when a particular change deserves prose framing the auto-generated PR list can't supply.

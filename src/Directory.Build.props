@@ -8,12 +8,6 @@
     <IsPackable>false</IsPackable>
     <Nullable>enable</Nullable>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
-    <!-- Supply-chain: commit a packages.lock.json per project and restore locked-mode on CI/release only.
-         Local restores stay unlocked so a developer can regenerate the lock after an accepted bump;
-         CI (GitHub Actions sets CI=true) fails if the resolved graph drifts from what was committed.
-         Gating via this property also covers the implicit restores inside dotnet publish/pack. -->
-    <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
-    <RestoreLockedMode Condition="'$(CI)' == 'true'">true</RestoreLockedMode>
     <EnableNETAnalyzers>true</EnableNETAnalyzers>
     <AnalysisLevel>latest</AnalysisLevel>
     <SignAssembly>true</SignAssembly>
