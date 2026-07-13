@@ -1,0 +1,10 @@
+﻿1980-01-01 10:05:00, Latency: 24 ms, Download: 8 Kbps, Upload: 8 Kbps
+1980-01-01 10:05:05, Latency: 24 ms, Download: 0 bps (150 of 150 requests failed), Upload: 8 Kbps
+1980-01-01 10:05:10, Latency: 24 ms, Download: 8 Kbps, Upload: 8 Kbps
+1980-01-01 10:05:15, Latency: 24 ms, Download: 8 Kbps, Upload: 8 Kbps
+1980-01-01 10:05:20, Latency: 24 ms, Download: 8 Kbps, Upload: 8 Kbps
+1980-01-01 10:05:25, Latency: 24 ms, Download: 8 Kbps, Upload: 8 Kbps
+1980-01-01 10:05:30, Latency: 24 ms, Download: 8 Kbps, Upload: 8 Kbps
+1980-01-01 10:05:35, Latency: 24 ms, Download: 8 Kbps, Upload: 8 Kbps
+1980-01-01 10:05:40, Latency: 24 ms, Download: 8 Kbps, Upload: 8 Kbps
+1980-01-01 10:05:45, Latency: 24 ms, Download: 8 Kbps, Upload: 8 Kbps

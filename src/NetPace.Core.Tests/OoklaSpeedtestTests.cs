@@ -1451,7 +1451,7 @@ public sealed partial class OoklaSpeedtestTests
     [InlineData(HttpStatusCode.InternalServerError)]
     [InlineData(HttpStatusCode.ServiceUnavailable)]
     [InlineData(HttpStatusCode.BadGateway)]
-    public async Task GetUploadSpeedAsync_ShouldCompleteSuccessfully_EvenWithErrorResponses(HttpStatusCode errorCode)
+    public async Task GetUploadSpeedAsync_ShouldTreatErrorResponsesAsFailures(HttpStatusCode errorCode)
     {
         // Given
         using var mockHttp = new MockHttpMessageHandler();
@@ -1476,9 +1476,11 @@ public sealed partial class OoklaSpeedtestTests
 
         // Then
         result.ShouldNotBeNull();
-        // Unlike downloads, uploads don't check response status codes
-        // Bytes are counted as uploaded even if server returns error status
-        result.BytesProcessed.ShouldBeGreaterThan(0);
+        // A non-success status is a rejected upload, not throughput: zero bytes, all requests failed.
+        result.BytesProcessed.ShouldBe(0);
+        result.RequestsSucceeded.ShouldBe(0);
+        result.RequestsFailed.ShouldBe(result.RequestsAttempted);
+        result.RequestsAttempted.ShouldBeGreaterThan(0);
         result.ElapsedMilliseconds.ShouldBeGreaterThanOrEqualTo(0);
     }
 

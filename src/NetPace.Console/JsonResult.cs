@@ -35,14 +35,40 @@ public sealed record JsonResult
     public required string Latency { get; init; }
 
     /// <summary>
-    /// Gets the measured download speed.
+    /// Gets the measured download speed, or <see langword="null"/> when every download request
+    /// failed (no valid measurement) or the download dimension was not run.
     /// </summary>
     public required string DownloadSpeed { get; init; }
 
     /// <summary>
-    /// Gets the measured upload speed.
+    /// Gets the number of download requests that succeeded, or <see langword="null"/> when the
+    /// download dimension was not run.
+    /// </summary>
+    public int? DownloadSucceeded { get; init; }
+
+    /// <summary>
+    /// Gets the number of download requests that failed, or <see langword="null"/> when the
+    /// download dimension was not run.
+    /// </summary>
+    public int? DownloadFailed { get; init; }
+
+    /// <summary>
+    /// Gets the measured upload speed, or <see langword="null"/> when every upload request failed
+    /// (no valid measurement) or the upload dimension was not run.
     /// </summary>
     public required string UploadSpeed { get; init; }
+
+    /// <summary>
+    /// Gets the number of upload requests that succeeded, or <see langword="null"/> when the upload
+    /// dimension was not run.
+    /// </summary>
+    public int? UploadSucceeded { get; init; }
+
+    /// <summary>
+    /// Gets the number of upload requests that failed, or <see langword="null"/> when the upload
+    /// dimension was not run.
+    /// </summary>
+    public int? UploadFailed { get; init; }
 
     // Device identity
 

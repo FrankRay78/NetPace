@@ -275,7 +275,11 @@ public sealed class OoklaSpeedtest : ISpeedTestService
         {
             // Use RandomStreamContent to stream generated random bytes in small chunks to avoid LOH allocations.
             using var content = new RandomStreamContent(length);
-            await client.PostAsync(server.Url, content, cancellationToken).ConfigureAwait(false);
+            using var response = await client.PostAsync(server.Url, content, cancellationToken).ConfigureAwait(false);
+
+            // A rejected upload (non-success status) is a failed request, not throughput -
+            // mirror the download path so error statuses are aggregated into the failure count.
+            response.EnsureSuccessStatusCode();
             return length;
         };
 
@@ -304,6 +308,8 @@ public sealed class OoklaSpeedtest : ISpeedTestService
         long totalBytesReturned = 0;
 
         var completedCount = 0;
+        var succeededCount = 0;
+        var failedCount = 0;
         var totalCount = testData.Count();
 
         var timer = new Stopwatch();
@@ -317,6 +323,9 @@ public sealed class OoklaSpeedtest : ISpeedTestService
         {
             var bytesReturned = 0;
 
+            // Null unless this request failed; carries the reason for live (Debug) reporting.
+            string? failureReason = null;
+
             try
             {
                 // Limit concurrent executions by waiting for a permit from the semaphore.
@@ -327,14 +336,21 @@ public sealed class OoklaSpeedtest : ISpeedTestService
             }
             catch (Exception e)
             {
-                // An exception was thrown when performing the work
-                // - Progress will be reported as if no failure
-                // - Bytes returned will be treated as zero
-
-                if (e is OperationCanceledException && !wasCancelledLocally)
+                // Genuine user cancellation (the caller's token) must propagate; it is not a
+                // per-request failure.
+                if (e is OperationCanceledException && cancellationToken.IsCancellationRequested)
                 {
-                    // Propagate user cancelled exceptions
                     throw;
+                }
+
+                // A cancellation raised locally because the byte budget was reached is not a
+                // failure - the request is simply excluded (see the cts gate below). Any other
+                // exception (transport error, TLS, timeout, or a non-success HTTP status surfaced
+                // by EnsureSuccessStatusCode) is a per-request failure, aggregated into the counts
+                // rather than swallowed. Its bytes remain zero.
+                if (!(e is OperationCanceledException && wasCancelledLocally))
+                {
+                    failureReason = e.Message;
                 }
             }
             finally
@@ -346,7 +362,16 @@ public sealed class OoklaSpeedtest : ISpeedTestService
                         if (!cts.IsCancellationRequested)
                         {
                             completedCount++;
-                            totalBytesReturned += bytesReturned;
+
+                            if (failureReason is not null)
+                            {
+                                failedCount++;
+                            }
+                            else
+                            {
+                                succeededCount++;
+                                totalBytesReturned += bytesReturned;
+                            }
 
                             if (totalBytesReturned >= maxBytes)
                             {
@@ -357,7 +382,8 @@ public sealed class OoklaSpeedtest : ISpeedTestService
                                 {
                                     PercentageComplete = 100,
                                     BytesProcessed = totalBytesReturned,
-                                    ElapsedMilliseconds = timer.ElapsedMilliseconds
+                                    ElapsedMilliseconds = timer.ElapsedMilliseconds,
+                                    FailedRequestReason = failureReason
                                 });
                             }
                             else
@@ -382,7 +408,8 @@ public sealed class OoklaSpeedtest : ISpeedTestService
                                 {
                                     PercentageComplete = percentageComplete,
                                     BytesProcessed = totalBytesReturned,
-                                    ElapsedMilliseconds = timer.ElapsedMilliseconds
+                                    ElapsedMilliseconds = timer.ElapsedMilliseconds,
+                                    FailedRequestReason = failureReason
                                 });
                             }
                         }
@@ -406,7 +433,10 @@ public sealed class OoklaSpeedtest : ISpeedTestService
         return new SpeedTestResult
         {
             BytesProcessed = totalBytesReturned,
-            ElapsedMilliseconds = timer.ElapsedMilliseconds
+            ElapsedMilliseconds = timer.ElapsedMilliseconds,
+            RequestsAttempted = completedCount,
+            RequestsSucceeded = succeededCount,
+            RequestsFailed = failedCount
         };
     }
 

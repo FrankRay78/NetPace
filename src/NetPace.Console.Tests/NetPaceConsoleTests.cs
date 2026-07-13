@@ -330,9 +330,10 @@ public sealed partial class NetPaceConsoleTests
         // When
         var result = await host.RunAsync([ "--no-latency", "--no-download", "--no-upload" ]);
 
-        // Then
+        // Then the validation error is reported on standard error.
         Assert.Equal(1, result.ExitCode);
-        await Verify(result.Output);
+        Assert.Empty(result.Output);
+        await Verify(result.Error);
     }
 
     [Fact]
@@ -443,35 +444,28 @@ public sealed partial class NetPaceConsoleTests
         // When
         var result = await host.RunAsync(Array.Empty<string>());
 
-        // Then
+        // Then an unreachable discovery endpoint is a reported data outcome (exit 0), surfaced on stderr.
         Assert.Equal(0, result.ExitCode);
-        await Verify(result.Output);
+        await Verify(result.Error);
     }
 
     [Fact]
-    public async Task Should_Continue_Multiple_Speed_Tests_On_Exception()
+    public async Task Should_Continue_Multiple_Speed_Tests_When_A_Measurement_All_Fails()
     {
-        // Given
+        // A measurement that all-fails is data, not an error: the loop keeps running and the exit
+        // code stays 0 (network conditions never set it by default).
+
+        // Given the second iteration's download all-fails, the rest measure cleanly.
         var cancellationTokenSource = new CancellationTokenSource();
         var waiter = new SelfCancellingWaiter(10, cancellationTokenSource);
 
-        // Create a stateful fault function that tracks calls
-        var downloadCallCount = 0;
-        var faultyTester = new FaultySpeedTester(
-            inner: new SpeedTestStub(),
-            isFaulted: (sponsor, methodName) =>
-            {
-                if (methodName == nameof(ISpeedTestService.GetDownloadSpeedAsync))
-                {
-                    downloadCallCount++;
-                    return downloadCallCount == 2; // Fail only on the second call
-                }
-                return false; // Don't fail other methods
-            }
-        );
+        var service = new ScriptedSpeedTester
+        {
+            DownloadFactory = i => i == 1 ? ScriptedSpeedTester.AllFailed(150) : ScriptedSpeedTester.Clean(150)
+        };
 
         var services = new ServiceCollection();
-        services.AddSingleton<ISpeedTestService>(faultyTester);
+        services.AddSingleton<ISpeedTestService>(service);
         services.AddSingleton<IClock, IncrementingClockStub>();
         services.AddSingleton<IWaiter>(waiter);
         var host = GetCommandLineTestHost(services);
@@ -502,9 +496,9 @@ public sealed partial class NetPaceConsoleTests
         // When
         var result = await host.RunAsync(Array.Empty<string>());
 
-        // Then
+        // Then the no-servers condition is reported on stderr and exits 0.
         Assert.Equal(0, result.ExitCode);
-        await Verify(result.Output);
+        await Verify(result.Error);
     }
 
     [Fact]
@@ -525,9 +519,9 @@ public sealed partial class NetPaceConsoleTests
         // When
         var result = await host.RunAsync([ "--no-latency" ]);
 
-        // Then
+        // Then the no-servers condition is reported on stderr and exits 0.
         Assert.Equal(0, result.ExitCode);
-        await Verify(result.Output);
+        await Verify(result.Error);
     }
 
     [InlineData("-h")]

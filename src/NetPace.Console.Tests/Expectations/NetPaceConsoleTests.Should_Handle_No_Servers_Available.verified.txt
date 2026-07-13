@@ -1,1 +1,1 @@
-Error: No servers available
+﻿No speed test servers were found.

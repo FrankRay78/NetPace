@@ -6,8 +6,10 @@ namespace NetPace.Console.ConsoleWriters;
 
 public sealed class DefaultConsoleWriter : IConsoleWriter
 {
-    public async Task PerformSpeedTestAsync(bool initialSpeedTest, IAnsiConsole console, IClock clock, IClientInfoProvider clientInfoProvider, ISpeedTestService speedTestClient, SpeedTestCommandSettings settings, CancellationToken cancellationToken)
+    public async Task<SpeedTestOutcome> PerformSpeedTestAsync(bool initialSpeedTest, IAnsiConsole console, IAnsiConsole errorConsole, IClock clock, IClientInfoProvider clientInfoProvider, ISpeedTestService speedTestClient, SpeedTestCommandSettings settings, CancellationToken cancellationToken)
     {
+        var debug = (settings.Verbosity & Verbosity.Debug) != 0;
+
         // Get the server to use for speed testing.
         var fastest = await console.Progress()
             .AutoClear(true)
@@ -21,14 +23,16 @@ public sealed class DefaultConsoleWriter : IConsoleWriter
                 var fastestServerProgress = progress.AddTask("Choosing server", autoStart: true, maxValue: 100);
 
                 try
-                { 
+                {
                     return await ServerSelector.GetServerAsync(speedTestClient, settings, cancellationToken);
                 }
                 finally
-                { 
+                {
                     fastestServerProgress.StopTask();
                 }
             });
+
+        if (fastest is null) return SpeedTestOutcome.NoServers;
 
 
         // Display server latency.
@@ -76,19 +80,36 @@ public sealed class DefaultConsoleWriter : IConsoleWriter
                     // SyncContext/thread pool, which races Spectre's renderer and drops updates.
                     if (!settings.NoDownload)
                     {
-                        var downloadProgressReporter = new SyncProgress<SpeedTestProgress>(p => downloadProgress!.Value = p.PercentageComplete);
+                        var downloadProgressReporter = new SyncProgress<SpeedTestProgress>(p =>
+                        {
+                            downloadProgress!.Value = p.PercentageComplete;
+
+                            // At debug verbosity, stream each per-request failure reason live to stderr.
+                            if (debug && p.FailedRequestReason is not null)
+                            {
+                                errorConsole.WriteLine($"Download request failed: {p.FailedRequestReason}");
+                            }
+                        });
                         downloadResult = await speedTestClient.GetDownloadSpeedAsync(fastest.Server, downloadProgressReporter, cancellationToken);
                     }
                     if (!settings.NoUpload)
                     {
-                        var uploadProgressReporter = new SyncProgress<SpeedTestProgress>(p => uploadProgress!.Value = p.PercentageComplete);
+                        var uploadProgressReporter = new SyncProgress<SpeedTestProgress>(p =>
+                        {
+                            uploadProgress!.Value = p.PercentageComplete;
+
+                            if (debug && p.FailedRequestReason is not null)
+                            {
+                                errorConsole.WriteLine($"Upload request failed: {p.FailedRequestReason}");
+                            }
+                        });
                         uploadResult = await speedTestClient.GetUploadSpeedAsync(fastest.Server, uploadProgressReporter, cancellationToken);
                     }
                 });
         }
 
 
-        if ((settings.Verbosity & Verbosity.Debug) != 0)
+        if (debug)
         {
             // Display detailed diagnostics
             ByteSize size; TimeSpan elapsed;
@@ -120,17 +141,25 @@ public sealed class DefaultConsoleWriter : IConsoleWriter
         }
 
 
-        // Display speed test result.
+        // Display speed test result. The token carries the count annotation when requests failed.
         console.WriteLine(string.Join(", ", new[]
         {
             settings.IncludeTimestamp ? clock.Now.ToString(settings.DateTimeFormat) : null,
             !settings.NoLatency ? $"Latency: {fastest.LatencyMilliseconds} ms" : null,
-            !settings.NoDownload ? $"Download: {downloadResult.GetSpeedString(settings.SpeedUnit, settings.SpeedUnitSystem, settings.SpeedScale)}" : null,
-            !settings.NoUpload ? $"Upload: {uploadResult.GetSpeedString(settings.SpeedUnit, settings.SpeedUnitSystem, settings.SpeedScale)}" : null
+            !settings.NoDownload ? $"Download: {downloadResult.GetSpeedString(settings.SpeedUnit, settings.SpeedUnitSystem, settings.SpeedScale)}{downloadResult.GetFailureAnnotation()}" : null,
+            !settings.NoUpload ? $"Upload: {uploadResult.GetSpeedString(settings.SpeedUnit, settings.SpeedUnitSystem, settings.SpeedScale)}{uploadResult.GetFailureAnnotation()}" : null
         }.Where(s => !string.IsNullOrEmpty(s))));
 
 
         console.WriteLine("\nTry 'NetPace --help' for more information.");
+
+        return new SpeedTestOutcome
+        {
+            ServersFound = true,
+            ServerUrl = fastest.Server.Url,
+            Download = settings.NoDownload ? null : downloadResult,
+            Upload = settings.NoUpload ? null : uploadResult
+        };
     }
 
     private sealed class SyncProgress<T>(Action<T> handler) : IProgress<T>

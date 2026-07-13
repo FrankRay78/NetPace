@@ -3,19 +3,17 @@ using NetPace.Console.ConsoleWriters;
 
 namespace NetPace.Console.Commands;
 
-public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService speedTestClient, IClock clock, IClientInfoProvider clientInfoProvider, IWaiter waiter)
+public sealed class SpeedTestCommand(IAnsiConsole console, IAnsiConsole errorConsole, ISpeedTestService speedTestClient, IClock clock, IClientInfoProvider clientInfoProvider, IWaiter waiter)
 {
-    /// <summary>
-    /// Writes an error message to the console.
-    /// </summary>
-    private static void WriteError(IAnsiConsole console, string message)
-    {
-        console.Markup($"[red]Error:[/] {message.EscapeMarkup()}\n");
-    }
-
     /// <summary>
     /// Executes the speed test command using the provided settings.
     /// </summary>
+    /// <remarks>
+    /// Network and discovery outcomes are data, not errors: they are reported through the output
+    /// (counts) and standard-error notices, and leave the exit code at <c>0</c> unless the consumer
+    /// opts in via <c>--fail-on</c>. Only operational failures (which propagate out of this method to
+    /// the top-level handler) produce a non-zero exit code.
+    /// </remarks>
     public async Task<int> ExecuteAsync(SpeedTestCommandSettings settings, CancellationToken cancellationToken)
     {
         if (settings.Quiet || !string.IsNullOrWhiteSpace(settings.OutputFile))
@@ -56,17 +54,13 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
                 {
                     try
                     {
-                        // Run the speed test.
-                        await writer.PerformSpeedTestAsync(initialSpeedTest: firstLoop, console, clock, clientInfoProvider, speedTestClient, settings, cancellationToken);
+                        var outcome = await writer.PerformSpeedTestAsync(initialSpeedTest: firstLoop, console, errorConsole, clock, clientInfoProvider, speedTestClient, settings, cancellationToken);
+                        if (ProcessOutcome(outcome, settings)) return 1;
                     }
-                    catch (TaskCanceledException)
+                    catch (OperationCanceledException)
                     {
                         // User requested cancellation.
                         return 0;
-                    }
-                    catch (Exception e)
-                    {
-                        WriteError(console, e.Message);
                     }
                     finally
                     {
@@ -78,7 +72,7 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
                         // Pause before the next speed test.
                         await waiter.Delay(settings.Delay, cancellationToken);
                     }
-                    catch (TaskCanceledException)
+                    catch (OperationCanceledException)
                     {
                         // User requested cancellation.
                         return 0;
@@ -93,17 +87,13 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
                 {
                     try
                     {
-                        // Run the speed test.
-                        await writer.PerformSpeedTestAsync(initialSpeedTest: (i == 0), console, clock, clientInfoProvider, speedTestClient, settings, cancellationToken);
+                        var outcome = await writer.PerformSpeedTestAsync(initialSpeedTest: (i == 0), console, errorConsole, clock, clientInfoProvider, speedTestClient, settings, cancellationToken);
+                        if (ProcessOutcome(outcome, settings)) return 1;
                     }
-                    catch (TaskCanceledException)
+                    catch (OperationCanceledException)
                     {
                         // User requested cancellation.
                         return 0;
-                    }
-                    catch (Exception e)
-                    {
-                        WriteError(console, e.Message);
                     }
 
                     if ((i + 1) < settings.Count)
@@ -113,7 +103,7 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
                             // Pause before the next speed test.
                             await waiter.Delay(settings.Delay, cancellationToken);
                         }
-                        catch (TaskCanceledException)
+                        catch (OperationCanceledException)
                         {
                             // User requested cancellation.
                             return 0;
@@ -126,17 +116,13 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
                 // Run once.
                 try
                 {
-                    // Run the speed test.
-                    await writer.PerformSpeedTestAsync(initialSpeedTest: true, console, clock, clientInfoProvider, speedTestClient, settings, cancellationToken);
+                    var outcome = await writer.PerformSpeedTestAsync(initialSpeedTest: true, console, errorConsole, clock, clientInfoProvider, speedTestClient, settings, cancellationToken);
+                    if (ProcessOutcome(outcome, settings)) return 1;
                 }
-                catch (TaskCanceledException)
+                catch (OperationCanceledException)
                 {
                     // User requested cancellation.
                     return 0;
-                }
-                catch (Exception e)
-                {
-                    WriteError(console, e.Message);
                 }
             }
 
@@ -149,5 +135,62 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
                 disposable.Dispose();
             }
         }
+    }
+
+    /// <summary>
+    /// Emits standard-error notices for the outcome and evaluates the <c>--fail-on</c> threshold.
+    /// </summary>
+    /// <returns><see langword="true"/> when <c>--fail-on</c> is met and the process should exit with a non-zero code.</returns>
+    private bool ProcessOutcome(SpeedTestOutcome outcome, SpeedTestCommandSettings settings)
+    {
+        if (!outcome.ServersFound)
+        {
+            // No usable server is a reported data outcome, not an error (exit code stays 0).
+            errorConsole.WriteLine("No speed test servers were found.");
+            return false;
+        }
+
+        // Standard error is the human channel for interactive output. Machine formats (JSON, CSV)
+        // self-describe via the counts, and Minimal keeps the token annotation only, so neither
+        // gets a duplicate notice.
+        if (ShouldEmitFailureNotice(settings))
+        {
+            EmitAllFailedNotice("Download", settings.NoDownload ? null : outcome.Download, outcome.ServerUrl);
+            EmitAllFailedNotice("Upload", settings.NoUpload ? null : outcome.Upload, outcome.ServerUrl);
+        }
+
+        return FailOnTriggered(outcome, settings);
+    }
+
+    /// <summary>
+    /// Whether an all-failed dimension should produce a standard-error notice for the active output mode.
+    /// </summary>
+    private static bool ShouldEmitFailureNotice(SpeedTestCommandSettings settings) =>
+        !settings.CSV && !settings.Json && !settings.JsonPretty && settings.Verbosity != Verbosity.Minimal;
+
+    private void EmitAllFailedNotice(string dimension, SpeedTestResult? result, string? serverUrl)
+    {
+        if (result is not null && result.IsAllFailed())
+        {
+            errorConsole.WriteLine($"{dimension} failed: all {result.RequestsAttempted} requests to {serverUrl} failed.");
+        }
+    }
+
+    /// <summary>
+    /// Evaluates the <c>--fail-on</c> threshold against a single measurement (fail-fast).
+    /// </summary>
+    private static bool FailOnTriggered(SpeedTestOutcome outcome, SpeedTestCommandSettings settings)
+    {
+        if (settings.FailOn == FailOn.None) return false;
+
+        foreach (var dimension in new[] { outcome.Download, outcome.Upload })
+        {
+            if (dimension is null) continue;
+
+            if (settings.FailOn == FailOn.Total && dimension.IsAllFailed()) return true;
+            if (settings.FailOn == FailOn.Partial && dimension.HasFailures()) return true;
+        }
+
+        return false;
     }
 }

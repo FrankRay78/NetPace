@@ -4,9 +4,15 @@ namespace NetPace.Core;
 /// Interface for performing internet speed tests.
 /// </summary>
 /// <remarks>
-/// Implementations of this interface should favor allowing network-related exceptions (e.g., timeouts, connection failures)
-/// to propagate to the caller rather than catching and suppressing them. This approach enables consumers of the library
-/// to implement their own error handling strategies that align with their application's needs.
+/// For download and upload tests, per-request network outcomes are <em>data</em>, not errors:
+/// individual request failures (transport errors, timeouts, and non-success HTTP statuses) are
+/// aggregated into the returned <see cref="SpeedTestResult"/>'s request counts
+/// (<see cref="SpeedTestResult.RequestsAttempted"/>, <see cref="SpeedTestResult.RequestsSucceeded"/>,
+/// and <see cref="SpeedTestResult.RequestsFailed"/>) rather than propagating to the caller — even
+/// when every request fails. Callers detect an unusable measurement by inspecting the counts
+/// (for example, <see cref="SpeedTestResult.RequestsSucceeded"/> is zero). Exceptions are reserved
+/// for caller-requested cancellation and for genuine operational failures; they do not signal
+/// network conditions.
 /// </remarks>
 public interface ISpeedTestService
 {
@@ -73,7 +79,11 @@ public interface ISpeedTestService
     /// </summary>
     /// <param name="server">The server to measure download speed from.</param>
     /// <param name="cancellationToken">The token to allow the operation to be cancelled.</param>
-    /// <returns>The result including bytes processed and elapsed time in milliseconds.</returns>
+    /// <returns>
+    /// The result including bytes processed, elapsed time in milliseconds, and the per-request
+    /// counts (attempted, succeeded, failed). Per-request network failures are reflected in the
+    /// counts rather than thrown.
+    /// </returns>
     public Task<SpeedTestResult> GetDownloadSpeedAsync(IServer server, CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -82,7 +92,11 @@ public interface ISpeedTestService
     /// <param name="server">The server to measure download speed from.</param>
     /// <param name="progress">A progress reporter that receives download progress updates.</param>
     /// <param name="cancellationToken">The token to allow the operation to be cancelled.</param>
-    /// <returns>The result including bytes processed and elapsed time in milliseconds.</returns>
+    /// <returns>
+    /// The result including bytes processed, elapsed time in milliseconds, and the per-request
+    /// counts (attempted, succeeded, failed). Per-request network failures are reflected in the
+    /// counts rather than thrown.
+    /// </returns>
     public Task<SpeedTestResult> GetDownloadSpeedAsync(IServer server, IProgress<SpeedTestProgress> progress, CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -90,7 +104,11 @@ public interface ISpeedTestService
     /// </summary>
     /// <param name="server">The server to measure upload speed from.</param>
     /// <param name="cancellationToken">The token to allow the operation to be cancelled.</param>
-    /// <returns>The result including bytes processed and elapsed time in milliseconds.</returns>
+    /// <returns>
+    /// The result including bytes processed, elapsed time in milliseconds, and the per-request
+    /// counts (attempted, succeeded, failed). Per-request network failures are reflected in the
+    /// counts rather than thrown.
+    /// </returns>
     public Task<SpeedTestResult> GetUploadSpeedAsync(IServer server, CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -99,6 +117,10 @@ public interface ISpeedTestService
     /// <param name="server">The server to measure upload speed from.</param>
     /// <param name="progress">A progress reporter that receives upload progress updates.</param>
     /// <param name="cancellationToken">The token to allow the operation to be cancelled.</param>
-    /// <returns>The result including bytes processed and elapsed time in milliseconds.</returns>
+    /// <returns>
+    /// The result including bytes processed, elapsed time in milliseconds, and the per-request
+    /// counts (attempted, succeeded, failed). Per-request network failures are reflected in the
+    /// counts rather than thrown.
+    /// </returns>
     public Task<SpeedTestResult> GetUploadSpeedAsync(IServer server, IProgress<SpeedTestProgress> progress, CancellationToken cancellationToken = default);
 }

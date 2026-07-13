@@ -1,1 +1,1 @@
-﻿Error: Could not open socket
+﻿No speed test servers were found.

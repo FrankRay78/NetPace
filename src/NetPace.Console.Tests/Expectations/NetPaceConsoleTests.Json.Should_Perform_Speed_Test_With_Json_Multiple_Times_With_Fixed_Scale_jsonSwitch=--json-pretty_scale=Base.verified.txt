@@ -5,7 +5,11 @@
   "Timestamp": "1980-01-01 10:05:00",
   "Latency": "75 ms",
   "DownloadSpeed": "250000 bps",
+  "DownloadSucceeded": 0,
+  "DownloadFailed": 0,
   "UploadSpeed": "500000 bps",
+  "UploadSucceeded": 0,
+  "UploadFailed": 0,
   "IPAddress": "192.168.1.1",
   "Hostname": "test-host"
 }
@@ -16,7 +20,11 @@
   "Timestamp": "1980-01-01 10:05:05",
   "Latency": "100 ms",
   "DownloadSpeed": "1000000 bps",
+  "DownloadSucceeded": 0,
+  "DownloadFailed": 0,
   "UploadSpeed": "3000000 bps",
+  "UploadSucceeded": 0,
+  "UploadFailed": 0,
   "IPAddress": "192.168.1.1",
   "Hostname": "test-host"
 }
@@ -27,7 +35,11 @@
   "Timestamp": "1980-01-01 10:05:10",
   "Latency": "150 ms",
   "DownloadSpeed": "2750000 bps",
+  "DownloadSucceeded": 0,
+  "DownloadFailed": 0,
   "UploadSpeed": "1330000 bps",
+  "UploadSucceeded": 0,
+  "UploadFailed": 0,
   "IPAddress": "192.168.1.1",
   "Hostname": "test-host"
 }

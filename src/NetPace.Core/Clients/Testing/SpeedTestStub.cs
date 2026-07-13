@@ -144,7 +144,7 @@ public sealed class SpeedTestStub : ISpeedTestService
 
         var serverID = GetServerID(server.Url);
 
-        return Task.FromResult(new SpeedTestResult() { BytesProcessed = 1000, ElapsedMilliseconds = 1000 * serverID });
+        return Task.FromResult(new SpeedTestResult() { BytesProcessed = 1000, ElapsedMilliseconds = 1000 * serverID, RequestsAttempted = 150, RequestsSucceeded = 150, RequestsFailed = 0 });
     }
 
     /// <inheritdoc/>
@@ -170,6 +170,6 @@ public sealed class SpeedTestStub : ISpeedTestService
 
         var serverID = GetServerID(server.Url);
 
-        return Task.FromResult(new SpeedTestResult() { BytesProcessed = 7000, ElapsedMilliseconds = 3000 * serverID });
+        return Task.FromResult(new SpeedTestResult() { BytesProcessed = 7000, ElapsedMilliseconds = 3000 * serverID, RequestsAttempted = 32, RequestsSucceeded = 32, RequestsFailed = 0 });
     }
 }

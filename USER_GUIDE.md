@@ -100,6 +100,65 @@ NetPace --profile large --downloadsize 200
 
 ---
 
+## Detecting failed measurements
+
+A speed test runs many small requests in parallel and reports the aggregate throughput. If some
+of those requests fail (a dropped connection, a TLS error, a timeout, or a server that rejects the
+transfer), NetPace does **not** silently treat them as zero-speed data — it counts them, so you can
+tell a genuinely slow link from a server that isn't transferring at all. When *every* request to a
+dimension fails, the speed reads `0 bps`, and the counts tell you it was a total failure rather than
+a 0 bps link.
+
+Every output format carries the counts:
+
+- **Normal / Minimal** — the result token is annotated only when requests failed:
+  ```
+  Latency: 24 ms, Download: 512.6 Mbps, Upload: 0 bps (32 of 32 requests failed)
+  ```
+  In normal output, an all-failed dimension also prints a short notice on **standard error**:
+  ```
+  Upload failed: all 32 requests to http://…/upload.php failed.
+  ```
+- **CSV** — a `Succeeded` and `Failed` column sits next to each speed column:
+  ```
+  Timestamp,Latency,Download,DownloadSucceeded,DownloadFailed,Upload,UploadSucceeded,UploadFailed,IPAddress,Hostname
+  ```
+- **JSON** — each active dimension gains integer `…Succeeded` / `…Failed` fields; on a total
+  failure the speed field is omitted (there is no valid measurement) while the counts remain:
+  ```json
+  { "UploadSucceeded": 0, "UploadFailed": 32, … }
+  ```
+
+Machine formats (CSV, JSON) self-describe through the counts and never duplicate the notice on
+standard error. At `--verbosity Debug`, the raw reason for each failed request is streamed live to
+standard error.
+
+### Exit codes
+
+The exit code reports only whether **NetPace itself** functioned. Network conditions — a total
+outage, 100% request failure, or no servers found — are *data*, not errors, and exit `0`. Only an
+operational failure (for example, being unable to write the `--file` output) exits non-zero. So a
+`0 bps` measurement still exits `0` by default: inspect the counts (or use `--fail-on`) to detect it.
+
+If you want a failed measurement to fail the process — for scripting or CI — opt in with
+`--fail-on`:
+
+| Value | Exits non-zero when… |
+|---|---|
+| `None` (default) | never — measurement outcomes don't affect the exit code |
+| `Total` | a requested dimension is all-failed (no request succeeded) |
+| `Partial` | any request in a requested dimension failed (strict; intended for pristine-run checks) |
+
+`--fail-on` is fail-fast and uniform across single runs, `--count`, and `--loop`: the process exits
+`1` at the first measurement that meets the threshold.
+
+```bash
+# In CI: treat a totally-failed dimension as a build failure
+NetPace --fail-on Total
+```
+
+---
+
 For more options and details, run:  
 ```bash
 NetPace --help

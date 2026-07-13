@@ -188,6 +188,12 @@ public static class Program
         };
         quietOption.Aliases.Add("-q");
 
+        var failOnOption = new Option<FailOn>("--fail-on")
+        {
+            Description = "Exit with a non-zero code on a failed measurement. <None, Total, Partial>\nNone (default) never affects the exit code; Total triggers when a dimension is all-failed; Partial triggers on any failed request. Fail-fast across --count and --loop.",
+            DefaultValueFactory = _ => FailOn.None
+        };
+
         // Add options
         command.Options.Add(versionOption);
         command.Options.Add(loopOption);
@@ -214,6 +220,7 @@ public static class Program
         command.Options.Add(fileOption);
         command.Options.Add(fileModeOption);
         command.Options.Add(quietOption);
+        command.Options.Add(failOnOption);
 
         // Set command action
         command.SetAction((Func<ParseResult, CancellationToken, Task<int>>)(async (parseResult, cancellationToken) =>
@@ -246,7 +253,8 @@ public static class Program
                     Verbosity = parseResult.GetValue(verbosityOption),
                     OutputFile = parseResult.GetValue(fileOption) ?? string.Empty,
                     FileModeValue = parseResult.GetValue(fileModeOption),
-                    Quiet = parseResult.GetValue(quietOption)
+                    Quiet = parseResult.GetValue(quietOption),
+                    FailOn = parseResult.GetValue(failOnOption)
                 };
 
                 // Validate settings
@@ -260,19 +268,21 @@ public static class Program
 
                 // Get services from DI
                 var ansiConsole = serviceProvider.GetRequiredService<IAnsiConsole>();
+                var errorConsole = serviceProvider.GetRequiredService<ErrorConsole>().Console;
                 var speedTestService = serviceProvider.GetRequiredService<ISpeedTestService>();
                 var clock = serviceProvider.GetRequiredService<IClock>();
                 var clientInfoProvider = serviceProvider.GetRequiredService<IClientInfoProvider>();
                 var waiter = serviceProvider.GetRequiredService<IWaiter>();
 
                 // Create and execute command
-                var command = new SpeedTestCommand(ansiConsole, speedTestService, clock, clientInfoProvider, waiter);
+                var command = new SpeedTestCommand(ansiConsole, errorConsole, speedTestService, clock, clientInfoProvider, waiter);
                 return await command.ExecuteAsync(settings, cancellationToken);
             }
             catch (Exception ex)
             {
-                var ansiConsole = serviceProvider.GetRequiredService<IAnsiConsole>();
-                ansiConsole.MarkupLine($"[red]Error:[/] {ex.Message}");
+                // Usage/configuration errors and operational failures are reported on standard error.
+                var errorConsole = serviceProvider.GetRequiredService<ErrorConsole>().Console;
+                errorConsole.MarkupLine($"[red]Error:[/] {ex.Message}");
                 return 1;
             }
         }));
@@ -375,8 +385,13 @@ public static class Program
         // Setup DI
         var services = new ServiceCollection();
 
-        // Register AnsiConsole
+        // Register AnsiConsole (standard output) and a standard-error console for the
+        // human/operational channel.
         services.AddSingleton(AnsiConsole.Console);
+        services.AddSingleton(new ErrorConsole(AnsiConsole.Create(new AnsiConsoleSettings
+        {
+            Out = new AnsiConsoleOutput(System.Console.Error)
+        })));
 
         if (args != null && args.Contains("--test"))
         {

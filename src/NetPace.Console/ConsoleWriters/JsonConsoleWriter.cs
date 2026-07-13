@@ -5,10 +5,11 @@ namespace NetPace.Console.ConsoleWriters;
 
 public sealed class JsonConsoleWriter : IConsoleWriter
 {
-    public async Task PerformSpeedTestAsync(bool initialSpeedTest, IAnsiConsole console, IClock clock, IClientInfoProvider clientInfoProvider, ISpeedTestService speedTestClient, SpeedTestCommandSettings settings, CancellationToken cancellationToken)
+    public async Task<SpeedTestOutcome> PerformSpeedTestAsync(bool initialSpeedTest, IAnsiConsole console, IAnsiConsole errorConsole, IClock clock, IClientInfoProvider clientInfoProvider, ISpeedTestService speedTestClient, SpeedTestCommandSettings settings, CancellationToken cancellationToken)
     {
         // Get the server to use for speed testing.
         var fastest = await ServerSelector.GetServerAsync(speedTestClient, settings, cancellationToken);
+        if (fastest is null) return SpeedTestOutcome.NoServers;
 
 
         var downloadResult = new SpeedTestResult();
@@ -19,10 +20,15 @@ public sealed class JsonConsoleWriter : IConsoleWriter
         if (!settings.NoUpload) uploadResult = await speedTestClient.GetUploadSpeedAsync(fastest.Server, cancellationToken);
 
 
-        // Display speed test result.
+        // Display speed test result. On an all-failed dimension the speed is null (no valid
+        // measurement); the counts always accompany an active dimension so the JSON self-describes.
         var latencyFormatted = !settings.NoLatency ? $"{fastest.LatencyMilliseconds} ms" : null;
-        var downloadFormatted = !settings.NoDownload ? downloadResult.GetSpeedString(settings.SpeedUnit, settings.SpeedUnitSystem, settings.SpeedScale) : null;
-        var uploadFormatted = !settings.NoUpload ? uploadResult.GetSpeedString(settings.SpeedUnit, settings.SpeedUnitSystem, settings.SpeedScale) : null;
+        var downloadFormatted = settings.NoDownload || downloadResult.IsAllFailed()
+            ? null
+            : downloadResult.GetSpeedString(settings.SpeedUnit, settings.SpeedUnitSystem, settings.SpeedScale);
+        var uploadFormatted = settings.NoUpload || uploadResult.IsAllFailed()
+            ? null
+            : uploadResult.GetSpeedString(settings.SpeedUnit, settings.SpeedUnitSystem, settings.SpeedScale);
 
         var jsonResult = new JsonResult
         {
@@ -32,7 +38,11 @@ public sealed class JsonConsoleWriter : IConsoleWriter
             Timestamp = clock.Now.ToString(settings.DateTimeFormat),
             Latency = latencyFormatted!,
             DownloadSpeed = downloadFormatted!,
+            DownloadSucceeded = settings.NoDownload ? null : downloadResult.RequestsSucceeded,
+            DownloadFailed = settings.NoDownload ? null : downloadResult.RequestsFailed,
             UploadSpeed = uploadFormatted!,
+            UploadSucceeded = settings.NoUpload ? null : uploadResult.RequestsSucceeded,
+            UploadFailed = settings.NoUpload ? null : uploadResult.RequestsFailed,
             IPAddress = clientInfoProvider.GetIPAddress(),
             Hostname = clientInfoProvider.GetHostname()
         };
@@ -43,5 +53,13 @@ public sealed class JsonConsoleWriter : IConsoleWriter
         string jsonString = JsonSerializer.Serialize(jsonResult, typeInfo);
 
         console.WriteLine(jsonString);
+
+        return new SpeedTestOutcome
+        {
+            ServersFound = true,
+            ServerUrl = fastest.Server.Url,
+            Download = settings.NoDownload ? null : downloadResult,
+            Upload = settings.NoUpload ? null : uploadResult
+        };
     }
 }
