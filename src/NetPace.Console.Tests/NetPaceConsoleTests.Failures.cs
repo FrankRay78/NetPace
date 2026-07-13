@@ -1,3 +1,5 @@
+using NetPace.Core.Clients.Ookla;
+
 namespace NetPace.Console.Tests;
 
 /// <summary>
@@ -189,6 +191,78 @@ public sealed partial class NetPaceConsoleTests
 
             // Then
             Assert.Equal(0, result.ExitCode);
+        }
+
+        [Fact]
+        public async Task Json_Debug_Streams_Nothing_To_Stderr()
+        {
+            // Machine formats self-describe via the counts and never duplicate on stderr - that
+            // holds at Debug too (the live reason stream is a normal/interactive concern only).
+
+            // Given every upload request fails and a reason would be streamed on the progress channel.
+            var service = new ScriptedSpeedTester
+            {
+                UploadFactory = _ => ScriptedSpeedTester.AllFailed(32),
+                StreamedFailureReason = "Connection reset by peer"
+            };
+            var host = HostWith(service);
+
+            // When
+            var result = await host.RunAsync([ "--json", "--verbosity", "Debug" ]);
+
+            // Then the JSON carries the counts and stderr stays empty.
+            Assert.Equal(0, result.ExitCode);
+            Assert.Contains("\"UploadFailed\":32", result.Output);
+            Assert.Empty(result.Error);
+        }
+
+        [Fact]
+        public async Task Quiet_All_Failed_Still_Emits_Stderr_Notice()
+        {
+            // --quiet suppresses standard output, but the all-failed notice is an operational/human
+            // signal and still reaches standard error.
+
+            var service = new ScriptedSpeedTester { UploadFactory = _ => ScriptedSpeedTester.AllFailed(32) };
+            var host = HostWith(service);
+
+            // When
+            var result = await host.RunAsync([ "--quiet" ]);
+
+            // Then
+            Assert.Equal(0, result.ExitCode);
+            Assert.Empty(result.Output);
+            Assert.Contains("Upload failed: all 32 requests to", result.Error);
+        }
+
+        [Fact]
+        public async Task Csv_Header_Survives_A_Leading_No_Server_Iteration()
+        {
+            // The CSV header must print on the first actual data row, even when earlier iterations
+            // found no server (a routine outcome now that discovery failures don't throw).
+
+            // Given the first discovery finds no server, the second succeeds.
+            var server = new Server { Location = "Frankfurt", Sponsor = "Deutsche Telekom", Url = "http://ffm.example/upload.php" };
+            var discoveryCall = 0;
+            var mock = new SpeedTestMock
+            {
+                GetServersAsyncFunc = _ => Task.FromResult(discoveryCall++ == 0 ? Array.Empty<IServer>() : new IServer[] { server }),
+                GetFastestServerByLatencyAsyncFunc = (servers, _, _) => Task.FromResult(new LatencyTestResult { Server = servers[0], LatencyMilliseconds = 24 }),
+                GetDownloadSpeedAsyncFunc = (_, _, _) => Task.FromResult(ScriptedSpeedTester.Clean(150)),
+                GetUploadSpeedAsyncFunc = (_, _, _) => Task.FromResult(ScriptedSpeedTester.Clean(32)),
+            };
+            var host = HostWith(mock);
+
+            // When
+            var result = await host.RunAsync([ "--csv", "--count", "2" ]);
+
+            // Then the output begins with the CSV header (not a bare data row), and exactly one data
+            // row is written (the single server-found iteration).
+            Assert.Equal(0, result.ExitCode);
+            Assert.StartsWith("Timestamp,", result.Output.TrimStart());
+            Assert.Contains("DownloadSucceeded", result.Output);
+            var dataRows = result.Output.Split('\n', StringSplitOptions.RemoveEmptyEntries).Skip(1).ToArray();
+            Assert.Single(dataRows);
+            Assert.Contains("No speed test servers were found.", result.Error);
         }
 
         [Fact]

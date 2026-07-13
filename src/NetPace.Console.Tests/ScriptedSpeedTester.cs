@@ -13,7 +13,7 @@ public sealed class ScriptedSpeedTester : ISpeedTestService
 {
     public const string Url = "http://ffm.wsqm.telekom-dienste.de:8080/speedtest/upload.php";
 
-    private readonly IServer server = new Server { Location = "Frankfurt", Sponsor = "Deutsche Telekom", Url = Url };
+    private readonly IServer defaultServer = new Server { Location = "Frankfurt", Sponsor = "Deutsche Telekom", Url = Url };
 
     private int downloadCall;
     private int uploadCall;
@@ -40,7 +40,7 @@ public sealed class ScriptedSpeedTester : ISpeedTestService
         new() { BytesProcessed = 1000, ElapsedMilliseconds = 1000, RequestsAttempted = attempts, RequestsSucceeded = attempts - failed, RequestsFailed = failed };
 
     public Task<IServer[]> GetServersAsync(CancellationToken cancellationToken = default) =>
-        Task.FromResult(new[] { server });
+        Task.FromResult(new[] { defaultServer });
 
     public Task<LatencyTestResult> GetServerLatencyAsync(IServer server, CancellationToken cancellationToken = default) =>
         Task.FromResult(new LatencyTestResult { Server = server, LatencyMilliseconds = 24 });

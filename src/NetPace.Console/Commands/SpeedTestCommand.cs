@@ -48,23 +48,22 @@ public sealed class SpeedTestCommand(IAnsiConsole console, IAnsiConsole errorCon
 
             if (settings.Loop)
             {
-                // Run continuously.
-                var firstLoop = true;
+                // Run continuously. `firstWrite` tracks whether a data row has actually been written
+                // (not merely the iteration index), so a header-emitting writer (CSV) still prints
+                // its header on the first successful row when earlier iterations found no server.
+                var firstWrite = true;
                 do
                 {
                     try
                     {
-                        var outcome = await writer.PerformSpeedTestAsync(initialSpeedTest: firstLoop, console, errorConsole, clock, clientInfoProvider, speedTestClient, settings, cancellationToken);
+                        var outcome = await writer.PerformSpeedTestAsync(initialSpeedTest: firstWrite, console, errorConsole, clock, clientInfoProvider, speedTestClient, settings, cancellationToken);
+                        if (outcome.ServersFound) firstWrite = false;
                         if (ProcessOutcome(outcome, settings)) return 1;
                     }
                     catch (OperationCanceledException)
                     {
                         // User requested cancellation.
                         return 0;
-                    }
-                    finally
-                    {
-                        firstLoop = false;
                     }
 
                     try
@@ -82,12 +81,15 @@ public sealed class SpeedTestCommand(IAnsiConsole console, IAnsiConsole errorCon
             }
             else if (settings.Count > 1)
             {
-                // Run multiple times.
+                // Run multiple times. `firstWrite` tracks the first actual data row (see the loop
+                // branch) so the CSV header survives leading iterations that found no server.
+                var firstWrite = true;
                 for (int i = 0; i < settings.Count; i++)
                 {
                     try
                     {
-                        var outcome = await writer.PerformSpeedTestAsync(initialSpeedTest: (i == 0), console, errorConsole, clock, clientInfoProvider, speedTestClient, settings, cancellationToken);
+                        var outcome = await writer.PerformSpeedTestAsync(initialSpeedTest: firstWrite, console, errorConsole, clock, clientInfoProvider, speedTestClient, settings, cancellationToken);
+                        if (outcome.ServersFound) firstWrite = false;
                         if (ProcessOutcome(outcome, settings)) return 1;
                     }
                     catch (OperationCanceledException)

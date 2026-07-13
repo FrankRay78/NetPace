@@ -130,8 +130,9 @@ Every output format carries the counts:
   ```
 
 Machine formats (CSV, JSON) self-describe through the counts and never duplicate the notice on
-standard error. At `--verbosity Debug`, the raw reason for each failed request is streamed live to
-standard error.
+standard error — that includes `--verbosity Debug`. In the normal (interactive) output mode,
+`--verbosity Debug` additionally streams the raw reason for each failed request live to standard
+error.
 
 ### Exit codes
 
