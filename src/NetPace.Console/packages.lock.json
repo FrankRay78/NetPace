@@ -1,0 +1,62 @@
+{
+  "version": 1,
+  "dependencies": {
+    "net10.0": {
+      "ByteSize": {
+        "type": "Direct",
+        "requested": "[2.1.2, )",
+        "resolved": "2.1.2",
+        "contentHash": "dSiH9B0apNU5abV3OVUs3eTfHiidEAa8IMOLGW0eEl5tB8Ba1ngkGC7RT/RGy61ifGcPzCe7DMP78KB8pA5kNg=="
+      },
+      "Microsoft.Extensions.DependencyInjection": {
+        "type": "Direct",
+        "requested": "[10.0.9, )",
+        "resolved": "10.0.9",
+        "contentHash": "NijozhERJDIaJ4k5TSMy1jOi0cSC2HfkvRD/Sl+kGSSKgVbFnF4GxgtMN/MrzHB8D1JxIrD4xSer9Blh9v3axQ==",
+        "dependencies": {
+          "Microsoft.Extensions.DependencyInjection.Abstractions": "10.0.9"
+        }
+      },
+      "Microsoft.NET.ILLink.Tasks": {
+        "type": "Direct",
+        "requested": "[10.0.9, )",
+        "resolved": "10.0.9",
+        "contentHash": "23B6Zyzdz1Nd9Aw8+AU2OGo++U+K8bR0emWh70DxPWad8lVausV3yL5ufXT/k7c2SuNpL1VFMvGxGZuP8LhxKg=="
+      },
+      "Roslynator.Analyzers": {
+        "type": "Direct",
+        "requested": "[4.15.0, )",
+        "resolved": "4.15.0",
+        "contentHash": "E8fu71Y+vzhniJKy1K13Rzwm8Vjcj7CDFBpflqncKUZfc3SzuF0kMBiyMmgXNPkjWTdE3Z+30HlGgYjHONZY/Q=="
+      },
+      "Spectre.Console": {
+        "type": "Direct",
+        "requested": "[0.57.1, )",
+        "resolved": "0.57.1",
+        "contentHash": "h/B0CJLR5Ba8yq+iVjjZR9JXMS+8a1syHmHhyZ6w5m8rHDWLGOlaKAhzJanHJL62rZxynLeVOx+43MKvskJ1lA==",
+        "dependencies": {
+          "Spectre.Console.Ansi": "0.57.1"
+        }
+      },
+      "System.CommandLine": {
+        "type": "Direct",
+        "requested": "[2.0.9, )",
+        "resolved": "2.0.9",
+        "contentHash": "SW0WhEk4NFVZ4lOnsLrHQOV/7s0eTidezNybHQWXfqhuXWB17X3RXbrifeWBbUx1iu+NcYchVSufmW7svjUEnA=="
+      },
+      "Microsoft.Extensions.DependencyInjection.Abstractions": {
+        "type": "Transitive",
+        "resolved": "10.0.9",
+        "contentHash": "g41l/30G3K4B/d/L8kjux0+30e27c8D0FVQ/PFCpbekgfDpj9mnDhieP67EqXWvl1EWNeZh2rpR4F5B/jcDOHA=="
+      },
+      "Spectre.Console.Ansi": {
+        "type": "Transitive",
+        "resolved": "0.57.1",
+        "contentHash": "IFlXdGXOGD4XCK5ybZsXgQo7PE0ZE/pt9YFFWo2cECTipS8DrViLFazx+K00/A+fY1PlHYt1Vqwrjfod4EEckw=="
+      },
+      "netpace.core": {
+        "type": "Project"
+      }
+    }
+  }
+}

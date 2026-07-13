@@ -6,6 +6,11 @@ updates:
       interval: "monthly"
       time: "23:00"
       timezone: "UTC"
+    # Never ingest a release on its publish day: wait until a candidate version is at least
+    # 14 days old before opening a bump PR, so a same-day compromised or later-yanked publish
+    # ages out of the window before it can reach a PR.
+    cooldown:
+      default-days: 14
     open-pull-requests-limit: 10
     reviewers:
       - "FrankRay78"

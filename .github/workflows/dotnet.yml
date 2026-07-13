@@ -23,5 +23,18 @@ jobs:
     - name: Build
       run: dotnet build src --no-restore
 
+    - name: Fail on vulnerable dependencies
+      # SCA gate: dotnet list package --vulnerable exits 0 even when advisories are found,
+      # so inspect its output and fail the job on any reported vulnerability. Runs after
+      # restore/build so transitive resolution is available.
+      run: |
+        set -euo pipefail
+        report=$(dotnet list src package --vulnerable --include-transitive)
+        echo "$report"
+        if echo "$report" | grep -q 'has the following vulnerable packages'; then
+          echo "FAIL: one or more dependencies have known advisories."
+          exit 1
+        fi
+
     - name: Test
       run: dotnet test src --no-build --verbosity normal
