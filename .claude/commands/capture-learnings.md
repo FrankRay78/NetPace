@@ -43,6 +43,8 @@ Run this command at the end of a working session, after completing a feature, or
 
    When `has_branch_context` is false (running on the default branch, or feature branch with no commits yet), skip this step — only Confidence levels reachable in step 5 are `Medium (chat only)`.
 
+   **PR review source (unconditional, best-effort — runs regardless of `has_branch_context`)**: if the current branch has an open PR, fetch its review via `gh pr view --json comments,reviews` and route each substantive point through the same enforceability triage (step 4) as a conversation signal. This is best-effort and never a hard step: a no-op when no PR or no review exists (which is the normal case seconds after PR creation, e.g. when composed by `/ship`), and a genuine source when a posted `@claude` review is already on the PR (the normal case running `/capture-learnings` standalone later). Do **not** wait or poll for a review that has not posted yet.
+
 4. **Prefer deterministic enforcement over a memory entry, where the learning allows it**: A memory entry is a *rule Claude must remember* — it costs context every session and only works when recall lands and Claude honours it. A hook, `settings.json` change, lint rule, or architectural/unit test enforces the same learning *deterministically*: zero tokens, cannot be forgotten, fails loud. NetPace already leans this way — the constitution makes TDD non-negotiable so the test suite (not a reminder) is what stops regressions, and speckit git hooks are wired in `settings.json` rather than left to Claude to remember.
 
    This triage by **enforceability** is the lens step 5 applies to each candidate before assigning its target — three classes:
