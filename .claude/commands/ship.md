@@ -1,12 +1,12 @@
 ---
-description: Human-invoked orchestrator that turns "implementation looks done" into a reviewed, test-green pull request — runs the full suite first and hard-gates on it, then reviews, commits warranted fixes, raises the PR, and captures learnings.
+description: Orchestrator that turns "implementation looks done" into a reviewed, test-green pull request — runs the full suite first and hard-gates on it, then reviews, fixes every confirmed Blocker/Important finding, and raises the PR. Runs unattended, so it can drive a loop.
 ---
 
 Read `CLAUDE.md` for project context before proceeding.
 
 `/ship` composes NetPace's existing commands behind one hard gate: **the full test suite runs first, and nothing downstream happens unless it is green.** The gate is structural — the review step is downstream of the step-1 exit code, so it cannot begin against un-verified or red code. Do not add a hook to police this ordering; the exit code *is* the gate.
 
-`/ship` is human-invoked and supervised. Composed steps MAY prompt you (e.g. `/capture-learnings`) — running fully unattended is a non-goal.
+`/ship` is designed to run to completion **without prompting**, so it can be driven by an automated loop (e.g. shipping many features back-to-back) as well as invoked directly. Reflection (`/capture-learnings`) is deliberately **not** a step: it needs human curation and batches better across many features, so it belongs at a supervised checkpoint after a batch — not inside each ship, where it would either block the loop or be auto-skipped to nothing. `/ship` likewise never waits on the async `@claude` PR review (see below).
 
 **Stop-on-failure is global:** if any step fails — a suite run is not green, a review subagent errors, `git push` is rejected, `gh pr create` fails because the PR already exists — STOP at that step, report it to the invoker, and do not run any later step.
 
@@ -27,7 +27,11 @@ Read `CLAUDE.md` for project context before proceeding.
 2. **Clean-context review (synchronous — this is Review A).** Spawn independent, clean-context reviewer subagents over the branch diff (`git diff main...HEAD`), then run a `/review-slop` pass. The clean-context subagents must not see the code being written — "do not inline the review" governs the *reviewing*. The *deciding-and-fixing* legitimately happens in `/ship`'s own main loop.
    - Spawn the `pr-review-toolkit` reviewers that apply to this diff. Most **report** findings — `code-reviewer`, `silent-failure-hunter`, `pr-test-analyzer`, `type-design-analyzer`, `comment-analyzer` return findings; only `code-simplifier` edits files directly. Launch them in parallel (independent, clean-context Task subagents).
    - Run `/review-slop`, which emits a cleaned diff.
-   - **`/ship`'s main loop then decides.** Take the returned findings and cleaned diff, decide which warrant a change, and apply those edits to the working tree. The subagents' returned summaries landing in this loop's context is exactly how the findings reach step 5 — do not discard them.
+   - **`/ship`'s main loop applies a severity policy.** Aggregate the returned findings and cleaned diff. For each finding, first *validate it is real* — reviewer severities are fickle, so do not act on a mislabelled or false-positive finding — then act by severity:
+     - **Blocker / P1** (a correctness bug, breakage, or anything that would ship broken) — **must be resolved.** Fix it in the working tree. If a confirmed blocker genuinely cannot be fixed, **STOP and report**; `/ship` never raises a PR over a known blocker.
+     - **Important / P2** — fix it **when it is within the scope of this change** (the branch's own new or edited code). If a confirmed P2 concerns *pre-existing or adjacent* code the branch did not cause, do **not** force-fix it here — that folds an unrelated mission into the branch; record it in the PR body or as a follow-up instead.
+     - **Suggestion / P3** — discretionary: apply if cheap and clearly correct, otherwise skip.
+   Apply the warranted edits to the working tree. Every applied edit is re-verified by step 3's suite re-run, so a bad fix cannot ship green-unchecked.
    - If a review subagent errors, STOP and report (stop-on-failure).
 
 3. **Conditional re-verify + commit the fixes.** Detect whether step 2 changed tracked code by a **content diff of the whole tracked working tree**, not a `*.cs`-only `git status` filter: compute `POST_HASH = git diff HEAD | git hash-object --stdin` and compare to `PRE_HASH` from step 0. This covers **all** tracked files (`.cs`, `.csproj`, `Directory.Packages.props`, `.json`, …) and correctly ignores files that were already dirty before step 2. Never use a marker mtime.
@@ -36,16 +40,15 @@ Read `CLAUDE.md` for project context before proceeding.
      - Re-run `dotnet build ./src && dotnet test ./src`. Not green ⇒ STOP and report.
      - Once green, **commit the applied edits** with a clear message (e.g. `fix: apply /ship review findings`). This is what makes the fixes reach the pushed PR — `/raise-pr` pushes *commits*, so uncommitted working-tree edits would silently never ship. If the baseline tree was already dirty, stage only the review edits, not unrelated pre-existing local changes.
 
-4. **Raise the PR.** Compose and open the PR via `/raise-pr`. It pushes the branch (now carrying the step-3 fix commit, if any) and requests the async `@claude` GitHub-action review. If `/raise-pr` aborts (push rejected, `gh pr create` fails because the PR already exists), STOP here — do not run step 5.
+4. **Raise the PR (final step).** Compose and open the PR via `/raise-pr`. It pushes the branch (now carrying the step-3 fix commit, if any) and requests the async `@claude` GitHub-action review. If `/raise-pr` aborts (push rejected, `gh pr create` fails because the PR already exists), STOP here and report.
 
-5. **Capture learnings (synchronous sources only).** Run `/capture-learnings` over the session and git. Its inputs are the conversation (which now holds step 2's returned review findings) plus git — the **synchronous** Review A. `/ship` does **not** wait for, and does **not** prompt about, the asynchronous `@claude` PR review from step 4 (Review B); behaviour is identical whether or not that GitHub action posts.
-   - `/ship`'s final output MAY carry a single soft nudge — "the `@claude` PR review posts async; re-run `/capture-learnings` if it flags something notable" — a free reminder, never a gate or a wait.
+   `/ship` ends at the raised PR. It does **not** run `/capture-learnings`, and does **not** wait on or prompt about the async `@claude` review (Review B, see below). Its closing output carries one soft nudge — "PR raised; the `@claude` review posts async — run `/capture-learnings` when you next review the batch" — a free reminder, never a gate or a wait.
 
 ## The two reviews (Review A vs Review B)
 
-- **Review A** — step 2, synchronous, in-`/ship`: the clean-context `pr-review-toolkit` subagents + `/review-slop`. Its findings are in-context and its fixes are committed by the time step 5 runs. This is capture-learnings' input.
-- **Review B** — step 4, asynchronous, on the PR: the `@claude` GitHub-action review `/raise-pr` requests, posting minutes after `/ship` has returned. `/ship` never waits on it — polling a supervised flow for minutes buys little durable *lesson*, and the action is author-gated (`claude.yml`) so it doesn't even post for a non-`FrankRay78` invoker. Review B is for a human to read at merge, not an input to `/capture-learnings`.
+- **Review A** — step 2, synchronous, in-`/ship`: the clean-context `pr-review-toolkit` subagents + `/review-slop`. Its findings drive the step-2 fixes and are committed in step 3 — that is how the review shapes the PR before it is raised.
+- **Review B** — step 4, asynchronous, on the PR: the `@claude` GitHub-action review `/raise-pr` requests, posting minutes after `/ship` has returned. `/ship` never waits on it — it is author-gated (`claude.yml`) so it doesn't even post for a non-`FrankRay78` invoker, and blocking a pipeline for minutes to fold it in buys little. Review B is for a human to read at merge; when you later run `/capture-learnings` at a supervised checkpoint, that command's own best-effort PR-review fetch picks it up then.
 
 ## Final report
 
-Report to the invoker: the suite result(s), which review findings were applied and committed (if any), the PR URL, and the capture-learnings outcome. If the working tree was dirty at step 0, say so.
+Report to the invoker: the suite result(s), which review findings were fixed-and-committed and which were deferred as out-of-scope follow-ups (if any), the PR URL, and the soft `/capture-learnings` nudge. If the working tree was dirty at step 0, say so.
