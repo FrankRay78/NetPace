@@ -33,7 +33,9 @@ Run this command at the end of a working session, after completing a feature, or
    - User said: "yes exactly", "perfect", "keep doing that", "that's the right approach"
    - User accepted an unusual or counter-intuitive decision without pushback
 
-3. **Gather git corroboration** (secondary source — only when `has_branch_context` is true): Run:
+3. **Gather corroboration from git and any open PR** (secondary sources): two independent sources, gated separately.
+
+   **Git corroboration — only when `has_branch_context` is true.** Run:
    - `git log <default>..HEAD --oneline --reverse`
    - `git diff <default>...HEAD --name-status`
 
@@ -41,9 +43,9 @@ Run this command at the end of a working session, after completing a feature, or
    - Renamed or moved files (R status) — especially CLAUDE.md, docs, or config files
    - Modifications to `CLAUDE.md` or `.specify/memory/constitution.md`
 
-   When `has_branch_context` is false (running on the default branch, or feature branch with no commits yet), skip this step — only Confidence levels reachable in step 5 are `Medium (chat only)`.
+   When `has_branch_context` is false (running on the default branch, or feature branch with no commits yet), skip the git commands above — the only Confidence level reachable in step 5 is then `Medium (chat only)`.
 
-   **PR review source (unconditional, best-effort — runs regardless of `has_branch_context`)**: if the current branch has an open PR, fetch its review via `gh pr view --json comments,reviews` and route each substantive point through the same enforceability triage (step 4) as a conversation signal. This is best-effort and never a hard step: a no-op when no PR or no review exists (which is the normal case seconds after PR creation, e.g. when composed by `/ship`), and a genuine source when a posted `@claude` review is already on the PR (the normal case running `/capture-learnings` standalone later). Do **not** wait or poll for a review that has not posted yet.
+   **PR review — unconditional, best-effort** (independent of `has_branch_context`; runs even when the git corroboration above is skipped): if the current branch has an open PR, fetch its review via `gh pr view --json comments,reviews` and route each substantive point through the same enforceability triage (step 4) as a conversation signal. Best-effort and never a hard step: a no-op when no PR or no review exists (the normal case seconds after PR creation, e.g. when composed by `/ship`), and a genuine source when a posted `@claude` review is already on the PR (the normal case running `/capture-learnings` standalone later). Do **not** wait or poll for a review that has not posted yet.
 
 4. **Prefer deterministic enforcement over a memory entry, where the learning allows it**: A memory entry is a *rule Claude must remember* — it costs context every session and only works when recall lands and Claude honours it. A hook, `settings.json` change, lint rule, or architectural/unit test enforces the same learning *deterministically*: zero tokens, cannot be forgotten, fails loud. NetPace already leans this way — the constitution makes TDD non-negotiable so the test suite (not a reminder) is what stops regressions, and speckit git hooks are wired in `settings.json` rather than left to Claude to remember.
 

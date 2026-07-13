@@ -4,7 +4,7 @@ description: Human-invoked orchestrator that turns "implementation looks done" i
 
 Read `CLAUDE.md` for project context before proceeding.
 
-`/ship` composes NetPace's existing commands behind one hard gate: **the full test suite runs first, and nothing downstream happens unless it is green.** The steps below are ordered and the gate between step 1 and step 2 is structural — the review step is downstream of the test run's success, so it cannot begin unless step 1 exited green. Do not add a hook to police this ordering; the exit code *is* the gate.
+`/ship` composes NetPace's existing commands behind one hard gate: **the full test suite runs first, and nothing downstream happens unless it is green.** The gate is structural — the review step is downstream of the step-1 exit code, so it cannot begin against un-verified or red code. Do not add a hook to police this ordering; the exit code *is* the gate.
 
 `/ship` is human-invoked and supervised. Composed steps MAY prompt you (e.g. `/capture-learnings`) — running fully unattended is a non-goal.
 
@@ -41,14 +41,10 @@ Read `CLAUDE.md` for project context before proceeding.
 5. **Capture learnings (synchronous sources only).** Run `/capture-learnings` over the session and git. Its inputs are the conversation (which now holds step 2's returned review findings) plus git — the **synchronous** Review A. `/ship` does **not** wait for, and does **not** prompt about, the asynchronous `@claude` PR review from step 4 (Review B); behaviour is identical whether or not that GitHub action posts.
    - `/ship`'s final output MAY carry a single soft nudge — "the `@claude` PR review posts async; re-run `/capture-learnings` if it flags something notable" — a free reminder, never a gate or a wait.
 
-## Why capture-learnings feeds from the synchronous review, not the async one
+## The two reviews (Review A vs Review B)
 
-`/ship` runs two reviews:
-
-- **Review A (step 2, synchronous, in-`/ship`):** the clean-context `pr-review-toolkit` subagents + `/review-slop`. Its findings are in-context, and the fixes derived from them are committed in git, the moment step 5 runs.
-- **Review B (step 4, asynchronous, on the PR):** the `@claude` GitHub-action review `/raise-pr` requests. It posts minutes later, after `/ship` has returned.
-
-The review → memory loop closes inside a single `/ship` run via Review A. Waiting on Review B would turn a responsive supervised flow into a minutes-long poll for marginal gain, and it does not even post for a non-`FrankRay78` invoker (the `claude.yml` job is author-gated). Review B still lands on the PR for a human to read at merge — that is its audience; it is not an input to `/capture-learnings`.
+- **Review A** — step 2, synchronous, in-`/ship`: the clean-context `pr-review-toolkit` subagents + `/review-slop`. Its findings are in-context and its fixes are committed by the time step 5 runs. This is capture-learnings' input.
+- **Review B** — step 4, asynchronous, on the PR: the `@claude` GitHub-action review `/raise-pr` requests, posting minutes after `/ship` has returned. `/ship` never waits on it — polling a supervised flow for minutes buys little durable *lesson*, and the action is author-gated (`claude.yml`) so it doesn't even post for a non-`FrankRay78` invoker. Review B is for a human to read at merge, not an input to `/capture-learnings`.
 
 ## Final report
 
