@@ -15,4 +15,4 @@
 - [Release-pipeline changes must update docs/RELEASING.md](feedback_release_pipeline_doc.md) — release matrix, runner-per-RID, naming convention, smoke-test contract live there; out-of-sync = future RID work costs extra
 - [Verify-snapshot tests count as coverage in NetPace.Console.Tests](feedback_console_output_snapshot_coverage.md) — check Expectations/*.verified.txt before reporting an output mode as untested
 - [Spec-kit upgrade procedure](speckit_upgrade_procedure.md) — stock github/spec-kit via `specify` CLI; `init --here --force --integration claude --script sh` is additive/hash-guarded
-- [feedback_read_source_before_designing.md](feedback_read_source_before_designing.md) — read the source implementing a subsystem before designing a fix that depends on its behaviour
+- [feedback_read_source_before_designing.md](feedback_read_source_before_designing.md) — read the source before designing a fix; verify a handed-down issue/spec diagnosis against HEAD before implementing
