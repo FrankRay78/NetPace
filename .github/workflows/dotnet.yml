@@ -24,17 +24,32 @@ jobs:
       run: dotnet build src --no-restore
 
     - name: Fail on vulnerable dependencies
-      # SCA gate: dotnet list package --vulnerable exits 0 even when advisories are found,
-      # so inspect its output and fail the job on any reported vulnerability. Runs after
-      # restore/build so transitive resolution is available.
+      # SCA gate: dotnet list package --vulnerable exits 0 even when advisories are found, so we
+      # inspect its output and fail the job ourselves. Parse the structured --format json (stable
+      # since the .NET 9 SDK) rather than matching an English sentence that could be localised or
+      # reworded between SDKs. Any package (top-level or transitive) with a non-empty
+      # `vulnerabilities` array fails the build. Runs after restore/build so transitive resolution
+      # is available; jq is preinstalled on ubuntu-latest.
       run: |
         set -euo pipefail
-        report=$(dotnet list src package --vulnerable --include-transitive)
+        report=$(dotnet list src package --vulnerable --include-transitive --format json)
         echo "$report"
-        if echo "$report" | grep -q 'has the following vulnerable packages'; then
-          echo "FAIL: one or more dependencies have known advisories."
+        vulnerable=$(echo "$report" | jq -r '
+          [ .projects[]? as $p
+            | $p.frameworks[]?
+            | (.topLevelPackages // []) + (.transitivePackages // [])
+            | .[]
+            | select((.vulnerabilities // []) | length > 0)
+            | { path: $p.path, id, resolvedVersion, vulnerabilities } ]
+          | if length == 0 then empty
+            else .[] | "\(.path): \(.id) \(.resolvedVersion) — " + ([.vulnerabilities[] | "\(.severity) \(.advisoryurl)"] | join("; "))
+            end')
+        if [ -n "$vulnerable" ]; then
+          echo "FAIL: one or more dependencies have known advisories:"
+          echo "$vulnerable"
           exit 1
         fi
+        echo "No vulnerable dependencies found."
 
     - name: Test
       run: dotnet test src --no-build --verbosity normal
