@@ -17,16 +17,10 @@ Read `CLAUDE.md` for project context before proceeding.
 
    Otherwise parse `FEATURE_DIR` from the JSON output. If `FEATURE_DIR` does not exist on disk, skip to step 5. Otherwise keep it for step 4.
 
-4. **Confirm and delete spec folder**: Use `AskUserQuestion` to ask:
-   - Question: "Delete the spec folder `<FEATURE_DIR>` and commit the removal? Specs are typically deleted before merge so they don't accumulate on main."
-   - Options: "Delete and commit" / "Skip"
-
-   If "Delete and commit":
+4. **Delete spec folder**: Specs are deleted before merge so they don't accumulate on `main`, so remove `<FEATURE_DIR>` and commit the removal without prompting (this keeps `/raise-pr` composable by `/ship` with no interactive gate):
    - Run `git rm -r <FEATURE_DIR>`
    - Clear the spec-kit feature pointer so it doesn't dangle at a deleted folder on `main`: if `.specify/feature.json` exists and its `feature_directory` points at `<FEATURE_DIR>`, reset it to `{"feature_directory": ""}` and `git add .specify/feature.json`. (A stale pointer makes `check-prerequisites.sh` hard-fail and lets `setup-plan.sh` silently recreate the deleted folder.)
    - Run `git commit -m "chore: remove <FEATURE_DIR>"`
-
-   If "Skip", proceed without changes.
 
 5. **Infer PR title**: Take the branch name from step 1, strip any leading path segment (`feat/`, `fix/`, `chore/`, `docs/`, etc.), strip any leading `NNN-` numeric prefix on the remaining segment, replace hyphens with spaces, and apply title case. Examples: `004-raise-pr-command` → `Raise PR Command`; `chore/speckit-docs-tidy` → `Speckit Docs Tidy`.
 
