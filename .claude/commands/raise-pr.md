@@ -19,7 +19,7 @@ Read `CLAUDE.md` for project context before proceeding.
 
 4. **Delete spec folder**: Specs are deleted before merge so they don't accumulate on `main`, so remove `<FEATURE_DIR>` and commit the removal without prompting (this keeps `/raise-pr` composable by `/ship` with no interactive gate):
    - Run `git rm -r <FEATURE_DIR>`
-   - Clear the spec-kit feature pointer so it doesn't dangle at a deleted folder on `main`: if `.specify/feature.json` exists and its `feature_directory` points at `<FEATURE_DIR>`, reset it to `{"feature_directory": ""}` and `git add .specify/feature.json`. (A stale pointer makes `check-prerequisites.sh` hard-fail and lets `setup-plan.sh` silently recreate the deleted folder.)
+   - Clear the spec-kit feature pointer so it doesn't dangle at a deleted folder on `main`: if `.specify/feature.json` exists and its `feature_directory` resolves to the same folder as `<FEATURE_DIR>` (compare as repo-relative paths — `FEATURE_DIR` from `--paths-only` is absolute, while the JSON stores a repo-relative path like `specs/NNN-…`), reset it to `{"feature_directory": ""}` and `git add .specify/feature.json`. (A stale pointer makes `check-prerequisites.sh` hard-fail and lets `setup-plan.sh` silently recreate the deleted folder.)
    - Run `git commit -m "chore: remove <FEATURE_DIR>"`
 
 5. **Infer PR title**: Take the branch name from step 1, strip any leading path segment (`feat/`, `fix/`, `chore/`, `docs/`, etc.), strip any leading `NNN-` numeric prefix on the remaining segment, replace hyphens with spaces, and apply title case. Examples: `004-raise-pr-command` → `Raise PR Command`; `chore/speckit-docs-tidy` → `Speckit Docs Tidy`.
