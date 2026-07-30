@@ -1,23 +1,20 @@
 <!--
 Sync Impact Report:
-Version: 1.4.0 → 1.5.0
-Bump rationale: MINOR — updates the mandated target framework from .NET 8.0 to
-.NET 10.0 (the clean LTS→LTS hop; .NET 8 reaches end of support ~November 2026).
-This updates a technology constraint rather than removing or inverting a principle,
-so it is materially updated guidance (MINOR), not a governance redefinition (MAJOR).
-The mandated language baseline is bumped in lockstep to C# 14 (unlocked by .NET 10).
+Version: 1.5.0 → 1.6.0
+Bump rationale: MINOR — adds a permissive-licensing constraint to Principle VI
+(Minimal Dependencies): runtime dependencies MUST be MIT/Apache-2.0/BSD, and copyleft
+(GPL/LGPL/AGPL) is prohibited without documented justification and maintainer sign-off.
+This materially expands existing dependency guidance with a new obligation rather than
+removing or inverting a principle, so it is MINOR, not a governance redefinition (MAJOR).
 
-Modified Principles: IV — Cross-Platform Compatibility (target .NET 10.0)
-Modified Sections: Technology Constraints → Required Technologies (Framework .NET 10.0, Language C# 14)
+Modified Principles: VI — Minimal Dependencies (permissive-licensing bullet + rationale)
+Modified Sections: N/A
 Added Sections: N/A
 Removed Sections: N/A
 Downstream documents reviewed (per Amendment Process clause 4):
-  ✅ CLAUDE.md — Project Overview / Stack line updated to .NET 10.0 · C# 14.
-  ✅ README.md — build-with line, release-variant name/link, developed-with line updated.
-  ✅ docs/conventions/csharp-style.md — Target Framework line updated to .NET 10.0 (C# 14).
-  ✅ docs/RELEASING.md — framework-dependent artifact name (-net8 → -net10), .NET marker wording, global.json note.
-  ✅ 6 project files + 4 CI workflows — TargetFramework net10.0, SDK pins 10.0.x.
-  ✅ global.json — new SDK pin (10.0.x, rollForward latestFeature).
+  ✅ CLAUDE.md — the dependency-justification bullet is adjacent but unaffected; it constrains
+     whether a dep is added, not its licence, so the new constraint is complementary, not a conflict.
+  ✅ docs/conventions/ — no dependency-licensing guidance to update; the constitution is the source.
 Follow-up TODOs: None
 -->
 
@@ -101,8 +98,9 @@ NetPace.Core MUST keep dependencies minimal:
 - Prefer .NET BCL over third-party libraries when possible
 - Document all dependencies and their purpose
 - Review dependency security regularly
+- Runtime dependencies MUST use a permissive licence (MIT, Apache 2.0, or BSD). Copyleft licences (GPL, LGPL, AGPL) are prohibited without documented justification and maintainer sign-off.
 
-**Rationale**: As a NuGet package, NetPace.Core's dependencies become consumers' dependencies. Minimal dependencies reduce version conflicts and security surface area.
+**Rationale**: As a NuGet package, NetPace.Core's dependencies become consumers' dependencies — a copyleft runtime dependency propagates its licence obligations to every consumer, so a permissive-only runtime baseline is a compatibility guarantee, not just hygiene. Minimal dependencies reduce version conflicts and security surface area; the permissive-licence constraint keeps NetPace freely embeddable in closed and commercial software.
 
 ### VII. Semantic Versioning
 
@@ -246,4 +244,4 @@ This constitution supersedes all other development practices and guides. All dev
 - Complexity MUST be justified against simplicity principles
 - For runtime development guidance, refer to `CLAUDE.md`
 
-**Version**: 1.5.0 | **Ratified**: 2026-04-10 | **Last Amended**: 2026-07-11
+**Version**: 1.6.0 | **Ratified**: 2026-04-10 | **Last Amended**: 2026-07-29
