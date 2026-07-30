@@ -12,7 +12,7 @@
 **Constraints:**
 - The protected set mirrors the two spec-kit manifests (`.specify/integrations/{speckit,claude}.manifest.json`): 6 core templates, 5 bash scripts, 10 SDD skills.
 - Extension points must stay editable — deny globs are single-level (`*` never crosses `/`), so `templates/*.md` excludes `templates/overrides/`.
-- Enforcement must cherry-pick cleanly onto downstream (IMS) trees: config-only, no per-clone bootstrap.
+- Enforcement must cherry-pick cleanly onto other repos sharing this harness: config-only, no per-clone bootstrap.
 
 **Decisions:**
 1. **`deny`, not `ask`** — a firmer guarantee against headless drift. Trade-off: a deliberate human edit requires temporarily removing the rule. `ask` (human-approvable, headless-blocked) was rejected as too soft for the stated goal.
