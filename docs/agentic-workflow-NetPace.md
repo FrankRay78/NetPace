@@ -50,7 +50,7 @@ The generic enforcement layer, as NetPace wires it. Hooks live in [`.claude/hook
 | Stale-build guard | `green-gate.sh` — denies `dotnet test --no-build` when a `*.cs` under `src/` is newer than the built assembly | PreToolUse(Bash) |
 | No skipped tests | `no-skipped-tests.sh` — blocks commits reintroducing the skip family (incl. xUnit-v3 `SkipUnless=`/`SkipWhen=`); `--check` mode for CI | PreToolUse(Bash) |
 | Traceability gate | `traceability-gate.sh` — spec label ↔ test-plan scenario ↔ `// SCENARIO:` marker under `src/`, exact match; loop-guarded nudge, never a lock-out | Stop |
-| Upstream-file guard | `permissions.deny` (Edit/Write/MultiEdit) on `.claude/skills/speckit-*/SKILL.md`, `.specify/templates/*.md`, `.specify/scripts/bash/*.sh` | settings |
+| Upstream-file guard | `permissions.deny` — one `Edit(path)` rule each on `.claude/skills/speckit-*/SKILL.md`, `.specify/templates/*.md`, `.specify/scripts/bash/*.sh` (an `Edit` rule covers every file-editing tool, Write included) | settings |
 | Format-on-commit | `dotnet format style/whitespace` on staged `*.cs` (see divergence below) | PreToolUse(Bash), `if git commit` |
 | PR pre-flight | `dotnet build ./src && dotnet test ./src` before `gh pr create` | PreToolUse(Bash), `if gh pr create` |
 | **Test-green gate** | **`/ship` step 1 — a real `dotnet build ./src && dotnet test ./src`. Not a hook.** | — |

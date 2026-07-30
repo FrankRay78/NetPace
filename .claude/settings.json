@@ -2,12 +2,9 @@
   "permissions": {
     "allow": [
       "Read(**)",
-      "Glob(**)",
       "Grep(**)",
       "LS(**)",
       "Edit(**)",
-      "MultiEdit(**)",
-      "Write(**)",
       "Bash(git status:*)",
       "Bash(git rev-parse:*)",
       "Bash(git log:*)",
@@ -83,14 +80,8 @@
       "Read(**/appsettings.*.json)",
       "Read(**/appsettings.json)",
       "Edit(.claude/skills/speckit-*/SKILL.md)",
-      "Write(.claude/skills/speckit-*/SKILL.md)",
-      "MultiEdit(.claude/skills/speckit-*/SKILL.md)",
       "Edit(.specify/templates/*.md)",
-      "Write(.specify/templates/*.md)",
-      "MultiEdit(.specify/templates/*.md)",
-      "Edit(.specify/scripts/bash/*.sh)",
-      "Write(.specify/scripts/bash/*.sh)",
-      "MultiEdit(.specify/scripts/bash/*.sh)"
+      "Edit(.specify/scripts/bash/*.sh)"
     ],
     "ask": [
       "Bash(rm:*)",
