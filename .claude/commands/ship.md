@@ -27,7 +27,7 @@ Read `CLAUDE.md` for project context before proceeding.
    dotnet format style ./src/NetPace.sln && dotnet format whitespace ./src/NetPace.sln
    ```
 
-   The explicit `./src/NetPace.sln` argument is **required, not decorative**: `dotnet format` looks for a project or solution in the *current directory only*, and NetPace's solution is at `src/`, not the repo root. Omitting it fails with `Could not find a MSBuild project file or solution file` — which is exactly how the retired format-on-commit hook silently no-op'd for four months (#234).
+   The explicit `./src/NetPace.sln` argument is **required, not decorative**: `dotnet format` looks for a project or solution in the *current directory only*, and NetPace's solution is at `src/`, not the repo root. Omitting it fails with `Could not find a MSBuild project file or solution file`.
 
    - Formatting runs **once per ship**, not per commit. It is cosmetic work at a cadence that already costs minutes — see *Formatting is not verification* in [agentic-workflow.md](../../docs/agentic-workflow.md).
    - **If formatting changed files, commit them now** — `git add -A` and a `style: apply dotnet format` message — *before* running the suite. This restores the clean working tree step 0 established, which is what keeps step 3's "anything in the tree is a review edit" invariant true. Do not carry format edits forward into the review commit; they are a separate concern and belong in their own commit.
