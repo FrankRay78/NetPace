@@ -14,5 +14,11 @@
 - [NetPace CLI feature issues must scope user-facing docs from the start](feedback_cli_feature_doc_scope.md) — first draft must include README --help, USER_GUIDE, design-doc cross-refs (no CHANGELOG — release notes are GitHub-auto-generated)
 - [Release-pipeline changes must update docs/RELEASING.md](feedback_release_pipeline_doc.md) — release matrix, runner-per-RID, naming convention, smoke-test contract live there; out-of-sync = future RID work costs extra
 - [Verify-snapshot tests count as coverage in NetPace.Console.Tests](feedback_console_output_snapshot_coverage.md) — check Expectations/*.verified.txt before reporting an output mode as untested
+- [Speckit file guard is Edit-only by design](speckit_file_guard.md) — one `Edit(path)` deny rule per protected path; `Edit` covers `Write`, so parallel `Write`/`MultiEdit` rules only add startup warnings
 - [Spec-kit upgrade procedure](speckit_upgrade_procedure.md) — stock github/spec-kit via `specify` CLI; `init --here --force --integration claude --script sh` is additive/hash-guarded
 - [feedback_read_source_before_designing.md](feedback_read_source_before_designing.md) — read the source before designing a fix; verify a handed-down issue/spec diagnosis against HEAD before implementing
+- [dotnet test --no-build runs the stale test DLL](feedback_dotnet_test_no_build.md) — rebuild before trusting a test run; green-gate.sh denies a stale --no-build
+- [Re-run tests before declaring done](feedback_rerun_tests_before_done.md) — after any post-implementation edit, re-run `dotnet test ./src`; don't extrapolate an earlier green
+- [Soft-wrap markdown — one line per paragraph](feedback_markdown_soft_wrap.md) — no manual ~80/100-col hard breaks; they reflow whole blocks and bury one-word edits in noisy diffs
+- [Explain tradeoffs in plain language before asking the user to decide](feedback_plain_language_decisions.md) — frame AskUserQuestion options by consequence/cost, not mechanism
+- [Audit the failure class after the second occurrence](feedback_audit_class_after_two_failures.md) — on the 2nd same-shape failure, enumerate every site and fix the class, not the instance

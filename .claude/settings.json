@@ -2,12 +2,9 @@
   "permissions": {
     "allow": [
       "Read(**)",
-      "Glob(**)",
       "Grep(**)",
       "LS(**)",
       "Edit(**)",
-      "MultiEdit(**)",
-      "Write(**)",
       "Bash(git status:*)",
       "Bash(git rev-parse:*)",
       "Bash(git log:*)",
@@ -83,14 +80,8 @@
       "Read(**/appsettings.*.json)",
       "Read(**/appsettings.json)",
       "Edit(.claude/skills/speckit-*/SKILL.md)",
-      "Write(.claude/skills/speckit-*/SKILL.md)",
-      "MultiEdit(.claude/skills/speckit-*/SKILL.md)",
       "Edit(.specify/templates/*.md)",
-      "Write(.specify/templates/*.md)",
-      "MultiEdit(.specify/templates/*.md)",
-      "Edit(.specify/scripts/bash/*.sh)",
-      "Write(.specify/scripts/bash/*.sh)",
-      "MultiEdit(.specify/scripts/bash/*.sh)"
+      "Edit(.specify/scripts/bash/*.sh)"
     ],
     "ask": [
       "Bash(rm:*)",
@@ -117,6 +108,11 @@
           },
           {
             "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/green-gate.sh\"",
+            "statusMessage": "Guarding against dotnet test --no-build staleness..."
+          },
+          {
+            "type": "command",
             "command": "STAGED=$(git diff --cached --name-only | grep \"[.]cs$\"); [ -z \"$STAGED\" ] && exit 0; INCLUDE=$(echo \"$STAGED\" | tr '\\n' ' '); dotnet format style --include $INCLUDE && dotnet format whitespace --include $INCLUDE && echo \"$STAGED\" | xargs -d '\\n' git add",
             "if": "Bash(git commit:*)",
             "statusMessage": "Formatting staged .cs files..."
@@ -129,10 +125,26 @@
           }
         ]
       }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/traceability-gate.sh\""
+          }
+        ]
+      }
     ]
   },
   "enabledPlugins": {
     "pr-review-toolkit@claude-plugins-official": true,
     "context-mode@context-mode": true
+  },
+  "preferredNotifChannel": "terminal_bell",
+  "statusLine": {
+    "type": "command",
+    "command": "sh \"$CLAUDE_PROJECT_DIR/.claude/statusline-command.sh\"",
+    "padding": 0
   }
 }

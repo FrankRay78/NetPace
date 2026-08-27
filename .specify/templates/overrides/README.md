@@ -13,7 +13,7 @@ Resolution order (highest → lowest precedence):
 
 ## Current overrides
 
-| File | Why IMS overrides it |
+| File | Why this repo overrides it |
 |------|----------------------|
 | `spec-template.md` | Bakes in the `**Scenario: [name]**` label convention required by [Constitution principle VIII](../../memory/constitution.md) for AC-to-test traceability. |
 
