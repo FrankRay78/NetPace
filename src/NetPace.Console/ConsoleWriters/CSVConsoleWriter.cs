@@ -8,7 +8,6 @@ public sealed class CSVConsoleWriter : IConsoleWriter
     {
         // Get the server to use for speed testing.
         var fastest = await ServerSelector.GetServerAsync(speedTestClient, settings, cancellationToken);
-        if (fastest is null) return SpeedTestOutcome.NoServers;
 
 
         var downloadResult = new SpeedTestResult();
@@ -72,7 +71,6 @@ public sealed class CSVConsoleWriter : IConsoleWriter
 
         return new SpeedTestOutcome
         {
-            ServersFound = true,
             ServerUrl = fastest.Server.Url,
             Download = settings.NoDownload ? null : downloadResult,
             Upload = settings.NoUpload ? null : uploadResult

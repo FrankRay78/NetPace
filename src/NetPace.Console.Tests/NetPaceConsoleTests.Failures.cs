@@ -229,43 +229,9 @@ public sealed partial class NetPaceConsoleTests
         }
 
         [Fact]
-        public async Task Csv_Header_Survives_A_Leading_No_Server_Iteration()
+        public async Task Unreachable_User_Specified_Server_Exits_Zero()
         {
-            // The CSV header must print on the first actual data row, even when earlier iterations
-            // found no server (a routine outcome now that discovery failures don't throw).
-
-            // Given the first discovery finds no server, the second succeeds.
-            var server = new Server { Location = "Frankfurt", Sponsor = "Deutsche Telekom", Url = "http://ffm.example/upload.php" };
-            var discoveryCall = 0;
-            var mock = new SpeedTestMock
-            {
-                GetServersAsyncFunc = _ => Task.FromResult(discoveryCall++ == 0 ? Array.Empty<IServer>() : new IServer[] { server }),
-                GetFastestServerByLatencyAsyncFunc = (servers, _, _) => Task.FromResult(new LatencyTestResult { Server = servers[0], LatencyMilliseconds = 24 }),
-                GetDownloadSpeedAsyncFunc = (_, _, _) => Task.FromResult(ScriptedSpeedTester.Clean(150)),
-                GetUploadSpeedAsyncFunc = (_, _, _) => Task.FromResult(ScriptedSpeedTester.Clean(32)),
-            };
-            var host = HostWith(mock);
-
-            // When
-            var result = await host.RunAsync([ "--csv", "--count", "2" ]);
-
-            // Then the output begins with the CSV header (not a bare data row), and exactly one data
-            // row is written (the single server-found iteration).
-            Assert.Equal(0, result.ExitCode);
-            Assert.StartsWith("Timestamp,", result.Output.TrimStart());
-            Assert.Contains("DownloadSucceeded", result.Output);
-            var dataRows = result.Output.Split('\n', StringSplitOptions.RemoveEmptyEntries).Skip(1).ToArray();
-            Assert.Single(dataRows);
-
-            // The no-server notice is prose, so CSV suppresses it rather than corrupt the stream.
-            Assert.DoesNotContain("No speed test servers were found.", result.Output);
-        }
-
-        [Fact]
-        public async Task Unreachable_User_Specified_Server_Exits_Zero_Regardless_Of_Latency()
-        {
-            // An unreachable --server is a network condition, not a NetPace fault: it must exit 0
-            // whether or not the latency probe runs (the latency probe is in the selection region).
+            // An unreachable --server is a network condition, not a NetPace fault: it must exit 0.
 
             // Given a user-specified server whose latency probe throws (host down).
             var mock = new SpeedTestMock
@@ -277,9 +243,28 @@ public sealed partial class NetPaceConsoleTests
             // When run with the default latency probe enabled.
             var result = await host.RunAsync([ "--server", "http://unreachable.example/upload.php" ]);
 
-            // Then the condition is reported on the console and the process exits 0 (not 1).
+            // Then the reason reaches the console and the process exits 0 (not 1).
             Assert.Equal(0, result.ExitCode);
-            Assert.Contains("No speed test servers were found.", result.Output);
+            Assert.Contains("Could not open socket", result.Output);
+        }
+
+        [Fact]
+        public async Task Operational_Fault_During_A_Run_Exits_One()
+        {
+            // The one deliberate deviation from main: a network condition is reported and exits 0,
+            // but a fault in NetPace itself must still fail the process rather than be swallowed.
+
+            var mock = new SpeedTestMock
+            {
+                GetServersAsyncFunc = _ => throw new IOException("disk gone"),
+            };
+            var host = HostWith(mock);
+
+            // When
+            var result = await host.RunAsync([]);
+
+            // Then
+            Assert.Equal(1, result.ExitCode);
         }
 
         [Fact]

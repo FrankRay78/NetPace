@@ -14,6 +14,22 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
     /// opts in via <c>--fail-on</c>. Only operational failures (which propagate out of this method to
     /// the top-level handler) produce a non-zero exit code.
     /// </remarks>
+    /// <summary>
+    /// Writes an error message to the console.
+    /// </summary>
+    private static void WriteError(IAnsiConsole console, string message)
+    {
+        console.Markup($"[red]Error:[/] {message.EscapeMarkup()}\n");
+    }
+
+    /// <summary>
+    /// Whether an exception reflects NetPace's own health rather than a network condition.
+    /// Network conditions are reported and leave the exit code at <c>0</c>; operational faults
+    /// (for example, the <c>--file</c> target becoming unwritable mid-run) must exit non-zero.
+    /// </summary>
+    private static bool IsOperationalFault(Exception e) =>
+        e is IOException or UnauthorizedAccessException;
+
     public async Task<int> ExecuteAsync(SpeedTestCommandSettings settings, CancellationToken cancellationToken)
     {
         if (settings.Quiet || !string.IsNullOrWhiteSpace(settings.OutputFile))
@@ -48,16 +64,13 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
 
             if (settings.Loop)
             {
-                // Run continuously. `firstWrite` tracks whether a data row has actually been written
-                // (not merely the iteration index), so a header-emitting writer (CSV) still prints
-                // its header on the first successful row when earlier iterations found no server.
-                var firstWrite = true;
+                // Run continuously.
+                var firstLoop = true;
                 do
                 {
                     try
                     {
-                        var outcome = await writer.PerformSpeedTestAsync(initialSpeedTest: firstWrite, console, clock, clientInfoProvider, speedTestClient, settings, cancellationToken);
-                        if (outcome.ServersFound) firstWrite = false;
+                        var outcome = await writer.PerformSpeedTestAsync(initialSpeedTest: firstLoop, console, clock, clientInfoProvider, speedTestClient, settings, cancellationToken);
                         if (ProcessOutcome(outcome, settings)) return 1;
                     }
                     catch (OperationCanceledException)
@@ -65,6 +78,17 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
                         // User requested cancellation.
                         return 0;
                     }
+                    catch (Exception e) when (IsOperationalFault(e))
+                    {
+                        // NetPace's own health, not a network condition: exit non-zero.
+                        throw;
+                    }
+                    catch (Exception e)
+                    {
+                        WriteError(console, e.Message);
+                    }
+
+                    firstLoop = false;
 
                     try
                     {
@@ -81,21 +105,27 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
             }
             else if (settings.Count > 1)
             {
-                // Run multiple times. `firstWrite` tracks the first actual data row (see the loop
-                // branch) so the CSV header survives leading iterations that found no server.
-                var firstWrite = true;
+                // Run multiple times.
                 for (int i = 0; i < settings.Count; i++)
                 {
                     try
                     {
-                        var outcome = await writer.PerformSpeedTestAsync(initialSpeedTest: firstWrite, console, clock, clientInfoProvider, speedTestClient, settings, cancellationToken);
-                        if (outcome.ServersFound) firstWrite = false;
+                        var outcome = await writer.PerformSpeedTestAsync(initialSpeedTest: (i == 0), console, clock, clientInfoProvider, speedTestClient, settings, cancellationToken);
                         if (ProcessOutcome(outcome, settings)) return 1;
                     }
                     catch (OperationCanceledException)
                     {
                         // User requested cancellation.
                         return 0;
+                    }
+                    catch (Exception e) when (IsOperationalFault(e))
+                    {
+                        // NetPace's own health, not a network condition: exit non-zero.
+                        throw;
+                    }
+                    catch (Exception e)
+                    {
+                        WriteError(console, e.Message);
                     }
 
                     if ((i + 1) < settings.Count)
@@ -126,6 +156,15 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
                     // User requested cancellation.
                     return 0;
                 }
+                catch (Exception e) when (IsOperationalFault(e))
+                {
+                    // NetPace's own health, not a network condition: exit non-zero.
+                    throw;
+                }
+                catch (Exception e)
+                {
+                    WriteError(console, e.Message);
+                }
             }
 
             return 0;
@@ -145,17 +184,6 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
     /// <returns><see langword="true"/> when <c>--fail-on</c> is met and the process should exit with a non-zero code.</returns>
     private bool ProcessOutcome(SpeedTestOutcome outcome, SpeedTestCommandSettings settings)
     {
-        if (!outcome.ServersFound)
-        {
-            // No usable server is a reported data outcome, not an error (exit code stays 0).
-            if (ShouldEmitFailureNotice(settings))
-            {
-                console.WriteLine("No speed test servers were found.");
-            }
-
-            return false;
-        }
-
         // Machine formats (JSON, CSV) self-describe via the counts, and Minimal keeps the token
         // annotation only, so neither gets a duplicate notice.
         if (ShouldEmitFailureNotice(settings))

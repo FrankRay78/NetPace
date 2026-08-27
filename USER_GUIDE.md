@@ -129,7 +129,7 @@ Every output format carries the counts:
   { "UploadSucceeded": 0, "UploadFailed": 32, … }
   ```
 
-Machine formats (CSV, JSON) self-describe through the counts and never mix the prose notice into their output — that includes `--verbosity Debug`. `--quiet` suppresses the notice along with the rest of the output; use `--fail-on` to detect failure in that mode.
+Machine formats (CSV, JSON) self-describe through the counts and never mix the prose notice into their output — that includes `--verbosity Debug`. `--quiet` suppresses the notice along with the rest of the output; use `--fail-on` to detect an all-failed measurement in that mode.
 
 ### Exit codes
 

@@ -9,13 +9,7 @@ namespace NetPace.Console;
 public sealed record SpeedTestOutcome
 {
     /// <summary>
-    /// Gets a value indicating whether a usable server was found. When <see langword="false"/>, no
-    /// measurement ran and no data row was written to standard output.
-    /// </summary>
-    public required bool ServersFound { get; init; }
-
-    /// <summary>
-    /// Gets the URL of the server the test ran against, or <see langword="null"/> when no server was found.
+    /// Gets the URL of the server the test ran against.
     /// </summary>
     public string? ServerUrl { get; init; }
 
@@ -28,9 +22,4 @@ public sealed record SpeedTestOutcome
     /// Gets the upload measurement, or <see langword="null"/> when the upload dimension was not requested.
     /// </summary>
     public SpeedTestResult? Upload { get; init; }
-
-    /// <summary>
-    /// An outcome representing that no usable server was found.
-    /// </summary>
-    public static readonly SpeedTestOutcome NoServers = new() { ServersFound = false };
 }
