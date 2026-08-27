@@ -115,7 +115,7 @@ Every output format carries the counts:
   ```
   Latency: 24 ms, Download: 512.6 Mbps, Upload: 0 bps (32 of 32 requests failed)
   ```
-  In normal output, an all-failed dimension also prints a short notice on **standard error**:
+  In normal output, an all-failed dimension also prints a short notice:
   ```
   Upload failed: all 32 requests to http://…/upload.php failed.
   ```
@@ -129,10 +129,7 @@ Every output format carries the counts:
   { "UploadSucceeded": 0, "UploadFailed": 32, … }
   ```
 
-Machine formats (CSV, JSON) self-describe through the counts and never duplicate the notice on
-standard error — that includes `--verbosity Debug`. In the normal (interactive) output mode,
-`--verbosity Debug` additionally streams the raw reason for each failed request live to standard
-error.
+Machine formats (CSV, JSON) self-describe through the counts and never mix the prose notice into their output — that includes `--verbosity Debug`. `--quiet` suppresses the notice along with the rest of the output; use `--fail-on` to detect failure in that mode.
 
 ### Exit codes
 

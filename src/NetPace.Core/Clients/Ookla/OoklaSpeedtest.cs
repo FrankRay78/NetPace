@@ -322,9 +322,7 @@ public sealed class OoklaSpeedtest : ISpeedTestService
         var tasks = testData.Select(async data =>
         {
             var bytesReturned = 0;
-
-            // Null unless this request failed; carries the reason for live (Debug) reporting.
-            string? failureReason = null;
+            var requestFailed = false;
 
             try
             {
@@ -350,7 +348,7 @@ public sealed class OoklaSpeedtest : ISpeedTestService
                 // rather than swallowed. Its bytes remain zero.
                 if (!(e is OperationCanceledException && wasCancelledLocally))
                 {
-                    failureReason = e.Message;
+                    requestFailed = true;
                 }
             }
             finally
@@ -363,7 +361,7 @@ public sealed class OoklaSpeedtest : ISpeedTestService
                         {
                             completedCount++;
 
-                            if (failureReason is not null)
+                            if (requestFailed)
                             {
                                 failedCount++;
                             }
@@ -382,8 +380,7 @@ public sealed class OoklaSpeedtest : ISpeedTestService
                                 {
                                     PercentageComplete = 100,
                                     BytesProcessed = totalBytesReturned,
-                                    ElapsedMilliseconds = timer.ElapsedMilliseconds,
-                                    FailedRequestReason = failureReason
+                                    ElapsedMilliseconds = timer.ElapsedMilliseconds
                                 });
                             }
                             else
@@ -408,8 +405,7 @@ public sealed class OoklaSpeedtest : ISpeedTestService
                                 {
                                     PercentageComplete = percentageComplete,
                                     BytesProcessed = totalBytesReturned,
-                                    ElapsedMilliseconds = timer.ElapsedMilliseconds,
-                                    FailedRequestReason = failureReason
+                                    ElapsedMilliseconds = timer.ElapsedMilliseconds
                                 });
                             }
                         }

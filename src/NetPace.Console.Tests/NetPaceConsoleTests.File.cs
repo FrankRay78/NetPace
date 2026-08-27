@@ -296,13 +296,12 @@ public sealed partial class NetPaceConsoleTests
             var result = await host.RunAsync([ "--file", invalidPath ]);
 
             // Then an operational failure (cannot write the output file) exits non-zero and is
-            // reported on standard error.
+            // reported on the console.
             Assert.Equal(1, result.ExitCode);
-            Assert.Empty(result.Output);
 
             // Normalize directory separators to Windows-style backslashes so the Windows snapshots match across platforms.
-            var normalizedError = (result.Error ?? string.Empty).Replace('/', '\\');
-            await Verify(normalizedError);
+            var normalizedOutput = result.Output.Replace('/', '\\');
+            await Verify(normalizedOutput);
         }
 
         [InlineData("-q")]
@@ -367,11 +366,15 @@ public sealed partial class NetPaceConsoleTests
                 // When
                 var result = await host.RunAsync([ quiet, "--file", testFile ]);
 
-                // Then an unreachable discovery endpoint is data (exit 0): no data row is written to
-                // the file, and the notice appears on standard error (not the file/stdout channel).
+                // Then an unreachable discovery endpoint is data (exit 0). --quiet suppresses the
+                // terminal, so the notice follows the results to the file instead, and no data row
+                // is written.
                 Assert.Equal(0, result.ExitCode);
                 Assert.Empty(result.Output);
-                Assert.Contains("No speed test servers were found.", result.Error);
+
+                var fileContent = await System.IO.File.ReadAllTextAsync(testFile);
+                Assert.Contains("No speed test servers were found.", fileContent);
+                Assert.DoesNotContain("Latency:", fileContent);
             }
             finally
             {

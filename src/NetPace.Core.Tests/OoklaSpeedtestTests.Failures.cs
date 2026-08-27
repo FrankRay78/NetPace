@@ -121,42 +121,6 @@ public sealed partial class OoklaSpeedtestTests
     }
 
     [Fact]
-    public async Task GetUploadSpeedAsync_ShouldStreamFailureReason_WhenRequestFails()
-    {
-        // SCENARIO: The raw failure reason is streamed live for diagnosis (R4b)
-
-        // Given every upload fails with a recognisable message.
-        using var mockHttp = new MockHttpMessageHandler();
-        mockHttp.When("*").Throw(new HttpRequestException("boom-telekom"));
-
-        var httpClient = mockHttp.ToHttpClient();
-        var settings = new OoklaSpeedtestSettings
-        {
-            UploadTest = new()
-            {
-                UploadIncrements = 1,
-                UploadSizeIterations = 2,
-                UploadParallelTasks = 1
-            }
-        };
-        var speedtest = new OoklaSpeedtest(settings, httpClient);
-        var server = new Server { Url = "http://example.com/", Sponsor = "Test", Location = "Test" };
-
-        var reasons = new List<string>();
-        var progress = new SynchronousProgress<SpeedTestProgress>(p =>
-        {
-            if (p.FailedRequestReason is not null) reasons.Add(p.FailedRequestReason);
-        });
-
-        // When
-        await speedtest.GetUploadSpeedAsync(server, progress);
-
-        // Then the failure reason is surfaced on the progress channel.
-        reasons.ShouldNotBeEmpty();
-        reasons.ShouldAllBe(r => r.Contains("boom-telekom"));
-    }
-
-    [Fact]
     public async Task GetUploadSpeedAsync_ShouldPropagateCancellation_WhenCallerCancels()
     {
         // SCENARIO: Cancellation still propagates

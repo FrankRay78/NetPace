@@ -14,8 +14,7 @@ public interface IConsoleWriter
     /// <see langword="true"/> if this is the first test in a sequence; used by writers that emit a
     /// header row (e.g. CSV) to decide whether to include it.
     /// </param>
-    /// <param name="console">The Spectre.Console instance used for standard output.</param>
-    /// <param name="errorConsole">The console used for standard-error output (live per-request failure reasons at debug verbosity).</param>
+    /// <param name="console">The Spectre.Console instance used for output.</param>
     /// <param name="clock">Clock used to obtain the current timestamp for each result.</param>
     /// <param name="clientInfoProvider">Provider for device identity values (IP address and hostname).</param>
     /// <param name="speedTestClient">Speed test service that performs latency, download and upload measurements.</param>
@@ -23,7 +22,7 @@ public interface IConsoleWriter
     /// <param name="cancellationToken">Token that can be used to cancel the operation.</param>
     /// <returns>
     /// The outcome of the run (whether a server was found and the per-dimension measurements),
-    /// used by the command to apply exit-code policy and emit standard-error notices.
+    /// used by the command to apply exit-code policy and emit failure notices.
     /// </returns>
-    Task<SpeedTestOutcome> PerformSpeedTestAsync(bool initialSpeedTest, IAnsiConsole console, IAnsiConsole errorConsole, IClock clock, IClientInfoProvider clientInfoProvider, ISpeedTestService speedTestClient, SpeedTestCommandSettings settings, CancellationToken cancellationToken);
+    Task<SpeedTestOutcome> PerformSpeedTestAsync(bool initialSpeedTest, IAnsiConsole console, IClock clock, IClientInfoProvider clientInfoProvider, ISpeedTestService speedTestClient, SpeedTestCommandSettings settings, CancellationToken cancellationToken);
 }

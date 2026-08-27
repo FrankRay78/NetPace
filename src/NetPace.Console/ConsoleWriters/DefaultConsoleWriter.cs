@@ -6,7 +6,7 @@ namespace NetPace.Console.ConsoleWriters;
 
 public sealed class DefaultConsoleWriter : IConsoleWriter
 {
-    public async Task<SpeedTestOutcome> PerformSpeedTestAsync(bool initialSpeedTest, IAnsiConsole console, IAnsiConsole errorConsole, IClock clock, IClientInfoProvider clientInfoProvider, ISpeedTestService speedTestClient, SpeedTestCommandSettings settings, CancellationToken cancellationToken)
+    public async Task<SpeedTestOutcome> PerformSpeedTestAsync(bool initialSpeedTest, IAnsiConsole console, IClock clock, IClientInfoProvider clientInfoProvider, ISpeedTestService speedTestClient, SpeedTestCommandSettings settings, CancellationToken cancellationToken)
     {
         var debug = (settings.Verbosity & Verbosity.Debug) != 0;
 
@@ -80,29 +80,12 @@ public sealed class DefaultConsoleWriter : IConsoleWriter
                     // SyncContext/thread pool, which races Spectre's renderer and drops updates.
                     if (!settings.NoDownload)
                     {
-                        var downloadProgressReporter = new SyncProgress<SpeedTestProgress>(p =>
-                        {
-                            downloadProgress!.Value = p.PercentageComplete;
-
-                            // At debug verbosity, stream each per-request failure reason live to stderr.
-                            if (debug && p.FailedRequestReason is not null)
-                            {
-                                errorConsole.WriteLine($"Download request failed: {p.FailedRequestReason}");
-                            }
-                        });
+                        var downloadProgressReporter = new SyncProgress<SpeedTestProgress>(p => downloadProgress!.Value = p.PercentageComplete);
                         downloadResult = await speedTestClient.GetDownloadSpeedAsync(fastest.Server, downloadProgressReporter, cancellationToken);
                     }
                     if (!settings.NoUpload)
                     {
-                        var uploadProgressReporter = new SyncProgress<SpeedTestProgress>(p =>
-                        {
-                            uploadProgress!.Value = p.PercentageComplete;
-
-                            if (debug && p.FailedRequestReason is not null)
-                            {
-                                errorConsole.WriteLine($"Upload request failed: {p.FailedRequestReason}");
-                            }
-                        });
+                        var uploadProgressReporter = new SyncProgress<SpeedTestProgress>(p => uploadProgress!.Value = p.PercentageComplete);
                         uploadResult = await speedTestClient.GetUploadSpeedAsync(fastest.Server, uploadProgressReporter, cancellationToken);
                     }
                 });

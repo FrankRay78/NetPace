@@ -34,10 +34,6 @@ public sealed class CommandLineTestHost
         using var testConsole = new TestConsole().Width(int.MaxValue);
         serviceCollection.TryAddSingleton<IAnsiConsole>(testConsole);
 
-        // Register a separate standard-error console so tests can assert on stderr independently.
-        using var testErrorConsole = new TestConsole().Width(int.MaxValue);
-        serviceCollection.TryAddSingleton(new ErrorConsole(testErrorConsole));
-
         // Default IClientInfoProvider stub unless a test already registered one
         serviceCollection.TryAddSingleton<IClientInfoProvider, ClientInfoProviderStub>();
 
@@ -52,7 +48,6 @@ public sealed class CommandLineTestHost
         {
             ExitCode = exitCode,
             Output = testConsole.Output,
-            Error = testErrorConsole.Output,
         };
     }
 }
@@ -68,12 +63,7 @@ public sealed record TestResult
     public required int ExitCode { get; init; }
 
     /// <summary>
-    /// Gets the output written to stdout.
+    /// Gets the output written to the console.
     /// </summary>
     public required string Output { get; init; }
-
-    /// <summary>
-    /// Gets the output written to stderr.
-    /// </summary>
-    public required string Error { get; init; }
 }

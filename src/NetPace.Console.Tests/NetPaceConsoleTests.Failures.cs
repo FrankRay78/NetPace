@@ -4,7 +4,7 @@ namespace NetPace.Console.Tests;
 
 /// <summary>
 /// CLI behaviour for surfacing transfer failures (issue #206): counts appear in every output
-/// format, the exit code reflects only NetPace's health by default, standard error carries the
+/// format, the exit code reflects only NetPace's health by default, interactive output carries the
 /// human notice, and <c>--fail-on</c> opts in to a failure exit code.
 /// </summary>
 public sealed partial class NetPaceConsoleTests
@@ -32,14 +32,15 @@ public sealed partial class NetPaceConsoleTests
             // When (default settings)
             var result = await host.RunAsync([]);
 
-            // Then the process succeeds, the failure is visible in stdout, and stderr carries guidance.
+            // Then the process succeeds and the failure is visible, both as a count annotation and
+            // as a notice.
             Assert.Equal(0, result.ExitCode);
             Assert.Contains("32 of 32 requests failed", result.Output);
-            Assert.Contains("Upload failed: all 32 requests to", result.Error);
+            Assert.Contains("Upload failed: all 32 requests to", result.Output);
         }
 
         [Fact]
-        public async Task Partial_Failure_Is_Annotated_On_Stdout_Without_Stderr_Notice()
+        public async Task Partial_Failure_Is_Annotated_Without_A_Notice()
         {
             // SCENARIO: Normal + verbosity gradation - partial failure (AC9)
 
@@ -50,14 +51,14 @@ public sealed partial class NetPaceConsoleTests
             // When
             var result = await host.RunAsync([]);
 
-            // Then the token is annotated on stdout, but partial failure gets no stderr notice.
+            // Then the token is annotated, but partial failure gets no all-failed notice.
             Assert.Equal(0, result.ExitCode);
             Assert.Contains("5 of 150 requests failed", result.Output);
-            Assert.Empty(result.Error);
+            Assert.DoesNotContain("failed: all", result.Output);
         }
 
         [Fact]
-        public async Task Json_All_Failed_Self_Describes_On_Stdout_With_No_Stderr()
+        public async Task Json_All_Failed_Self_Describes_Without_A_Notice()
         {
             // SCENARIO: Machine formats self-describe on stdout - JSON (AC8a)
 
@@ -68,16 +69,17 @@ public sealed partial class NetPaceConsoleTests
             // When
             var result = await host.RunAsync([ "--json" ]);
 
-            // Then the JSON carries the counts and no upload speed value; nothing is written to stderr.
+            // Then the JSON carries the counts and no upload speed value; no prose notice is mixed
+            // into the machine-readable output.
             Assert.Equal(0, result.ExitCode);
             Assert.Contains("\"UploadSucceeded\":0", result.Output);
             Assert.Contains("\"UploadFailed\":32", result.Output);
             Assert.DoesNotContain("\"UploadSpeed\"", result.Output);
-            Assert.Empty(result.Error);
+            Assert.DoesNotContain("Upload failed: all", result.Output);
         }
 
         [Fact]
-        public async Task Csv_All_Failed_Row_Distinguishes_Total_Failure_With_No_Stderr()
+        public async Task Csv_All_Failed_Row_Distinguishes_Total_Failure_Without_A_Notice()
         {
             // SCENARIO: Machine formats self-describe on stdout - CSV (AC8b)
 
@@ -88,15 +90,15 @@ public sealed partial class NetPaceConsoleTests
             // When
             var result = await host.RunAsync([ "--csv" ]);
 
-            // Then the data row shows UploadSucceeded=0; nothing is written to stderr.
+            // Then the data row shows UploadSucceeded=0; no prose notice corrupts the CSV.
             Assert.Equal(0, result.ExitCode);
             var dataRow = result.Output.Split('\n')[1];
             Assert.Contains(",0,32,", dataRow); // UploadSucceeded=0, UploadFailed=32
-            Assert.Empty(result.Error);
+            Assert.DoesNotContain("Upload failed: all", result.Output);
         }
 
         [Fact]
-        public async Task Minimal_All_Failed_Annotates_Token_Without_Stderr_Notice()
+        public async Task Minimal_All_Failed_Annotates_Token_Without_A_Notice()
         {
             // SCENARIO: Normal + verbosity gradation - Minimal (AC9)
 
@@ -106,31 +108,28 @@ public sealed partial class NetPaceConsoleTests
             // When
             var result = await host.RunAsync([ "--verbosity", "Minimal" ]);
 
-            // Then the token annotation carries the failure; Minimal emits no separate stderr notice.
+            // Then the token annotation carries the failure; Minimal emits no separate notice.
             Assert.Equal(0, result.ExitCode);
             Assert.Contains("32 of 32 requests failed", result.Output);
-            Assert.Empty(result.Error);
+            Assert.DoesNotContain("Upload failed: all", result.Output);
         }
 
         [Fact]
-        public async Task Debug_Streams_Each_Failure_Reason_To_Stderr()
+        public async Task Debug_Annotates_The_Token_And_Emits_The_Notice()
         {
             // SCENARIO: Normal + verbosity gradation - Debug (AC9)
 
-            var service = new ScriptedSpeedTester
-            {
-                UploadFactory = _ => ScriptedSpeedTester.AllFailed(32),
-                StreamedFailureReason = "Connection reset by peer"
-            };
+            var service = new ScriptedSpeedTester { UploadFactory = _ => ScriptedSpeedTester.AllFailed(32) };
             var host = HostWith(service);
 
             // When
             var result = await host.RunAsync([ "--verbosity", "Debug" ]);
 
-            // Then the raw reason is emitted live on stderr, in addition to the total-failure notice.
+            // Then Debug reports the same counts and notice as normal verbosity - the failure is
+            // described by the counts, not by per-request detail.
             Assert.Equal(0, result.ExitCode);
-            Assert.Contains("Upload request failed: Connection reset by peer", result.Error);
-            Assert.Contains("Upload failed: all 32 requests to", result.Error);
+            Assert.Contains("32 of 32 requests failed", result.Output);
+            Assert.Contains("Upload failed: all 32 requests to", result.Output);
         }
 
         [Fact]
@@ -194,44 +193,39 @@ public sealed partial class NetPaceConsoleTests
         }
 
         [Fact]
-        public async Task Json_Debug_Streams_Nothing_To_Stderr()
+        public async Task Json_Debug_Reports_No_Prose()
         {
-            // Machine formats self-describe via the counts and never duplicate on stderr - that
-            // holds at Debug too (the live reason stream is a normal/interactive concern only).
+            // Machine formats self-describe via the counts and never carry a prose notice - that
+            // holds at Debug too.
 
-            // Given every upload request fails and a reason would be streamed on the progress channel.
-            var service = new ScriptedSpeedTester
-            {
-                UploadFactory = _ => ScriptedSpeedTester.AllFailed(32),
-                StreamedFailureReason = "Connection reset by peer"
-            };
+            // Given every upload request fails.
+            var service = new ScriptedSpeedTester { UploadFactory = _ => ScriptedSpeedTester.AllFailed(32) };
             var host = HostWith(service);
 
             // When
             var result = await host.RunAsync([ "--json", "--verbosity", "Debug" ]);
 
-            // Then the JSON carries the counts and stderr stays empty.
+            // Then the JSON carries the counts and no notice is mixed into it.
             Assert.Equal(0, result.ExitCode);
             Assert.Contains("\"UploadFailed\":32", result.Output);
-            Assert.Empty(result.Error);
+            Assert.DoesNotContain("Upload failed: all", result.Output);
         }
 
         [Fact]
-        public async Task Quiet_All_Failed_Still_Emits_Stderr_Notice()
+        public async Task Quiet_All_Failed_Suppresses_The_Notice_And_Signals_Through_The_Exit_Code()
         {
-            // --quiet suppresses standard output, but the all-failed notice is an operational/human
-            // signal and still reaches standard error.
+            // --quiet asks for no output, and the notice shares the output channel, so it is
+            // suppressed with everything else. --fail-on is how a quiet consumer detects failure.
 
             var service = new ScriptedSpeedTester { UploadFactory = _ => ScriptedSpeedTester.AllFailed(32) };
             var host = HostWith(service);
 
             // When
-            var result = await host.RunAsync([ "--quiet" ]);
+            var result = await host.RunAsync([ "--quiet", "--fail-on", "Total" ]);
 
             // Then
-            Assert.Equal(0, result.ExitCode);
+            Assert.Equal(1, result.ExitCode);
             Assert.Empty(result.Output);
-            Assert.Contains("Upload failed: all 32 requests to", result.Error);
         }
 
         [Fact]
@@ -262,7 +256,9 @@ public sealed partial class NetPaceConsoleTests
             Assert.Contains("DownloadSucceeded", result.Output);
             var dataRows = result.Output.Split('\n', StringSplitOptions.RemoveEmptyEntries).Skip(1).ToArray();
             Assert.Single(dataRows);
-            Assert.Contains("No speed test servers were found.", result.Error);
+
+            // The no-server notice is prose, so CSV suppresses it rather than corrupt the stream.
+            Assert.DoesNotContain("No speed test servers were found.", result.Output);
         }
 
         [Fact]
@@ -281,9 +277,9 @@ public sealed partial class NetPaceConsoleTests
             // When run with the default latency probe enabled.
             var result = await host.RunAsync([ "--server", "http://unreachable.example/upload.php" ]);
 
-            // Then the condition is reported on stderr and the process exits 0 (not 1).
+            // Then the condition is reported on the console and the process exits 0 (not 1).
             Assert.Equal(0, result.ExitCode);
-            Assert.Contains("No speed test servers were found.", result.Error);
+            Assert.Contains("No speed test servers were found.", result.Output);
         }
 
         [Fact]

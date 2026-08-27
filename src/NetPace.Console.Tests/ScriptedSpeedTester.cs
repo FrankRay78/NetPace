@@ -24,9 +24,6 @@ public sealed class ScriptedSpeedTester : ISpeedTestService
     /// <summary>Supplies the upload result for a given zero-based call index.</summary>
     public Func<int, SpeedTestResult> UploadFactory { get; set; } = _ => Clean(32);
 
-    /// <summary>When set, a request failure reason streamed on the progress channel.</summary>
-    public string? StreamedFailureReason { get; set; }
-
     /// <summary>A clean result: every request succeeded.</summary>
     public static SpeedTestResult Clean(int attempts) =>
         new() { BytesProcessed = 1000, ElapsedMilliseconds = 1000, RequestsAttempted = attempts, RequestsSucceeded = attempts, RequestsFailed = 0 };
@@ -63,28 +60,12 @@ public sealed class ScriptedSpeedTester : ISpeedTestService
     public Task<SpeedTestResult> GetDownloadSpeedAsync(IServer server, CancellationToken cancellationToken = default) =>
         GetDownloadSpeedAsync(server, new NullProgress<SpeedTestProgress>(), cancellationToken);
 
-    public Task<SpeedTestResult> GetDownloadSpeedAsync(IServer server, IProgress<SpeedTestProgress> progress, CancellationToken cancellationToken = default)
-    {
-        var result = DownloadFactory(downloadCall++);
-        StreamReasonIfFailed(result, progress);
-        return Task.FromResult(result);
-    }
+    public Task<SpeedTestResult> GetDownloadSpeedAsync(IServer server, IProgress<SpeedTestProgress> progress, CancellationToken cancellationToken = default) =>
+        Task.FromResult(DownloadFactory(downloadCall++));
 
     public Task<SpeedTestResult> GetUploadSpeedAsync(IServer server, CancellationToken cancellationToken = default) =>
         GetUploadSpeedAsync(server, new NullProgress<SpeedTestProgress>(), cancellationToken);
 
-    public Task<SpeedTestResult> GetUploadSpeedAsync(IServer server, IProgress<SpeedTestProgress> progress, CancellationToken cancellationToken = default)
-    {
-        var result = UploadFactory(uploadCall++);
-        StreamReasonIfFailed(result, progress);
-        return Task.FromResult(result);
-    }
-
-    private void StreamReasonIfFailed(SpeedTestResult result, IProgress<SpeedTestProgress> progress)
-    {
-        if (StreamedFailureReason is not null && result.RequestsFailed > 0)
-        {
-            progress.Report(new SpeedTestProgress { PercentageComplete = 100, FailedRequestReason = StreamedFailureReason });
-        }
-    }
+    public Task<SpeedTestResult> GetUploadSpeedAsync(IServer server, IProgress<SpeedTestProgress> progress, CancellationToken cancellationToken = default) =>
+        Task.FromResult(UploadFactory(uploadCall++));
 }

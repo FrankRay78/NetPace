@@ -268,21 +268,20 @@ public static class Program
 
                 // Get services from DI
                 var ansiConsole = serviceProvider.GetRequiredService<IAnsiConsole>();
-                var errorConsole = serviceProvider.GetRequiredService<ErrorConsole>().Console;
                 var speedTestService = serviceProvider.GetRequiredService<ISpeedTestService>();
                 var clock = serviceProvider.GetRequiredService<IClock>();
                 var clientInfoProvider = serviceProvider.GetRequiredService<IClientInfoProvider>();
                 var waiter = serviceProvider.GetRequiredService<IWaiter>();
 
                 // Create and execute command
-                var command = new SpeedTestCommand(ansiConsole, errorConsole, speedTestService, clock, clientInfoProvider, waiter);
+                var command = new SpeedTestCommand(ansiConsole, speedTestService, clock, clientInfoProvider, waiter);
                 return await command.ExecuteAsync(settings, cancellationToken);
             }
             catch (Exception ex)
             {
-                // Usage/configuration errors and operational failures are reported on standard error.
-                var errorConsole = serviceProvider.GetRequiredService<ErrorConsole>().Console;
-                errorConsole.MarkupLine($"[red]Error:[/] {ex.Message}");
+                // Usage/configuration errors and operational failures are reported to the console.
+                var console = serviceProvider.GetRequiredService<IAnsiConsole>();
+                console.MarkupLine($"[red]Error:[/] {ex.Message}");
                 return 1;
             }
         }));
@@ -385,13 +384,8 @@ public static class Program
         // Setup DI
         var services = new ServiceCollection();
 
-        // Register AnsiConsole (standard output) and a standard-error console for the
-        // human/operational channel.
+        // Register AnsiConsole (standard output).
         services.AddSingleton(AnsiConsole.Console);
-        services.AddSingleton(new ErrorConsole(AnsiConsole.Create(new AnsiConsoleSettings
-        {
-            Out = new AnsiConsoleOutput(System.Console.Error)
-        })));
 
         // Needed by both stacks: the root command populates the accessor after option binding,
         // before it knows which ISpeedTestService is in play.

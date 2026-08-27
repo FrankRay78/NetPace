@@ -3,14 +3,14 @@ using NetPace.Console.ConsoleWriters;
 
 namespace NetPace.Console.Commands;
 
-public sealed class SpeedTestCommand(IAnsiConsole console, IAnsiConsole errorConsole, ISpeedTestService speedTestClient, IClock clock, IClientInfoProvider clientInfoProvider, IWaiter waiter)
+public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService speedTestClient, IClock clock, IClientInfoProvider clientInfoProvider, IWaiter waiter)
 {
     /// <summary>
     /// Executes the speed test command using the provided settings.
     /// </summary>
     /// <remarks>
     /// Network and discovery outcomes are data, not errors: they are reported through the output
-    /// (counts) and standard-error notices, and leave the exit code at <c>0</c> unless the consumer
+    /// (counts) and human-readable notices, and leave the exit code at <c>0</c> unless the consumer
     /// opts in via <c>--fail-on</c>. Only operational failures (which propagate out of this method to
     /// the top-level handler) produce a non-zero exit code.
     /// </remarks>
@@ -56,7 +56,7 @@ public sealed class SpeedTestCommand(IAnsiConsole console, IAnsiConsole errorCon
                 {
                     try
                     {
-                        var outcome = await writer.PerformSpeedTestAsync(initialSpeedTest: firstWrite, console, errorConsole, clock, clientInfoProvider, speedTestClient, settings, cancellationToken);
+                        var outcome = await writer.PerformSpeedTestAsync(initialSpeedTest: firstWrite, console, clock, clientInfoProvider, speedTestClient, settings, cancellationToken);
                         if (outcome.ServersFound) firstWrite = false;
                         if (ProcessOutcome(outcome, settings)) return 1;
                     }
@@ -88,7 +88,7 @@ public sealed class SpeedTestCommand(IAnsiConsole console, IAnsiConsole errorCon
                 {
                     try
                     {
-                        var outcome = await writer.PerformSpeedTestAsync(initialSpeedTest: firstWrite, console, errorConsole, clock, clientInfoProvider, speedTestClient, settings, cancellationToken);
+                        var outcome = await writer.PerformSpeedTestAsync(initialSpeedTest: firstWrite, console, clock, clientInfoProvider, speedTestClient, settings, cancellationToken);
                         if (outcome.ServersFound) firstWrite = false;
                         if (ProcessOutcome(outcome, settings)) return 1;
                     }
@@ -118,7 +118,7 @@ public sealed class SpeedTestCommand(IAnsiConsole console, IAnsiConsole errorCon
                 // Run once.
                 try
                 {
-                    var outcome = await writer.PerformSpeedTestAsync(initialSpeedTest: true, console, errorConsole, clock, clientInfoProvider, speedTestClient, settings, cancellationToken);
+                    var outcome = await writer.PerformSpeedTestAsync(initialSpeedTest: true, console, clock, clientInfoProvider, speedTestClient, settings, cancellationToken);
                     if (ProcessOutcome(outcome, settings)) return 1;
                 }
                 catch (OperationCanceledException)
@@ -140,7 +140,7 @@ public sealed class SpeedTestCommand(IAnsiConsole console, IAnsiConsole errorCon
     }
 
     /// <summary>
-    /// Emits standard-error notices for the outcome and evaluates the <c>--fail-on</c> threshold.
+    /// Emits human-readable notices for the outcome and evaluates the <c>--fail-on</c> threshold.
     /// </summary>
     /// <returns><see langword="true"/> when <c>--fail-on</c> is met and the process should exit with a non-zero code.</returns>
     private bool ProcessOutcome(SpeedTestOutcome outcome, SpeedTestCommandSettings settings)
@@ -148,13 +148,16 @@ public sealed class SpeedTestCommand(IAnsiConsole console, IAnsiConsole errorCon
         if (!outcome.ServersFound)
         {
             // No usable server is a reported data outcome, not an error (exit code stays 0).
-            errorConsole.WriteLine("No speed test servers were found.");
+            if (ShouldEmitFailureNotice(settings))
+            {
+                console.WriteLine("No speed test servers were found.");
+            }
+
             return false;
         }
 
-        // Standard error is the human channel for interactive output. Machine formats (JSON, CSV)
-        // self-describe via the counts, and Minimal keeps the token annotation only, so neither
-        // gets a duplicate notice.
+        // Machine formats (JSON, CSV) self-describe via the counts, and Minimal keeps the token
+        // annotation only, so neither gets a duplicate notice.
         if (ShouldEmitFailureNotice(settings))
         {
             EmitAllFailedNotice("Download", settings.NoDownload ? null : outcome.Download, outcome.ServerUrl);
@@ -165,7 +168,9 @@ public sealed class SpeedTestCommand(IAnsiConsole console, IAnsiConsole errorCon
     }
 
     /// <summary>
-    /// Whether an all-failed dimension should produce a standard-error notice for the active output mode.
+    /// Whether a failure notice should be written for the active output mode. Notices share the
+    /// output stream with the results, so they are suppressed wherever that stream is
+    /// machine-readable and would be corrupted by prose.
     /// </summary>
     private static bool ShouldEmitFailureNotice(SpeedTestCommandSettings settings) =>
         !settings.CSV && !settings.Json && !settings.JsonPretty && settings.Verbosity != Verbosity.Minimal;
@@ -174,7 +179,7 @@ public sealed class SpeedTestCommand(IAnsiConsole console, IAnsiConsole errorCon
     {
         if (result is not null && result.IsAllFailed())
         {
-            errorConsole.WriteLine($"{dimension} failed: all {result.RequestsAttempted} requests to {serverUrl} failed.");
+            console.WriteLine($"{dimension} failed: all {result.RequestsAttempted} requests to {serverUrl} failed.");
         }
     }
 

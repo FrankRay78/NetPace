@@ -330,10 +330,9 @@ public sealed partial class NetPaceConsoleTests
         // When
         var result = await host.RunAsync([ "--no-latency", "--no-download", "--no-upload" ]);
 
-        // Then the validation error is reported on standard error.
+        // Then the validation error is reported on the console.
         Assert.Equal(1, result.ExitCode);
-        Assert.Empty(result.Output);
-        await Verify(result.Error);
+        await Verify(result.Output);
     }
 
     [Fact]
@@ -444,9 +443,9 @@ public sealed partial class NetPaceConsoleTests
         // When
         var result = await host.RunAsync(Array.Empty<string>());
 
-        // Then an unreachable discovery endpoint is a reported data outcome (exit 0), surfaced on stderr.
+        // Then an unreachable discovery endpoint is a reported data outcome (exit 0), surfaced on the console.
         Assert.Equal(0, result.ExitCode);
-        await Verify(result.Error);
+        await Verify(result.Output);
     }
 
     [Fact]
@@ -496,9 +495,9 @@ public sealed partial class NetPaceConsoleTests
         // When
         var result = await host.RunAsync(Array.Empty<string>());
 
-        // Then the no-servers condition is reported on stderr and exits 0.
+        // Then the no-servers condition is reported on the console and exits 0.
         Assert.Equal(0, result.ExitCode);
-        await Verify(result.Error);
+        await Verify(result.Output);
     }
 
     [Fact]
@@ -519,9 +518,9 @@ public sealed partial class NetPaceConsoleTests
         // When
         var result = await host.RunAsync([ "--no-latency" ]);
 
-        // Then the no-servers condition is reported on stderr and exits 0.
+        // Then the no-servers condition is reported on the console and exits 0.
         Assert.Equal(0, result.ExitCode);
-        await Verify(result.Error);
+        await Verify(result.Output);
     }
 
     [InlineData("-h")]
