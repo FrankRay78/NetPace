@@ -1,4 +1,3 @@
-using System.Xml;
 using System.Xml.Linq;
 using Shouldly;
 
@@ -7,13 +6,10 @@ namespace NetPace.Core.Tests;
 /// <summary>
 /// Verifies <see cref="Profile.Mega"/>'s XML documentation includes the undocumented-payload
 /// caveat, so the warning ships to NuGet consumers via NetPace.Core.xml, and that the loader
-/// used to read that file tolerates a build concurrently rewriting it.
+/// used to read that file tolerates a concurrent writer.
 /// </summary>
 public sealed class ProfileXmlDocTests
 {
-    private const int LoadAttempts = 5;
-    private const int LoadRetryDelayMs = 50;
-
     [Fact]
     public void Profile_Mega_XmlDoc_DocumentsBonusPayloadDependency()
     {
@@ -43,21 +39,16 @@ public sealed class ProfileXmlDocTests
     {
         // SCENARIO: XML doc loads while a concurrent writer holds the file
         //
-        // Regression (Principle IX mechanism-pinning exception). NetPace.Core.xml is a build-copied
-        // artefact sitting in this test project's own output directory, so a build that overlaps the
-        // test run can hold it open for writing. XDocument.Load(string) opens with FileShare.Read —
-        // a share mode that refuses to coexist with an existing writer — so the open failed with
-        // "The process cannot access the file because it is being used by another process", failing
-        // the suite intermittently.
-        //
-        // Only Windows enforces share modes, so only there can this test tell the old load from the
-        // new one; that is why the premise is asserted under OperatingSystem.IsWindows() rather than
-        // assumed. The outcome is asserted on every platform and nothing is skipped (Principle X),
-        // but a Unix-only CI run cannot catch a revert of LoadXmlDoc.
+        // Regression: NetPace.Core.xml is a build-copied artefact in this test project's own output
+        // directory, so a build overlapping the test run can hold it open for writing.
+        // XDocument.Load(string) opens with FileShare.Read, a share mode that refuses to coexist
+        // with an existing writer, so the read failed intermittently with "The process cannot
+        // access the file because it is being used by another process". Only Windows enforces share
+        // modes, so the premise is asserted there rather than assumed — on Unix this test still runs
+        // and still asserts the outcome, but cannot catch a revert of LoadXmlDoc.
 
         // Given
-        // A private temp file, so the test never contends for the real build artefact — the
-        // file-sharing behaviour under test is identical on any path.
+        // A private temp file, so the test never contends for the real build artefact.
         var xmlPath = Path.Join(Path.GetTempPath(), $"netpace-xmldoc-share-{Guid.NewGuid()}.xml");
         File.WriteAllText(xmlPath, "<doc><members /></doc>");
 
@@ -67,7 +58,6 @@ public sealed class ProfileXmlDocTests
 
             if (OperatingSystem.IsWindows())
             {
-                // If this ever stops throwing, the assertion below has quietly stopped proving anything.
                 Should.Throw<IOException>(() => XDocument.Load(xmlPath));
             }
 
@@ -79,14 +69,10 @@ public sealed class ProfileXmlDocTests
         }
         finally
         {
-            TryDelete(xmlPath);
+            File.Delete(xmlPath);
         }
     }
 
-    /// <summary>
-    /// Resolves NetPace.Core.xml, copied next to the referenced NetPace.Core assembly by the
-    /// project reference.
-    /// </summary>
     private static string ResolveCoreXmlDocPath()
     {
         var assemblyPath = typeof(Profile).Assembly.Location;
@@ -97,43 +83,12 @@ public sealed class ProfileXmlDocTests
     }
 
     /// <summary>
-    /// Loads the XML doc, tolerating a build that is concurrently rewriting it. Two transient
-    /// conditions are possible: the open is refused because a writer holds the file, or the file is
-    /// observed part-written and fails to parse. Both are retried; a persistent failure still throws.
+    /// Opens with <see cref="FileShare.ReadWrite"/> so a concurrent writer cannot fail the read;
+    /// <c>XDocument.Load(string)</c> opens with <see cref="FileShare.Read"/> and throws instead.
     /// </summary>
     private static XDocument LoadXmlDoc(string xmlPath)
     {
-        for (var attempt = 1; ; attempt++)
-        {
-            try
-            {
-                using var stream = new FileStream(xmlPath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
-                return XDocument.Load(stream);
-            }
-            catch (IOException) when (attempt < LoadAttempts)
-            {
-                Thread.Sleep(LoadRetryDelayMs);
-            }
-            catch (XmlException) when (attempt < LoadAttempts)
-            {
-                Thread.Sleep(LoadRetryDelayMs);
-            }
-        }
-    }
-
-    /// <summary>
-    /// Deletes the temp file, guarding only the delete so a cleanup failure cannot replace a real
-    /// assertion failure propagating out of the test.
-    /// </summary>
-    private static void TryDelete(string path)
-    {
-        try
-        {
-            File.Delete(path);
-        }
-        catch (IOException)
-        {
-            // A transient lock on the temp file is not worth failing the test over.
-        }
+        using var stream = new FileStream(xmlPath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+        return XDocument.Load(stream);
     }
 }
