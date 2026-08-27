@@ -7,7 +7,7 @@ namespace NetPace.Console;
 /// counts. The counts are the universal currency of validity; these helpers apply the consumer
 /// policy the core library deliberately does not.
 /// </summary>
-internal static class SpeedTestResultReporting
+internal static class SpeedTestResultExtensions
 {
     /// <summary>
     /// Whether every request in the dimension failed (zero valid measurement).
