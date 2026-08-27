@@ -393,6 +393,10 @@ public static class Program
             Out = new AnsiConsoleOutput(System.Console.Error)
         })));
 
+        // Needed by both stacks: the root command populates the accessor after option binding,
+        // before it knows which ISpeedTestService is in play.
+        services.AddSingleton<OoklaSpeedtestSettingsAccessor>();
+
         if (args != null && args.Contains("--test"))
         {
             // Executes NetPace against stub service implementations.
@@ -403,7 +407,6 @@ public static class Program
         }
         else
         {
-            services.AddSingleton<OoklaSpeedtestSettingsAccessor>();
             services.AddSingleton<ISpeedTestService>(sp => new OoklaSpeedtest(sp.GetRequiredService<OoklaSpeedtestSettingsAccessor>().Settings));
             services.AddSingleton<IClock, Clock>();
             services.AddSingleton<IClientInfoProvider, ClientInfoProvider>();
