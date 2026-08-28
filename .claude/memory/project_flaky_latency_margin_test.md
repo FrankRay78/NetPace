@@ -1,8 +1,7 @@
 ---
-name: project_flaky_latency_margin_test
+name: OoklaSpeedtest latency-margin test is flaky under load
 description: OoklaSpeedtestTests latency-margin test flakes under machine load — separate from the ProfileXmlDocTests file-sharing flake
-metadata:
-  type: project
+type: project
 ---
 
 `OoklaSpeedtestTests.GetServerLatencyAsync_ShouldReturnLatency_WhenResponseIsValid_MultipleTestIterations` is flaky. It asserts measured latency lands within a ±25% margin of a simulated `pingDelay` (`OoklaSpeedtestTests.cs:225`), which a loaded machine overshoots — observed at 142ms and 85ms against a 45–75ms band, twice in an 8-run solution-level soak on 2026-08-27.
