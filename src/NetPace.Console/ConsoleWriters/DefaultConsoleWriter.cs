@@ -132,10 +132,11 @@ public sealed class DefaultConsoleWriter : IConsoleWriter
         }.Where(s => !string.IsNullOrEmpty(s))));
 
 
-        console.WriteLine("\nTry 'NetPace --help' for more information.");
-
         EmitAllFailedNotice(console, "Download", settings.NoDownload ? null : downloadResult, fastest.Server.Url);
         EmitAllFailedNotice(console, "Upload", settings.NoUpload ? null : uploadResult, fastest.Server.Url);
+
+
+        console.WriteLine("\nTry 'NetPace --help' for more information.");
 
         return new SpeedTestOutcome
         {
