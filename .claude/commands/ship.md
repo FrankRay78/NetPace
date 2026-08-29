@@ -4,7 +4,7 @@ description: Orchestrator that turns "implementation looks done" into a reviewed
 
 Read `CLAUDE.md` for project context before proceeding.
 
-`/ship` composes NetPace's existing commands behind one hard gate: **the full test suite runs first, and nothing downstream happens unless it is green.** The gate is structural — the review step is downstream of the step-1 exit code, so it cannot begin against un-verified or red code. Do not add a hook to police this ordering; the exit code *is* the gate.
+`/ship` composes NetPace's existing commands behind one hard gate: **the full test suite gates everything downstream, and no review or PR happens unless it is green.** The gate is structural — the review step is downstream of the step-1 exit code, so it cannot begin against un-verified or red code. Do not add a hook to police this ordering; the exit code *is* the gate. The one step that precedes the suite is formatting (step 1a), which is cosmetic and is itself covered by the gate that follows it.
 
 `/ship` is designed to run to completion **without prompting**, so it can be driven by an automated loop (e.g. shipping many features back-to-back) as well as invoked directly. Reflection (`/capture-learnings`) is deliberately **not** a step: it needs human curation and batches better across many features, so it belongs at a supervised checkpoint after a batch — not inside each ship, where it would either block the loop or be auto-skipped to nothing. `/ship` likewise never waits on the async `@claude` PR review (see below).
 
@@ -19,7 +19,22 @@ Read `CLAUDE.md` for project context before proceeding.
 
    The precondition guard runs up front deliberately: `/raise-pr`'s own late branch check must not be the first line of defence, or the full suite and full review would run pointlessly first.
 
-1. **Full test run (always).** Run `dotnet build ./src && dotnet test ./src` — always, including docs-only branches. Do not add a skip path for docs-only branches: the suite is fast, and the always-on `gh pr create` `PreToolUse` hook re-runs it at step 4 anyway, so a skip saves nothing and could let review run before a late hook-block.
+1. **Format (1a), then the full test run (1b).**
+
+   **1a — Format the tree.** Run:
+
+   ```bash
+   dotnet format style ./src/NetPace.sln && dotnet format whitespace ./src/NetPace.sln
+   ```
+
+   The explicit `./src/NetPace.sln` argument is **required, not decorative**: `dotnet format` looks for a project or solution in the *current directory only*, and NetPace's solution is at `src/`, not the repo root. Omitting it fails with `Could not find a MSBuild project file or solution file`.
+
+   - Formatting runs **once per ship**, not per commit. It is cosmetic work at a cadence that already costs minutes — see *Formatting is not verification* in [agentic-workflow.md](../../docs/agentic-workflow.md).
+   - **If formatting changed files, commit them now** — `git add -A` and a `style: apply dotnet format` message — *before* running the suite. This restores the clean working tree step 0 established, which is what keeps step 3's "anything in the tree is a review edit" invariant true. Do not carry format edits forward into the review commit; they are a separate concern and belong in their own commit.
+   - A **non-zero exit** from `dotnet format` is a real failure (bad workspace argument, unparseable source) ⇒ **STOP and report**. A clean run that merely rewrote files is not a failure.
+   - Formatting deliberately precedes 1b so that any change it makes is verified by the suite below, rather than landing after the gate has already passed.
+
+   **1b — Full test run (always).** Run `dotnet build ./src && dotnet test ./src` — always, including docs-only branches. Do not add a skip path for docs-only branches: the suite is fast, and the always-on `gh pr create` `PreToolUse` hook re-runs it at step 4 anyway, so a skip saves nothing and could let review run before a late hook-block.
    - Gate on the run's **exit code**, not on any stored marker.
    - **Not green ⇒ STOP:** report the failures to the invoker and do nothing else — no review subagents, no PR.
    - **Green ⇒ continue.**
@@ -51,4 +66,4 @@ Read `CLAUDE.md` for project context before proceeding.
 
 ## Final report
 
-Report to the invoker: the suite result(s), which review findings were fixed-and-committed and which were deferred as out-of-scope follow-ups (if any), the PR URL, and the soft `/capture-learnings` nudge.
+Report to the invoker: whether formatting changed anything (and the commit if it did), the suite result(s), which review findings were fixed-and-committed and which were deferred as out-of-scope follow-ups (if any), the PR URL, and the soft `/capture-learnings` nudge.

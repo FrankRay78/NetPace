@@ -51,23 +51,36 @@ The generic enforcement layer, as NetPace wires it. Hooks live in [`.claude/hook
 | No skipped tests | `no-skipped-tests.sh` — blocks commits reintroducing the skip family (incl. xUnit-v3 `SkipUnless=`/`SkipWhen=`); `--check` mode for CI | PreToolUse(Bash) |
 | Traceability gate | `traceability-gate.sh` — spec label ↔ test-plan scenario ↔ `// SCENARIO:` marker under `src/`, exact match; loop-guarded nudge, never a lock-out | Stop |
 | Upstream-file guard | `permissions.deny` — one `Edit(path)` rule each on `.claude/skills/speckit-*/SKILL.md`, `.specify/templates/*.md`, `.specify/scripts/bash/*.sh` (an `Edit` rule covers every file-editing tool, Write included) | settings |
-| Format-on-commit | `dotnet format style/whitespace` on staged `*.cs` (see divergence below) | PreToolUse(Bash), `if git commit` |
 | PR pre-flight | `dotnet build ./src && dotnet test ./src` before `gh pr create` | PreToolUse(Bash), `if gh pr create` |
-| **Test-green gate** | **`/ship` step 1 — a real `dotnet build ./src && dotnet test ./src`. Not a hook.** | — |
+| **Formatting** | **`/ship` step 1a — `dotnet format style/whitespace ./src/NetPace.sln`, once per PR. Not a hook** (see below) | — |
+| **Test-green gate** | **`/ship` step 1b — a real `dotnet build ./src && dotnet test ./src`. Not a hook.** | — |
 
 Every hook is **fail-open with an announced override** (`NETPACE_SKIP_GREEN_GATE=1`, `NETPACE_ALLOW_SKIPS=1`, `NETPACE_SKIP_TRACEABILITY_GATE=1`). For a harness edited with itself, a false block can lock out the tools that would fix it — so uncertain paths allow, and the override announces itself on stderr.
 
+Every hook is also a **script in `.claude/hooks/` with a `.tests.sh` case matrix beside it**, never an inline one-liner in `settings.json`. An untested gate can no-op silently — a bad path or a missing argument makes it exit without doing its job — and from the outside that is indistinguishable from a gate that passed. Note too that only **exit 2** blocks a `PreToolUse` hook; any other non-zero exit is reported and ignored, so a gate that means to block must say so explicitly.
+
 **Two generic gates do not apply here.** NetPace has **no stack-guard** — there is no external service stack to orchestrate — and **no UI-automation denylist**: it is a console CLI, not a browser UI, so a denylist has nothing to guard. NetPace's console output *is* verified — see below — just not by a browser-automation framework.
 
-### Divergence to reconcile — format-on-commit
+### Formatting
 
-NetPace formats on commit (the `dotnet format` hook above). The generic guide's *Formatting is not verification — do it at ship cadence* section argues the opposite: per-commit formatting taxes every commit to fix something no reviewer would catch, and the step belongs in `/ship`. This is an **unreconciled divergence** — either move formatting into the ship flow, or record here why per-commit is deliberately kept. Flagged, not silently retained.
+Formatting runs **once per PR**, as `/ship` step 1a — never on commit. This is the generic guide's *Formatting is not verification — do it at ship cadence* section, made concrete:
+
+```bash
+dotnet format style ./src/NetPace.sln && dotnet format whitespace ./src/NetPace.sln
+```
+
+The explicit solution argument is **required, not decorative**: `dotnet format` looks for a project or solution in the *current directory only*, and NetPace's lives under `src/`, not the repo root. Omitting it fails outright.
+
+**Why not per-commit.** Measured on this solution (84 `.cs` files, ~9,900 LOC): **21.4s** for a single staged file, **29.5s** for a seven-file set. The cost is MSBuild **workspace load**, not file count — so staging fewer files makes it no cheaper, and every commit would pay the full ~20–30s. Against that, a release cycle's worth of drift is a handful of import reorderings and a couple of hundred trailing spaces on blank lines: nothing a reviewer would catch. The guide's "tens of seconds" figure holds even at this size, which is why the "our solution is small enough to absorb it" argument does not survive.
+
+**Line endings.** `.gitattributes` pins `*.cs text eol=lf`, agreeing with `.editorconfig`'s `end_of_line = lf` and the LF the index already stores. Without it, a Windows checkout with `core.autocrlf=true` gets a CRLF working tree, and `dotnet format whitespace` then rewrites every file it touches — no committed diff, since the rewrite normalises back on commit, but thousands of phantom findings drowning the real ones. A Windows working tree created *before* that attribute needs a one-time refresh to pick it up (re-clone, or `git rm --cached -r . && git reset --hard` on a clean tree); fresh clones and Linux checkouts are unaffected.
 
 ## `/ship`
 
 NetPace's `/ship` follows the generic *ship gate* section as written:
 
-- **Always runs the suite.** Step 1 is `dotnet build ./src && dotnet test ./src` — no docs-only skip. The suite is fast (no external stack), and the `gh pr create` pre-flight hook would re-run it anyway, so a skip would save nothing.
+- **Formats first.** Step 1a runs `dotnet format style/whitespace ./src/NetPace.sln` and commits any result on its own, before the suite — so formatting is verified by the gate rather than landing after it, and step 3's clean-tree invariant survives. The explicit solution argument is load-bearing (see above).
+- **Always runs the suite.** Step 1b is `dotnet build ./src && dotnet test ./src` — no docs-only skip. The suite is fast (no external stack), and the `gh pr create` pre-flight hook would re-run it anyway, so a skip would save nothing.
 - **Review B posts.** Because `claude.yml` is wired, the async `@claude` review the generic flow describes actually appears on the PR. `/ship` still never waits on it.
 
 ## Test-green gate & categories

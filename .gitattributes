@@ -3,3 +3,5 @@
 *.verified.json text eol=lf working-tree-encoding=UTF-8
 
 *.sh text eol=lf
+
+*.cs text eol=lf

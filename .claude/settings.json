@@ -113,12 +113,6 @@
           },
           {
             "type": "command",
-            "command": "STAGED=$(git diff --cached --name-only | grep \"[.]cs$\"); [ -z \"$STAGED\" ] && exit 0; INCLUDE=$(echo \"$STAGED\" | tr '\\n' ' '); dotnet format style --include $INCLUDE && dotnet format whitespace --include $INCLUDE && echo \"$STAGED\" | xargs -d '\\n' git add",
-            "if": "Bash(git commit:*)",
-            "statusMessage": "Formatting staged .cs files..."
-          },
-          {
-            "type": "command",
             "command": "dotnet build ./src && dotnet test ./src",
             "if": "Bash(gh pr create:*)",
             "statusMessage": "Running build and tests before PR creation..."
