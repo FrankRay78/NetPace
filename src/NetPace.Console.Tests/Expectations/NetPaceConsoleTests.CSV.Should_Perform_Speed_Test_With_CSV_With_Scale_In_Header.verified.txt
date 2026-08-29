@@ -1,2 +1,2 @@
 ﻿Timestamp,Latency (ms),Download (Kbps),DownloadSucceeded,DownloadFailed,Upload (Kbps),UploadSucceeded,UploadFailed,IPAddress,Hostname
-1980-01-01 10:05:00,75,250,0,0,500,0,0,192.168.1.1,test-host
+1980-01-01 10:05:00,75,250,40,0,500,12,0,192.168.1.1,test-host
