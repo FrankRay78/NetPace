@@ -45,10 +45,16 @@ Two named exceptions, because `CLAUDE.md` requires discussion for them:
    - If it is open but states no desired behaviour you could build against, STOP and report that you cannot proceed without inventing scope. This is a report that `/build` cannot do its job — **not** a judgement about whether the issue is large enough to warrant a plan first. That routing decision belongs to whoever drafted the issue and invoked `/build`; take whatever you are handed and build it.
    - Work on this issue only. Do not fold in adjacent improvements you notice along the way (`CLAUDE.md`: don't fold a second mission into an in-flight branch) — note them in the final report instead.
 
-3. **Classify the issue — this decides how the tests are labelled.** Scan the body for `**Scenario: X**` labels:
+3. **Read the issue's criteria and its labels — two independent properties.** An issue may carry either, both, or neither; do not treat them as alternatives.
 
-   - **Traceable issue** (one or more `**Scenario: X**` labels — the shape `/speckit.draftissue` produces). These *are* the acceptance criteria. Implement every one of them, and give each at least one test carrying a `// SCENARIO: X` marker whose text matches the label **exactly**. This preserves the Constitution §VIII chain — issue label → test marker — with the spec/test-plan hop collapsed out, since the issue is already the spec.
-   - **Free-form issue** (no `**Scenario:**` labels — a bug report, a plain feature request). Derive the acceptance criteria from what the body actually states: the observed-vs-expected behaviour of a bug, or the described capability of a request. Write them out in the final report so the reviewer can check your reading. **Do not add `// SCENARIO:` markers** in this mode — an invented label is worse than none, because it looks like a traceability key and traces to nothing.
+   **What to implement — the acceptance criteria.**
+   - If the body has an `## Acceptance criteria` section, that checklist **is** the criteria. Implement every item. This is the shape `/speckit.draftissue`'s template mandates, so it is the usual case for a refined issue.
+   - Otherwise, derive the criteria from what the body actually states — the observed-vs-expected behaviour of a bug, the described capability of a request — and write them into the final report so the reading can be checked. Do not invent scope to fill a gap.
+   - A `## Capability` section's scenarios describe the *flows* the feature must support. Where a checklist is also present the checklist is the fuller list and the one to satisfy; the scenarios are context for the shape of the change, not a substitute for it.
+
+   **How to label the tests — `**Scenario: X**` labels.**
+   - If the body carries one or more `**Scenario: X**` labels, give each at least one test carrying a `// SCENARIO: X` marker matching the label **exactly**. This preserves the Constitution §VIII chain — issue label → test marker — with the spec/test-plan hop collapsed out, since the issue is already the spec. The labels are a convention an author may use; no command guarantees them, so their absence is normal and not a defect in the issue.
+   - If there are none, add no markers. An invented label is worse than none: it looks like a traceability key and traces to nothing.
 
    Either way, **do not create a `specs/` folder.** `/build` deliberately sits outside the spec-kit pipeline: the traceability Stop hook reads active specs only, so with none present it is a clean no-op, and `/raise-pr`'s spec-cleanup step correctly finds nothing to delete. If an issue genuinely warrants a full spec, run the spec-kit chain instead of `/build`.
 
@@ -85,7 +91,7 @@ Two named exceptions, because `CLAUDE.md` requires discussion for them:
 
 ## Final report
 
-- **How you read the issue**: traceable or free-form, and — for a free-form issue — the acceptance criteria you derived from it.
+- **How you read the issue**: where the acceptance criteria came from (an `## Acceptance criteria` checklist, or derived from the body — and if derived, the criteria themselves), and whether `**Scenario:**` labels were present to mark tests against.
 - **RED evidence**: the failing-test output you saw before writing production code.
 - **What you changed**, at a behaviour level, and how each acceptance criterion is met.
 - **Any assumption** you made on an ambiguous point, any public-API change, and anything you deliberately left out of scope.
