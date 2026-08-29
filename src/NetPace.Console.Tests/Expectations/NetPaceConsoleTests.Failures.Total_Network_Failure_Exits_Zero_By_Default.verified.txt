@@ -1,0 +1,10 @@
+﻿
+Deutsche Telekom
+http://ffm.wsqm.telekom-dienste.de:8080/speedtest/upload.php
+
+Downloading: 0%
+Uploading: 0%
+Latency: 24 ms, Download: 8 Kbps, Upload: 0 bps (32 of 32 requests failed)
+
+Try 'NetPace --help' for more information.
+Upload failed: all 32 requests to http://ffm.wsqm.telekom-dienste.de:8080/speedtest/upload.php failed.

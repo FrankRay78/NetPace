@@ -32,11 +32,10 @@ public sealed partial class NetPaceConsoleTests
             // When (default settings)
             var result = await host.RunAsync([]);
 
-            // Then the process succeeds and the failure is visible, both as a count annotation and
-            // as a notice.
+            // Then the process succeeds and the failure is visible, both as a count annotation on
+            // the upload token and as a notice naming the server.
             Assert.Equal(0, result.ExitCode);
-            Assert.Contains("32 of 32 requests failed", result.Output);
-            Assert.Contains("Upload failed: all 32 requests to", result.Output);
+            await Verify(result.Output);
         }
 
         [Fact]
