@@ -17,12 +17,12 @@ public enum FailOn
     None,
 
     /// <summary>
-    /// Exit with a non-zero code when a requested dimension is all-failed (no request succeeded).
+    /// Exit with a non-zero code when a requested test is all-failed (no request succeeded).
     /// </summary>
     Total,
 
     /// <summary>
-    /// Exit with a non-zero code when any request in a requested dimension failed.
+    /// Exit with a non-zero code when any request in a requested test failed.
     /// </summary>
     Partial
 }

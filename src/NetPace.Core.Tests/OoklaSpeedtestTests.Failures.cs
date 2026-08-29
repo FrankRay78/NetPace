@@ -9,7 +9,7 @@ using Shouldly;
 namespace NetPace.Core.Tests;
 
 /// <summary>
-/// Per-request failure aggregation for download and upload tests (issue #206): failed requests are
+/// Per-request failure aggregation for download and upload tests: failed requests are
 /// counted, not swallowed; the call does not throw for network outcomes; user cancellation still
 /// propagates.
 /// </summary>
@@ -43,9 +43,8 @@ public sealed partial class OoklaSpeedtestTests
         // Then the call returns (does not throw), zero succeeded, all attempts failed, zero bytes.
         result.ShouldNotBeNull();
         result.BytesProcessed.ShouldBe(0);
-        result.RequestsAttempted.ShouldBeGreaterThan(0);
         result.RequestsSucceeded.ShouldBe(0);
-        result.RequestsFailed.ShouldBe(result.RequestsAttempted);
+        result.RequestsFailed.ShouldBeGreaterThan(0);
     }
 
     [Fact]
@@ -76,9 +75,8 @@ public sealed partial class OoklaSpeedtestTests
         // Then
         result.ShouldNotBeNull();
         result.BytesProcessed.ShouldBe(0);
-        result.RequestsAttempted.ShouldBeGreaterThan(0);
         result.RequestsSucceeded.ShouldBe(0);
-        result.RequestsFailed.ShouldBe(result.RequestsAttempted);
+        result.RequestsFailed.ShouldBeGreaterThan(0);
     }
 
     [Fact]
@@ -115,7 +113,6 @@ public sealed partial class OoklaSpeedtestTests
         // Then only the successful requests contribute bytes; the failure is counted.
         result.ShouldNotBeNull();
         result.RequestsFailed.ShouldBe(1);
-        result.RequestsSucceeded.ShouldBe(result.RequestsAttempted - 1);
         result.RequestsSucceeded.ShouldBeGreaterThan(0);
         result.BytesProcessed.ShouldBeGreaterThan(0);
     }

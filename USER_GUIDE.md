@@ -105,9 +105,9 @@ NetPace --profile large --downloadsize 200
 A speed test runs many small requests in parallel and reports the aggregate throughput. If some
 of those requests fail (a dropped connection, a TLS error, a timeout, or a server that rejects the
 transfer), NetPace does **not** silently treat them as zero-speed data — it counts them, so you can
-tell a genuinely slow link from a server that isn't transferring at all. When *every* request to a
-dimension fails, the speed reads `0 bps`, and the counts tell you it was a total failure rather than
-a 0 bps link.
+tell a genuinely slow link from a server that isn't transferring at all. When *every* request in a
+test fails, the speed reads `0 bps`, and the counts tell you it was a total failure rather than a
+0 bps link.
 
 Every output format carries the counts:
 
@@ -115,7 +115,7 @@ Every output format carries the counts:
   ```
   Latency: 24 ms, Download: 512.6 Mbps, Upload: 0 bps (32 of 32 requests failed)
   ```
-  In normal output, an all-failed dimension also prints a short notice:
+  In normal output, an all-failed test also prints a short notice:
   ```
   Upload failed: all 32 requests to http://…/upload.php failed.
   ```
@@ -123,10 +123,12 @@ Every output format carries the counts:
   ```
   Timestamp,Latency,Download,DownloadSucceeded,DownloadFailed,Upload,UploadSucceeded,UploadFailed,IPAddress,Hostname
   ```
-- **JSON** — each active dimension gains integer `…Succeeded` / `…Failed` fields; on a total
-  failure the speed field is omitted (there is no valid measurement) while the counts remain:
+- **JSON** — each test that ran gains integer `…Succeeded` / `…Failed` fields alongside its speed.
+  The schema keeps one shape: a total failure reports `0 bps` with the counts beside it, exactly as
+  normal and CSV output do. Only a test you skipped (`--no-download`, `--no-upload`) omits its
+  fields entirely:
   ```json
-  { "UploadSucceeded": 0, "UploadFailed": 32, … }
+  { "UploadSpeed": "0 bps", "UploadSucceeded": 0, "UploadFailed": 32, … }
   ```
 
 Machine formats (CSV, JSON) self-describe through the counts and never mix the prose notice into their output — that includes `--verbosity Debug`. `--quiet` suppresses the notice along with the rest of the output; use `--fail-on` to detect an all-failed measurement in that mode.
@@ -138,20 +140,19 @@ outage, 100% request failure, or no servers found — are *data*, not errors, an
 operational failure (for example, being unable to write the `--file` output) exits non-zero. So a
 `0 bps` measurement still exits `0` by default: inspect the counts (or use `--fail-on`) to detect it.
 
-If you want a failed measurement to fail the process — for scripting or CI — opt in with
-`--fail-on`:
+If you want a failed measurement to fail the process, opt in with `--fail-on`:
 
 | Value | Exits non-zero when… |
 |---|---|
 | `None` (default) | never — measurement outcomes don't affect the exit code |
-| `Total` | a requested dimension is all-failed (no request succeeded) |
-| `Partial` | any request in a requested dimension failed (strict; intended for pristine-run checks) |
+| `Total` | a requested test is all-failed (no request succeeded) |
+| `Partial` | any request in a requested test failed (strict; intended for pristine-run checks) |
 
 `--fail-on` is fail-fast and uniform across single runs, `--count`, and `--loop`: the process exits
 `1` at the first measurement that meets the threshold.
 
 ```bash
-# In CI: treat a totally-failed dimension as a build failure
+# Treat a totally-failed test as a build failure
 NetPace --fail-on Total
 ```
 

@@ -3,7 +3,7 @@ using NetPace.Core.Clients.Ookla;
 namespace NetPace.Console.Tests;
 
 /// <summary>
-/// CLI behaviour for surfacing transfer failures (issue #206): counts appear in every output
+/// CLI behaviour for surfacing transfer failures: counts appear in every output
 /// format, the exit code reflects only NetPace's health by default, interactive output carries the
 /// human notice, and <c>--fail-on</c> opts in to a failure exit code.
 /// </summary>
@@ -44,7 +44,7 @@ public sealed partial class NetPaceConsoleTests
         {
             // SCENARIO: Normal + verbosity gradation - partial failure (AC9)
 
-            // Given some download requests fail but the dimension still measured throughput.
+            // Given some download requests fail but the test still measured throughput.
             var service = new ScriptedSpeedTester { DownloadFactory = _ => ScriptedSpeedTester.Partial(150, 5) };
             var host = HostWith(service);
 
@@ -69,13 +69,35 @@ public sealed partial class NetPaceConsoleTests
             // When
             var result = await host.RunAsync([ "--json" ]);
 
-            // Then the JSON carries the counts and no upload speed value; no prose notice is mixed
-            // into the machine-readable output.
+            // Then the JSON carries the counts alongside a zero speed - the schema stays the same
+            // shape whether or not the test succeeded, matching normal and CSV output; no prose
+            // notice is mixed into the machine-readable output.
             Assert.Equal(0, result.ExitCode);
             Assert.Contains("\"UploadSucceeded\":0", result.Output);
             Assert.Contains("\"UploadFailed\":32", result.Output);
-            Assert.DoesNotContain("\"UploadSpeed\"", result.Output);
+            Assert.Contains("\"UploadSpeed\":\"0 bps\"", result.Output);
             Assert.DoesNotContain("Upload failed: all", result.Output);
+        }
+
+        [Fact]
+        public async Task Json_Omits_Only_The_Fields_Of_A_Test_That_Did_Not_Run()
+        {
+            // SCENARIO: Machine formats self-describe on stdout - JSON (AC8a)
+
+            // Given the upload test is skipped and every download request fails.
+            var service = new ScriptedSpeedTester { DownloadFactory = _ => ScriptedSpeedTester.AllFailed(32) };
+            var host = HostWith(service);
+
+            // When
+            var result = await host.RunAsync([ "--json", "--no-upload" ]);
+
+            // Then a skipped test contributes no fields at all, while an all-failed test reports a
+            // zero speed and its counts - the two outcomes stay distinguishable.
+            Assert.Equal(0, result.ExitCode);
+            Assert.DoesNotContain("\"Upload", result.Output);
+            Assert.Contains("\"DownloadSpeed\":\"0 bps\"", result.Output);
+            Assert.Contains("\"DownloadSucceeded\":0", result.Output);
+            Assert.Contains("\"DownloadFailed\":32", result.Output);
         }
 
         [Fact]
@@ -133,7 +155,7 @@ public sealed partial class NetPaceConsoleTests
         }
 
         [Fact]
-        public async Task FailOn_Total_Exits_One_On_All_Failed_Dimension()
+        public async Task FailOn_Total_Exits_One_On_All_Failed_Test()
         {
             // SCENARIO: --fail-on total opt-in (AC10)
 
@@ -148,7 +170,7 @@ public sealed partial class NetPaceConsoleTests
         }
 
         [Fact]
-        public async Task FailOn_None_Exits_Zero_On_All_Failed_Dimension()
+        public async Task FailOn_None_Exits_Zero_On_All_Failed_Test()
         {
             // SCENARIO: --fail-on total opt-in, default is none (AC10)
 

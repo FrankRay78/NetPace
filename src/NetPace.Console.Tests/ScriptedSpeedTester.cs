@@ -5,7 +5,7 @@ namespace NetPace.Console.Tests;
 
 /// <summary>
 /// A configurable <see cref="ISpeedTestService"/> for CLI failure scenarios: it always finds a
-/// server (Deutsche Telekom-style URL, matching the issue #206 example), and returns download/upload
+/// server (Deutsche Telekom-style URL), and returns download/upload
 /// results supplied per call index so a test can script clean, partial, and all-failed iterations.
 /// Optionally streams a per-request failure reason on the progress channel for debug-verbosity tests.
 /// </summary>
@@ -26,15 +26,15 @@ public sealed class ScriptedSpeedTester : ISpeedTestService
 
     /// <summary>A clean result: every request succeeded.</summary>
     public static SpeedTestResult Clean(int attempts) =>
-        new() { BytesProcessed = 1000, ElapsedMilliseconds = 1000, RequestsAttempted = attempts, RequestsSucceeded = attempts, RequestsFailed = 0 };
+        new() { BytesProcessed = 1000, ElapsedMilliseconds = 1000, RequestsSucceeded = attempts, RequestsFailed = 0 };
 
     /// <summary>An all-failed result: zero bytes, every request failed.</summary>
     public static SpeedTestResult AllFailed(int attempts) =>
-        new() { BytesProcessed = 0, ElapsedMilliseconds = 1000, RequestsAttempted = attempts, RequestsSucceeded = 0, RequestsFailed = attempts };
+        new() { BytesProcessed = 0, ElapsedMilliseconds = 1000, RequestsSucceeded = 0, RequestsFailed = attempts };
 
     /// <summary>A partial result: some requests failed, the rest contributed bytes.</summary>
     public static SpeedTestResult Partial(int attempts, int failed) =>
-        new() { BytesProcessed = 1000, ElapsedMilliseconds = 1000, RequestsAttempted = attempts, RequestsSucceeded = attempts - failed, RequestsFailed = failed };
+        new() { BytesProcessed = 1000, ElapsedMilliseconds = 1000, RequestsSucceeded = attempts - failed, RequestsFailed = failed };
 
     public Task<IServer[]> GetServersAsync(CancellationToken cancellationToken = default) =>
         Task.FromResult(new[] { defaultServer });

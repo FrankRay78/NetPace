@@ -10,13 +10,13 @@ namespace NetPace.Console;
 internal static class SpeedTestResultExtensions
 {
     /// <summary>
-    /// Whether every request in the dimension failed (zero valid measurement).
+    /// Whether every request in the test failed (zero valid measurement).
     /// </summary>
     public static bool IsAllFailed(this SpeedTestResult result) =>
-        result.RequestsAttempted > 0 && result.RequestsSucceeded == 0;
+        result.RequestsFailed > 0 && result.RequestsSucceeded == 0;
 
     /// <summary>
-    /// Whether at least one request in the dimension failed.
+    /// Whether at least one request in the test failed.
     /// </summary>
     public static bool HasFailures(this SpeedTestResult result) => result.RequestsFailed > 0;
 
@@ -26,6 +26,6 @@ internal static class SpeedTestResultExtensions
     /// </summary>
     public static string GetFailureAnnotation(this SpeedTestResult result) =>
         result.RequestsFailed > 0
-            ? $" ({result.RequestsFailed} of {result.RequestsAttempted} requests failed)"
+            ? $" ({result.RequestsFailed} of {result.RequestsSucceeded + result.RequestsFailed} requests failed)"
             : string.Empty;
 }

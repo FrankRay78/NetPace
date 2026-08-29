@@ -14,12 +14,12 @@ public sealed record SpeedTestOutcome
     public string? ServerUrl { get; init; }
 
     /// <summary>
-    /// Gets the download measurement, or <see langword="null"/> when the download dimension was not requested.
+    /// Gets the download measurement, or <see langword="null"/> when the download test was not requested.
     /// </summary>
     public SpeedTestResult? Download { get; init; }
 
     /// <summary>
-    /// Gets the upload measurement, or <see langword="null"/> when the upload dimension was not requested.
+    /// Gets the upload measurement, or <see langword="null"/> when the upload test was not requested.
     /// </summary>
     public SpeedTestResult? Upload { get; init; }
 }

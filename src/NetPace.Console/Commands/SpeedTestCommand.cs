@@ -203,11 +203,11 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
     private static bool ShouldEmitFailureNotice(SpeedTestCommandSettings settings) =>
         !settings.CSV && !settings.Json && !settings.JsonPretty && settings.Verbosity != Verbosity.Minimal;
 
-    private void EmitAllFailedNotice(string dimension, SpeedTestResult? result, string? serverUrl)
+    private void EmitAllFailedNotice(string testName, SpeedTestResult? result, string? serverUrl)
     {
         if (result is not null && result.IsAllFailed())
         {
-            console.WriteLine($"{dimension} failed: all {result.RequestsAttempted} requests to {serverUrl} failed.");
+            console.WriteLine($"{testName} failed: all {result.RequestsFailed} requests to {serverUrl} failed.");
         }
     }
 
@@ -218,12 +218,12 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
     {
         if (settings.FailOn == FailOn.None) return false;
 
-        foreach (var dimension in new[] { outcome.Download, outcome.Upload })
+        foreach (var test in new[] { outcome.Download, outcome.Upload })
         {
-            if (dimension is null) continue;
+            if (test is null) continue;
 
-            if (settings.FailOn == FailOn.Total && dimension.IsAllFailed()) return true;
-            if (settings.FailOn == FailOn.Partial && dimension.HasFailures()) return true;
+            if (settings.FailOn == FailOn.Total && test.IsAllFailed()) return true;
+            if (settings.FailOn == FailOn.Partial && test.HasFailures()) return true;
         }
 
         return false;

@@ -16,19 +16,13 @@ public sealed record SpeedTestResult
     public long ElapsedMilliseconds { get; init; }
 
     /// <summary>
-    /// Gets the number of individual requests attempted during the test (successes plus failures).
-    /// </summary>
-    /// <remarks>
-    /// Requests skipped because the configured byte budget was reached are not counted. A consumer
-    /// determines whether a dimension produced any valid measurement via
-    /// <see cref="RequestsSucceeded"/>; a value of zero with <see cref="RequestsAttempted"/> greater
-    /// than zero means every request failed and the reported speed is not a valid measurement.
-    /// </remarks>
-    public int RequestsAttempted { get; init; }
-
-    /// <summary>
     /// Gets the number of requests that completed successfully and contributed to <see cref="BytesProcessed"/>.
     /// </summary>
+    /// <remarks>
+    /// Zero, with <see cref="RequestsFailed"/> greater than zero, means every request failed and the
+    /// reported speed is not a valid measurement. Requests skipped because the configured byte
+    /// budget was reached are counted as neither succeeded nor failed.
+    /// </remarks>
     public int RequestsSucceeded { get; init; }
 
     /// <summary>

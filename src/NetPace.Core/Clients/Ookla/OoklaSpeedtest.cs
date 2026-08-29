@@ -430,7 +430,6 @@ public sealed class OoklaSpeedtest : ISpeedTestService
         {
             BytesProcessed = totalBytesReturned,
             ElapsedMilliseconds = timer.ElapsedMilliseconds,
-            RequestsAttempted = completedCount,
             RequestsSucceeded = succeededCount,
             RequestsFailed = failedCount
         };

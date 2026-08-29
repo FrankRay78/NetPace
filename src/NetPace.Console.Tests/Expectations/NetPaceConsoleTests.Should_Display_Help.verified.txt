@@ -13,40 +13,40 @@ USAGE:
     NetPace [OPTIONS] [COMMAND]
 
 OPTIONS:
-                              DEFAULT                                                                                                                                                                                       
-    -h, --help                                       Prints help information.                                                                                                                                               
-    -v, --version                                    Prints version information.                                                                                                                                            
-        --loop                                       Performs the speed test on continuous loop.                                                                                                                            
-        --count                                      Stop speed testing after this many times.                                                                                                                              
-        --delay                                      Time between multiple speed tests (HH:MM:SS).                                                                                                                          
-        --csv                                        Display minimal output in CSV format (always includes timestamp).                                                                                                      
-        --csv-delimiter       ,                      Single character delimiter to use in CSV output.                                                                                                                       
-        --csv-header-units                           Display speed test units (eg. Mbps) in the CSV header row, not the data rows.                                                                                          
-                                                     --unit-scale must not be <Auto> for multiple speed tests (eg. --loop or --count).                                                                                      
-        --json                                       Display output in Json format.                                                                                                                                         
-        --json-pretty                                Display output in Json format (pretty print).                                                                                                                          
-        --no-latency                                 Do not perform latency test.                                                                                                                                           
-                                                     When used without --server, the first available server is selected.                                                                                                    
-        --no-download                                Do not perform download test.                                                                                                                                          
-        --no-upload                                  Do not perform upload test.                                                                                                                                            
-        --server                                     The url of a specific speed test sever.                                                                                                                                
-                                                     'NetPace servers -l' will return your nearest servers.                                                                                                                 
-    -t, --timestamp                                  Include a timestamp in the output.                                                                                                                                     
-        --datetimeformat      yyyy-MM-dd HH:mm:ss    The datetime format string, as defined by Microsoft.Net.                                                                                                               
-        --profile             Medium                 Profile bundle of payload settings (Tiny | Small | Medium | Large | Mega).                                                                                             
-        --downloadsize                               Stop the download test after this many megabytes (IEC MiB).                                                                                                            
-        --uploadsize                                 Stop the upload test after this many megabytes (IEC MiB).                                                                                                              
-    -u, --unit                BitsPerSecond          The speed unit. <BitsPerSecond, BytesPerSecond>                                                                                                                        
-        --unit-scale          Auto                   The speed unit scale. <Auto, Base, Kilo, Mega, Giga, Tera, Peta>                                                                                                       
-        --unit-system         SI                     The speed unit system. <SI, IEC>                                                                                                                                       
-                                                     SI steps up in powers of 1000 (KB, MB, GB), common in networking, while IEC uses powers of 1024 (KiB, MiB, GiB), standard in computing and storage.                    
-        --verbosity           Normal                 The verbosity level. <Minimal, Normal, Debug>                                                                                                                          
-                                                     Minimal is ideal for batch scripts and redirected output.                                                                                                              
-    -f, --file                                       Write output to file.                                                                                                                                                  
-        --file-mode           Append                 Determines file output behavior. <Append, Overwrite>                                                                                                                   
-    -q, --quiet                                      Suppress all normal console output (file output still works).                                                                                                          
-        --fail-on             None                   Exit with a non-zero code on a failed measurement. <None, Total, Partial>                                                                                              
-                                                     None (default) never affects the exit code; Total triggers when a dimension is all-failed; Partial triggers on any failed request. Fail-fast across --count and --loop.
+                              DEFAULT                                                                                                                                                                        
+    -h, --help                                       Prints help information.                                                                                                                                
+    -v, --version                                    Prints version information.                                                                                                                             
+        --loop                                       Performs the speed test on continuous loop.                                                                                                             
+        --count                                      Stop speed testing after this many times.                                                                                                               
+        --delay                                      Time between multiple speed tests (HH:MM:SS).                                                                                                           
+        --csv                                        Display minimal output in CSV format (always includes timestamp).                                                                                       
+        --csv-delimiter       ,                      Single character delimiter to use in CSV output.                                                                                                        
+        --csv-header-units                           Display speed test units (eg. Mbps) in the CSV header row, not the data rows.                                                                           
+                                                     --unit-scale must not be <Auto> for multiple speed tests (eg. --loop or --count).                                                                       
+        --json                                       Display output in Json format.                                                                                                                          
+        --json-pretty                                Display output in Json format (pretty print).                                                                                                           
+        --no-latency                                 Do not perform latency test.                                                                                                                            
+                                                     When used without --server, the first available server is selected.                                                                                     
+        --no-download                                Do not perform download test.                                                                                                                           
+        --no-upload                                  Do not perform upload test.                                                                                                                             
+        --server                                     The url of a specific speed test sever.                                                                                                                 
+                                                     'NetPace servers -l' will return your nearest servers.                                                                                                  
+    -t, --timestamp                                  Include a timestamp in the output.                                                                                                                      
+        --datetimeformat      yyyy-MM-dd HH:mm:ss    The datetime format string, as defined by Microsoft.Net.                                                                                                
+        --profile             Medium                 Profile bundle of payload settings (Tiny | Small | Medium | Large | Mega).                                                                              
+        --downloadsize                               Stop the download test after this many megabytes (IEC MiB).                                                                                             
+        --uploadsize                                 Stop the upload test after this many megabytes (IEC MiB).                                                                                               
+    -u, --unit                BitsPerSecond          The speed unit. <BitsPerSecond, BytesPerSecond>                                                                                                         
+        --unit-scale          Auto                   The speed unit scale. <Auto, Base, Kilo, Mega, Giga, Tera, Peta>                                                                                        
+        --unit-system         SI                     The speed unit system. <SI, IEC>                                                                                                                        
+                                                     SI steps up in powers of 1000 (KB, MB, GB), common in networking, while IEC uses powers of 1024 (KiB, MiB, GiB), standard in computing and storage.     
+        --verbosity           Normal                 The verbosity level. <Minimal, Normal, Debug>                                                                                                           
+                                                     Minimal is ideal for batch scripts and redirected output.                                                                                               
+    -f, --file                                       Write output to file.                                                                                                                                   
+        --file-mode           Append                 Determines file output behavior. <Append, Overwrite>                                                                                                    
+    -q, --quiet                                      Suppress all normal console output (file output still works).                                                                                           
+        --fail-on             None                   Exit with a non-zero code on a failed measurement. <None, Total, Partial>                                                                               
+                                                     None never affects the exit code; Total triggers when a test is all-failed; Partial triggers on any failed request. Fail-fast across --count and --loop.
 
 COMMANDS:
     servers    Show the nearest speed test servers.
