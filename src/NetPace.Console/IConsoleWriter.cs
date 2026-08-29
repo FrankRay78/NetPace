@@ -8,6 +8,16 @@ namespace NetPace.Console;
 public interface IConsoleWriter
 {
     /// <summary>
+    /// Whether this writer's output can carry a free-text notice alongside the results.
+    /// </summary>
+    /// <remarks>
+    /// A notice shares the output stream with the results, so it is only safe where an extra line
+    /// of prose cannot break what the writer promised its consumer: CSV promises delimited records,
+    /// JSON promises parseable documents, and Minimal promises exactly one line per run.
+    /// </remarks>
+    bool AcceptsProseNotices { get; }
+
+    /// <summary>
     /// Performs a speed test and writes the result to the console.
     /// </summary>
     /// <param name="initialSpeedTest">
