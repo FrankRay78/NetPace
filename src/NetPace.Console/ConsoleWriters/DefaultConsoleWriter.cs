@@ -8,7 +8,6 @@ public sealed class DefaultConsoleWriter : IConsoleWriter
 {
     public async Task<SpeedTestOutcome> PerformSpeedTestAsync(bool initialSpeedTest, IAnsiConsole console, IClock clock, IClientInfoProvider clientInfoProvider, ISpeedTestService speedTestClient, SpeedTestCommandSettings settings, CancellationToken cancellationToken)
     {
-        var debug = (settings.Verbosity & Verbosity.Debug) != 0;
 
         // Get the server to use for speed testing.
         var fastest = await console.Progress()
@@ -91,7 +90,7 @@ public sealed class DefaultConsoleWriter : IConsoleWriter
         }
 
 
-        if (debug)
+        if ((settings.Verbosity & Verbosity.Debug) != 0)
         {
             // Display detailed diagnostics
             ByteSize size; TimeSpan elapsed;
@@ -123,7 +122,7 @@ public sealed class DefaultConsoleWriter : IConsoleWriter
         }
 
 
-        // Display speed test result. The token carries the count annotation when requests failed.
+        // Display speed test result.
         console.WriteLine(string.Join(", ", new[]
         {
             settings.IncludeTimestamp ? clock.Now.ToString(settings.DateTimeFormat) : null,

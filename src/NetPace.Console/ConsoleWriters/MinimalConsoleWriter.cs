@@ -19,7 +19,7 @@ public sealed class MinimalConsoleWriter : IConsoleWriter
         if (!settings.NoUpload) uploadResult = await speedTestClient.GetUploadSpeedAsync(fastest.Server, cancellationToken);
 
 
-        // Display speed test result. The token carries the count annotation when requests failed.
+        // Display speed test result.
         console.WriteLine(string.Join(", ", new[]
         {
             settings.IncludeTimestamp ? clock.Now.ToString(settings.DateTimeFormat) : null,

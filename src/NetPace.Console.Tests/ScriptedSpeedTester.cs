@@ -7,7 +7,6 @@ namespace NetPace.Console.Tests;
 /// A configurable <see cref="ISpeedTestService"/> for CLI failure scenarios: it always finds a
 /// server (Deutsche Telekom-style URL), and returns download/upload
 /// results supplied per call index so a test can script clean, partial, and all-failed iterations.
-/// Optionally streams a per-request failure reason on the progress channel for debug-verbosity tests.
 /// </summary>
 public sealed class ScriptedSpeedTester : ISpeedTestService
 {

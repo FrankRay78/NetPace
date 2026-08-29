@@ -4,9 +4,10 @@ namespace NetPace.Core;
 /// Interface for performing internet speed tests.
 /// </summary>
 /// <remarks>
-/// Per-request network outcomes are data, not errors: they are aggregated into the returned
-/// result's counts rather than propagated. Exceptions are reserved for cancellation and operational
-/// failures.
+/// Implementations of this interface should favor allowing network-related exceptions (e.g., timeouts, connection failures)
+/// to propagate to the caller rather than catching and suppressing them. This approach enables consumers of the library
+/// to implement their own error handling strategies that align with their application's needs. The exception is the
+/// per-request outcomes of a download or upload test, which are aggregated into the returned result's counts.
 /// </remarks>
 public interface ISpeedTestService
 {

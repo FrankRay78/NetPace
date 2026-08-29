@@ -218,10 +218,8 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
     {
         if (settings.FailOn == FailOn.None) return false;
 
-        foreach (var test in new[] { outcome.Download, outcome.Upload })
+        foreach (var test in new[] { outcome.Download, outcome.Upload }.OfType<SpeedTestResult>())
         {
-            if (test is null) continue;
-
             if (settings.FailOn == FailOn.Total && test.IsAllFailed()) return true;
             if (settings.FailOn == FailOn.Partial && test.HasFailures()) return true;
         }
