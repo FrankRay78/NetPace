@@ -22,3 +22,4 @@
 - [Soft-wrap markdown — one line per paragraph](feedback_markdown_soft_wrap.md) — no manual ~80/100-col hard breaks; they reflow whole blocks and bury one-word edits in noisy diffs
 - [Explain tradeoffs in plain language before asking the user to decide](feedback_plain_language_decisions.md) — frame AskUserQuestion options by consequence/cost, not mechanism
 - [Audit the failure class after the second occurrence](feedback_audit_class_after_two_failures.md) — on the 2nd same-shape failure, enumerate every site and fix the class, not the instance
+- [OoklaSpeedtest latency-margin test is flaky under load](project_flaky_latency_margin_test.md) — wall-clock ±25% assertion; distinct from the ProfileXmlDocTests FileShare flake
