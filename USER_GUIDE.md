@@ -115,10 +115,6 @@ Every output format carries the counts:
   ```
   Latency: 24 ms, Download: 512.6 Mbps, Upload: 0 bps (32 of 32 requests failed)
   ```
-  In normal output, an all-failed test also prints a short notice:
-  ```
-  Upload failed: all 32 requests to http://…/upload.php failed.
-  ```
 - **CSV** — a `Succeeded` and `Failed` column sits next to each speed column:
   ```
   Timestamp,Latency,Download,DownloadSucceeded,DownloadFailed,Upload,UploadSucceeded,UploadFailed,IPAddress,Hostname
@@ -131,7 +127,7 @@ Every output format carries the counts:
   { "UploadSpeed": "0 bps", "UploadSucceeded": 0, "UploadFailed": 32, … }
   ```
 
-Machine formats (CSV, JSON) self-describe through the counts and never mix the prose notice into their output — that includes `--verbosity Debug`. `--quiet` suppresses the notice along with the rest of the output; use `--fail-on` to detect an all-failed measurement in that mode.
+The counts are the whole signal — no output mode adds a prose warning on top of them, at any verbosity. `--quiet` suppresses them along with the rest of the output; use `--fail-on` to detect an all-failed measurement in that mode.
 
 ### Exit codes
 

@@ -4,8 +4,8 @@ namespace NetPace.Console.Tests;
 
 /// <summary>
 /// CLI behaviour for surfacing transfer failures: counts appear in every output
-/// format, the exit code reflects only NetPace's health by default, interactive output carries the
-/// human notice, and <c>--fail-on</c> opts in to a failure exit code.
+/// format, the exit code reflects only NetPace's health by default, and <c>--fail-on</c> opts in to
+/// a failure exit code.
 /// </summary>
 public sealed partial class NetPaceConsoleTests
 {
@@ -32,14 +32,14 @@ public sealed partial class NetPaceConsoleTests
             // When (default settings)
             var result = await host.RunAsync([]);
 
-            // Then the process succeeds and the failure is visible, both as a count annotation on
-            // the upload token and as a notice naming the server.
+            // Then the process succeeds and the failure is visible as a count annotation on the
+            // upload token.
             Assert.Equal(0, result.ExitCode);
             await Verify(result.Output);
         }
 
         [Fact]
-        public async Task Partial_Failure_Is_Annotated_Without_A_Notice()
+        public async Task Partial_Failure_Is_Annotated_On_The_Token()
         {
             // SCENARIO: Normal + verbosity gradation - partial failure (AC9)
 
@@ -50,14 +50,13 @@ public sealed partial class NetPaceConsoleTests
             // When
             var result = await host.RunAsync([]);
 
-            // Then the token is annotated, but partial failure gets no all-failed notice.
+            // Then the token names how many of the requests failed.
             Assert.Equal(0, result.ExitCode);
             Assert.Contains("5 of 150 requests failed", result.Output);
-            Assert.DoesNotContain("failed: all", result.Output);
         }
 
         [Fact]
-        public async Task Json_All_Failed_Self_Describes_Without_A_Notice()
+        public async Task Json_All_Failed_Self_Describes_Through_The_Counts()
         {
             // SCENARIO: Machine formats self-describe on stdout - JSON (AC8a)
 
@@ -69,8 +68,7 @@ public sealed partial class NetPaceConsoleTests
             var result = await host.RunAsync([ "--json" ]);
 
             // Then the JSON carries the counts alongside a zero speed - the schema stays the same
-            // shape whether or not the test succeeded, matching normal and CSV output - and no
-            // prose notice is mixed into the machine-readable output.
+            // shape whether or not the test succeeded, matching normal and CSV output.
             Assert.Equal(0, result.ExitCode);
             await Verify(result.Output);
         }
@@ -94,7 +92,7 @@ public sealed partial class NetPaceConsoleTests
         }
 
         [Fact]
-        public async Task Csv_All_Failed_Row_Distinguishes_Total_Failure_Without_A_Notice()
+        public async Task Csv_All_Failed_Row_Distinguishes_Total_Failure()
         {
             // SCENARIO: Machine formats self-describe on stdout - CSV (AC8b)
 
@@ -106,13 +104,13 @@ public sealed partial class NetPaceConsoleTests
             var result = await host.RunAsync([ "--csv" ]);
 
             // Then the data row carries UploadSucceeded=0 and UploadFailed=32 beside the zero
-            // speed, and no prose notice corrupts the CSV.
+            // speed.
             Assert.Equal(0, result.ExitCode);
             await Verify(result.Output);
         }
 
         [Fact]
-        public async Task Minimal_All_Failed_Annotates_Token_Without_A_Notice()
+        public async Task Minimal_All_Failed_Annotates_The_Token()
         {
             // SCENARIO: Normal + verbosity gradation - Minimal (AC9)
 
@@ -122,14 +120,13 @@ public sealed partial class NetPaceConsoleTests
             // When
             var result = await host.RunAsync([ "--verbosity", "Minimal" ]);
 
-            // Then the token annotation carries the failure; Minimal emits no separate notice.
+            // Then the token annotation carries the failure.
             Assert.Equal(0, result.ExitCode);
             Assert.Contains("32 of 32 requests failed", result.Output);
-            Assert.DoesNotContain("Upload failed: all", result.Output);
         }
 
         [Fact]
-        public async Task Debug_Annotates_The_Token_And_Emits_The_Notice()
+        public async Task Debug_Annotates_The_Token()
         {
             // SCENARIO: Normal + verbosity gradation - Debug (AC9)
 
@@ -139,11 +136,10 @@ public sealed partial class NetPaceConsoleTests
             // When
             var result = await host.RunAsync([ "--verbosity", "Debug" ]);
 
-            // Then Debug reports the same counts and notice as normal verbosity - the failure is
-            // described by the counts, not by per-request detail.
+            // Then Debug reports the same counts as normal verbosity - the failure is described
+            // by the counts, not by per-request detail.
             Assert.Equal(0, result.ExitCode);
             Assert.Contains("32 of 32 requests failed", result.Output);
-            Assert.Contains("Upload failed: all 32 requests to", result.Output);
         }
 
         [Fact]
@@ -207,10 +203,9 @@ public sealed partial class NetPaceConsoleTests
         }
 
         [Fact]
-        public async Task Json_Debug_Reports_No_Prose()
+        public async Task Json_Debug_Reports_Only_The_Counts()
         {
-            // Machine formats self-describe via the counts and never carry a prose notice - that
-            // holds at Debug too.
+            // Debug verbosity adds no per-request detail to a machine format.
 
             // Given every upload request fails.
             var service = new ScriptedSpeedTester { UploadFactory = _ => ScriptedSpeedTester.AllFailed(32) };
@@ -219,17 +214,16 @@ public sealed partial class NetPaceConsoleTests
             // When
             var result = await host.RunAsync([ "--json", "--verbosity", "Debug" ]);
 
-            // Then the JSON carries the counts and no notice is mixed into it.
+            // Then the JSON carries the counts and nothing else.
             Assert.Equal(0, result.ExitCode);
             Assert.Contains("\"UploadFailed\":32", result.Output);
-            Assert.DoesNotContain("Upload failed: all", result.Output);
         }
 
         [Fact]
-        public async Task Quiet_All_Failed_Suppresses_The_Notice_And_Signals_Through_The_Exit_Code()
+        public async Task Quiet_All_Failed_Signals_Through_The_Exit_Code()
         {
-            // --quiet asks for no output, and the notice shares the output channel, so it is
-            // suppressed with everything else. --fail-on is how a quiet consumer detects failure.
+            // --quiet asks for no output at all, so the counts go unseen. --fail-on is how a quiet
+            // consumer detects failure.
 
             var service = new ScriptedSpeedTester { UploadFactory = _ => ScriptedSpeedTester.AllFailed(32) };
             var host = HostWith(service);

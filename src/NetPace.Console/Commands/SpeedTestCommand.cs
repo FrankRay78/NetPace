@@ -10,9 +10,9 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
     /// </summary>
     /// <remarks>
     /// Network and discovery outcomes are data, not errors: they are reported through the output
-    /// (counts) and human-readable notices, and leave the exit code at <c>0</c> unless the consumer
-    /// opts in via <c>--fail-on</c>. Only operational failures (which propagate out of this method to
-    /// the top-level handler) produce a non-zero exit code.
+    /// counts and leave the exit code at <c>0</c> unless the consumer opts in via <c>--fail-on</c>.
+    /// Only operational failures (which propagate out of this method to the top-level handler)
+    /// produce a non-zero exit code.
     /// </remarks>
     /// <summary>
     /// Writes an error message to the console.

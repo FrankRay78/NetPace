@@ -132,10 +132,6 @@ public sealed class DefaultConsoleWriter : IConsoleWriter
         }.Where(s => !string.IsNullOrEmpty(s))));
 
 
-        EmitAllFailedNotice(console, "Download", settings.NoDownload ? null : downloadResult, fastest.Server.Url);
-        EmitAllFailedNotice(console, "Upload", settings.NoUpload ? null : uploadResult, fastest.Server.Url);
-
-
         console.WriteLine("\nTry 'NetPace --help' for more information.");
 
         return new SpeedTestOutcome
@@ -143,18 +139,6 @@ public sealed class DefaultConsoleWriter : IConsoleWriter
             Download = settings.NoDownload ? null : downloadResult,
             Upload = settings.NoUpload ? null : uploadResult
         };
-    }
-
-    /// <summary>
-    /// Writes a prose notice for a test in which every request failed. The speed token already
-    /// carries the count annotation; the notice names the outcome for a reader who skims past it.
-    /// </summary>
-    private static void EmitAllFailedNotice(IAnsiConsole console, string testName, SpeedTestResult? result, string? serverUrl)
-    {
-        if (result is not null && result.IsAllFailed())
-        {
-            console.WriteLine($"{testName} failed: all {result.RequestsFailed} requests to {serverUrl} failed.");
-        }
     }
 
     private sealed class SyncProgress<T>(Action<T> handler) : IProgress<T>

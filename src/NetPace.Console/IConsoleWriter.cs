@@ -22,7 +22,7 @@ public interface IConsoleWriter
     /// <param name="cancellationToken">Token that can be used to cancel the operation.</param>
     /// <returns>
     /// The outcome of the run (whether a server was found and the per-test measurements),
-    /// used by the command to apply exit-code policy and emit failure notices.
+    /// used by the command to apply exit-code policy.
     /// </returns>
     Task<SpeedTestOutcome> PerformSpeedTestAsync(bool initialSpeedTest, IAnsiConsole console, IClock clock, IClientInfoProvider clientInfoProvider, ISpeedTestService speedTestClient, SpeedTestCommandSettings settings, CancellationToken cancellationToken);
 }
