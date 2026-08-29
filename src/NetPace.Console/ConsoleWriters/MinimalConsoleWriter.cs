@@ -5,9 +5,6 @@ namespace NetPace.Console.ConsoleWriters;
 
 public sealed class MinimalConsoleWriter : IConsoleWriter
 {
-    /// <inheritdoc/>
-    public bool AcceptsProseNotices => false;
-
     public async Task<SpeedTestOutcome> PerformSpeedTestAsync(bool initialSpeedTest, IAnsiConsole console, IClock clock, IClientInfoProvider clientInfoProvider, ISpeedTestService speedTestClient, SpeedTestCommandSettings settings, CancellationToken cancellationToken)
     {
         // Get the server to use for speed testing.

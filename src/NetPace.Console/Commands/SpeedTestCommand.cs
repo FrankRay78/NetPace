@@ -71,7 +71,7 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
                     try
                     {
                         var outcome = await writer.PerformSpeedTestAsync(initialSpeedTest: firstLoop, console, clock, clientInfoProvider, speedTestClient, settings, cancellationToken);
-                        if (ProcessOutcome(writer, outcome, settings)) return 1;
+                        if (ProcessOutcome(outcome, settings)) return 1;
                     }
                     catch (OperationCanceledException)
                     {
@@ -111,7 +111,7 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
                     try
                     {
                         var outcome = await writer.PerformSpeedTestAsync(initialSpeedTest: (i == 0), console, clock, clientInfoProvider, speedTestClient, settings, cancellationToken);
-                        if (ProcessOutcome(writer, outcome, settings)) return 1;
+                        if (ProcessOutcome(outcome, settings)) return 1;
                     }
                     catch (OperationCanceledException)
                     {
@@ -149,7 +149,7 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
                 try
                 {
                     var outcome = await writer.PerformSpeedTestAsync(initialSpeedTest: true, console, clock, clientInfoProvider, speedTestClient, settings, cancellationToken);
-                    if (ProcessOutcome(writer, outcome, settings)) return 1;
+                    if (ProcessOutcome(outcome, settings)) return 1;
                 }
                 catch (OperationCanceledException)
                 {
@@ -182,9 +182,11 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
     /// Emits human-readable notices for the outcome and evaluates the <c>--fail-on</c> threshold.
     /// </summary>
     /// <returns><see langword="true"/> when <c>--fail-on</c> is met and the process should exit with a non-zero code.</returns>
-    private bool ProcessOutcome(IConsoleWriter writer, SpeedTestOutcome outcome, SpeedTestCommandSettings settings)
+    private bool ProcessOutcome(SpeedTestOutcome outcome, SpeedTestCommandSettings settings)
     {
-        if (writer.AcceptsProseNotices)
+        // Machine formats (JSON, CSV) self-describe via the counts, and Minimal keeps the token
+        // annotation only, so neither gets a duplicate notice.
+        if (ShouldEmitFailureNotice(settings))
         {
             EmitAllFailedNotice("Download", settings.NoDownload ? null : outcome.Download, outcome.ServerUrl);
             EmitAllFailedNotice("Upload", settings.NoUpload ? null : outcome.Upload, outcome.ServerUrl);
@@ -192,6 +194,14 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
 
         return FailOnTriggered(outcome, settings);
     }
+
+    /// <summary>
+    /// Whether a failure notice should be written for the active output mode. Notices share the
+    /// output stream with the results, so they are suppressed wherever that stream is
+    /// machine-readable and would be corrupted by prose.
+    /// </summary>
+    private static bool ShouldEmitFailureNotice(SpeedTestCommandSettings settings) =>
+        !settings.CSV && !settings.Json && !settings.JsonPretty && settings.Verbosity != Verbosity.Minimal;
 
     private void EmitAllFailedNotice(string testName, SpeedTestResult? result, string? serverUrl)
     {
