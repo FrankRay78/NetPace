@@ -30,16 +30,17 @@ public sealed record JsonResult
     public required string Timestamp { get; init; }
 
     /// <summary>
-    /// Gets the measured latency to the server.
+    /// Gets the measured latency to the server, or <see langword="null"/> when the latency test was
+    /// not run.
     /// </summary>
-    public required string Latency { get; init; }
+    public required string? Latency { get; init; }
 
     /// <summary>
     /// Gets the measured download speed, or <see langword="null"/> when the download test was not
     /// run. An all-failed test reports a zero speed, not <see langword="null"/>; the counts
     /// distinguish it from a genuine zero-throughput measurement.
     /// </summary>
-    public required string DownloadSpeed { get; init; }
+    public required string? DownloadSpeed { get; init; }
 
     /// <summary>
     /// Gets the number of download requests that succeeded, or <see langword="null"/> when the
@@ -58,7 +59,7 @@ public sealed record JsonResult
     /// An all-failed test reports a zero speed, not <see langword="null"/>; the counts distinguish
     /// it from a genuine zero-throughput measurement.
     /// </summary>
-    public required string UploadSpeed { get; init; }
+    public required string? UploadSpeed { get; init; }
 
     /// <summary>
     /// Gets the number of upload requests that succeeded, or <see langword="null"/> when the upload

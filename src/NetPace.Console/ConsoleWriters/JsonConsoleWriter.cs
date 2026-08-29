@@ -35,11 +35,11 @@ public sealed class JsonConsoleWriter : IConsoleWriter
             ServerSponsor = fastest.Server.Sponsor,
             ServerUrl = fastest.Server.Url,
             Timestamp = clock.Now.ToString(settings.DateTimeFormat),
-            Latency = latencyFormatted!,
-            DownloadSpeed = downloadFormatted!,
+            Latency = latencyFormatted,
+            DownloadSpeed = downloadFormatted,
             DownloadSucceeded = settings.NoDownload ? null : downloadResult.RequestsSucceeded,
             DownloadFailed = settings.NoDownload ? null : downloadResult.RequestsFailed,
-            UploadSpeed = uploadFormatted!,
+            UploadSpeed = uploadFormatted,
             UploadSucceeded = settings.NoUpload ? null : uploadResult.RequestsSucceeded,
             UploadFailed = settings.NoUpload ? null : uploadResult.RequestsFailed,
             IPAddress = clientInfoProvider.GetIPAddress(),
@@ -55,7 +55,6 @@ public sealed class JsonConsoleWriter : IConsoleWriter
 
         return new SpeedTestOutcome
         {
-            ServerUrl = fastest.Server.Url,
             Download = settings.NoDownload ? null : downloadResult,
             Upload = settings.NoUpload ? null : uploadResult
         };

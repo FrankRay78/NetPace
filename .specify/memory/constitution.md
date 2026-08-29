@@ -185,12 +185,9 @@ Before committing, verify:
 - Given-When-Then pattern for test structure
 - Tests MUST be readable, independent, fast, and deterministic
 - Mock external dependencies (network, filesystem, time) for unit tests
+- Console output MUST be verified against a committed snapshot, never hand-rolled string matching
 
-**Console output MUST be snapshot-tested.** CLI output in `NetPace.Console.Tests` is asserted with `await Verify(result.Output)` (Verify.Xunit), never with hand-rolled string matching. Snapshots live in `NetPace.Console.Tests/Expectations/` as `*.verified.txt`, are committed, and are reviewed in the diff like any other source file — a changed snapshot is a changed user-visible contract and must be read as such, not blind-accepted.
-
-This does not contradict "do not test Spectre.Console": the library's own rendering is its business; the text NetPace composes and hands to it is ours. Snapshot what a user sees.
-
-A targeted assertion remains correct for a single observable fact that is not about output shape — an exit code, or the presence or absence of one specific line. Whenever the assertion is really "the output looks like this", it belongs in a snapshot.
+**On snapshots**: a changed snapshot is a changed user-visible contract — read it in the diff, never blind-accept it. This does not contradict "do not test Spectre.Console": the library's own rendering is its business; the text NetPace composes and hands to it is ours. A targeted assertion stays correct for a single observable fact that is not about output shape — an exit code, or one specific line present or absent; whenever the assertion is really "the output looks like this", it belongs in a snapshot.
 
 **Do NOT test**: Spectre.Console's own rendering (trust the library — snapshot NetPace's composed output instead), simple property getters/setters with no logic, third-party libraries
 

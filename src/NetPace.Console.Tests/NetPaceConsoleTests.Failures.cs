@@ -70,13 +70,10 @@ public sealed partial class NetPaceConsoleTests
             var result = await host.RunAsync([ "--json" ]);
 
             // Then the JSON carries the counts alongside a zero speed - the schema stays the same
-            // shape whether or not the test succeeded, matching normal and CSV output; no prose
-            // notice is mixed into the machine-readable output.
+            // shape whether or not the test succeeded, matching normal and CSV output - and no
+            // prose notice is mixed into the machine-readable output.
             Assert.Equal(0, result.ExitCode);
-            Assert.Contains("\"UploadSucceeded\":0", result.Output);
-            Assert.Contains("\"UploadFailed\":32", result.Output);
-            Assert.Contains("\"UploadSpeed\":\"0 bps\"", result.Output);
-            Assert.DoesNotContain("Upload failed: all", result.Output);
+            await Verify(result.Output);
         }
 
         [Fact]
@@ -91,13 +88,10 @@ public sealed partial class NetPaceConsoleTests
             // When
             var result = await host.RunAsync([ "--json", "--no-upload" ]);
 
-            // Then a skipped test contributes no fields at all, while an all-failed test reports a
-            // zero speed and its counts - the two outcomes stay distinguishable.
+            // Then the skipped upload contributes no fields at all, while the all-failed download
+            // reports a zero speed and its counts - the two outcomes stay distinguishable.
             Assert.Equal(0, result.ExitCode);
-            Assert.DoesNotContain("\"Upload", result.Output);
-            Assert.Contains("\"DownloadSpeed\":\"0 bps\"", result.Output);
-            Assert.Contains("\"DownloadSucceeded\":0", result.Output);
-            Assert.Contains("\"DownloadFailed\":32", result.Output);
+            await Verify(result.Output);
         }
 
         [Fact]
@@ -112,11 +106,10 @@ public sealed partial class NetPaceConsoleTests
             // When
             var result = await host.RunAsync([ "--csv" ]);
 
-            // Then the data row shows UploadSucceeded=0; no prose notice corrupts the CSV.
+            // Then the data row carries UploadSucceeded=0 and UploadFailed=32 beside the zero
+            // speed, and no prose notice corrupts the CSV.
             Assert.Equal(0, result.ExitCode);
-            var dataRow = result.Output.Split('\n')[1];
-            Assert.Contains(",0,32,", dataRow); // UploadSucceeded=0, UploadFailed=32
-            Assert.DoesNotContain("Upload failed: all", result.Output);
+            await Verify(result.Output);
         }
 
         [Fact]

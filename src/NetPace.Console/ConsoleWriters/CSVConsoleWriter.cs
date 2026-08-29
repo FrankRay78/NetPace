@@ -71,7 +71,6 @@ public sealed class CSVConsoleWriter : IConsoleWriter
 
         return new SpeedTestOutcome
         {
-            ServerUrl = fastest.Server.Url,
             Download = settings.NoDownload ? null : downloadResult,
             Upload = settings.NoUpload ? null : uploadResult
         };
