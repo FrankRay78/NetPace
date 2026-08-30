@@ -190,7 +190,7 @@ public static class Program
 
         var failOnOption = new Option<FailOn>("--fail-on")
         {
-            Description = "Exit with a non-zero code on a failed measurement. <None, Total, Partial>\nNone never affects the exit code; Total triggers when a test is all-failed; Partial triggers on any failed request. Fail-fast across --count and --loop.",
+            Description = "Exit with a non-zero code on a failed measurement. <None, Total, Partial>\nNone never affects the exit code; Total triggers when a test is all-failed;\nPartial triggers on any failed request. Fail-fast across --count and --loop.",
             DefaultValueFactory = _ => FailOn.None
         };
 

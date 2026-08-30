@@ -111,28 +111,31 @@ test fails, the speed reads `0 bps`, and the counts tell you it was a total fail
 
 Every output format carries the counts:
 
-- **Normal / Minimal** — the result token is annotated only when requests failed:
-  ```
-  Latency: 24 ms, Download: 512.6 Mbps, Upload: 0 bps (32 of 32 requests failed)
-  ```
-- **CSV** — a `Succeeded` and `Failed` column sits next to each speed column:
-  ```
-  Timestamp,Latency,Download,DownloadSucceeded,DownloadFailed,Upload,UploadSucceeded,UploadFailed,IPAddress,Hostname
-  ```
-- **JSON** — each test that ran gains integer `…Succeeded` / `…Failed` fields alongside its speed.
-  The schema keeps one shape: a total failure reports `0 bps` with the counts beside it, exactly as
-  normal and CSV output do. Only a test you skipped (`--no-download`, `--no-upload`) omits its
-  fields entirely:
-  ```json
-  { "UploadSpeed": "0 bps", "UploadSucceeded": 0, "UploadFailed": 32, … }
-  ```
+**Normal / Minimal** — the result token is annotated only when requests failed:
+```
+Latency: 24 ms, Download: 512.6 Mbps, Upload: 0 bps (32 of 32 requests failed)
+```
 
-The counts are the whole signal — no output mode adds a prose warning on top of them, at any verbosity. `--quiet` suppresses them along with the rest of the output; use `--fail-on` to detect an all-failed measurement in that mode.
+**CSV** — a `Succeeded` and `Failed` column sits next to each speed column:
+```
+Timestamp,Latency,Download,DownloadSucceeded,DownloadFailed,Upload,UploadSucceeded,UploadFailed,IPAddress,Hostname
+```
+
+**JSON** — each test that ran gains integer `…Succeeded` / `…Failed` fields alongside its speed.
+The schema keeps one shape: a total failure reports `0 bps` with the counts beside it, exactly as
+normal and CSV output do. Only a test you skipped (`--no-download`, `--no-upload`) omits its
+fields entirely:
+```json
+{ "UploadSpeed": "0 bps", "UploadSucceeded": 0, "UploadFailed": 32, … }
+```
+
+The counts are the whole signal — no output mode adds a prose warning on top of them, at any verbosity. 
+`--quiet` suppresses them along with the rest of the output; use `--fail-on` to detect an all-failed measurement in that mode.
 
 ### Exit codes
 
-The exit code reports only whether **NetPace itself** functioned. Network conditions — a total
-outage, 100% request failure, or no servers found — are *data*, not errors, and exit `0`. Only an
+The exit code reports only whether **NetPace itself** functioned. Network conditions like a total
+outage, 100% request failure, or no servers found are *data*, not errors, and NetPace will exit `0`. Only an
 operational failure (for example, being unable to write the `--file` output) exits non-zero. So a
 `0 bps` measurement still exits `0` by default: inspect the counts (or use `--fail-on`) to detect it.
 
@@ -140,15 +143,15 @@ If you want a failed measurement to fail the process, opt in with `--fail-on`:
 
 | Value | Exits non-zero when… |
 |---|---|
-| `None` (default) | never — measurement outcomes don't affect the exit code |
-| `Total` | a requested test is all-failed (no request succeeded) |
-| `Partial` | any request in a requested test failed (strict; intended for pristine-run checks) |
+| `None` | Never — measurement outcomes don't affect the exit code |
+| `Total` | A requested test is all-failed (no request succeeded) |
+| `Partial` | Any request in a requested test failed (strict; intended for pristine-run checks) |
 
-`--fail-on` is fail-fast and uniform across single runs, `--count`, and `--loop`: the process exits
+`--fail-on` is fail-fast and uniform across single runs, `--count`, and `--loop`: NetPace exits
 `1` at the first measurement that meets the threshold.
 
 ```bash
-# Treat a totally-failed test as a build failure
+# Treat a totally-failed test as a failure
 NetPace --fail-on Total
 ```
 
