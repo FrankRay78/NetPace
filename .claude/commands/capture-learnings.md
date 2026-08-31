@@ -53,13 +53,13 @@ The order of preference for where a learning lands: **fix the rule that misfired
 
    **Who caught it** — for each defect found on the branch, ask who found it and how. A defect a human found *by eye* is a hole in the automated net, and names the mechanism that should have caught it. Watch especially for defects the test suite had **encoded** rather than caught: a wrong value baked into a snapshot or fixture passes forever.
 
-   Also run the **PR review** (unconditional, best-effort, independent of `has_branch_context`): if the branch has an open PR, `gh pr view --json comments,reviews` and route each substantive point through the same triage. A no-op when no review has posted — never wait or poll for one.
+   **Lens D — PR review**: unconditional, best-effort, independent of `has_branch_context`. If the branch has an open PR, `gh pr view --json comments,reviews` and route each substantive point through the same triage as Lenses A–C. A no-op when no review has posted — never wait or poll for one.
 
 5. **Triage each signal by where it belongs**: four destinations, in order of preference.
 
    - **Amend an existing rule** — a documented rule misfired, is stale, or contradicts observed practice. Fix `CLAUDE.md`, the constitution, or the existing memory. Preferred over everything else: it removes a wrong instruction instead of adding a competing one.
    - **Deterministic mechanism** — a mechanically checkable rule (a path must or must not exist, a command must run before/after X, a file must match a shape, a value must be set, an invariant must hold). Automated behaviours ("whenever X, do Y") *require* a hook in `settings.json` — the harness executes those, not Claude, so a memory entry cannot fulfil them; the `update-config` skill wires hooks, permissions, and env. A recurring code-shape or data-invariant violation → an architectural or unit test.
-   - **Memory entry** — judgment, taste, or context ("prefer X when Y", "explain tradeoffs plainly"), and standing project facts. No mechanism captures these; forcing them into a hook is worse.
+   - **Memory entry** — judgment, taste, or context ("prefer X when Y", "explain tradeoffs plainly"), and standing project facts. No mechanism captures these; forcing them into a hook is worse. A **structural decision** (a shape not yet factored out, surfaced by Lens B's churn/sibling check) defaults here too — as `.claude/memory/project_*.md` — unless it turns out to be a fix to a stale documented rule, in which case route it to Amend rule instead.
    - **Both** — a checkable rule with non-obvious rationale: the mechanism enforces the *what*, a short memory records the *why*.
 
 6. **Synthesise candidates**: Scale the cap to the session — **at most 5** for a short session, **up to 8** when the branch carries many commits or the PR many review threads. Fewer is always fine. Only include signals that are non-obvious, generalisable, and likely to recur; skip anything one-off, feature-specific, or already documented.
@@ -68,8 +68,8 @@ The order of preference for where a learning lands: **fix the rule that misfired
 
    ```
    ### [N]. [Short title — 8 words or fewer]
-   Evidence: [the conversation moment, churn or revert pair, or rule collision that triggered this]
-   Lens: A (conversation) | B (git) | C (interpretation)
+   Evidence: [the conversation moment, churn or revert pair, rule collision, or PR review point that triggered this]
+   Lens: A (conversation) | B (git) | C (interpretation) | D (PR review)
    Confidence: High (two sources) | Medium (chat only) | Low (git only)
    Category: Claude correction | Process gotcha | Structural decision | Confirmed approach | Miscalibrated rule
    Destination: Amend rule | Deterministic | Memory | Both (from the step 5 triage)
