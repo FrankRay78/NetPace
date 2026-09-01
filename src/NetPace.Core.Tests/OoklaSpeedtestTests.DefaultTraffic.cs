@@ -23,7 +23,7 @@ public sealed partial class OoklaSpeedtestTests
     [Fact]
     public async Task GetDownloadSpeedAsync_DefaultSettings_CapsDownloadTrafficAtMediumBudget()
     {
-        // Given — default settings (parameterless ctor => Medium), realistic per-dimension payloads.
+        // Given — default settings (parameterless ctor => Medium), realistic per-test payloads.
         using var mockHttp = new MockHttpMessageHandler();
         mockHttp.When("*").Respond(request =>
         {

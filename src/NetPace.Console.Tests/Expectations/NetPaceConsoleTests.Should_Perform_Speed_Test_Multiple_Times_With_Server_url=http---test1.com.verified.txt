@@ -1,4 +1,4 @@
-﻿Timestamp,Latency,Download,Upload,IPAddress,Hostname
-1980-01-01 10:05:00,100 ms,0.01 Mbps,0.02 Mbps,192.168.1.1,test-host
-1980-01-01 10:05:00,100 ms,0.01 Mbps,0.02 Mbps,192.168.1.1,test-host
-1980-01-01 10:05:00,100 ms,0.01 Mbps,0.02 Mbps,192.168.1.1,test-host
+﻿Timestamp,Latency,Download,DownloadSucceeded,DownloadFailed,Upload,UploadSucceeded,UploadFailed,IPAddress,Hostname
+1980-01-01 10:05:00,100 ms,0.01 Mbps,150,0,0.02 Mbps,32,0,192.168.1.1,test-host
+1980-01-01 10:05:00,100 ms,0.01 Mbps,150,0,0.02 Mbps,32,0,192.168.1.1,test-host
+1980-01-01 10:05:00,100 ms,0.01 Mbps,150,0,0.02 Mbps,32,0,192.168.1.1,test-host

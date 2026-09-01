@@ -330,7 +330,7 @@ public sealed partial class NetPaceConsoleTests
         // When
         var result = await host.RunAsync([ "--no-latency", "--no-download", "--no-upload" ]);
 
-        // Then
+        // Then the validation error is reported on the console.
         Assert.Equal(1, result.ExitCode);
         await Verify(result.Output);
     }
@@ -443,7 +443,7 @@ public sealed partial class NetPaceConsoleTests
         // When
         var result = await host.RunAsync(Array.Empty<string>());
 
-        // Then
+        // Then an unreachable discovery endpoint is a reported data outcome (exit 0), surfaced on the console.
         Assert.Equal(0, result.ExitCode);
         await Verify(result.Output);
     }
@@ -485,6 +485,35 @@ public sealed partial class NetPaceConsoleTests
     }
 
     [Fact]
+    public async Task Should_Continue_Multiple_Speed_Tests_When_A_Measurement_All_Fails()
+    {
+        // A measurement that all-fails is data, not an error: the loop keeps running and the exit
+        // code stays 0 (network conditions never set it by default).
+
+        // Given the second iteration's download all-fails, the rest measure cleanly.
+        var cancellationTokenSource = new CancellationTokenSource();
+        var waiter = new SelfCancellingWaiter(10, cancellationTokenSource);
+
+        var service = new ScriptedSpeedTester
+        {
+            DownloadFactory = i => i == 1 ? ScriptedSpeedTester.AllFailed(150) : ScriptedSpeedTester.Clean(150)
+        };
+
+        var services = new ServiceCollection();
+        services.AddSingleton<ISpeedTestService>(service);
+        services.AddSingleton<IClock, IncrementingClockStub>();
+        services.AddSingleton<IWaiter>(waiter);
+        var host = GetCommandLineTestHost(services);
+
+        // When
+        var result = await host.RunAsync([ "-t", "--count", "100", "--verbosity", "Minimal" ], cancellationTokenSource.Token);
+
+        // Then
+        Assert.Equal(0, result.ExitCode);
+        await Verify(result.Output);
+    }
+
+    [Fact]
     public async Task Should_Handle_No_Servers_Available()
     {
         // Given
@@ -502,7 +531,7 @@ public sealed partial class NetPaceConsoleTests
         // When
         var result = await host.RunAsync(Array.Empty<string>());
 
-        // Then
+        // Then the no-servers condition is reported on the console and exits 0.
         Assert.Equal(0, result.ExitCode);
         await Verify(result.Output);
     }
@@ -525,7 +554,7 @@ public sealed partial class NetPaceConsoleTests
         // When
         var result = await host.RunAsync([ "--no-latency" ]);
 
-        // Then
+        // Then the no-servers condition is reported on the console and exits 0.
         Assert.Equal(0, result.ExitCode);
         await Verify(result.Output);
     }

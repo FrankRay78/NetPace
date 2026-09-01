@@ -129,6 +129,11 @@ public sealed class SpeedTestCommandSettings
     /// Suppress all normal console output.
     /// </summary>
     public required bool Quiet { get; init; }
+
+    /// <summary>
+    /// Whether a measurement outcome causes a non-zero exit code (opt-in; default <see cref="FailOn.None"/>).
+    /// </summary>
+    public required FailOn FailOn { get; init; }
 }
 
 public static class SpeedTestCommandSettingsExtensions

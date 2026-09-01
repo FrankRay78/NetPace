@@ -6,8 +6,9 @@ namespace NetPace.Console.ConsoleWriters;
 
 public sealed class DefaultConsoleWriter : IConsoleWriter
 {
-    public async Task PerformSpeedTestAsync(bool initialSpeedTest, IAnsiConsole console, IClock clock, IClientInfoProvider clientInfoProvider, ISpeedTestService speedTestClient, SpeedTestCommandSettings settings, CancellationToken cancellationToken)
+    public async Task<SpeedTestOutcome> PerformSpeedTestAsync(bool initialSpeedTest, IAnsiConsole console, IClock clock, IClientInfoProvider clientInfoProvider, ISpeedTestService speedTestClient, SpeedTestCommandSettings settings, CancellationToken cancellationToken)
     {
+
         // Get the server to use for speed testing.
         var fastest = await console.Progress()
             .AutoClear(true)
@@ -21,14 +22,15 @@ public sealed class DefaultConsoleWriter : IConsoleWriter
                 var fastestServerProgress = progress.AddTask("Choosing server", autoStart: true, maxValue: 100);
 
                 try
-                { 
+                {
                     return await ServerSelector.GetServerAsync(speedTestClient, settings, cancellationToken);
                 }
                 finally
-                { 
+                {
                     fastestServerProgress.StopTask();
                 }
             });
+
 
 
         // Display server latency.
@@ -125,12 +127,18 @@ public sealed class DefaultConsoleWriter : IConsoleWriter
         {
             settings.IncludeTimestamp ? clock.Now.ToString(settings.DateTimeFormat) : null,
             !settings.NoLatency ? $"Latency: {fastest.LatencyMilliseconds} ms" : null,
-            !settings.NoDownload ? $"Download: {downloadResult.GetSpeedString(settings.SpeedUnit, settings.SpeedUnitSystem, settings.SpeedScale)}" : null,
-            !settings.NoUpload ? $"Upload: {uploadResult.GetSpeedString(settings.SpeedUnit, settings.SpeedUnitSystem, settings.SpeedScale)}" : null
+            !settings.NoDownload ? $"Download: {downloadResult.GetSpeedString(settings.SpeedUnit, settings.SpeedUnitSystem, settings.SpeedScale)}{downloadResult.GetFailureAnnotation()}" : null,
+            !settings.NoUpload ? $"Upload: {uploadResult.GetSpeedString(settings.SpeedUnit, settings.SpeedUnitSystem, settings.SpeedScale)}{uploadResult.GetFailureAnnotation()}" : null
         }.Where(s => !string.IsNullOrEmpty(s))));
 
 
         console.WriteLine("\nTry 'NetPace --help' for more information.");
+
+        return new SpeedTestOutcome
+        {
+            Download = settings.NoDownload ? null : downloadResult,
+            Upload = settings.NoUpload ? null : uploadResult
+        };
     }
 
     private sealed class SyncProgress<T>(Action<T> handler) : IProgress<T>
