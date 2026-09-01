@@ -270,12 +270,18 @@ public sealed class OoklaSpeedtest : ISpeedTestService
         // Generate upload sizes (in bytes) rather than allocating large buffers up-front.
         var testDataLengths = GenerateUploadDataLengths(settings.UploadTest.UploadIncrements, settings.UploadTest.UploadSizeIncrementKb, settings.UploadTest.UploadSizeIterations);
 
+        // Ookla is migrating its fleet to HTTPS, and a migrated server answers a plain-HTTP upload
+        // POST with a redirect. The streaming body cannot survive that redirect - the server responds
+        // and closes the request stream while the body is still being written - so resolve the real
+        // endpoint once, cheaply, and upload straight to it.
+        var uploadUrl = await ResolveUploadUrlAsync(server.Url, cancellationToken).ConfigureAwait(false);
+
         // Upload content to a specified URL and return the size of the data in bytes.
         Func<HttpClient, int, CancellationToken, Task<int>> UploadAndMeasureAsync = async (client, length, cancellationToken) =>
         {
             // Use RandomStreamContent to stream generated random bytes in small chunks to avoid LOH allocations.
             using var content = new RandomStreamContent(length);
-            using var response = await client.PostAsync(server.Url, content, cancellationToken).ConfigureAwait(false);
+            using var response = await client.PostAsync(uploadUrl, content, cancellationToken).ConfigureAwait(false);
 
             // A rejected upload (non-success status) is a failed request, not throughput -
             // mirror the download path so error statuses are aggregated into the failure count.
@@ -517,6 +523,62 @@ public sealed class OoklaSpeedtest : ISpeedTestService
             }
         }
     }
+
+    /// <summary>
+    /// Resolves the address the server actually wants uploads sent to, following any redirects
+    /// with a small probe body before the measured uploads begin.
+    /// </summary>
+    /// <remarks>
+    /// The probe carries no body: a redirect is decided by scheme and host rather than payload, so
+    /// an empty POST draws the same answer with nothing to write and nothing to tear down mid-write.
+    /// Sending no bytes also keeps the probe out of the measurement entirely. Whether the redirect is
+    /// followed by the underlying handler or reported back to us, the endpoint that actually accepted
+    /// the probe is the one returned. The probe never fails the test - if it cannot complete, the
+    /// original URL is used and any real fault surfaces through the upload requests themselves.
+    /// </remarks>
+    private async Task<string> ResolveUploadUrlAsync(string url, CancellationToken cancellationToken)
+    {
+        const int maximumHops = 5;
+
+        var currentUrl = url;
+
+        try
+        {
+            for (var hop = 0; hop < maximumHops; hop++)
+            {
+                using var probeContent = new RandomStreamContent(0);
+                using var response = await httpClient.PostAsync(currentUrl, probeContent, cancellationToken).ConfigureAwait(false);
+
+                // The handler did not follow the redirect for us - follow it explicitly.
+                if (IsRedirect(response.StatusCode) && response.Headers.Location is { } location)
+                {
+                    currentUrl = new Uri(new Uri(currentUrl), location).ToString();
+                    continue;
+                }
+
+                // Otherwise the endpoint that answered is the one to upload to. When the handler
+                // followed redirects itself, that is the final hop rather than where we started.
+                return response.RequestMessage?.RequestUri?.ToString() ?? currentUrl;
+            }
+        }
+        catch (Exception) when (!cancellationToken.IsCancellationRequested)
+        {
+            // Probing is best-effort; fall back to the configured URL.
+            return url;
+        }
+
+        return currentUrl;
+    }
+
+    /// <summary>
+    /// Determines whether a status code asks the caller to repeat the request elsewhere.
+    /// </summary>
+    private static bool IsRedirect(HttpStatusCode statusCode) => statusCode is
+        HttpStatusCode.MovedPermanently or
+        HttpStatusCode.Found or
+        HttpStatusCode.SeeOther or
+        HttpStatusCode.TemporaryRedirect or
+        HttpStatusCode.PermanentRedirect;
 
     /// <summary>
     /// Generate upload payload lengths (in bytes) for the upload test.
