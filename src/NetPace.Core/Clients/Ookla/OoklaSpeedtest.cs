@@ -441,6 +441,52 @@ public sealed class OoklaSpeedtest : ISpeedTestService
         };
     }
 
+    /// <summary>
+    /// Resolves the address the server actually wants uploads sent to, following any redirects
+    /// with a small probe body before the measured uploads begin.
+    /// </summary>
+    /// <remarks>
+    /// The probe carries no body: a redirect is decided by scheme and host rather than payload, so
+    /// an empty POST draws the same answer with nothing to write and nothing to tear down mid-write.
+    /// Sending no bytes also keeps the probe out of the measurement entirely. Whether the redirect is
+    /// followed by the underlying handler or reported back to us, the endpoint that actually accepted
+    /// the probe is the one returned. The probe never fails the test - if it cannot complete, the
+    /// original URL is used and any real fault surfaces through the upload requests themselves.
+    /// </remarks>
+    private async Task<string> ResolveUploadUrlAsync(string url, CancellationToken cancellationToken)
+    {
+        const int maximumHops = 5;
+
+        var currentUrl = url;
+
+        try
+        {
+            for (var hop = 0; hop < maximumHops; hop++)
+            {
+                using var probeContent = new RandomStreamContent(0);
+                using var response = await httpClient.PostAsync(currentUrl, probeContent, cancellationToken).ConfigureAwait(false);
+
+                // The handler did not follow the redirect for us - follow it explicitly.
+                if (IsRedirect(response.StatusCode) && response.Headers.Location is { } location)
+                {
+                    currentUrl = new Uri(new Uri(currentUrl), location).ToString();
+                    continue;
+                }
+
+                // Otherwise the endpoint that answered is the one to upload to. When the handler
+                // followed redirects itself, that is the final hop rather than where we started.
+                return response.RequestMessage?.RequestUri?.ToString() ?? currentUrl;
+            }
+        }
+        catch (Exception) when (!cancellationToken.IsCancellationRequested)
+        {
+            // Probing is best-effort; fall back to the configured URL.
+            return url;
+        }
+
+        return currentUrl;
+    }
+
     #region Static Functions
 
     /// <summary>
@@ -525,54 +571,15 @@ public sealed class OoklaSpeedtest : ISpeedTestService
     }
 
     /// <summary>
-    /// Resolves the address the server actually wants uploads sent to, following any redirects
-    /// with a small probe body before the measured uploads begin.
-    /// </summary>
-    /// <remarks>
-    /// The probe carries no body: a redirect is decided by scheme and host rather than payload, so
-    /// an empty POST draws the same answer with nothing to write and nothing to tear down mid-write.
-    /// Sending no bytes also keeps the probe out of the measurement entirely. Whether the redirect is
-    /// followed by the underlying handler or reported back to us, the endpoint that actually accepted
-    /// the probe is the one returned. The probe never fails the test - if it cannot complete, the
-    /// original URL is used and any real fault surfaces through the upload requests themselves.
-    /// </remarks>
-    private async Task<string> ResolveUploadUrlAsync(string url, CancellationToken cancellationToken)
-    {
-        const int maximumHops = 5;
-
-        var currentUrl = url;
-
-        try
-        {
-            for (var hop = 0; hop < maximumHops; hop++)
-            {
-                using var probeContent = new RandomStreamContent(0);
-                using var response = await httpClient.PostAsync(currentUrl, probeContent, cancellationToken).ConfigureAwait(false);
-
-                // The handler did not follow the redirect for us - follow it explicitly.
-                if (IsRedirect(response.StatusCode) && response.Headers.Location is { } location)
-                {
-                    currentUrl = new Uri(new Uri(currentUrl), location).ToString();
-                    continue;
-                }
-
-                // Otherwise the endpoint that answered is the one to upload to. When the handler
-                // followed redirects itself, that is the final hop rather than where we started.
-                return response.RequestMessage?.RequestUri?.ToString() ?? currentUrl;
-            }
-        }
-        catch (Exception) when (!cancellationToken.IsCancellationRequested)
-        {
-            // Probing is best-effort; fall back to the configured URL.
-            return url;
-        }
-
-        return currentUrl;
-    }
-
-    /// <summary>
     /// Determines whether a status code asks the caller to repeat the request elsewhere.
     /// </summary>
+    /// <remarks>
+    /// The permanent and temporary redirects are treated alike because this resolves an address
+    /// rather than replaying a transfer: an HTTPS migration is as likely to be announced with a
+    /// permanent 301 as with the 307 that prompted this, and either way the answer we want is
+    /// simply "go here instead". The method rewriting that a handler applies to 301/302/303 when
+    /// replaying a request does not apply - the probe is discarded once its address is known.
+    /// </remarks>
     private static bool IsRedirect(HttpStatusCode statusCode) => statusCode is
         HttpStatusCode.MovedPermanently or
         HttpStatusCode.Found or
