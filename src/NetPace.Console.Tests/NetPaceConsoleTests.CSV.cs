@@ -154,7 +154,7 @@ public sealed partial class NetPaceConsoleTests
             // When
             var result = await host.RunAsync([ "--csv", "--csv-header-units", "--count", "3", "--unit-scale", "Auto" ]);
 
-            // Then
+            // Then the validation error is reported on the console.
             Assert.Equal(1, result.ExitCode);
             await Verify(result.Output);
         }

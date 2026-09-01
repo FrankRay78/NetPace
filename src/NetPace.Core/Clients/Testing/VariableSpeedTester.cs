@@ -46,12 +46,14 @@ public class VariableSpeedTester : ISpeedTestService
                 // Call 3: 343,750 bytes in 1 second = 2,750,000 bits/second = 2.75 Mbps
                 // Call 4+: 125,000 bytes in 1 second = 1,000,000 bits/second = 1.0 Mbps
 
+                // Every request succeeds; this fake models fluctuating speed, not failure.
+
                 SpeedTestResult result = callCount switch
                 {
-                    1 => new SpeedTestResult { BytesProcessed = 31250, ElapsedMilliseconds = 1000 },
-                    2 => new SpeedTestResult { BytesProcessed = 125000, ElapsedMilliseconds = 1000 },
-                    3 => new SpeedTestResult { BytesProcessed = 343750, ElapsedMilliseconds = 1000 },
-                    _ => new SpeedTestResult { BytesProcessed = 125000, ElapsedMilliseconds = 1000 }
+                    1 => new SpeedTestResult { BytesProcessed = 31250, ElapsedMilliseconds = 1000, RequestsSucceeded = 40, RequestsFailed = 0 },
+                    2 => new SpeedTestResult { BytesProcessed = 125000, ElapsedMilliseconds = 1000, RequestsSucceeded = 150, RequestsFailed = 0 },
+                    3 => new SpeedTestResult { BytesProcessed = 343750, ElapsedMilliseconds = 1000, RequestsSucceeded = 400, RequestsFailed = 0 },
+                    _ => new SpeedTestResult { BytesProcessed = 125000, ElapsedMilliseconds = 1000, RequestsSucceeded = 150, RequestsFailed = 0 }
                 };
                 return Task.FromResult(result);
             },
@@ -63,12 +65,14 @@ public class VariableSpeedTester : ISpeedTestService
                 // Call 3: 166,250 bytes in 1 second = 1,330,000 bits/second = 1.33 Mbps
                 // Call 4+: 375,000 bytes in 1 second = 3,000,000 bits/second = 3.0 Mbps
 
+                // Every request succeeds; this fake models fluctuating speed, not failure.
+
                 SpeedTestResult result = callCount switch
                 {
-                    1 => new SpeedTestResult { BytesProcessed = 62500, ElapsedMilliseconds = 1000 },
-                    2 => new SpeedTestResult { BytesProcessed = 375000, ElapsedMilliseconds = 1000 },
-                    3 => new SpeedTestResult { BytesProcessed = 166250, ElapsedMilliseconds = 1000 },
-                    _ => new SpeedTestResult { BytesProcessed = 375000, ElapsedMilliseconds = 1000 }
+                    1 => new SpeedTestResult { BytesProcessed = 62500, ElapsedMilliseconds = 1000, RequestsSucceeded = 12, RequestsFailed = 0 },
+                    2 => new SpeedTestResult { BytesProcessed = 375000, ElapsedMilliseconds = 1000, RequestsSucceeded = 64, RequestsFailed = 0 },
+                    3 => new SpeedTestResult { BytesProcessed = 166250, ElapsedMilliseconds = 1000, RequestsSucceeded = 30, RequestsFailed = 0 },
+                    _ => new SpeedTestResult { BytesProcessed = 375000, ElapsedMilliseconds = 1000, RequestsSucceeded = 64, RequestsFailed = 0 }
                 };
                 return Task.FromResult(result);
             }

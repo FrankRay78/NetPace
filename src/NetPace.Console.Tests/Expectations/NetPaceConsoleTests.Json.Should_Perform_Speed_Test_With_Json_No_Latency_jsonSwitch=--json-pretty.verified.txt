@@ -4,7 +4,11 @@
   "ServerUrl": "http://test1.com",
   "Timestamp": "1980-01-01 10:05:00",
   "DownloadSpeed": "8 Kbps",
+  "DownloadSucceeded": 150,
+  "DownloadFailed": 0,
   "UploadSpeed": "18.67 Kbps",
+  "UploadSucceeded": 32,
+  "UploadFailed": 0,
   "IPAddress": "192.168.1.1",
   "Hostname": "test-host"
 }

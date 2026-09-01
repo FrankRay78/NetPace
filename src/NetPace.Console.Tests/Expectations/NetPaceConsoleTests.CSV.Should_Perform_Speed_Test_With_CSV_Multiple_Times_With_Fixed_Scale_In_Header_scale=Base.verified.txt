@@ -1,4 +1,4 @@
-﻿Timestamp,Latency (ms),Download (bps),Upload (bps),IPAddress,Hostname
-1980-01-01 10:05:00,75,250000,500000,192.168.1.1,test-host
-1980-01-01 10:05:05,100,1000000,3000000,192.168.1.1,test-host
-1980-01-01 10:05:10,150,2750000,1330000,192.168.1.1,test-host
+﻿Timestamp,Latency (ms),Download (bps),DownloadSucceeded,DownloadFailed,Upload (bps),UploadSucceeded,UploadFailed,IPAddress,Hostname
+1980-01-01 10:05:00,75,250000,40,0,500000,12,0,192.168.1.1,test-host
+1980-01-01 10:05:05,100,1000000,150,0,3000000,64,0,192.168.1.1,test-host
+1980-01-01 10:05:10,150,2750000,400,0,1330000,30,0,192.168.1.1,test-host

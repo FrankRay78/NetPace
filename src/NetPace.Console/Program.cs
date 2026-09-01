@@ -188,6 +188,12 @@ public static class Program
         };
         quietOption.Aliases.Add("-q");
 
+        var failOnOption = new Option<FailOn>("--fail-on")
+        {
+            Description = "Exit with a non-zero code on a failed measurement. <None, Total, Partial>\nNone never affects the exit code; Total triggers when a test is all-failed;\nPartial triggers on any failed request. Fail-fast across --count and --loop.",
+            DefaultValueFactory = _ => FailOn.None
+        };
+
         // Add options
         command.Options.Add(versionOption);
         command.Options.Add(loopOption);
@@ -214,6 +220,7 @@ public static class Program
         command.Options.Add(fileOption);
         command.Options.Add(fileModeOption);
         command.Options.Add(quietOption);
+        command.Options.Add(failOnOption);
 
         // Set command action
         command.SetAction((Func<ParseResult, CancellationToken, Task<int>>)(async (parseResult, cancellationToken) =>
@@ -246,7 +253,8 @@ public static class Program
                     Verbosity = parseResult.GetValue(verbosityOption),
                     OutputFile = parseResult.GetValue(fileOption) ?? string.Empty,
                     FileModeValue = parseResult.GetValue(fileModeOption),
-                    Quiet = parseResult.GetValue(quietOption)
+                    Quiet = parseResult.GetValue(quietOption),
+                    FailOn = parseResult.GetValue(failOnOption)
                 };
 
                 // Validate settings
@@ -271,8 +279,9 @@ public static class Program
             }
             catch (Exception ex)
             {
-                var ansiConsole = serviceProvider.GetRequiredService<IAnsiConsole>();
-                ansiConsole.MarkupLine($"[red]Error:[/] {ex.Message}");
+                // Usage/configuration errors and operational failures are reported to the console.
+                var console = serviceProvider.GetRequiredService<IAnsiConsole>();
+                console.MarkupLine($"[red]Error:[/] {ex.Message.EscapeMarkup()}");
                 return 1;
             }
         }));
@@ -359,7 +368,7 @@ public static class Program
             catch (Exception ex)
             {
                 var ansiConsole = serviceProvider.GetRequiredService<IAnsiConsole>();
-                ansiConsole.MarkupLine($"[red]Error:[/] {ex.Message}");
+                ansiConsole.MarkupLine($"[red]Error:[/] {ex.Message.EscapeMarkup()}");
                 return 1;
             }
         });
@@ -375,8 +384,12 @@ public static class Program
         // Setup DI
         var services = new ServiceCollection();
 
-        // Register AnsiConsole
+        // Register AnsiConsole (standard output).
         services.AddSingleton(AnsiConsole.Console);
+
+        // Needed by both stacks: the root command populates the accessor after option binding,
+        // before it knows which ISpeedTestService is in play.
+        services.AddSingleton<OoklaSpeedtestSettingsAccessor>();
 
         if (args != null && args.Contains("--test"))
         {
@@ -388,7 +401,6 @@ public static class Program
         }
         else
         {
-            services.AddSingleton<OoklaSpeedtestSettingsAccessor>();
             services.AddSingleton<ISpeedTestService>(sp => new OoklaSpeedtest(sp.GetRequiredService<OoklaSpeedtestSettingsAccessor>().Settings));
             services.AddSingleton<IClock, Clock>();
             services.AddSingleton<IClientInfoProvider, ClientInfoProvider>();
@@ -399,17 +411,28 @@ public static class Program
 
         using var cancellationTokenSource = new CancellationTokenSource();
 
-        System.Console.CancelKeyPress += (_, eventArgs) =>
+        void OnCancelKeyPress(object? sender, ConsoleCancelEventArgs eventArgs)
         {
             // Try to cancel gracefully the first time, then abort the process the second time Ctrl+C is pressed
             eventArgs.Cancel = !cancellationTokenSource.IsCancellationRequested;
             cancellationTokenSource.Cancel();
-        };
+        }
 
-        return await RunAsync(
-            serviceProvider,
-            args!.Where(s => !s.Equals("--test")).ToArray(),
-            cancellationTokenSource.Token);
+        // CancelKeyPress is process-wide, so the handler must come off before the token source it
+        // closes over is disposed.
+        System.Console.CancelKeyPress += OnCancelKeyPress;
+
+        try
+        {
+            return await RunAsync(
+                serviceProvider,
+                args!.Where(s => !s.Equals("--test")).ToArray(),
+                cancellationTokenSource.Token);
+        }
+        finally
+        {
+            System.Console.CancelKeyPress -= OnCancelKeyPress;
+        }
     }
 
     internal static async Task<int> RunAsync(IServiceProvider serviceProvider, string[] args, CancellationToken cancellationToken = default)
@@ -454,7 +477,7 @@ public static class Program
         {
             foreach (var error in parseResult.Errors)
             {
-                ansiConsole.MarkupLine($"[red]Error:[/] {error.Message}");
+                ansiConsole.MarkupLine($"[red]Error:[/] {error.Message.EscapeMarkup()}");
             }
             return 1;
         }
