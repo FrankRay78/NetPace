@@ -1,0 +1,1 @@
+﻿Latency: 24 ms, Download: 8 Kbps, Upload: 0 bps (32 of 32 requests failed)

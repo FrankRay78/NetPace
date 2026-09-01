@@ -1,1 +1,1 @@
-﻿{"ServerLocation":"Location 1","ServerSponsor":"Test Sponsor 1","ServerUrl":"http://test1.com","Timestamp":"1980-01-01 10:05:00","Latency":"100 ms","UploadSpeed":"18.67 Kbps","IPAddress":"192.168.1.1","Hostname":"test-host"}
+﻿{"ServerLocation":"Location 1","ServerSponsor":"Test Sponsor 1","ServerUrl":"http://test1.com","Timestamp":"1980-01-01 10:05:00","Latency":"100 ms","UploadSpeed":"18.67 Kbps","UploadSucceeded":32,"UploadFailed":0,"IPAddress":"192.168.1.1","Hostname":"test-host"}

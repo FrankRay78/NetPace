@@ -22,7 +22,9 @@ Project layout: `NetPace.Core.Tests`, `NetPace.Console.Tests`. Test file mirrors
 
 **Test in NetPace.Core:** all public APIs; speed calculations, unit conversions, server selection; happy paths, alternative configurations, and error scenarios (invalid input, network failures, timeouts). Real-network integration tests live in a separate test category.
 
-**Don't test:** Spectre.Console output (trust the library); simple getters/setters with no logic; third-party library behaviour.
+**Console output:** `await Verify(result.Output)`; snapshots live in `NetPace.Console.Tests/Expectations/*.verified.txt`. A test with no snapshot fails first — review the generated `.received.txt`, then rename it to `.verified.txt` to accept. Constitution → Testing Standards for when a targeted assert is right instead.
+
+**Don't test:** Spectre.Console's own rendering (trust the library — snapshot what NetPace composes); simple getters/setters with no logic; third-party library behaviour.
 
 ## NetPace-Specific Patterns
 

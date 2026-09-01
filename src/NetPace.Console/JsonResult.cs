@@ -3,6 +3,10 @@ namespace NetPace.Console;
 /// <summary>
 /// Represents a speed test result in JSON format.
 /// </summary>
+/// <remarks>
+/// A <c>required</c> property always appears in the output. A nullable one is omitted when its test
+/// did not run, so it carries no <c>required</c>: absence is the whole point of it.
+/// </remarks>
 public sealed record JsonResult
 {
     // Server
@@ -30,19 +34,48 @@ public sealed record JsonResult
     public required string Timestamp { get; init; }
 
     /// <summary>
-    /// Gets the measured latency to the server.
+    /// Gets the measured latency to the server, or <see langword="null"/> when the latency test was
+    /// not run.
     /// </summary>
-    public required string Latency { get; init; }
+    public string? Latency { get; init; }
 
     /// <summary>
-    /// Gets the measured download speed.
+    /// Gets the measured download speed, or <see langword="null"/> when the download test was not
+    /// run. An all-failed test reports a zero speed, not <see langword="null"/>; the counts
+    /// distinguish it from a genuine zero-throughput measurement.
     /// </summary>
-    public required string DownloadSpeed { get; init; }
+    public string? DownloadSpeed { get; init; }
 
     /// <summary>
-    /// Gets the measured upload speed.
+    /// Gets the number of download requests that succeeded, or <see langword="null"/> when the
+    /// download test was not run.
     /// </summary>
-    public required string UploadSpeed { get; init; }
+    public int? DownloadSucceeded { get; init; }
+
+    /// <summary>
+    /// Gets the number of download requests that failed, or <see langword="null"/> when the
+    /// download test was not run.
+    /// </summary>
+    public int? DownloadFailed { get; init; }
+
+    /// <summary>
+    /// Gets the measured upload speed, or <see langword="null"/> when the upload test was not run.
+    /// An all-failed test reports a zero speed, not <see langword="null"/>; the counts distinguish
+    /// it from a genuine zero-throughput measurement.
+    /// </summary>
+    public string? UploadSpeed { get; init; }
+
+    /// <summary>
+    /// Gets the number of upload requests that succeeded, or <see langword="null"/> when the upload
+    /// test was not run.
+    /// </summary>
+    public int? UploadSucceeded { get; init; }
+
+    /// <summary>
+    /// Gets the number of upload requests that failed, or <see langword="null"/> when the upload
+    /// test was not run.
+    /// </summary>
+    public int? UploadFailed { get; init; }
 
     // Device identity
 
