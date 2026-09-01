@@ -14,22 +14,6 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
     /// Only operational failures (which propagate out of this method to the top-level handler)
     /// produce a non-zero exit code.
     /// </remarks>
-    /// <summary>
-    /// Writes an error message to the console.
-    /// </summary>
-    private static void WriteError(IAnsiConsole console, string message)
-    {
-        console.Markup($"[red]Error:[/] {message.EscapeMarkup()}\n");
-    }
-
-    /// <summary>
-    /// Whether an exception reflects NetPace's own health rather than a network condition.
-    /// Network conditions are reported and leave the exit code at <c>0</c>; operational faults
-    /// (for example, the <c>--file</c> target becoming unwritable mid-run) must exit non-zero.
-    /// </summary>
-    private static bool IsOperationalFault(Exception e) =>
-        e is IOException or UnauthorizedAccessException;
-
     public async Task<int> ExecuteAsync(SpeedTestCommandSettings settings, CancellationToken cancellationToken)
     {
         if (settings.Quiet || !string.IsNullOrWhiteSpace(settings.OutputFile))
@@ -86,6 +70,9 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
                     catch (Exception e)
                     {
                         WriteError(console, e.Message);
+
+                        // This measurement never completed, which --fail-on treats as a failure.
+                        if (FailOnRequested(settings)) return 1;
                     }
 
                     firstLoop = false;
@@ -126,6 +113,9 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
                     catch (Exception e)
                     {
                         WriteError(console, e.Message);
+
+                        // This measurement never completed, which --fail-on treats as a failure.
+                        if (FailOnRequested(settings)) return 1;
                     }
 
                     if ((i + 1) < settings.Count)
@@ -164,6 +154,9 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
                 catch (Exception e)
                 {
                     WriteError(console, e.Message);
+
+                    // This measurement never completed, which --fail-on treats as a failure.
+                    if (FailOnRequested(settings)) return 1;
                 }
             }
 
@@ -177,6 +170,24 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
             }
         }
     }
+
+    /// <summary>
+    /// Writes an error message to the console.
+    /// </summary>
+    private static void WriteError(IAnsiConsole console, string message)
+    {
+        console.Markup($"[red]Error:[/] {message.EscapeMarkup()}\n");
+    }
+
+    /// <summary>
+    /// Whether an exception reflects NetPace's own health rather than a network condition.
+    /// Network conditions are reported and leave the exit code at <c>0</c>; operational faults
+    /// (for example, the <c>--file</c> target becoming unwritable mid-run) must exit non-zero.
+    /// <see cref="HttpIOException"/> is excluded because it derives from <see cref="IOException"/>:
+    /// a reset connection is a network condition, not ours.
+    /// </summary>
+    private static bool IsOperationalFault(Exception e) =>
+        e is (IOException and not HttpIOException) or UnauthorizedAccessException;
 
     /// <summary>
     /// Evaluates the <c>--fail-on</c> threshold against a single measurement (fail-fast).
@@ -193,4 +204,15 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
 
         return false;
     }
+
+    /// <summary>
+    /// Whether the consumer opted in to failure exit codes at all.
+    /// </summary>
+    /// <remarks>
+    /// Used where a measurement threw rather than completing. <c>Partial</c> is the stricter
+    /// threshold, so it must fire wherever <c>Total</c> does - a run that produced nothing cannot
+    /// be more acceptable to a pristine-run check than one that produced an all-failed result.
+    /// </remarks>
+    private static bool FailOnRequested(SpeedTestCommandSettings settings) =>
+        settings.FailOn != FailOn.None;
 }

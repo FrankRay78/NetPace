@@ -281,7 +281,7 @@ public static class Program
             {
                 // Usage/configuration errors and operational failures are reported to the console.
                 var console = serviceProvider.GetRequiredService<IAnsiConsole>();
-                console.MarkupLine($"[red]Error:[/] {ex.Message}");
+                console.MarkupLine($"[red]Error:[/] {ex.Message.EscapeMarkup()}");
                 return 1;
             }
         }));
@@ -368,7 +368,7 @@ public static class Program
             catch (Exception ex)
             {
                 var ansiConsole = serviceProvider.GetRequiredService<IAnsiConsole>();
-                ansiConsole.MarkupLine($"[red]Error:[/] {ex.Message}");
+                ansiConsole.MarkupLine($"[red]Error:[/] {ex.Message.EscapeMarkup()}");
                 return 1;
             }
         });
@@ -411,17 +411,28 @@ public static class Program
 
         using var cancellationTokenSource = new CancellationTokenSource();
 
-        System.Console.CancelKeyPress += (_, eventArgs) =>
+        void OnCancelKeyPress(object? sender, ConsoleCancelEventArgs eventArgs)
         {
             // Try to cancel gracefully the first time, then abort the process the second time Ctrl+C is pressed
             eventArgs.Cancel = !cancellationTokenSource.IsCancellationRequested;
             cancellationTokenSource.Cancel();
-        };
+        }
 
-        return await RunAsync(
-            serviceProvider,
-            args!.Where(s => !s.Equals("--test")).ToArray(),
-            cancellationTokenSource.Token);
+        // CancelKeyPress is process-wide, so the handler must come off before the token source it
+        // closes over is disposed.
+        System.Console.CancelKeyPress += OnCancelKeyPress;
+
+        try
+        {
+            return await RunAsync(
+                serviceProvider,
+                args!.Where(s => !s.Equals("--test")).ToArray(),
+                cancellationTokenSource.Token);
+        }
+        finally
+        {
+            System.Console.CancelKeyPress -= OnCancelKeyPress;
+        }
     }
 
     internal static async Task<int> RunAsync(IServiceProvider serviceProvider, string[] args, CancellationToken cancellationToken = default)
@@ -466,7 +477,7 @@ public static class Program
         {
             foreach (var error in parseResult.Errors)
             {
-                ansiConsole.MarkupLine($"[red]Error:[/] {error.Message}");
+                ansiConsole.MarkupLine($"[red]Error:[/] {error.Message.EscapeMarkup()}");
             }
             return 1;
         }

@@ -146,4 +146,40 @@ public sealed partial class OoklaSpeedtestTests
         await Should.ThrowAsync<OperationCanceledException>(async () =>
             await speedtest.GetUploadSpeedAsync(server, cts.Token));
     }
+
+    [Fact]
+    public async Task GetUploadSpeedAsync_ShouldCountNeitherSucceededNorFailed_WhenTheByteBudgetSkipsRequests()
+    {
+        // SCENARIO: Requests skipped by the byte budget are not counted as failures
+
+        // Given a server that accepts every request, and a run whose total-byte cap is reached
+        // long before the scheduled requests are exhausted.
+        using var mockHttp = new MockHttpMessageHandler();
+        mockHttp.When("*").Respond(HttpStatusCode.OK);
+
+        var httpClient = mockHttp.ToHttpClient();
+        var settings = new OoklaSpeedtestSettings
+        {
+            UploadTest = new()
+            {
+                UploadIncrements = 1,
+                UploadSizeIncrementKb = 1024,
+                UploadSizeIterations = 20,
+                UploadParallelTasks = 1,
+                UploadSizeMb = 2
+            }
+        };
+        var speedtest = new OoklaSpeedtest(settings, httpClient);
+        var server = new Server { Url = "http://example.com/", Sponsor = "Test", Location = "Test" };
+
+        // When
+        var result = await speedtest.GetUploadSpeedAsync(server);
+
+        // Then the requests the cap cut short are excluded from both counts rather than being
+        // reported as failures.
+        result.ShouldNotBeNull();
+        result.RequestsFailed.ShouldBe(0);
+        result.RequestsSucceeded.ShouldBeGreaterThan(0);
+        (result.RequestsSucceeded + result.RequestsFailed).ShouldBeLessThan(20);
+    }
 }

@@ -21,11 +21,11 @@ public sealed partial class NetPaceConsoleTests
         }
 
         [Fact]
-        public async Task Total_Network_Failure_Exits_Zero_By_Default()
+        public async Task All_Upload_Requests_Failed_Exits_Zero_By_Default()
         {
-            // SCENARIO: Total network failure exits 0 by default (AC5)
+            // SCENARIO: A measured test whose every request failed exits 0 by default (AC5)
 
-            // Given every upload request fails.
+            // Given a server is found and latency measures, but every upload request fails.
             var service = new ScriptedSpeedTester { UploadFactory = _ => ScriptedSpeedTester.AllFailed(32) };
             var host = HostWith(service);
 
@@ -36,6 +36,68 @@ public sealed partial class NetPaceConsoleTests
             // upload token.
             Assert.Equal(0, result.ExitCode);
             await Verify(result.Output);
+        }
+
+        [Theory]
+        [InlineData("Total")]
+        [InlineData("Partial")]
+        public async Task FailOn_Exits_One_When_The_Measurement_Never_Ran(string failOn)
+        {
+            // A measurement that never completed is worse than an all-failed one, so it has to
+            // satisfy the stricter Partial threshold as well as Total.
+
+            // Given discovery throws, so nothing is measured.
+            var mock = new SpeedTestMock
+            {
+                GetServersAsyncFunc = _ => throw new HttpRequestException("No such host is known"),
+            };
+            var host = HostWith(mock);
+
+            // When
+            var result = await host.RunAsync([ "--fail-on", failOn ]);
+
+            // Then
+            Assert.Equal(1, result.ExitCode);
+        }
+
+        [Fact]
+        public async Task Network_IOException_Exits_Zero_By_Default()
+        {
+            // Regression: HttpIOException derives from System.IO.IOException, so a type-based
+            // operational-fault check misread a reset connection as NetPace's own fault and exited 1.
+
+            // Given the latency probe fails the way a dropped connection surfaces.
+            var mock = new SpeedTestMock
+            {
+                GetServerLatencyByServerUrlAsyncFunc = (_, _, _) => throw new HttpIOException(HttpRequestError.ResponseEnded, "The response ended prematurely"),
+            };
+            var host = HostWith(mock);
+
+            // When
+            var result = await host.RunAsync([ "--server", "http://unreachable.example/upload.php" ]);
+
+            // Then the network condition is reported as data, not as a NetPace fault.
+            Assert.Equal(0, result.ExitCode);
+            Assert.Contains("The response ended prematurely", result.Output);
+        }
+
+        [Fact]
+        public async Task Unwritable_Output_File_Reports_The_Path_Literally()
+        {
+            // Regression: the top-level handler passed the exception message to Spectre.Console
+            // unescaped, so a path containing square brackets was parsed as markup and crashed.
+
+            // Given a --file target that cannot be opened for writing, whose path contains markup
+            // characters.
+            var unwritable = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName(), "out[1].csv");
+            var host = HostWith(new ScriptedSpeedTester());
+
+            // When
+            var result = await host.RunAsync([ "--file", unwritable ]);
+
+            // Then the path renders literally and the process reports the fault.
+            Assert.Equal(1, result.ExitCode);
+            Assert.Contains("out[1].csv", result.Output);
         }
 
         [Fact]
@@ -287,8 +349,30 @@ public sealed partial class NetPaceConsoleTests
             // When run with --count under --fail-on total.
             var result = await host.RunAsync([ "--count", "5", "--fail-on", "Total", "--verbosity", "Minimal" ]);
 
-            // Then the process exits 1 at the first triggering measurement.
+            // Then it exits 1 at the first triggering measurement - the snapshot carries one
+            // result line, not five.
             Assert.Equal(1, result.ExitCode);
+            await Verify(result.Output);
+        }
+
+        [Fact]
+        public async Task FailOn_Is_FailFast_When_The_Measurement_Never_Ran()
+        {
+            // SCENARIO: --fail-on is uniform and fail-fast (AC12)
+
+            // Given discovery throws on every iteration.
+            var mock = new SpeedTestMock
+            {
+                GetServersAsyncFunc = _ => throw new HttpRequestException("No such host is known"),
+            };
+            var host = HostWith(mock);
+
+            // When run with --count under --fail-on total.
+            var result = await host.RunAsync([ "--count", "5", "--fail-on", "Total", "--verbosity", "Minimal" ]);
+
+            // Then the process stops at the first iteration rather than reporting all five.
+            Assert.Equal(1, result.ExitCode);
+            Assert.Equal(1, result.Output.Split("No such host is known").Length - 1);
         }
     }
 }

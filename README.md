@@ -129,7 +129,7 @@ OPTIONS:
         --file-mode           Append                 Determines file output behavior. <Append, Overwrite>
     -q, --quiet                                      Suppress all normal console output (file output still works).
         --fail-on             None                   Exit with a non-zero code on a failed measurement. <None, Total, Partial>
-                                                     None never affects the exit code; Total triggers when a test is all-failed; 
+                                                     None never affects the exit code; Total triggers when a test is all-failed;
                                                      Partial triggers on any failed request. Fail-fast across --count and --loop.
 
 COMMANDS:

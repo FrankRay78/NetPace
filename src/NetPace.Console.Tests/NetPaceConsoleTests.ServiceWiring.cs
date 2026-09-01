@@ -19,4 +19,21 @@ public sealed partial class NetPaceConsoleTests
         // Then
         Assert.Equal(0, exitCode);
     }
+
+    /// <summary>
+    /// Regression: <see cref="Program.Main"/> subscribed a Ctrl+C handler to the process-wide
+    /// <c>Console.CancelKeyPress</c> event and never removed it, leaving a handler reachable over a
+    /// disposed <see cref="CancellationTokenSource"/> for the rest of the process's life.
+    /// </summary>
+    [Fact]
+    public async Task Main_CanBeCalledTwiceInTheSameProcess()
+    {
+        // Given/When Main runs twice, as it now does in this test host.
+        var first = await Program.Main(["--test", "--no-download", "--no-upload"]);
+        var second = await Program.Main(["--test", "--no-download", "--no-upload"]);
+
+        // Then neither run leaves the other's cancellation plumbing behind.
+        Assert.Equal(0, first);
+        Assert.Equal(0, second);
+    }
 }

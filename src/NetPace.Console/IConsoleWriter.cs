@@ -21,8 +21,8 @@ public interface IConsoleWriter
     /// <param name="settings">Parsed command-line settings controlling which measurements to run and how to format output.</param>
     /// <param name="cancellationToken">Token that can be used to cancel the operation.</param>
     /// <returns>
-    /// The outcome of the run (whether a server was found and the per-test measurements),
-    /// used by the command to apply exit-code policy.
+    /// The download and upload measurements this run produced, each <see langword="null"/> when
+    /// that test was not requested; used by the command to apply exit-code policy.
     /// </returns>
     Task<SpeedTestOutcome> PerformSpeedTestAsync(bool initialSpeedTest, IAnsiConsole console, IClock clock, IClientInfoProvider clientInfoProvider, ISpeedTestService speedTestClient, SpeedTestCommandSettings settings, CancellationToken cancellationToken);
 }

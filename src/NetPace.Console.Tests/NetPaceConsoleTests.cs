@@ -449,6 +449,42 @@ public sealed partial class NetPaceConsoleTests
     }
 
     [Fact]
+    public async Task Should_Continue_Multiple_Speed_Tests_On_Exception()
+    {
+        // Given
+        var cancellationTokenSource = new CancellationTokenSource();
+        var waiter = new SelfCancellingWaiter(10, cancellationTokenSource);
+
+        // Create a stateful fault function that tracks calls
+        var downloadCallCount = 0;
+        var faultyTester = new FaultySpeedTester(
+            inner: new SpeedTestStub(),
+            isFaulted: (sponsor, methodName) =>
+            {
+                if (methodName == nameof(ISpeedTestService.GetDownloadSpeedAsync))
+                {
+                    downloadCallCount++;
+                    return downloadCallCount == 2; // Fail only on the second call
+                }
+                return false; // Don't fail other methods
+            }
+        );
+
+        var services = new ServiceCollection();
+        services.AddSingleton<ISpeedTestService>(faultyTester);
+        services.AddSingleton<IClock, IncrementingClockStub>();
+        services.AddSingleton<IWaiter>(waiter);
+        var host = GetCommandLineTestHost(services);
+
+        // When
+        var result = await host.RunAsync([ "-t", "--count", "100", "--verbosity", "Minimal" ], cancellationTokenSource.Token);
+
+        // Then
+        Assert.Equal(0, result.ExitCode);
+        await Verify(result.Output);
+    }
+
+    [Fact]
     public async Task Should_Continue_Multiple_Speed_Tests_When_A_Measurement_All_Fails()
     {
         // A measurement that all-fails is data, not an error: the loop keeps running and the exit
