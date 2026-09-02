@@ -136,6 +136,7 @@
     "context-mode@context-mode": true
   },
   "preferredNotifChannel": "terminal_bell",
+  "cleanupPeriodDays": 90,
   "statusLine": {
     "type": "command",
     "command": "sh \"$CLAUDE_PROJECT_DIR/.claude/statusline-command.sh\"",
