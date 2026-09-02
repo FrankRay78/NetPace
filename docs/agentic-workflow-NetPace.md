@@ -93,6 +93,24 @@ NetPace's `/ship` follows the generic *ship gate* section as written:
 
 Pinned at **0.12.10**, initialised `--script sh`. A `--force` re-init resets every stock skill's `disable-model-invocation` flag to `false` — the flip must be re-applied after any upgrade, and the upstream-file guard above exists to stop that regression recurring (CIR: `2026-07-10-guard-speckit-files`; memory: `speckit_upgrade_procedure`). NetPace's custom `speckit.*` commands (`draftissue`, `reviewissue`, `confirmissue`, `testplan`, `testchecklist`) are authored here, not stock — an upgrade does not touch them; the guarded files are the hyphenated `speckit-*` skills.
 
+## Token / context tooling
+
+The generic guide's [*Token / context management plugins*](agentic-workflow.md#token--context-management-plugins) section describes what `read-once`, `context-mode` and `rtk` are. It stays deliberately portable — it does not say whether any of them is actually present on the box in front of you.
+
+NetPace's config, meanwhile, traces all three right through the harness: `rtk` allow-entries and nine `mcp__plugin_context-mode_*` allow-entries in `.claude/settings.json`, an `enabledPlugins` entry for `context-mode`, and an `rtk` prefix-strip in `green-gate.sh`'s `strip_cmd_prefixes()` — a gate written on the assumption that rtk may be in play. **Nothing verifies that any of it is installed**, and a tool that silently isn't there costs exactly what one that is there costs; you just stop getting the benefit.
+
+[`scripts/plugin-report.sh`](../scripts/plugin-report.sh) is that missing check — a manually-run, read-only report (installs nothing, edits nothing, starts nothing) covering four sections: `TOOLING` (expected tool → declared / installed / enabled / reachable, `pr-review-toolkit` included), `CONFIG` (settings and hook paths that do not resolve here), `HOOKS` (what is registered and what each costs per invocation), and `PERFORMANCE` (what each tool reports it is saving).
+
+```bash
+bash scripts/plugin-report.sh
+```
+
+It is not a gate: no `--check` mode, no exit-code contract, and it is wired into no hook, no CI job and no `/ship` step. The intended use is running it on two boxes and diffing — which is why `TOOLING`, `CONFIG` and `HOOKS` carry no timestamps, no absolute paths and no raw millisecond figures. `PERFORMANCE` is explicitly exempt (live counters move every session), so cross-box diffs use the other three sections.
+
+[`/install-harness-tooling`](../.claude/commands/install-harness-tooling.md) is the other half of the pair: it installs what the report says is missing. It reads each upstream `install.sh` before recommending it and **prints** the command for a human to run rather than executing it, so the `Bash(curl:*)` / `Bash(wget:*)` denies stay intact; and because two of the installers write a `PreToolUse` hook into settings themselves, it stops at each of those points and shows the diff — the generic guide's rule 4 (*a human reviews each hook before it lands*) applied to installers that would otherwise wire hooks in silently.
+
+Install status is deliberately **not** recorded in this or any other doc: it is a per-box, manual job, so a written answer goes stale on the next clone. Run the report — that is the live answer.
+
 ## Related
 
 - [../.specify/memory/constitution.md](../.specify/memory/constitution.md) — governance; supersedes this file and the generic guide alike.
