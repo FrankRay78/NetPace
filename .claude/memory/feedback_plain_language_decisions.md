@@ -1,6 +1,6 @@
 ---
 name: Explain tradeoffs in plain language before asking the user to decide
-description: When surfacing a technical decision, explain each option in plain, jargon-free language — consequences and analogies over internals — before asking the user to choose.
+description: When surfacing a technical decision, explain each option in plain, jargon-free language — consequences and analogies over internals — before asking the user to choose; and when you quantify a claim, decompose it rather than reaching for a flattering multiplier.
 type: feedback
 ---
 
@@ -11,4 +11,5 @@ When NetPace work reaches a genuine decision point and you put it to the user (a
 **How to apply:**
 - Before an `AskUserQuestion`, write each option's `description` as a plain-language consequence ("what you get / what it costs"), not a restatement of the mechanism. Keep the jargon term available for those who want it, but after the plain framing, not instead of it.
 - Prefer a concrete analogy or a before/after over an internals walkthrough when the internals aren't the point of the decision.
-- This is the *how you present* companion to surfacing tool/architecture tradeoffs as explicit user choices rather than burying them — surface the choice, and frame it in plain language.
+- **Do not over-claim, either.** Plain language is not licence for a flattering round number. When an option's cost or benefit is quantified, decompose the estimate — say what it is made of — rather than reaching for a headline multiplier. A calibrated "~30% fewer re-reads" is worth more than a loose "2x faster", because the user can check the parts and tell you which one is wrong.
+- This is the *how you present* companion to surfacing tool/architecture tradeoffs as explicit user choices rather than burying them — surface the choice, and frame it in plain language. Pairs with [[feedback_decisiveness_over_hedging]]: frame the choice plainly, and only surface it at all when it is genuinely still open.
