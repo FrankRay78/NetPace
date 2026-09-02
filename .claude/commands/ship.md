@@ -40,7 +40,7 @@ Read `CLAUDE.md` for project context before proceeding.
    - **Green ⇒ continue.**
 
 2. **Clean-context review (synchronous — this is Review A).** Spawn independent, clean-context reviewer subagents over the branch diff (`git diff main...HEAD`), then run a `/review-slop` pass. The clean-context subagents must not see the code being written — "do not inline the review" governs the *reviewing*. The *deciding-and-fixing* legitimately happens in `/ship`'s own main loop.
-   - Spawn the `pr-review-toolkit` reviewers that apply to this diff. Most **report** findings — `code-reviewer`, `silent-failure-hunter`, `pr-test-analyzer`, `type-design-analyzer`, `comment-analyzer` return findings; only `code-simplifier` edits files directly. Launch them in parallel (independent, clean-context Task subagents).
+   - Spawn the `pr-review-toolkit` reviewers that apply to this diff. Most **report** findings — `pr-review-toolkit:code-reviewer`, `pr-review-toolkit:silent-failure-hunter`, `pr-review-toolkit:pr-test-analyzer`, `pr-review-toolkit:type-design-analyzer`, `pr-review-toolkit:comment-analyzer` return findings; only `pr-review-toolkit:code-simplifier` edits files directly. The `pr-review-toolkit:` prefix is required — the bare names do not resolve. Launch them in parallel (independent, clean-context Task subagents).
    - Run `/review-slop`, which emits a cleaned diff.
    - **`/ship`'s main loop applies a severity policy.** Aggregate the returned findings and cleaned diff. For each finding, first *validate it is real* — reviewer severities are fickle, so do not act on a mislabelled or false-positive finding — then act by severity:
      - **Blocker / P1** (a correctness bug, breakage, or anything that would ship broken) — **must be resolved.** Fix it in the working tree. If a confirmed blocker genuinely cannot be fixed, **STOP and report**; `/ship` never raises a PR over a known blocker.
@@ -49,7 +49,7 @@ Read `CLAUDE.md` for project context before proceeding.
    Apply the warranted edits to the working tree. Every applied edit is re-verified by step 3's suite re-run, so a bad fix cannot ship green-unchecked.
    - If a review subagent errors, STOP and report (stop-on-failure).
 
-3. **Conditional re-verify + commit the fixes.** Because step 0 required a clean tree, `git status --porcelain` now shows exactly what step 2 changed — from *any* source (the loop's own fixes **and** any files `code-simplifier` edited directly) — and nothing else.
+3. **Conditional re-verify + commit the fixes.** Because step 0 required a clean tree, `git status --porcelain` now shows exactly what step 2 changed — from *any* source (the loop's own fixes **and** any files `pr-review-toolkit:code-simplifier` edited directly) — and nothing else.
    - **If `git status --porcelain` is empty (step 2 changed nothing):** skip both the re-run and the commit — go to step 4. (No spurious second suite run.)
    - **If it is non-empty (step 2 applied edits):**
      - Re-run `dotnet build ./src && dotnet test ./src`. Not green ⇒ STOP and report.
