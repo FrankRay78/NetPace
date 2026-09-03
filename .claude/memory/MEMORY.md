@@ -19,7 +19,9 @@
 - [feedback_read_source_before_designing.md](feedback_read_source_before_designing.md) — read the source before designing a fix; verify a handed-down issue/spec diagnosis against HEAD before implementing
 - [dotnet test --no-build runs the stale test DLL](feedback_dotnet_test_no_build.md) — rebuild before trusting a test run; green-gate.sh denies a stale --no-build
 - [Re-run tests before declaring done](feedback_rerun_tests_before_done.md) — after any post-implementation edit, re-run `dotnet test ./src`; don't extrapolate an earlier green
+- [Never pipe a command whose pass/fail you are about to trust](feedback_background_script_output.md) — a pipeline's exit code is the filter's, not the suite's; a backgrounded job piped through `tail` also leaves an empty log
 - [Soft-wrap markdown — one line per paragraph](feedback_markdown_soft_wrap.md) — no manual ~80/100-col hard breaks; they reflow whole blocks and bury one-word edits in noisy diffs
 - [Explain tradeoffs in plain language before asking the user to decide](feedback_plain_language_decisions.md) — frame AskUserQuestion options by consequence/cost, not mechanism
+- [Be decisive when the evidence has already earned it](feedback_decisiveness_over_hedging.md) — state the verdict the gates already support; build within a decision already made rather than re-litigating it
 - [Audit the failure class after the second occurrence](feedback_audit_class_after_two_failures.md) — on the 2nd same-shape failure, enumerate every site and fix the class, not the instance
 - [OoklaSpeedtest latency-margin test is flaky under load](project_flaky_latency_margin_test.md) — wall-clock ±25% assertion; distinct from the ProfileXmlDocTests FileShare flake
