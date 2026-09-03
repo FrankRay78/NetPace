@@ -10,7 +10,7 @@ A shell pipeline exits with the status of its **last** command. So this:
 dotnet build ./src && dotnet test ./src 2>&1 | tail -35
 ```
 
-exits `0` whenever `tail` succeeds — **including when the suite failed**. This has happened in practice on this harness: a run reported exit code 0 over a real failure (1 failed / 517 passed), caught only by reading the output rather than trusting the status. A test gate whose exit code is `tail`'s is not a gate.
+exits `0` whenever `tail` succeeds — **including when the suite failed**. This has happened in practice on another repo running this same harness: a run reported exit code 0 over a real failure (1 failed / 517 passed), caught only by reading the output rather than trusting the status. It has not happened in NetPace — hence the prophylactic framing below. A test gate whose exit code is `tail`'s is not a gate.
 
 The same construct has a second failure mode. `tail` buffers its entire input until upstream closes, so a backgrounded long-running script piped through it leaves a **0-byte output file for its whole run**. A live PID with an empty log reads as "stuck" when it is merely buffering.
 

@@ -1,156 +1,240 @@
 #!/usr/bin/env bash
 #
-# plugin-report.sh — read-only report on the token/context tooling this harness declares.
+# plugin-report.sh — read-only report on the harness tooling this repo declares.
 #
-# WHY. NetPace's config traces four tools right through the harness — settings allow-entries,
-# `enabledPlugins`, an `rtk` prefix-strip in green-gate.sh, and a section in
-# docs/agentic-workflow.md — but nothing verifies that any of them is actually installed on the
-# box. A tool that silently isn't there costs exactly what one that is there costs; you just
-# stop getting the benefit, and nothing reports it because nothing looks.
+# Covers four tools: read-once, context-mode and rtk (the token/context tooling named in
+# docs/agentic-workflow.md) plus pr-review-toolkit, which supplies the reviewer agents /ship
+# calls. Detailed descriptions and install commands for the first three live in
+# docs/wsl-claude-sandbox.md, step 7.
 #
-# READ-ONLY. This script installs nothing, edits nothing, and starts nothing. It only reads
-# files and runs version/status probes on tools that are already present. It is a manually-run
-# report: not a hook, not wired into CI or /ship, and there is no --check mode and no exit-code
-# contract. To install what it reports missing, run /install-harness-tooling.
+# WHY. Those tools are traced through this repo by several mechanisms — `Bash(rtk …)` and
+# `mcp__plugin_context-mode_context-mode__*` allow-entries in .claude/settings.json, an
+# `enabledPlugins` block, and an `rtk` prefix-strip in green-gate.sh's strip_cmd_prefixes() —
+# but nothing verifies that any of them is installed on the box. A tool that silently isn't
+# there costs exactly what one that is there costs; you just stop getting the benefit, and
+# nothing reports it because nothing looks.
 #
-# DIFFABILITY IS THE POINT. The intended use is running this on two boxes and diffing the
-# output, so TOOLING / CONFIG / HOOKS carry no timestamps, no absolute paths and no raw
-# millisecond figures — and no column alignment, which would reflow every line the moment a
-# longer tool name is added. PERFORMANCE is explicitly exempt: those are live counters that
-# move every session, so cross-box diffs use the other three sections.
+# READ-ONLY. Installs nothing, edits nothing, starts nothing. It reads files and runs
+# version/status probes on tools that are already present. Manually run: not a hook, not wired
+# into CI or /ship, no --check mode and no exit-code contract. To install what it reports
+# missing, run /install-harness-tooling.
 #
-# Overrides (NETPACE_* convention, matching the gates in .claude/hooks/):
-#   NETPACE_CLAUDE_HOME  — Claude home to inspect (default: ~/.claude)
-#   CLAUDE_PROJECT_DIR   — repo root (default: the repo containing this script)
+# "I COULD NOT LOOK" IS NOT "NO". Every probe that cannot reach a verdict — jq absent, a
+# settings or registry file that will not parse, a probe that errors — reports `unknown`, never
+# a confident `no`. A report whose whole product is a truthful yes/no must not launder a failed
+# lookup into an answer; that is the exact failure this script exists to catch in others.
+#
+# DIFFABILITY IS THE POINT. The intended use is running this on two boxes and diffing, so
+# TOOLING / CONFIG / HOOKS carry no timestamps and no raw millisecond figures, and no column
+# alignment (which would reflow every line the moment a longer tool name is added). Paths are
+# scrubbed to repo- or $HOME-relative form on the way out. PERFORMANCE is explicitly exempt:
+# those are live counters that move every session, so cross-box diffs use the other three.
+#
+# Overrides: NETPACE_CLAUDE_HOME selects the Claude home to inspect (default ~/.claude),
+# following the NETPACE_* convention the gates in .claude/hooks/ use. CLAUDE_PROJECT_DIR is
+# Claude Code's own variable and is honoured if set (default: the repo containing this script).
 
 set -uo pipefail
 
 ROOT="${CLAUDE_PROJECT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
-CLAUDE_HOME="${NETPACE_CLAUDE_HOME:-$HOME/.claude}"
+CLAUDE_HOME="${NETPACE_CLAUDE_HOME:-${HOME:-}/.claude}"
 SETTINGS="$ROOT/.claude/settings.json"
+REGISTRY="$CLAUDE_HOME/plugins/installed_plugins.json"
+HOME_SETTINGS="$CLAUDE_HOME/settings.json"
+
+# Verdict codes. UNKNOWN is load-bearing: it is what keeps a failed lookup out of the `no`
+# column. NA marks a cell there is no probe for, so a reader does not read a duplicated value
+# as corroboration.
+YES=0; NO=1; UNKNOWN=2; NA=3
 
 have_jq=1
 command -v jq >/dev/null 2>&1 || have_jq=0
 
-# Render a path relative to the repo root, else $HOME-relative as ~/…, so output never
-# carries an absolute path that differs between boxes.
-rel() {
-  local p="$1"
-  case "$p" in
-    "$ROOT"/*) printf '%s' "${p#"$ROOT"/}" ;;
-    "$HOME"/*) printf '~/%s' "${p#"$HOME"/}" ;;
-    *) printf '%s' "$p" ;;
+# Classify a JSON file once: ok / missing / unparseable / nojq. Everything downstream branches
+# on this rather than swallowing jq errors at the call site.
+json_state() {
+  [ "$have_jq" -eq 0 ] && { printf 'nojq'; return; }
+  [ -f "$1" ] || { printf 'missing'; return; }
+  jq -e . "$1" >/dev/null 2>&1 && printf 'ok' || printf 'unparseable'
+}
+
+SETTINGS_STATE=$(json_state "$SETTINGS")
+REGISTRY_STATE=$(json_state "$REGISTRY")
+HOME_SETTINGS_STATE=$(json_state "$HOME_SETTINGS")
+
+# Strip machine-specific prefixes from anything echoed back, so two boxes produce the same text.
+scrub() {
+  local s="$1"
+  s=${s//"$ROOT"\//}
+  s=${s//"$ROOT"/.}
+  [ -n "${HOME:-}" ] && s=${s//"$HOME"/\~}
+  printf '%s' "$s"
+}
+
+yn() {
+  case "$1" in
+    0) printf 'yes' ;;
+    1) printf 'no' ;;
+    3) printf 'n/a' ;;
+    *) printf 'unknown' ;;
   esac
 }
 
-yn() { [ "$1" -eq 0 ] && printf 'yes' || printf 'no'; }
+# Never let a hung binary hang the report. Empty when timeout(1) is unavailable.
+if command -v timeout >/dev/null 2>&1; then TIMEOUT=(timeout 10); else TIMEOUT=(); fi
 
-# Does the repo's settings.json mention this string anywhere?
-declared_in_settings() { [ -f "$SETTINGS" ] && grep -q -- "$1" "$SETTINGS"; }
+probe() { "${TIMEOUT[@]}" "$@" >/dev/null 2>&1; }
 
-# Is a plugin marked true under enabledPlugins in the repo's settings?
+# Does this repo reference the tool at all — in harness config, or in the workflow docs that
+# describe it? Applied to all four rows so the column means one thing throughout: read-once is
+# named only in docs (no config anywhere references it), and the column says so uniformly
+# rather than meaning "in settings" on some rows and "in settings or docs" on others.
+declared_in_repo() {
+  { [ -f "$SETTINGS" ] && grep -q -- "$1" "$SETTINGS" 2>/dev/null; } && return "$YES"
+  grep -rq -- "$1" "$ROOT/docs" 2>/dev/null && return "$YES"
+  return "$NO"
+}
+
 plugin_enabled() {
-  [ "$have_jq" -eq 1 ] && [ -f "$SETTINGS" ] || return 1
+  case "$SETTINGS_STATE" in
+    nojq|unparseable) return "$UNKNOWN" ;;
+    missing) return "$NO" ;;
+  esac
   [ "$(jq -r --arg k "$1" '.enabledPlugins[$k] // false' "$SETTINGS" 2>/dev/null)" = "true" ]
 }
 
-# Is any recorded installPath for this plugin actually present on disk? Deliberately
-# scope-blind — a plugin is installed on this box or it is not; modelling user vs project
-# scope would buy a state machine nobody reads.
+# Is any recorded installPath for this plugin present on disk? Deliberately scope-blind — a
+# plugin is installed on this box or it is not; modelling user vs project scope would buy a
+# state machine nobody reads. A registry that will not parse is `unknown`, not `no`: the
+# .plugins[k][].installPath shape is Claude Code's private layout, and the day it changes this
+# must report a broken probe rather than "nothing is installed".
 plugin_installed() {
-  local reg="$CLAUDE_HOME/plugins/installed_plugins.json" p
-  [ "$have_jq" -eq 1 ] && [ -f "$reg" ] || return 1
+  case "$REGISTRY_STATE" in
+    nojq|unparseable) return "$UNKNOWN" ;;
+    missing) return "$NO" ;;
+  esac
+  local p
   while IFS= read -r p; do
-    [ -n "$p" ] && [ -d "$p" ] && return 0
-  done < <(jq -r --arg k "$1" '.plugins[$k][]?.installPath // empty' "$reg" 2>/dev/null)
-  return 1
+    [ -d "$p" ] && return "$YES"
+  done < <(jq -r --arg k "$1" '.plugins[$k][]?.installPath // empty' "$REGISTRY" 2>/dev/null)
+  return "$NO"
 }
 
-# Does any hook registered in the Claude home settings invoke this tool?
+# Does a hook registered in the Claude home settings actually invoke this tool? Matched against
+# the hook commands only — grepping the whole file would count a permission entry or a stray
+# path string as a registered hook.
 hooked_in_claude_home() {
-  local s="$CLAUDE_HOME/settings.json"
-  [ -f "$s" ] || return 1
-  grep -q -- "$1" "$s"
+  case "$HOME_SETTINGS_STATE" in
+    nojq|unparseable) return "$UNKNOWN" ;;
+    missing) return "$NO" ;;
+  esac
+  jq -e --arg t "$1" '[.hooks[]?[]?.hooks[]?.command // empty] | any(contains($t))' \
+    "$HOME_SETTINGS" >/dev/null 2>&1
 }
 
 line() { printf '%s: declared=%s installed=%s enabled=%s reachable=%s\n' "$@"; }
 
 # --- TOOLING ----------------------------------------------------------------------
 echo "== TOOLING =="
-echo "Expected tool -> declared (this repo references it) / installed (present on this box) / enabled (switched on here) / reachable (probes clean)."
+echo "Expected tool -> declared (this repo references it) / installed (present on this box) / enabled (switched on for this repo) / reachable (probe succeeds, where the tool has one)."
 echo
+if [ "$have_jq" -eq 0 ]; then
+  echo "WARNING: jq is not installed — installed/enabled cannot be determined and read 'unknown' below, which is NOT the same as 'no'."
+  echo
+fi
+if [ "$SETTINGS_STATE" = "unparseable" ]; then
+  echo "WARNING: $(scrub "$SETTINGS") does not parse — enabled cannot be determined."
+  echo
+fi
 
-# read-once — PreToolUse hook that suppresses re-reads of unchanged files.
+# read-once — stops Claude re-reading files it already has in context.
 ro_dir="$CLAUDE_HOME/read-once"
-declared_in_settings 'read-once' || grep -rq 'read-once' "$ROOT/docs" 2>/dev/null; ro_decl=$?
+declared_in_repo 'read-once'; ro_decl=$?
 [ -d "$ro_dir" ]; ro_inst=$?
 hooked_in_claude_home 'read-once'; ro_en=$?
-[ -x "$ro_dir/read-once" ]; ro_reach=$?
+if [ -x "$ro_dir/read-once" ]; then probe "$ro_dir/read-once" verify; ro_reach=$?; else ro_reach=$NO; fi
 line read-once "$(yn $ro_decl)" "$(yn $ro_inst)" "$(yn $ro_en)" "$(yn $ro_reach)"
 
 # context-mode — MCP server that sandboxes large tool output outside the context window.
-declared_in_settings 'context-mode'; cm_decl=$?
+declared_in_repo 'context-mode'; cm_decl=$?
 plugin_installed 'context-mode@context-mode'; cm_inst=$?
 plugin_enabled 'context-mode@context-mode'; cm_en=$?
-cm_reach=$cm_inst
+cm_reach=$NA   # counters and health live behind MCP (ctx_doctor); nothing to probe from a shell
 line context-mode "$(yn $cm_decl)" "$(yn $cm_inst)" "$(yn $cm_en)" "$(yn $cm_reach)"
 
 # rtk — token-saving CLI proxy. green-gate.sh strips a leading `rtk` when parsing a command,
 # so the gate is already written on the assumption that rtk may be in play.
-declared_in_settings 'Bash(rtk'; rtk_decl=$?
+declared_in_repo 'rtk'; rtk_decl=$?
 command -v rtk >/dev/null 2>&1; rtk_inst=$?
-hooked_in_claude_home '"rtk'; rtk_en=$?
-if [ $rtk_inst -eq 0 ]; then rtk --version >/dev/null 2>&1; rtk_reach=$?; else rtk_reach=1; fi
+hooked_in_claude_home 'rtk'; rtk_en=$?
+if [ $rtk_inst -eq 0 ]; then probe rtk --version; rtk_reach=$?; else rtk_reach=$NO; fi
 line rtk "$(yn $rtk_decl)" "$(yn $rtk_inst)" "$(yn $rtk_en)" "$(yn $rtk_reach)"
 
 # pr-review-toolkit — supplies the named reviewer agents /ship calls.
-declared_in_settings 'pr-review-toolkit'; pr_decl=$?
+declared_in_repo 'pr-review-toolkit'; pr_decl=$?
 plugin_installed 'pr-review-toolkit@claude-plugins-official'; pr_inst=$?
 plugin_enabled 'pr-review-toolkit@claude-plugins-official'; pr_en=$?
-pr_reach=$pr_inst
+pr_reach=$NA   # agents are resolved by the harness at session start; nothing to probe here
 line pr-review-toolkit "$(yn $pr_decl)" "$(yn $pr_inst)" "$(yn $pr_en)" "$(yn $pr_reach)"
 
 # --- CONFIG -----------------------------------------------------------------------
 echo
 echo "== CONFIG =="
-echo "Settings and hook paths that do not resolve on this box."
+echo "Unresolvable hook/statusLine paths, and allow-entries that are dangling or duplicated."
 echo
 config_findings=0
+config_checked=0
 note() { printf '%s\n' "$1"; config_findings=$((config_findings + 1)); }
 
-if [ ! -f "$SETTINGS" ]; then
-  note "missing-settings: $(rel "$SETTINGS")"
-elif [ "$have_jq" -eq 0 ]; then
-  note "skipped: jq not installed, cannot parse settings"
-else
-  # Every hook/statusLine command that names a script path must resolve to a real file.
-  while IFS= read -r cmd; do
-    [ -n "$cmd" ] || continue
-    path=$(printf '%s' "$cmd" | grep -oE '\$CLAUDE_PROJECT_DIR[^"[:space:]]*' | head -1)
-    [ -n "$path" ] || continue
-    resolved="${path/\$CLAUDE_PROJECT_DIR/$ROOT}"
-    [ -f "$resolved" ] || note "unresolved-path: $(rel "$resolved")"
-  done < <(jq -r '[(.hooks // {} | to_entries[].value[]?.hooks[]?.command // empty), (.statusLine.command // empty)][]' "$SETTINGS" 2>/dev/null)
+case "$SETTINGS_STATE" in
+  missing) note "missing-settings: $(scrub "$SETTINGS")" ;;
+  nojq) note "unchecked: jq not installed, cannot parse settings" ;;
+  unparseable) note "unparseable-settings: $(scrub "$SETTINGS")" ;;
+  ok)
+    # Every $CLAUDE_PROJECT_DIR-rooted path in a hook or statusLine command must resolve. All
+    # matches per command, not just the first — compound commands (`a.sh && b.sh`) are already
+    # live in this repo's settings.
+    while IFS= read -r cmd; do
+      [ -n "$cmd" ] || continue
+      found=0
+      while IFS= read -r m; do
+        [ -n "$m" ] || continue
+        p=${m#\$}; p=${p#\{}; p=${p#CLAUDE_PROJECT_DIR}; p=${p#\}}
+        p=${p%%[;\&|\)]*}                       # drop trailing shell punctuation
+        # A bare `$CLAUDE_PROJECT_DIR` (as in `cd "$CLAUDE_PROJECT_DIR" && …`) names the repo
+        # root, not a script — checking it would report the repo itself as an unresolved path.
+        [ -n "$p" ] && [ "$p" != "/" ] || continue
+        found=1
+        config_checked=$((config_checked + 1))
+        [ -f "$ROOT$p" ] || note "unresolved-path: $(scrub "$ROOT$p")"
+      done < <(printf '%s\n' "$cmd" | grep -oE '\$\{?CLAUDE_PROJECT_DIR\}?[^"'"'"'[:space:]]*')
+      # A command naming a script by some other route cannot be checked from here — say so,
+      # rather than letting the ok: line below imply it was covered.
+      if [ "$found" -eq 0 ] && printf '%s' "$cmd" | grep -qE '\.(sh|ps1|mjs|js|py)([[:space:]]|"|$)'; then
+        note "unchecked-path: script referenced without \$CLAUDE_PROJECT_DIR — $(scrub "$cmd")"
+      fi
+    done < <(jq -r '[(.hooks // {} | to_entries[].value[]?.hooks[]?.command // empty), (.statusLine.command // empty)][]' "$SETTINGS" 2>/dev/null)
 
-  # An MCP allow-entry for a plugin that is not installed is inert config.
-  mcp_count=$(jq -r '[.permissions.allow[]? | select(startswith("mcp__plugin_context-mode"))] | length' "$SETTINGS" 2>/dev/null)
-  if [ "${mcp_count:-0}" -gt 0 ] && [ $cm_inst -ne 0 ]; then
-    note "dangling-mcp-allow: mcp__plugin_context-mode__* ($mcp_count entries; context-mode not installed)"
-  fi
+    # An MCP allow-entry for a plugin that is not installed is inert config.
+    mcp_count=$(jq -r '[.permissions.allow[]? | select(startswith("mcp__plugin_context-mode"))] | length' "$SETTINGS" 2>/dev/null)
+    if [ "${mcp_count:-0}" -gt 0 ] && [ $cm_inst -eq "$NO" ]; then
+      note "dangling-mcp-allow: mcp__plugin_context-mode_context-mode__* ($mcp_count entries; context-mode not installed)"
+    fi
 
-  # Duplicate allow-entries are harmless but always unintentional.
-  while IFS= read -r dup; do
-    [ -n "$dup" ] && note "duplicate-allow-entry: $dup"
-  done < <(jq -r '.permissions.allow // [] | group_by(.)[] | select(length > 1) | "\(.[0]) (x\(length))"' "$SETTINGS" 2>/dev/null)
-fi
-[ "$config_findings" -eq 0 ] && echo "ok: every hook and statusLine path resolves, no dangling or duplicate allow-entries"
+    # Duplicate allow-entries are harmless but always unintentional.
+    while IFS= read -r dup; do
+      note "duplicate-allow-entry: $dup"
+    done < <(jq -r '.permissions.allow // [] | group_by(.)[] | select(length > 1) | "\(.[0]) (x\(length))"' "$SETTINGS" 2>/dev/null)
+    ;;
+esac
+[ "$config_findings" -eq 0 ] && echo "ok: $config_checked hook/statusLine path(s) resolve, no dangling or duplicate allow-entries"
 
 # --- HOOKS ------------------------------------------------------------------------
 echo
 echo "== HOOKS =="
 echo "Registered hooks, and what each costs per invocation."
 echo
-if [ "$have_jq" -eq 1 ] && [ -f "$SETTINGS" ]; then
+if [ "$SETTINGS_STATE" = "ok" ]; then
   jq -r '.hooks // {} | to_entries[] as $e | $e.value[]? as $g | $g.hooks[]? |
          [$e.key, ($g.matcher // "-"), (.if // "-"), (.command // "")] | @tsv' "$SETTINGS" 2>/dev/null |
   while IFS=$'\t' read -r event matcher cond cmd; do
@@ -161,11 +245,13 @@ if [ "$have_jq" -eq 1 ] && [ -f "$SETTINGS" ]; then
       *.sh*) cost="script" ;;
       *) cost="other" ;;
     esac
-    shown=$(printf '%s' "$cmd" | tr -d '"' | sed "s|\$CLAUDE_PROJECT_DIR/||")
-    printf '%s/%s if=%s: %s cost=%s\n' "$event" "$matcher" "$cond" "$shown" "$cost"
+    shown=${cmd//\"/}
+    shown=${shown//\$\{CLAUDE_PROJECT_DIR\}\//}
+    shown=${shown//\$CLAUDE_PROJECT_DIR\//}
+    printf '%s/%s if=%s: %s cost=%s\n' "$event" "$matcher" "$cond" "$(scrub "$shown")" "$cost"
   done
 else
-  echo "skipped: jq not installed, or settings missing"
+  echo "cannot list hooks: settings are $SETTINGS_STATE"
 fi
 
 # --- PERFORMANCE ------------------------------------------------------------------
@@ -173,21 +259,15 @@ echo
 echo "== PERFORMANCE =="
 echo "Live counters. EXEMPT from the diffability rule above — these move every session, so diff the other three sections across boxes, not this one."
 echo
-if [ $rtk_reach -eq 0 ]; then
-  echo "rtk:"
-  rtk gain 2>&1 | sed 's/^/  /'
-else
-  echo "rtk: n/a — not installed"
-fi
-if [ $ro_reach -eq 0 ]; then
-  echo "read-once:"
-  "$ro_dir/read-once" verify 2>&1 | sed 's/^/  /'
-else
-  echo "read-once: n/a — not installed"
-fi
-if [ $cm_inst -eq 0 ]; then
-  echo "context-mode: installed — counters are MCP-only; run ctx_stats in-session"
-else
-  echo "context-mode: n/a — not installed"
-fi
+# A probe that errors must not be laundered into something that looks like counter output.
+perf() {
+  local label="$1"; shift
+  local out rc
+  out=$("${TIMEOUT[@]}" "$@" 2>&1); rc=$?
+  if [ $rc -ne 0 ]; then printf '%s: PROBE FAILED (exit %s)\n' "$label" "$rc"; else printf '%s:\n' "$label"; fi
+  printf '%s\n' "$out" | sed 's/^/  /'
+}
+if [ $rtk_inst -eq "$YES" ]; then perf rtk rtk gain; else echo "rtk: n/a — not installed"; fi
+if [ -x "$ro_dir/read-once" ]; then perf read-once "$ro_dir/read-once" verify; else echo "read-once: n/a — not installed"; fi
+if [ $cm_inst -eq "$YES" ]; then echo "context-mode: installed — counters are MCP-only; run ctx_stats in-session"; else echo "context-mode: $(yn $cm_inst) — no shell-visible counters"; fi
 echo "pr-review-toolkit: n/a — exposes no counters"
