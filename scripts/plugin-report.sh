@@ -268,6 +268,9 @@ perf() {
   printf '%s\n' "$out" | sed 's/^/  /'
 }
 if [ $rtk_inst -eq "$YES" ]; then perf rtk rtk gain; else echo "rtk: n/a — not installed"; fi
-if [ -x "$ro_dir/read-once" ]; then perf read-once "$ro_dir/read-once" verify; else echo "read-once: n/a — not installed"; fi
+# `stats`, not `verify` (#252). read-once's counters subcommand is `stats`; `verify` is its 13-point
+# installation check, already run above as the TOOLING reachability probe — printing it here filled
+# a counter row with a checklist that exits 0, so a missing figure read as a healthy report.
+if [ -x "$ro_dir/read-once" ]; then perf read-once "$ro_dir/read-once" stats; else echo "read-once: n/a — not installed"; fi
 if [ $cm_inst -eq "$YES" ]; then echo "context-mode: installed — counters are MCP-only; run ctx_stats in-session"; else echo "context-mode: $(yn $cm_inst) — no shell-visible counters"; fi
 echo "pr-review-toolkit: n/a — exposes no counters"
