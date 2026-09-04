@@ -91,7 +91,7 @@ An `ask`-matched call **prompts** in an interactive session but is **silently de
 
 That asymmetry makes headless a permission oracle — run a workflow under `claude -p --dangerously-skip-permissions` and anything that would have prompted interactively comes back denied instead, with no human in the loop to mask it. Not CI-gateable: it needs the `claude` binary and an authenticated session.
 
-`Bash(rm:*)` and `Bash(rmdir:*)` came off the list for this reason ([CIR](change-intent-records/2026-09-04-rm-off-the-ask-list.md)), and `Bash(chmod:*)` moved onto it from `deny` — which buys an approval path interactively but not in a lane worker, where `ask` still denies silently ([CIR](change-intent-records/2026-09-04-push-allow-chmod-ask.md)).
+`Bash(rm:*)` and `Bash(rmdir:*)` came off the list for this reason ([CIR](change-intent-records/2026-09-04-rm-off-the-ask-list.md)), and `Bash(git push:*)` followed them off it into `allow` — that is what lets `/ship` reach `gh pr create` without stopping at its second-to-last step. `Bash(chmod:*)` moved the other way, from `deny` onto `ask`, which buys an approval path interactively but not in a lane worker, where `ask` still denies silently ([CIR](change-intent-records/2026-09-04-push-allow-chmod-ask.md)).
 
 ## Test-green gate & categories
 
