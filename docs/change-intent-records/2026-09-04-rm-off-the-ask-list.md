@@ -16,7 +16,9 @@
 
 *Rejected — a scratch-scoped `PreToolUse` hook.* Keep `Bash(rm:*)` in `ask` and auto-approve only removals confined to `.claude/scratch/` and the session scratchpad, so `rm -rf src/` still prompts. This preserves the most protection, and it was the closer call. It lost on proportion: a hook script plus its `.tests.sh` matrix and a `hooks/README.md` entry is roughly five times the change, to guard a tree that is fully recoverable from git in a box that is itself disposable. When the guard outgrows the fix, the mechanism is wrong.
 
-*Rejected — clearing the whole `ask` list.* The same "no point approving manually in a sandbox" reasoning does retire most of the remaining entries, but the `git` rules reach outside the sandbox, and `Bash(git push:*)` is already owned by a separate open issue. Folding that in would have put two missions on one branch.
+*Partly adopted — clearing the rest of the `ask` list.* The same reasoning retires `git pull`, `merge`, `rebase`, `reset` and `tag`, which were removed alongside: all are local and leave the old tip in the reflog, so on a rebuildable box the entry guarded a recoverable action. None was covered by an allow rule, so in Manual and `acceptEdits` they prompted as unmatched commands either way — the entry's only effect was to break through `bypassPermissions`, and to deny silently under `claude -p`.
+
+`Bash(git push:*)` stays, as the one command whose blast radius the sandbox does not contain: a force-push over someone else's branch, or a pushed secret, survives rebuilding the box. It is a poor fit for `ask` even so — `/ship` must push unattended, and headless would deny it silently — but replacing it with an `allow` plus a `deny` on `--force` is owned by a separate open issue, and folding that in would have put two missions on one branch.
 
 *Rejected — narrowing the rule, e.g. `Bash(rm -rf /:*)`.* Matching is textual and the reviewers' teardown is `rm -rf "$SB"`, expanded at runtime, so a narrower literal rule would miss the dangerous case as readily as the benign one. A guard that a variable defeats is worse than no guard, because it reads as protection.
 

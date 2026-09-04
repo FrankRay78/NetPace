@@ -85,31 +85,13 @@ NetPace's `/ship` follows the generic *ship gate* section as written:
 
 ## Permissions and unattended runs
 
-`ask` rules sit **above** every permission mode. Claude Code never auto-approves an `ask`-matched tool call "in any mode, including `bypassPermissions`" — alongside explicit-deny rules, `AskUserQuestion`, and `rm`/`rmdir` against a critical path. `--dangerously-skip-permissions` does not clear an `ask` rule; nothing does except removing the rule.
+`ask` rules sit **above** every permission mode: `bypassPermissions` does not clear them, and nothing does except removing the rule. Subagents inherit the parent's mode — "if the parent uses `bypassPermissions` or `acceptEdits`, this takes precedence and can't be overridden" — so a reviewer subagent that stops on a permission has hit an `ask` rule, never the subagent boundary.
 
-Subagents **do** inherit the parent's permission mode: "if the parent uses `bypassPermissions` or `acceptEdits`, this takes precedence and can't be overridden", and `permissionMode` frontmatter is ignored for plugin subagents such as `pr-review-toolkit`'s. So a reviewer subagent is never *less* permitted than the `/ship` run that spawned it. When a reviewer stops on a permission, an `ask` rule is the cause, not the subagent boundary.
+An `ask`-matched call **prompts** in an interactive session but is **silently denied** in a headless `claude -p` one, which cannot draw a prompt: the worker loses that capability and carries on degraded. A green unattended run is therefore not evidence that its `ask` rules were harmless.
 
-That combination has two faces, and the quiet one is the dangerous one:
+That asymmetry makes headless a permission oracle — run a workflow under `claude -p --dangerously-skip-permissions` and anything that would have prompted interactively comes back denied instead, with no human in the loop to mask it. Not CI-gateable: it needs the `claude` binary and an authenticated session.
 
-| Where | An `ask`-matched call does this |
-|---|---|
-| Interactive session (`/ship` step 2) | **Prompts** — the run stops until a human answers |
-| Headless `claude -p` (an IMS-style lane worker) | **Denied silently** — "Claude requested permissions to use Bash, but you haven't granted it yet"; the agent continues with that capability missing |
-
-A headless worker cannot draw a prompt, so it denies instead. An unattended lane therefore never blocks on an `ask` rule — it quietly loses the commands the rule covers, and the work degrades rather than stopping. A green unattended run is not evidence that its `ask` rules were harmless.
-
-**This makes headless a permission oracle.** To find out whether a workflow would prompt, run it under `claude -p --dangerously-skip-permissions` and check whether every step completed: anything that would have prompted interactively comes back denied instead, with no human in the loop to mask it.
-
-```bash
-claude -p --model claude-haiku-4-5-20251001 --dangerously-skip-permissions \
-  "Run this and report RAN or DENIED plus the error: <the command under test>" </dev/null
-```
-
-This is not CI-gateable — it needs the `claude` binary and an authenticated session, neither of which exists on a GitHub runner — so it stays a manual check, run when the `ask` list changes.
-
-`Bash(rm:*)` and `Bash(rmdir:*)` were removed from `permissions.ask` for this reason: reviewer subagents build and tear down synthetic fixtures, so teardown hits `rm` on nearly every run, and those two rules were the whole cause of `/ship` step 2 prompting. The safety net that remains is the built-in one — Claude Code refuses `rm`/`rmdir` against a critical path (`.git`, `.claude`, dotfiles) in every mode, and no allow rule or `PreToolUse` hook can approve past it. The reasoning, and the scratch-scoped hook that was rejected, are in [`change-intent-records/2026-09-04-rm-off-the-ask-list.md`](change-intent-records/2026-09-04-rm-off-the-ask-list.md).
-
-The `ask` list keeps the `git` entries, whose effects reach outside the sandbox.
+`Bash(rm:*)` and `Bash(rmdir:*)` came off the list for this reason ([CIR](change-intent-records/2026-09-04-rm-off-the-ask-list.md)).
 
 ## Test-green gate & categories
 
