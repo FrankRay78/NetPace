@@ -4,6 +4,14 @@ description: Raise a PR for the current feature branch — cleans up the spec fo
 
 Read `CLAUDE.md` for project context before proceeding.
 
+## User Input
+
+```text
+$ARGUMENTS
+```
+
+Optionally a GitHub issue number — bare (`248`), hashed (`#248`), or a full issue URL — naming the issue this PR closes. Empty is the normal case and is **not** a prompt: step 6 infers the issue from the branch instead. `/raise-pr` never asks the invoker for anything, so it stays composable by `/ship` with no interactive gate.
+
 ## Steps
 
 1. **Get branch name**: Run `git rev-parse --abbrev-ref HEAD`. If the result is `main`, stop immediately and output: "Run /raise-pr from a feature branch, not main."
@@ -26,6 +34,16 @@ Read `CLAUDE.md` for project context before proceeding.
 
 6. **Compose PR body**: Write a description sized to the change. **Do not follow a fixed template.** Decide which sections earn their place based on what's actually in this PR.
 
+   **First, settle the closing keyword.** A merged PR must close the issue it implemented without the invoker having to remember to ask for it, so decide this every time — not only when someone thinks to mention an issue:
+
+   - **An issue number supplied by the invoker wins.** Take it from the User Input above (bare, `#N`, or an issue URL) and use it directly — no branch inference, no second-guessing.
+   - **Otherwise infer a candidate from the branch name.** `feature/<N>-<slug>` is what `/build` produces, so the leading number on the segment after the prefix is the candidate.
+   - **Verify the candidate before using it — never trust the parse.** Run `gh issue view <N> --json number,state,title,url`. Use `Closes #<N>` only if all three hold: the lookup succeeded, `state` is `OPEN`, and `url` is an `/issues/<N>` path. Otherwise add **no** closing keyword and carry on composing the body.
+   - Verifying is the point of the rule, not ceremony around it: spec-kit branches carry a *sequence* number, not an issue number — `004-raise-pr-command` is the very branch step 5 strips `004-` from — so an unverified parse would emit `Closes #4` and silently auto-close an unrelated issue the moment the PR merged. That is a worse failure than the missing link this rule exists to fix, and nobody notices it until an issue is mysteriously closed.
+   - The `url` check is not belt-and-braces. GitHub numbers issues and pull requests from one sequence, and `gh issue view <N>` resolves a *pull request* at that number rather than failing: on this repo `gh issue view 4` returns `{"number":4,"state":"MERGED","url":".../pull/4"}`. A state-only check therefore passes for an open PR and would emit a `Closes` aimed at a pull request. The `/issues/` path is what separates the two.
+   - The keyword goes on its own line in **Related**. The PR body is the *only* place a closing keyword belongs — never a commit message, which would close the issue as soon as it reached `main`, ahead of review.
+   - Whichever way it lands, step 10 reports it.
+
    **Guiding principle — don't duplicate things a reviewer can get elsewhere.** GitHub already shows:
    - the list of changed files and their diffs
    - the commit list and commit messages
@@ -40,7 +58,7 @@ Read `CLAUDE.md` for project context before proceeding.
    - **What changes** — a short summary of observable changes. For single-theme PRs, 1–3 bullets. For multi-theme PRs, group by theme rather than by file. Describe *what* changed at a behaviour level, not which files were touched.
    - **Non-obvious things a reviewer should know** — caveats, deliberate trade-offs, hidden invariants, anything in the diff that looks weird but is intentional. Omit if there are none.
    - **How to verify** — a markdown checklist of concrete actions a reviewer can perform. Derive items from what actually changed. Omit for pure-documentation PRs where there's nothing functional to exercise.
-   - **Related** — links to issues, prior PRs, or specs that give context. Omit if none.
+   - **Related** — the `Closes #<N>` line settled above, when one was settled, plus links to prior PRs, related issues, or specs that give context. Omit only if there is neither.
 
    A tiny PR may collapse to two sections. A sprawling PR may use all five. Match the size of the body to the size of the change.
 
@@ -60,4 +78,4 @@ Read `CLAUDE.md` for project context before proceeding.
    End the review with a recommendation whether to merge the PR, and if not, what you suggest needs addressing first.
    ```
 
-10. **Output result**: Print the PR URL. If step 4 deleted a spec folder, also print `Deleted spec folder: <FEATURE_DIR>`.
+10. **Output result**: Print the PR URL. If step 4 deleted a spec folder, also print `Deleted spec folder: <FEATURE_DIR>`. Always print what step 6 settled — `Closes #<N> — <issue title>`, or, when it settled nothing, that fact and the reason (`No closing keyword: branch carries no issue number`; `No closing keyword: #4 is a pull request, not an open issue`) — so the invoker can see from the output alone whether merging this PR will close anything, and what.
