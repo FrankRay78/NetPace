@@ -89,9 +89,11 @@ NetPace's `/ship` follows the generic *ship gate* section as written:
 
 An `ask`-matched call **prompts** in an interactive session but is **silently denied** in a headless `claude -p` one, which cannot draw a prompt: the worker loses that capability and carries on degraded. A green unattended run is therefore not evidence that its `ask` rules were harmless.
 
-That asymmetry makes headless a permission oracle — run a workflow under `claude -p --dangerously-skip-permissions` and anything that would have prompted interactively comes back denied instead, with no human in the loop to mask it. Not CI-gateable: it needs the `claude` binary and an authenticated session.
+That asymmetry makes headless a permission oracle **for rule matching** — run a workflow under `claude -p --dangerously-skip-permissions` and whatever an `allow`, `ask` or `deny` rule would have stopped comes back denied, with no human in the loop to mask it. Know its blind spot: the escalations that need an interactive surface do not fire headlessly at all. A recursive `grep` whose read scope overlaps a `Read(…)` deny rule prompts interactively and runs clean under `claude -p`, so the oracle reports a false all-clear. It answers "which rule matched", not "would a human have been asked". Not CI-gateable either way: it needs the `claude` binary and an authenticated session.
 
 `Bash(rm:*)` and `Bash(rmdir:*)` came off the list for this reason ([CIR](change-intent-records/2026-09-04-rm-off-the-ask-list.md)), and `Bash(git push:*)` followed them off it into `allow` — that is what lets `/ship` reach `gh pr create` without stopping at its second-to-last step. `Bash(chmod:*)` moved the other way, from `deny` onto `ask`, which buys an approval path interactively but not in a lane worker, where `ask` still denies silently ([CIR](change-intent-records/2026-09-04-push-allow-chmod-ask.md)).
+
+`permissions.deny` no longer carries `Read(…)` rules. It held six, over `.env`, `secrets.*`, `.ssh/**` and `appsettings*.json`, and any of them made a recursive read of the repo escalate to an approval no mode auto-grants — the check is glob-scope-based, not existence-based, so it fired even though the repo contains none of those files ([CIR](change-intent-records/2026-09-04-read-deny-rules-removed.md)).
 
 ## Test-green gate & categories
 

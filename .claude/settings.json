@@ -73,12 +73,6 @@
       "Bash(wget:*)",
       "Bash(ssh:*)",
       "Bash(scp:*)",
-      "Read(**/.env)",
-      "Read(**/.env.*)",
-      "Read(**/secrets.*)",
-      "Read(**/.ssh/**)",
-      "Read(**/appsettings.*.json)",
-      "Read(**/appsettings.json)",
       "Edit(.claude/skills/speckit-*/SKILL.md)",
       "Edit(.specify/templates/*.md)",
       "Edit(.specify/scripts/bash/*.sh)"
