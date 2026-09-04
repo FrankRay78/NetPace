@@ -16,6 +16,7 @@
       "Bash(git commit:*)",
       "Bash(git checkout:*)",
       "Bash(git restore:*)",
+      "Bash(git push:*)",
       "Bash(cd \"d:/Source/Repos/NetPace\":*)",
       "Bash(.specify/scripts/bash/:*)",
       "Bash(dotnet build:*)",
@@ -67,24 +68,17 @@
     "deny": [
       "Bash(sudo:*)",
       "Bash(su:*)",
-      "Bash(chmod:*)",
       "Bash(chown:*)",
       "Bash(curl:*)",
       "Bash(wget:*)",
       "Bash(ssh:*)",
       "Bash(scp:*)",
-      "Read(**/.env)",
-      "Read(**/.env.*)",
-      "Read(**/secrets.*)",
-      "Read(**/.ssh/**)",
-      "Read(**/appsettings.*.json)",
-      "Read(**/appsettings.json)",
       "Edit(.claude/skills/speckit-*/SKILL.md)",
       "Edit(.specify/templates/*.md)",
       "Edit(.specify/scripts/bash/*.sh)"
     ],
     "ask": [
-      "Bash(git push:*)"
+      "Bash(chmod:*)"
     ],
     "defaultMode": "acceptEdits"
   },
