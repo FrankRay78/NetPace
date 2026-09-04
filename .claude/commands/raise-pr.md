@@ -57,6 +57,7 @@ Read `CLAUDE.md` for project context before proceeding.
    - Adherence to the project conventions in CLAUDE.md
    - Test coverage — do the tests adequately cover the new behaviour?
    - Any spec/test-plan mismatches
+   End the review with a recommendation whether to merge the PR, and if not, what you suggest needs addressing first.
    ```
 
 10. **Output result**: Print the PR URL. If step 4 deleted a spec folder, also print `Deleted spec folder: <FEATURE_DIR>`.
