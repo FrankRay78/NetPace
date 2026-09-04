@@ -21,7 +21,7 @@ public class SpeedTestResultTests
     [InlineData(1, 32000, "0.03 Bps")]
     [InlineData(1, 64000, "0.02 Bps")]
     [InlineData(500, 2000, "250 Bps")]
-    // Values near the transition point between KB and MB, 
+    // Values near the transition point between KB and MB,
     // ensuring correctness up to two decimal places.
     [InlineData(999994, 1000, "999.99 KBps")]
     [InlineData(999995, 1000, "1 MBps")]
@@ -59,7 +59,7 @@ public class SpeedTestResultTests
     [InlineData(1, 32000, "0.03 Bps")]
     [InlineData(1, 64000, "0.02 Bps")]
     [InlineData(512, 2000, "256 Bps")]
-    // Values near the transition point between KB and MB, 
+    // Values near the transition point between KB and MB,
     // ensuring correctness up to two decimal places.
     [InlineData(1048570, 1000, "1023.99 KiBps")]
     [InlineData(1048571, 1000, "1 MiBps")]

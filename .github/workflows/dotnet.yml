@@ -11,7 +11,7 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
-  
+
     - name: Setup .NET
       uses: actions/setup-dotnet@v4
       with:
@@ -22,6 +22,9 @@ jobs:
 
     - name: Build
       run: dotnet build src --no-restore
+
+    - name: Fail if formatting would change anything
+      run: dotnet format ./src/NetPace.sln --verify-no-changes
 
     - name: Fail on vulnerable dependencies
       # SCA gate: dotnet list package --vulnerable exits 0 even when advisories are found, so we

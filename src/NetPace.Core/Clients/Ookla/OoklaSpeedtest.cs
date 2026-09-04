@@ -1,11 +1,11 @@
 using System.Buffers;
 using System.Diagnostics;
+using System.IO;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Security.Cryptography;
 using System.Text;
-using System.IO;
 using NetPace.Core.Clients.Ookla.Extensions;
 
 namespace NetPace.Core.Clients.Ookla;

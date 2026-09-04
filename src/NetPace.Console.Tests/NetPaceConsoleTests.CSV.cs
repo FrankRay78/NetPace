@@ -15,7 +15,7 @@ public sealed partial class NetPaceConsoleTests
             var host = GetCommandLineTestHost(services);
 
             // When
-            var result = await host.RunAsync([ "--csv" ]);
+            var result = await host.RunAsync(["--csv"]);
 
             // Then
             Assert.Equal(0, result.ExitCode);
@@ -36,7 +36,7 @@ public sealed partial class NetPaceConsoleTests
             var host = GetCommandLineTestHost(services);
 
             // When
-            var result = await host.RunAsync([ "--csv", "--loop" ], cancellationTokenSource.Token);
+            var result = await host.RunAsync(["--csv", "--loop"], cancellationTokenSource.Token);
 
             // Then
             Assert.Equal(0, result.ExitCode);
@@ -55,7 +55,7 @@ public sealed partial class NetPaceConsoleTests
             var host = GetCommandLineTestHost(services);
 
             // When
-            var result = await host.RunAsync([ "--csv", "--count", $"{count}" ]);
+            var result = await host.RunAsync(["--csv", "--count", $"{count}"]);
 
             // Then
             Assert.Equal(0, result.ExitCode);
@@ -76,7 +76,7 @@ public sealed partial class NetPaceConsoleTests
             var host = GetCommandLineTestHost(services);
 
             // When
-            var result = await host.RunAsync([ "--csv", "--count", $"{count}", "--delay", $"{delay}" ]);
+            var result = await host.RunAsync(["--csv", "--count", $"{count}", "--delay", $"{delay}"]);
 
             // Then
             Assert.Equal(count - 1, waiter.CallCount);
@@ -95,7 +95,7 @@ public sealed partial class NetPaceConsoleTests
             var host = GetCommandLineTestHost(services);
 
             // When
-            var result = await host.RunAsync([ "--csv", "--csv-header-units" ]);
+            var result = await host.RunAsync(["--csv", "--csv-header-units"]);
 
             // Then
             Assert.Equal(0, result.ExitCode);
@@ -113,7 +113,7 @@ public sealed partial class NetPaceConsoleTests
             var host = GetCommandLineTestHost(services);
 
             // When
-            var result = await host.RunAsync([ "--csv", "--count", "3", "--unit-scale", "Mega" ]);
+            var result = await host.RunAsync(["--csv", "--count", "3", "--unit-scale", "Mega"]);
 
             // Then
             Assert.Equal(0, result.ExitCode);
@@ -134,7 +134,7 @@ public sealed partial class NetPaceConsoleTests
             var host = GetCommandLineTestHost(services);
 
             // When
-            var result = await host.RunAsync([ "--csv", "--csv-header-units", "--count", "3", "--unit-scale", $"{scale}" ]);
+            var result = await host.RunAsync(["--csv", "--csv-header-units", "--count", "3", "--unit-scale", $"{scale}"]);
 
             // Then
             Assert.Equal(0, result.ExitCode);
@@ -152,7 +152,7 @@ public sealed partial class NetPaceConsoleTests
             var host = GetCommandLineTestHost(services);
 
             // When
-            var result = await host.RunAsync([ "--csv", "--csv-header-units", "--count", "3", "--unit-scale", "Auto" ]);
+            var result = await host.RunAsync(["--csv", "--csv-header-units", "--count", "3", "--unit-scale", "Auto"]);
 
             // Then the validation error is reported on the console.
             Assert.Equal(1, result.ExitCode);
@@ -170,7 +170,7 @@ public sealed partial class NetPaceConsoleTests
             var host = GetCommandLineTestHost(services);
 
             // When
-            var result = await host.RunAsync([ "--csv", "--no-download" ]);
+            var result = await host.RunAsync(["--csv", "--no-download"]);
 
             // Then
             Assert.Equal(0, result.ExitCode);
@@ -188,7 +188,7 @@ public sealed partial class NetPaceConsoleTests
             var host = GetCommandLineTestHost(services);
 
             // When
-            var result = await host.RunAsync([ "--csv", "--no-upload" ]);
+            var result = await host.RunAsync(["--csv", "--no-upload"]);
 
             // Then
             Assert.Equal(0, result.ExitCode);
@@ -209,7 +209,7 @@ public sealed partial class NetPaceConsoleTests
             var host = GetCommandLineTestHost(services);
 
             // When
-            var result = await host.RunAsync([ "--csv", "--csv-delimiter", delimiter.ToString() ]);
+            var result = await host.RunAsync(["--csv", "--csv-delimiter", delimiter.ToString()]);
 
             // Then
             Assert.Equal(0, result.ExitCode);
@@ -227,7 +227,7 @@ public sealed partial class NetPaceConsoleTests
             var host = GetCommandLineTestHost(services);
 
             // When
-            var result = await host.RunAsync([ "--csv", "--no-latency" ]);
+            var result = await host.RunAsync(["--csv", "--no-latency"]);
 
             // Then
             Assert.Equal(0, result.ExitCode);
@@ -245,7 +245,7 @@ public sealed partial class NetPaceConsoleTests
             var host = GetCommandLineTestHost(services);
 
             // When
-            var result = await host.RunAsync([ "--csv", "--csv-header-units", "--no-latency" ]);
+            var result = await host.RunAsync(["--csv", "--csv-header-units", "--no-latency"]);
 
             // Then
             Assert.Equal(0, result.ExitCode);

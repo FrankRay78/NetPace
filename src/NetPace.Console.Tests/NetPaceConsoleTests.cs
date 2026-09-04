@@ -39,7 +39,7 @@ public sealed partial class NetPaceConsoleTests
         var host = GetCommandLineTestHost(services);
 
         // When
-        var result = await host.RunAsync([ "--unit-scale", "Mega" ]);
+        var result = await host.RunAsync(["--unit-scale", "Mega"]);
 
         // Then
         Assert.Equal(0, result.ExitCode);
@@ -60,7 +60,7 @@ public sealed partial class NetPaceConsoleTests
         var host = GetCommandLineTestHost(services);
 
         // When
-        var result = await host.RunAsync([ "-t", "--loop", "--verbosity", "Minimal" ], cancellationTokenSource.Token);
+        var result = await host.RunAsync(["-t", "--loop", "--verbosity", "Minimal"], cancellationTokenSource.Token);
 
         // Then
         Assert.Equal(0, result.ExitCode);
@@ -79,7 +79,7 @@ public sealed partial class NetPaceConsoleTests
         var host = GetCommandLineTestHost(services);
 
         // When
-        var result = await host.RunAsync([ "-t", "--count", $"{count}", "--verbosity", "Minimal" ]);
+        var result = await host.RunAsync(["-t", "--count", $"{count}", "--verbosity", "Minimal"]);
 
         // Then
         Assert.Equal(0, result.ExitCode);
@@ -100,7 +100,7 @@ public sealed partial class NetPaceConsoleTests
         var host = GetCommandLineTestHost(services);
 
         // When
-        var result = await host.RunAsync([ "-t", "--count", $"{count}", "--delay", $"{delay}", "--verbosity", "Minimal" ]);
+        var result = await host.RunAsync(["-t", "--count", $"{count}", "--delay", $"{delay}", "--verbosity", "Minimal"]);
 
         // Then
         Assert.Equal(count - 1, waiter.CallCount);
@@ -119,7 +119,7 @@ public sealed partial class NetPaceConsoleTests
         var host = GetCommandLineTestHost(services);
 
         // When
-        var result = await host.RunAsync([ "--count", "3", "--unit-scale", "Mega", "--verbosity", "Minimal" ]);
+        var result = await host.RunAsync(["--count", "3", "--unit-scale", "Mega", "--verbosity", "Minimal"]);
 
         // Then
         Assert.Equal(0, result.ExitCode);
@@ -140,7 +140,7 @@ public sealed partial class NetPaceConsoleTests
         var host = GetCommandLineTestHost(services);
 
         // When
-        var result = await host.RunAsync([ "--verbosity", verbosity ]);
+        var result = await host.RunAsync(["--verbosity", verbosity]);
 
         // Then
         Assert.Equal(0, result.ExitCode);
@@ -162,7 +162,7 @@ public sealed partial class NetPaceConsoleTests
         var host = GetCommandLineTestHost(services);
 
         // When
-        var result = await host.RunAsync([ "--server", url ]);
+        var result = await host.RunAsync(["--server", url]);
 
         // Then
         Assert.Equal(0, result.ExitCode);
@@ -184,7 +184,7 @@ public sealed partial class NetPaceConsoleTests
         var host = GetCommandLineTestHost(services);
 
         // When
-        var result = await host.RunAsync([ "--csv", "--count", "3", "--unit-scale", "Mega", "--server", url ]);
+        var result = await host.RunAsync(["--csv", "--count", "3", "--unit-scale", "Mega", "--server", url]);
 
         // Then
         Assert.Equal(0, result.ExitCode);
@@ -204,7 +204,7 @@ public sealed partial class NetPaceConsoleTests
         var host = GetCommandLineTestHost(services);
 
         // When
-        var result = await host.RunAsync([ timestamp ]);
+        var result = await host.RunAsync([timestamp]);
 
         // Then
         Assert.Equal(0, result.ExitCode);
@@ -226,7 +226,7 @@ public sealed partial class NetPaceConsoleTests
         var host = GetCommandLineTestHost(services);
 
         // When
-        var result = await host.RunAsync([ "--unit", unit.ToString(), "--unit-system", unitSystem.ToString() ]);
+        var result = await host.RunAsync(["--unit", unit.ToString(), "--unit-system", unitSystem.ToString()]);
 
         // Then
         Assert.Equal(0, result.ExitCode);
@@ -247,7 +247,7 @@ public sealed partial class NetPaceConsoleTests
         var host = GetCommandLineTestHost(services);
 
         // When
-        var result = await host.RunAsync([ "--no-download", "--verbosity", verbosity ]);
+        var result = await host.RunAsync(["--no-download", "--verbosity", verbosity]);
 
         // Then
         Assert.Equal(0, result.ExitCode);
@@ -268,7 +268,7 @@ public sealed partial class NetPaceConsoleTests
         var host = GetCommandLineTestHost(services);
 
         // When
-        var result = await host.RunAsync([ "--no-upload", "--verbosity", verbosity ]);
+        var result = await host.RunAsync(["--no-upload", "--verbosity", verbosity]);
 
         // Then
         Assert.Equal(0, result.ExitCode);
@@ -289,7 +289,7 @@ public sealed partial class NetPaceConsoleTests
         var host = GetCommandLineTestHost(services);
 
         // When
-        var result = await host.RunAsync([ "--no-download", "--no-upload", "--verbosity", verbosity ]);
+        var result = await host.RunAsync(["--no-download", "--no-upload", "--verbosity", verbosity]);
 
         // Then
         Assert.Equal(0, result.ExitCode);
@@ -310,7 +310,7 @@ public sealed partial class NetPaceConsoleTests
         var host = GetCommandLineTestHost(services);
 
         // When
-        var result = await host.RunAsync([ "--no-latency", "--verbosity", verbosity ]);
+        var result = await host.RunAsync(["--no-latency", "--verbosity", verbosity]);
 
         // Then
         Assert.Equal(0, result.ExitCode);
@@ -328,7 +328,7 @@ public sealed partial class NetPaceConsoleTests
         var host = GetCommandLineTestHost(services);
 
         // When
-        var result = await host.RunAsync([ "--no-latency", "--no-download", "--no-upload" ]);
+        var result = await host.RunAsync(["--no-latency", "--no-download", "--no-upload"]);
 
         // Then the validation error is reported on the console.
         Assert.Equal(1, result.ExitCode);
@@ -379,7 +379,7 @@ public sealed partial class NetPaceConsoleTests
         var host = GetCommandLineTestHost(services);
 
         // When
-        var result = await host.RunAsync([ "-t", "--loop", "--verbosity", "Minimal" ], cancellationTokenSource.Token);
+        var result = await host.RunAsync(["-t", "--loop", "--verbosity", "Minimal"], cancellationTokenSource.Token);
 
         // Then
         Assert.Equal(0, result.ExitCode);
@@ -400,7 +400,7 @@ public sealed partial class NetPaceConsoleTests
         var host = GetCommandLineTestHost(services);
 
         // When
-        var result = await host.RunAsync([ "-t", "--count", "100", "--verbosity", "Minimal" ], cancellationTokenSource.Token);
+        var result = await host.RunAsync(["-t", "--count", "100", "--verbosity", "Minimal"], cancellationTokenSource.Token);
 
         // Then
         Assert.Equal(0, result.ExitCode);
@@ -418,7 +418,7 @@ public sealed partial class NetPaceConsoleTests
         var host = GetCommandLineTestHost(services);
 
         // When
-        var result = await host.RunAsync([ "--count", "ABC" ]);
+        var result = await host.RunAsync(["--count", "ABC"]);
 
         // Then
         Assert.Equal(1, result.ExitCode);
@@ -477,7 +477,7 @@ public sealed partial class NetPaceConsoleTests
         var host = GetCommandLineTestHost(services);
 
         // When
-        var result = await host.RunAsync([ "-t", "--count", "100", "--verbosity", "Minimal" ], cancellationTokenSource.Token);
+        var result = await host.RunAsync(["-t", "--count", "100", "--verbosity", "Minimal"], cancellationTokenSource.Token);
 
         // Then
         Assert.Equal(0, result.ExitCode);
@@ -506,7 +506,7 @@ public sealed partial class NetPaceConsoleTests
         var host = GetCommandLineTestHost(services);
 
         // When
-        var result = await host.RunAsync([ "-t", "--count", "100", "--verbosity", "Minimal" ], cancellationTokenSource.Token);
+        var result = await host.RunAsync(["-t", "--count", "100", "--verbosity", "Minimal"], cancellationTokenSource.Token);
 
         // Then
         Assert.Equal(0, result.ExitCode);
@@ -552,7 +552,7 @@ public sealed partial class NetPaceConsoleTests
         var host = GetCommandLineTestHost(services);
 
         // When
-        var result = await host.RunAsync([ "--no-latency" ]);
+        var result = await host.RunAsync(["--no-latency"]);
 
         // Then the no-servers condition is reported on the console and exits 0.
         Assert.Equal(0, result.ExitCode);
@@ -573,7 +573,7 @@ public sealed partial class NetPaceConsoleTests
         var host = GetCommandLineTestHost(services);
 
         // When
-        var result = await host.RunAsync([ help ]);
+        var result = await host.RunAsync([help]);
 
         // Then
         Assert.Equal(0, result.ExitCode);
@@ -593,7 +593,7 @@ public sealed partial class NetPaceConsoleTests
         var host = GetCommandLineTestHost(services);
 
         // When
-        var result = await host.RunAsync([ version ]);
+        var result = await host.RunAsync([version]);
 
         // Then
         Assert.Equal(0, result.ExitCode);

@@ -24,7 +24,7 @@
     <PackageReference Include="Spectre.Console" Version="0.57.1" />
     <PackageReference Include="System.CommandLine" Version="2.0.9" />
   </ItemGroup>
-	
+
   <ItemGroup>
     <ProjectReference Include="..\NetPace.Core\NetPace.Core.csproj" />
   </ItemGroup>

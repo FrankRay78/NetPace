@@ -15,7 +15,7 @@ public sealed partial class NetPaceConsoleTests
             var host = GetCommandLineTestHost(services);
 
             // When
-            var result = await host.RunAsync([ "servers", fastest ]);
+            var result = await host.RunAsync(["servers", fastest]);
 
             // Then
             Assert.Equal(0, result.ExitCode);
@@ -31,7 +31,7 @@ public sealed partial class NetPaceConsoleTests
             var host = GetCommandLineTestHost(services);
 
             // When
-            var result = await host.RunAsync([ "servers" ]);
+            var result = await host.RunAsync(["servers"]);
 
             // Then
             Assert.Equal(0, result.ExitCode);
@@ -47,7 +47,7 @@ public sealed partial class NetPaceConsoleTests
             var host = GetCommandLineTestHost(services);
 
             // When
-            var result = await host.RunAsync([ "servers", "-l" ]);
+            var result = await host.RunAsync(["servers", "-l"]);
 
             // Then
             Assert.Equal(0, result.ExitCode);
@@ -63,7 +63,7 @@ public sealed partial class NetPaceConsoleTests
             var host = GetCommandLineTestHost(services);
 
             // When
-            var result = await host.RunAsync([ "servers", "-l" ]);
+            var result = await host.RunAsync(["servers", "-l"]);
 
             // Then
             Assert.Equal(0, result.ExitCode);
@@ -87,7 +87,7 @@ public sealed partial class NetPaceConsoleTests
             var host = GetCommandLineTestHost(services);
 
             // When
-            var result = await host.RunAsync([ "servers" ]);
+            var result = await host.RunAsync(["servers"]);
 
             // Then
             Assert.Equal(1, result.ExitCode);
@@ -108,7 +108,7 @@ public sealed partial class NetPaceConsoleTests
             var host = GetCommandLineTestHost(services);
 
             // When
-            var result = await host.RunAsync([ "servers", help ]);
+            var result = await host.RunAsync(["servers", help]);
 
             // Then
             Assert.Equal(0, result.ExitCode);

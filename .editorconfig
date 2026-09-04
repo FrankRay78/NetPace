@@ -5,7 +5,7 @@ charset = utf-8
 end_of_line = lf
 indent_style = space
 indent_size = 4
-insert_final_newline = false
+insert_final_newline = true
 trim_trailing_whitespace = true
 dotnet_style_coalesce_expression = true:suggestion
 dotnet_style_null_propagation = true:suggestion
@@ -199,3 +199,21 @@ csharp_style_prefer_primary_constructors = true:suggestion
 csharp_prefer_system_threading_lock = true:suggestion
 csharp_style_expression_bodied_lambdas = true:silent
 csharp_style_expression_bodied_local_functions = false:silent
+
+# Verify snapshots are byte-exact records of program output: their whitespace is content, not
+# formatting. Both rules stay off so no editor or format pass can silently rewrite an expectation
+# and change what the suite asserts.
+[*.verified.{txt,xml,json}]
+insert_final_newline = false
+trim_trailing_whitespace = false
+
+# Upstream spec-kit assets, restored verbatim by `specify init --here --force`. Formatting them
+# would be undone on the next upgrade, so they are deliberately out of scope for the whitespace
+# rules; their line endings are still governed by .gitattributes.
+[.specify/**]
+insert_final_newline = false
+trim_trailing_whitespace = false
+
+[.claude/skills/speckit-*/**]
+insert_final_newline = false
+trim_trailing_whitespace = false

@@ -108,6 +108,7 @@ public async Task<DownloadResult> GetDownloadSpeedAsync(
 Paired rules — `Don't` X → `Do` Y instead:
 
 - **Don't write production code without a failing test** → write a RED test first, watch it fail, *then* implement (RED-GREEN-REFACTOR; see constitution).
+- **Don't invent a test to satisfy TDD when the change isn't production code** → for config, tooling or CI changes the RED evidence is the *real tool* failing before and passing after (e.g. `dotnet format --verify-no-changes`); record both outcomes in the commit or PR, and add the tool to CI so it stays gated. Never hand-roll a stand-in for a tool that already performs the check (constitution Principle I).
 - **Don't change public APIs in `NetPace.Core` without discussion** → public-API changes affect NuGet consumers; raise the change for approval before implementing.
 - **Don't ship a public `NetPace.Core` API without XML docs** → all public methods, properties, and classes in `NetPace.Core` need `///` XML docs (they ship to NuGet consumers).
 - **Don't add a `NetPace.Core` dependency without justification** → keep the library lean; if a new dep is needed, justify it explicitly in the PR or CIR.

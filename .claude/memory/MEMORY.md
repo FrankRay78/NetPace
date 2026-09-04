@@ -25,3 +25,4 @@
 - [Be decisive when the evidence has already earned it](feedback_decisiveness_over_hedging.md) — state the verdict the gates already support; build within a decision already made rather than re-litigating it
 - [Audit the failure class after the second occurrence](feedback_audit_class_after_two_failures.md) — on the 2nd same-shape failure, enumerate every site and fix the class, not the instance
 - [OoklaSpeedtest latency-margin test is flaky under load](project_flaky_latency_margin_test.md) — wall-clock ±25% assertion; distinct from the ProfileXmlDocTests FileShare flake
+- [When the guard outgrows the fix, surface it as a decision](feedback_guard_outgrows_the_fix.md) — verification scaffolding bigger than the change means the wrong mechanism; ask before building

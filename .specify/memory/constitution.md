@@ -37,7 +37,14 @@ Every line of production code MUST be written in response to a failing test foll
 - MUST NEVER add features not covered by tests
 - MUST NEVER proceed if tests are failing
 
-**Rationale**: TDD ensures every feature is testable, reduces bugs, improves design, and provides living documentation through tests. This is foundational to NetPace quality standards.
+**Configuration, tooling and CI changes:**
+
+A change to configuration, tooling, or CI is not production code, and its RED step is the real tool or gate failing. Run that tool before the change and capture the failure, make the change, run it again — then record both outcomes in the commit message or PR body. That is the RED-GREEN evidence, and it is complete.
+
+- MUST NOT write a bespoke test to stand in for a tool that already performs the check. A hand-rolled reimplementation of a formatter, linter, or config parser covers strictly less than the tool it imitates, carries its own bugs, and reports green when its own matching logic silently fails — the exact opposite of what the RED step exists to prove.
+- MUST still make the check repeatable. Where the tool can run in CI, add it there, so the invariant is gated rather than verified once.
+
+**Rationale**: TDD ensures every feature is testable, reduces bugs, improves design, and provides living documentation through tests. This is foundational to NetPace quality standards. The carve-out exists because the rule was previously read as "a `dotnet test` case must exist for every change", which on a config-only branch produced a bespoke `.editorconfig` reader written purely to give the RED step something to execute — larger than the fix, buggier than the tool it imitated, and deleted before merge (#249). Where a real tool already decides the question, its exit code is the better test.
 
 ### II. Library-First Architecture
 
@@ -247,4 +254,4 @@ This constitution supersedes all other development practices and guides. All dev
 - Complexity MUST be justified against simplicity principles
 - For runtime development guidance, refer to `CLAUDE.md`
 
-**Version**: 1.7.0 | **Ratified**: 2026-04-10 | **Last Amended**: 2026-08-29
+**Version**: 1.8.0 | **Ratified**: 2026-04-10 | **Last Amended**: 2026-09-04
