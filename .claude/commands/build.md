@@ -97,5 +97,5 @@ Two named exceptions, because `CLAUDE.md` requires discussion for them:
 - **What you changed**, at a behaviour level, and how each acceptance criterion is met.
 - **Any assumption** you made on an ambiguous point, any public-API change, and anything you deliberately left out of scope.
 - Then exactly one of:
-  - `READY branch=<branch>` — every criterion implemented, whole suite green, everything committed, tree clean. Follow with: "Run `/ship` to format, gate, review and raise the PR — `/raise-pr` derives `Closes #<N>` from this branch name and verifies it, so the issue closes on merge."
+  - `READY branch=<branch>` — every criterion implemented, whole suite green, everything committed, tree clean. Follow with: "Run `/ship` to format, gate, review and raise the PR — `/raise-pr` derives `Closes #<N>` from this branch name and verifies it before use, then reports what it settled; check that line to confirm the link was made."
   - `FAILED reason=<short reason>` — you could not reach that state. Report the wall you actually hit, discovered by working: the criteria conflict, they do not determine the design, the change is larger than they describe. Do not fabricate READY.

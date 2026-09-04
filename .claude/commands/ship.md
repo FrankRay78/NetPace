@@ -4,6 +4,14 @@ description: Orchestrator that turns "implementation looks done" into a reviewed
 
 Read `CLAUDE.md` for project context before proceeding.
 
+## User Input
+
+```text
+$ARGUMENTS
+```
+
+Optionally a GitHub issue number naming the issue this ship should close. Empty is the normal case and is **not** a prompt — step 4 forwards whatever is here to `/raise-pr`, which otherwise infers a candidate from the branch name.
+
 `/ship` composes NetPace's existing commands behind one hard gate: **the full test suite gates everything downstream, and no review or PR happens unless it is green.** The gate is structural — the review step is downstream of the step-1 exit code, so it cannot begin against un-verified or red code. Do not add a hook to police this ordering; the exit code *is* the gate. The one step that precedes the suite is formatting (step 1a), which is cosmetic and is itself covered by the gate that follows it.
 
 `/ship` is designed to run to completion **without prompting**, so it can be driven by an automated loop (e.g. shipping many features back-to-back) as well as invoked directly. Reflection (`/capture-learnings`) is deliberately **not** a step: it needs human curation and batches better across many features, so it belongs at a supervised checkpoint after a batch — not inside each ship, where it would either block the loop or be auto-skipped to nothing. `/ship` likewise never waits on the async `@claude` PR review (see below).
@@ -55,7 +63,7 @@ Read `CLAUDE.md` for project context before proceeding.
      - Re-run `dotnet build ./src && dotnet test ./src`. Not green ⇒ STOP and report.
      - Once green, **commit the edits** with `git add -A` and a clear message (e.g. `fix: apply /ship review findings`). This is what makes the fixes reach the pushed PR — `/raise-pr` pushes *commits*, so uncommitted or untracked working-tree edits would silently never ship. `git add -A` is correct and complete here precisely because the tree started clean: it stages every review edit (including new untracked files and deletions) with no risk of sweeping in unrelated local changes.
 
-4. **Raise the PR (final step).** Compose and open the PR via `/raise-pr`. It pushes the branch (now carrying the step-3 fix commit, if any) and requests the async `@claude` GitHub-action review. If `/raise-pr` aborts (push rejected, `gh pr create` fails because the PR already exists), STOP here and report.
+4. **Raise the PR (final step).** Compose and open the PR via `/raise-pr`, forwarding any issue number from the User Input above — that pass-through is the only route by which an explicit override reaches the PR body on this path, since `/raise-pr` is never invoked directly here. With nothing supplied it infers a candidate from the branch name and verifies it, which covers the normal `/build` case. It pushes the branch (now carrying the step-3 fix commit, if any) and requests the async `@claude` GitHub-action review. If `/raise-pr` aborts (push rejected, `gh pr create` fails because the PR already exists), STOP here and report.
 
    `/ship` ends at the raised PR. It does **not** run `/capture-learnings`, and does **not** wait on or prompt about the async `@claude` review (Review B, see below). Its closing output carries one soft nudge — "PR raised; the `@claude` review posts async — run `/capture-learnings` when you next review the batch" — a free reminder, never a gate or a wait.
 
@@ -66,4 +74,4 @@ Read `CLAUDE.md` for project context before proceeding.
 
 ## Final report
 
-Report to the invoker: whether formatting changed anything (and the commit if it did), the suite result(s), which review findings were fixed-and-committed and which were deferred as out-of-scope follow-ups (if any), the PR URL, and the soft `/capture-learnings` nudge.
+Report to the invoker: whether formatting changed anything (and the commit if it did), the suite result(s), which review findings were fixed-and-committed and which were deferred as out-of-scope follow-ups (if any), the PR URL, what `/raise-pr` settled for the closing keyword (linked, no issue, or unverified — an unverified lookup is fixable in seconds and worth surfacing, not swallowing), and the soft `/capture-learnings` nudge.
