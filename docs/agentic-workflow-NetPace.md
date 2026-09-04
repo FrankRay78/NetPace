@@ -83,6 +83,34 @@ NetPace's `/ship` follows the generic *ship gate* section as written:
 - **Always runs the suite.** Step 1b is `dotnet build ./src && dotnet test ./src` — no docs-only skip. The suite is fast (no external stack), and the `gh pr create` pre-flight hook would re-run it anyway, so a skip would save nothing.
 - **Review B posts.** Because `claude.yml` is wired, the async `@claude` review the generic flow describes actually appears on the PR. `/ship` still never waits on it.
 
+## Permissions and unattended runs
+
+`ask` rules sit **above** every permission mode. Claude Code never auto-approves an `ask`-matched tool call "in any mode, including `bypassPermissions`" — alongside explicit-deny rules, `AskUserQuestion`, and `rm`/`rmdir` against a critical path. `--dangerously-skip-permissions` does not clear an `ask` rule; nothing does except removing the rule.
+
+Subagents **do** inherit the parent's permission mode: "if the parent uses `bypassPermissions` or `acceptEdits`, this takes precedence and can't be overridden", and `permissionMode` frontmatter is ignored for plugin subagents such as `pr-review-toolkit`'s. So a reviewer subagent is never *less* permitted than the `/ship` run that spawned it. When a reviewer stops on a permission, an `ask` rule is the cause, not the subagent boundary.
+
+That combination has two faces, and the quiet one is the dangerous one:
+
+| Where | An `ask`-matched call does this |
+|---|---|
+| Interactive session (`/ship` step 2) | **Prompts** — the run stops until a human answers |
+| Headless `claude -p` (an IMS-style lane worker) | **Denied silently** — "Claude requested permissions to use Bash, but you haven't granted it yet"; the agent continues with that capability missing |
+
+A headless worker cannot draw a prompt, so it denies instead. An unattended lane therefore never blocks on an `ask` rule — it quietly loses the commands the rule covers, and the work degrades rather than stopping. A green unattended run is not evidence that its `ask` rules were harmless.
+
+**This makes headless a permission oracle.** To find out whether a workflow would prompt, run it under `claude -p --dangerously-skip-permissions` and check whether every step completed: anything that would have prompted interactively comes back denied instead, with no human in the loop to mask it.
+
+```bash
+claude -p --model claude-haiku-4-5-20251001 --dangerously-skip-permissions \
+  "Run this and report RAN or DENIED plus the error: <the command under test>" </dev/null
+```
+
+This is not CI-gateable — it needs the `claude` binary and an authenticated session, neither of which exists on a GitHub runner — so it stays a manual check, run when the `ask` list changes.
+
+`Bash(rm:*)` and `Bash(rmdir:*)` were removed from `permissions.ask` for this reason: reviewer subagents build and tear down synthetic fixtures, so teardown hits `rm` on nearly every run, and those two rules were the whole cause of `/ship` step 2 prompting. The safety net that remains is the built-in one — Claude Code refuses `rm`/`rmdir` against a critical path (`.git`, `.claude`, dotfiles) in every mode, and no allow rule or `PreToolUse` hook can approve past it. The reasoning, and the scratch-scoped hook that was rejected, are in [`change-intent-records/2026-09-04-rm-off-the-ask-list.md`](change-intent-records/2026-09-04-rm-off-the-ask-list.md).
+
+The `ask` list keeps the `git` entries, whose effects reach outside the sandbox.
+
 ## Test-green gate & categories
 
 - The completion gate is the real suite run inside `/ship` (above), backed belt-and-braces by the `gh pr create` pre-flight hook — both are `dotnet build ./src && dotnet test ./src`. There is no ledger/Stop-hook proxy (the shape the generic guide's *Where the completion gate belongs* section warns against).

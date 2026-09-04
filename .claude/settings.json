@@ -84,8 +84,6 @@
       "Edit(.specify/scripts/bash/*.sh)"
     ],
     "ask": [
-      "Bash(rm:*)",
-      "Bash(rmdir:*)",
       "Bash(git push:*)",
       "Bash(git pull:*)",
       "Bash(git merge:*)",
