@@ -1,0 +1,11 @@
+---
+name: When the guard outgrows the fix, surface it as a decision
+description: If the scaffolding built to verify a change grows larger than the change itself, stop and put it to Frank before building it — that disproportion nearly always means the wrong mechanism was chosen.
+type: feedback
+---
+
+When the test, harness, or scaffolding built to *verify* a change grows larger than the change itself, **stop and put it to Frank as a decision before building it**. The disproportion is not a sign the problem was deeper than it looked; it is nearly always a sign the wrong mechanism was chosen and a smaller one exists. Say plainly what is about to be built, how big it is against the fix, and what the alternative is — then let him choose. Building it silently and revealing it at review is how a bad idea reaches a PR with five approvals of its internals and no approval of its existence.
+
+**Why:** confirmed on NetPace #249. The fix was 34 insertions in `.editorconfig` and `.gitattributes`; the guard built for it was ~600 lines — a bespoke `.editorconfig` parser, a glob-to-regex translator, and a repository scanner. Frank found out by reading the diff ("What the hell is that code? Are we really going to unit test the editor config?"), not from being told, and then "WTF. I'm losing faith in the issue fix." Five clean-context reviewers had already reviewed that code and returned three Blockers and ~15 findings — every one *inside* the thing that should not have existed, so the review reinforced it instead of questioning it. `dotnet format --verify-no-changes` replaced all of it with one CI line and covered strictly more. See [[feedback_plain_language_decisions]] for how to frame the choice, and [[feedback_decisiveness_over_hedging]] for the counterweight — this is not licence to ask permission for ordinary work.
+
+**How to apply:** before writing verification scaffolding, compare its size to the change it guards. If it is the larger of the two, or if it requires reimplementing rules some existing tool already knows, surface it as a decision rather than proceeding. The same tripwire applies mid-flight: when reviewers return findings that cluster entirely inside code this branch newly added, ask whether that code should exist before repairing it — deleting it resolves every finding at the root.
