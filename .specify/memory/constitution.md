@@ -172,7 +172,7 @@ No test in the suite may be skipped. A skipped test reports green while verifyin
 - Work on feature branches (`feature/your-feature-name`)
 - Commit frequently, especially before refactoring
 - Use clear, concise commit messages in imperative mood
-- Reference issues when applicable: "Fix #123: Handle null server response"
+- Reference issues when applicable: "Refs #123: Handle null server response" — never a GitHub closing keyword (`Fix`/`Fixes`/`Close`/`Closes`/`Resolve`/`Resolves` `#123`), which closes the issue the moment the commit reaches `main`, before review. The PR body is the only place that should close an issue.
 
 ### Code Review Standards
 
@@ -254,4 +254,4 @@ This constitution supersedes all other development practices and guides. All dev
 - Complexity MUST be justified against simplicity principles
 - For runtime development guidance, refer to `CLAUDE.md`
 
-**Version**: 1.8.0 | **Ratified**: 2026-04-10 | **Last Amended**: 2026-09-04
+**Version**: 1.8.1 | **Ratified**: 2026-04-10 | **Last Amended**: 2026-09-04
