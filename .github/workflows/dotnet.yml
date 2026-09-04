@@ -23,6 +23,14 @@ jobs:
     - name: Build
       run: dotnet build src --no-restore
 
+    - name: Fail if formatting would change anything
+      # #249: a formatting rule that disagrees with the stored files turns every later
+      # `dotnet format` into a repository-wide rewrite that buries the real change in someone's
+      # PR. This is the same style + whitespace pass /ship runs, so the drift is caught here
+      # rather than discovered by whoever ships next. It also verifies idempotency: a rule that
+      # merely oscillates cannot report no changes.
+      run: dotnet format ./src/NetPace.sln --verify-no-changes
+
     - name: Fail on vulnerable dependencies
       # SCA gate: dotnet list package --vulnerable exits 0 even when advisories are found, so we
       # inspect its output and fail the job ourselves. Parse the structured --format json (stable
