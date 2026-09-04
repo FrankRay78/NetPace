@@ -75,11 +75,13 @@ Optionally a GitHub issue number — bare (`248`), hashed (`#248`), or a full is
 
    ```
    @claude Review this pull request. Analyse the code changes and provide feedback covering:
+
    - Bugs or correctness issues
    - Security concerns (including any flagged by static analysis)
    - Adherence to the project conventions in CLAUDE.md
    - Test coverage — do the tests adequately cover the new behaviour?
    - Any spec/test-plan mismatches
+
    End the review with a recommendation whether to merge the PR, and if not, what you suggest needs addressing first.
    ```
 
