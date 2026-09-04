@@ -1,7 +1,21 @@
+# Every tracked file's line endings are governed here, so a clean checkout never reports
+# modifications and no file's stored bytes depend on the committing developer's core.autocrlf.
+# Text files are auto-detected, stored as LF, and checked out as LF on every platform.
+* text=auto eol=lf
+
+# Binaries, marked explicitly rather than left to auto-detection.
+*.png -text
+*.jpg -text
+*.snk -text
+
+# Verify snapshots are byte-exact records of program output; UTF-8 in the working tree keeps them
+# comparable across platforms.
 *.verified.txt text eol=lf working-tree-encoding=UTF-8
 *.verified.xml text eol=lf working-tree-encoding=UTF-8
 *.verified.json text eol=lf working-tree-encoding=UTF-8
 
+# Forced text (not merely auto-detected): a shell script or a source file with LF endings is a
+# correctness requirement, not a preference.
 *.sh text eol=lf
 
 *.cs text eol=lf
