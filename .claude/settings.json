@@ -16,6 +16,7 @@
       "Bash(git commit:*)",
       "Bash(git checkout:*)",
       "Bash(git restore:*)",
+      "Bash(git push:*)",
       "Bash(cd \"d:/Source/Repos/NetPace\":*)",
       "Bash(.specify/scripts/bash/:*)",
       "Bash(dotnet build:*)",
@@ -67,7 +68,6 @@
     "deny": [
       "Bash(sudo:*)",
       "Bash(su:*)",
-      "Bash(chmod:*)",
       "Bash(chown:*)",
       "Bash(curl:*)",
       "Bash(wget:*)",
@@ -84,7 +84,7 @@
       "Edit(.specify/scripts/bash/*.sh)"
     ],
     "ask": [
-      "Bash(git push:*)"
+      "Bash(chmod:*)"
     ],
     "defaultMode": "acceptEdits"
   },
