@@ -1,5 +1,5 @@
-using NetPace.Core;
 using NetPace.Console.ConsoleWriters;
+using NetPace.Core;
 
 namespace NetPace.Console.Commands;
 

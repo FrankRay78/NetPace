@@ -17,7 +17,7 @@ public sealed partial class NetPaceConsoleTests
             var host = GetCommandLineTestHost(services);
 
             // When
-            var result = await host.RunAsync([ jsonSwitch ]);
+            var result = await host.RunAsync([jsonSwitch]);
 
             // Then
             Assert.Equal(0, result.ExitCode);
@@ -40,7 +40,7 @@ public sealed partial class NetPaceConsoleTests
             var host = GetCommandLineTestHost(services);
 
             // When
-            var result = await host.RunAsync([ jsonSwitch, "--loop" ], cancellationTokenSource.Token);
+            var result = await host.RunAsync([jsonSwitch, "--loop"], cancellationTokenSource.Token);
 
             // Then
             Assert.Equal(0, result.ExitCode);
@@ -60,7 +60,7 @@ public sealed partial class NetPaceConsoleTests
             var host = GetCommandLineTestHost(services);
 
             // When
-            var result = await host.RunAsync([ jsonSwitch, "--count", $"{count}" ]);
+            var result = await host.RunAsync([jsonSwitch, "--count", $"{count}"]);
 
             // Then
             Assert.Equal(0, result.ExitCode);
@@ -82,7 +82,7 @@ public sealed partial class NetPaceConsoleTests
             var host = GetCommandLineTestHost(services);
 
             // When
-            var result = await host.RunAsync([ jsonSwitch, "--count", $"{count}", "--delay", $"{delay}" ]);
+            var result = await host.RunAsync([jsonSwitch, "--count", $"{count}", "--delay", $"{delay}"]);
 
             // Then
             Assert.Equal(count - 1, waiter.CallCount);
@@ -107,7 +107,7 @@ public sealed partial class NetPaceConsoleTests
             var host = GetCommandLineTestHost(services);
 
             // When
-            var result = await host.RunAsync([ jsonSwitch, "--count", "3", "--unit-scale", $"{scale}" ]);
+            var result = await host.RunAsync([jsonSwitch, "--count", "3", "--unit-scale", $"{scale}"]);
 
             // Then
             Assert.Equal(0, result.ExitCode);
@@ -127,7 +127,7 @@ public sealed partial class NetPaceConsoleTests
             var host = GetCommandLineTestHost(services);
 
             // When
-            var result = await host.RunAsync([ jsonSwitch, "--no-download" ]);
+            var result = await host.RunAsync([jsonSwitch, "--no-download"]);
 
             // Then
             Assert.Equal(0, result.ExitCode);
@@ -147,7 +147,7 @@ public sealed partial class NetPaceConsoleTests
             var host = GetCommandLineTestHost(services);
 
             // When
-            var result = await host.RunAsync([ jsonSwitch, "--no-upload" ]);
+            var result = await host.RunAsync([jsonSwitch, "--no-upload"]);
 
             // Then
             Assert.Equal(0, result.ExitCode);
@@ -167,7 +167,7 @@ public sealed partial class NetPaceConsoleTests
             var host = GetCommandLineTestHost(services);
 
             // When
-            var result = await host.RunAsync([ jsonSwitch, "--no-latency" ]);
+            var result = await host.RunAsync([jsonSwitch, "--no-latency"]);
 
             // Then
             Assert.Equal(0, result.ExitCode);

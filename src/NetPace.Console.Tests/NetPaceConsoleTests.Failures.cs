@@ -54,7 +54,7 @@ public sealed partial class NetPaceConsoleTests
             var host = HostWith(mock);
 
             // When
-            var result = await host.RunAsync([ "--fail-on", failOn ]);
+            var result = await host.RunAsync(["--fail-on", failOn]);
 
             // Then
             Assert.Equal(1, result.ExitCode);
@@ -74,7 +74,7 @@ public sealed partial class NetPaceConsoleTests
             var host = HostWith(mock);
 
             // When
-            var result = await host.RunAsync([ "--server", "http://unreachable.example/upload.php" ]);
+            var result = await host.RunAsync(["--server", "http://unreachable.example/upload.php"]);
 
             // Then the network condition is reported as data, not as a NetPace fault.
             Assert.Equal(0, result.ExitCode);
@@ -93,7 +93,7 @@ public sealed partial class NetPaceConsoleTests
             var host = HostWith(new ScriptedSpeedTester());
 
             // When
-            var result = await host.RunAsync([ "--file", unwritable ]);
+            var result = await host.RunAsync(["--file", unwritable]);
 
             // Then the path renders literally and the process reports the fault.
             Assert.Equal(1, result.ExitCode);
@@ -127,7 +127,7 @@ public sealed partial class NetPaceConsoleTests
             var host = HostWith(service);
 
             // When
-            var result = await host.RunAsync([ "--json" ]);
+            var result = await host.RunAsync(["--json"]);
 
             // Then the JSON carries the counts alongside a zero speed - the schema stays the same
             // shape whether or not the test succeeded, matching normal and CSV output.
@@ -145,7 +145,7 @@ public sealed partial class NetPaceConsoleTests
             var host = HostWith(service);
 
             // When
-            var result = await host.RunAsync([ "--json", "--no-upload" ]);
+            var result = await host.RunAsync(["--json", "--no-upload"]);
 
             // Then the skipped upload contributes no fields at all, while the all-failed download
             // reports a zero speed and its counts - the two outcomes stay distinguishable.
@@ -163,7 +163,7 @@ public sealed partial class NetPaceConsoleTests
             var host = HostWith(service);
 
             // When
-            var result = await host.RunAsync([ "--csv" ]);
+            var result = await host.RunAsync(["--csv"]);
 
             // Then the data row carries UploadSucceeded=0 and UploadFailed=32 beside the zero
             // speed.
@@ -180,7 +180,7 @@ public sealed partial class NetPaceConsoleTests
             var host = HostWith(service);
 
             // When
-            var result = await host.RunAsync([ "--verbosity", "Minimal" ]);
+            var result = await host.RunAsync(["--verbosity", "Minimal"]);
 
             // Then the token annotation carries the failure.
             Assert.Equal(0, result.ExitCode);
@@ -196,7 +196,7 @@ public sealed partial class NetPaceConsoleTests
             var host = HostWith(service);
 
             // When
-            var result = await host.RunAsync([ "--verbosity", "Debug" ]);
+            var result = await host.RunAsync(["--verbosity", "Debug"]);
 
             // Then Debug reports the same counts as normal verbosity - the failure is described
             // by the counts, not by per-request detail.
@@ -213,7 +213,7 @@ public sealed partial class NetPaceConsoleTests
             var host = HostWith(service);
 
             // When
-            var result = await host.RunAsync([ "--fail-on", "Total" ]);
+            var result = await host.RunAsync(["--fail-on", "Total"]);
 
             // Then
             Assert.Equal(1, result.ExitCode);
@@ -228,7 +228,7 @@ public sealed partial class NetPaceConsoleTests
             var host = HostWith(service);
 
             // When (explicit default)
-            var result = await host.RunAsync([ "--fail-on", "None" ]);
+            var result = await host.RunAsync(["--fail-on", "None"]);
 
             // Then
             Assert.Equal(0, result.ExitCode);
@@ -243,7 +243,7 @@ public sealed partial class NetPaceConsoleTests
             var host = HostWith(service);
 
             // When
-            var result = await host.RunAsync([ "--fail-on", "Partial" ]);
+            var result = await host.RunAsync(["--fail-on", "Partial"]);
 
             // Then
             Assert.Equal(1, result.ExitCode);
@@ -258,7 +258,7 @@ public sealed partial class NetPaceConsoleTests
             var host = HostWith(service);
 
             // When
-            var result = await host.RunAsync([ "--fail-on", "Total" ]);
+            var result = await host.RunAsync(["--fail-on", "Total"]);
 
             // Then
             Assert.Equal(0, result.ExitCode);
@@ -274,7 +274,7 @@ public sealed partial class NetPaceConsoleTests
             var host = HostWith(service);
 
             // When
-            var result = await host.RunAsync([ "--json", "--verbosity", "Debug" ]);
+            var result = await host.RunAsync(["--json", "--verbosity", "Debug"]);
 
             // Then the JSON carries the counts and nothing else.
             Assert.Equal(0, result.ExitCode);
@@ -291,7 +291,7 @@ public sealed partial class NetPaceConsoleTests
             var host = HostWith(service);
 
             // When
-            var result = await host.RunAsync([ "--quiet", "--fail-on", "Total" ]);
+            var result = await host.RunAsync(["--quiet", "--fail-on", "Total"]);
 
             // Then
             Assert.Equal(1, result.ExitCode);
@@ -311,7 +311,7 @@ public sealed partial class NetPaceConsoleTests
             var host = HostWith(mock);
 
             // When run with the default latency probe enabled.
-            var result = await host.RunAsync([ "--server", "http://unreachable.example/upload.php" ]);
+            var result = await host.RunAsync(["--server", "http://unreachable.example/upload.php"]);
 
             // Then the reason reaches the console and the process exits 0 (not 1).
             Assert.Equal(0, result.ExitCode);
@@ -347,7 +347,7 @@ public sealed partial class NetPaceConsoleTests
             var host = HostWith(service);
 
             // When run with --count under --fail-on total.
-            var result = await host.RunAsync([ "--count", "5", "--fail-on", "Total", "--verbosity", "Minimal" ]);
+            var result = await host.RunAsync(["--count", "5", "--fail-on", "Total", "--verbosity", "Minimal"]);
 
             // Then it exits 1 at the first triggering measurement - the snapshot carries one
             // result line, not five.
@@ -368,7 +368,7 @@ public sealed partial class NetPaceConsoleTests
             var host = HostWith(mock);
 
             // When run with --count under --fail-on total.
-            var result = await host.RunAsync([ "--count", "5", "--fail-on", "Total", "--verbosity", "Minimal" ]);
+            var result = await host.RunAsync(["--count", "5", "--fail-on", "Total", "--verbosity", "Minimal"]);
 
             // Then the process stops at the first iteration rather than reporting all five.
             Assert.Equal(1, result.ExitCode);

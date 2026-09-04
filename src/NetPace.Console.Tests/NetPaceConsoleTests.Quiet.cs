@@ -19,7 +19,7 @@ public sealed partial class NetPaceConsoleTests
             var host = GetCommandLineTestHost(services);
 
             // When
-            var result = await host.RunAsync([ quiet ]);
+            var result = await host.RunAsync([quiet]);
 
             // Then
             Assert.Equal(0, result.ExitCode);
@@ -43,7 +43,7 @@ public sealed partial class NetPaceConsoleTests
                 var host = GetCommandLineTestHost(services);
 
                 // When
-                var result = await host.RunAsync([ quiet, "--file", testFile ]);
+                var result = await host.RunAsync([quiet, "--file", testFile]);
 
                 // Then
                 Assert.Equal(0, result.ExitCode);
@@ -78,7 +78,7 @@ public sealed partial class NetPaceConsoleTests
             var host = GetCommandLineTestHost(services);
 
             // When
-            var result = await host.RunAsync([ quiet, "--csv" ]);
+            var result = await host.RunAsync([quiet, "--csv"]);
 
             // Then
             Assert.Equal(0, result.ExitCode);
@@ -98,7 +98,7 @@ public sealed partial class NetPaceConsoleTests
             var host = GetCommandLineTestHost(services);
 
             // When
-            var result = await host.RunAsync([ quiet, "--json" ]);
+            var result = await host.RunAsync([quiet, "--json"]);
 
             // Then
             Assert.Equal(0, result.ExitCode);
@@ -122,7 +122,7 @@ public sealed partial class NetPaceConsoleTests
             var host = GetCommandLineTestHost(services);
 
             // When
-            var result = await host.RunAsync([ quiet, "--verbosity", verbosity ]);
+            var result = await host.RunAsync([quiet, "--verbosity", verbosity]);
 
             // Then
             Assert.Equal(0, result.ExitCode);
@@ -142,7 +142,7 @@ public sealed partial class NetPaceConsoleTests
             var host = GetCommandLineTestHost(services);
 
             // When
-            var result = await host.RunAsync([ quiet, "--count", "ABC" ]);
+            var result = await host.RunAsync([quiet, "--count", "ABC"]);
 
             // Then
             Assert.Equal(1, result.ExitCode);
@@ -176,7 +176,7 @@ public sealed partial class NetPaceConsoleTests
             var host = GetCommandLineTestHost(services);
 
             // When
-            var result = await host.RunAsync([ quiet ]);
+            var result = await host.RunAsync([quiet]);
 
             // Then
             Assert.Equal(0, result.ExitCode);

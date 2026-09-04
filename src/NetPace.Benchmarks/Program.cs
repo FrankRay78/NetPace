@@ -1,7 +1,7 @@
 using BenchmarkDotNet.Attributes;
-using BenchmarkDotNet.Running;
 using BenchmarkDotNet.Configs;
 using BenchmarkDotNet.Jobs;
+using BenchmarkDotNet.Running;
 using NetPace.Core.Clients.Ookla;
 
 namespace NetPace.Core.Benchmarks;

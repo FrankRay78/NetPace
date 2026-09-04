@@ -20,7 +20,7 @@ public sealed partial class NetPaceConsoleTests
             var host = GetCommandLineTestHost(services);
 
             // When
-            var result = await host.RunAsync([ "--verbosity", "Minimal" ]);
+            var result = await host.RunAsync(["--verbosity", "Minimal"]);
 
             // Then
             Assert.Equal(0, result.ExitCode);
@@ -41,7 +41,7 @@ public sealed partial class NetPaceConsoleTests
             var host = GetCommandLineTestHost(services);
 
             // When
-            var result = await host.RunAsync([ "--verbosity", "Minimal" ]);
+            var result = await host.RunAsync(["--verbosity", "Minimal"]);
 
             // Then
             Assert.Equal(0, result.ExitCode);
