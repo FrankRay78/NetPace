@@ -29,6 +29,12 @@
 
 *Author override, recorded because it departs from the issue.* Issue #262 made an opt-out flag (a `--no-ai`, as its sibling script has) a condition of taking this route. The author chose always-on with no flag: the header discloses the cost, and a switch on a rarely-run manual report is machinery without a reader. Noted here so the departure is visible rather than lost.
 
+*Only one line of the reply is reported, and that was measured rather than assumed.* `ctx_stats` prints five sections; the same probe run from this repo and from the Claude home returns an identical section-3 "All your work" total but a *different* section-4 dollar figure ($3.84 against $2.80, each stable on repeat). Section 4 reads like a box-wide bottom line and is scoped to wherever the probe ran, so it is excluded — a figure that changes with the caller's directory has no place in a report whose product is a truthful answer. Sections 1, 2 and 5 describe the throwaway session the probe itself created.
+
+*The probe is confined, and runs from a fixed directory.* `--allowedTools` is a permission grant, not a whitelist: `Read`, `Glob`, `Grep` and `Task` remain auto-approved unless denied, so a model asked for context-mode's counters with `ctx_stats` unavailable would go looking — and find the legacy sidecars this change exists to stop trusting. They are denied explicitly. The call also runs from a fixed neutral directory rather than the invoking repo, so it does not execute that repo's hooks (a blocking `Stop` hook would otherwise force another turn and could make the captured reply the model's answer to the hook); fixed rather than a fresh temporary directory, because context-mode counts each distinct directory as a project and a throwaway per run would inflate the very project count this row reports.
+
+*An unrecognised reply is never printed as a reading.* `claude -p` does not guarantee a verbatim echo — it may paraphrase, refuse, report a usage limit, or be truncated, and every one of those exits 0. The reply is accepted as counters only when both section delimiters are present; otherwise the row reports `unknown` and shows the reply under a label saying it is not a counter reading.
+
 *Reading is still stateless.* Nothing is cached or accumulated between runs. Each run asks and reports; delete everything and the next run asks again.
 
 **Date:** 2026-09-05
