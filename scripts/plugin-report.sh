@@ -332,16 +332,19 @@ cm_statusline_row() {
   printf '%s\n' "$out" | sed 's/^/  /'
 }
 
-# Totals across the whole store, since a PID file is one session and no single one of them is
+# Totals across the whole store, since a PID file is one process and no single one of them is
 # "the" answer: calls are summed, and the lifetime figures — which context-mode carries forward
-# across sessions — are taken at their high-water mark.
+# across processes — are taken at their high-water mark. The session count deliberately skips
+# files that recorded nothing: a process that started and made no call still leaves a file, and
+# on a real box most of them are that. Counting files would report thirty-odd sessions of use
+# where four happened.
 cm_counters_row() {
   local out
   out=$(jq -sr --argjson v "$CM_STATS_SCHEMA" '
     if any(.[]; .schemaVersion != $v)
     then "SCHEMA:" + ([.[].schemaVersion | tostring] | unique | join(","))
     else
-      "  sessions recorded: \(length)\n" +
+      "  sessions with recorded calls: \(map(select((.total_calls // 0) > 0)) | length)\n" +
       "  tool calls: \(map(.total_calls // 0) | add)\n" +
       "  tokens saved (lifetime): \(map(.tokens_saved_lifetime // 0) | max)\n" +
       "  dollars saved (lifetime): \(map(.dollars_saved_lifetime // 0) | max)"
