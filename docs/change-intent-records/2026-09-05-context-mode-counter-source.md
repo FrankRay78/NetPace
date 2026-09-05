@@ -1,32 +1,34 @@
-# Reading context-mode's Counters from Its On-Disk Store
+# Asking context-mode for Its Own Counters
 
 **Intent:** Make `plugin-report.sh`'s PERFORMANCE section report context-mode's usage counters itself, the way it already does for rtk and read-once, instead of printing an instruction to go and run `ctx_stats` in a Claude session and mentally join the answer back to a report that has already scrolled past.
 
 **Behaviour:**
 
-- Given context-mode is installed and has recorded sessions, When the report runs, Then the context-mode row carries figures — recorded sessions, tool calls, and lifetime tokens and spend — comparable with the rows above it.
-- Given context-mode is installed but has no counter store yet, When the report runs, Then the row carries context-mode's own one-line `statusline` summary, labelled as a summary rather than presented as counters.
-- Given the store will not parse, or carries a `schemaVersion` this script was not written for, When the report runs, Then the row reports an unreadable probe — never a zero, and never the misread figure.
-- Given context-mode is installed, When the report runs, Then the TOOLING `reachable=` column reflects whether `context-mode doctor` — the tool's own health check — passes, rather than a hardcoded `n/a`.
+- Given context-mode is installed and `claude` is available, When the report runs, Then the context-mode row carries the box-wide savings and spend figures that `ctx_stats` itself reports.
+- Given the counters probe fails, returns nothing, or `claude` is not on PATH, When the report runs, Then the row reports an unreadable probe — never a zero, and never a figure.
+- Given context-mode is installed, When the report runs, Then the TOOLING `reachable=` column reflects `context-mode doctor`'s own verdict, and any exit that is not that verdict reads `unknown`.
+- Given the report runs, When a reader reads the header, Then what the script spends, writes and reaches over the network is stated there in full.
 
 **Constraints:**
 
-- The script's header contract: installs nothing, starts no model, makes no network call. It is advertised as inert to people asked to run it on an unfamiliar box, and that promise is the reason it gets run.
 - "I could not look" is not "no". Every probe that cannot reach a verdict reports `unknown`. A counter row is the easiest place in the script to break this, because a failed read and a genuine zero look identical once printed.
-- TOOLING / CONFIG / HOOKS must stay free of timestamps and machine-specific paths so two boxes diff cleanly. PERFORMANCE is exempt, which is why the new figures live only there.
+- TOOLING / CONFIG / HOOKS must stay free of timestamps and machine-specific paths so two boxes diff cleanly. PERFORMANCE is exempt, which is why the figures live only there.
+- No new persistent state of our own. The report must be a pure function of what it can observe at the moment it runs — nothing cached, accumulated, or carried between runs for us to maintain or migrate later.
 
 **Decisions:**
 
-Three sources for the figures were available, and the cheapest was chosen.
+*The premise this change started from was false, and that is the whole story.* Issue #262 established that context-mode writes per-PID `stats-pid-*.json` sidecars under its storage root, and recommended simply reading them — instant, no subprocess, no spend. That was implemented first. It was wrong: context-mode's own `bin/statusline.mjs` records those sidecars as legacy and "no longer the source of truth" (they were eventually-consistent and PID-scoped), and on a live box they disagree with `ctx_stats` by a wide margin — the sidecars reported $2.01 across 5 sessions where `ctx_stats` reported $3.65 across 33 conversations and 10 projects. A `schemaVersion` guard does not catch this, because the risk is not shape drift but source drift: a frozen legacy store passes the guard and prints confident, wrong figures forever. Reading them would have reproduced, in a new place, exactly the fault the issue was raised to fix.
 
-*Chosen — read the JSON store.* context-mode writes one `stats-pid-N.json` per session under the storage root `context-mode doctor` reports. Reading it is instant, needs no subprocess, no network and no spend, and it is the only option that yields figures comparable with the rtk and read-once rows. Its cost is a dependency on a private on-disk shape, paid down by checking every record's `schemaVersion` against the version this was written for: a bumped store reports `unknown` rather than being silently misread.
+*Rejected — read the authoritative SQLite store directly.* `ctx_stats` and the statusline both read context-mode's SessionDB. Reading it ourselves would need the `sqlite3` binary present on every box and would bind this script to an undocumented private schema — a strictly worse dependency than the documented-legacy JSON we had just abandoned, and one that breaks silently when it changes.
 
-*Rejected — `context-mode statusline`.* A supported CLI surface, so it will not drift, but it yields one summary sentence and no token or spend figures. Kept as the fallback for when there is no store to read, where a sentence from the tool beats a fabricated zero.
+*Rejected — `context-mode statusline`.* A supported CLI surface, but it carries no figures by design, it drains stdin (hanging the report on a terminal), and it prints a hardcoded `saves ~98% of context window` with a green status dot on *every* internal failure while exiting 0. A broken context-mode would have rendered as a healthy-looking 98% under a heading reading "Live counters" — worse than a fabricated zero.
 
-*Rejected — spawn `claude -p` with `ctx_stats` allowed.* This returns the canonical, fully formatted output, and a sibling project already demonstrates a shell script folding a headless `claude -p` result back into its own. It was rejected because it costs seconds, real money and network access per run, and because starting a model would break the header's promise outright. That is a large price for formatting. Had it been chosen, the READ-ONLY paragraph would have had to be amended in the same change and the call made opt-out rather than on by default.
+*Chosen — ask context-mode, by starting a headless `claude -p` with only the `ctx_stats` tool allowed.* It is the sole route to figures that are correct by construction, since it is the same MCP handler the tool answers with itself. Issue #262 raised and rejected this option as "a large price for formatting"; that reasoning does not survive the discovery above, because it is no longer formatting — it is the only correct answer available. Two argument details are load-bearing and are recorded at the call site: the prompt must be the positional immediately after `-p` (`--disallowedTools` is variadic and eats a following positional), and stdin must be redirected or the call stalls on the terminal. Only the box-wide sections of the reply are kept; the rest describe the throwaway session the probe itself just created.
 
-*Consequence accepted — the health probe is not purely inert.* `context-mode doctor` creates context-mode's empty storage directories under the Claude home when they are absent. This is the tool housekeeping its own state on a box where it is already installed, and it is the only write the script can cause; the header and `docs/agentic-workflow-NetPace.md` now say so rather than keeping an absolute "edits nothing" claim the code no longer honours.
+*Consequence accepted — the script is no longer inert, and the header says so instead of hedging.* It now starts a model, which costs seconds and money and needs the network and a logged-in CLI; `context-mode doctor` additionally checks the npm registry; and context-mode's own CLI creates its empty storage directories when absent. The previous header claimed "installs nothing, edits nothing, starts nothing", and an earlier draft of this change replaced that with "makes no network call" — which was false the moment `doctor` was added as a probe. A header block that people rely on before running a script on an unfamiliar box has to be right, so it now states the full cost.
 
-*Trap noted in the code.* The plugin also ships a `stats.json` at its install root. It holds npm download counts for the README badge, not session counters, and it is the obvious wrong file to reach for here.
+*Author override, recorded because it departs from the issue.* Issue #262 made an opt-out flag (a `--no-ai`, as its sibling script has) a condition of taking this route. The author chose always-on with no flag: the header discloses the cost, and a switch on a rarely-run manual report is machinery without a reader. Noted here so the departure is visible rather than lost.
+
+*Reading is still stateless.* Nothing is cached or accumulated between runs. Each run asks and reports; delete everything and the next run asks again.
 
 **Date:** 2026-09-05

@@ -14,14 +14,16 @@
 # there costs exactly what one that is there costs; you just stop getting the benefit, and
 # nothing reports it because nothing looks.
 #
-# READ-ONLY. Installs nothing, starts no model, makes no network call. It reads files and runs
-# version/status probes on tools that are already present. One of those probes is not purely
-# inert, and the contract says so rather than quietly bending around it: `context-mode doctor`,
-# the tool's own health check, creates context-mode's empty storage directories under the Claude
-# home when they are absent. That is the tool housekeeping its own state on a box where it is
-# already installed, and it is the only write this script can cause. Manually run: not a hook,
-# not wired into CI or /ship, no --check mode and no exit-code contract. To install what it
-# reports missing, run /install-harness-tooling.
+# WHAT IT COSTS. This installs nothing and changes no file in this repo — but it is not inert,
+# and does not claim to be. Reporting context-mode's counters truthfully means asking
+# context-mode, and its figures live behind an MCP tool, so the PERFORMANCE section starts a
+# headless `claude -p`: that spends money, takes seconds, and needs both the network and a
+# logged-in CLI. The network is reached once more, by `context-mode doctor`, which compares the
+# installed version against the npm registry. And context-mode's own CLI creates its empty
+# storage directories under the Claude home when they are absent. That is the whole of what this
+# script spends and writes. Manually run: not a hook, not wired into CI or /ship, no --check
+# mode and no exit-code contract. To install what it reports missing, run
+# /install-harness-tooling.
 #
 # "I COULD NOT LOOK" IS NOT "NO". Every probe that cannot reach a verdict — jq absent, a
 # settings or registry file that will not parse, a probe that errors — reports `unknown`, never
@@ -86,8 +88,13 @@ yn() {
 
 # Never let a hung binary hang the report. Empty when timeout(1) is unavailable.
 if command -v timeout >/dev/null 2>&1; then TIMEOUT=(timeout 10); else TIMEOUT=(); fi
+# The model call in PERFORMANCE needs its own, far longer budget; 10s would guarantee a timeout.
+if command -v timeout >/dev/null 2>&1; then TIMEOUT_AI=(timeout 180); else TIMEOUT_AI=(); fi
 
-probe() { "${TIMEOUT[@]}" "$@" >/dev/null 2>&1; }
+# </dev/null is load-bearing, not tidiness: a probed tool that reads fd 0 (context-mode's
+# `statusline` does) otherwise blocks on the terminal — 10s to a false timeout with timeout(1)
+# present, and forever without it.
+probe() { "${TIMEOUT[@]}" "$@" </dev/null >/dev/null 2>&1; }
 
 # Does this repo reference the tool at all — in harness config, or in the workflow docs that
 # describe it? Applied to all four rows so the column means one thing throughout: read-once is
@@ -107,14 +114,10 @@ plugin_enabled() {
   [ "$(jq -r --arg k "$1" '.enabledPlugins[$k] // false' "$SETTINGS" 2>/dev/null)" = "true" ]
 }
 
-# Is any recorded installPath for this plugin present on disk? Deliberately scope-blind — a
-# plugin is installed on this box or it is not; modelling user vs project scope would buy a
-# state machine nobody reads. A registry that will not parse is `unknown`, not `no`: the
-# .plugins[k][].installPath shape is Claude Code's private layout, and the day it changes this
-# must report a broken probe rather than "nothing is installed".
 # The first recorded installPath that exists on disk, empty when there is none. A plugin's own
 # binaries are only reachable through this: `context-mode` declares a bin entry but is not
-# npm-linked, so nothing it ships is on PATH.
+# npm-linked, so nothing it ships is on PATH. Plain success/failure, not a verdict — a caller
+# that needs one goes through plugin_installed, which maps registry state onto the verdict codes.
 plugin_install_path() {
   [ "$REGISTRY_STATE" = "ok" ] || return 1
   local p
@@ -124,6 +127,11 @@ plugin_install_path() {
   return 1
 }
 
+# Is any recorded installPath for this plugin present on disk? Deliberately scope-blind — a
+# plugin is installed on this box or it is not; modelling user vs project scope would buy a
+# state machine nobody reads. A registry that will not parse is `unknown`, not `no`: the
+# .plugins[k][].installPath shape is Claude Code's private layout, and the day it changes this
+# must report a broken probe rather than "nothing is installed".
 plugin_installed() {
   case "$REGISTRY_STATE" in
     nojq|unparseable) return "$UNKNOWN" ;;
@@ -173,17 +181,24 @@ declared_in_repo 'context-mode'; cm_decl=$?
 plugin_installed 'context-mode@context-mode'; cm_inst=$?
 plugin_enabled 'context-mode@context-mode'; cm_en=$?
 # `doctor` is context-mode's own health check and it runs from a shell — platform, storage
-# paths, hooks and FTS5. Installed but unprobeable (no node, no bundle) is `unknown`, never
-# `no`: that is a failed lookup, not a failed health check. A non-zero exit is normalised to
-# NO, because a probe exiting 3 would otherwise be read back out of `yn` as `n/a`.
+# paths, hooks and FTS5. Only its own verdict may produce a `no`: it exits 1 when it finds
+# critical issues, so 1 is the health answer and every OTHER non-zero code is a lookup that
+# never reached one — 124 timed out (doctor makes a network call, so a black-holed resolver
+# lands here), 126/127 could not launch, 139 crashed. Those are `unknown`. Assigning a raw $?
+# would be worse still: a probe exiting 3 would read back out of `yn` as `n/a`.
 cm_path="$(plugin_install_path 'context-mode@context-mode')"
 cm_cli="${cm_path:+$cm_path/cli.bundle.mjs}"
 if [ $cm_inst -ne "$YES" ]; then
   cm_reach=$cm_inst
-elif [ -n "$cm_cli" ] && [ -f "$cm_cli" ] && command -v node >/dev/null 2>&1; then
-  if probe node "$cm_cli" doctor; then cm_reach=$YES; else cm_reach=$NO; fi
-else
+elif [ ! -f "$cm_cli" ] || ! command -v node >/dev/null 2>&1; then
   cm_reach=$UNKNOWN
+else
+  probe node "$cm_cli" doctor
+  case $? in
+    0) cm_reach=$YES ;;
+    1) cm_reach=$NO ;;
+    *) cm_reach=$UNKNOWN ;;
+  esac
 fi
 line context-mode "$(yn $cm_decl)" "$(yn $cm_inst)" "$(yn $cm_en)" "$(yn $cm_reach)"
 
@@ -299,80 +314,58 @@ if [ $rtk_inst -eq "$YES" ]; then perf rtk rtk gain; else echo "rtk: n/a — not
 # `verify` here would fill a counter row with a checklist that exits 0, so the missing figure
 # would read as a healthy report.
 if [ -x "$ro_dir/read-once" ]; then perf read-once "$ro_dir/read-once" stats; else echo "read-once: n/a — not installed"; fi
-# context-mode's counters are NOT MCP-only: the MCP tool formats them, but the numbers are
-# plain JSON on disk — one stats-pid-N.json per session under the storage root `doctor` reports
-# (the adapter default, below the Claude home). Reading them keeps this row comparable with the
-# two above it at no cost, where the alternatives are a one-sentence CLI summary carrying no
-# figures, or spawning `claude -p` for the formatting — seconds, spend, network, and a model
-# started by a script advertised as inert.
+# context-mode's counters are NOT simply sitting on disk. The per-PID stats-pid-*.json sidecars
+# under the storage root look like the answer and are not: context-mode's own statusline source
+# records them as legacy and "no longer the source of truth" — they were eventually-consistent
+# and PID-scoped — and on a real box they disagree with ctx_stats by a wide margin. The
+# authoritative figures live behind the ctx_stats MCP tool, so the only way to report them
+# truthfully is to ask the tool, which means starting a headless model. That is disclosed in the
+# header rather than smuggled in; a wrong number printed confidently is the failure this whole
+# report exists to catch in others.
 #
-# The layout is context-mode's private shape, so every record is checked against the
-# schemaVersion this was written for and a bumped one reports `unknown` rather than being
-# misread. TRAP: the plugin also ships a stats.json at its install root holding npm download
-# counts for its README badge, not session counters. That is not this file; do not wire it up.
-CM_STATS_SCHEMA=2
-cm_stats_dir="$CLAUDE_HOME/context-mode/sessions"
+# Two argument details are load-bearing, both learned the hard way in the sibling script this
+# pattern comes from:
+#   * the prompt MUST be the positional immediately after -p. --disallowedTools is variadic, so
+#     a positional following it is eaten word-by-word as deny rules and the model gets no prompt.
+#   * stdin MUST be redirected, or the call stalls waiting on the terminal.
+CM_STATS_TOOL='mcp__plugin_context-mode_context-mode__ctx_stats'
 
-# Fallback when there is no store to read: context-mode's own supported one-line summary. It
-# carries no token or spend figures, so it is labelled as a summary and never dressed up as
-# counters.
-cm_statusline_row() {
+# ctx_stats prints five sections, and only the box-wide ones say anything about this machine:
+# the rest describe the throwaway session the probe itself just created. Sections 3 and 4 are
+# kept, minus the "This chat:" line, which is that same throwaway session and would otherwise
+# read as if it referred to the reader. ctx_stats indents its own output, so that is stripped
+# before this adds its own. If the headings ever move the whole reply is printed instead of
+# nothing — a format change should be visible, not swallowed.
+cm_box_wide() {
+  local kept
+  kept=$(printf '%s\n' "$1" | sed -n '/── 3\./,/── 5\./p' | sed '$d' \
+         | grep -v 'This chat:' | sed 's/^  //')
+  if [ -n "$kept" ]; then printf '%s\n' "$kept"; else printf '%s\n' "$1"; fi
+}
+
+cm_counters_row() {
   local out rc
-  if [ -z "$cm_cli" ] || [ ! -f "$cm_cli" ] || ! command -v node >/dev/null 2>&1; then
-    printf 'context-mode: unknown — no counter store at %s, and its CLI could not be run\n' \
-      "$(scrub "$cm_stats_dir")"
-    return
-  fi
-  out=$("${TIMEOUT[@]}" node "$cm_cli" statusline 2>&1); rc=$?
+  out=$("${TIMEOUT_AI[@]}" claude -p \
+    "Call the $CM_STATS_TOOL tool once and output its result verbatim. Add no commentary of your own." \
+    --allowedTools "$CM_STATS_TOOL" \
+    --disallowedTools Bash Edit Write WebFetch WebSearch </dev/null 2>&1); rc=$?
   if [ $rc -ne 0 ]; then
     printf 'context-mode: PROBE FAILED (exit %s)\n' "$rc"
+    printf '%s\n' "$out" | sed 's/^/  /'
+  elif [ -z "$out" ]; then
+    echo "context-mode: unknown — the counters probe exited 0 but returned nothing"
   else
-    printf "context-mode: no counter store yet — the tool's own summary instead:\n"
-  fi
-  printf '%s\n' "$out" | sed 's/^/  /'
-}
-
-# Totals across the whole store, since a PID file is one process and no single one of them is
-# "the" answer: calls are summed, and the lifetime figures — which context-mode carries forward
-# across processes — are taken at their high-water mark. The session count deliberately skips
-# files that recorded nothing: a process that started and made no call still leaves a file, and
-# on a real box most of them are that. Counting files would report thirty-odd sessions of use
-# where four happened.
-cm_counters_row() {
-  local out
-  out=$(jq -sr --argjson v "$CM_STATS_SCHEMA" '
-    if any(.[]; .schemaVersion != $v)
-    then "SCHEMA:" + ([.[].schemaVersion | tostring] | unique | join(","))
-    else
-      "  sessions with recorded calls: \(map(select((.total_calls // 0) > 0)) | length)\n" +
-      "  tool calls: \(map(.total_calls // 0) | add)\n" +
-      "  tokens saved (lifetime): \(map(.tokens_saved_lifetime // 0) | max)\n" +
-      "  dollars saved (lifetime): \(map(.dollars_saved_lifetime // 0) | max)"
-    end' "${cm_stats_files[@]}" 2>/dev/null)
-  if [ -z "$out" ]; then
-    printf 'context-mode: PROBE FAILED — the counter store at %s would not parse\n' \
-      "$(scrub "$cm_stats_dir")"
-  elif [ "${out#SCHEMA:}" != "$out" ]; then
-    printf 'context-mode: unknown — counter store is schemaVersion %s, not %s; left unread rather than misread\n' \
-      "${out#SCHEMA:}" "$CM_STATS_SCHEMA"
-  else
-    printf 'context-mode:\n%s\n' "$out"
+    echo "context-mode:"
+    cm_box_wide "$out" | sed 's/^/  /'
   fi
 }
-
-cm_stats_files=()
-if [ -d "$cm_stats_dir" ]; then
-  for f in "$cm_stats_dir"/stats-pid-*.json; do [ -f "$f" ] && cm_stats_files+=("$f"); done
-fi
 
 if [ $cm_inst -eq "$NO" ]; then
   echo "context-mode: n/a — not installed"
 elif [ $cm_inst -ne "$YES" ]; then
   echo "context-mode: unknown — cannot tell whether it is installed, so the counters were not read"
-elif [ "$have_jq" -eq 0 ]; then
-  echo "context-mode: unknown — jq is not installed, so the counter store cannot be read"
-elif [ ${#cm_stats_files[@]} -eq 0 ]; then
-  cm_statusline_row
+elif ! command -v claude >/dev/null 2>&1; then
+  echo "context-mode: unknown — the counters live behind ctx_stats, and claude is not on PATH"
 else
   cm_counters_row
 fi
