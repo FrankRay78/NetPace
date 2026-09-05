@@ -362,17 +362,28 @@ CM_STATS_TOOL='mcp__plugin_context-mode_context-mode__ctx_stats'
 # wants: section 1 then carries this repo's real figures instead of an empty throwaway session,
 # and no phantom project is created (a fresh directory per run would add one every time, and was
 # observed pushing the project count from 10 to 12 during development). The cost is that the
-# nested session runs this repo's hooks; the validation below is what keeps a hook-mangled reply
-# out of the row.
+# nested session runs this repo's hooks. The validation below is what detects a reply that did
+# not end where ctx_stats ends, which is the shape a hook-forced extra turn produces.
 # `claude -p` does not guarantee a verbatim echo: it may paraphrase, refuse, report a usage
 # limit, or be cut short, and every one of those exits 0. Unrecognised text must never occupy
 # this row — printing it under a counters label inside a section headed "Live counters" would
 # launder a failed lookup into an answer, which is the fault this whole report exists to catch
 # in others. It is still shown, under a label that says what it is.
+#
+# The end anchor is the load-bearing half, and the reason this is not just a marker check.
+# Marker presence proves only that the real output is in there SOMEWHERE — which is precisely
+# the dangerous case: the nested session runs this repo's hooks, and a blocking Stop hook forces
+# another turn, so the genuine counters can be present with the model's answer to that hook
+# appended after them. Both markers still match; the blob still prints. Requiring the reply to
+# END where ctx_stats ends — its footer is a bare version line — is what catches trailing text
+# that a substring check cannot see. If that footer ever changes the row reports `unknown` and
+# shows the reply, which is a visible failure rather than a silently wrong one.
 cm_reply_is_stats() {
   case "$1" in *"── 3."*) ;; *) return 1 ;; esac
   case "$1" in *"── 4."*) ;; *) return 1 ;; esac
-  return 0
+  local last
+  last=$(printf '%s\n' "$1" | grep -v '^[[:space:]]*$' | tail -1)
+  [[ "$last" =~ ^[[:space:]]*v[0-9]+\.[0-9]+\.[0-9]+[[:space:]]*$ ]]
 }
 
 # claude's error output routinely carries absolute paths and account detail. PERFORMANCE is
