@@ -14,10 +14,18 @@
 # there costs exactly what one that is there costs; you just stop getting the benefit, and
 # nothing reports it because nothing looks.
 #
-# READ-ONLY. Installs nothing, edits nothing, starts nothing. It reads files and runs
-# version/status probes on tools that are already present. Manually run: not a hook, not wired
-# into CI or /ship, no --check mode and no exit-code contract. To install what it reports
-# missing, run /install-harness-tooling.
+# WHAT IT COSTS. This installs nothing and changes no file in this repo — but it is not inert,
+# and does not claim to be. Reporting context-mode's counters truthfully means asking
+# context-mode, and its figures live behind an MCP tool, so the PERFORMANCE section starts a
+# headless `claude -p`: that spends money, takes seconds, and needs both the network and a
+# logged-in CLI. The network is reached once more, by `context-mode doctor`, which compares the
+# installed version against the npm registry. It writes in three places, none of them in this
+# repo: context-mode's own CLI creates its empty storage directories under the Claude home when
+# they are absent, the nested session leaves a transcript under the Claude home's projects tree
+# like any other, and it records a context-mode session of its own. The nested session runs in
+# this repo, so this repo's hooks run with it. Manually run: not a hook, not wired into CI or
+# /ship, no --check mode and no exit-code contract. To install what it reports missing, run
+# /install-harness-tooling.
 #
 # "I COULD NOT LOOK" IS NOT "NO". Every probe that cannot reach a verdict — jq absent, a
 # settings or registry file that will not parse, a probe that errors — reports `unknown`, never
@@ -81,9 +89,34 @@ yn() {
 }
 
 # Never let a hung binary hang the report. Empty when timeout(1) is unavailable.
-if command -v timeout >/dev/null 2>&1; then TIMEOUT=(timeout 10); else TIMEOUT=(); fi
+have_timeout=1
+command -v timeout >/dev/null 2>&1 || have_timeout=0
+TIMEOUT=(); TIMEOUT_AI=()
+# The model call in PERFORMANCE needs its own, far longer budget; 10s would guarantee a timeout.
+if [ "$have_timeout" -eq 1 ]; then TIMEOUT=(timeout 10); TIMEOUT_AI=(timeout 180); fi
+# Every expansion uses the ${a[@]+"${a[@]}"} form: an EMPTY array under `set -u` is a fatal
+# unbound-variable error on bash < 4.4, and macOS ships bash 3.2 *and* no timeout(1) — so the
+# empty-array branch and the old-bash branch are the same box, where the plain form aborts the
+# whole report mid-TOOLING.
 
-probe() { "${TIMEOUT[@]}" "$@" >/dev/null 2>&1; }
+# </dev/null is load-bearing, not tidiness: a probed tool that reads fd 0 (context-mode's
+# `statusline` does) otherwise blocks on the terminal — 10s to a false timeout with timeout(1)
+# present, and forever without it.
+probe() { ${TIMEOUT[@]+"${TIMEOUT[@]}"} "$@" </dev/null >/dev/null 2>&1; }
+
+# Map a probe's exit status onto a verdict. Only the tool's own failure code (1) is a `no`;
+# every other non-zero is a lookup that never reached a verdict — 124 timed out, 126/127 could
+# not launch, 139 crashed. Assigning a raw $? instead would be worse than wrong: a probe exiting
+# 3 reads back out of yn() as `n/a`, which this report defines as "there is no probe for this
+# cell" — asserting none was attempted when one ran and failed.
+probe_verdict() {
+  probe "$@"
+  case $? in
+    0) return "$YES" ;;
+    1) return "$NO" ;;
+    *) return "$UNKNOWN" ;;
+  esac
+}
 
 # Does this repo reference the tool at all — in harness config, or in the workflow docs that
 # describe it? Applied to all four rows so the column means one thing throughout: read-once is
@@ -103,6 +136,19 @@ plugin_enabled() {
   [ "$(jq -r --arg k "$1" '.enabledPlugins[$k] // false' "$SETTINGS" 2>/dev/null)" = "true" ]
 }
 
+# The first recorded installPath that exists on disk, empty when there is none. A plugin's own
+# binaries are only reachable through this: `context-mode` declares a bin entry but is not
+# npm-linked, so nothing it ships is on PATH. Plain success/failure, not a verdict — a caller
+# that needs one goes through plugin_installed, which maps registry state onto the verdict codes.
+plugin_install_path() {
+  [ "$REGISTRY_STATE" = "ok" ] || return 1
+  local p
+  while IFS= read -r p; do
+    [ -d "$p" ] && { printf '%s' "$p"; return 0; }
+  done < <(jq -r --arg k "$1" '.plugins[$k][]?.installPath // empty' "$REGISTRY" 2>/dev/null)
+  return 1
+}
+
 # Is any recorded installPath for this plugin present on disk? Deliberately scope-blind — a
 # plugin is installed on this box or it is not; modelling user vs project scope would buy a
 # state machine nobody reads. A registry that will not parse is `unknown`, not `no`: the
@@ -113,10 +159,7 @@ plugin_installed() {
     nojq|unparseable) return "$UNKNOWN" ;;
     missing) return "$NO" ;;
   esac
-  local p
-  while IFS= read -r p; do
-    [ -d "$p" ] && return "$YES"
-  done < <(jq -r --arg k "$1" '.plugins[$k][]?.installPath // empty' "$REGISTRY" 2>/dev/null)
+  plugin_install_path "$1" >/dev/null && return "$YES"
   return "$NO"
 }
 
@@ -146,20 +189,38 @@ if [ "$SETTINGS_STATE" = "unparseable" ]; then
   echo "WARNING: $(scrub "$SETTINGS") does not parse — enabled cannot be determined."
   echo
 fi
+if [ "$have_timeout" -eq 0 ]; then
+  echo "WARNING: timeout(1) is not installed — probes below run unbounded, including the model call in PERFORMANCE, which is the one that bills. A hung tool will hang this report."
+  echo
+fi
 
 # read-once — stops Claude re-reading files it already has in context.
 ro_dir="$CLAUDE_HOME/read-once"
 declared_in_repo 'read-once'; ro_decl=$?
 [ -d "$ro_dir" ]; ro_inst=$?
 hooked_in_claude_home 'read-once'; ro_en=$?
-if [ -x "$ro_dir/read-once" ]; then probe "$ro_dir/read-once" verify; ro_reach=$?; else ro_reach=$NO; fi
+if [ -x "$ro_dir/read-once" ]; then probe_verdict "$ro_dir/read-once" verify; ro_reach=$?; else ro_reach=$NO; fi
 line read-once "$(yn $ro_decl)" "$(yn $ro_inst)" "$(yn $ro_en)" "$(yn $ro_reach)"
 
 # context-mode — MCP server that sandboxes large tool output outside the context window.
 declared_in_repo 'context-mode'; cm_decl=$?
 plugin_installed 'context-mode@context-mode'; cm_inst=$?
 plugin_enabled 'context-mode@context-mode'; cm_en=$?
-cm_reach=$NA   # counters and health live behind MCP (ctx_doctor); nothing to probe from a shell
+# `doctor` is context-mode's own health check and it runs from a shell — platform, storage
+# paths, hooks and FTS5. Only its own verdict may produce a `no`: it exits 1 when it finds
+# critical issues, so 1 is the health answer and every OTHER non-zero code is a lookup that
+# never reached one — 124 timed out (doctor makes a network call, so a black-holed resolver
+# lands here), 126/127 could not launch, 139 crashed. Those are `unknown`. Assigning a raw $?
+# would be worse still: a probe exiting 3 would read back out of `yn` as `n/a`.
+cm_path="$(plugin_install_path 'context-mode@context-mode')"
+cm_cli="${cm_path:+$cm_path/cli.bundle.mjs}"
+if [ $cm_inst -ne "$YES" ]; then
+  cm_reach=$cm_inst
+elif [ ! -f "$cm_cli" ] || ! command -v node >/dev/null 2>&1; then
+  cm_reach=$UNKNOWN
+else
+  probe_verdict node "$cm_cli" doctor; cm_reach=$?
+fi
 line context-mode "$(yn $cm_decl)" "$(yn $cm_inst)" "$(yn $cm_en)" "$(yn $cm_reach)"
 
 # rtk — token-saving CLI proxy. green-gate.sh strips a leading `rtk` when parsing a command,
@@ -167,7 +228,7 @@ line context-mode "$(yn $cm_decl)" "$(yn $cm_inst)" "$(yn $cm_en)" "$(yn $cm_rea
 declared_in_repo 'rtk'; rtk_decl=$?
 command -v rtk >/dev/null 2>&1; rtk_inst=$?
 hooked_in_claude_home 'rtk'; rtk_en=$?
-if [ $rtk_inst -eq 0 ]; then probe rtk --version; rtk_reach=$?; else rtk_reach=$NO; fi
+if [ $rtk_inst -eq "$YES" ]; then probe_verdict rtk --version; rtk_reach=$?; else rtk_reach=$NO; fi
 line rtk "$(yn $rtk_decl)" "$(yn $rtk_inst)" "$(yn $rtk_en)" "$(yn $rtk_reach)"
 
 # pr-review-toolkit — supplies the named reviewer agents /ship calls.
@@ -210,7 +271,7 @@ case "$SETTINGS_STATE" in
       done < <(printf '%s\n' "$cmd" | grep -oE '\$\{?CLAUDE_PROJECT_DIR\}?[^"'"'"'[:space:]]*')
       # A command naming a script by some other route cannot be checked from here — say so,
       # rather than letting the ok: line below imply it was covered.
-      if [ "$found" -eq 0 ] && printf '%s' "$cmd" | grep -qE '\.(sh|ps1|mjs|js|py)([[:space:]]|"|$)'; then
+      if [ "$found" -eq 0 ] && [[ "$cmd" =~ \.(sh|ps1|mjs|js|py)([[:space:]]|\"|$) ]]; then
         note "unchecked-path: script referenced without \$CLAUDE_PROJECT_DIR — $(scrub "$cmd")"
       fi
     done < <(jq -r '[(.hooks // {} | to_entries[].value[]?.hooks[]?.command // empty), (.statusLine.command // empty)][]' "$SETTINGS" 2>/dev/null)
@@ -263,7 +324,7 @@ echo
 perf() {
   local label="$1"; shift
   local out rc
-  out=$("${TIMEOUT[@]}" "$@" 2>&1); rc=$?
+  out=$(${TIMEOUT[@]+"${TIMEOUT[@]}"} "$@" </dev/null 2>&1); rc=$?
   if [ $rc -ne 0 ]; then printf '%s: PROBE FAILED (exit %s)\n' "$label" "$rc"; else printf '%s:\n' "$label"; fi
   printf '%s\n' "$out" | sed 's/^/  /'
 }
@@ -274,5 +335,105 @@ if [ $rtk_inst -eq "$YES" ]; then perf rtk rtk gain; else echo "rtk: n/a — not
 # `verify` here would fill a counter row with a checklist that exits 0, so the missing figure
 # would read as a healthy report.
 if [ -x "$ro_dir/read-once" ]; then perf read-once "$ro_dir/read-once" stats; else echo "read-once: n/a — not installed"; fi
-if [ $cm_inst -eq "$YES" ]; then echo "context-mode: installed — counters are MCP-only; run ctx_stats in-session"; else echo "context-mode: $(yn $cm_inst) — no shell-visible counters"; fi
+# context-mode's counters are NOT simply sitting on disk. The per-PID stats-pid-*.json sidecars
+# under the storage root look like the answer and are not: context-mode's own statusline source
+# records them as legacy and "no longer the source of truth" — they were eventually-consistent
+# and PID-scoped — and on a real box they disagree with ctx_stats by a wide margin. The
+# authoritative figures live behind the ctx_stats MCP tool, so the only way to report them
+# truthfully is to ask the tool, which means starting a headless model. That is disclosed in the
+# header rather than smuggled in; a wrong number printed confidently is the failure this whole
+# report exists to catch in others.
+#
+# Two argument details are load-bearing, both learned the hard way in the sibling script this
+# pattern comes from:
+#   * the prompt MUST be the positional immediately after -p. --disallowedTools is variadic, so
+#     a positional following it is eaten word-by-word as deny rules and the model gets no prompt.
+#   * stdin MUST be redirected, or the call stalls waiting on the terminal.
+CM_STATS_TOOL='mcp__plugin_context-mode_context-mode__ctx_stats'
+
+# ctx_stats' reply is printed whole rather than sliced. An earlier revision kept only the one
+# line proven to be box-wide, which threw away the headline totals with it — the cure was worse
+# than the disease, and slicing is what caused it. What IS worth knowing, and was measured
+# rather than assumed: the reply is scoped to the directory the probe runs in. The same probe
+# run from this repo and from the Claude home returns an identical section-3 "All your work"
+# total but a different section-4 dollar figure ($3.84 against $2.80, each stable on repeat).
+#
+# So it runs from the repo this report is about, which is the scope a per-repo tooling report
+# wants: section 1 then carries this repo's real figures instead of an empty throwaway session,
+# and no phantom project is created (a fresh directory per run would add one every time, and was
+# observed pushing the project count from 10 to 12 during development). The cost is that the
+# nested session runs this repo's hooks. The validation below is what detects a reply that did
+# not end where ctx_stats ends, which is the shape a hook-forced extra turn produces.
+# `claude -p` does not guarantee a verbatim echo: it may paraphrase, refuse, report a usage
+# limit, or be cut short, and every one of those exits 0. Unrecognised text must never occupy
+# this row — printing it under a counters label inside a section headed "Live counters" would
+# launder a failed lookup into an answer, which is the fault this whole report exists to catch
+# in others. It is still shown, under a label that says what it is.
+#
+# The end anchor is the load-bearing half, and the reason this is not just a marker check.
+# Marker presence proves only that the real output is in there SOMEWHERE — which is precisely
+# the dangerous case: the nested session runs this repo's hooks, and a blocking Stop hook forces
+# another turn, so the genuine counters can be present with the model's answer to that hook
+# appended after them. Both markers still match; the blob still prints. Requiring the reply to
+# END where ctx_stats ends — its footer is a bare version line — is what catches trailing text
+# that a substring check cannot see. If that footer ever changes the row reports `unknown` and
+# shows the reply, which is a visible failure rather than a silently wrong one.
+cm_reply_is_stats() {
+  case "$1" in *"── 3."*) ;; *) return 1 ;; esac
+  case "$1" in *"── 4."*) ;; *) return 1 ;; esac
+  local last
+  last=$(printf '%s\n' "$1" | grep -v '^[[:space:]]*$' | tail -1)
+  [[ "$last" =~ ^[[:space:]]*v[0-9]+\.[0-9]+\.[0-9]+[[:space:]]*$ ]]
+}
+
+# claude's error output routinely carries absolute paths and account detail. PERFORMANCE is
+# exempt from the diffability rule, not from "do not paste someone's home directory into a
+# report they will attach to an issue".
+cm_show_reply() {
+  local l
+  while IFS= read -r l; do printf '  %s\n' "$(scrub "$l")"; done <<<"$1"
+}
+
+cm_counters_row() {
+  local out rc wd
+  wd=$ROOT; [ -d "$wd" ] || wd=/
+  # --allowedTools is a permission GRANT, not a whitelist: Read/Glob/Grep/Task stay
+  # auto-approved unless denied, and a model asked for context-mode's counters with ctx_stats
+  # unavailable will go looking — finding the legacy stats-pid-*.json sidecars this change
+  # exists to stop trusting. Deny them, so the only counters it can reach are the real ones.
+  out=$(cd "$wd" 2>/dev/null && ${TIMEOUT_AI[@]+"${TIMEOUT_AI[@]}"} claude -p \
+    "Call the $CM_STATS_TOOL tool once and output its result verbatim. Add no commentary of your own." \
+    --allowedTools "$CM_STATS_TOOL" \
+    --disallowedTools Bash Edit Write WebFetch WebSearch Read Glob Grep Task NotebookEdit \
+    </dev/null 2>&1); rc=$?
+  if [ $rc -ne 0 ]; then
+    printf 'context-mode: PROBE FAILED (exit %s)\n' "$rc"
+    cm_show_reply "$out"
+  elif [ -z "${out//[[:space:]]/}" ]; then
+    echo "context-mode: unknown — the counters probe exited 0 but returned nothing"
+  elif ! cm_reply_is_stats "$out"; then
+    echo "context-mode: unknown — the probe reply is not ctx_stats output, so nothing below is a counter reading"
+    echo "  raw probe reply (NOT counters):"
+    cm_show_reply "$out"
+  else
+    # The only row here whose figures came through a model round-trip; say so, so a reader can
+    # tell it apart from rtk's and read-once's at a glance — and so "this chat" in the reply is
+    # read as the probe's session, which is what it is.
+    echo "context-mode: (via ctx_stats, headless probe)"
+    cm_show_reply "$out"
+  fi
+}
+
+if [ $cm_inst -eq "$NO" ]; then
+  echo "context-mode: n/a — not installed"
+elif [ $cm_inst -ne "$YES" ]; then
+  echo "context-mode: unknown — cannot tell whether it is installed, so the counters were not read"
+# Deliberately NOT gated on `enabled`: that column reports enablement for THIS repo, while
+# ctx_stats resolves through the user-level plugin install — verified by running the probe from
+# outside any project and still getting a reply. A `no` there would suppress a probe that works.
+elif ! command -v claude >/dev/null 2>&1; then
+  echo "context-mode: unknown — the counters live behind ctx_stats, and claude is not on PATH"
+else
+  cm_counters_row
+fi
 echo "pr-review-toolkit: n/a — exposes no counters"

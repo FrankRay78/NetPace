@@ -4,7 +4,7 @@ description: Install the token/context tooling this harness declares but does no
 
 Read `CLAUDE.md` for project context before proceeding.
 
-Installs whatever [`scripts/plugin-report.sh`](../../scripts/plugin-report.sh) reports as missing. The report is the read-only half of this pair; this command is the half that changes the box.
+Installs whatever [`scripts/plugin-report.sh`](../../scripts/plugin-report.sh) reports as missing. The report is the half that only looks at the box — it changes nothing here, though it does spend a little to ask context-mode for its counters; this command is the half that changes the box.
 
 **Nothing here runs unattended.** Two of the three tools wire a `PreToolUse` hook into `~/.claude/settings.json` on your behalf — read-once's installer does it directly, and rtk's separate `init -g` step does — and `docs/agentic-workflow.md` (*Modifying the harness itself*, rule 4) makes human review of every hook before it lands **non-negotiable**. So this command stops at each of those points and shows you the diff. It also never fetches-and-executes: `.claude/settings.json` denies `Bash(curl:*)` and `Bash(wget:*)`, those denies stay as they are, and every install command below is **printed for you to run by hand**, never executed by the agent.
 
