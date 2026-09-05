@@ -112,15 +112,6 @@ plugin_enabled() {
 # state machine nobody reads. A registry that will not parse is `unknown`, not `no`: the
 # .plugins[k][].installPath shape is Claude Code's private layout, and the day it changes this
 # must report a broken probe rather than "nothing is installed".
-plugin_installed() {
-  case "$REGISTRY_STATE" in
-    nojq|unparseable) return "$UNKNOWN" ;;
-    missing) return "$NO" ;;
-  esac
-  plugin_install_path "$1" >/dev/null && return "$YES"
-  return "$NO"
-}
-
 # The first recorded installPath that exists on disk, empty when there is none. A plugin's own
 # binaries are only reachable through this: `context-mode` declares a bin entry but is not
 # npm-linked, so nothing it ships is on PATH.
@@ -131,6 +122,15 @@ plugin_install_path() {
     [ -d "$p" ] && { printf '%s' "$p"; return 0; }
   done < <(jq -r --arg k "$1" '.plugins[$k][]?.installPath // empty' "$REGISTRY" 2>/dev/null)
   return 1
+}
+
+plugin_installed() {
+  case "$REGISTRY_STATE" in
+    nojq|unparseable) return "$UNKNOWN" ;;
+    missing) return "$NO" ;;
+  esac
+  plugin_install_path "$1" >/dev/null && return "$YES"
+  return "$NO"
 }
 
 # Does a hook registered in the Claude home settings actually invoke this tool? Matched against
@@ -327,9 +327,34 @@ cm_statusline_row() {
   if [ $rc -ne 0 ]; then
     printf 'context-mode: PROBE FAILED (exit %s)\n' "$rc"
   else
-    printf 'context-mode: no counter store yet — the tool%s own summary instead:\n' "'"
+    printf "context-mode: no counter store yet — the tool's own summary instead:\n"
   fi
   printf '%s\n' "$out" | sed 's/^/  /'
+}
+
+# Totals across the whole store, since a PID file is one session and no single one of them is
+# "the" answer: calls are summed, and the lifetime figures — which context-mode carries forward
+# across sessions — are taken at their high-water mark.
+cm_counters_row() {
+  local out
+  out=$(jq -sr --argjson v "$CM_STATS_SCHEMA" '
+    if any(.[]; .schemaVersion != $v)
+    then "SCHEMA:" + ([.[].schemaVersion | tostring] | unique | join(","))
+    else
+      "  sessions recorded: \(length)\n" +
+      "  tool calls: \(map(.total_calls // 0) | add)\n" +
+      "  tokens saved (lifetime): \(map(.tokens_saved_lifetime // 0) | max)\n" +
+      "  dollars saved (lifetime): \(map(.dollars_saved_lifetime // 0) | max)"
+    end' "${cm_stats_files[@]}" 2>/dev/null)
+  if [ -z "$out" ]; then
+    printf 'context-mode: PROBE FAILED — the counter store at %s would not parse\n' \
+      "$(scrub "$cm_stats_dir")"
+  elif [ "${out#SCHEMA:}" != "$out" ]; then
+    printf 'context-mode: unknown — counter store is schemaVersion %s, not %s; left unread rather than misread\n' \
+      "${out#SCHEMA:}" "$CM_STATS_SCHEMA"
+  else
+    printf 'context-mode:\n%s\n' "$out"
+  fi
 }
 
 cm_stats_files=()
@@ -345,23 +370,7 @@ elif [ "$have_jq" -eq 0 ]; then
   echo "context-mode: unknown — jq is not installed, so the counter store cannot be read"
 elif [ ${#cm_stats_files[@]} -eq 0 ]; then
   cm_statusline_row
-elif cm_counters=$(jq -sr --argjson v "$CM_STATS_SCHEMA" '
-       if any(.[]; .schemaVersion != $v)
-       then "SCHEMA:" + ([.[].schemaVersion | tostring] | unique | join(","))
-       else
-         "  sessions recorded: \(length)\n" +
-         "  tool calls: \(map(.total_calls // 0) | add)\n" +
-         "  tokens saved (lifetime): \(map(.tokens_saved_lifetime // 0) | max)\n" +
-         "  dollars saved (lifetime): \(map(.dollars_saved_lifetime // 0) | max)"
-       end' "${cm_stats_files[@]}" 2>/dev/null) &&
-     [ -n "$cm_counters" ] && [ "${cm_counters#SCHEMA:}" = "$cm_counters" ]; then
-  echo "context-mode:"
-  printf '%s\n' "$cm_counters"
-elif [ -n "${cm_counters:-}" ]; then
-  printf 'context-mode: unknown — counter store is schemaVersion %s, not %s; left unread rather than misread\n' \
-    "${cm_counters#SCHEMA:}" "$CM_STATS_SCHEMA"
 else
-  printf 'context-mode: PROBE FAILED — the counter store at %s would not parse\n' \
-    "$(scrub "$cm_stats_dir")"
+  cm_counters_row
 fi
 echo "pr-review-toolkit: n/a — exposes no counters"
