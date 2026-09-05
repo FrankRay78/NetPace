@@ -22,9 +22,9 @@
 # installed version against the npm registry. It writes in three places, none of them in this
 # repo: context-mode's own CLI creates its empty storage directories under the Claude home when
 # they are absent, the nested session leaves a transcript under the Claude home's projects tree
-# like any other, and it records a context-mode session of its own. It is run from a neutral
-# directory so it does not execute this repo's hooks. Manually run: not a hook, not wired into CI or /ship, no --check
-# mode and no exit-code contract. To install what it reports missing, run
+# like any other, and it records a context-mode session of its own. The nested session runs in
+# this repo, so this repo's hooks run with it. Manually run: not a hook, not wired into CI or
+# /ship, no --check mode and no exit-code contract. To install what it reports missing, run
 # /install-harness-tooling.
 #
 # "I COULD NOT LOOK" IS NOT "NO". Every probe that cannot reach a verdict — jq absent, a
@@ -351,38 +351,28 @@ if [ -x "$ro_dir/read-once" ]; then perf read-once "$ro_dir/read-once" stats; el
 #   * stdin MUST be redirected, or the call stalls waiting on the terminal.
 CM_STATS_TOOL='mcp__plugin_context-mode_context-mode__ctx_stats'
 
-# ctx_stats prints five numbered sections, and only ONE line in them is genuinely about this
-# box: section 3's "All your work" total. Everything else is scoped to wherever the probe ran.
-# That was measured, not assumed — the same probe run from this repo and from the Claude home
-# returns an identical "All your work" figure and a DIFFERENT section-4 dollar figure ($3.84 vs
-# $2.80, each stable on repeat). Section 4 reads like a box-wide bottom line and is not one, so
-# it is excluded: a number that changes with the caller's directory has no business in a report
-# whose product is a truthful answer. Sections 1, 2 and 5 describe the probe's own throwaway
-# session. The reply is accepted as counters ONLY when both delimiters are present, because
-# `claude -p` does not guarantee a verbatim echo:
-# it may paraphrase, refuse, report a usage limit, or be cut short, and every one of those exits
-# 0. Unrecognised text must never occupy this row — printing it under the bare `context-mode:`
-# label inside a section headed "Live counters" would launder a failed lookup into an answer,
-# which is the fault this whole report exists to catch in others. It is still shown, under a
-# label that says what it is.
+# ctx_stats' reply is printed whole rather than sliced. An earlier revision kept only the one
+# line proven to be box-wide, which threw away the headline totals with it — the cure was worse
+# than the disease, and slicing is what caused it. What IS worth knowing, and was measured
+# rather than assumed: the reply is scoped to the directory the probe runs in. The same probe
+# run from this repo and from the Claude home returns an identical section-3 "All your work"
+# total but a different section-4 dollar figure ($3.84 against $2.80, each stable on repeat).
+#
+# So it runs from the repo this report is about, which is the scope a per-repo tooling report
+# wants: section 1 then carries this repo's real figures instead of an empty throwaway session,
+# and no phantom project is created (a fresh directory per run would add one every time, and was
+# observed pushing the project count from 10 to 12 during development). The cost is that the
+# nested session runs this repo's hooks; the validation below is what keeps a hook-mangled reply
+# out of the row.
+# `claude -p` does not guarantee a verbatim echo: it may paraphrase, refuse, report a usage
+# limit, or be cut short, and every one of those exits 0. Unrecognised text must never occupy
+# this row — printing it under a counters label inside a section headed "Live counters" would
+# launder a failed lookup into an answer, which is the fault this whole report exists to catch
+# in others. It is still shown, under a label that says what it is.
 cm_reply_is_stats() {
   case "$1" in *"── 3."*) ;; *) return 1 ;; esac
   case "$1" in *"── 4."*) ;; *) return 1 ;; esac
   return 0
-}
-
-# awk, not a sed range: a sed range re-opens on a second `── 3.` (a model that echoes then
-# comments) and appends to EOF, and the `$d` needed to drop the closing heading silently eats
-# the last real figure whenever section 5 is missing. This enters once and leaves once.
-# "This chat:" is dropped — it is the probe's own throwaway session and would read as the
-# reader's. ctx_stats indents its output inconsistently, so a leading indent is stripped if
-# present rather than assumed.
-cm_box_wide() {
-  printf '%s\n' "$1" | awk '
-    /── 3\./ && !seen3 { inside = 1; seen3 = 1; next }
-    /── 4\./ && inside { inside = 0 }
-    inside && !/This chat:/ && NF { sub(/^  /, ""); print }
-  '
 }
 
 # claude's error output routinely carries absolute paths and account detail. PERFORMANCE is
@@ -394,16 +384,8 @@ cm_show_reply() {
 }
 
 cm_counters_row() {
-  local out rc kept wd
-  # A neutral working directory, because `claude -p` inherits the cwd's project settings and
-  # would otherwise run whatever hooks the invoking repo registers — including a blocking Stop
-  # hook, which forces another turn and can make the captured reply the model's answer to that
-  # hook rather than ctx_stats. Verified that the tool still resolves from outside a project.
-  #
-  # A FIXED directory, not a fresh temporary one: context-mode counts each distinct directory as
-  # a project, so a throwaway per run would permanently inflate the project count in the very
-  # figure this row reports (observed going 10 -> 12 while testing).
-  wd=$CLAUDE_HOME; [ -d "$wd" ] || wd=/
+  local out rc wd
+  wd=$ROOT; [ -d "$wd" ] || wd=/
   # --allowedTools is a permission GRANT, not a whitelist: Read/Glob/Grep/Task stay
   # auto-approved unless denied, and a model asked for context-mode's counters with ctx_stats
   # unavailable will go looking — finding the legacy stats-pid-*.json sidecars this change
@@ -423,15 +405,11 @@ cm_counters_row() {
     echo "  raw probe reply (NOT counters):"
     cm_show_reply "$out"
   else
-    kept=$(cm_box_wide "$out")
-    if [ -z "${kept//[[:space:]]/}" ]; then
-      echo "context-mode: unknown — ctx_stats replied, but carried no box-wide total"
-    else
-      # The only row here whose figures came through a model round-trip; say so, so a reader can
-      # tell it apart from rtk's and read-once's at a glance.
-      echo "context-mode: (via ctx_stats, headless probe)"
-      printf '%s\n' "$kept" | sed 's/^/  /'
-    fi
+    # The only row here whose figures came through a model round-trip; say so, so a reader can
+    # tell it apart from rtk's and read-once's at a glance — and so "this chat" in the reply is
+    # read as the probe's session, which is what it is.
+    echo "context-mode: (via ctx_stats, headless probe)"
+    cm_show_reply "$out"
   fi
 }
 
@@ -439,10 +417,9 @@ if [ $cm_inst -eq "$NO" ]; then
   echo "context-mode: n/a — not installed"
 elif [ $cm_inst -ne "$YES" ]; then
   echo "context-mode: unknown — cannot tell whether it is installed, so the counters were not read"
-# Deliberately NOT gated on `enabled`: that column reports enablement for THIS repo, and the
-# probe runs from a neutral directory precisely so the invoking repo's settings do not apply.
-# Verified that ctx_stats resolves outside any project, so a `no` there would suppress a probe
-# that works.
+# Deliberately NOT gated on `enabled`: that column reports enablement for THIS repo, while
+# ctx_stats resolves through the user-level plugin install — verified by running the probe from
+# outside any project and still getting a reply. A `no` there would suppress a probe that works.
 elif ! command -v claude >/dev/null 2>&1; then
   echo "context-mode: unknown — the counters live behind ctx_stats, and claude is not on PATH"
 else
