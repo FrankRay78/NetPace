@@ -9,7 +9,7 @@ Individually a study record is a footnote. Collectively they answer a question n
 An H1 naming the issue, then one flat table:
 
 ```markdown
-# 260 — Add /study — record what surprised a build, so the harness can be improved from evidence
+# <N> — <issue title>
 
 | Finding | Level | Fix applied |
 | --- | --- | --- |
@@ -33,7 +33,7 @@ Every row is classified to exactly one level. The levels are not severities. The
 
 **Codebase vs Execution is the judgement call**, and it will sometimes be got wrong. The test is where the *fix* belongs: a prompt or gate change is Execution; a change to code that was already there is Codebase.
 
-**There is no *Goal* level** — no row for "this work should not have been done at all". The sister project that this record is ported from carried one, and it recorded zero rows in two weeks: whether an issue should have existed is settled when the issue is drafted, not downstream while building it. That judgement is not available to the thing doing the work, so the level sat empty and diluted the tally. A level nobody can populate is worse than no level.
+**There is no *Goal* level** — no row for "this work should not have been done at all". Whether an issue should have existed is settled when the issue is drafted, not downstream while building it, so that judgement is not available to the thing doing the work: the level would sit empty and dilute every tally it appeared in. A level nobody can populate is worse than no level. (Issue #260 records the evidence this was decided on.)
 
 ## How to read the files back
 
@@ -54,5 +54,5 @@ Two guards keep it that way, and both matter more than completeness:
 ## Related
 
 - [`.claude/commands/study.md`](../../.claude/commands/study.md) — the command that writes these files.
-- [`.claude/commands/capture-learnings.md`](../../.claude/commands/capture-learnings.md) — the adjacent, deliberately different reflection step. `/study` records what surprised the *agent* and only ever writes a record; `/capture-learnings` captures corrections the *invoker* gave and prefers converting them into a hook, a test, or a fix to the rule that misfired. A study finding that looks mechanically enforceable is flagged for `/capture-learnings` rather than acted on here.
+- [`.claude/commands/capture-learnings.md`](../../.claude/commands/capture-learnings.md) — the adjacent, deliberately different reflection step. `/study` records what surprised the *agent* and only ever writes a record; `/capture-learnings` starts from what the *invoker* corrected, and its order of preference is to fix the rule that misfired, then to enforce it deterministically, and only then to write a memory entry. A study finding that looks mechanically enforceable is flagged for `/capture-learnings` rather than acted on here.
 - [`docs/agentic-workflow-NetPace.md`](../agentic-workflow-NetPace.md) — the surrounding workflow these records reflect on.
