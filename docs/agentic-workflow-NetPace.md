@@ -79,8 +79,8 @@ The explicit solution argument is **required, not decorative**: `dotnet format` 
 
 NetPace's `/verify` follows the generic *verify gate* section as written:
 
-- **Formats first.** Step 1a runs `dotnet format style/whitespace ./src/NetPace.sln` and commits any result on its own, before the suite — so formatting is verified by the gate rather than landing after it, and step 3's clean-tree invariant survives. The explicit solution argument is load-bearing (see above).
-- **Always runs the suite.** Step 1b is `dotnet build ./src && dotnet test ./src` — no docs-only skip. The suite is fast (no external stack), and this is the chain's only unconditional whole-suite run: the `gh pr create` pre-flight hook fires inside `/raise-pr`, a separate manual stage that may not follow for a long while, so a skip here would leave a branch reported verified that no suite ever ran against.
+- **Formats first.** The formatting pass (step 1a) runs `dotnet format style/whitespace ./src/NetPace.sln` and commits any result on its own, before the suite — so formatting is verified by the gate rather than landing after it, and the clean-tree invariant that committing the fixes (step 3) depends on survives. The explicit solution argument is load-bearing (see above).
+- **Always runs the suite.** The suite gate (step 1b) is `dotnet build ./src && dotnet test ./src` — no docs-only skip. The suite is fast (no external stack), and this is the chain's only unconditional whole-suite run: the `gh pr create` pre-flight hook fires inside `/raise-pr`, a separate manual stage that may not follow for a long while, so a skip here would leave a branch reported verified that no suite ever ran against.
 - **Stops before the PR.** `/verify` ends at a clean, fully-committed branch, which is exactly `/raise-pr`'s entry condition — so the two compose here with no adapter step.
 - **Review B posts.** Because `claude.yml` is wired, the async `@claude` review the generic flow describes actually appears on the PR — requested by `/raise-pr`, so it is downstream of `/verify` and nothing waits on it.
 
