@@ -27,6 +27,7 @@ Sits **between** `/speckit.reviewissue` and `/speckit.specify`.
 1. Reads the answered review comment.
 2. Pairs each gap's `**Recommendation:**` with the author's `> _Answer:_` to produce a **one-line decision** per gap.
 3. Appends (or rewrites, if already present) a `## Confirmed decisions` section at the end of the issue body.
+4. Applies the `ready` label, marking the issue fully defined without anyone having to open it.
 
 The original review comment is left untouched — it serves as the natural audit trail of how each decision was reached.
 
@@ -158,7 +159,21 @@ gh api --method PATCH repos/<owner>/<repo>/issues/<number> --input .claude/scrat
 (Omit the leading `/` on the endpoint — Git Bash on Windows rewrites `/repos/...`
 as a filesystem path. `gh api` accepts both forms on Linux/macOS.)
 
-### 6. Do not touch the review comment
+### 6. Apply the `ready` label
+
+With the body patched, mark the issue as fully defined:
+
+```bash
+gh issue edit <number> --repo <owner/repo> --add-label ready
+```
+
+- **Additive only.** `--add-label` adds `ready` and touches nothing else — every label the issue already carries stays on it. Never pass `--remove-label` here; tidying `needs triage` or anything else alongside it is a manual call.
+- **Idempotent.** Adding a label an issue already carries is a no-op on GitHub's side, so re-running this command on an already-`ready` issue leaves it `ready` and reports no error.
+- **Never fatal.** If the label cannot be applied, do **not** fail the command — the decisions are already saved. Continue to the report and say there that the label did not land.
+
+Ordering matters both ways: the body patch runs first so a label failure can never leave the decisions unsaved, and this step sits downstream of step 2's hard-stops so an issue with an unanswered or hedging gap can never come out labelled `ready`.
+
+### 7. Do not touch the review comment
 
 The answered review comment is the audit trail. Leave it intact. Do not delete, edit, or annotate it.
 
@@ -170,6 +185,7 @@ Keep your chat response short:
 
 - confirm the issue updated (number + title)
 - state how many decisions were folded in (and the count by pattern: e.g. "8 accepted, 1 with rider, 1 redirected")
+- state whether the `ready` label was applied — and if it was not, say so explicitly, noting the decisions were saved regardless
 - return the issue URL
 
 If you stopped at step 1 or 2, report which precondition failed and what to fix.
