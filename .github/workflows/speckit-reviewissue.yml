@@ -1,0 +1,79 @@
+name: Speckit Review Issue
+
+# Runs the NetPace pre-specification review (/speckit.reviewissue) unattended when an
+# issue is labelled `review`, so the gap analysis is waiting rather than requested.
+# The review logic itself is single-sourced in .claude/commands/speckit.reviewissue.md —
+# this workflow only supplies the environmental deltas (issue context, default branch,
+# label cleanup). Workflows run the default branch's copy of any file they read, so
+# changes to that command file take effect on merge, not on branch.
+
+on:
+  issues:
+    types: [labeled]
+  # Lets a prompt tweak be exercised against a branch ref instead of another merge.
+  # workflow_dispatch already requires write permission, so it is self-gating.
+  workflow_dispatch:
+    inputs:
+      issue_number:
+        description: Issue number to review
+        required: true
+
+jobs:
+  review:
+    # The gate reads `sender` (the account that applied the label), not `issue.user`
+    # (the account that raised it) — the repository is public and anyone can raise an issue.
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.label.name == 'review' && github.event.sender.login == 'FrankRay78')
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      issues: write
+      id-token: write
+    env:
+      ISSUE_NUMBER: ${{ github.event.issue.number || inputs.issue_number }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # Snapshot the issue here rather than granting Claude `Bash(gh issue view:*)`, and so
+      # both trigger paths see identical context (workflow_dispatch has no issue payload
+      # for the action to inject).
+      - name: Fetch issue context
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p .claude/scratch
+          gh issue view "$ISSUE_NUMBER" --repo "$GITHUB_REPOSITORY" \
+            --json number,title,body,labels,comments \
+            > .claude/scratch/issue-context.json
+
+      - name: Run pre-specification review
+        uses: anthropics/claude-code-action@v1
+        env:
+          GH_TOKEN: ${{ github.token }}
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          claude_args: '--allowedTools "Bash(gh issue comment:*),Bash(gh issue edit:*)"'
+          prompt: |
+            Run the NetPace pre-specification review for issue #${{ github.event.issue.number || inputs.issue_number }} in repository ${{ github.repository }}. The default branch is `main`.
+
+            The issue's title, body, labels and comments have been snapshotted to `.claude/scratch/issue-context.json`. Read that file first — it is the authoritative view of the issue for this run.
+
+            1. If any comment in that snapshot contains the sentinel `<!-- speckit:review -->`, a review already exists on this issue. Post nothing, change nothing, and stop, reporting that you found an existing review. Re-posting would orphan answers the author has already written, because the downstream confirm step takes the most recent marker comment.
+
+            2. Otherwise, read `.claude/commands/speckit.reviewissue.md` and apply it to this issue as written. Do not restate, summarise or reinvent the review logic — that file is the single source of truth for it. Two environmental deltas apply:
+               - Step 1 (fetch the issue and detect mode) is already done for you by the snapshot above; start at step 2.
+               - Step 4 tells you to resolve the default branch with `gh repo view`. Do not — it is `main`, given above. Use it for the absolute GitHub links the command's link rules require.
+
+               Ground the review in this checkout by actually reading files — `CLAUDE.md`, `.specify/memory/constitution.md`, the `src/` tree, `docs/`, the neighbouring code the issue would touch. The review must cite real paths and real conventions from this repository, not observations that would fit any codebase.
+
+            3. Post the review as a single new comment. Write the body to a file with the Write tool first, then post it with `gh issue comment <number> --repo <repo> --body-file <path>` — do not build the body inline in the shell, it contains backticks. Post exactly what the command specifies: no CI-specific footer, banner or warning of your own.
+
+            4. Only after the comment posts successfully, remove the trigger label so that "labelled" means a review is pending and "unlabelled, with a review comment" means it is done:
+               `gh issue edit <number> --repo <repo> --remove-label review`
+
+            Do not edit the issue body — folding answers into it is the author's deliberate `/speckit.confirmissue` step. If anything fails, let the job fail; do not post a failure comment.
