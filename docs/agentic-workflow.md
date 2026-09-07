@@ -42,7 +42,7 @@ A useful frame is the **five duties of a harness** (OpenAI): the harness must **
 ### Per-feature — Spec & planning (on the main branch)
 1.  `/speckit.draftissue`    ← optional; turn an unstructured brief into a well-formed issue
 2.  `/speckit.reviewissue`   ← pre-spec gate; posts gaps + recommendations as an issue comment
-3.  `/speckit.confirmissue`  ← fold answered review into a `## Confirmed decisions` section
+3.  `/speckit.confirmissue`  ← fold answered review into a `## Confirmed decisions` section, and label the issue `ready`
 4.  `/speckit.specify`
 5.  `/speckit.clarify`       ← iterate until the spec feels complete
 6.  `/speckit.checklist`     ← resolve all gaps before continuing
