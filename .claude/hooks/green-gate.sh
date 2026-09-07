@@ -9,7 +9,7 @@
 #
 # SCOPE. This gate does exactly one thing: deny a `dotnet test --no-build` that would run a
 # stale or absent test assembly. The "tests are green before a PR" guarantee lives elsewhere —
-# a real whole-suite run inside the human-invoked `/ship` command, not in this hook.
+# a real whole-suite run inside the human-invoked `/verify` command, not in this hook.
 #
 # DESIGN RULE: fail OPEN. Any missing tool, unparseable input, or internal error exits
 # 0 (no objection). The one action taken (the --no-build deny) is the narrow, high-confidence case

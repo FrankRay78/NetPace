@@ -26,7 +26,7 @@ The generic guide's "CI on PR" step **applies fully**; NetPace realises the whol
 | `publish-nuget.yml` | tag push | publish `NetPace.Core` to NuGet |
 | `release-binaries.yml` | tag push | cross-platform binary release matrix |
 
-**Review B is live:** the `@claude` action posts on the raised PR. `/ship` requests it via `/raise-pr` and never waits on it; a human reads it at merge, and `capture-learnings` can fold it in later.
+**Review B is live:** the `@claude` action posts on the raised PR. `/raise-pr` requests it and never waits on it; because `/raise-pr` is a separate manual stage after `/verify`, Review B sits outside the verify gate entirely. A human reads it at merge, and `capture-learnings` can fold it in later.
 
 ## Release pipeline
 
@@ -52,8 +52,8 @@ The generic enforcement layer, as NetPace wires it. Hooks live in [`.claude/hook
 | Traceability gate | `traceability-gate.sh` — spec label ↔ test-plan scenario ↔ `// SCENARIO:` marker under `src/`, exact match; loop-guarded nudge, never a lock-out | Stop |
 | Upstream-file guard | `permissions.deny` — one `Edit(path)` rule each on `.claude/skills/speckit-*/SKILL.md`, `.specify/templates/*.md`, `.specify/scripts/bash/*.sh` (an `Edit` rule covers every file-editing tool, Write included) | settings |
 | PR pre-flight | `dotnet build ./src && dotnet test ./src` before `gh pr create` | PreToolUse(Bash), `if gh pr create` |
-| **Formatting** | **`/ship` step 1a — `dotnet format style/whitespace ./src/NetPace.sln`, once per PR. Not a hook** (see below) | — |
-| **Test-green gate** | **`/ship` step 1b — a real `dotnet build ./src && dotnet test ./src`. Not a hook.** | — |
+| **Formatting** | **`/verify` step 1a — `dotnet format style/whitespace ./src/NetPace.sln`, once per PR. Not a hook** (see below) | — |
+| **Test-green gate** | **`/verify` step 1b — a real `dotnet build ./src && dotnet test ./src`. Not a hook.** | — |
 
 Every hook is **fail-open with an announced override** (`NETPACE_SKIP_GREEN_GATE=1`, `NETPACE_ALLOW_SKIPS=1`, `NETPACE_SKIP_TRACEABILITY_GATE=1`). For a harness edited with itself, a false block can lock out the tools that would fix it — so uncertain paths allow, and the override announces itself on stderr.
 
@@ -63,7 +63,7 @@ Every hook is also a **script in `.claude/hooks/` with a `.tests.sh` case matrix
 
 ### Formatting
 
-Formatting runs **once per PR**, as `/ship` step 1a — never on commit. This is the generic guide's *Formatting is not verification — do it at ship cadence* section, made concrete:
+Formatting runs **once per PR**, as `/verify` step 1a — never on commit. This is the generic guide's *Formatting is not verification — do it at verify cadence* section, made concrete:
 
 ```bash
 dotnet format style ./src/NetPace.sln && dotnet format whitespace ./src/NetPace.sln
@@ -75,13 +75,14 @@ The explicit solution argument is **required, not decorative**: `dotnet format` 
 
 **Line endings.** `.gitattributes` pins `*.cs text eol=lf`, agreeing with `.editorconfig`'s `end_of_line = lf` and the LF the index already stores. Without it, a Windows checkout with `core.autocrlf=true` gets a CRLF working tree, and `dotnet format whitespace` then rewrites every file it touches — no committed diff, since the rewrite normalises back on commit, but thousands of phantom findings drowning the real ones. A Windows working tree created *before* that attribute needs a one-time refresh to pick it up (re-clone, or `git rm --cached -r . && git reset --hard` on a clean tree); fresh clones and Linux checkouts are unaffected.
 
-## `/ship`
+## `/verify`
 
-NetPace's `/ship` follows the generic *ship gate* section as written:
+NetPace's `/verify` follows the generic *verify gate* section as written:
 
 - **Formats first.** Step 1a runs `dotnet format style/whitespace ./src/NetPace.sln` and commits any result on its own, before the suite — so formatting is verified by the gate rather than landing after it, and step 3's clean-tree invariant survives. The explicit solution argument is load-bearing (see above).
-- **Always runs the suite.** Step 1b is `dotnet build ./src && dotnet test ./src` — no docs-only skip. The suite is fast (no external stack), and the `gh pr create` pre-flight hook would re-run it anyway, so a skip would save nothing.
-- **Review B posts.** Because `claude.yml` is wired, the async `@claude` review the generic flow describes actually appears on the PR. `/ship` still never waits on it.
+- **Always runs the suite.** Step 1b is `dotnet build ./src && dotnet test ./src` — no docs-only skip. The suite is fast (no external stack), and this is the chain's only unconditional whole-suite run: the `gh pr create` pre-flight hook fires inside `/raise-pr`, a separate manual stage that may not follow for a long while, so a skip here would leave a branch reported verified that no suite ever ran against.
+- **Stops before the PR.** `/verify` ends at a green, reviewed, fully-committed branch with a clean tree — which is exactly `/raise-pr`'s entry condition. Pushing and opening the PR is the chain's one irreversible act, so it stays a deliberate `/raise-pr` invocation and everything before it stays freely re-runnable.
+- **Review B posts.** Because `claude.yml` is wired, the async `@claude` review the generic flow describes actually appears on the PR — requested by `/raise-pr`, so it is downstream of `/verify` and nothing waits on it.
 
 ## Permissions and unattended runs
 
@@ -91,13 +92,13 @@ An `ask`-matched call **prompts** in an interactive session but is **silently de
 
 That asymmetry makes headless a permission oracle **for rule matching** — run a workflow under `claude -p --dangerously-skip-permissions` and whatever an `allow`, `ask` or `deny` rule would have stopped comes back denied, with no human in the loop to mask it. Know its blind spot: the escalations that need an interactive surface do not fire headlessly at all. A recursive `grep` whose read scope overlaps a `Read(…)` deny rule prompts interactively and runs clean under `claude -p`, so the oracle reports a false all-clear. It answers "which rule matched", not "would a human have been asked". Not CI-gateable either way: it needs the `claude` binary and an authenticated session.
 
-`Bash(rm:*)` and `Bash(rmdir:*)` came off the list for this reason ([CIR](change-intent-records/2026-09-04-rm-off-the-ask-list.md)), and `Bash(git push:*)` followed them off it into `allow` — that is what lets `/ship` reach `gh pr create` without stopping at its second-to-last step. `Bash(chmod:*)` moved the other way, from `deny` onto `ask`, which buys an approval path interactively but not in a lane worker, where `ask` still denies silently ([CIR](change-intent-records/2026-09-04-push-allow-chmod-ask.md)).
+`Bash(rm:*)` and `Bash(rmdir:*)` came off the list for this reason ([CIR](change-intent-records/2026-09-04-rm-off-the-ask-list.md)), and `Bash(git push:*)` followed them off it into `allow` — that is what lets `/raise-pr` reach `gh pr create` without stopping at its second-to-last step. `Bash(chmod:*)` moved the other way, from `deny` onto `ask`, which buys an approval path interactively but not in a lane worker, where `ask` still denies silently ([CIR](change-intent-records/2026-09-04-push-allow-chmod-ask.md)).
 
 `permissions.deny` no longer carries `Read(…)` rules. It held six, over `.env`, `secrets.*`, `.ssh/**` and `appsettings*.json`, and any of them made a recursive read of the repo escalate to an approval no mode auto-grants — the check is glob-scope-based, not existence-based, so it fired even though the repo contains none of those files ([CIR](change-intent-records/2026-09-04-read-deny-rules-removed.md)).
 
 ## Test-green gate & categories
 
-- The completion gate is the real suite run inside `/ship` (above), backed belt-and-braces by the `gh pr create` pre-flight hook — both are `dotnet build ./src && dotnet test ./src`. There is no ledger/Stop-hook proxy (the shape the generic guide's *Where the completion gate belongs* section warns against).
+- The completion gate is the real suite run inside `/verify` (above), backed belt-and-braces by the `gh pr create` pre-flight hook — both are `dotnet build ./src && dotnet test ./src`. There is no ledger/Stop-hook proxy (the shape the generic guide's *Where the completion gate belongs* section warns against).
 - **Fast/slow split.** Real-network integration tests live in a **separate test category**, excluded from the default run, so the inner loop stays seconds-fast; the whole (default) suite is the completion gate.
 - **Console output is verified by snapshot.** `NetPace.Console.Tests` uses `Spectre.Console.Testing` with `Expectations/*.verified.txt` snapshots — that is how a CLI covers the generic guide's *verify* duty for rendered output. Check the `*.verified.txt` before reporting an output mode as untested (memory: `feedback_console_output_snapshot_coverage`).
 
@@ -117,7 +118,7 @@ Two of the three are wired into NetPace's config: `rtk` has `Bash(rtk …)` allo
 bash scripts/plugin-report.sh
 ```
 
-It is not a gate: no `--check` mode, no exit-code contract, and it is wired into no hook, no CI job and no `/ship` step. The intended use is running it on two boxes and diffing — which is why `TOOLING`, `CONFIG` and `HOOKS` carry no timestamps, no absolute paths and no raw millisecond figures. `PERFORMANCE` is explicitly exempt (live counters move every session), so cross-box diffs use the other three sections. A probe it cannot reach a verdict on reports `unknown` rather than `no` — a report whose product is a truthful yes/no must not launder a failed lookup into an answer.
+It is not a gate: no `--check` mode, no exit-code contract, and it is wired into no hook, no CI job and no `/verify` step. The intended use is running it on two boxes and diffing — which is why `TOOLING`, `CONFIG` and `HOOKS` carry no timestamps, no absolute paths and no raw millisecond figures. `PERFORMANCE` is explicitly exempt (live counters move every session), so cross-box diffs use the other three sections. A probe it cannot reach a verdict on reports `unknown` rather than `no` — a report whose product is a truthful yes/no must not launder a failed lookup into an answer.
 
 [`/install-harness-tooling`](../.claude/commands/install-harness-tooling.md) is the other half of the pair: it installs what the report says is missing. It reads each upstream `install.sh` before recommending it and **prints** the command for a human to run rather than executing it, so the `Bash(curl:*)` / `Bash(wget:*)` denies stay intact; and because two of the installers write a `PreToolUse` hook into settings themselves, it stops at each of those points and shows the diff — the generic guide's rule 4 (*a human reviews each hook before it lands*) applied to installers that would otherwise wire hooks in silently.
 

@@ -55,32 +55,34 @@ A useful frame is the **five duties of a harness** (OpenAI): the harness must **
 ### Per-feature — Implementation
 12. `/speckit.implement`     ← agent runs to suite-green, keeping the suite green on the inner loop at its own discretion. This is a **soft standard, not a per-turn gate** — the binding "green before a PR" guarantee is the real suite run in step 13 (see *Where the completion gate belongs*).
 
-### Per-feature — Ship
-13. `/ship`                  ← one orchestrator: **full suite (the gate) → clean-context review → fix → raise PR.** Runs unattended, so it can drive a loop. Composes what were previously separate manual steps (test-checklist, PR review, slop review, raise-PR).
+### Per-feature — Verify, then raise
+13. `/verify`                ← one orchestrator: **format → full suite (the gate) → clean-context review → fix → commit.** Runs unattended, so it can drive a loop. Composes what were previously separate manual steps (test-checklist, PR review, slop review). Ends at a green, reviewed, fully-committed branch — it does **not** raise the PR.
+14. `/raise-pr`              ← push the branch and open the PR. Deliberately a separate, manual stage: it is the one irreversible, outward-facing act in the chain, and keeping it out of step 13 is what makes everything before it freely re-runnable.
 
 ### Periodic (not per-feature)
-- **capture learnings** — fold corrections back into memory/skills. Deliberately *not* part of `/ship`: it needs human curation and batches better across several features, so run it at a supervised checkpoint after a batch.
+- **capture learnings** — fold corrections back into memory/skills. Deliberately *not* part of `/verify`: it needs human curation and batches better across several features, so run it at a supervised checkpoint after a batch.
 - **dead-code audit** — every few features or before a release; **not per-PR**.
 - **context gardening** — quarterly or after a big architectural shift.
 
 ---
 
-## The ship gate
+## The verify gate
 
-`/ship` exists because the steps between "implementation looks done" and "PR raised" are a fixed sequence with one hard ordering constraint, and a human re-enacting them from prose gets it subtly wrong.
+`/verify` exists because the steps between "implementation looks done" and "this branch is fit to become a PR" are a fixed sequence with one hard ordering constraint, and a human re-enacting them from prose gets it subtly wrong.
 
 **The suite runs first and everything else is downstream of its exit code.** This ordering is *structural*, not policed: review cannot begin against unverified or red code because it literally runs after the gate. Do not add a hook to enforce the ordering — the exit code **is** the gate. A hook that watches for the agent *claiming* green is exactly the anti-pattern the "gates attach to actions, not prose" rule warns against.
 
 Properties worth copying:
 
-- **Unattended by design.** No prompts anywhere in the flow, so `/ship` can be driven by an automated loop shipping features back-to-back, as well as invoked by hand. Anything that needs a human turns the pipeline into a wait.
-- **Stop-on-failure is global.** Suite not green, a reviewer subagent errors, push rejected, PR already exists — stop at that step, report, and run nothing later.
+- **Unattended by design.** No prompts anywhere in the flow, so `/verify` can be driven by an automated loop working features back-to-back, as well as invoked by hand. Anything that needs a human turns the pipeline into a wait.
+- **Stop-on-failure is global.** Dirty tree, suite not green, a reviewer subagent errors — stop at that step, report, and run nothing later.
 - **Preconditions run before the expensive work.** Check the cheap things first (on a feature branch? any commits over main?), or a full suite and full review burn before a late guard trips.
 - **Review runs in clean context.** Reviewers see the diff, not the conversation that produced it. The *deciding and fixing* legitimately happens in the orchestrator's own loop — "review in clean context" governs the reviewing, not the fixing.
 - **Validate a finding before acting on it.** Reviewer severities are fickle; cross-check a "Critical" against the actual test and spec state rather than relaying it verbatim. Acting on a mislabelled finding is how a review pass makes code worse.
-- **Re-verify what review changed.** Fixes applied after the gate are unverified code — re-run the suite before raising, or a bad fix ships green-unchecked.
+- **Re-verify what review changed.** Fixes applied after the gate are unverified code — re-run the suite before reporting the branch verified, or a bad fix reaches the PR green-unchecked. Then *commit* the fixes: the PR stage pushes commits, and under the split the gap between the fix and the push is open-ended.
+- **Stop before the irreversible step.** End at the verified branch and leave pushing and opening the PR to a separate deliberate invocation. Everything up to that point is safe to re-run; the outward-facing act is not, and it is the one step worth a human's decision.
 
-**Two reviews, not one.** *Review A* is synchronous and inside `/ship` — clean-context subagents over the diff, whose findings are in-conversation and therefore available to `capture-learnings` later. *Review B* is the asynchronous agent review on the raised PR, for a human to read at merge. `/ship` never waits on Review B: blocking a pipeline for minutes to fold in a second review of the same diff buys little.
+**Two reviews, not one.** *Review A* is synchronous and inside `/verify` — clean-context subagents over the diff, whose findings are in-conversation and therefore available to `capture-learnings` later. *Review B* is the asynchronous agent review on the raised PR, requested by `/raise-pr`, for a human to read at merge. Nothing waits on Review B: blocking a pipeline for minutes to fold in a second review of the same diff buys little. Under the split it falls outside the verify gate entirely, which is a reason the verify report must *name* any finding it deferred — that report is the only route by which a deferral reaches the PR body.
 
 ---
 
@@ -118,19 +120,19 @@ Three corollaries:
 The *verify* and *correct* duties, made automatic. Minimum set:
 
 - **Stale-build guard.** Block running tests `--no-build` (or equivalent) when sources changed since the last build — stale binaries produce lying green results.
-- **The test-green gate.** The full suite must pass on the code about to become a PR. Put this in the ship flow, not the implement turn — see *Where the completion gate belongs*, below.
+- **The test-green gate.** The full suite must pass on the code about to become a PR. Put this in the verify flow, not the implement turn — see *Where the completion gate belongs*, below.
 - **Traceability gate.** The exact-match half of the test checklist — spec label ↔ test-plan scenario ↔ code marker, character-for-character — is a *deterministic* gate. The judgment-level half (mock self-satisfaction, trivial-pass, fuzzy matches) stays a human-run review command. This one *does* belong at the agent's turn-end, as a loop-guarded nudge rather than a lock-out.
 - **No skipped tests.** Skipped / ignored / conditionally-skipped tests (including *runtime* skips) are banned by a static gate — they fake coverage and rot the spec→test trace. Genuinely-untestable scenarios go in a documented "untested branches" table, not a faked skipped test.
 - **Fast/slow test categories.** Tag tests *unit* (fast, no external dependencies) vs *integration* (slow, real stack), so the agent gets seconds-fast inner-loop feedback while developing — the whole-suite run remains the completion gate, not the tagged subset.
 - **CI on PR** *(where the suite can run in CI).* Build + test on every PR, blocking merge. If the real test stack can't run in hosted CI (heavy infra, private-repo limits), keep the full gate local and let CI cover the deterministic subset only — and say so explicitly.
 
-### Where the completion gate belongs — at ship, not at turn-end
+### Where the completion gate belongs — at verify, not at turn-end
 
 The instinct is to gate the *implement* agent: a turn-end hook that refuses to let it stop until the suite is green. It is the wrong seam, and the reason generalises.
 
 A turn-end hook cannot run the suite itself — a full run is minutes, and the agent's turn is not the place to spend them. So it does the only thing it can: it consults a **ledger** recording that a green run happened at some past moment, and gates on that. But a past green run is a *proxy*. It attests that the suite passed on some earlier state of the code, not that it passes on the code about to become a PR. The plumbing this proxy needs — the ledger, the file markers, the locking, the "was that a whole-suite run or a filtered one?" heuristic — is substantial, and it buys an attestation weaker than the thing you actually wanted.
 
-**Put the gate where the truth is: a real whole-suite run at ship time, immediately before the PR is raised.** It is more machinery removed than added, and the guarantee gets *stronger* — the suite passes **now**, on exactly the diff under review. During implementation, keeping the suite green becomes a soft standard the agent applies at its own discretion on the inner loop, which is where discretion is cheap and a hard gate is merely a tax.
+**Put the gate where the truth is: a real whole-suite run at verify time, on exactly the diff that is about to become a PR.** It is more machinery removed than added, and the guarantee gets *stronger* — the suite passes **now**, on exactly the diff under review. During implementation, keeping the suite green becomes a soft standard the agent applies at its own discretion on the inner loop, which is where discretion is cheap and a hard gate is merely a tax.
 
 The general rule this instance teaches: **when a gate can only see a proxy for the property you care about, move the gate to where the property itself is observable.** A gate on a ledger is a gate on a claim about the past, which is a short step from the "gates attach to actions, not prose" failure it was meant to avoid.
 
@@ -140,9 +142,9 @@ A tempting bar is *N consecutive* green runs, on the reasoning that a non-determ
 
 Set the bar at **one green whole-suite run since the last code change**, and *earn* it: if the suite is genuinely non-deterministic, hunt the flake. Where a multi-run rule already exists, retire it against evidence rather than taste — a provocation campaign (repeated runs under varied seed, concurrency, accumulated state, and CPU pressure) either demonstrates determinism, which retires the rule, or surfaces the flake, which is the thing you actually needed to find.
 
-### Formatting is not verification — do it at ship cadence
+### Formatting is not verification — do it at verify cadence
 
-Formatting is cosmetic, and cosmetic work does not belong on the inner loop. A format-on-commit hook taxes **every** commit — on a real codebase the tool's workspace load is measured in tens of seconds — to fix something no reviewer would have caught anyway. Fold the format step into the ship flow instead, where it runs once per PR at a cadence that already costs minutes. (Boris Cherny's "formatting handles the last 10%" is right about the value and silent about the cadence; per-commit is the wrong one.)
+Formatting is cosmetic, and cosmetic work does not belong on the inner loop. A format-on-commit hook taxes **every** commit — on a real codebase the tool's workspace load is measured in tens of seconds — to fix something no reviewer would have caught anyway. Fold the format step into the verify flow instead, where it runs once per PR at a cadence that already costs minutes. (Boris Cherny's "formatting handles the last 10%" is right about the value and silent about the cadence; per-commit is the wrong one.)
 
 > Pre-allow safe commands in checked-in settings rather than disabling permission prompts
 > wholesale (Boris Cherny): the agent flows, but high-stakes actions still surface.
@@ -188,8 +190,8 @@ Keep Tier 2 short and high-signal; symlink `CLAUDE.md`↔`AGENTS.md` so every to
 | Silent assumptions, no clarifying questions | plan-mode first; review/confirm gates surface decisions before code |
 | Overcomplication, bloated abstractions | slop review + simplifier sub-agent; "would a senior call this overcomplicated?" |
 | Orthogonal edits (touching unrelated code) | one-mission branch; "mention dead code, don't delete it"; diff-scoped review |
-| Weak success criteria | outcome-level ACs + test plan + the ship gate (a real suite run before the PR) |
-| Accidental vibe coding (ship unverified) | the mechanical enforcement layer; the ship gate's structural ordering |
+| Weak success criteria | outcome-level ACs + test plan + the verify gate (a real suite run before the PR) |
+| Accidental vibe coding (ship unverified) | the mechanical enforcement layer; the verify gate's structural ordering |
 | Review fatigue | move recurring issues into skill files / gates, off the human's plate |
 | Harness change locks out the harness | build gates fail-open with an override first, verify, then tighten |
 

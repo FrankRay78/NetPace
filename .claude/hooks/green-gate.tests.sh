@@ -8,7 +8,7 @@
 # failure. Run it after any edit to the hook.
 #
 # (History: the hook once also carried PostToolUse ledger-stamping and a Stop completion
-# gate; both were retired in issue #122 when test-green enforcement moved to `/ship`. Those
+# gate; both were retired in issue #122 when test-green enforcement moved to `/verify`. Those
 # cases are gone from this matrix; only the marker-independent B7 --no-build deny remains.)
 #
 #   Usage:  .claude/hooks/green-gate.tests.sh

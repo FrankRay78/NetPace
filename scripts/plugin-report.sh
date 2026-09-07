@@ -3,7 +3,7 @@
 # plugin-report.sh — read-only report on the harness tooling this repo declares.
 #
 # Covers four tools: read-once, context-mode and rtk (the token/context tooling named in
-# docs/agentic-workflow.md) plus pr-review-toolkit, which supplies the reviewer agents /ship
+# docs/agentic-workflow.md) plus pr-review-toolkit, which supplies the reviewer agents /verify
 # calls. Detailed descriptions and install commands for the first three live in
 # docs/wsl-claude-sandbox.md, step 7.
 #
@@ -24,7 +24,7 @@
 # they are absent, the nested session leaves a transcript under the Claude home's projects tree
 # like any other, and it records a context-mode session of its own. The nested session runs in
 # this repo, so this repo's hooks run with it. Manually run: not a hook, not wired into CI or
-# /ship, no --check mode and no exit-code contract. To install what it reports missing, run
+# /verify, no --check mode and no exit-code contract. To install what it reports missing, run
 # /install-harness-tooling.
 #
 # "I COULD NOT LOOK" IS NOT "NO". Every probe that cannot reach a verdict — jq absent, a
@@ -231,7 +231,7 @@ hooked_in_claude_home 'rtk'; rtk_en=$?
 if [ $rtk_inst -eq "$YES" ]; then probe_verdict rtk --version; rtk_reach=$?; else rtk_reach=$NO; fi
 line rtk "$(yn $rtk_decl)" "$(yn $rtk_inst)" "$(yn $rtk_en)" "$(yn $rtk_reach)"
 
-# pr-review-toolkit — supplies the named reviewer agents /ship calls.
+# pr-review-toolkit — supplies the named reviewer agents /verify calls.
 declared_in_repo 'pr-review-toolkit'; pr_decl=$?
 plugin_installed 'pr-review-toolkit@claude-plugins-official'; pr_inst=$?
 plugin_enabled 'pr-review-toolkit@claude-plugins-official'; pr_en=$?

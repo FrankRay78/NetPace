@@ -1,10 +1,10 @@
 ---
-description: Build one GitHub issue to a green, committed feature branch — reads the issue's acceptance criteria, drives RED-GREEN-REFACTOR, and stops. Runs unattended; hand the result to /ship.
+description: Build one GitHub issue to a green, committed feature branch — reads the issue's acceptance criteria, drives RED-GREEN-REFACTOR, and stops. Runs unattended; hand the result to /verify.
 ---
 
 Read `CLAUDE.md` for project context before proceeding.
 
-`/build` is the stage before `/ship`: it turns **one GitHub issue** into a green, committed feature branch. It does not format, review, push, open a PR, or merge — `/ship` and `/raise-pr` own all of that, and you run them yourself afterwards.
+`/build` is the first stage in the `/build` → `/verify` → `/raise-pr` chain: it turns **one GitHub issue** into a green, committed feature branch. It does not format, review, push, open a PR, or merge — `/verify` and `/raise-pr` own all of that, and you run them yourself afterwards.
 
 `/build` is designed to run to completion **without prompting** once it has an issue number, so it can be driven back-to-back as well as invoked directly.
 
@@ -86,7 +86,7 @@ Two named exceptions, because `CLAUDE.md` requires discussion for them:
 
    Re-run the suite if any of this touched code, then commit.
 
-9. **Stop here.** Do **not** run `dotnet format` (that is `/ship` step 1a). Do **not** push, open a PR, merge, or run `/ship`. Leave the working tree clean — everything committed to the branch — because `/ship` requires exactly that at its step 0.
+9. **Stop here.** Do **not** run `dotnet format` (that is `/verify` step 1a). Do **not** push, open a PR, merge, or run `/verify`. Leave the working tree clean — everything committed to the branch — because `/verify` requires exactly that at its step 0.
 
 ---
 
@@ -97,5 +97,5 @@ Two named exceptions, because `CLAUDE.md` requires discussion for them:
 - **What you changed**, at a behaviour level, and how each acceptance criterion is met.
 - **Any assumption** you made on an ambiguous point, any public-API change, and anything you deliberately left out of scope.
 - Then exactly one of:
-  - `READY branch=<branch>` — every criterion implemented, whole suite green, everything committed, tree clean. Follow with: "Run `/ship` to format, gate, review and raise the PR — `/raise-pr` derives `Closes #<N>` from this branch name and verifies it before use, then reports what it settled; check that line to confirm the link was made."
+  - `READY branch=<branch>` — every criterion implemented, whole suite green, everything committed, tree clean. Follow with: "Run `/verify` to format, gate, review and commit, then `/raise-pr` to push and open the PR — `/raise-pr` derives `Closes #<N>` from this branch name and verifies it before use, then reports what it settled; check that line to confirm the link was made."
   - `FAILED reason=<short reason>` — you could not reach that state. Report the wall you actually hit, discovered by working: the criteria conflict, they do not determine the design, the change is larger than they describe. Do not fabricate READY.
