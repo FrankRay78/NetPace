@@ -86,7 +86,7 @@ Two named exceptions, because `CLAUDE.md` requires discussion for them:
 
    Re-run the suite if any of this touched code, then commit.
 
-9. **Stop here.** Do **not** run `dotnet format` (that is `/verify`'s formatting step, 1a). Do **not** push, open a PR, merge, or run `/verify`. Leave the working tree clean — everything committed to the branch — because `/verify`'s preconditions step (step 0) requires exactly that.
+9. **Stop here.** Do **not** run `dotnet format` — that is `/verify`'s formatting step (1a). Do **not** push, open a PR, merge, or run `/verify`. Leave the working tree clean — everything committed to the branch — because `/verify`'s preconditions step (0) requires exactly that.
 
 ---
 

@@ -1,6 +1,6 @@
 # Removing the `Read(…)` rules from `permissions.deny`
 
-**Intent:** Stop a recursive read of the repository escalating to a manual approval that no permission mode grants, which interrupted `/verify`'s clean-context review step (step 2) when a reviewer subagent ran `grep -rn … .`.
+**Intent:** Stop a recursive read of the repository escalating to a manual approval that no permission mode grants, which interrupted `/verify`'s clean-context review step (2) when a reviewer subagent ran `grep -rn … .`.
 
 **Behaviour:**
 - Given a reviewer subagent in an interactive session, when it greps the repository root recursively, then it completes without an approval prompt.

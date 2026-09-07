@@ -1,9 +1,9 @@
 # Removing `rm`/`rmdir` from `permissions.ask`
 
-**Intent:** Let `/verify`'s clean-context review step (step 2) run to completion without a human, which is what its own documentation promises. Reviewer subagents stand up synthetic fixtures to exercise failure paths and tear them down again, so teardown hits `rm` on nearly every run — and every one of those stopped the run.
+**Intent:** Let `/verify`'s clean-context review step (2) run to completion without a human, which is what its own documentation promises. Reviewer subagents stand up synthetic fixtures to exercise failure paths and tear them down again, so teardown hits `rm` on nearly every run — and every one of those stopped the run.
 
 **Behaviour:**
-- Given a session started in `bypassPermissions`, when `/verify`'s review step (step 2) spawns the `pr-review-toolkit` reviewers, then they build, exercise and tear down a synthetic `PATH` / `NETPACE_CLAUDE_HOME` fixture with no permission prompt.
+- Given a session started in `bypassPermissions`, when `/verify`'s review step (2) spawns the `pr-review-toolkit` reviewers, then they build, exercise and tear down a synthetic `PATH` / `NETPACE_CLAUDE_HOME` fixture with no permission prompt.
 - Given the same workflow run headless (`claude -p --dangerously-skip-permissions`), when a reviewer removes its fixture, then the removal succeeds rather than being silently denied.
 - Given `rm -rf` aimed at a critical path (`.git`, `.claude`, a dotfile), when any mode is active, then Claude Code still refuses it.
 
