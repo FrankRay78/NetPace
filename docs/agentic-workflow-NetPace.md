@@ -23,10 +23,15 @@ The generic guide's "CI on PR" step **applies fully**; NetPace realises the whol
 | `dotnet.yml` — Build and Test | pull_request → main | the generic **CI-on-PR** gate: build + test every PR |
 | `codeql.yml` — CodeQL | push/PR/weekly | security analysis (the supply-chain-hardening line — see the CIR) |
 | `claude.yml` — Claude Code | `@claude` in an issue/PR comment (author-gated) | the generic **Agent review action** — this is **Review B** |
+| `speckit-reviewissue.yml` — Speckit Review Issue | `review` label applied to an issue (labeller-gated), or manual dispatch | runs the pre-spec gate unattended — see below |
 | `publish-nuget.yml` | tag push | publish `NetPace.Core` to NuGet |
 | `release-binaries.yml` | tag push | cross-platform binary release matrix |
 
 **Review B is live:** the `@claude` action posts on the raised PR. `/raise-pr` requests it and never waits on it, so it sits outside the verify gate. A human reads it at merge, and `capture-learnings` can fold it in later.
+
+**The pre-spec gate runs in CI too.** Step 2 of the generic sequence (`/speckit.reviewissue`) is the one step whose cost is the wait, because it carries the codebase grounding — so labelling an issue `review` runs it unattended and leaves the gap analysis waiting as a comment. The workflow reads [`.claude/commands/speckit.reviewissue.md`](../.claude/commands/speckit.reviewissue.md) and applies it, so the analysis stays single-sourced, and `/speckit.confirmissue` folds the answered comment into the issue body unchanged — it finds the review by sentinel and does not care that CI posted it.
+
+**The label is the state.** A green run always ends with the `review` label gone, so: **labelled** means a review is pending, **unlabelled with a `<!-- speckit:review -->` comment** means it is done, and **still labelled** means the run did not complete. There is no failure comment — GitHub's failed-run notification is the alert, and the workflow verifies both post-conditions itself rather than trusting the agent's narration, because the action exits green whenever the model finishes its turn. Labelling an issue that already has a review posts nothing and just clears the label. Refining a review in place (step 6 of the command) stays local. One gap worth knowing: a label applied by any account other than the gated one creates no run at all, so that case is labelled-but-silent. Rationale and residuals: CIR [`2026-09-07-automated-prespec-review`](change-intent-records/2026-09-07-automated-prespec-review.md).
 
 ## Release pipeline
 

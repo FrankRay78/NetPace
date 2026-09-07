@@ -1,0 +1,45 @@
+# Running the Pre-Specification Review on Labelled Issues
+
+**Intent:** Take the one step in the spec pipeline whose cost is the *wait* — `/speckit.reviewissue`, which carries the codebase-grounding pass — off the developer machine, so an issue raised away from the desk has its gap analysis waiting rather than requested. Answering the questions and running `/speckit.confirmissue` are quick by comparison and stay local.
+
+**Behaviour:**
+- Given: an issue in this repository, and the `FrankRay78` account
+- When: that account applies the `review` label
+- Then: a single comment appears on the issue containing a numbered pre-specification gap analysis — recommendation and inline answer slot per gap — grounded in real paths and conventions from this codebase; the `review` label is then removed.
+- Given: an issue that already carries a `<!-- speckit:review -->` comment
+- When: the `review` label is applied again
+- Then: no comment is posted, and the label is cleared — the issue is already done, and the label is the thing that said otherwise.
+- Given: a run that fails before the review comment is posted
+- Then: no comment is posted, the `review` label stays in place, and the run is red.
+- Given: a run that posts the comment but does not go on to clear the label
+- Then: the run is red and names which half is missing — the state is recoverable by re-running, which takes the already-reviewed path above and clears the label.
+- Given: the author has answered the questions inline
+- When: `/speckit.confirmissue` is run locally
+- Then: the answers fold into the issue body as **Confirmed decisions** with no manual repair — `/speckit.confirmissue` finds the comment by sentinel and does not filter on author, so a comment posted by CI is consumed exactly like a locally-posted one.
+- Given: `@claude` is mentioned on an issue or a pull request
+- Then: behaviour is exactly as it was before this change.
+
+**Constraints:**
+- The review logic must stay single-sourced in [`.claude/commands/speckit.reviewissue.md`](../../.claude/commands/speckit.reviewissue.md). A workflow that restates it forks the analysis and the two copies drift. The already-reviewed guard is the one deliberate exception: it *overrides* that file's step 1, which would refine an existing review rather than stop.
+- The repository is public, so the trigger must gate on the account that *applied* the label, not the account that raised the issue.
+- On the `issues` path, a run uses the default branch's copy of the workflow and of every file it reads, so a change to the review command takes effect on merge, not on branch — and no event can trigger a *new* workflow file from a feature branch at all. A `workflow_dispatch` run uses the ref it is dispatched against, which is what makes it useful for iterating on the prompt.
+- `/speckit.confirmissue` locates the review by the `<!-- speckit:review -->` sentinel and takes the most recent marker comment ([`speckit.confirmissue.md`](../../.claude/commands/speckit.confirmissue.md), step 1). A second automated review would therefore orphan answers already written against the first.
+
+**Decisions:**
+1. **A new workflow file, not an extension of `claude.yml`** — the two automations fail independently, run on unrelated triggers, and have unrelated prompts; folding them together couples their blast radius and makes each one's `if:` harder to read and audit. Note that the permissions argument does *not* apply: `claude.yml` already grants a strict superset of what this job needs, so folding the trigger in would widen nothing. Rejected: adding `issues: [labeled]` to the existing workflow.
+2. **A label is the trigger, not issue-opened** — bugs and trivial changes do not warrant the overhead, so reviewing is opt-in. Rejected: reviewing every issue on open (deferred as a later decision once the marked path has proven itself). Note that `sender.login` is not merely belt-and-braces on top of GitHub's labelling permission: it is the strictest gate in the file, narrowing the trigger from "anyone with triage rights" to one named account.
+3. **The workflow snapshots the issue in a plain `gh` step, rather than reading the context the action injects** — two reasons, and the second is the decisive one. The action injects issue context on the `issues` event but not on `workflow_dispatch`, so injection-only would leave the dispatch path blind. More importantly, the action *sanitises* injected content by stripping HTML comments — which would remove the `<!-- speckit:review -->` sentinel that the guard, `/speckit.confirmissue`, and this entire design key on. The confirmed decision to "read the comments the action already injects" was therefore not implementable as written. The residual is recorded below.
+4. **Label removal is the done-marker, and there is no failure comment** — a green run always ends with the label gone, whether it posted a review or took the already-reviewed path. So the label set carries the state: labelled means pending, unlabelled with a review comment means done, still-labelled means the run did not complete. GitHub's failed-workflow notification is the alert. Rejected: a posted failure comment (noise on the issue for a signal GitHub already sends).
+5. **The guard and the post-condition check are workflow steps, not prompt instructions** — `anthropics/claude-code-action@v1` exits successfully whenever the model finishes its turn. A failed `gh issue comment` is tool output the model reads and reasons about, not a step failure, so an instruction like "if anything fails, let the job fail" cannot be honoured. Left in the prompt, both the guard and the failure signal would be advisory: a run that posted nothing would go green and notify no one, which defeats decision 4 entirely. Moving them into `run:` steps that can exit non-zero is what makes decision 4's contract true rather than merely stated.
+6. **No CI-specific footer on the comment** — the comment carries the command's own footer, which already tells the reader to re-run `/speckit.reviewissue` when a question needs expanding. A CI-only warning was considered and dropped: sole developer on this repository, so the guard would only make every comment more verbose. The sentinel guard in decision 5 covers the actual hazard.
+7. **`timeout-minutes: 30`, no `--max-turns`** — standard runners are free on a public repository and turns are not metered per unit on this plan, so only a hung job is worth guarding. `--max-turns` is the one limit that could silently shorten the codebase-grounding pass and quietly degrade the review into generic advice, which is exactly the failure this automation exists to avoid.
+8. **`concurrency` serialised per issue, without cancelling in flight** — the guard reads the comment list at the start of a run that posts twenty-odd minutes later, so without serialisation two overlapping runs both pass it and both post, orphaning answers. Cancelling in progress was rejected: it could kill a run between its post and its label removal, manufacturing the split state decision 5's check exists to catch.
+9. **`workflow_dispatch` alongside the label trigger** — a new workflow file cannot be triggered by an event from a feature branch, so the Principle I evidence for this change is merge-then-verify: the real label trigger observed working on `main` against a throwaway issue. `workflow_dispatch` earns its place afterwards, by making every later prompt tweak runnable against a branch ref instead of another merge.
+
+**Known residuals:**
+- **The tool allowlist narrows nothing.** `--allowedTools` *adds* to the permission rules Claude Code loads from the checked-out [`.claude/settings.json`](../../.claude/settings.json), which already grants `Edit(**)`, `Bash(gh:*)` and `defaultMode: acceptEdits`. So the run's real grant is every `gh` subcommand, not the two named ones, and the prompt's "do not edit the issue body" is a request rather than an enforced boundary. Narrowing this properly means changing settings that govern every local session too, which is a separate piece of work.
+- **The snapshot bypasses the action's sanitiser.** Keeping the sentinel intact (decision 3) necessarily means the raw, attacker-authorable issue body reaches the model unsanitised, while it holds a token with `issues: write`. The label gate is the mitigation: an untrusted issue only reaches the model if a maintainer deliberately labels it.
+- **A label applied by any other account is silent.** The job-level `if:` means GitHub creates no run at all, so nothing appears in the Actions tab and no notification is sent. The resulting state — labelled, no review comment — is the same one decision 4 reserves for a failed run, but with no alert behind it. Reachable by a second collaborator, by project automation, or by a rename of the gated account.
+- **Refining a review in place stays local-only.** Step 6 of the review command edits a review already written and answered; the guard in decision 5 deliberately stops the automated path from touching an issue that already has one.
+
+**Date:** 2026-09-07
