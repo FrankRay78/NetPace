@@ -12,7 +12,7 @@ Read `CLAUDE.md` for project context before proceeding.
 
 Raising the pull request is deliberately **not** a step either. It is the one irreversible, outward-facing act in the chain: everything `/verify` does is safe to re-run, and pushing a branch and opening a PR is not. Keeping it a separate deliberate `/raise-pr` invocation is what makes the rest of the chain freely repeatable.
 
-**Stop-on-failure is global:** if any step fails — the tree is dirty, a suite run is not green, a review subagent errors — STOP at that step, report it to the invoker, and do not run any later step. Never report a branch verified over a red suite, an unresolved confirmed blocker, or an uncommitted review edit.
+**Stop-on-failure is global:** if any step fails — the tree is dirty, a suite run is not green, a review subagent errors — STOP at that step, report it to the invoker, and do not run any later step.
 
 ## Steps
 
@@ -21,7 +21,7 @@ Raising the pull request is deliberately **not** a step either. It is the one ir
    - Run `git log main..HEAD --oneline`. If empty, STOP immediately and report: "No commits on this branch over main — nothing to verify." Do not run the suite or spawn reviewers.
    - Require a **clean working tree**. Run `git status --porcelain`; if it is non-empty, STOP and report: "Commit or stash your changes before verifying." A clean tree is what makes step 3 simple and correct: after the review, *anything* that shows up in the tree is a review edit and nothing else, so there is no need to separate review edits from pre-existing local changes.
 
-   The guard runs up front on cost grounds: a full format, a full suite run and a full review are minutes of work, and on `main`, on an empty branch, or over a dirty tree every one of those minutes is spent to reach a conclusion the three cheap `git` calls above already had.
+   The first two checks run up front purely on cost grounds: a full format, a full suite run and a full review are minutes of work, and on `main` or an empty branch every one of those minutes is spent to reach a conclusion a cheap `git` call already had. The clean-tree check earns its place differently — it is the invariant that makes step 3 correct, as described above.
 
 1. **Format (1a), then the full test run (1b).**
 
@@ -38,7 +38,7 @@ Raising the pull request is deliberately **not** a step either. It is the one ir
    - A **non-zero exit** from `dotnet format` is a real failure (bad workspace argument, unparseable source) ⇒ **STOP and report**. A clean run that merely rewrote files is not a failure.
    - Formatting deliberately precedes 1b so that any change it makes is verified by the suite below, rather than landing after the gate has already passed.
 
-   **1b — Full test run (always).** Run `dotnet build ./src && dotnet test ./src` — always, including docs-only branches. Do not add a skip path for docs-only branches: the suite is fast, and this run is the chain's **only unconditional whole-suite gate**. The `gh pr create` `PreToolUse` hook re-runs the suite, but that hook now fires inside a separately invoked `/raise-pr` that may not happen for a long while, or at all — so skipping here would leave a branch reported verified that no suite ever ran against.
+   **1b — Full test run (always).** Run `dotnet build ./src && dotnet test ./src` — always, including docs-only branches. Do not add a skip path for docs-only branches: the suite is fast, and this run is the chain's **only unconditional whole-suite gate**. The `gh pr create` `PreToolUse` hook re-runs the suite, but that hook fires inside a separately invoked `/raise-pr` that may not happen for a long while, or at all — so skipping here would leave a branch reported verified that no suite ever ran against.
    - Gate on the run's **exit code**, not on any stored marker.
    - **Not green ⇒ STOP:** report the failures to the invoker and do nothing else — no review subagents.
    - **Green ⇒ continue.**
@@ -57,7 +57,7 @@ Raising the pull request is deliberately **not** a step either. It is the one ir
    - **If `git status --porcelain` is empty (step 2 changed nothing):** skip both the re-run and the commit — go to step 4. (No spurious second suite run.)
    - **If it is non-empty (step 2 applied edits):**
      - Re-run `dotnet build ./src && dotnet test ./src`. Not green ⇒ STOP and report.
-     - Once green, **commit the edits** with `git add -A` and a clear message (e.g. `fix: apply /verify review findings`). This is what makes the fixes reach the eventual PR — `/raise-pr` pushes *commits*, so uncommitted or untracked working-tree edits would silently never leave this machine. That matters more under the split than it did before: the gap between the fix and the push is now open-ended, so an uncommitted edit has an unbounded window in which to be lost. `git add -A` is correct and complete here precisely because the tree started clean: it stages every review edit (including new untracked files and deletions) with no risk of sweeping in unrelated local changes.
+     - Once green, **commit the edits** with `git add -A` and a clear message (e.g. `fix: apply /verify review findings`). This is what makes the fixes reach the eventual PR — `/raise-pr` pushes *commits*, so uncommitted or untracked working-tree edits would silently never leave this machine. The gap between the fix and the push is open-ended, so an uncommitted edit can sit there indefinitely waiting to be lost. `git add -A` is correct and complete here precisely because the tree started clean: it stages every review edit (including new untracked files and deletions) with no risk of sweeping in unrelated local changes.
 
 4. **Stop here.** Do **not** push, open a PR, merge, or run `/raise-pr`. Leave the working tree clean — everything committed to the branch — because that is exactly `/raise-pr`'s entry condition, so the two compose by hand with nothing in between.
 
@@ -73,5 +73,5 @@ Report to the invoker:
 - **Verdict** — either `VERIFIED branch=<branch>`, or `FAILED reason=<short reason>` naming the precondition or gate that stopped the run. Never report verified over a red suite, an unresolved confirmed blocker, or an uncommitted change.
 - Whether formatting changed anything, and the commit if it did.
 - The suite result(s).
-- Which review findings were fixed-and-committed, and — **named explicitly** — any confirmed finding deferred as an out-of-scope follow-up. This report is the only route by which a deferred finding reaches the PR body, because `/raise-pr` no longer runs in the same session; an unnamed deferral is a lost one.
+- Which review findings were fixed-and-committed, and — **named explicitly** — any confirmed finding deferred as an out-of-scope follow-up. This report is the only route by which a deferred finding reaches the PR body, because `/raise-pr` runs in a separate session; an unnamed deferral is a lost one.
 - On a `VERIFIED` verdict, follow with: "Run `/raise-pr` to push the branch and open the PR — it derives `Closes #<N>` from this branch name and verifies it before use, then reports what it settled; check that line to confirm the link was made. The `@claude` Review B posts async on the raised PR, and `/capture-learnings` folds it in when you next review the batch."

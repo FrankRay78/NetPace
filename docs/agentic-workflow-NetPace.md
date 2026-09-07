@@ -26,7 +26,7 @@ The generic guide's "CI on PR" step **applies fully**; NetPace realises the whol
 | `publish-nuget.yml` | tag push | publish `NetPace.Core` to NuGet |
 | `release-binaries.yml` | tag push | cross-platform binary release matrix |
 
-**Review B is live:** the `@claude` action posts on the raised PR. `/raise-pr` requests it and never waits on it; because `/raise-pr` is a separate manual stage after `/verify`, Review B sits outside the verify gate entirely. A human reads it at merge, and `capture-learnings` can fold it in later.
+**Review B is live:** the `@claude` action posts on the raised PR. `/raise-pr` requests it and never waits on it, so it sits outside the verify gate. A human reads it at merge, and `capture-learnings` can fold it in later.
 
 ## Release pipeline
 
@@ -81,7 +81,7 @@ NetPace's `/verify` follows the generic *verify gate* section as written:
 
 - **Formats first.** Step 1a runs `dotnet format style/whitespace ./src/NetPace.sln` and commits any result on its own, before the suite — so formatting is verified by the gate rather than landing after it, and step 3's clean-tree invariant survives. The explicit solution argument is load-bearing (see above).
 - **Always runs the suite.** Step 1b is `dotnet build ./src && dotnet test ./src` — no docs-only skip. The suite is fast (no external stack), and this is the chain's only unconditional whole-suite run: the `gh pr create` pre-flight hook fires inside `/raise-pr`, a separate manual stage that may not follow for a long while, so a skip here would leave a branch reported verified that no suite ever ran against.
-- **Stops before the PR.** `/verify` ends at a green, reviewed, fully-committed branch with a clean tree — which is exactly `/raise-pr`'s entry condition. Pushing and opening the PR is the chain's one irreversible act, so it stays a deliberate `/raise-pr` invocation and everything before it stays freely re-runnable.
+- **Stops before the PR.** `/verify` ends at a clean, fully-committed branch, which is exactly `/raise-pr`'s entry condition — so the two compose here with no adapter step.
 - **Review B posts.** Because `claude.yml` is wired, the async `@claude` review the generic flow describes actually appears on the PR — requested by `/raise-pr`, so it is downstream of `/verify` and nothing waits on it.
 
 ## Permissions and unattended runs
@@ -92,7 +92,7 @@ An `ask`-matched call **prompts** in an interactive session but is **silently de
 
 That asymmetry makes headless a permission oracle **for rule matching** — run a workflow under `claude -p --dangerously-skip-permissions` and whatever an `allow`, `ask` or `deny` rule would have stopped comes back denied, with no human in the loop to mask it. Know its blind spot: the escalations that need an interactive surface do not fire headlessly at all. A recursive `grep` whose read scope overlaps a `Read(…)` deny rule prompts interactively and runs clean under `claude -p`, so the oracle reports a false all-clear. It answers "which rule matched", not "would a human have been asked". Not CI-gateable either way: it needs the `claude` binary and an authenticated session.
 
-`Bash(rm:*)` and `Bash(rmdir:*)` came off the list for this reason ([CIR](change-intent-records/2026-09-04-rm-off-the-ask-list.md)), and `Bash(git push:*)` followed them off it into `allow` — that is what lets `/raise-pr` reach `gh pr create` without stopping at its second-to-last step. `Bash(chmod:*)` moved the other way, from `deny` onto `ask`, which buys an approval path interactively but not in a lane worker, where `ask` still denies silently ([CIR](change-intent-records/2026-09-04-push-allow-chmod-ask.md)).
+`Bash(rm:*)` and `Bash(rmdir:*)` came off the list for this reason ([CIR](change-intent-records/2026-09-04-rm-off-the-ask-list.md)), and `Bash(git push:*)` followed them off it into `allow` — that is what lets `/raise-pr` reach its push step without stopping. `Bash(chmod:*)` moved the other way, from `deny` onto `ask`, which buys an approval path interactively but not in a lane worker, where `ask` still denies silently ([CIR](change-intent-records/2026-09-04-push-allow-chmod-ask.md)).
 
 `permissions.deny` no longer carries `Read(…)` rules. It held six, over `.env`, `secrets.*`, `.ssh/**` and `appsettings*.json`, and any of them made a recursive read of the repo escalate to an approval no mode auto-grants — the check is glob-scope-based, not existence-based, so it fired even though the repo contains none of those files ([CIR](change-intent-records/2026-09-04-read-deny-rules-removed.md)).
 

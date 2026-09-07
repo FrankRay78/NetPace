@@ -3,7 +3,7 @@
 **Intent:** Stop `/raise-pr` stalling at its push step, and stop `chmod` being a hard block with no approval path.
 
 **Behaviour:**
-- Given a `/raise-pr` run in the project's own `defaultMode`, when it reaches its push step, then the push proceeds without a prompt.
+- Given a `/raise-pr` run in the project's own `defaultMode`, when it reaches its push step, then the push proceeds without a prompt, which is what keeps it composable by an unattended chain.
 - Given an agent in an interactive session that needs to set an executable bit, when it runs `chmod`, then the decision is surfaced rather than refused outright. In a headless worker it is still refused — see the caveat below.
 - Given a command naming privilege escalation (`sudo`, `su`, `chown`) or a network binary (`curl`, `wget`, `ssh`, `scp`), when it runs in any mode, then it is still refused.
 

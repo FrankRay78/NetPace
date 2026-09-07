@@ -8,8 +8,9 @@
 # feedback_dotnet_test_no_build.
 #
 # SCOPE. This gate does exactly one thing: deny a `dotnet test --no-build` that would run a
-# stale or absent test assembly. The "tests are green before a PR" guarantee lives elsewhere —
-# a real whole-suite run inside the human-invoked `/verify` command, not in this hook.
+# stale or absent test assembly. The "tests are green" guarantee lives elsewhere — a whole-suite
+# run inside `/verify`, plus the `gh pr create` PreToolUse hook that re-runs it at `/raise-pr`
+# time — not in this hook.
 #
 # DESIGN RULE: fail OPEN. Any missing tool, unparseable input, or internal error exits
 # 0 (no objection). The one action taken (the --no-build deny) is the narrow, high-confidence case

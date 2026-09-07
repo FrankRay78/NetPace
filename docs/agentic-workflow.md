@@ -79,10 +79,11 @@ Properties worth copying:
 - **Preconditions run before the expensive work.** Check the cheap things first (on a feature branch? any commits over main?), or a full suite and full review burn before a late guard trips.
 - **Review runs in clean context.** Reviewers see the diff, not the conversation that produced it. The *deciding and fixing* legitimately happens in the orchestrator's own loop — "review in clean context" governs the reviewing, not the fixing.
 - **Validate a finding before acting on it.** Reviewer severities are fickle; cross-check a "Critical" against the actual test and spec state rather than relaying it verbatim. Acting on a mislabelled finding is how a review pass makes code worse.
-- **Re-verify what review changed.** Fixes applied after the gate are unverified code — re-run the suite before reporting the branch verified, or a bad fix reaches the PR green-unchecked. Then *commit* the fixes: the PR stage pushes commits, and under the split the gap between the fix and the push is open-ended.
+- **Re-verify what review changed.** Fixes applied after the gate are unverified code — re-run the suite before reporting the branch verified, or a bad fix reaches the PR green-unchecked. Then *commit* the fixes: the PR stage pushes commits, and because it is a separate stage the gap between the fix and the push is open-ended.
 - **Stop before the irreversible step.** End at the verified branch and leave pushing and opening the PR to a separate deliberate invocation. Everything up to that point is safe to re-run; the outward-facing act is not, and it is the one step worth a human's decision.
+- **Name what the review deferred.** A finding consciously left as out-of-scope must be named in the closing report. Once the PR stage runs in a later session, that report is the only route by which a deferral reaches the PR body — an unnamed one is simply lost.
 
-**Two reviews, not one.** *Review A* is synchronous and inside `/verify` — clean-context subagents over the diff, whose findings are in-conversation and therefore available to `capture-learnings` later. *Review B* is the asynchronous agent review on the raised PR, requested by `/raise-pr`, for a human to read at merge. Nothing waits on Review B: blocking a pipeline for minutes to fold in a second review of the same diff buys little. Under the split it falls outside the verify gate entirely, which is a reason the verify report must *name* any finding it deferred — that report is the only route by which a deferral reaches the PR body.
+**Two reviews, not one.** *Review A* is synchronous and inside `/verify` — clean-context subagents over the diff, whose findings are in-conversation and therefore available to `capture-learnings` later. *Review B* is the asynchronous agent review on the raised PR, requested by `/raise-pr`, for a human to read at merge. Nothing waits on Review B: blocking a pipeline for minutes to fold in a second review of the same diff buys little.
 
 ---
 
@@ -202,8 +203,8 @@ Keep Tier 2 short and high-signal; symlink `CLAUDE.md`↔`AGENTS.md` so every to
 The kinds of files a project adds to make this workflow operational (names illustrative):
 
 ### Agent configuration (`.claude/` or `.agents/`)
-- **settings** — checked-in permissions allowlist + hooks: *stale-build guard*, *traceability nudge*, plus any denylist gates backing a standing exclusion; and a deny path over upstream-managed vendored files. Note what is *not* here: the test-green gate is a real suite run inside the ship command, not a hook.
-- **commands** — the custom slash commands above (`draftissue`, `reviewissue`, `confirmissue`, `testplan`, `testchecklist`, slop review, dead-code audit, context-gardening, raise-PR, capture-learnings, and the `ship` orchestrator that composes the pre-PR ones).
+- **settings** — checked-in permissions allowlist + hooks: *stale-build guard*, *traceability nudge*, plus any denylist gates backing a standing exclusion; and a deny path over upstream-managed vendored files. Note what is *not* here: the test-green gate is a real suite run inside `/verify`, not a hook. The one hook nearby re-runs the suite at `gh pr create` time, which belongs to the PR stage.
+- **commands** — the custom slash commands above (`draftissue`, `reviewissue`, `confirmissue`, `testplan`, `testchecklist`, slop review, dead-code audit, context-gardening, raise-PR, capture-learnings, and the `verify` orchestrator that composes the pre-PR ones, which raise-PR then follows as a separate stage).
 - **skills / sub-agents** — simplifier, verifier, and any stack-orchestration script.
 
 ### spec-kit configuration (`.specify/`)
