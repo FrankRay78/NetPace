@@ -7,9 +7,10 @@
 # throwaway CLAUDE_PROJECT_DIR so the real repo is never touched, and exits non-zero on any
 # failure. Run it after any edit to the hook.
 #
-# (History: the hook once also carried PostToolUse ledger-stamping and a Stop completion
-# gate; both were retired in issue #122 when test-green enforcement moved to `/ship`. Those
-# cases are gone from this matrix; only the marker-independent B7 --no-build deny remains.)
+# (History: the hook once also carried PostToolUse ledger-stamping and a Stop completion gate;
+# both were retired in issue #122 when test-green enforcement moved to the verify orchestrator,
+# then named ship. Those cases are gone from this matrix; only the marker-independent B7
+# --no-build deny remains.)
 #
 #   Usage:  .claude/hooks/green-gate.tests.sh
 

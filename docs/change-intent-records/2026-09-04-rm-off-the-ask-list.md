@@ -1,9 +1,9 @@
 # Removing `rm`/`rmdir` from `permissions.ask`
 
-**Intent:** Let `/ship` step 2 run to completion without a human, which is what its own documentation promises. Reviewer subagents stand up synthetic fixtures to exercise failure paths and tear them down again, so teardown hits `rm` on nearly every run — and every one of those stopped the run.
+**Intent:** Let `/verify` step 2 run to completion without a human, which is what its own documentation promises. Reviewer subagents stand up synthetic fixtures to exercise failure paths and tear them down again, so teardown hits `rm` on nearly every run — and every one of those stopped the run.
 
 **Behaviour:**
-- Given a session started in `bypassPermissions`, when `/ship` step 2 spawns the `pr-review-toolkit` reviewers, then they build, exercise and tear down a synthetic `PATH` / `NETPACE_CLAUDE_HOME` fixture with no permission prompt.
+- Given a session started in `bypassPermissions`, when `/verify` step 2 spawns the `pr-review-toolkit` reviewers, then they build, exercise and tear down a synthetic `PATH` / `NETPACE_CLAUDE_HOME` fixture with no permission prompt.
 - Given the same workflow run headless (`claude -p --dangerously-skip-permissions`), when a reviewer removes its fixture, then the removal succeeds rather than being silently denied.
 - Given `rm -rf` aimed at a critical path (`.git`, `.claude`, a dotfile), when any mode is active, then Claude Code still refuses it.
 
@@ -18,7 +18,7 @@
 
 *Partly adopted — clearing the rest of the `ask` list.* The same reasoning retires `git pull`, `merge`, `rebase`, `reset` and `tag`, which were removed alongside: all are local and leave the old tip in the reflog, so on a rebuildable box the entry guarded a recoverable action. None was covered by an allow rule, so in Manual and `acceptEdits` they prompted as unmatched commands either way — the entry's only effect was to break through `bypassPermissions`, and to deny silently under `claude -p`.
 
-`Bash(git push:*)` stays, as the one command whose blast radius the sandbox does not contain: a force-push over someone else's branch, or a pushed secret, survives rebuilding the box. It is a poor fit for `ask` even so — `/ship` must push unattended, and headless would deny it silently — but replacing it with an `allow` plus a `deny` on `--force` is owned by a separate open issue, and folding that in would have put two missions on one branch.
+`Bash(git push:*)` stays, as the one command whose blast radius the sandbox does not contain: a force-push over someone else's branch, or a pushed secret, survives rebuilding the box. It is a poor fit for `ask` even so — `/raise-pr` must push unattended, and headless would deny it silently — but replacing it with an `allow` plus a `deny` on `--force` is owned by a separate open issue, and folding that in would have put two missions on one branch.
 
 *Rejected — narrowing the rule, e.g. `Bash(rm -rf /:*)`.* Matching is textual and the reviewers' teardown is `rm -rf "$SB"`, expanded at runtime, so a narrower literal rule would miss the dangerous case as readily as the benign one. A guard that a variable defeats is worse than no guard, because it reads as protection.
 

@@ -57,10 +57,10 @@
 # makes the whole script a no-op, announced on stderr so it can never be silently in effect.
 #
 # Wired into .claude/settings.json as the Stop hook. (It once ran alongside the green-gate
-# completion gate; that gate was retired in issue #122 when test-green enforcement moved to
-# /ship, so this is now the sole Stop hook.) Loop-guarded, so it nudges at most once per turn
-# and can never hard-lock. Verify any edit with traceability-gate.tests.sh and --check first;
-# see .claude/hooks/README.md.
+# completion gate; that gate was retired in issue #122 when test-green enforcement moved to the
+# verify orchestrator, then named ship, so this is now the sole Stop hook.) Loop-guarded, so it
+# nudges at most once per turn and can never hard-lock. Verify any edit with
+# traceability-gate.tests.sh and --check first; see .claude/hooks/README.md.
 
 set -uo pipefail
 

@@ -6,7 +6,7 @@ type: feedback
 
 After any post-implementation edit (review fixes, refactors, late-stage tweaks), re-run `dotnet test ./src` before reporting the work as complete. Don't extrapolate from an earlier green run — compile-clean is not test-clean, and the earlier count was taken against earlier code.
 
-**Where the hard guarantee lives:** the "suite is green before a PR" check is a **real whole-suite run inside `/ship`** ([.claude/commands/ship.md](../commands/ship.md)), which gates the review/PR on `dotnet build ./src && dotnet test ./src`. During implementation, keeping the suite green is a **soft** standard — run it at your own discretion; the hard gate is `/ship`.
+**Where the hard guarantee lives:** the "suite is green before the branch is reported verified" check is a **real whole-suite run inside `/verify`** ([.claude/commands/verify.md](../commands/verify.md)), which gates the review on `dotnet build ./src && dotnet test ./src` and must be green before the branch is reported verified and handed to `/raise-pr`. During implementation, keeping the suite green is a **soft** standard — run it at your own discretion; the hard gate is `/verify`.
 
 **Why:** Relaying an earlier "N/N passed" after subsequent edits is how a regression reaches review unseen. The fix is cheap — one more run — and NetPace's suite is fast and needs no external stack (unlike a services-backed project, there is nothing to "bring up" first, so "deferred — needs a running stack" is never the right answer here).
 

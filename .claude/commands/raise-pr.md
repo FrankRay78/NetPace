@@ -10,7 +10,7 @@ Read `CLAUDE.md` for project context before proceeding.
 $ARGUMENTS
 ```
 
-Optionally a GitHub issue number — bare (`248`), hashed (`#248`), or a full issue URL — naming the issue this PR closes. Empty is the normal case and is **not** a prompt: step 6 infers a candidate from the branch instead. `/raise-pr` never asks the invoker for anything, so it stays composable by `/ship` with no interactive gate.
+Optionally a GitHub issue number — bare (`248`), hashed (`#248`), or a full issue URL — naming the issue this PR closes. Empty is the normal case and is **not** a prompt: step 6 infers a candidate from the branch instead. `/raise-pr` never asks the invoker for anything, so it stays composable by an automated chain with no interactive gate.
 
 ## Steps
 
@@ -25,7 +25,7 @@ Optionally a GitHub issue number — bare (`248`), hashed (`#248`), or a full is
 
    Otherwise parse `FEATURE_DIR` from the JSON output. If `FEATURE_DIR` does not exist on disk, skip to step 5. Otherwise keep it for step 4.
 
-4. **Delete spec folder**: Specs are deleted before merge so they don't accumulate on `main`, so remove `<FEATURE_DIR>` and commit the removal without prompting (this keeps `/raise-pr` composable by `/ship` with no interactive gate):
+4. **Delete spec folder**: Specs are deleted before merge so they don't accumulate on `main`, so remove `<FEATURE_DIR>` and commit the removal without prompting (this keeps `/raise-pr` composable by an automated chain with no interactive gate):
    - Run `git rm -r <FEATURE_DIR>`
    - Clear the spec-kit feature pointer so it doesn't dangle at a deleted folder on `main`: if `.specify/feature.json` exists and its `feature_directory` resolves to the same folder as `<FEATURE_DIR>` (compare as repo-relative paths — `FEATURE_DIR` from `--paths-only` is absolute, while the JSON stores a repo-relative path like `specs/NNN-…`), reset it to `{"feature_directory": ""}` and `git add .specify/feature.json`. (A stale pointer makes `check-prerequisites.sh` hard-fail and lets `setup-plan.sh` silently recreate the deleted folder.)
    - Run `git commit -m "chore: remove <FEATURE_DIR>"`
@@ -44,7 +44,7 @@ Optionally a GitHub issue number — bare (`248`), hashed (`#248`), or a full is
      - **Linked** — every condition held. Put `Closes #<N>` on its own line in **Related**.
      - **No issue** — the lookup settled the question. Either it exited 0 and the answer disqualifies the number (a pull request, an issue already `CLOSED`, or an issue in another repo), or it exited non-zero saying `Could not resolve to an issue or pull request`, which is GitHub definitively answering that nothing exists at `<N>`. Add no closing keyword. When it is a real but closed issue in *this* repo, still record `Refs #<N>` in **Related**: dropping the closing keyword is the safety property, dropping every trace of the link is collateral damage.
      - **Unverified** — the lookup could not answer at all: expired auth, no network, rate limit, `gh` missing. Add no closing keyword, and say the check could not run, quoting `gh`'s stderr. Read the stderr, not the exit code, to tell this from the case above — both exit non-zero, but `HTTP 401: Bad credentials` is a broken check while `Could not resolve to an issue or pull request` is an answer. Reporting a fixable auth failure as "no such issue" sends the invoker looking in the wrong place.
-   - A non-zero `gh issue view` here is **not** a `/ship` step failure despite that command's global stop-on-failure rule — it is an abstain, reported rather than fatal. Compose the rest of the body and carry on.
+   - A non-zero `gh issue view` here is **not** a stop-on-failure condition for the calling chain — it is an abstain, reported rather than fatal. Compose the rest of the body and carry on.
    - What this proves is bounded, and worth knowing: that `<N>` is an open issue in this repo, never that it is *this branch's* issue, and it can change state between here and merge. Restricting inference to the `/build` shape is what keeps that gap narrow.
    - The PR body is the *only* place a closing keyword belongs — never a commit message, which would close the issue as soon as it reached `main`, ahead of review.
    - Whichever way it lands, step 10 reports it.
