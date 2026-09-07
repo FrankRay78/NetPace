@@ -14,7 +14,7 @@ exits `0` whenever `tail` succeeds — **including when the suite failed**. This
 
 The same construct has a second failure mode. `tail` buffers its entire input until upstream closes, so a backgrounded long-running script piped through it leaves a **0-byte output file for its whole run**. A live PID with an empty log reads as "stuck" when it is merely buffering.
 
-**Why:** `/verify` step 1 gates on the suite run's **exit code**, not on any stored marker — that instruction is correct and it *is* the gate. A single `| tail` in how the suite gets invoked silently voids it, and nothing reports that it has. NetPace is not exposed here today: all three hooks (`green-gate.sh`, `no-skipped-tests.sh`, `traceability-gate.sh`) set `-uo pipefail`, and `/verify` as written does not pipe. This entry is **prophylactic** — the exposure is an agent hand-running a piped suite command inside a session, which is exactly how it went wrong elsewhere, and is a place no hook is watching.
+**Why:** `/verify`'s suite gate (step 1b) gates on the suite run's **exit code**, not on any stored marker — that instruction is correct and it *is* the gate. A single `| tail` in how the suite gets invoked silently voids it, and nothing reports that it has. NetPace is not exposed here today: all three hooks (`green-gate.sh`, `no-skipped-tests.sh`, `traceability-gate.sh`) set `-uo pipefail`, and `/verify` as written does not pipe. This entry is **prophylactic** — the exposure is an agent hand-running a piped suite command inside a session, which is exactly how it went wrong elsewhere, and is a place no hook is watching.
 
 **How to apply:**
 - Never pipe a command whose pass/fail you are about to trust — a test run, a build, a gate script. Run it raw and read the output.
