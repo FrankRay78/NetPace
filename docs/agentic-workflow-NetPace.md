@@ -52,7 +52,7 @@ The generic enforcement layer, as NetPace wires it. Hooks live in [`.claude/hook
 | Traceability gate | `traceability-gate.sh` — spec label ↔ test-plan scenario ↔ `// SCENARIO:` marker under `src/`, exact match; loop-guarded nudge, never a lock-out | Stop |
 | Upstream-file guard | `permissions.deny` — one `Edit(path)` rule each on `.claude/skills/speckit-*/SKILL.md`, `.specify/templates/*.md`, `.specify/scripts/bash/*.sh` (an `Edit` rule covers every file-editing tool, Write included) | settings |
 | PR pre-flight | `dotnet build ./src && dotnet test ./src` before `gh pr create` | PreToolUse(Bash), `if gh pr create` |
-| **Formatting** | **`/verify`'s formatting step (1a) — `dotnet format style/whitespace ./src/NetPace.sln`, once per PR. Not a hook** (see below) | — |
+| **Formatting** | **`/verify`'s formatting pass (step 1a) — `dotnet format style/whitespace ./src/NetPace.sln`, once per PR. Not a hook** (see below) | — |
 | **Test-green gate** | **`/verify`'s suite gate (step 1b) — a real `dotnet build ./src && dotnet test ./src`. Not a hook.** | — |
 
 Every hook is **fail-open with an announced override** (`NETPACE_SKIP_GREEN_GATE=1`, `NETPACE_ALLOW_SKIPS=1`, `NETPACE_SKIP_TRACEABILITY_GATE=1`). For a harness edited with itself, a false block can lock out the tools that would fix it — so uncertain paths allow, and the override announces itself on stderr.
@@ -63,7 +63,7 @@ Every hook is also a **script in `.claude/hooks/` with a `.tests.sh` case matrix
 
 ### Formatting
 
-Formatting runs **once per PR**, as `/verify`'s formatting step (1a) — never on commit. This is the generic guide's *Formatting is not verification — do it at verify cadence* section, made concrete:
+Formatting runs **once per PR**, as `/verify`'s formatting pass (step 1a) — never on commit. This is the generic guide's *Formatting is not verification — do it at verify cadence* section, made concrete:
 
 ```bash
 dotnet format style ./src/NetPace.sln && dotnet format whitespace ./src/NetPace.sln
