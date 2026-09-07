@@ -52,8 +52,8 @@ The generic enforcement layer, as NetPace wires it. Hooks live in [`.claude/hook
 | Traceability gate | `traceability-gate.sh` — spec label ↔ test-plan scenario ↔ `// SCENARIO:` marker under `src/`, exact match; loop-guarded nudge, never a lock-out | Stop |
 | Upstream-file guard | `permissions.deny` — one `Edit(path)` rule each on `.claude/skills/speckit-*/SKILL.md`, `.specify/templates/*.md`, `.specify/scripts/bash/*.sh` (an `Edit` rule covers every file-editing tool, Write included) | settings |
 | PR pre-flight | `dotnet build ./src && dotnet test ./src` before `gh pr create` | PreToolUse(Bash), `if gh pr create` |
-| **Formatting** | **`/verify` step 1a — `dotnet format style/whitespace ./src/NetPace.sln`, once per PR. Not a hook** (see below) | — |
-| **Test-green gate** | **`/verify` step 1b — a real `dotnet build ./src && dotnet test ./src`. Not a hook.** | — |
+| **Formatting** | **`/verify`'s formatting pass (step 1a) — `dotnet format style/whitespace ./src/NetPace.sln`, once per PR. Not a hook** (see below) | — |
+| **Test-green gate** | **`/verify`'s suite gate (step 1b) — a real `dotnet build ./src && dotnet test ./src`. Not a hook.** | — |
 
 Every hook is **fail-open with an announced override** (`NETPACE_SKIP_GREEN_GATE=1`, `NETPACE_ALLOW_SKIPS=1`, `NETPACE_SKIP_TRACEABILITY_GATE=1`). For a harness edited with itself, a false block can lock out the tools that would fix it — so uncertain paths allow, and the override announces itself on stderr.
 
@@ -63,7 +63,7 @@ Every hook is also a **script in `.claude/hooks/` with a `.tests.sh` case matrix
 
 ### Formatting
 
-Formatting runs **once per PR**, as `/verify` step 1a — never on commit. This is the generic guide's *Formatting is not verification — do it at verify cadence* section, made concrete:
+Formatting runs **once per PR**, as `/verify`'s formatting pass (step 1a) — never on commit. This is the generic guide's *Formatting is not verification — do it at verify cadence* section, made concrete:
 
 ```bash
 dotnet format style ./src/NetPace.sln && dotnet format whitespace ./src/NetPace.sln
@@ -79,8 +79,8 @@ The explicit solution argument is **required, not decorative**: `dotnet format` 
 
 NetPace's `/verify` follows the generic *verify gate* section as written:
 
-- **Formats first.** Step 1a runs `dotnet format style/whitespace ./src/NetPace.sln` and commits any result on its own, before the suite — so formatting is verified by the gate rather than landing after it, and step 3's clean-tree invariant survives. The explicit solution argument is load-bearing (see above).
-- **Always runs the suite.** Step 1b is `dotnet build ./src && dotnet test ./src` — no docs-only skip. The suite is fast (no external stack), and this is the chain's only unconditional whole-suite run: the `gh pr create` pre-flight hook fires inside `/raise-pr`, a separate manual stage that may not follow for a long while, so a skip here would leave a branch reported verified that no suite ever ran against.
+- **Formats first.** The formatting pass (step 1a) runs `dotnet format style/whitespace ./src/NetPace.sln` and commits any result on its own, before the suite — so formatting is verified by the gate rather than landing after it, and the clean-tree invariant that committing the fixes (step 3) depends on survives. The explicit solution argument is load-bearing (see above).
+- **Always runs the suite.** The suite gate (step 1b) is `dotnet build ./src && dotnet test ./src` — no docs-only skip. The suite is fast (no external stack), and this is the chain's only unconditional whole-suite run: the `gh pr create` pre-flight hook fires inside `/raise-pr`, a separate manual stage that may not follow for a long while, so a skip here would leave a branch reported verified that no suite ever ran against.
 - **Stops before the PR.** `/verify` ends at a clean, fully-committed branch, which is exactly `/raise-pr`'s entry condition — so the two compose here with no adapter step.
 - **Review B posts.** Because `claude.yml` is wired, the async `@claude` review the generic flow describes actually appears on the PR — requested by `/raise-pr`, so it is downstream of `/verify` and nothing waits on it.
 
