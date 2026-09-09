@@ -135,3 +135,4 @@ Install status is deliberately **not** recorded in this or any other doc: it is 
 - [RELEASING.md](RELEASING.md) — the release matrix and its contracts.
 - [conventions/change-intent-records.md](conventions/change-intent-records.md) — when a change warrants a CIR; [conventions/csharp-style.md](conventions/csharp-style.md) — C# style.
 - [../.claude/hooks/README.md](../.claude/hooks/README.md) — per-hook documentation.
+- [study/README.md](study/README.md) — the `/study` records: what surprised a piece of work, classified by where the fix belongs, so the harness can be improved from evidence.
