@@ -71,7 +71,7 @@ that path already exists and what conventions its siblings follow.
 
 ### 3. Identify gaps
 
-Group findings into two gap sections — **Requirements gaps** and **Technical gaps** — plus a **Commentary** section for non-question observations.
+Group findings into two gap sections — **Requirements gaps** and **Technical gaps** — plus a **Commentary** section.
 
 Each gap (in either group) must:
 
@@ -106,19 +106,19 @@ Each gap (in either group) must:
 - **Operational** — ports, migrations, docker compose entries, deploy scripts.
 - **Tech failure modes** — unreachable dependencies, rate limits, retry policy, fail-open vs fail-closed at the system level.
 
-**Commentary** — remarks that inform the reader and require no answer. That is the only kind of content the section carries. It is addressed to whoever reads the review; it asks nothing of them, hands nothing on to a later command, and carries no answer slots.
+**Commentary** — remarks that inform the spec author and require no answer. That is the only kind of content the section carries. No downstream command parses it: `/speckit.confirmissue` folds only the numbered gaps into the issue body.
 
-**Commentary or gap?** The line is the *source* of the constraint, not its force. A fact already true of the codebase or the surrounding work is commentary, however binding it turns out to be in practice. A choice only the author can make, or an obligation this issue would newly impose, is never commentary — record it as a numbered gap.
+**Commentary or gap?** The line is the *source* of the constraint, not its force. A fact already true of the codebase is commentary, however binding it turns out to be in practice. A choice only the author can make, or an obligation this issue would newly impose, is never commentary — record it as a numbered gap. A convention that already governs this area stays commentary even when this issue is the first work to trigger it; only an obligation with no prior basis in the codebase is a gap.
 
-**The bar a bullet must clear.** Commentary carries only what the spec author would otherwise miss or get wrong. A bullet that restates a rule the implementer is already bound by — the constitution, `CLAUDE.md`, a documented convention — or whose content amounts to "nothing to do here", does not appear at all. A short section is the normal outcome; no section is a fine one.
+**The bar a bullet must clear.** Commentary carries only what the spec author would otherwise miss or get wrong. A bullet that restates a rule they already hold — the constitution, `CLAUDE.md`, a guide either one links — or whose content amounts to "nothing to do here", does not appear at all. A short section is the normal outcome.
 
 Write what survives as bullets, not questions:
 
-- Local conventions that are silent when broken (e.g. frontmatter in this repo is a single `description:` line)
+- Local conventions that no gate enforces and no project guide states (e.g. a frontmatter key every sibling file sets that nothing checks)
 - Port allocation suggestions based on existing assignments
 - Reuse opportunities (existing classes/modules the new work can share)
 - Docker / compose files that will need entries
-- Documentation files that will need updates, listed by path
+- Documentation files that cover this area, listed by path
 
 ### 4. Draft the comment
 
@@ -274,7 +274,7 @@ Keep your own chat response short. Tailor it to the run mode:
 
 **First run:**
 - confirm the issue reviewed (number + title)
-- state how many gaps + how many notes were raised
+- state how many gaps were raised, and whether the review carries commentary
 - return the comment URL
 
 **Refine run:**
