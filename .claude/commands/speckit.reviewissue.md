@@ -71,7 +71,7 @@ that path already exists and what conventions its siblings follow.
 
 ### 3. Identify gaps
 
-Group findings into two gap sections — **Requirements gaps** and **Technical gaps** — plus a **Notes for SDD** section for non-question observations.
+Group findings into two gap sections — **Requirements gaps** and **Technical gaps** — plus a **Commentary** section.
 
 Each gap (in either group) must:
 
@@ -96,7 +96,7 @@ Each gap (in either group) must:
 - **Acceptance criteria from outside** — whether existing ACs are observable from outside the implementation by a user or external test; flag project-housekeeping items (project exists, sln updated, test scaffolding) — they belong in `/speckit.tasks`.
 - **User-visible failure modes** — what the user sees when a dependency is unreachable, slow, or rejects them; fail-open vs fail-closed *from the user's viewpoint*.
 
-**Technical gaps** — surface gaps suggested by Step 2 (codebase grounding) plus any tech shape the issue itself already commits to. Let the author set the depth: they may want extensive tech review or none. Items the author wants tracked but not answered now belong in **Notes for SDD**.
+**Technical gaps** — surface gaps suggested by Step 2 (codebase grounding) plus any tech shape the issue itself already commits to. Let the author set the depth: they may want extensive tech review or none.
 
 - **Where it lives** — existing endpoint/service/flow extended vs. new; who calls whom; which org(s) are involved.
 - **Integration** — interface contracts with existing components, event/data flow, ordering.
@@ -106,15 +106,19 @@ Each gap (in either group) must:
 - **Operational** — ports, migrations, docker compose entries, deploy scripts.
 - **Tech failure modes** — unreachable dependencies, rate limits, retry policy, fail-open vs fail-closed at the system level.
 
-**Notes for SDD** — things the spec author should *know* but doesn't need to answer here. Two flavours land in this section: passive observations that will shape the spec, and items the author chose to defer to `/speckit.specify` rather than resolve at issue level. Both are written as bullets, not questions:
+**Commentary** — remarks that inform the spec author and require no answer. That is the only kind of content the section carries. No downstream command parses it: `/speckit.confirmissue` folds only the numbered gaps into the issue body.
 
+**Commentary or gap?** The line is the *source* of the constraint, not its force. A fact already true of the codebase is commentary, however binding it turns out to be in practice. A choice only the author can make, or an obligation this issue would newly impose, is never commentary — record it as a numbered gap. A convention that already governs this area stays commentary even when this issue is the first work to trigger it; only an obligation with no prior basis in the codebase is a gap.
+
+**The bar a bullet must clear.** Commentary carries only what the spec author would otherwise miss or get wrong. A bullet that restates a rule they already hold — the constitution, `CLAUDE.md`, a guide either one links — or whose content amounts to "nothing to do here", does not appear at all. A short section is the normal outcome.
+
+Write what survives as bullets, not questions:
+
+- Local conventions that no gate enforces and no project guide states (e.g. a frontmatter key every sibling file sets that nothing checks)
 - Port allocation suggestions based on existing assignments
 - Reuse opportunities (existing classes/modules the new work can share)
 - Docker / compose files that will need entries
-- Documentation files that will need updates (list them by path)
-- Testing conventions (mirror existing test project structure)
-- Project-specific authoring rules (e.g. acceptance scenario naming conventions
-  from `CLAUDE.md`)
+- Documentation files that cover this area, listed by path
 
 ### 4. Draft the comment
 
@@ -163,7 +167,9 @@ Before taking this into SDD, the following points need answers. Please record re
 
 > _Answer:_
 
-### Notes for SDD
+### Commentary
+
+> Omit this section entirely if nothing clears the bar in Step 3 — do not emit an empty heading.
 
 - **<category>**: <observation>
 - ...
@@ -238,7 +244,7 @@ Re-framing rules (hedging case only):
 - **Expand the question body** with 2–4 concrete options laid out as a sub-list, each with a one-line trade-off. Add a worked example or a pointer to a comparable existing pattern in the codebase (read the codebase again if needed — surface defaults they may not have known existed: existing constants, sibling service patterns, port allocations, etc.).
 - **Revise the `> _**Recommendation:**_` line** if the new framing changes your call. Keep the `Reason:` cite tied to evidence.
 - **After ~2 hedging iterations on the same question** with no commitment, add a final option *"This may be out of scope for the current issue — answer `out of scope: <reason>` to drop it"* and call it out in the recommendation. Do not edit the gap out yourself — leave that to the author + `/speckit.confirmissue`.
-- **Do not touch any other gap.** Substantive, out-of-scope, and empty answers must come through byte-for-byte. The "Notes for SDD" section is also untouched.
+- **Do not touch any other gap.** Substantive, out-of-scope, and empty answers must come through byte-for-byte. The Commentary section is also untouched.
 
 If no gap qualifies for re-framing, **make no edit** and report that in chat (the author either still has un-answered questions, or is ready for `/speckit.confirmissue`).
 
@@ -268,7 +274,7 @@ Keep your own chat response short. Tailor it to the run mode:
 
 **First run:**
 - confirm the issue reviewed (number + title)
-- state how many gaps + how many notes were raised
+- state how many gaps were raised, and whether the review carries commentary
 - return the comment URL
 
 **Refine run:**
