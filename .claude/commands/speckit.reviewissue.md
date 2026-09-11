@@ -50,15 +50,14 @@ Check two things, in this order.
 
 **First, is the issue already confirmed?** `/speckit.confirmissue` deletes the review once it has folded the answers into the issue body, so the review's absence no longer means "never reviewed". The `ready` label is what says the issue has been through this gate.
 
-- **The issue carries the `ready` label** → **already confirmed**. **Stop.** Post nothing, edit nothing, and tell the user the issue has already been through the pre-specification gate, pointing them at its `## Confirmed decisions` section. Say how to reopen it: remove the `ready` label (`gh issue edit <number> --repo <owner/repo> --remove-label ready`) and request the review again — an issue whose scope has moved is by definition no longer ready, and with the marker gone this command treats it as a first run. Never post a second review over decisions that were already settled — it re-asks questions the author answered and folded weeks earlier, and buries the `## Confirmed decisions` section under exactly the deliberation that confirming it was meant to clear away.
+- **The issue carries the `ready` label** → **already confirmed**. **Stop.** Post nothing, edit nothing, and tell the user the issue has already been through the pre-specification gate, pointing them at its `## Confirmed decisions` section — or, if there is no such section, say so plainly: the label was applied by hand, and removing it is the fix. Say how to reopen it: remove the `ready` label (`gh issue edit <number> --repo <owner/repo> --remove-label ready`) and request the review again — an issue whose scope has moved is by definition no longer ready, and with the marker gone this command treats it as a first run. Never post a second review over settled decisions: it buries the `## Confirmed decisions` section under exactly the deliberation that confirming it was meant to clear away.
 
-**Otherwise, look for an existing review comment** marked with the sentinel `<!-- speckit:review -->`.
-If multiple comments carry the marker, use the most recent one by ID.
+**Otherwise, look for an existing review comment** marked with the sentinel `<!-- speckit:review -->`. If multiple comments carry the marker, use the most recent one by creation time.
 
 - **No existing review comment** → **first run**. Continue to step 2 (full gap analysis, post a new comment).
-- **Existing review comment found** → **refine run**. Skip to step 6 (re-frame hedging questions only; do not re-do gap analysis). This is unchanged: a review that has been posted but not yet confirmed still refines in place.
+- **Existing review comment found** → **refine run**. Skip to step 6 (re-frame hedging questions only; do not re-do gap analysis).
 
-Issues confirmed before the review was deleted on confirmation still carry their old review comment. The `ready` check catches them first; if the label was never applied, the sentinel still does — either way they are not treated as unreviewed.
+Issues confirmed before the review was deleted on confirmation still carry their old review comment: the `ready` check catches them first, and the sentinel catches them if the label was never applied.
 
 If existing non-review comments already resolve a gap you would otherwise raise,
 do not raise it again.
@@ -282,7 +281,7 @@ Keep your own chat response short. Tailor it to the run mode:
 
 **Already confirmed (stopped at step 1):**
 - say the issue has already been through the gate, and name the marker you saw (the `ready` label)
-- point at its `## Confirmed decisions` section rather than restating it
+- point at its `## Confirmed decisions` section rather than restating it, or say if there is none
 - state the reopen path: remove `ready`, then request the review again
 
 **First run:**

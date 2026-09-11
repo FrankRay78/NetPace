@@ -2,7 +2,7 @@
 
 **Intent:** Take the one step in the spec pipeline whose cost is the *wait* — `/speckit.reviewissue`, which carries the codebase-grounding pass — off the developer machine, so an issue raised away from the desk has its gap analysis waiting rather than requested. Answering the questions and running `/speckit.confirmissue` are quick by comparison and stay local.
 
-**Superseded in part:** the done-marker described below is no longer current. [`2026-09-11-confirmed-decisions-replace-the-review`](2026-09-11-confirmed-decisions-replace-the-review.md) moves it to the `ready` label, because `/speckit.confirmissue` now deletes the review comment once it has folded the answers into the issue body. Decision 4 and the `/speckit.confirmissue` behaviour clause below are annotated accordingly; everything else in this record stands.
+**Superseded in part:** the done-marker described below is no longer current. [`2026-09-11-confirmed-decisions-replace-the-review`](2026-09-11-confirmed-decisions-replace-the-review.md) moves it to the `ready` label, because `/speckit.confirmissue` now deletes the review comment once it has folded the answers into the issue body. Decision 4 and the two affected behaviour clauses below are annotated accordingly; everything else in this record stands.
 
 **Behaviour:**
 - Given: an issue in this repository, and the `FrankRay78` account
@@ -10,7 +10,7 @@
 - Then: a single comment appears on the issue containing a numbered pre-specification gap analysis — recommendation and inline answer slot per gap — grounded in real paths and conventions from this codebase; the `review` label is then removed.
 - Given: an issue that already carries a `<!-- speckit:review -->` comment
 - When: the `review` label is applied again
-- Then: no comment is posted, and the label is cleared — the issue is already done, and the label is the thing that said otherwise.
+- Then: no comment is posted, and the label is cleared — the issue is already done, and the label is the thing that said otherwise. *(Superseded in part: the sentinel no longer means "done". It now means "reviewed but not yet confirmed", or a confirmation that predates the 2026-09-11 record; the `ready` label is the done-marker and is checked first.)*
 - Given: a run that fails before the review comment is posted
 - Then: no comment is posted, the `review` label stays in place, and the run is red.
 - Given: a run that posts the comment but does not go on to clear the label
