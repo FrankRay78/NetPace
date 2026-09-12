@@ -149,9 +149,7 @@ Write what survives as bullets, not questions:
 
 ### 4. Draft the comment
 
-Structure the comment body as follows. A table lists every gap up front so the
-author can triage the review before reading into it, and each gap then gets an
-inline answer slot (`> _Answer:_`) so they can respond beneath it in a single edit.
+Structure the comment body as follows. A table lists every gap up front so the author can triage the review before reading into it, and each gap then gets an inline answer slot (`> _Answer:_`) so they can respond beneath it in a single edit.
 
 ```markdown
 ## Pre-specification review — gaps & clarifications
@@ -214,32 +212,16 @@ _<consequence kind>:_ <what a different answer would change, one clause>
 - ...
 ```
 
-**The at-a-glance table.** One row per gap, in the same order as the gaps
-themselves, spanning both groups — it is the whole set in one view, which is
-what makes the review triageable without reading it. Titles in the `Gap` column
-match each gap's own title verbatim, so a row and its gap are unmistakably the
-same thing. Always emit the table, even for a single gap: the author should
-never have to check whether it is there. The one exception is a review that
-raises no gaps at all — omit the table along with the groups, since there is
-nothing to triage.
+**The at-a-glance table.** One row per gap, in the same order as the gaps themselves, spanning both groups — it is the whole set in one view, which is what makes the review triageable without reading it. Titles in the `Gap` column match each gap's own title verbatim, so a row and its gap are unmistakably the same thing. Always emit the table, even for a single gap: the author should never have to check whether it is there. The one exception is a review that raises no gaps at all — omit the table along with the groups, since there is nothing to triage.
 
 Two rules on its shape, and the first is load-bearing:
 
 - **Never use the `**N. <title>**` form in the table, and never put a `> _Answer:_` line above the first group.** `/speckit.confirmissue` parses a gap as a `**N. <title>**` block ending in `> _Answer:_`, and folds every one it finds into the issue body. A row that imitates that shape would be folded as a phantom decision the author never made. Table cells carry a bare number and plain text, which matches nothing the parser looks for.
 - **The table replaces nothing.** Every gap keeps its own consequence line, framing, recommendation and answer slot below; the table is a view of them, not a substitute.
 
-**Length bound — 120 words per gap.** Count everything from the `**N. <title>**`
-line through to its `> _Answer:_` slot: the consequence line, the framing, every
-sub-bullet, and the recommendation with its reason. The bound applies to the gap
-as a whole rather than to any one part of it, and no gap may exceed it.
+**Length bound — 120 words per gap.** Count everything from the `**N. <title>**` line through to its `> _Answer:_` slot: the consequence line, the framing, every sub-bullet, and the recommendation with its reason. The bound applies to the gap as a whole rather than to any one part of it, and no gap may exceed it.
 
-**Splitting is not how you meet the bound.** A 200-word gap broken into two
-100-word gaps satisfies nothing — the reader faces the same prose and one more
-decision. Cut instead: drop the restatement of what the issue already says, keep
-the evidence that makes the gap specific, and let the recommendation carry the
-detail rather than the framing. Split only where the gap is genuinely two
-independent questions needing two separate answers — and then each half must
-meet the bound on its own.
+**Splitting is not how you meet the bound.** A 200-word gap broken into two 100-word gaps satisfies nothing — the reader faces the same prose and one more decision. Cut instead: drop the restatement of what the issue already says, keep the evidence that makes the gap specific, and let the recommendation carry the detail rather than the framing. Split only where the gap is genuinely two independent questions needing two separate answers — and then each half must meet the bound on its own.
 
 **Recommendation quality bar:** the recommendation must be a concrete,
 actionable default (a value, a library, a field name, an HTTP status, an
