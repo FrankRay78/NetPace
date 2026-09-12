@@ -92,24 +92,24 @@ Each gap (in either group) must:
   gap without a recommendation forces the author to originate the answer
   from scratch, which is exactly the work this command is meant to front-load.
 
-**Raise a gap only where the issue leaves something open.** A gap exists because the issue does not determine the answer — someone taking this into SDD would have to invent it or guess. Test every candidate against the issue as it stands: if the body, its acceptance criteria, or its out-of-scope list already settles the point, there is no gap, however squarely a category below invites one. A category you considered and found settled produces **nothing** — no gap, no placeholder, and no commentary bullet announcing that it is fine.
+**Raise a gap only where the issue leaves something open.** A gap exists because the issue does not determine the answer — someone taking this into SDD would have to invent it or guess. Test every candidate against the issue as it stands: if the body, its acceptance criteria, its out-of-scope list, or an existing non-review comment (step 1) already settles the point, there is no gap, however squarely a category below invites one. A category you considered and found settled produces **nothing** — no gap, no placeholder, and no commentary bullet announcing that it is fine.
 
-That test is the only thing deciding whether a point becomes a gap. Do **not** ask whether the author would contest your recommendation — that is a judgement about a person rather than about the issue, and a wrong call settles a real decision silently. Every open point stays a numbered gap with its own answer slot, however confident the recommendation is.
+Do **not** additionally ask whether the author would contest your recommendation — that is a judgement about a person rather than about the issue, and a wrong call settles a real decision silently. Every open point stays a numbered gap with its own answer slot, however confident the recommendation is.
 
-**The review is sized by what the issue leaves open, not by the number of categories below.** The category lists are a checklist of what to *consider*, never a quota to fill. An issue that commits to little should attract a visibly shorter review than one that leaves much open — so if a tightly-scoped issue is producing a long review, the sweep is manufacturing gaps, and the fix is to drop the ones nothing is actually open in.
+**The review is sized by what the issue leaves open, not by the number of categories below.** The category lists are a checklist of what to *consider*, never a quota to fill. An issue that commits to little should attract a visibly shorter review than one that leaves much open — so if a tightly-scoped issue is producing a long review, the sweep is likely manufacturing gaps; re-test each against the issue and drop the ones nothing is actually open in.
 
 **Consequence — every gap says what a different answer would change.** Each gap is exactly one of two kinds:
 
 - **Changes what gets built** — answering against the recommendation would change something the issue commits to building: a scenario, an acceptance criterion, the scope boundary, a user-visible behaviour.
 - **Settles a detail** — what gets built is fixed either way, and the answer settles a detail within it: a name, a path, a value, where something is documented.
 
-Name the kind on the gap and say in one clause what would change. Where the call is genuinely borderline, take the lower of the two — an inflated marker costs the reader exactly the attention the marker exists to save.
+Name the kind on the gap and say in one clause what would change. Where the call is genuinely borderline, take *Settles a detail* — an inflated marker costs the reader exactly the attention the marker exists to save.
 
 **Order the gaps, then number them.** Settle the order first; numbers are assigned to the ordered list, never the reverse:
 
-1. **By group** — all Requirements gaps, then all Technical gaps. This order is load-bearing: `/speckit.confirmissue` routes each folded decision by the group its gap sat under, so consequence ordering operates *within* a group and never moves a gap across the two.
+1. **By group** — all Requirements gaps, then all Technical gaps, because requirements are probed before any technical question. What is load-bearing here is the *grouping*, not the sequence: `/speckit.confirmissue` routes each folded decision by the heading its gap sat under (its step 4), so consequence ordering operates *within* a group and never moves a gap across the two.
 2. **By consequence within the group** — every *Changes what gets built* gap comes before every *Settles a detail* gap in the same group.
-3. **Number contiguously across both groups** (1, 2, 3, … not 1a, 1b), following that order. Contiguous numbering keeps `/speckit.confirmissue` parsing simple and lets the author refer to a gap by a single number in chat.
+3. **Number contiguously across both groups** (1, 2, 3, … not 1a, 1b), following that order. Contiguous numbering lets the author refer to a gap by a single number in chat.
 
 Numbers are assigned once, when the comment is first composed. A refine run never reorders and never renumbers — see step 6.
 
@@ -170,7 +170,7 @@ Before taking this into SDD, the following points need answers. The table lists 
 |---|---|---|
 | 1 | <short title> | Changes what gets built — <what would change, ≤12 words> |
 | 2 | <short title> | Settles a detail — <what would change, ≤12 words> |
-| 3 | <short title> | Settles a detail — <what would change, ≤12 words> |
+| 3 | <short title> | Changes what gets built — <what would change, ≤12 words> |
 
 ### Requirements gaps
 
@@ -212,16 +212,15 @@ _<consequence kind>:_ <what a different answer would change, one clause>
 - ...
 ```
 
-**The at-a-glance table.** One row per gap, in the same order as the gaps themselves, spanning both groups — it is the whole set in one view, which is what makes the review triageable without reading it. Titles in the `Gap` column match each gap's own title verbatim, so a row and its gap are unmistakably the same thing. Always emit the table, even for a single gap: the author should never have to check whether it is there. The one exception is a review that raises no gaps at all — omit the table along with the groups, since there is nothing to triage.
+**The at-a-glance table.** One row per gap, in the same order as the gaps themselves, spanning both groups — so the consequence column is not sorted globally: it restarts at *Changes what gets built* where the Technical group begins. Titles in the `Gap` column match each gap's own title verbatim, and the consequence cell is a compression of the gap's own consequence line, so a row and its gap are unmistakably the same thing and never say different ones. Always emit the table, even for a single gap: the author should never have to check whether it is there.
 
-Two rules on its shape, and the first is load-bearing:
+**Never use the `**N. <title>**` form in the table, and never put a `> _Answer:_` line above the first group.** `/speckit.confirmissue` parses every `**N. <title>**` block in the comment as a gap, ending at its `> _Answer:_` line (its step 2). A row imitating that shape carries no answer slot of its own, so it either hard-stops the fold — step 2 refuses to fold anything while a parsed gap looks unanswered — or takes the first real gap's answer slot as its own and corrupts the decisions that do land. Table cells carry a bare number and plain text, which matches nothing the parser looks for.
 
-- **Never use the `**N. <title>**` form in the table, and never put a `> _Answer:_` line above the first group.** `/speckit.confirmissue` parses a gap as a `**N. <title>**` block ending in `> _Answer:_`, and folds every one it finds into the issue body. A row that imitates that shape would be folded as a phantom decision the author never made. Table cells carry a bare number and plain text, which matches nothing the parser looks for.
-- **The table replaces nothing.** Every gap keeps its own consequence line, framing, recommendation and answer slot below; the table is a view of them, not a substitute.
-
-**Length bound — 120 words per gap.** Count everything from the `**N. <title>**` line through to its `> _Answer:_` slot: the consequence line, the framing, every sub-bullet, and the recommendation with its reason. The bound applies to the gap as a whole rather than to any one part of it, and no gap may exceed it.
+**Length bound — 120 words per gap.** Count everything from the `**N. <title>**` line through to its `> _Answer:_` slot: the consequence line, the framing, every sub-bullet, and the recommendation with its reason. Count whitespace-separated words of the prose, taking a markdown link as its link text rather than its URL. The bound applies to the gap as a whole rather than to any one part of it, and to the comment as first composed — a refine run's expansion (step 6) may exceed it, where keeping the re-framing tight is the goal rather than the ceiling.
 
 **Splitting is not how you meet the bound.** A 200-word gap broken into two 100-word gaps satisfies nothing — the reader faces the same prose and one more decision. Cut instead: drop the restatement of what the issue already says, keep the evidence that makes the gap specific, and let the recommendation carry the detail rather than the framing. Split only where the gap is genuinely two independent questions needing two separate answers — and then each half must meet the bound on its own.
+
+**Check the draft before posting.** Composing to a bound is not the same as meeting one — count, do not estimate. Before step 5 posts, verify against the draft: one table row per gap, its title matching the gap verbatim and its consequence cell agreeing with the gap's consequence line; every gap carrying a consequence line, a recommendation with its one-sentence reason, and an answer slot; every gap within the bound, counted rather than judged; *Changes what gets built* ahead of *Settles a detail* within each group; and no line above the first group heading matching either `**N. <title>**` or `> _Answer:_`. Fix what fails and re-check. This applies again to a refine run's edit (step 6), minus the bound.
 
 **Recommendation quality bar:** the recommendation must be a concrete,
 actionable default (a value, a library, a field name, an HTTP status, an
@@ -289,8 +288,8 @@ Re-framing rules (hedging case only):
 - **Expand the question body** with 2–4 concrete options laid out as a sub-list, each with a one-line trade-off. Add a worked example or a pointer to a comparable existing pattern in the codebase (read the codebase again if needed — surface defaults they may not have known existed: existing constants, sibling service patterns, port allocations, etc.).
 - **Revise the `> _**Recommendation:**_` line** if the new framing changes your call. Keep the `Reason:` cite tied to evidence.
 - **After ~2 hedging iterations on the same question** with no commitment, add a final option *"This may be out of scope for the current issue — answer `out of scope: <reason>` to drop it"* and call it out in the recommendation. Do not edit the gap out yourself — leave that to the author + `/speckit.confirmissue`.
-- **Keep the at-a-glance table in step with the gap you re-framed.** If the re-framing changes that gap's title or its consequence, update its row — the title cell, the consequence cell, or both — and nothing else in the table. Never add, remove, reorder or renumber rows: the table mirrors the posted gap order, which was fixed when the comment was first composed.
-- **Do not retrofit the new shape onto an older comment.** A comment posted before the at-a-glance table and the consequence line existed has no row to update and no kind to restate — leave it that way. A refine run re-frames the hedging gap and nothing else; it never adds a table to a comment that has none.
+- **Keep the gap's consequence line and its table row in step with the re-framing.** If the new framing changes that gap's title or its consequence, update both places that state it — the `_<kind>:_` line on the gap body, and its row's title and consequence cells — and nothing else in the table. Never add, remove, reorder or renumber rows: the table mirrors the posted gap order, fixed when the comment was first composed. A consequence that changes after posting can therefore leave a *Changes what gets built* gap sitting below a *Settles a detail* one; that is the accepted cost of never renumbering a review the author already refers to by number.
+- **Do not retrofit the table onto an older comment.** A comment posted before the at-a-glance table and the consequence line existed has no row to update and no kind to restate — leave it that way. A refine run re-frames the hedging gap and nothing else; it never adds a table to a comment that has none.
 - **Do not touch any other gap.** Substantive, out-of-scope, and empty answers must come through byte-for-byte, and so must every table row but the one you changed. The Commentary section is also untouched.
 
 If no gap qualifies for re-framing, **make no edit** and report that in chat (the author either still has un-answered questions, or is ready for `/speckit.confirmissue`).
