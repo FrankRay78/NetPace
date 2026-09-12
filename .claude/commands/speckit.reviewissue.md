@@ -85,7 +85,7 @@ Each gap (in either group) must:
 - be answerable with a short written response (not "go figure it out")
 - cite concrete evidence from the issue or codebase where relevant
 - state its **consequence** — which of the two kinds below it is, and in one clause what a different answer would change
-- end with a **Recommendation:** line — your best judgement call with a
+- end with a **Recommendation:** line — your best call with a
   one-sentence *Reason*. This is mandatory, not optional. The author should
   be able to read the recommendation and either accept it (record a short
   affirmative answer) or redirect it (record their chosen alternative). A
@@ -180,7 +180,7 @@ _Changes what gets built:_ <what a different answer would change, one clause>
 - <sub-question 1>
 - <sub-question 2>
 
-> _**Recommendation:**_ <your best judgement call>. Reason: <one sentence>.
+> _**Recommendation:**_ <your best call>. Reason: <one sentence>.
 
 > _Answer:_
 
@@ -220,7 +220,7 @@ _<consequence kind>:_ <what a different answer would change, one clause>
 
 **Splitting is not how you meet the bound.** A 200-word gap broken into two 100-word gaps satisfies nothing — the reader faces the same prose and one more decision. Cut instead: drop the restatement of what the issue already says, keep the evidence that makes the gap specific, and let the recommendation carry the detail rather than the framing. Split only where the gap is genuinely two independent questions needing two separate answers — and then each half must meet the bound on its own.
 
-**Check the draft before posting.** Composing to a bound is not the same as meeting one — count, do not estimate. Before step 5 posts, verify against the draft: one table row per gap, its title matching the gap verbatim and its consequence cell agreeing with the gap's consequence line; no unescaped `|` anywhere in the table's content, inside inline code included, so every row renders as exactly three columns; every gap carrying a consequence line, a recommendation with its one-sentence reason, and an answer slot; every gap within the bound, counted rather than judged; *Changes what gets built* ahead of *Settles a detail* within each group; and no line above the first group heading matching either `**N. <title>**` or `> _Answer:_`. Fix what fails and re-check. This applies again to a refine run's edit (step 6), minus the bound, and with the pipe check limited to the row it changed — every other row passes through as posted.
+**Check the draft before posting.** Composing to a bound is not the same as meeting one — count, do not estimate. Before step 5 posts, verify against the draft: one table row per gap, its title matching the gap verbatim and its consequence cell agreeing with the gap's consequence line; no unescaped `|` anywhere in the table's content, inside inline code included, so every row renders as exactly three columns; every gap carrying a consequence line, a recommendation with its one-sentence reason, and an answer slot; every factual claim in every Reason checked against what it names, a claim found false dropped, and a claim that cannot be checked kept only inside a judgement Reason (see *Every Reason survives being checked* below); every gap within the bound, counted rather than judged; *Changes what gets built* ahead of *Settles a detail* within each group; and no line above the first group heading matching either `**N. <title>**` or `> _Answer:_`. Fix what fails and re-check. This applies again to a refine run's edit (step 6), minus the bound, with the pipe check limited to the row it changed and the Reason check limited to the gap it re-framed — every other row and gap passes through as posted.
 
 **Recommendation quality bar:** the recommendation must be a concrete,
 actionable default (a value, a library, a field name, an HTTP status, an
@@ -228,7 +228,9 @@ actionable default (a value, a library, a field name, an HTTP status, an
 genuinely have no view, say so explicitly and list the options with their
 trade-offs; don't fake confidence. The *Reason* cites the evidence that led
 you there (existing convention in the codebase, Fabric/framework behaviour,
-POC posture, etc.), not a restatement of the recommendation.
+POC posture, etc.), not a restatement of the recommendation — or, where there is nothing checkable to cite, says it is your judgement.
+
+**Every Reason survives being checked.** A Reason either cites something checkable — a file or line, command output, the issue's own text — or says plainly that it is your judgement (`Reason: my judgement — <why>.`), so the author can tell an evidenced recommendation from an opinion. Before posting, check every factual claim in every Reason against the thing it names: re-open the file, re-run the search, re-read the issue text, rather than trusting what you remember reading. A claim about how the repository or harness behaves — "X is the standing default", "every sibling does Y" — is a factual claim even though it names no source: search the repository for where that behaviour would be set or shown, and finding nothing means the claim fails. A claim that fails is dropped, and the Reason rewritten as your judgement without it — a `my judgement` label never carries a claim already found false. A claim this run's tools cannot check (in the automated workflow, anything outside the checkout and the issue snapshot, such as another issue's text) may stay, but only inside a judgement Reason. Either way the Recommendation stays, and a failed check never blocks posting. On a refine run's edit (step 6) the check covers only the re-framed gap's Reason; every other gap passes through as posted. The check establishes only that the evidence is true — whether the recommendation is a good default stays the author's call when answering.
 
 **Link rules** — the comment is rendered on `https://github.com/<owner>/<repo>/issues/<N>`,
 so GitHub resolves relative paths against the *issue URL*, not the repo root
@@ -286,7 +288,7 @@ Re-framing rules (hedging case only):
 - **Preserve the gap number.** Q3 stays Q3 — never renumber.
 - **Preserve the author's answer text** verbatim under the `> _Answer:_` line so they can see what they wrote last time.
 - **Expand the question body** with 2–4 concrete options laid out as a sub-list, each with a one-line trade-off. Add a worked example or a pointer to a comparable existing pattern in the codebase (read the codebase again if needed — surface defaults they may not have known existed: existing constants, sibling service patterns, port allocations, etc.).
-- **Revise the `> _**Recommendation:**_` line** if the new framing changes your call. Keep the `Reason:` cite tied to evidence.
+- **Revise the `> _**Recommendation:**_` line** if the new framing changes your call. Keep the `Reason:` either tied to checkable evidence or marked as your judgement (see *Every Reason survives being checked*).
 - **After ~2 hedging iterations on the same question** with no commitment, add a final option *"This may be out of scope for the current issue — answer `out of scope: <reason>` to drop it"* and call it out in the recommendation. Do not edit the gap out yourself — leave that to the author + `/speckit.confirmissue`.
 - **Keep the gap's consequence line and its table row in step with the re-framing.** If the new framing changes that gap's title or its consequence, update both places that state it — the `_<kind>:_` line on the gap body, and its row's title and consequence cells — and nothing else in the table. Never add, remove, reorder or renumber rows: the table mirrors the posted gap order, fixed when the comment was first composed. A consequence that changes after posting can therefore leave a *Changes what gets built* gap sitting below a *Settles a detail* one; that is the accepted cost of never renumbering a review the author already refers to by number.
 - **Do not retrofit the table onto an older comment.** A comment posted before the at-a-glance table and the consequence line existed has no row to update and no kind to restate — leave it that way. A refine run re-frames the hedging gap and nothing else; it never adds a table to a comment that has none.
