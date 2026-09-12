@@ -1,6 +1,6 @@
 # speckit.confirmissue
 
-Take a `/speckit.reviewissue` comment that the author has answered inline, fold the answers into a clean **Confirmed decisions** bullet list, and append that list to the issue body so `/speckit.specify` consumes decisions, not deliberation.
+Take a `/speckit.reviewissue` comment that the author has answered inline, fold the answers into a clean **Confirmed decisions** bullet list, append that list to the issue body so `/speckit.specify` consumes decisions, not deliberation — then delete the review comment it came from.
 
 ---
 
@@ -28,8 +28,11 @@ Sits **between** `/speckit.reviewissue` and `/speckit.specify`.
 2. Pairs each gap's `**Recommendation:**` with the author's `> _Answer:_` to produce a **one-line decision** per gap.
 3. Appends (or rewrites, if already present) a `## Confirmed decisions` section at the end of the issue body.
 4. Applies the `ready` label, marking the issue fully defined without anyone having to open it.
+5. Deletes the review comment, now that everything worth keeping from it is on the issue body.
 
-The original review comment is left untouched — it serves as the natural audit trail of how each decision was reached.
+The review comment is working material, not a record — the confirmed-decision bullets carry each gap's title, its resolved outcome, and `(Author redirected from "…")` where the author overruled the recommendation, which is the causality anyone needs afterwards. Rationale: CIR [`2026-09-11-confirmed-decisions-replace-the-review`](../../docs/change-intent-records/2026-09-11-confirmed-decisions-replace-the-review.md).
+
+**The `ready` label is the done-marker.** It is what tells `/speckit.reviewissue` and the `speckit-reviewissue.yml` workflow that this issue has been through the gate, so neither posts a second review over settled decisions. That is why step 7 deletes the comment only once step 6's label is on the issue: the new marker must be in place before the old one is removed.
 
 The author also owns the issue body, so post-pending decisions to it is not an overstep. This is the moment the "do not modify the issue body" rule from `/speckit.reviewissue` lifts.
 
@@ -39,11 +42,23 @@ The author also owns the issue body, so post-pending decisions to it is not an o
 
 ### 1. Resolve issue and locate the review comment
 
-Use `gh issue view <number> --repo <owner/repo> --json body,comments` to fetch the issue body and full comment list (infer owner/repo from the URL or the current repo's `origin`).
+Use `gh issue view <number> --repo <owner/repo> --json body,labels` to fetch the issue body and its labels (infer owner/repo from the URL or the current repo's `origin`). `ready` — not the comment — is what says an issue has already been through the gate, hence the labels.
 
-Find the review comment by searching for the hidden marker `<!-- speckit:review -->`. If multiple comments carry the marker (e.g. the author re-ran `/speckit.reviewissue`), use the **most recent** one by ID.
+Resolve the review comment over REST, **not** via `gh issue view --json comments`:
 
-If no marker comment exists, **stop** and tell the user the issue has no `/speckit.reviewissue` comment to confirm.
+```bash
+gh api --paginate "repos/<owner>/<repo>/issues/<number>/comments" \
+  --jq '[.[] | select(.body | contains("<!-- speckit:review -->"))] | max_by(.created_at) | {id, body}'
+```
+
+Two reasons this must be REST. Step 7 deletes by **numeric** comment id, and `gh issue view --json comments` returns the GraphQL node id (`IC_kwDO…`) instead, which `DELETE repos/…/issues/comments/<id>` does not accept. And where the author re-ran `/speckit.reviewissue` and several comments carry the marker, `max_by(.created_at)` picks the newest by timestamp — never sort node ids to find "most recent", because they do not order chronologically, and that choice now decides which comment is destroyed.
+
+If no marker comment exists, distinguish two cases before stopping:
+
+- **The issue body already carries a `## Confirmed decisions` section, or the issue carries the `ready` label** → it has already been confirmed, and its review was deleted at the end of that run. If the `ready` label is missing (a previous run saved the decisions but could not label), apply it now with step 6's rules. Then **stop** and report that the issue is already confirmed, stating how many decisions are on the body and whether you repaired the label. Do not report that there is no review to confirm — that reads as "never reviewed", which is the opposite of the truth.
+- **Neither is present** → **stop** and tell the user the issue has no `/speckit.reviewissue` comment to confirm.
+
+To put an already-confirmed issue back through review, see *Putting a confirmed issue back into review* at the end of step 7.
 
 ### 2. Verify all gaps are answered, and no answers are still hedging
 
@@ -110,10 +125,10 @@ Keep bullets to one line where possible. Two lines if the rider genuinely needs 
 
 Take the existing issue body and:
 
-- **If `## Confirmed decisions` already exists**: replace that section. The section runs from the `## Confirmed decisions` heading through to the next `## ` heading (any other H2) or end-of-file, whichever comes first.
+- **If `## Confirmed decisions` already exists**: rebuild that section. The section runs from the `## Confirmed decisions` heading through to the next `## ` heading (any other H2) or end-of-file, whichever comes first. **Read the existing bullets before you rebuild, and carry forward verbatim every decision the new review does not re-raise.** This path is only reached after a deliberate reopen, and the review those earlier decisions came from was deleted by the run that recorded them — so a bullet dropped here is recoverable only from the issue's edit history.
 - **If it does not exist**: append at end-of-body, except when the body ends with footer-style H2 sections (`## Related`, `## References`, `## Links`, `## See also`) — in that case insert immediately before the first such footer section. Separate by a blank line either way.
 
-> **Section ownership.** The `## Confirmed decisions` section is owned by this command. Any human edits the author makes inside the section (annotations between bullets, extra prose, hand-tuned bullets) will be **clobbered** on re-runs. The `<!-- speckit:confirmed-decisions -->` marker is a tooling hint, not a fence — it does not protect the section. If the author wants to record extra context, they should put it in a different H2 section, or edit the source recommendations/answers in the review comment and re-run this command.
+> **Revising a confirmed decision.** A successful run deletes the review the decisions came from, so there is no upstream source left to edit and re-fold. **Edit the bullet in `## Confirmed decisions` directly** — that is the supported way to revise a decision. The rebuild path above only fires when a *new* review has been posted and answered, which takes the deliberate reopen at the end of step 7; it carries forward any decision that review does not re-raise. The `<!-- speckit:confirmed-decisions -->` marker is a tooling hint, not a fence.
 
 The new section is structured as:
 
@@ -159,6 +174,8 @@ gh api --method PATCH repos/<owner>/<repo>/issues/<number> --input .claude/scrat
 (Omit the leading `/` on the endpoint — Git Bash on Windows rewrites `/repos/...`
 as a filesystem path. `gh api` accepts both forms on Linux/macOS.)
 
+**Confirm the patch landed before going on.** The `--jq .html_url` above prints the issue URL on success; a failed PATCH prints an error instead. If the body did not land, **stop here** — do not apply the label and do not delete the review. Steps 6 and 7 both assume the decisions are safely on the issue, and step 7 is irreversible.
+
 ### 6. Apply the `ready` label
 
 With the body patched, mark the issue as fully defined:
@@ -171,11 +188,30 @@ gh issue edit <number> --repo <owner/repo> --add-label ready
 - **Idempotent.** Adding a label an issue already carries is a no-op on GitHub's side, so re-running this command on an already-`ready` issue leaves it `ready` and reports no error.
 - **Never fatal.** If the label cannot be applied, do **not** fail the command — the decisions are already saved. Continue to the report and say there that the label did not land.
 
-Ordering matters both ways: the body patch runs first so a label failure can never leave the decisions unsaved, and this step sits downstream of step 2's hard-stops so an issue with an unanswered or hedging gap can never come out labelled `ready`.
+Ordering matters three ways: the body patch runs first so a label failure can never leave the decisions unsaved; this step sits downstream of step 2's hard-stops so an issue with an unanswered or hedging gap can never come out labelled `ready`; and step 7's deletion sits downstream of *this* step, so the review is never removed before the label that replaces it as the done-marker is on the issue.
 
-### 7. Do not touch the review comment
+### 7. Delete the review comment
 
-The answered review comment is the audit trail. Leave it intact. Do not delete, edit, or annotate it.
+**First, read both preconditions back from the issue.** Do not infer either from earlier tool output — this is the only irreversible step in the command, so confirm against the issue as it actually stands:
+
+```bash
+gh issue view <number> --repo <owner/repo> --json body,labels \
+  --jq '{ready: ([.labels[].name] | index("ready") != null), decisions: (.body | contains("## Confirmed decisions"))}'
+```
+
+Both must come back `true`. `decisions: false` means the body patch did not land the way step 5 assumed; `ready: false` means the label did not apply. Either way, **do not delete** — keep the comment and name the failed precondition in the report.
+
+With both confirmed, delete the review using the **numeric** comment id resolved in step 1:
+
+```bash
+gh api --method DELETE repos/<owner>/<repo>/issues/comments/<comment-id>
+```
+
+- **Why the label gates this.** `ready` is the done-marker; removing the review without it would leave the issue looking never-reviewed to `/speckit.reviewissue` and to the workflow guard, which is the one state this whole design exists to prevent — reached through the one door that cannot be reopened.
+- **Never fatal.** If the deletion itself fails, do **not** fail the command — the decisions are saved and the issue is labelled. Continue to the report and say there that the review is still on the issue, and that re-running `/speckit.confirmissue #N` will retry it.
+- **Irreversible and silent.** GitHub sends no notification for a deleted comment and offers no undo. That is why every hard-stop in this command (steps 1, 2 and 5) sits upstream of it, and why a step-6 label failure — which does not stop the run — is caught by the read-back above instead. All four paths leave the review exactly where it was, answerable and re-runnable.
+
+**Putting a confirmed issue back into review.** If the scope moves and the decisions no longer hold, remove the `ready` label (`gh issue edit <number> --repo <owner/repo> --remove-label ready`) and request a review again. With the marker gone and no review comment on the thread, `/speckit.reviewissue` and the workflow both treat it as a first run and post a fresh review. No one has to hand-edit the issue body to make that happen.
 
 ---
 
@@ -186,9 +222,10 @@ Keep your chat response short:
 - confirm the issue updated (number + title)
 - state how many decisions were folded in (and the count by pattern: e.g. "8 accepted, 1 with rider, 1 redirected")
 - state whether the `ready` label was applied — and if it was not, say so explicitly, noting the decisions were saved regardless
+- state whether the review comment was deleted — and if it was not, say so explicitly, naming which precondition or call failed and telling the operator what to do about it ("the `ready` label did not land; re-run `/speckit.confirmissue #N` to complete it"). These paths are deliberately non-fatal, so the report is the only signal that the issue is in a half-finished state.
 - return the issue URL
 
-If you stopped at step 1 or 2, report which precondition failed and what to fix.
+If you stopped at step 1, 2 or 5, report which precondition failed and what to fix. An issue that is already confirmed is not a failure — report it as already confirmed, with the decision count.
 
 Do **not** restate the decisions list in chat — it lives on the issue.
 
@@ -198,5 +235,5 @@ Do **not** restate the decisions list in chat — it lives on the issue.
 
 - The issue has no `/speckit.reviewissue` comment yet — run that first.
 - The review comment exists but has empty `> _Answer:_` slots — fill them in first.
-- The issue body already has a `## Confirmed decisions` section AND the author has not changed any answers since — re-running is harmless (idempotent) but unnecessary.
+- The issue body already has a `## Confirmed decisions` section — a green run deleted the review, so there is nothing left to fold. Re-running is safe (it stops at step 1 and reports the issue as already confirmed) but pointless. To revise a decision, edit the bullet; to redo the review entirely, follow the reopen path in step 7.
 - The user wants to skip review and go straight to spec — that is `/speckit.specify` directly, no decision log needed.

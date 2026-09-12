@@ -1,6 +1,6 @@
 # speckit.reviewissue
 
-Review a GitHub issue before taking it into SDD — identify gaps, clarifications, and context the spec author will need, then post the review as a comment on the issue for inline answering. Re-runs of this command **edit the same comment in place** to expand any question where the author asked for more options or said "not sure" — substantive answers are left untouched for `/speckit.confirmissue` to fold into the issue body.
+Review a GitHub issue before taking it into SDD — identify gaps, clarifications, and context the spec author will need, then post the review as a comment on the issue for inline answering. Re-runs of this command **edit the same comment in place** to expand any question where the author asked for more options or said "not sure" — substantive answers are left untouched for `/speckit.confirmissue` to fold into the issue body, which deletes the comment once they are folded.
 
 ---
 
@@ -46,11 +46,18 @@ Use `gh issue view <number> --repo <owner/repo> --json title,body,labels,comment
 (infer owner/repo from the URL if given, otherwise use the current repository's
 `origin`).
 
-Look for an existing review comment marked with the sentinel `<!-- speckit:review -->`.
-If multiple comments carry the marker, use the most recent one by ID.
+Check two things, in this order.
+
+**First, is the issue already confirmed?** `/speckit.confirmissue` deletes the review once it has folded the answers into the issue body, so the review's absence no longer means "never reviewed". The `ready` label is what says the issue has been through this gate.
+
+- **The issue carries the `ready` label** → **already confirmed**. **Stop.** Post nothing, edit nothing, and tell the user the issue has already been through the pre-specification gate, pointing them at its `## Confirmed decisions` section — or, if there is no such section, say so plainly: the label was applied by hand, and removing it is the fix. Say how to reopen it: remove the `ready` label (`gh issue edit <number> --repo <owner/repo> --remove-label ready`) and request the review again — an issue whose scope has moved is by definition no longer ready, and with the marker gone this command treats it as a first run. Never post a second review over settled decisions: it buries the `## Confirmed decisions` section under exactly the deliberation that confirming it was meant to clear away.
+
+**Otherwise, look for an existing review comment** marked with the sentinel `<!-- speckit:review -->`. If multiple comments carry the marker, use the most recent one by creation time.
 
 - **No existing review comment** → **first run**. Continue to step 2 (full gap analysis, post a new comment).
 - **Existing review comment found** → **refine run**. Skip to step 6 (re-frame hedging questions only; do not re-do gap analysis).
+
+Issues confirmed before the review was deleted on confirmation still carry their old review comment: the `ready` check catches them first, and the sentinel catches them if the label was never applied.
 
 If existing non-review comments already resolve a gap you would otherwise raise,
 do not raise it again.
@@ -106,11 +113,11 @@ Each gap (in either group) must:
 - **Operational** — ports, migrations, docker compose entries, deploy scripts.
 - **Tech failure modes** — unreachable dependencies, rate limits, retry policy, fail-open vs fail-closed at the system level.
 
-**Commentary** — remarks that inform the spec author and require no answer. That is the only kind of content the section carries. No downstream command parses it: `/speckit.confirmissue` folds only the numbered gaps into the issue body.
+**Commentary** — remarks that inform the author reading this review and require no answer. That is the only kind of content the section carries. No downstream command parses it: `/speckit.confirmissue` folds only the numbered gaps into the issue body, and deletes this comment — commentary included — once it has. Write it for the person who reads the review, not for someone arriving at the issue afterwards.
 
 **Commentary or gap?** The line is the *source* of the constraint, not its force. A fact already true of the codebase is commentary, however binding it turns out to be in practice. A choice only the author can make, or an obligation this issue would newly impose, is never commentary — record it as a numbered gap. A convention that already governs this area stays commentary even when this issue is the first work to trigger it; only an obligation with no prior basis in the codebase is a gap.
 
-**The bar a bullet must clear.** Commentary carries only what the spec author would otherwise miss or get wrong. A bullet that restates a rule they already hold — the constitution, `CLAUDE.md`, a guide either one links — or whose content amounts to "nothing to do here", does not appear at all. A short section is the normal outcome.
+**The bar a bullet must clear.** Commentary carries only what that reader would otherwise miss or get wrong. A bullet that restates a rule they already hold — the constitution, `CLAUDE.md`, a guide either one links — or whose content amounts to "nothing to do here", does not appear at all. A short section is the normal outcome.
 
 Write what survives as bullets, not questions:
 
@@ -136,7 +143,7 @@ Before taking this into SDD, the following points need answers. Please record re
 >
 > If a gap turns out to be **out of scope** for this issue, answer with `out of scope: <one-line reason>` — `/speckit.confirmissue` will record it as a redirect. There is no separate "defer" path: anything not in scope here belongs in a different issue, not parked on this one.
 >
-> When all answers are concrete, run `/speckit.confirmissue #N` to fold them into the issue body as **Confirmed decisions**.
+> When all answers are concrete, run `/speckit.confirmissue #N` to fold them into the issue body as **Confirmed decisions**. That deletes this comment — the decisions are the record from then on, and you revise one by editing its bullet.
 
 ### Requirements gaps
 
@@ -272,6 +279,11 @@ when ready — that command is the one that touches the issue body.
 
 Keep your own chat response short. Tailor it to the run mode:
 
+**Already confirmed (stopped at step 1):**
+- say the issue has already been through the gate, and name the marker you saw (the `ready` label)
+- point at its `## Confirmed decisions` section rather than restating it, or say if there is none
+- state the reopen path: remove `ready`, then request the review again
+
 **First run:**
 - confirm the issue reviewed (number + title)
 - state how many gaps were raised, and whether the review carries commentary
@@ -289,6 +301,7 @@ Do **not** restate the full review in chat — it lives on the issue.
 
 ## When NOT to use this command
 
+- The issue has already been confirmed — it carries the `ready` label and a `## Confirmed decisions` section. Reopen it deliberately (step 1) if its scope has moved.
 - The issue is already well-specified and has been through `/speckit.clarify`.
 - The user wants implementation, not specification prep — that is a different
   workflow entirely.

@@ -3,11 +3,12 @@ name: Speckit Review Issue
 # Runs the NetPace pre-specification review when an issue is labelled `review`.
 # The review logic is single-sourced in .claude/commands/speckit.reviewissue.md; this
 # workflow adds the environmental deltas plus one behavioural override — the
-# already-reviewed guard below, which stops rather than refining.
+# already-through-the-gate guard below, which stops rather than refining.
 # On the `issues` path the run uses the default branch's copy of both this file and the
 # command file, so a change there takes effect on merge, not on branch; a workflow_dispatch
 # run uses the ref it is dispatched against.
-# Rationale: docs/change-intent-records/2026-09-07-automated-prespec-review.md
+# Rationale: docs/change-intent-records/2026-09-07-automated-prespec-review.md and
+#            docs/change-intent-records/2026-09-11-confirmed-decisions-replace-the-review.md
 
 on:
   issues:
@@ -63,21 +64,40 @@ jobs:
           gh issue view "$ISSUE_NUMBER" --repo "$GITHUB_REPOSITORY" \
             --json number,title,body,labels,comments \
             > .claude/scratch/issue-context.json
-          jq -e '.number and (.comments | type == "array")' \
+          jq -e '.number and (.comments | type == "array") and (.labels | type == "array")' \
             .claude/scratch/issue-context.json > /dev/null \
             || { echo "::error::Issue snapshot for #$ISSUE_NUMBER is empty or malformed."; exit 1; }
 
-      # A workflow step, not a prompt instruction: a model can skip an instruction, and
-      # this guard is the only thing stopping a second review from orphaning answers
-      # already written against the first. Paginated because `gh issue view --json comments`
-      # returns a bounded page, and a sentinel below that boundary would be invisible.
-      # Clearing the label here is what keeps the state model honest — a green run always
-      # ends with the label gone, whether it reviewed or skipped.
-      - name: Skip issues that already carry a review
+      # A workflow step, not a prompt instruction: a model can skip an instruction, and this
+      # guard is the only thing stopping a second review from landing on an issue that has
+      # already been through the gate. Two conditions, because a reviewed issue and a
+      # confirmed one leave different traces: `ready` is the done-marker once
+      # /speckit.confirmissue has folded the answers into the body and deleted the review;
+      # the sentinel still marks a review posted but not yet confirmed, and confirmations
+      # predating that deletion. `ready` is checked first because it is one call against the
+      # paginated comment fetch below, which is paginated because `gh issue view --json
+      # comments` returns a bounded page and a sentinel past it would be invisible.
+      # Both reads are live, not from the previous step's snapshot: a local
+      # /speckit.confirmissue is a second writer here, and a stale label paired with a live
+      # comment read would see neither marker on an issue confirmed between the two, and
+      # post over its decisions. The label read is assigned outside an `if` because inside
+      # one errexit is suppressed, making a gh or jq failure indistinguishable from "label
+      # absent" — failing open towards posting a duplicate. Clearing the label keeps the
+      # state model honest: a green run always ends with `review` gone, reviewed or skipped.
+      # (`already_reviewed` predates the second condition; it now means either trace.)
+      - name: Skip issues that have already been through the gate
         id: guard
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          ready=$(gh issue view "$ISSUE_NUMBER" --repo "$GITHUB_REPOSITORY" --json labels \
+            --jq '[.labels[].name] | index("ready") != null')
+          if [ "$ready" = "true" ]; then
+            echo "::notice::#$ISSUE_NUMBER is already confirmed (ready) — clearing the label and skipping."
+            gh issue edit "$ISSUE_NUMBER" --repo "$GITHUB_REPOSITORY" --remove-label review
+            echo "already_reviewed=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
           gh api --paginate "repos/$GITHUB_REPOSITORY/issues/$ISSUE_NUMBER/comments" \
             --jq '.[].body' > .claude/scratch/issue-comments.txt
           if grep -qF '<!-- speckit:review -->' .claude/scratch/issue-comments.txt; then
@@ -101,7 +121,7 @@ jobs:
 
             Read `.claude/commands/speckit.reviewissue.md` and apply it to this issue as written. Do not restate, summarise or reinvent the review logic — that file is the single source of truth for it. Exactly three deltas apply, and nothing else changes:
 
-            1. The fetch and mode detection in step 1 are already done. This issue has no existing review, or the run would have stopped before reaching you. Do still apply the rest of step 1 against the snapshot: where an existing non-review comment already resolves a gap, do not raise it again.
+            1. The fetch and mode detection in the resolve-and-detect step (step 1 at the time of writing) are already done. This issue is neither confirmed nor already reviewed — it carries no `ready` label and no review comment, or the run would have stopped before reaching you. So this is a first run: do the full gap analysis and post a new comment. Do still apply the rest of step 1 against the snapshot: where an existing non-review comment already resolves a gap, do not raise it again.
             2. Step 4's link rules tell you to resolve the default branch with `gh repo view`. Do not — it is `main`, given above. Use it for the absolute GitHub links those rules require.
             3. Step 5 posts with a quoted heredoc. Instead, write the body to a file with the Write tool and post it with `gh issue comment <number> --repo <repo> --body-file <path>`. The comment body is identical either way; a plain file argument is simply more predictable through the tool allowlist than a command substitution.
 
