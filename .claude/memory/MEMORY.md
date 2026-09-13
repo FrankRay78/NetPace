@@ -7,7 +7,7 @@
 - [Prompts favour locality over DRY](feedback_prompts_locality_over_dry.md) — inline short rules in each slash-command prompt; skip canonical-section + cross-refs and defensive specs for cases the generator can't produce
 - [Codebase must not reference specs/ paths](feedback_no_spec_references.md) — specs are deleted post-merge; any `specs/<NNN>-…` link in source/tests/docs becomes a dead reference
 - [Docs describe current codebase only — no forward references](feedback_docs_no_forward_references.md) — push back on task plans that mandate doc sections about unimplemented features tracked only by open issues
-- [After simplifying, grep the whole repo for the removed concept](feedback_grep_after_simplifying.md) — diff misses stale comments and docs in files you didn't directly touch
+- [After adding or removing a rule, sweep for what it touches](feedback_grep_after_simplifying.md) — grep for a removed concept repo-wide; reconcile a new prompt rule with older rules and re-run paths
 - [Don't introduce column-aligned whitespace in code](feedback_no_column_alignment.md) — single-space tokens; aligned blocks cause diff churn and break outside the editor
 - [Scratch and staging files belong in .claude/scratch/](feedback_scratch_file_location.md) — gitignored; not /tmp, not ~/.claude/, not a top-level .scratch/
 - [Provider-agnostic types must not depend on concrete providers](project_dependency_direction.md) — Profile, SpeedUnit, etc. never reach forward into provider types; bridge lives on the provider side

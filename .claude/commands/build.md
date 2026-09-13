@@ -39,6 +39,7 @@ Two named exceptions, because `CLAUDE.md` requires discussion for them:
    - `git status --porcelain` is empty. If not, STOP: "Commit or stash your changes before building." A dirty tree would be swept into the issue's branch at step 4.
    - `git rev-parse --abbrev-ref HEAD` is `main`. If not, STOP: "Run /build from main — it creates the issue's branch itself."
    - `git fetch origin main` succeeds.
+   - `git log origin/main..main --oneline` is empty. If not, STOP: "Local main has unpushed commits — push or discard them before building." Step 4 branches from `origin/main`, so those commits would be silently absent from the issue's branch.
 
 2. **Read the issue.** `gh issue view <N>`.
    - If it is closed, or already has an open linked PR, STOP and say which — it is built or in flight.
