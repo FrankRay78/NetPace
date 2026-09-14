@@ -126,9 +126,9 @@ None — the Phase 1 harness is the only shared prerequisite.
 ## Phase 7: Polish & Cross-Cutting Concerns
 
 - [X] T020 [P] Add a `## Running the chain` section to `docs/agentic-workflow-NetPace.md`, directly after the `## \`/verify\`` section: what the chain runs and in what order; prerequisites (`git`, `claude`, `gh`, `jq`, `timeout`; `claude` and `gh` signed in; clean `main`); invocation and `--dry-run`; `CHAIN_MODEL` and `CHAIN_STAGE_TIMEOUT`; what it costs (substantial model time, a real PR); when a stage fails — read the closing line, reopen the session with `claude --resume`, finish the remaining stages by hand; that it relies on each stage's own contract rather than re-checking; the residual risk of silently denied `ask` rules, linking to the "Permissions and unattended runs" section; and how to run `scripts/chain.tests.sh`. One line per paragraph.
-- [ ] T021 Run quickstart §1–§3 from `specs/001-chain-script/quickstart.md` (matrix, dry run, refusals — all free) against the real repository and confirm each expectation.
+- [X] T021 Run quickstart §1–§3 from `specs/001-chain-script/quickstart.md` (matrix, dry run, refusals — all free) against the real repository and confirm each expectation.
 - [ ] T022 **Author, by hand**: run quickstart §4 (a full run against a small ready issue) and §5 (a forced stall, then reopen the session with `claude --resume`). These cover "A failed stage can be reopened" and the real-model half of "One issue to a pull request".
-- [ ] T023 Run `/speckit.testchecklist`, pointing it at `scripts/chain.tests.sh`, and confirm every automated scenario in `test-plan.md` is traced.
+- [X] T023 Run `/speckit.testchecklist`, pointing it at `scripts/chain.tests.sh`, and confirm every automated scenario in `test-plan.md` is traced.
 
 ---
 

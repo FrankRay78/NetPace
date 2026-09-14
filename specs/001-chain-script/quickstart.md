@@ -25,10 +25,12 @@ scripts/chain.sh --dry-run 270; echo "exit=$?"
 ## 3. Refusals — free
 
 ```bash
-touch chain-refusal.tmp
+touch chain-refusal-probe
 scripts/chain.sh 270; echo "exit=$?"
-rm chain-refusal.tmp
+rm chain-refusal-probe
 ```
+
+The probe file must be one `git status` shows: `.gitignore` ignores `*.tmp`, so a `.tmp` name leaves the tree clean and the run is refused for the branch instead.
 
 **Expect**: a `chain: refused — …` line naming the dirty tree, `exit=1`, no stage started. Repeat from a feature branch for the not-on-`main` refusal.
 
