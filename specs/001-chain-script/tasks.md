@@ -74,10 +74,10 @@ None — the Phase 1 harness is the only shared prerequisite.
 
 ### Tests for User Story 2
 
-- [ ] T007 [US2] In `scripts/chain.tests.sh`, add case `# // SCENARIO: A failing stage stops the run`: calls 1–2 succeed as in T003; call 3 result contains `FAILED reason=suite red`. Record `git rev-parse HEAD`, the current branch and `git status --porcelain` in the sandbox before the run. Assert: exit 1; stub log has exactly 3 lines; output contains `verify`, `3/5` and `suite red`; output contains `claude --resume`; HEAD, branch and status are unchanged.
-- [ ] T008 [US2] Add case `# // SCENARIO: A stage with no readable verdict is a failure`: call 1 result is `I finished.` (no verdict). Assert: exit 1; stub log has exactly 1 line; output names `build` and says it gave no recognisable verdict.
-- [ ] T009 [US2] Add case `# // SCENARIO: A stalled stage ends the run`: `CHAIN_STAGE_TIMEOUT=1`; call 1 has `sleep-1` set to 30. Assert: exit 1; stub log has exactly 1 line; output names `build` and contains `stalled`; the PID in `pid-1` is no longer running (`! kill -0`).
-- [ ] T010 [US2] Run `bash scripts/chain.tests.sh`, confirm the T007–T009 cases fail, and commit the red phase.
+- [X] T007 [US2] In `scripts/chain.tests.sh`, add case `# // SCENARIO: A failing stage stops the run`: calls 1–2 succeed as in T003; call 3 result contains `FAILED reason=suite red`. Record `git rev-parse HEAD`, the current branch and `git status --porcelain` in the sandbox before the run. Assert: exit 1; stub log has exactly 3 lines; output contains `verify`, `3/5` and `suite red`; output contains `claude --resume`; HEAD, branch and status are unchanged.
+- [X] T008 [US2] Add case `# // SCENARIO: A stage with no readable verdict is a failure`: call 1 result is `I finished.` (no verdict). Assert: exit 1; stub log has exactly 1 line; output names `build` and says it gave no recognisable verdict.
+- [X] T009 [US2] Add case `# // SCENARIO: A stalled stage ends the run`: `CHAIN_STAGE_TIMEOUT=1`; call 1 has `sleep-1` set to 30. Assert: exit 1; stub log has exactly 1 line; output names `build` and contains `stalled`; the PID in `pid-1` is no longer running (`! kill -0`).
+- [X] T010 [US2] Run `bash scripts/chain.tests.sh`, confirm the T007–T009 cases fail, and commit the red phase.
 
 ### Implementation for User Story 2
 
