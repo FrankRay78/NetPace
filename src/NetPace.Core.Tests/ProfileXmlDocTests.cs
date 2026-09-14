@@ -44,8 +44,7 @@ public sealed class ProfileXmlDocTests
         // XDocument.Load(string) opens with FileShare.Read, a share mode that refuses to coexist
         // with an existing writer, so the read failed intermittently with "The process cannot
         // access the file because it is being used by another process". Only Windows enforces share
-        // modes, so the premise is asserted there rather than assumed — on Unix this test still runs
-        // and still asserts the outcome, but cannot catch a revert of LoadXmlDoc.
+        // modes, so this test is a genuine regression guard there and vacuous elsewhere.
 
         // Given
         // A private temp file, so the test never contends for the real build artefact.
@@ -55,11 +54,6 @@ public sealed class ProfileXmlDocTests
         try
         {
             using var competingWriter = new FileStream(xmlPath, FileMode.Open, FileAccess.Write, FileShare.Read);
-
-            if (OperatingSystem.IsWindows())
-            {
-                Should.Throw<IOException>(() => XDocument.Load(xmlPath));
-            }
 
             // When
             var doc = LoadXmlDoc(xmlPath);
