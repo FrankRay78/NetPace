@@ -27,21 +27,16 @@ set -uo pipefail
 
 CHAIN_MODEL="${CHAIN_MODEL:-claude-opus-5}"
 
-BUILD_LIMIT=7200
-STUDY_LIMIT=1800
-VERIFY_LIMIT=5400
-RAISE_PR_LIMIT=1800
-if [ -n "${CHAIN_STAGE_TIMEOUT:-}" ]; then
-  BUILD_LIMIT=$CHAIN_STAGE_TIMEOUT
-  STUDY_LIMIT=$CHAIN_STAGE_TIMEOUT
-  VERIFY_LIMIT=$CHAIN_STAGE_TIMEOUT
-  RAISE_PR_LIMIT=$CHAIN_STAGE_TIMEOUT
-fi
+# Per-stage time limits in seconds, conservative until tuned from real runs.
+BUILD_LIMIT=${CHAIN_STAGE_TIMEOUT:-7200}
+STUDY_LIMIT=${CHAIN_STAGE_TIMEOUT:-1800}
+VERIFY_LIMIT=${CHAIN_STAGE_TIMEOUT:-5400}
+RAISE_PR_LIMIT=${CHAIN_STAGE_TIMEOUT:-1800}
 
 usage() {
   echo "usage: scripts/chain.sh [--dry-run] <issue>" >&2
-  echo "  <issue>    one GitHub issue number, 270 or #270" >&2
-  echo "  --dry-run  list the stages that would run, and run nothing" >&2
+  echo "  <issue>: one GitHub issue number, 270 or #270" >&2
+  echo "  --dry-run: list the stages that would run, and run nothing" >&2
 }
 
 dry_run=0
