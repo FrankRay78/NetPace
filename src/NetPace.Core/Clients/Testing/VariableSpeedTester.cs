@@ -46,8 +46,6 @@ public class VariableSpeedTester : ISpeedTestService
                 // Call 3: 343,750 bytes in 1 second = 2,750,000 bits/second = 2.75 Mbps
                 // Call 4+: 125,000 bytes in 1 second = 1,000,000 bits/second = 1.0 Mbps
 
-                // Every request succeeds; this fake models fluctuating speed, not failure.
-
                 SpeedTestResult result = callCount switch
                 {
                     1 => new SpeedTestResult { BytesProcessed = 31250, ElapsedMilliseconds = 1000, RequestsSucceeded = 40, RequestsFailed = 0 },
@@ -64,8 +62,6 @@ public class VariableSpeedTester : ISpeedTestService
                 // Call 2: 375,000 bytes in 1 second = 3,000,000 bits/second = 3.0 Mbps
                 // Call 3: 166,250 bytes in 1 second = 1,330,000 bits/second = 1.33 Mbps
                 // Call 4+: 375,000 bytes in 1 second = 3,000,000 bits/second = 3.0 Mbps
-
-                // Every request succeeds; this fake models fluctuating speed, not failure.
 
                 SpeedTestResult result = callCount switch
                 {
