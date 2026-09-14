@@ -50,20 +50,37 @@ case "$issue" in ''|*[!0-9]*) usage; exit 1 ;; esac
 
 PR_URL='https://github\.com/[^[:space:]]+/pull/[0-9]+'
 
+# fail <position> <name> <reason> — the closing message, then stop. Nothing is undone: the
+# branch and working tree stay exactly as the failed stage left them, for diagnosis.
+fail() {
+  echo "chain: FAILED at [$1/5] $2 — $3"
+  echo "chain: no later stage ran; reopen the failed session with \`claude --resume\` (most recent headless session in this repo)."
+  exit 1
+}
+
 # run_stage <position> <name> <prompt> <verdict ERE> <limit> [session id to resume]
 # Prints the stage's report and, on success, leaves its reply in STAGE_RESULT and STAGE_SESSION.
 # The verdict is searched for anywhere in the report: it is not reliably the last line.
 run_stage() {
   local pos=$1 name=$2 prompt=$3 verdict=$4 limit=$5 resume=${6:-}
-  local reply
+  local reply rc reason
   echo "chain: [$pos/5] $name — starting"
   # The prompt must be the positional straight after -p, and stdin must be redirected, or the
   # call stalls on the terminal (both recorded in plugin-report.sh).
   reply=$(timeout --kill-after=60 "$limit" claude -p "$prompt" --model "$CHAIN_MODEL" --output-format json --dangerously-skip-permissions ${resume:+--resume "$resume"} </dev/null)
-  STAGE_RESULT=$(jq -r '.result // empty' <<<"$reply")
-  STAGE_SESSION=$(jq -r '.session_id // empty' <<<"$reply")
-  printf '%s\n' "$STAGE_RESULT"
-  grep -qE -- "$verdict" <<<"$STAGE_RESULT" || exit 1
+  rc=$?
+  STAGE_RESULT=$(jq -r '.result // empty' <<<"$reply" 2>/dev/null)
+  STAGE_SESSION=$(jq -r '.session_id // empty' <<<"$reply" 2>/dev/null)
+  [ -n "$STAGE_RESULT" ] && printf '%s\n' "$STAGE_RESULT"
+  case $rc in
+    0) ;;
+    124|137) fail "$pos" "$name" "stalled — exceeded ${limit}s" ;;
+    *) fail "$pos" "$name" "claude exited with $rc" ;;
+  esac
+  # A stage's own FAILED verdict wins even when a success verdict appears in the same report.
+  reason=$(grep -oE 'FAILED reason=.*' <<<"$STAGE_RESULT" | head -n 1)
+  [ -n "$reason" ] && fail "$pos" "$name" "${reason#FAILED reason=}"
+  grep -qE -- "$verdict" <<<"$STAGE_RESULT" || fail "$pos" "$name" "no recognisable verdict"
   echo "chain: [$pos/5] $name — ok"
 }
 

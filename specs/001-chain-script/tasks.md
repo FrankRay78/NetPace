@@ -81,8 +81,8 @@ None — the Phase 1 harness is the only shared prerequisite.
 
 ### Implementation for User Story 2
 
-- [ ] T011 [US2] In `scripts/chain.sh`'s `run_stage`, handle failure: timeout exit 124 or 137 → reason `stalled — exceeded <limit>s`; any other non-zero exit → `claude exited with <code>`; result contains `FAILED reason=` → that reason text (takes precedence over a success verdict in the same text); no success verdict → `no recognisable verdict`. On failure print `chain: FAILED at [k/5] <name> — <reason>`, then `chain: no later stage ran; reopen the failed session with \`claude --resume\` (most recent headless session in this repo).`, and exit 1. The chain runs no git command that changes anything.
-- [ ] T012 [US2] Run `bash scripts/chain.tests.sh`, confirm all cases are green, and commit.
+- [X] T011 [US2] In `scripts/chain.sh`'s `run_stage`, handle failure: timeout exit 124 or 137 → reason `stalled — exceeded <limit>s`; any other non-zero exit → `claude exited with <code>`; result contains `FAILED reason=` → that reason text (takes precedence over a success verdict in the same text); no success verdict → `no recognisable verdict`. On failure print `chain: FAILED at [k/5] <name> — <reason>`, then `chain: no later stage ran; reopen the failed session with \`claude --resume\` (most recent headless session in this repo).`, and exit 1. The chain runs no git command that changes anything.
+- [X] T012 [US2] Run `bash scripts/chain.tests.sh`, confirm all cases are green, and commit.
 
 **Checkpoint**: US1 and US2 cases pass.
 
