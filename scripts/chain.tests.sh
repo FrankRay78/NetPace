@@ -145,6 +145,16 @@ before="$(repo_state)"
 chain 270
 ok "not on main: exits 1 naming the branch, no stage started, nothing changed" '[ "$RC" = 1 ] && [ "$(calls)" = 0 ] && grep -q "feature/x" <<<"$OUTPUT" && grep -q "not main" <<<"$OUTPUT" && [ "$(repo_state)" = "$before" ]'
 
+# // SCENARIO: Asked what it would do
+echo "Asked what it would do:"
+new_case
+before="$(repo_state)"
+chain --dry-run 270
+ok "exits 0" '[ "$RC" = 0 ]'
+ok "lists the five commands in run order" '[ "$(grep -oE "/(build|study|verify|raise-pr)( 270)?" <<<"$OUTPUT" | paste -sd,)" = "/build 270,/study 270,/verify,/study 270,/raise-pr 270" ]'
+ok "no stage started" '[ "$(calls)" = 0 ]'
+ok "branch, commits and working tree untouched" '[ "$(repo_state)" = "$before" ]'
+
 echo ""
 echo "RESULT: $pass passed, $fail failed"
 [ "$fail" = 0 ]

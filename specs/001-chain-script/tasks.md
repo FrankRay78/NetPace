@@ -114,8 +114,8 @@ None — the Phase 1 harness is the only shared prerequisite.
 
 ### Tests for User Story 4
 
-- [ ] T017 [US4] In `scripts/chain.tests.sh`, add case `# // SCENARIO: Asked what it would do`: record HEAD, branch and status; run `chain.sh --dry-run 270`. Assert: exit 0; output contains `/build 270`, `/study 270`, `/verify`, `/study 270`, `/raise-pr 270` in that order; the stub log is empty or absent; HEAD, branch and status are unchanged.
-- [ ] T018 [US4] Run `bash scripts/chain.tests.sh`, confirm the T017 case fails, and commit the red phase.
+- [X] T017 [US4] In `scripts/chain.tests.sh`, add case `# // SCENARIO: Asked what it would do`: record HEAD, branch and status; run `chain.sh --dry-run 270`. Assert: exit 0; output contains `/build 270`, `/study 270`, `/verify`, `/study 270`, `/raise-pr 270` in that order; the stub log is empty or absent; HEAD, branch and status are unchanged.
+- [X] T018 [US4] Run `bash scripts/chain.tests.sh`, confirm the T017 case fails, and commit the red phase.
 
 ### Implementation for User Story 4
 
