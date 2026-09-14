@@ -96,8 +96,8 @@ None — the Phase 1 harness is the only shared prerequisite.
 
 ### Tests for User Story 3
 
-- [ ] T013 [US3] In `scripts/chain.tests.sh`, add case `# // SCENARIO: Wrong starting point is refused` with three sub-checks, each in a fresh sandbox: (a) `chain.sh` with no argument; (b) an untracked file present, `chain.sh 270`; (c) a `feature/x` branch checked out, `chain.sh 270`. For each assert: exit 1; the stub log is empty or absent; output says what was wrong (usage / not clean / not on main); branch and `git status --porcelain` are unchanged.
-- [ ] T014 [US3] Run `bash scripts/chain.tests.sh`, confirm the T013 sub-checks (b) and (c) fail, and commit the red phase.
+- [X] T013 [US3] In `scripts/chain.tests.sh`, add case `# // SCENARIO: Wrong starting point is refused` with three sub-checks, each in a fresh sandbox: (a) `chain.sh` with no argument; (b) an untracked file present, `chain.sh 270`; (c) a `feature/x` branch checked out, `chain.sh 270`. For each assert: exit 1; the stub log is empty or absent; output says what was wrong (usage / not clean / not on main); branch and `git status --porcelain` are unchanged.
+- [X] T014 [US3] Run `bash scripts/chain.tests.sh`, confirm the T013 sub-checks (b) and (c) fail, and commit the red phase.
 
 ### Implementation for User Story 3
 

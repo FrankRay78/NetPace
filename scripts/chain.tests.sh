@@ -128,6 +128,23 @@ ok "no later stage started" '[ "$(calls)" = 1 ]'
 ok "closing message names build as stalled" 'closing | grep -q build && closing | grep -q stalled'
 ok "the stalled process was ended" '[ -s "$STUB_DIR/pid-1" ] && ! kill -0 "$(cat "$STUB_DIR/pid-1")" 2>/dev/null'
 
+# // SCENARIO: Wrong starting point is refused
+echo "Wrong starting point is refused:"
+new_case
+before="$(repo_state)"
+chain
+ok "no issue: exits 1 with usage, no stage started, nothing changed" '[ "$RC" = 1 ] && [ "$(calls)" = 0 ] && grep -q usage <<<"$OUTPUT" && [ "$(repo_state)" = "$before" ]'
+new_case
+touch "$REPO/stray.txt"
+before="$(repo_state)"
+chain 270
+ok "dirty tree: exits 1 naming the dirty tree, no stage started, nothing changed" '[ "$RC" = 1 ] && [ "$(calls)" = 0 ] && grep -q "not clean" <<<"$OUTPUT" && [ "$(repo_state)" = "$before" ]'
+new_case
+git -C "$REPO" checkout -q -b feature/x
+before="$(repo_state)"
+chain 270
+ok "not on main: exits 1 naming the branch, no stage started, nothing changed" '[ "$RC" = 1 ] && [ "$(calls)" = 0 ] && grep -q "feature/x" <<<"$OUTPUT" && grep -q "not main" <<<"$OUTPUT" && [ "$(repo_state)" = "$before" ]'
+
 echo ""
 echo "RESULT: $pass passed, $fail failed"
 [ "$fail" = 0 ]
