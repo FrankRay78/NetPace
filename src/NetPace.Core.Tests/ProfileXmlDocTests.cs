@@ -43,8 +43,8 @@ public sealed class ProfileXmlDocTests
         // directory, so a build overlapping the test run can hold it open for writing.
         // XDocument.Load(string) opens with FileShare.Read, a share mode that refuses to coexist
         // with an existing writer, so the read failed intermittently with "The process cannot
-        // access the file because it is being used by another process".
-        // Only Windows enforces share modes, so this test is a genuine regression guard there and vacuous elsewhere.
+        // access the file because it is being used by another process". Only Windows enforces share
+        // modes, so this test is a genuine regression guard there and vacuous elsewhere.
 
         // Given
         // A private temp file, so the test never contends for the real build artefact.
