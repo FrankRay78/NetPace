@@ -44,9 +44,22 @@ usage() {
   echo "  --dry-run  list the stages that would run, and run nothing" >&2
 }
 
+dry_run=0
+if [ "${1:-}" = --dry-run ]; then dry_run=1; shift; fi
 if [ $# -ne 1 ]; then usage; exit 1; fi
 issue=${1#\#}
 case "$issue" in ''|*[!0-9]*) usage; exit 1 ;; esac
+
+# Report mode reaches no git or claude command, so it cannot change anything.
+if [ "$dry_run" = 1 ]; then
+  echo "chain: dry run for issue #$issue — nothing will be run"
+  echo "  1. build: /build $issue"
+  echo "  2. study: /study $issue (resumes build's session)"
+  echo "  3. verify: /verify"
+  echo "  4. study: /study $issue (resumes verify's session)"
+  echo "  5. raise-pr: /raise-pr $issue"
+  exit 0
+fi
 
 PR_URL='https://github\.com/[^[:space:]]+/pull/[0-9]+'
 
