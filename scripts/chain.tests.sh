@@ -88,6 +88,46 @@ ok "build, verify and raise-pr start fresh sessions" '[ "$(calls)" = 5 ] && ! ca
 ok "every stage uses the one chosen model" '[ "$(grep -c -- "--model test-model" "$STUB_DIR/log" 2>/dev/null)" = 5 ]'
 ok "reports the pull request" 'printf "%s" "$OUTPUT" | grep -qF "https://github.com/o/r/pull/9"'
 
+# The chain's closing message: its last two lines, after any stage report.
+closing() { printf '%s\n' "$OUTPUT" | tail -n 2; }
+
+# // SCENARIO: A failing stage stops the run
+echo "A failing stage stops the run:"
+new_case
+reply 1 'READY branch=feature/270-x'
+reply 2 'STUDIED issue=270 rows=0'
+reply 3 $'Suite failed.\nFAILED reason=suite red'
+before="$(repo_state)"
+chain 270
+ok "exits 1" '[ "$RC" = 1 ]'
+ok "no stage after verify started" '[ "$(calls)" = 3 ]'
+ok "closing message names verify, 3/5 and the reason" 'closing | grep -q verify && closing | grep -qF 3/5 && closing | grep -q "suite red"'
+ok "closing message says how to reopen the session" 'closing | grep -q "claude --resume"'
+ok "branch, commits and working tree untouched" '[ "$(repo_state)" = "$before" ]'
+new_case
+reply 1 $'READY branch=feature/270-x\nFAILED reason=half built'
+chain 270
+ok "a FAILED verdict outranks a success verdict in the same report" '[ "$RC" = 1 ] && [ "$(calls)" = 1 ] && closing | grep -q "half built"'
+
+# // SCENARIO: A stage with no readable verdict is a failure
+echo "A stage with no readable verdict is a failure:"
+new_case
+reply 1 'I finished.'
+chain 270
+ok "exits 1" '[ "$RC" = 1 ]'
+ok "no later stage started" '[ "$(calls)" = 1 ]'
+ok "closing message names build and the missing verdict" 'closing | grep -q build && closing | grep -q "no recognisable verdict"'
+
+# // SCENARIO: A stalled stage ends the run
+echo "A stalled stage ends the run:"
+new_case
+echo 30 > "$STUB_DIR/sleep-1"
+CHAIN_STAGE_TIMEOUT=1 chain 270
+ok "exits 1" '[ "$RC" = 1 ]'
+ok "no later stage started" '[ "$(calls)" = 1 ]'
+ok "closing message names build as stalled" 'closing | grep -q build && closing | grep -q stalled'
+ok "the stalled process was ended" '[ -s "$STUB_DIR/pid-1" ] && ! kill -0 "$(cat "$STUB_DIR/pid-1")" 2>/dev/null'
+
 echo ""
 echo "RESULT: $pass passed, $fail failed"
 [ "$fail" = 0 ]
