@@ -101,8 +101,8 @@ None — the Phase 1 harness is the only shared prerequisite.
 
 ### Implementation for User Story 3
 
-- [ ] T015 [US3] In `scripts/chain.sh`, before the first stage: if `git status --porcelain` is non-empty print `chain: refused — working tree is not clean; no stage was started.` and exit 1; if `git rev-parse --abbrev-ref HEAD` is not `main` print `chain: refused — <branch> is checked out, not main; no stage was started.` and exit 1.
-- [ ] T016 [US3] Run `bash scripts/chain.tests.sh`, confirm all cases are green, and commit.
+- [X] T015 [US3] In `scripts/chain.sh`, before the first stage: if `git status --porcelain` is non-empty print `chain: refused — working tree is not clean; no stage was started.` and exit 1; if `git rev-parse --abbrev-ref HEAD` is not `main` print `chain: refused — <branch> is checked out, not main; no stage was started.` and exit 1.
+- [X] T016 [US3] Run `bash scripts/chain.tests.sh`, confirm all cases are green, and commit.
 
 ---
 

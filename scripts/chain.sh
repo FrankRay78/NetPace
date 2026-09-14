@@ -84,6 +84,18 @@ run_stage() {
   echo "chain: [$pos/5] $name — ok"
 }
 
+# The only preconditions checked here: /build checks the fetch, unpushed commits and the issue
+# itself, and a missing tool fails the first stage at once.
+if [ -n "$(git status --porcelain)" ]; then
+  echo "chain: refused — working tree is not clean; no stage was started."
+  exit 1
+fi
+branch=$(git rev-parse --abbrev-ref HEAD)
+if [ "$branch" != main ]; then
+  echo "chain: refused — $branch is checked out, not main; no stage was started."
+  exit 1
+fi
+
 run_stage 1 build "/build $issue" 'READY branch=' "$BUILD_LIMIT"
 build_session=$STAGE_SESSION
 run_stage 2 study "/study $issue" 'STUDIED issue=' "$STUDY_LIMIT" "$build_session"
