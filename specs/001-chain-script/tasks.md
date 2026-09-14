@@ -119,7 +119,7 @@ None — the Phase 1 harness is the only shared prerequisite.
 
 ### Implementation for User Story 4
 
-- [ ] T019 [US4] In `scripts/chain.sh`, accept `--dry-run` before `<issue>`: after argument validation and before any git or `claude` command, print the dry-run listing from `specs/001-chain-script/contracts/chain-cli.md` and exit 0. Run `bash scripts/chain.tests.sh`, confirm all cases are green, and commit.
+- [X] T019 [US4] In `scripts/chain.sh`, accept `--dry-run` before `<issue>`: after argument validation and before any git or `claude` command, print the dry-run listing from `specs/001-chain-script/contracts/chain-cli.md` and exit 0. Run `bash scripts/chain.tests.sh`, confirm all cases are green, and commit.
 
 ---
 
