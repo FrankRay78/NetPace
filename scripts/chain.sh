@@ -44,5 +44,36 @@ usage() {
   echo "  --dry-run  list the stages that would run, and run nothing" >&2
 }
 
-usage
-exit 1
+if [ $# -ne 1 ]; then usage; exit 1; fi
+issue=${1#\#}
+case "$issue" in ''|*[!0-9]*) usage; exit 1 ;; esac
+
+PR_URL='https://github\.com/[^[:space:]]+/pull/[0-9]+'
+
+# run_stage <position> <name> <prompt> <verdict ERE> <limit> [session id to resume]
+# Prints the stage's report and, on success, leaves its reply in STAGE_RESULT and STAGE_SESSION.
+# The verdict is searched for anywhere in the report: it is not reliably the last line.
+run_stage() {
+  local pos=$1 name=$2 prompt=$3 verdict=$4 limit=$5 resume=${6:-}
+  local reply
+  echo "chain: [$pos/5] $name — starting"
+  # The prompt must be the positional straight after -p, and stdin must be redirected, or the
+  # call stalls on the terminal (both recorded in plugin-report.sh).
+  reply=$(timeout --kill-after=60 "$limit" claude -p "$prompt" --model "$CHAIN_MODEL" --output-format json --dangerously-skip-permissions ${resume:+--resume "$resume"} </dev/null)
+  STAGE_RESULT=$(jq -r '.result // empty' <<<"$reply")
+  STAGE_SESSION=$(jq -r '.session_id // empty' <<<"$reply")
+  printf '%s\n' "$STAGE_RESULT"
+  grep -qE -- "$verdict" <<<"$STAGE_RESULT" || exit 1
+  echo "chain: [$pos/5] $name — ok"
+}
+
+run_stage 1 build "/build $issue" 'READY branch=' "$BUILD_LIMIT"
+build_session=$STAGE_SESSION
+run_stage 2 study "/study $issue" 'STUDIED issue=' "$STUDY_LIMIT" "$build_session"
+run_stage 3 verify /verify 'VERIFIED branch=' "$VERIFY_LIMIT"
+verify_session=$STAGE_SESSION
+run_stage 4 study "/study $issue" 'STUDIED issue=' "$STUDY_LIMIT" "$verify_session"
+run_stage 5 raise-pr "/raise-pr $issue" "$PR_URL" "$RAISE_PR_LIMIT"
+
+echo "chain: done — $(grep -oE -- "$PR_URL" <<<"$STAGE_RESULT" | tail -1)"
+exit 0
