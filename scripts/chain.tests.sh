@@ -64,11 +64,29 @@ reply() {
 chain() { OUTPUT="$(cd "$REPO" && PATH="$SB/bin:$PATH" bash "$CHAIN" "$@" </dev/null 2>&1)"; RC=$?; }
 
 calls() { if [ -f "$STUB_DIR/log" ]; then wc -l < "$STUB_DIR/log"; else echo 0; fi; }
-call() { sed -n "$1p" "$STUB_DIR/log"; }
+call() { sed -n "$1p" "$STUB_DIR/log" 2>/dev/null; }
 repo_state() { git -C "$REPO" rev-parse HEAD; git -C "$REPO" rev-parse --abbrev-ref HEAD; git -C "$REPO" status --porcelain; }
 
 # The prompt sent on call n is exactly this command (argument order: -p "<prompt>" first).
 prompt_is() { call "$1" | grep -qE -- "^-p $2( |\$)"; }
+
+# // SCENARIO: One issue to a pull request
+echo "One issue to a pull request:"
+new_case
+reply 1 $'Built.\nREADY branch=feature/270-x\nDone.'
+reply 2 'STUDIED issue=270 rows=0'
+reply 3 'VERIFIED branch=feature/270-x'
+reply 4 'STUDIED issue=270 rows=1'
+reply 5 'Opened https://github.com/o/r/pull/9'
+CHAIN_MODEL=test-model chain 270
+ok "exits 0" '[ "$RC" = 0 ]'
+ok "exactly five stages started" '[ "$(calls)" = 5 ]'
+ok "stages in order: build, study, verify, study, raise-pr" 'prompt_is 1 "/build 270" && prompt_is 2 "/study 270" && prompt_is 3 "/verify" && prompt_is 4 "/study 270" && prompt_is 5 "/raise-pr 270"'
+ok "first study resumes build's session" 'call 2 | grep -q -- "--resume sess-1"'
+ok "second study resumes verify's session" 'call 4 | grep -q -- "--resume sess-3"'
+ok "build, verify and raise-pr start fresh sessions" '[ "$(calls)" = 5 ] && ! call 1 | grep -q -- --resume && ! call 3 | grep -q -- --resume && ! call 5 | grep -q -- --resume'
+ok "every stage uses the one chosen model" '[ "$(grep -c -- "--model test-model" "$STUB_DIR/log" 2>/dev/null)" = 5 ]'
+ok "reports the pull request" 'printf "%s" "$OUTPUT" | grep -qF "https://github.com/o/r/pull/9"'
 
 echo ""
 echo "RESULT: $pass passed, $fail failed"

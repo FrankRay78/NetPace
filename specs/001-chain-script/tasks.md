@@ -54,8 +54,8 @@ None — the Phase 1 harness is the only shared prerequisite.
 
 ### Tests for User Story 1
 
-- [ ] T003 [US1] In `scripts/chain.tests.sh`, add case `# // SCENARIO: One issue to a pull request`. Replies: call 1 result contains `READY branch=feature/270-x`; call 2 `STUDIED issue=270 rows=0`; call 3 `VERIFIED branch=feature/270-x`; call 4 `STUDIED issue=270 rows=1`; call 5 `https://github.com/o/r/pull/9`. Run `chain.sh 270` with `CHAIN_MODEL=test-model` and stdin from `/dev/null`. Assert: exit 0; the stub log has exactly 5 lines, whose prompts are `/build 270`, `/study 270`, `/verify`, `/study 270`, `/raise-pr 270` in that order; line 2 contains `--resume sess-1` and line 4 contains `--resume sess-3`; lines 1, 3 and 5 contain no `--resume`; every line contains `--model test-model`; output contains `https://github.com/o/r/pull/9`.
-- [ ] T004 [US1] Run `bash scripts/chain.tests.sh`, confirm the T003 case fails, and commit the red phase.
+- [X] T003 [US1] In `scripts/chain.tests.sh`, add case `# // SCENARIO: One issue to a pull request`. Replies: call 1 result contains `READY branch=feature/270-x`; call 2 `STUDIED issue=270 rows=0`; call 3 `VERIFIED branch=feature/270-x`; call 4 `STUDIED issue=270 rows=1`; call 5 `https://github.com/o/r/pull/9`. Run `chain.sh 270` with `CHAIN_MODEL=test-model` and stdin from `/dev/null`. Assert: exit 0; the stub log has exactly 5 lines, whose prompts are `/build 270`, `/study 270`, `/verify`, `/study 270`, `/raise-pr 270` in that order; line 2 contains `--resume sess-1` and line 4 contains `--resume sess-3`; lines 1, 3 and 5 contain no `--resume`; every line contains `--model test-model`; output contains `https://github.com/o/r/pull/9`.
+- [X] T004 [US1] Run `bash scripts/chain.tests.sh`, confirm the T003 case fails, and commit the red phase.
 
 ### Implementation for User Story 1
 
