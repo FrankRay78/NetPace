@@ -20,25 +20,25 @@ public sealed class CSVConsoleWriter : IConsoleWriter
 
         // Display speed test result. Count columns (which carry no units) sit adjacent to each
         // speed column so a single row distinguishes total from partial failure.
-        var downloadSpeed = settings.CSVHeaderUnits
-            ? downloadResult.GetSpeedStringParts(settings.SpeedUnit, settings.SpeedUnitSystem, settings.SpeedScale).speed
-            : downloadResult.GetSpeedString(settings.SpeedUnit, settings.SpeedUnitSystem, settings.SpeedScale);
-        var uploadSpeed = settings.CSVHeaderUnits
-            ? uploadResult.GetSpeedStringParts(settings.SpeedUnit, settings.SpeedUnitSystem, settings.SpeedScale).speed
-            : uploadResult.GetSpeedString(settings.SpeedUnit, settings.SpeedUnitSystem, settings.SpeedScale);
+        // Derive each result once. Under --csv-header-units the unit moves into the header, so the
+        // two parts are needed separately; otherwise the speed column carries the unit inline,
+        // which is exactly the two parts joined by a space. Deriving both from one call is what
+        // stops a row and its header disagreeing about the unit.
+        var download = downloadResult.GetSpeedStringParts(settings.SpeedUnit, settings.SpeedUnitSystem, settings.SpeedScale);
+        var upload = uploadResult.GetSpeedStringParts(settings.SpeedUnit, settings.SpeedUnitSystem, settings.SpeedScale);
 
-        var downloadHeader = settings.CSVHeaderUnits
-            ? $"Download ({downloadResult.GetSpeedStringParts(settings.SpeedUnit, settings.SpeedUnitSystem, settings.SpeedScale).unit})"
-            : "Download";
-        var uploadHeader = settings.CSVHeaderUnits
-            ? $"Upload ({uploadResult.GetSpeedStringParts(settings.SpeedUnit, settings.SpeedUnitSystem, settings.SpeedScale).unit})"
-            : "Upload";
+        var downloadSpeed = settings.CSVHeaderUnits ? download.speed : $"{download.speed} {download.unit}";
+        var uploadSpeed = settings.CSVHeaderUnits ? upload.speed : $"{upload.speed} {upload.unit}";
         var latencyValue = settings.CSVHeaderUnits ? $"{fastest.LatencyMilliseconds}" : $"{fastest.LatencyMilliseconds} ms";
-        var latencyHeader = settings.CSVHeaderUnits ? "Latency (ms)" : "Latency";
 
-        // Header row.
+        // Header row. The header strings are built here so that a run under --loop or --count does
+        // not format and discard them on every iteration after the first.
         if (initialSpeedTest)
         {
+            var downloadHeader = settings.CSVHeaderUnits ? $"Download ({download.unit})" : "Download";
+            var uploadHeader = settings.CSVHeaderUnits ? $"Upload ({upload.unit})" : "Upload";
+            var latencyHeader = settings.CSVHeaderUnits ? "Latency (ms)" : "Latency";
+
             console.WriteLine(string.Join(settings.CSVDelimiter, new[]
             {
                 "Timestamp",
