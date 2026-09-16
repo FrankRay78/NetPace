@@ -134,11 +134,7 @@ public sealed class DefaultConsoleWriter : IConsoleWriter
 
         console.WriteLine("\nTry 'NetPace --help' for more information.");
 
-        return new SpeedTestOutcome
-        {
-            Download = settings.NoDownload ? null : downloadResult,
-            Upload = settings.NoUpload ? null : uploadResult
-        };
+        return SpeedTestOutcome.For(settings, downloadResult, uploadResult);
     }
 
     private sealed class SyncProgress<T>(Action<T> handler) : IProgress<T>

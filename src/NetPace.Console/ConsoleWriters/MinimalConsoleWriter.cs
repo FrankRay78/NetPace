@@ -28,10 +28,6 @@ public sealed class MinimalConsoleWriter : IConsoleWriter
             !settings.NoUpload ? $"Upload: {uploadResult.GetSpeedString(settings.SpeedUnit, settings.SpeedUnitSystem, settings.SpeedScale)}{uploadResult.GetFailureAnnotation()}" : null
         }.Where(s => !string.IsNullOrEmpty(s))));
 
-        return new SpeedTestOutcome
-        {
-            Download = settings.NoDownload ? null : downloadResult,
-            Upload = settings.NoUpload ? null : uploadResult
-        };
+        return SpeedTestOutcome.For(settings, downloadResult, uploadResult);
     }
 }
