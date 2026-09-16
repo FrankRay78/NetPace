@@ -251,5 +251,90 @@ public sealed partial class NetPaceConsoleTests
             Assert.Equal(0, result.ExitCode);
             await Verify(result.Output);
         }
+
+        [Fact]
+        public async Task Should_Include_Empty_IPAddress_And_Hostname_In_CSV_When_Device_Identity_Unavailable()
+        {
+            // SCENARIO: CSV IPAddress and Hostname columns contain empty values when device identity is unavailable
+
+            // Given
+            var services = new ServiceCollection();
+            services.AddSingleton<ISpeedTestService, SpeedTestStub>();
+            services.AddSingleton<IClock, ClockStub>();
+            services.AddSingleton<IClientInfoProvider>(new ClientInfoProviderStub { IPAddress = "", Hostname = "" });
+            services.AddSingleton<IWaiter, NoDelayStub>();
+            var host = GetCommandLineTestHost(services);
+
+            // When
+            var result = await host.RunAsync(["--csv"]);
+
+            // Then
+            Assert.Equal(0, result.ExitCode);
+            await Verify(result.Output);
+        }
+
+        [Fact]
+        public async Task Should_Include_Error_IPAddress_In_CSV_When_IP_Retrieval_Fails()
+        {
+            // SCENARIO: CSV IPAddress column contains ERROR when IP address retrieval raises an exception
+
+            // Given
+            var services = new ServiceCollection();
+            services.AddSingleton<ISpeedTestService, SpeedTestStub>();
+            services.AddSingleton<IClock, ClockStub>();
+            services.AddSingleton<IClientInfoProvider>(new ClientInfoProviderStub { IPAddress = "ERROR", Hostname = "router-a" });
+            services.AddSingleton<IWaiter, NoDelayStub>();
+            var host = GetCommandLineTestHost(services);
+
+            // When
+            var result = await host.RunAsync(["--csv"]);
+
+            // Then
+            Assert.Equal(0, result.ExitCode);
+            await Verify(result.Output);
+        }
+
+        [Fact]
+        public async Task Should_Include_Error_Hostname_In_CSV_When_Hostname_Retrieval_Fails()
+        {
+            // SCENARIO: CSV Hostname column contains ERROR when hostname retrieval raises an exception
+            // SCENARIO: CSV speed test completes and writes output when hostname retrieval raises an exception
+
+            // Given
+            var services = new ServiceCollection();
+            services.AddSingleton<ISpeedTestService, SpeedTestStub>();
+            services.AddSingleton<IClock, ClockStub>();
+            services.AddSingleton<IClientInfoProvider>(new ClientInfoProviderStub { IPAddress = "192.168.1.1", Hostname = "ERROR" });
+            services.AddSingleton<IWaiter, NoDelayStub>();
+            var host = GetCommandLineTestHost(services);
+
+            // When
+            var result = await host.RunAsync(["--csv"]);
+
+            // Then
+            Assert.Equal(0, result.ExitCode);
+            await Verify(result.Output);
+        }
+
+        [Fact]
+        public async Task Should_Include_Error_IPAddress_And_Hostname_In_CSV_When_Both_Retrievals_Fail()
+        {
+            // SCENARIO: CSV speed test completes and writes output when both device identity lookups raise exceptions
+
+            // Given
+            var services = new ServiceCollection();
+            services.AddSingleton<ISpeedTestService, SpeedTestStub>();
+            services.AddSingleton<IClock, ClockStub>();
+            services.AddSingleton<IClientInfoProvider>(new ClientInfoProviderErrorStub());
+            services.AddSingleton<IWaiter, NoDelayStub>();
+            var host = GetCommandLineTestHost(services);
+
+            // When
+            var result = await host.RunAsync(["--csv"]);
+
+            // Then
+            Assert.Equal(0, result.ExitCode);
+            await Verify(result.Output);
+        }
     }
 }

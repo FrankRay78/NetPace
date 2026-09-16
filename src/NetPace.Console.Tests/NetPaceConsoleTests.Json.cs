@@ -173,5 +173,132 @@ public sealed partial class NetPaceConsoleTests
             Assert.Equal(0, result.ExitCode);
             await Verify(result.Output).UseParameters(jsonSwitch);
         }
+
+        [Fact]
+        public async Task Should_Include_IPv6_In_Json_Output_When_No_IPv4_Available()
+        {
+            // SCENARIO: JSON IPAddress field contains first IPv6 address when no IPv4 is available
+
+            // Given
+            var services = new ServiceCollection();
+            services.AddSingleton<ISpeedTestService, SpeedTestStub>();
+            services.AddSingleton<IClock, ClockStub>();
+            services.AddSingleton<IClientInfoProvider>(new ClientInfoProviderStub { IPAddress = "2001:db8::1" });
+            services.AddSingleton<IWaiter, NoDelayStub>();
+            var host = GetCommandLineTestHost(services);
+
+            // When
+            var result = await host.RunAsync(["--json"]);
+
+            // Then
+            Assert.Equal(0, result.ExitCode);
+            await Verify(result.Output);
+        }
+
+        [Fact]
+        public async Task Should_Include_Empty_IPAddress_In_Json_Output_When_No_Network_Interfaces()
+        {
+            // SCENARIO: JSON IPAddress field is empty string when no network interfaces are available
+
+            // Given
+            var services = new ServiceCollection();
+            services.AddSingleton<ISpeedTestService, SpeedTestStub>();
+            services.AddSingleton<IClock, ClockStub>();
+            services.AddSingleton<IClientInfoProvider>(new ClientInfoProviderStub { IPAddress = "" });
+            services.AddSingleton<IWaiter, NoDelayStub>();
+            var host = GetCommandLineTestHost(services);
+
+            // When
+            var result = await host.RunAsync(["--json"]);
+
+            // Then
+            Assert.Equal(0, result.ExitCode);
+            await Verify(result.Output);
+        }
+
+        [Fact]
+        public async Task Should_Include_Empty_Hostname_In_Json_Output_When_Hostname_Resolves_Empty()
+        {
+            // SCENARIO: JSON Hostname field is empty string when the OS hostname resolves to empty
+
+            // Given
+            var services = new ServiceCollection();
+            services.AddSingleton<ISpeedTestService, SpeedTestStub>();
+            services.AddSingleton<IClock, ClockStub>();
+            services.AddSingleton<IClientInfoProvider>(new ClientInfoProviderStub { Hostname = "" });
+            services.AddSingleton<IWaiter, NoDelayStub>();
+            var host = GetCommandLineTestHost(services);
+
+            // When
+            var result = await host.RunAsync(["--json"]);
+
+            // Then
+            Assert.Equal(0, result.ExitCode);
+            await Verify(result.Output);
+        }
+
+        [Fact]
+        public async Task Should_Include_Error_IPAddress_In_Json_Output_When_IP_Retrieval_Fails()
+        {
+            // SCENARIO: JSON IPAddress field contains ERROR when IP address retrieval raises an exception
+            // SCENARIO: JSON speed test completes and writes output when IP address retrieval raises an exception
+
+            // Given
+            var services = new ServiceCollection();
+            services.AddSingleton<ISpeedTestService, SpeedTestStub>();
+            services.AddSingleton<IClock, ClockStub>();
+            services.AddSingleton<IClientInfoProvider>(new ClientInfoProviderStub { IPAddress = "ERROR", Hostname = "test-host" });
+            services.AddSingleton<IWaiter, NoDelayStub>();
+            var host = GetCommandLineTestHost(services);
+
+            // When
+            var result = await host.RunAsync(["--json"]);
+
+            // Then
+            Assert.Equal(0, result.ExitCode);
+            await Verify(result.Output);
+        }
+
+        [Fact]
+        public async Task Should_Include_Error_Hostname_In_Json_Output_When_Hostname_Retrieval_Fails()
+        {
+            // SCENARIO: JSON Hostname field contains ERROR when hostname retrieval raises an exception
+
+            // Given
+            var services = new ServiceCollection();
+            services.AddSingleton<ISpeedTestService, SpeedTestStub>();
+            services.AddSingleton<IClock, ClockStub>();
+            services.AddSingleton<IClientInfoProvider>(new ClientInfoProviderStub { IPAddress = "192.168.1.1", Hostname = "ERROR" });
+            services.AddSingleton<IWaiter, NoDelayStub>();
+            var host = GetCommandLineTestHost(services);
+
+            // When
+            var result = await host.RunAsync(["--json"]);
+
+            // Then
+            Assert.Equal(0, result.ExitCode);
+            await Verify(result.Output);
+        }
+
+        [Fact]
+        public async Task Should_Include_Error_IPAddress_And_Hostname_In_Json_Output_When_Both_Retrievals_Fail()
+        {
+            // SCENARIO: JSON speed test completes and writes output when both device identity lookups raise exceptions
+
+            // Given
+            var services = new ServiceCollection();
+            services.AddSingleton<ISpeedTestService, SpeedTestStub>();
+            services.AddSingleton<IClock, ClockStub>();
+            services.AddSingleton<IClientInfoProvider>(new ClientInfoProviderStub { IPAddress = "ERROR", Hostname = "ERROR" });
+            services.AddSingleton<IWaiter, NoDelayStub>();
+            var host = GetCommandLineTestHost(services);
+
+            // When
+            var result = await host.RunAsync(["--json"]);
+
+            // Then
+            Assert.Equal(0, result.ExitCode);
+            await Verify(result.Output);
+        }
     }
 }
