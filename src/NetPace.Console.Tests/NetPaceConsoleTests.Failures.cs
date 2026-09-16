@@ -23,7 +23,7 @@ public sealed partial class NetPaceConsoleTests
         [Fact]
         public async Task All_Upload_Requests_Failed_Exits_Zero_By_Default()
         {
-            // SCENARIO: A measured test whose every request failed exits 0 by default (AC5)
+            // SCENARIO: A measured test whose every request failed exits 0 by default
 
             // Given a server is found and latency measures, but every upload request fails.
             var service = new ScriptedSpeedTester { UploadFactory = _ => ScriptedSpeedTester.AllFailed(32) };
@@ -103,7 +103,7 @@ public sealed partial class NetPaceConsoleTests
         [Fact]
         public async Task Partial_Failure_Is_Annotated_On_The_Token()
         {
-            // SCENARIO: Normal + verbosity gradation - partial failure (AC9)
+            // SCENARIO: Normal + verbosity gradation - partial failure
 
             // Given some download requests fail but the test still measured throughput.
             var service = new ScriptedSpeedTester { DownloadFactory = _ => ScriptedSpeedTester.Partial(150, 5) };
@@ -120,7 +120,7 @@ public sealed partial class NetPaceConsoleTests
         [Fact]
         public async Task Json_All_Failed_Self_Describes_Through_The_Counts()
         {
-            // SCENARIO: Machine formats self-describe on stdout - JSON (AC8a)
+            // SCENARIO: Machine formats self-describe on stdout - JSON
 
             // Given every upload request fails.
             var service = new ScriptedSpeedTester { UploadFactory = _ => ScriptedSpeedTester.AllFailed(32) };
@@ -138,7 +138,7 @@ public sealed partial class NetPaceConsoleTests
         [Fact]
         public async Task Json_Omits_Only_The_Fields_Of_A_Test_That_Did_Not_Run()
         {
-            // SCENARIO: Machine formats self-describe on stdout - JSON (AC8a)
+            // SCENARIO: Machine formats self-describe on stdout - JSON
 
             // Given the upload test is skipped and every download request fails.
             var service = new ScriptedSpeedTester { DownloadFactory = _ => ScriptedSpeedTester.AllFailed(32) };
@@ -156,7 +156,7 @@ public sealed partial class NetPaceConsoleTests
         [Fact]
         public async Task Csv_All_Failed_Row_Distinguishes_Total_Failure()
         {
-            // SCENARIO: Machine formats self-describe on stdout - CSV (AC8b)
+            // SCENARIO: Machine formats self-describe on stdout - CSV
 
             // Given every upload request fails.
             var service = new ScriptedSpeedTester { UploadFactory = _ => ScriptedSpeedTester.AllFailed(32) };
@@ -174,7 +174,7 @@ public sealed partial class NetPaceConsoleTests
         [Fact]
         public async Task Minimal_All_Failed_Annotates_The_Token()
         {
-            // SCENARIO: Normal + verbosity gradation - Minimal (AC9)
+            // SCENARIO: Normal + verbosity gradation - Minimal
 
             var service = new ScriptedSpeedTester { UploadFactory = _ => ScriptedSpeedTester.AllFailed(32) };
             var host = HostWith(service);
@@ -190,7 +190,7 @@ public sealed partial class NetPaceConsoleTests
         [Fact]
         public async Task Debug_Annotates_The_Token()
         {
-            // SCENARIO: Normal + verbosity gradation - Debug (AC9)
+            // SCENARIO: Normal + verbosity gradation - Debug
 
             var service = new ScriptedSpeedTester { UploadFactory = _ => ScriptedSpeedTester.AllFailed(32) };
             var host = HostWith(service);
@@ -207,7 +207,7 @@ public sealed partial class NetPaceConsoleTests
         [Fact]
         public async Task FailOn_Total_Exits_One_On_All_Failed_Test()
         {
-            // SCENARIO: --fail-on total opt-in (AC10)
+            // SCENARIO: --fail-on total opt-in
 
             var service = new ScriptedSpeedTester { UploadFactory = _ => ScriptedSpeedTester.AllFailed(32) };
             var host = HostWith(service);
@@ -222,7 +222,7 @@ public sealed partial class NetPaceConsoleTests
         [Fact]
         public async Task FailOn_None_Exits_Zero_On_All_Failed_Test()
         {
-            // SCENARIO: --fail-on total opt-in, default is none (AC10)
+            // SCENARIO: --fail-on total opt-in, default is none
 
             var service = new ScriptedSpeedTester { UploadFactory = _ => ScriptedSpeedTester.AllFailed(32) };
             var host = HostWith(service);
@@ -237,7 +237,7 @@ public sealed partial class NetPaceConsoleTests
         [Fact]
         public async Task FailOn_Partial_Exits_One_When_Any_Request_Failed()
         {
-            // SCENARIO: --fail-on partial opt-in (AC11)
+            // SCENARIO: --fail-on partial opt-in
 
             var service = new ScriptedSpeedTester { DownloadFactory = _ => ScriptedSpeedTester.Partial(150, 5) };
             var host = HostWith(service);
@@ -252,7 +252,7 @@ public sealed partial class NetPaceConsoleTests
         [Fact]
         public async Task FailOn_Total_Exits_Zero_On_Partial_Failure()
         {
-            // SCENARIO: --fail-on partial opt-in, total does not trip on partial (AC11)
+            // SCENARIO: --fail-on partial opt-in, total does not trip on partial
 
             var service = new ScriptedSpeedTester { DownloadFactory = _ => ScriptedSpeedTester.Partial(150, 5) };
             var host = HostWith(service);
@@ -340,7 +340,7 @@ public sealed partial class NetPaceConsoleTests
         [Fact]
         public async Task FailOn_Is_FailFast_Under_Count()
         {
-            // SCENARIO: --fail-on is uniform and fail-fast (AC12)
+            // SCENARIO: --fail-on is uniform and fail-fast
 
             // Given the first iteration already all-fails.
             var service = new ScriptedSpeedTester { UploadFactory = _ => ScriptedSpeedTester.AllFailed(32) };
@@ -358,7 +358,7 @@ public sealed partial class NetPaceConsoleTests
         [Fact]
         public async Task FailOn_Is_FailFast_When_The_Measurement_Never_Ran()
         {
-            // SCENARIO: --fail-on is uniform and fail-fast (AC12)
+            // SCENARIO: --fail-on is uniform and fail-fast
 
             // Given discovery throws on every iteration.
             var mock = new SpeedTestMock
