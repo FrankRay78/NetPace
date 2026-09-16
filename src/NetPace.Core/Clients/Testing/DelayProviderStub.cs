@@ -32,12 +32,4 @@ public sealed class DelayProviderStub : IDelayProvider
         requestedDelays.Add(milliseconds);
         return Task.CompletedTask;
     }
-
-    /// <summary>
-    /// Resets the recorded delay requests.
-    /// </summary>
-    public void Reset()
-    {
-        requestedDelays.Clear();
-    }
 }
