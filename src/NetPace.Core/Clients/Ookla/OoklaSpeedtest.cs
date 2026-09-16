@@ -352,6 +352,17 @@ public sealed class OoklaSpeedtest : ISpeedTestService
                 // exception (transport error, TLS, timeout, or a non-success HTTP status surfaced
                 // by EnsureSuccessStatusCode) is a per-request failure, aggregated into the counts
                 // rather than swallowed. Its bytes remain zero.
+                //
+                // wasCancelledLocally is read here without the lock deliberately; it is not what
+                // classifies the request. The `if (!cts.IsCancellationRequested)` gate in the
+                // finally block below is authoritative, and cts.Cancel() runs inside that same lock
+                // immediately after the flag is set. Lock acquisition is a full fence, so any thread
+                // reaching the gate after the cancelling thread released observes
+                // IsCancellationRequested == true and is excluded from completedCount, failedCount
+                // and succeededCount entirely. A stale false read here can therefore only set
+                // requestFailed on a request whose counts are never applied, and cancellation is
+                // monotonic, so there is no path back to false. The unsynchronised read is
+                // defence-in-depth in front of the gate, not the mechanism that decides the count.
                 if (!(e is OperationCanceledException && wasCancelledLocally))
                 {
                     requestFailed = true;
