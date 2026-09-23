@@ -64,14 +64,12 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
                     }
                     catch (Exception e) when (IsOperationalFault(e))
                     {
-                        // NetPace's own health, not a network condition: exit non-zero.
                         throw;
                     }
                     catch (Exception e)
                     {
                         WriteError(console, e.Message);
 
-                        // This measurement never completed, which --fail-on treats as a failure.
                         if (FailOnRequested(settings)) return 1;
                     }
 
@@ -107,14 +105,12 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
                     }
                     catch (Exception e) when (IsOperationalFault(e))
                     {
-                        // NetPace's own health, not a network condition: exit non-zero.
                         throw;
                     }
                     catch (Exception e)
                     {
                         WriteError(console, e.Message);
 
-                        // This measurement never completed, which --fail-on treats as a failure.
                         if (FailOnRequested(settings)) return 1;
                     }
 
@@ -148,14 +144,12 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
                 }
                 catch (Exception e) when (IsOperationalFault(e))
                 {
-                    // NetPace's own health, not a network condition: exit non-zero.
                     throw;
                 }
                 catch (Exception e)
                 {
                     WriteError(console, e.Message);
 
-                    // This measurement never completed, which --fail-on treats as a failure.
                     if (FailOnRequested(settings)) return 1;
                 }
             }

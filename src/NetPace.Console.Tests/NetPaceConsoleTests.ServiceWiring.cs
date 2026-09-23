@@ -1,5 +1,3 @@
-using NetPace.Console;
-
 namespace NetPace.Console.Tests;
 
 public sealed partial class NetPaceConsoleTests

@@ -3,10 +3,6 @@ namespace NetPace.Console;
 /// <summary>
 /// Represents a speed test result in JSON format.
 /// </summary>
-/// <remarks>
-/// A <c>required</c> property always appears in the output. A nullable one is omitted when its test
-/// did not run, so it carries no <c>required</c>: absence is the whole point of it.
-/// </remarks>
 public sealed record JsonResult
 {
     // Server

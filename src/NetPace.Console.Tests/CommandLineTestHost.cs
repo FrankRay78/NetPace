@@ -63,7 +63,7 @@ public sealed record TestResult
     public required int ExitCode { get; init; }
 
     /// <summary>
-    /// Gets the output written to the console.
+    /// Gets the output written to stdout.
     /// </summary>
     public required string Output { get; init; }
 }

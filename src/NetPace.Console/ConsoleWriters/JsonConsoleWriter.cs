@@ -19,15 +19,10 @@ public sealed class JsonConsoleWriter : IConsoleWriter
         if (!settings.NoUpload) uploadResult = await speedTestClient.GetUploadSpeedAsync(fastest.Server, cancellationToken);
 
 
-        // Display speed test result. Only a test that did not run is null (and so omitted); an
-        // all-failed test reports its zero speed alongside the counts, keeping the JSON one shape.
+        // Display speed test result.
         var latencyFormatted = !settings.NoLatency ? $"{fastest.LatencyMilliseconds} ms" : null;
-        var downloadFormatted = settings.NoDownload
-            ? null
-            : downloadResult.GetSpeedString(settings.SpeedUnit, settings.SpeedUnitSystem, settings.SpeedScale);
-        var uploadFormatted = settings.NoUpload
-            ? null
-            : uploadResult.GetSpeedString(settings.SpeedUnit, settings.SpeedUnitSystem, settings.SpeedScale);
+        var downloadFormatted = !settings.NoDownload ? downloadResult.GetSpeedString(settings.SpeedUnit, settings.SpeedUnitSystem, settings.SpeedScale) : null;
+        var uploadFormatted = !settings.NoUpload ? uploadResult.GetSpeedString(settings.SpeedUnit, settings.SpeedUnitSystem, settings.SpeedScale) : null;
 
         var jsonResult = new JsonResult
         {
