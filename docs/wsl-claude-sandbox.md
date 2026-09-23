@@ -277,8 +277,6 @@ The PAT expires on the date you chose. When that day comes, GitHub will email yo
 
 Why: three small tools that meaningfully reduce token usage and improve session continuity during long Claude sessions — exactly the workload this sandbox is designed for. Skip this step if you're using Claude lightly or want the cleanest possible install.
 
-[`.claude/commands/install-harness-tooling.md`](../.claude/commands/install-harness-tooling.md) is the canonical source for these install commands — it also covers a CLI fallback route for environments where `/plugin` isn't available and a node prerequisite check that this walkthrough doesn't repeat. If the two ever disagree, that file wins.
-
 ### 7a. RTK — command output filter
 
 [RTK](https://github.com/rtk-ai/rtk) intercepts shell commands (`git status`, `cargo test`, `ls`, etc.) and returns compact output, cutting 60–90% of the tokens those commands would otherwise consume. RTK explicitly states WSL is the recommended environment — the auto-rewrite hook works here but not on native Windows.
