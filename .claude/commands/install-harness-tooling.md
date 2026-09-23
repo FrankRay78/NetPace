@@ -21,7 +21,9 @@ Installs whatever [`scripts/plugin-report.sh`](../../scripts/plugin-report.sh) r
 
 3. **Print the install commands for the missing tools.** Output them for the user to run; do not run them yourself.
 
-   [`docs/wsl-claude-sandbox.md`](../../docs/wsl-claude-sandbox.md) step 7 is the canonical source for these commands and explains what each tool does. If it and this file ever disagree, that doc wins — check it before printing.
+   This file owns these commands — print them from here. They are not specific to any one machine or install route; the tools support Linux and macOS, WSL or not.
+
+   **Prerequisite, context-mode only:** its MCP server runs `node ${CLAUDE_PLUGIN_ROOT}/start.mjs` and its `package.json` requires **node >= 22.5.0**. Check `node --version` first. Without node the plugin still installs, registers, and loads its hooks and skills — so it looks installed — but the MCP server cannot start, and the session reports a cached connection failure. rtk (static binary) and read-once (bash + jq) do not need node.
 
    **rtk** — token-saving CLI proxy. `green-gate.sh` already strips a leading `rtk` when parsing a command, so the gate is written for rtk being in play.
 
@@ -43,7 +45,9 @@ Installs whatever [`scripts/plugin-report.sh`](../../scripts/plugin-report.sh) r
    ~/.claude/read-once/read-once verify
    ```
 
-   **context-mode** — MCP server that sandboxes large tool output outside the context window. A Claude Code plugin, so it installs from inside a session, not from a shell. Use the HTTPS marketplace URL: the default is SSH, which the WSL sandbox deliberately does not have (see [`docs/wsl-claude-sandbox.md`](../../docs/wsl-claude-sandbox.md) step 6).
+   **context-mode** — MCP server that sandboxes large tool output outside the context window. A Claude Code plugin. Use the HTTPS marketplace URL below in either route: the marketplace default is SSH, which fails on any box without a GitHub SSH key.
+
+   *In-session route*, when `/plugin` is available:
 
    ```
    /plugin marketplace add https://github.com/mksglu/context-mode
@@ -51,6 +55,29 @@ Installs whatever [`scripts/plugin-report.sh`](../../scripts/plugin-report.sh) r
    /reload-plugins
    /context-mode:ctx-doctor
    ```
+
+   *CLI route* — **use this whenever `/plugin` is unavailable.** It is disabled by managed policy on some enterprise accounts, and it is not offered on every surface (the VS Code extension has no `/plugin`); the symptom is `/plugin isn't available in this environment`. The two routes write the same `~/.claude/plugins/` registry, so either works and the result is identical.
+
+   ```
+   claude plugin marketplace add https://github.com/mksglu/context-mode
+   claude plugin install context-mode@context-mode
+   claude plugin list
+   ```
+
+   **`claude` is often not on `PATH` even though Claude Code is running** — the editor extension ships its own copy instead of a CLI install, so `command -v claude` comes back empty while the extension works fine. Its binary lives under the extension directory and is pinned to the extension version, so derive the path rather than copying one:
+
+   ```
+   CC=$(find ~ -type f -path "*anthropic.claude-code*" -name claude -perm -u+x 2>/dev/null | head -1)
+   "$CC" --version   # confirm before use; empty $CC means no bundled binary was found
+
+   "$CC" plugin marketplace add https://github.com/mksglu/context-mode
+   "$CC" plugin install context-mode@context-mode
+   "$CC" plugin list
+   ```
+
+   A resolved path looks like `~/.vscode-server/extensions/anthropic.claude-code-<version>-<platform>/resources/native-binary/claude` — illustrative only; the `<version>` moves on every extension update, which is why the `find` above is the copy-paste form. For repeated use, install the standalone CLI instead of relying on the bundled binary.
+
+   Then restart the session (or reload the editor window) so the plugin loads, and run `/context-mode:ctx-doctor` to verify. `claude plugin list` is the route-independent check if no session command is available.
 
 4. **Stop for review before each hook lands.** Two of the three tools write hooks into `~/.claude/settings.json` themselves. At **each** of these points, stop, show `git diff`-style before/after of the settings file, and wait for the user to accept it — do not proceed to the next tool until they have.
 
