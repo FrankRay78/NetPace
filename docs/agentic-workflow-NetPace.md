@@ -113,7 +113,7 @@ Pinned at **0.12.10**, initialised `--script sh`. A `--force` re-init resets eve
 
 ## Token / context tooling
 
-The generic guide's [*Token / context management plugins*](agentic-workflow.md#token--context-management-plugins) section names `read-once`, `context-mode` and `rtk` in three bullets; [wsl-claude-sandbox.md](wsl-claude-sandbox.md) step 7 has the detail — what each does, the install commands, and the marketplace-over-SSH gotcha. Both stay deliberately portable: neither says whether any of them is actually present on the box in front of you.
+The generic guide's [*Token / context management plugins*](agentic-workflow.md#token--context-management-plugins) section names `read-once`, `context-mode` and `rtk` in three bullets; [`/install-harness-tooling`](../.claude/commands/install-harness-tooling.md) owns the install commands outright, and [wsl-claude-sandbox.md](wsl-claude-sandbox.md) step 7 has the sandbox-specific detail — why each tool matters for this workload, and the PAT/SSH context behind the marketplace-over-HTTPS gotcha. All three stay deliberately portable: none says whether any of them is actually present on the box in front of you.
 
 Two of the three are wired into NetPace's config: `rtk` has `Bash(rtk …)` allow-entries in `.claude/settings.json` and a prefix-strip in `green-gate.sh`'s `strip_cmd_prefixes()` — a gate written on the assumption that rtk may be in play — while `context-mode` has a block of `mcp__plugin_context-mode_context-mode__*` allow-entries and an `enabledPlugins` entry. `read-once` is described in the guides but referenced by no config at all. **Nothing verifies that any of it is installed**, and a tool that silently isn't there costs exactly what one that is there costs; you just stop getting the benefit.
 
