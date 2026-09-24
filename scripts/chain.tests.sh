@@ -142,6 +142,23 @@ reply 4 'STUDIED issue=270 rows=1'
 reply 5 'RAISED pr=https://github.com/o/r/pull/9'
 chain 270
 ok "a study pass that quotes 'FAILED reason=' mid-sentence does not stop the run" '[ "$RC" = 0 ] && [ "$(calls)" = 5 ]'
+new_case
+reply 1 'READY branch=feature/270-x'
+reply 2 'STUDIED issue=270 rows=0'
+printf 'claude: command failed before it could start' > "$STUB_DIR/reply-3.json"
+chain 270
+ok "a stage that fails before its reply is read names no earlier stage's session" '[ "$RC" = 1 ] && [ "$(calls)" = 3 ] && ! closing | grep -q "sess-2" && closing | grep -q "no session id was captured"'
+new_case
+reply 1 'READY branch=feature/270-x'
+printf 'claude: command failed before it could start' > "$STUB_DIR/reply-2.json"
+chain 270
+ok "a resuming stage that fails that early names the session it resumed" '[ "$RC" = 1 ] && [ "$(calls)" = 2 ] && closing | grep -qF "claude --resume sess-1"'
+new_case
+reply 1 'READY branch=feature/270-x'
+reply 2 'STUDIED issue=270 rows=0'
+echo 30 > "$STUB_DIR/sleep-3"
+CHAIN_STAGE_TIMEOUT=1 chain 270
+ok "a stalled stage names no earlier stage's session either" '[ "$RC" = 1 ] && ! closing | grep -q "sess-2" && closing | grep -q "no session id was captured"'
 
 # // SCENARIO: A stage with no readable verdict is a failure
 echo "A stage with no readable verdict is a failure:"

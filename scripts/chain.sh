@@ -93,6 +93,12 @@ fail() {
 run_stage() {
   local pos=$1 name=$2 prompt=$3 verdict=$4 limit=$5 resume=${6:-}
   local reply rc reason is_error subtype
+  # Until the reply is parsed the only session this stage has is the one it resumed, so that is
+  # what STAGE_SESSION holds. Without this a stage that fails before the parse below — a stall, a
+  # launch failure, a reply that is not JSON — leaves the previous stage's id in place, and the
+  # closing line sends them to an already-finished session. Fresh stages reset to empty, which is
+  # the "no session id was captured" fallback; the study passes keep the id they were resuming.
+  STAGE_SESSION=$resume
   echo "chain: [$pos/5] $name — starting"
   # The prompt must be the positional straight after -p, and stdin must be redirected, or the
   # call stalls on the terminal (both recorded in plugin-report.sh). The prompt stays quoted
@@ -129,6 +135,10 @@ run_stage() {
   # the phrase in ordinary prose, and an unanchored scan would abort a healthy run over it.
   reason=$(grep -m1 -oE '^[[:space:]]*[*_>-]*[[:space:]]*FAILED reason=.*' <<<"$STAGE_RESULT")
   if [ -n "$reason" ]; then fail "$pos" "$name" "${reason#*FAILED reason=}"; fi
+  # Deliberately not anchored, unlike the two scans above: only /raise-pr's prompt pins its verdict
+  # to a line of its own, so the other four may arrive decorated as markdown, and an anchor would
+  # abort a healthy run over a bullet. A report quoting someone else's success verdict is covered
+  # by the FAILED scan running first.
   grep -qE -- "$verdict" <<<"$STAGE_RESULT" || fail "$pos" "$name" "no recognisable verdict"
   echo "chain: [$pos/5] $name — ok"
 }
