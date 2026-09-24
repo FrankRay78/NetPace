@@ -16,10 +16,11 @@ Phase 0 output for [plan.md](plan.md). Facts marked **probed** were confirmed ag
   | `/build` | `READY branch=` |
   | `/study` | `STUDIED issue=` |
   | `/verify` | `VERIFIED branch=` |
-  | `/raise-pr` | a `https://github.com/…/pull/<n>` URL |
+  | `/raise-pr` | `RAISED pr=<url>` at the start of a line |
 
-  When a failed stage's report contains `FAILED reason=<…>`, that reason is what the chain prints. A report containing both a success and a `FAILED` verdict is treated as failed.
-- **Rationale**: **probed** — the JSON reply carries `result` and `session_id`. The tokens are each command's own contract, so nothing can drift. Searching the whole report is the prior-art sketch's lesson: the verdict is not reliably the last line. The `/raise-pr` rule is the confirmed decision on #270.
+  When a failed stage's report contains `FAILED reason=<…>` at the start of a line, that reason is what the chain prints. A report containing both a success and a `FAILED` verdict is treated as failed.
+- **Rationale**: **probed** — the JSON reply carries `result` and `session_id`. The tokens are each command's own contract, so nothing can drift. Searching the whole report is the prior-art sketch's lesson: the verdict is not reliably the last line.
+- **Amended during `/verify`, and needs ratifying.** The confirmed decision on #270 was that any `https://github.com/…/pull/<n>` URL anywhere in `/raise-pr`'s report means success. Review found that this cannot distinguish a pull request the run *opened* from one it merely *quoted* — and the commonest `/raise-pr` failure, a PR already open for the branch, reports an error whose text contains exactly such a URL. The chain would then print `[5/5] raise-pr — ok` and announce that older PR as the run's result, having pushed nothing. `/raise-pr` now prints `RAISED pr=<url>` only for a PR it actually opened, and the chain gates on that line. The `FAILED reason=` scan is anchored to a line start for the same class of reason: `/study`'s whole job is writing prose about failures, and an unanchored scan aborted a healthy run over a sentence that merely quoted the phrase.
 
 ## R3 — Giving a study pass the preceding stage's context
 
