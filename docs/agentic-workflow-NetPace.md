@@ -113,7 +113,7 @@ One caveat on "as that stage left it": a stalled stage is ended by its time limi
 
 **Residual risk: silently denied `ask` rules.** Every stage runs headless under `--dangerously-skip-permissions`, where an `ask`-matched call is denied without a prompt (see [Permissions and unattended runs](#permissions-and-unattended-runs)). A stage can carry on degraded and still report success; the chain does not detect it.
 
-**Tests.** `scripts/chain.tests.sh` proves the gating — order, resumed sessions, malformed and errored replies, failure, stall, refusals and dry run — against a stub `claude` in throwaway repos: no model is called and your checkout is untouched. It runs in seconds, is gated in CI alongside the .NET suite, and should be run after any edit to the chain.
+**Tests.** `scripts/chain.tests.sh` proves the gating — order, resumed sessions, malformed and errored replies, failure, stall, refusals and dry run — against a stub `claude` in throwaway repos: no model is called and your checkout is untouched. It runs in seconds and should be run after any edit to the chain; like the hook matrices, it is not yet gated in CI (#296).
 
 Two things the stub cannot prove need a real model, so they are checked by hand:
 

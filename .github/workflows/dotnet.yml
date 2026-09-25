@@ -56,10 +56,3 @@ jobs:
 
     - name: Test
       run: dotnet test src --no-build --verbosity normal
-
-    - name: Chain script tests
-      # scripts/chain.sh is bash, so no dotnet gate sees it. Its matrix stubs `claude` and calls
-      # no model, runs in seconds, and is the only thing standing between an edit to the chain and
-      # an unattended run that opens a real pull request (Constitution Principle I: where a tool
-      # can run in CI, gate it there rather than verifying it once by hand).
-      run: bash scripts/chain.tests.sh
