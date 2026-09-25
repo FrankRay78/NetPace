@@ -2,7 +2,9 @@
 
 Repo-committed hooks so they travel to every checkout. Registered in [`.claude/settings.json`](../settings.json) once a human has reviewed them (harness-safety: a hook lands in `settings.json` only after review, because a bad hook can lock out the tools that would fix it).
 
-They **fail open**: any missing tool, unparseable input, or internal error is a no-op, never a false block. The only actions any hook takes are the narrow, high-confidence cases, each with an announced environment-variable override. Every gate is provable without a running app by a committed `*.tests.sh` matrix that drives it against a throwaway `CLAUDE_PROJECT_DIR`; run the matrix after any edit to the gate.
+They **fail open**: any missing tool, unparseable input, or internal error is a no-op, never a false block. The only actions any hook takes are the narrow, high-confidence cases, each with an announced environment-variable override. Every gate is provable without a running app by a committed `*.tests.sh` matrix that drives it against a throwaway `CLAUDE_PROJECT_DIR`.
+
+**Every `*.tests.sh` in the repo runs in CI.** [`shell-tests.yml`](../../.github/workflows/shell-tests.yml) finds them with `git ls-files '*.tests.sh'` instead of listing them, one matrix entry per script, so a new matrix is gated the moment it is committed and each failure names its own script. Still run the matrix yourself after any edit to a gate — CI is the backstop, not the first you hear of a break.
 
 NetPace keeps both production and `*.Tests` projects under `src/`, so the filesystem-reading gates scan `src/` (there is no top-level `tests/`).
 
