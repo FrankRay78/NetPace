@@ -178,13 +178,14 @@ as a filesystem path. `gh api` accepts both forms on Linux/macOS.)
 
 ### 6. Apply the `ready` label
 
-With the body patched, mark the issue as fully defined:
+With the body patched, remove `needs answers`, then mark the issue as fully defined:
 
 ```bash
+gh issue edit <number> --repo <owner/repo> --remove-label "needs answers"
 gh issue edit <number> --repo <owner/repo> --add-label ready
 ```
 
-- **Additive only.** `--add-label` adds `ready` and touches nothing else — every label the issue already carries stays on it. Never pass `--remove-label` here; tidying `needs triage` or anything else alongside it is a manual call.
+- **Otherwise additive.** Beyond removing `needs answers`, every label the issue already carries stays on it; tidying `needs triage` or anything else is a manual call.
 - **Idempotent.** Adding a label an issue already carries is a no-op on GitHub's side, so re-running this command on an already-`ready` issue leaves it `ready` and reports no error.
 - **Never fatal.** If the label cannot be applied, do **not** fail the command — the decisions are already saved. Continue to the report and say there that the label did not land.
 

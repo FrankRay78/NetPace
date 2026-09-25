@@ -28,7 +28,7 @@ The generic "CI on PR" step **applies fully**:
 **The labels are the state** — the generic *Context management* rule, made concrete. A green run always removes the `review` label, and `/speckit.confirmissue` deletes the review comment once the decisions are in the body. So:
 
 - **`review` labelled** — a review is pending; if it stays labelled, the run did not complete.
-- **unlabelled, with a `<!-- speckit:review -->` comment** — a review is posted and awaiting answers.
+- **`needs answers`, with a `<!-- speckit:review -->` comment** — a review is posted and awaiting answers.
 - **`ready`, with a `## Confirmed decisions` section** — the gate is finished. `ready` takes precedence: an issue confirmed before this change carries both markers and is finished, not waiting.
 
 There is no failure comment: GitHub's failed-run notification is the alert, and the workflow checks both post-conditions itself. Labelling an issue that is `ready`, or already has a review, posts nothing and just clears the label; to re-review a confirmed issue, remove `ready` first. Refining a review in place (step 6 of the command) stays local. One gap: a label applied by any account other than the gated one creates no run at all, so the issue stays labelled but silent. Rationale and residuals: CIRs [`2026-09-07-automated-prespec-review`](change-intent-records/2026-09-07-automated-prespec-review.md) and [`2026-09-11-confirmed-decisions-replace-the-review`](change-intent-records/2026-09-11-confirmed-decisions-replace-the-review.md).
