@@ -1,5 +1,5 @@
 <!--
-Provenance: this is the GENERIC, stack-portable workflow guide. Keep it stack-neutral: NetPace-specific behaviour belongs in the delta doc alongside it, agentic-workflow-NetPace.md.
+Provenance: this is the GENERIC, stack-portable workflow guide. Keep it stack-neutral: project-specific behaviour belongs in each project's delta doc, never here.
 -->
 
 # Agentic Software Development Workflow
@@ -17,15 +17,6 @@ This document is **stack-generic**. A project implements it by adding the files 
 - [Harness Engineering](https://openai.com/index/harness-engineering/) — OpenAI, 2026.
 - [Effective harnesses for long-running agents](https://www.anthropic.com/engineering/effective-harnesses-for-long-running-agents) — Anthropic, 2025.
 - Field notes — Andrej Karpathy (Dec 2025) and Boris Cherny (Feb 2026).
-
-### Which route do I use?
-
-Every piece of work starts as a drafted, reviewed and confirmed issue. The route depends on whether that issue can serve as the spec:
-
-- **Build route** — the issue already states checkable acceptance criteria: a bug with observed and expected behaviour, a small feature, a docs or tooling change. `/build` works straight from the issue; there is no other planning document. Every stage from `/build` to `/raise-pr` runs unattended, so the whole route can run from one command (see *Running the stages end to end*).
-- **Full spec route** — the work is too large or uncertain for an issue: several user flows, open design questions, or a test plan that must be agreed before any code exists. The spec, test plan and task list add review checkpoints the build route lacks.
-
-When in doubt, try the build route. If `/build` reports that the issue does not settle the design, the issue needs a spec.
 
 ---
 
@@ -45,7 +36,16 @@ A useful frame is the **five duties of a harness** (OpenAI): **constrain** what 
 
 > Slash-command names are the reference Claude Code/spec-kit set; a project may rename them. The *sequence* is the contract, not the names.
 
-Every feature goes through the shared issue stage, then one of two routes (see *Which route do I use?*); both routes finish the same way.
+Every feature goes through the shared issue stage, then one of two routes; both routes finish the same way.
+
+### Which route do I use?
+
+Every piece of work starts as a drafted, reviewed and confirmed issue. The route depends on whether that issue can serve as the spec:
+
+- **Build route** — the issue already states checkable acceptance criteria: a bug with observed and expected behaviour, a small feature, a docs or tooling change. `/build` works straight from the issue; there is no other planning document. Every stage from `/build` to `/raise-pr` runs unattended, so the whole route can run from one command (see *Running the stages end to end*).
+- **Full spec route** — the work is too large or uncertain for an issue: several user flows, open design questions, or a test plan that must be agreed before any code exists. The spec, test plan and task list add review checkpoints the build route lacks.
+
+When in doubt, try the build route. If `/build` reports that the issue does not settle the design, the issue needs a spec.
 
 ### Shared — the issue stage (on the main branch)
 1. `/speckit.draftissue` ← optional; turn an unstructured brief into a well-formed issue
@@ -165,7 +165,20 @@ Every build-route stage after the issue stage runs unattended, so a script can t
 - **Residual risk: silently denied `ask` rules.** Headless stages deny `ask`-matched calls without a prompt (see *Permissions and unattended runs*), so a stage can carry on degraded and still report success; the chain cannot detect it.
 - **Test the chain against a stub agent** in throwaway repositories: order, failure and timeout handling, malformed replies. It takes seconds and calls no model. Check the two things a stub cannot prove — reopening a failed stage's session, and a full real run — by hand.
 
-NetPace's script, settings and manual checks are in the delta's [Running the chain](agentic-workflow-NetPace.md#running-the-chain).
+### The chain script
+
+`scripts/chain.sh` implements the above, running each stage as a headless `claude -p` process under `--dangerously-skip-permissions`.
+
+- **Invocation.** `scripts/chain.sh <issue>` (bare or `#`-prefixed). `scripts/chain.sh --dry-run <issue>` lists the five stages and the command each would send, and runs nothing — no git command, no model. A real run costs the better part of an hour of model time for a small issue and opens a real PR, so dry-run first if in doubt.
+- **Prerequisites.** `git`, `claude`, `gh`, `jq` and `timeout` on PATH; `claude` and `gh` signed in; a clean checkout of `main`. The chain checks the five tools, that an issue was named, the clean tree and `main`; `/build` checks the fetch, unpushed commits and the issue.
+- **Configuration.** `CHAIN_MODEL` (default `claude-opus-5`) is the model for every stage. Per-stage time limits are build 2h, study 30m, verify 90m, raise-pr 30m; `CHAIN_STAGE_TIMEOUT` (seconds) overrides all four, for tuning from real runs.
+- **When a stage fails.** The closing message names the stage, its position (`[3/5]`) and the reason: the stage's own `FAILED reason=`, `no recognisable verdict`, `claude reported an error`, `reply was not JSON`, `claude exited with <code>`, or `stalled — exceeded <n>s`. Its second line gives `claude --resume <id>` for the failed stage, if the reply carried an id; otherwise it says to reopen the most recent headless session for the repo. Diagnose there, then run the remaining stages by hand, in order.
+- **Tests.** `scripts/chain.tests.sh` covers order, resumed sessions, malformed and errored replies, failure, stall, refusals and dry run against a stub `claude` in throwaway repos, leaving your checkout untouched. Run it after any edit to the chain.
+
+Manual checks, with a real model:
+
+- **Reopening a failed stage's session.** From a clean `main`, force a stall with `CHAIN_STAGE_TIMEOUT=60 scripts/chain.sh <issue>`. Expect `chain: FAILED at [1/5] build — stalled — exceeded 60s`, exit 1, and no later stage; `claude --resume <id>` from the closing message should open the stalled `/build`. Remove any branch it left.
+- **A full run** against a small ready issue: `scripts/chain.sh <issue>` from a clean `main`. Expect five `ok` lines in order, `chain: done — <pull request URL>`, exit 0, no prompt at any point, and a clean working tree.
 
 ---
 

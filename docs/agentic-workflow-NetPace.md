@@ -65,12 +65,15 @@ The generic enforcement layer as NetPace wires it. Hooks live in [`.claude/hooks
 | PR pre-flight | `dotnet build ./src && dotnet test ./src` before `gh pr create` | PreToolUse(Bash), `if gh pr create` |
 | **Formatting** | **`/verify`'s formatting pass (step 1a) — `dotnet format style/whitespace ./src/NetPace.sln`, once per PR. Not a hook** (see below) | — |
 | **Test-green gate** | **`/verify`'s suite gate (step 1b) — a real `dotnet build ./src && dotnet test ./src`. Not a hook.** | — |
+| Fast/slow test categories | real-network integration tests live in a separate test category, excluded from the default run; the whole default suite is the completion gate | — |
 
 Every hook is **fail-open with an announced override** (`NETPACE_SKIP_GREEN_GATE=1`, `NETPACE_ALLOW_SKIPS=1`, `NETPACE_SKIP_TRACEABILITY_GATE=1`). In a harness edited with itself, a false block can lock out the tools that would fix it, so uncertain paths allow and the override announces itself on stderr.
 
-Each hook is a **script with a `.tests.sh` case matrix beside it**, per the generic *Modifying the harness itself* rule 1 (which also covers "only exit 2 blocks a `PreToolUse`"). The exception is the PR pre-flight: an inline command in `settings.json`, so a red suite exits 1, not 2 — it is reported but does not block `gh pr create`. The binding gate is `/verify`'s suite run.
+Each hook is a **script with a `.tests.sh` case matrix beside it**, per the generic *Modifying the harness itself* rule 1 (which also covers "only exit 2 blocks a `PreToolUse`"). The exception is the PR pre-flight: an inline command in `settings.json`, so a red suite exits 1, not 2 — it is reported but does not block `gh pr create`. The binding gate is `/verify`'s suite run. The hook matrices and `scripts/chain.tests.sh` are not yet gated in CI (#296).
 
-**Two generic gates do not apply.** There is **no stack-guard** (no external service stack to orchestrate) and **no UI-automation denylist** (a console CLI has no browser UI to guard). Console output *is* verified, by snapshot — see *Test-green gate & categories*.
+**Two generic gates do not apply.** There is **no stack-guard** (no external service stack to orchestrate) and **no UI-automation denylist** (a console CLI has no browser UI to guard).
+
+**Console output is verified by snapshot.** `NetPace.Console.Tests` uses `Spectre.Console.Testing` with `Expectations/*.verified.txt` snapshots — how a CLI covers the *verify* duty for rendered output. Check the `*.verified.txt` before reporting an output mode as untested (memory: `feedback_console_output_snapshot_coverage`).
 
 ### Formatting
 
@@ -103,41 +106,6 @@ Follows the generic *verify gate*. NetPace's specifics:
 - **Suite gate (step 1b):** `dotnet build ./src && dotnet test ./src`. No external stack, so a full run is cheap.
 - **Review A (step 2):** the applicable `pr-review-toolkit` reviewers plus `/review-slop`, in two waves: the five report-only reviewers together, then `pr-review-toolkit:code-simplifier`, which edits files, alone.
 - **Review B:** the `@claude` action in `claude.yml` (see *CI*).
-
-## Running the chain
-
-`scripts/chain.sh <issue>` implements the generic *Running the stages end to end*, running each stage as its own headless `claude -p` process. Why its last stage opens the PR without a pause: [CIR](change-intent-records/2026-09-14-chain-raises-pr-unattended.md).
-
-**Prerequisites.** `git`, `claude`, `gh`, `jq` and `timeout` on PATH; `claude` and `gh` signed in; a clean checkout of `main`. The chain checks the five tools, that an issue was named, the clean tree and `main`; `/build` checks the fetch, unpushed commits and the issue.
-
-**Invocation.** `scripts/chain.sh 270` (or `#270`). `scripts/chain.sh --dry-run 270` lists the five stages and the command each would send, and runs nothing — no git command, no model.
-
-**Configuration.** `CHAIN_MODEL` (default `claude-opus-5`) is the model for every stage. Per-stage time limits are build 2h, study 30m, verify 90m, raise-pr 30m; `CHAIN_STAGE_TIMEOUT` (seconds) overrides all four, for tuning from real runs.
-
-**What it costs.** The better part of an hour of model time for a small issue, and a real PR on GitHub. Run `--dry-run` first if in doubt.
-
-**When a stage fails.** The closing message names the stage, its position (`[3/5]`) and the reason: the stage's own `FAILED reason=`, `no recognisable verdict`, `claude reported an error`, `reply was not JSON`, `claude exited with <code>`, or `stalled — exceeded <n>s`. Its second line gives `claude --resume <id>` for the failed stage, if the reply carried an id; otherwise it says to reopen the most recent headless session for this repo. Stages run under `--dangerously-skip-permissions`, so the generic residual risk from silently denied `ask` rules applies.
-
-**Tests.** `scripts/chain.tests.sh` proves the gating — order, resumed sessions, malformed and errored replies, failure, stall, refusals and dry run — against a stub `claude` in throwaway repos: no model call, checkout untouched. It runs in seconds; run it after any edit to the chain. Like the hook matrices, it is not yet gated in CI (#296).
-
-Two things the stub cannot prove are checked by hand with a real model:
-
-- **Reopening a failed stage's session.** From a clean `main`, force a stall with `CHAIN_STAGE_TIMEOUT=60 scripts/chain.sh <issue>`. Expect `chain: FAILED at [1/5] build — stalled — exceeded 60s`, exit 1, and no later stage; `claude --resume <id>` from the closing message should open the stalled `/build`. Remove any branch it left.
-- **A full run** against a small ready issue (the better part of an hour): `scripts/chain.sh <issue>` from a clean `main`. Expect five `ok` lines in order, `chain: done — <pull request URL>`, exit 0, no prompt at any point, and a clean working tree.
-
-## Permissions and unattended runs
-
-The mechanism — `ask` rules outranking every mode, headless runs silently denying them, and headless runs as a rule-matching test with a blind spot — is general Claude Code behaviour, covered in the generic [*Permissions and unattended runs*](agentic-workflow.md#permissions-and-unattended-runs). Below are NetPace's rule changes it drove.
-
-`Bash(rm:*)` and `Bash(rmdir:*)` came off the `ask` list for this reason ([CIR](change-intent-records/2026-09-04-rm-off-the-ask-list.md)), and `Bash(git push:*)` followed into `allow`, letting `/raise-pr` push without stopping. `Bash(chmod:*)` went the other way, from `deny` to `ask`: an approval path interactively, but still a silent deny in a lane worker ([CIR](change-intent-records/2026-09-04-push-allow-chmod-ask.md)).
-
-`permissions.deny` no longer carries `Read(…)` rules. It held six, over `.env`, `secrets.*`, `.ssh/**` and `appsettings*.json`, and any of them made a recursive read of the repo escalate to an approval no mode auto-grants. The check is glob-scope-based, not existence-based, so it fired even though the repo has none of those files ([CIR](change-intent-records/2026-09-04-read-deny-rules-removed.md)).
-
-## Test-green gate & categories
-
-- The completion gate is `/verify`'s suite run, plus a second run by the `gh pr create` pre-flight hook, which reports a red suite but does not block (see *The gates, concretely*); both run `dotnet build ./src && dotnet test ./src`. There is no ledger/Stop-hook proxy (the shape the generic *Where the completion gate belongs* warns against).
-- **Fast/slow split.** Real-network integration tests live in a **separate test category**, excluded from the default run, keeping the inner loop seconds-fast; the whole default suite is the completion gate.
-- **Console output is verified by snapshot.** `NetPace.Console.Tests` uses `Spectre.Console.Testing` with `Expectations/*.verified.txt` snapshots — how a CLI covers the *verify* duty for rendered output. Check the `*.verified.txt` before reporting an output mode as untested (memory: `feedback_console_output_snapshot_coverage`).
 
 ## Spec-kit
 
