@@ -1,5 +1,5 @@
 ---
-name: speckit file guard is Edit-only by design
+name: Speckit file guard is Edit-only by design
 description: The spec-kit deny rules use one Edit(path) rule per path — an Edit rule covers Write too, so parallel Write/MultiEdit rules only produce startup warnings.
 type: reference
 ---

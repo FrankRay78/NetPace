@@ -5,7 +5,7 @@
 # A single PreToolUse(Bash) gate: deny `dotnet test --no-build` when no test assembly has
 # been built yet, or when a source is newer than the built assembly — either way a
 # --no-build run would execute a stale/absent DLL and report misleading results. Promotes
-# feedback_dotnet_test_no_build.
+# feedback_trusting_a_test_run.
 #
 # SCOPE. This gate does exactly one thing: deny a `dotnet test --no-build` that would run a
 # stale or absent test assembly. The "tests are green" guarantee lives elsewhere — a whole-suite
@@ -107,11 +107,11 @@ PreToolUse)
   newest_dll=$(find "$ROOT/src" -path '*/bin/*' -name '*.Tests.dll' -printf '%T@ %p\n' 2>/dev/null \
                  | sort -n | tail -1 | cut -d' ' -f2-)
   if [ -z "$newest_dll" ]; then
-    emit_pre_deny "No built test assemblies found, but --no-build was requested. Build first (drop --no-build), then re-run. (feedback_dotnet_test_no_build)"
+    emit_pre_deny "No built test assemblies found, but --no-build was requested. Build first (drop --no-build), then re-run. (feedback_trusting_a_test_run)"
   fi
   newer=$(first_newer_than "$newest_dll")
   if [ -n "$newer" ]; then
-    emit_pre_deny "Source changed since the last build (e.g. ${newer#"$ROOT"/}). 'dotnet test --no-build' would run a STALE assembly and report misleading results. Rebuild first (drop --no-build). (feedback_dotnet_test_no_build)"
+    emit_pre_deny "Source changed since the last build (e.g. ${newer#"$ROOT"/}). 'dotnet test --no-build' would run a STALE assembly and report misleading results. Rebuild first (drop --no-build). (feedback_trusting_a_test_run)"
   fi
   exit 0
   ;;

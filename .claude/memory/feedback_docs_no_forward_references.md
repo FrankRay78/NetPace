@@ -1,5 +1,5 @@
 ---
-name: docs must reflect current codebase only — no forward references
+name: Docs describe current codebase only — no forward references
 description: docs/ updates must describe only what exists today; no sections about unimplemented features tracked by GitHub issues, even when a /speckit.tasks plan mandates them
 type: feedback
 ---

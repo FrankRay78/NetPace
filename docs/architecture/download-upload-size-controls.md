@@ -61,7 +61,7 @@ Total candidate requests = `UploadIncrements × UploadSizeIterations` (Medium de
    {base}/random1500x1500.jpg?r=0
    {base}/random1500x1500.jpg?r=1
    ...
-   {base}/random4000x4000.jpg?r=3
+   {base}/random4000x4000.jpg?r=1
    ```
 2. `GenericTestSpeedAsync` consumes that list with `DownloadParallelTasks` workers, streaming each response with an 80 KB pooled buffer and counting bytes.
 3. The loop **terminates early** once `downloadSizeMb × 1024 × 1024` bytes have been received (the budget cap from the `--downloadsize` overload).
@@ -103,12 +103,12 @@ The numbers below were measured against the local Docker OoklaServer ([`docker/o
 
 ```
 total = (sum of one iteration) × DownloadSizeIterations
-      = 86,080,329 × 4
-      = 344,321,316 bytes
-      ≈ 328.37 MiB  ≈ 344.32 MB
+      = 86,080,329 × 2
+      = 172,160,658 bytes
+      ≈ 164.18 MiB  ≈ 172.16 MB
 ```
 
-This is what NetPace will pull *if every request runs to completion* and `--downloadsize` is left at its default (see §3).
+That exceeds the Medium profile's 100 MiB `DownloadSizeMb` cap, so with `--downloadsize` left at its default (see §3) the loop stops at ~100 MiB.
 
 #### Cross-server validation
 
@@ -172,10 +172,12 @@ If a future OoklaServer release changes these values, re-run the same HEAD probe
 
 ```
 total = (1+2+3+4+5+6) × UploadSizeIncrementKb × 1024 × UploadSizeIterations
-      = 21 × 200 × 1024 × 10
-      = 43,008,000 bytes
-      ≈ 41.02 MiB  ≈ 43.01 MB
+      = 21 × 200 × 1024 × 5
+      = 21,504,000 bytes
+      ≈ 20.51 MiB  ≈ 21.50 MB
 ```
+
+That is under the Medium profile's 25 MiB `UploadSizeMb` cap, so every request runs.
 
 Unlike download, this total is fully deterministic — NetPace generates the payloads itself, the OoklaServer simply sinks them. `UploadParallelTasks` only affects throughput, not the total transferred.
 
@@ -245,4 +247,4 @@ head -c 1048576 /dev/urandom | curl -sS -o /dev/null -w '%{http_code}\n' \
 
 The `5000`, `6000`, `7000` pixel-size payloads identified in §2.1 are **only used by `Mega`**. The other four profiles stay within the historic Flash-client `random{N}x{N}.jpg` array, so they are guaranteed to work against any OoklaServer that ships those URLs (every server we've probed — see §2.1 Cross-server validation).
 
-If a future OoklaServer release drops the bonus payloads, Mega will see 404s on those URLs and fall back to whatever the surviving subset returns. The current Mega arm is tuned for the bonus payloads being present; the *documented fallback strategy* — revert Mega to the historic-10 array with higher iteration counts to keep total transfer in the ~10 GiB band — is tracked but **not implemented in the 003-profile-cli-switch change**. Users who hit Mega-specific 404s should switch to `--profile large` until the fallback lands.
+If a future OoklaServer release drops the bonus payloads, Mega will see 404s on those URLs and fall back to whatever the surviving subset returns. The current Mega arm is tuned for the bonus payloads being present. Users who hit Mega-specific 404s should switch to `--profile large`.

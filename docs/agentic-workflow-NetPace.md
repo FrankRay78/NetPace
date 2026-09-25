@@ -37,14 +37,14 @@ The generic guide's "CI on PR" step **applies fully**; NetPace realises the whol
 
 NetPace ships: `NetPace.Core` as a **NuGet package**, and cross-platform **binaries** (6 RIDs × self-contained/framework-dependent) on tag push. The generic guide has no release step; for NetPace it is first-class.
 
-The contract — release matrix, runner-per-RID rationale, naming convention, smoke-test and size-assertion contracts — lives in [RELEASING.md](RELEASING.md); touching `release-binaries.yml` (or any release-pipeline scope) without updating it is a documented no-no (memory: `feedback_release_pipeline_doc`). Per-release "what changed" notes are GitHub-auto-generated from merged PRs — there is no `CHANGELOG.md` to maintain.
+The contract — release matrix, runner-per-RID rationale, naming convention, smoke-test and size-assertion contracts — lives in [RELEASING.md](RELEASING.md); touching `release-binaries.yml` (or any release-pipeline scope) without updating it is a documented no-no (CLAUDE.md rule). Per-release "what changed" notes are GitHub-auto-generated from merged PRs — there is no `CHANGELOG.md` to maintain.
 
 ## Decision ledger: Change-Intent-Records **and** memory
 
 Where the generic guide offers "Change-Intent-Records (or an equivalent decision ledger)", NetPace uses **both, for different jobs**:
 
 - **Change-Intent-Records** — [`docs/change-intent-records/`](change-intent-records/), dated `YYYY-MM-DD-slug.md` files, are the human-facing record of *why* a non-obvious change was made (the AOT release shape, the profile CLI switch, the speckit-file guard, supply-chain hardening). When to write one is governed by [`docs/conventions/change-intent-records.md`](conventions/change-intent-records.md).
-- **Memory** — [`.claude/memory/`](../.claude/memory/), indexed by `MEMORY.md` and loaded via `CLAUDE.md`, holds the agent-facing facts and corrections (one fact per file). The generic guide's "prefer a gate to a memory entry" rule is live: several memories exist only as the *rationale* for a gate that now enforces them (`feedback_dotnet_test_no_build` → `green-gate.sh`; the skip ban → `no-skipped-tests.sh`).
+- **Memory** — [`.claude/memory/`](../.claude/memory/), indexed by `MEMORY.md` and loaded via `CLAUDE.md`, holds the agent-facing facts and corrections (one fact per file). The generic guide's "prefer a gate to a memory entry" rule is live: several memories exist only as the *rationale* for a gate that now enforces them (`feedback_trusting_a_test_run` → `green-gate.sh`; the skip ban → `no-skipped-tests.sh`).
 
 ## The gates, concretely
 

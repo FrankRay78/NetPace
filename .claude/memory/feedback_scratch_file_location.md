@@ -1,13 +1,11 @@
 ---
 name: Scratch and staging files belong in .claude/scratch/
-description: Use .claude/scratch/ in the current repo as the required scratch location for transient drafts, staging files, and working notes — never /tmp, the system temp dir, or ~/.claude/.
+description: Transient drafts, payloads and working notes go in the repo's gitignored .claude/scratch/ — never /tmp, the OS temp dir, ~/.claude/, or a root-level .scratch/.
 type: feedback
 ---
 
-The required scratch location for any transient or staging file (issue drafts, spec drafts, working notes, intermediate API payloads) is **`.claude/scratch/`** in the current repo. Do **not** use `/tmp`, the system temp dir (`%TEMP%`, `$TMPDIR`), the user-level `~/.claude/` (`C:\Users\frank\.claude\`) directory, **or a top-level `.scratch/` at the repo root** — only `.claude/scratch/` is gitignored, so a root-level `.scratch/` leaks into `git status` and clutters the working tree across sessions.
+Write every transient file (issue/spec drafts, API payloads, notes) to `.claude/scratch/` (`mkdir -p` first).
 
-The directory is git-ignored (`.claude/scratch/` is listed in `.gitignore`), so files written there will not show up in `git status`. Run `mkdir -p .claude/scratch` before writing if you're not certain the directory exists yet.
+**Why:** Frank rejected an issue draft written to `~/.claude/`: drafts must be visible in the IDE next to the project. Only `.claude/scratch/` is gitignored; a root `.scratch/` pollutes `git status`.
 
-**Why:** During issue drafting, Claude wrote the issue body to `C:\Users\frank\.claude\gh-issue-body-cli-profile-switch.md`. User rejected: "please write somewhere local in this repo, as this is a temp staging file." Working drafts must be visible in the IDE alongside the project — not buried in tool config, not buried in `/tmp` (which is invisible to Windows-side tooling and broken on native Windows shells), and not buried in the system temp dir. The same principle applies to repo memory —  `CLAUDE.md` deprecates user-level memory and points to repo-tracked `.claude/memory/`.
-
-**How to apply:** Any tool, skill, or command that needs scratch space writes to `.claude/scratch/<purpose>.md` (or `.json`, etc.). This is canonical, not a fallback — the cross-OS cascade ("try /tmp, then OS temp, then ~/.claude/") that some commands historically used is wrong for this user. The three speckit commands (`/speckit.draftissue`, `/speckit.reviewissue`, `/speckit.confirmissue`) all standardize on this. For memory entries specifically: write to `.claude/memory/` in the repo, not the user-level memory directory.
+**How to apply:** Applies to every command and skill needing scratch space; the speckit issue commands already follow it. Memory entries go in `.claude/memory/`, not user-level memory.

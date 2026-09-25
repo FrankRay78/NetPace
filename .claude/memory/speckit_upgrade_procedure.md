@@ -1,5 +1,5 @@
 ---
-name: speckit upgrade procedure
+name: Spec-kit upgrade procedure
 description: How to upgrade/re-sync the spec-kit toolkit and switch script variant (sh/ps)
 type: reference
 ---

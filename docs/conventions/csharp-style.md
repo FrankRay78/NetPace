@@ -36,12 +36,6 @@
 - **Place using directives OUTSIDE** the namespace declaration
 - **One class per file**; filename matches class name
 
-## Strings
-
-- Use **string interpolation** for short strings: `$"{first}, {last}"`
-- Use **StringBuilder** for string concatenation in loops
-- Prefer **raw string literals** over escape sequences (C# 11+)
-
 ## Collections
 
 - Use **collection expressions** (C# 12): `string[] x = ["a", "b"];`
@@ -72,17 +66,9 @@
 
 ## Code Structure
 
-- **Allman braces**: opening brace on its own line
-  ```csharp
-  if (condition)
-  {
-      // code
-  }
-  ```
+- Brace placement (Allman), 4-space indentation and file-scoped namespaces are enforced by `.editorconfig` + `dotnet format --verify-no-changes` in CI — don't hand-police them.
 - **Always use braces** for if/else — never omit even for single-line bodies
 - **One statement per line**, one declaration per line
-- **4-space indentation** (no tabs)
-- **using directives outside** namespace declarations
 
 ## Member Ordering
 
@@ -101,25 +87,12 @@ Within a class, order members as follows:
 - **Depend on interfaces**, not concrete types (e.g. `ISpeedTestService`, not `OoklaSpeedtest`)
 - Store injected dependencies in private readonly fields
 
-## LINQ
-
-- Use **meaningful query variable names**
-- Use **where clauses early** to filter before other operations
-- Prefer **method syntax** for simple chains
-- Prefer **query syntax** for complex multi-clause queries
-
 ## Testing (xUnit)
 
 - **Name tests**: `MethodName_Scenario_ExpectedResult`
 - **Follow**: Arrange / Act / Assert (Given / When / Then)
 - **Cover**: Happy paths, edge cases, error scenarios
 - **Mock**: External dependencies (network, filesystem, time)
-
-## Sources
-
-- [.NET C# Coding Conventions](https://learn.microsoft.com/en-us/dotnet/csharp/fundamentals/coding-style/coding-conventions)
-- [C# Identifier Names](https://learn.microsoft.com/en-us/dotnet/csharp/fundamentals/coding-style/identifier-names)
-- [.NET Runtime Coding Style](https://github.com/dotnet/runtime/blob/main/docs/coding-guidelines/coding-style.md)
 
 ---
 

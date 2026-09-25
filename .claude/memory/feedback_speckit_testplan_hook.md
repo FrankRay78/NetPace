@@ -1,5 +1,5 @@
 ---
-name: speckit testplan after_analyze hook
+name: Speckit testplan: after_analyze hook has no bash script — execute inline
 description: /speckit.analyze emits EXECUTE_COMMAND for speckit.analyze.testplan but never runs it — read the .md and execute inline before ending the response
 type: feedback
 ---

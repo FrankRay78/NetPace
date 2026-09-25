@@ -1,5 +1,5 @@
 ---
-name: codebase must not reference specs/ paths — specs are ephemeral
+name: Codebase must not reference specs/ paths
 description: source files, tests, and docs/ must never link to or quote specs/<NNN>-… paths; specs are deleted after the PR is merged so any reference becomes a dead link
 type: feedback
 ---

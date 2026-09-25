@@ -16,4 +16,4 @@ After **adding** a rule to a command prompt, run the mirror-image sweep inside t
 - Pay special attention to: `docs/` (especially `docs/architecture/*` and `docs/conventions/*`), README/USER_GUIDE files, sibling-feature `specs/` still in the tree, and XML doc comments / `<remarks>` blocks on types whose code you didn't touch.
 - Treat the diff as **necessary but not sufficient** — comments and docs in adjacent files are invisible to it.
 - Simplifications driven by deleting speculative work tend to leave more stale comments than feature additions, because the dropped concept may have been described in many places before it was deleted from any one place.
-- After adding a rule to a prompt, grep that prompt for the rule's subject (e.g. `Reason`, `refine run`, `step 6`) before committing, and reconcile every hit. See [[feedback_audit_class_after_two_failures]].
+- After adding a rule to a prompt, grep that prompt for the rule's subject (e.g. `Reason`, `refine run`, `step 6`) before committing, and reconcile every hit.
