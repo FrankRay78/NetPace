@@ -1,0 +1,53 @@
+name: Shell Tests
+
+# Every committed `*.tests.sh` matrix runs here (issue #296). The scripts are discovered by name
+# rather than listed, so a new matrix is gated the moment it is committed, wherever it lives —
+# a per-file list is exactly how the three hook matrices came to be ungated in the first place.
+#
+# Deliberately its own workflow rather than a step in dotnet.yml: the matrices need only bash, jq
+# and git, all preinstalled on ubuntu-latest, so they run in parallel with the .NET build and still
+# report when it is red.
+
+on:
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  discover:
+    name: Discover matrices
+    runs-on: ubuntu-latest
+    outputs:
+      scripts: ${{ steps.find.outputs.scripts }}
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Find every committed *.tests.sh
+      id: find
+      run: |
+        set -euo pipefail
+        scripts=$(git ls-files '*.tests.sh' | jq -R -s -c 'split("\n") | map(select(length > 0))')
+        echo "Discovered: $scripts"
+        echo "scripts=$scripts" >> "$GITHUB_OUTPUT"
+
+  run:
+    name: ${{ matrix.script }}
+    needs: discover
+    # An empty repo-wide result would otherwise fail the matrix job with "does not contain any
+    # values" — a confusing red for the legitimate state of having no matrices at all.
+    if: needs.discover.outputs.scripts != '[]'
+    runs-on: ubuntu-latest
+    strategy:
+      # Every matrix runs to completion and names its own failure, so one red script never hides
+      # the verdict of the others.
+      fail-fast: false
+      matrix:
+        script: ${{ fromJSON(needs.discover.outputs.scripts) }}
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Run ${{ matrix.script }}
+      run: ./${{ matrix.script }}
