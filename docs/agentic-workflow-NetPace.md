@@ -85,9 +85,40 @@ The explicit solution argument is **required, not decorative**: `dotnet format` 
 NetPace's `/verify` follows the generic *verify gate* section as written:
 
 - **Formats first.** The formatting pass (step 1a) runs `dotnet format style/whitespace ./src/NetPace.sln` and commits any result on its own, before the suite — so formatting is verified by the gate rather than landing after it, and the clean-tree invariant that committing the fixes (step 3) depends on survives. The explicit solution argument is load-bearing (see above).
-- **Always runs the suite.** The suite gate (step 1b) is `dotnet build ./src && dotnet test ./src` — no docs-only skip. The suite is fast (no external stack), and this is the chain's only unconditional whole-suite run: the `gh pr create` pre-flight hook fires inside `/raise-pr`, a separate manual stage that may not follow for a long while, so a skip here would leave a branch reported verified that no suite ever ran against.
+- **Always runs the suite.** The suite gate (step 1b) is `dotnet build ./src && dotnet test ./src` — no docs-only skip. The suite is fast (no external stack), and this is the chain's only unconditional whole-suite run: the `gh pr create` pre-flight hook fires inside `/raise-pr`, a separate stage that, run by hand, may not follow for a long while, so a skip here would leave a branch reported verified that no suite ever ran against.
 - **Stops before the PR.** `/verify` ends at a clean, fully-committed branch, which is exactly `/raise-pr`'s entry condition — so the two compose here with no adapter step.
 - **Review B posts.** Because `claude.yml` is wired, the async `@claude` review the generic flow describes actually appears on the PR — requested by `/raise-pr`, so it is downstream of `/verify` and nothing waits on it.
+
+## Running the chain
+
+`scripts/chain.sh <issue>` carries one issue from a clean `main` to an open pull request with no prompt at any point. It runs `/build <issue>`, `/study <issue>`, `/verify`, `/study <issue>` and `/raise-pr <issue>` in that order, each as its own headless `claude -p` process, and starts a stage only after the previous one reported its own success verdict — `READY branch=`, `STUDIED issue=`, `VERIFIED branch=` and `RAISED pr=<url>`. Each study pass resumes the session of the stage it follows, so it studies what that stage saw; build, verify and raise-pr each start fresh.
+
+Each verdict is a structured line rather than a phrase spotted in the prose around it. That matters most at the last stage: the commonest way `/raise-pr` fails is that a pull request for the branch is already open, and the error it reports then *contains* a valid pull request URL. A chain that accepted any URL would announce that older PR as the run's result, having pushed nothing.
+
+**A deliberate deviation from the generic guide.** The generic guide says to stop before the irreversible step and leave opening the pull request to a separate deliberate invocation. The chain's last stage pushes and opens the pull request unattended: the deliberate human act moves from raising the pull request to starting the chain against one named issue ([CIR](change-intent-records/2026-09-14-chain-raises-pr-unattended.md)). `/verify` and `/raise-pr` stay separate commands, so running them by hand keeps the pause.
+
+**Prerequisites.** `git`, `claude`, `gh`, `jq` and `timeout` on PATH; `claude` and `gh` signed in; a clean checkout of `main`. All five tools are checked before the first stage starts, so a missing one is named as itself rather than surfacing an hour later as a stage that produced no verdict. Beyond that the chain checks only that an issue was named, the tree is clean and `main` is checked out — `/build` checks the fetch, unpushed commits and the issue.
+
+**Invocation.** `scripts/chain.sh 270` (or `#270`). `scripts/chain.sh --dry-run 270` lists the five stages and the command each would send, and runs nothing — no git command, no model.
+
+**Configuration.** `CHAIN_MODEL` (default `claude-opus-5`) is the one model every stage uses. Each stage has its own time limit — build 2h, study 30m, verify 90m, raise-pr 30m — and `CHAIN_STAGE_TIMEOUT` (seconds) replaces all four, for tuning from real runs.
+
+**What it costs.** Substantial model time — the better part of an hour for a small issue — and a real pull request on GitHub. Run `--dry-run` first if in doubt.
+
+**When a stage fails.** The chain stops at once and starts nothing later. Its closing message names the stage, its position (`[3/5]`) and the reason — the stage's own `FAILED reason=`, `no recognisable verdict`, `claude reported an error`, `reply was not JSON`, `claude exited with <code>`, or `stalled — exceeded <n>s`. The chain resets, cleans and pushes nothing of its own, so the branch is as that stage left it. The second line of the message names the session to reopen — `claude --resume <id>` — whenever the reply parsed far enough to carry one; diagnose there, then run the remaining stages by hand in order, as the stages that succeeded need not be redone. Only when no session id was captured at all does it fall back to telling you to reopen the most recent headless session for this repo.
+
+One caveat on "as that stage left it": a stalled stage is ended by its time limit, which signals the stage's own process. Work that stage had already started in the background — a test run, a subagent — is not tracked and can still be writing to the tree while you diagnose. If a stall is what stopped the run, confirm nothing is still running before you read the working tree as final.
+
+**What it does not check.** The chain relies on each stage's own contract — committed and clean on exit, `/study` append-only, nothing pushed before `/raise-pr` — rather than re-checking it between stages. A stage that breaks its contract is caught by the next stage's own preconditions (`/verify` refuses a dirty tree), and that failure stops the chain.
+
+**Residual risk: silently denied `ask` rules.** Every stage runs headless under `--dangerously-skip-permissions`, where an `ask`-matched call is denied without a prompt (see [Permissions and unattended runs](#permissions-and-unattended-runs)). A stage can carry on degraded and still report success; the chain does not detect it.
+
+**Tests.** `scripts/chain.tests.sh` proves the gating — order, resumed sessions, malformed and errored replies, failure, stall, refusals and dry run — against a stub `claude` in throwaway repos: no model is called and your checkout is untouched. It runs in seconds and should be run after any edit to the chain; like the hook matrices, it is not yet gated in CI (#296).
+
+Two things the stub cannot prove need a real model, so they are checked by hand:
+
+- **Reopening a failed stage's session.** From a clean `main`, force a stall with `CHAIN_STAGE_TIMEOUT=60 scripts/chain.sh <issue>`. Expect `chain: FAILED at [1/5] build — stalled — exceeded 60s`, exit 1, and no later stage. The closing message names the session; `claude --resume <id>` should open that stalled `/build`. Remove any branch it left by hand.
+- **A full run**, the better part of an hour of model time against a small ready issue: `scripts/chain.sh <issue>` from a clean `main`. Expect five `ok` lines in order, `chain: done — <pull request URL>`, exit 0, no prompt at any point, and a clean working tree.
 
 ## Permissions and unattended runs
 
