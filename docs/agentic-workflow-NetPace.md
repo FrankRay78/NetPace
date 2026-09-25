@@ -1,12 +1,6 @@
 # Agentic Workflow — the NetPace delta
 
-Companion to [agentic-workflow.md](agentic-workflow.md), the generic, stack-portable guide. This file records **only where NetPace differs** from it or makes it concrete; anything not listed here follows the generic guide as written.
-
-## Why a generic guide plus this delta
-
-[agentic-workflow.md](agentic-workflow.md) is deliberately **stack-neutral** — portable principles, no NetPace specifics — so it stays reusable and easy to keep current. NetPace's concrete implementation and deviations live here.
-
-The rule that keeps the split honest: **NetPace-specific behaviour never edits the generic guide.** A change to the principles themselves belongs in `agentic-workflow.md`; NetPace's concrete reading of them belongs here.
+Companion to [agentic-workflow.md](agentic-workflow.md), the stack-neutral generic guide. This file records **only where NetPace differs** from it or makes it concrete; anything not listed here follows the generic guide as written. NetPace-specific behaviour never edits the generic guide.
 
 ## Platform
 
@@ -16,28 +10,28 @@ The rule that keeps the split honest: **NetPace-specific behaviour never edits t
 
 ## CI
 
-The generic "CI on PR" step **applies fully**; NetPace has the whole `.github/workflows/` set the guide's Appendix describes:
+The generic "CI on PR" step **applies fully**:
 
 | Workflow | Trigger | Role |
 |---|---|---|
 | `dotnet.yml` — Build and Test | pull_request → main | the generic **CI-on-PR** gate: build + test every PR |
-| `codeql.yml` — CodeQL | push/PR/weekly | security analysis (the supply-chain-hardening line — see the CIR) |
-| `claude.yml` — Claude Code | `@claude` in an issue/PR comment (author-gated) | the generic **Agent review action** — this is **Review B** |
+| `codeql.yml` — CodeQL | push/PR/weekly | security analysis (see the [supply-chain CIR](change-intent-records/2026-07-13-dependency-supply-chain-hardening.md)) |
+| `claude.yml` — Claude Code | `@claude` in an issue/PR comment by `FrankRay78` | **Review B** |
 | `speckit-reviewissue.yml` — Speckit Review Issue | `review` label applied to an issue (labeller-gated), or manual dispatch | runs the pre-spec gate unattended — see below |
 | `publish-nuget.yml` | tag push | publish `NetPace.Core` to NuGet |
 | `release-binaries.yml` | tag push | cross-platform binary release matrix |
 
-**Review B is live:** `/raise-pr` requests the `@claude` review on the raised PR and never waits on it, so it sits outside the verify gate. A human reads it at merge; `capture-learnings` can fold it in later.
+**Deviations from the generic Appendix.** Review B is mention-triggered only (`/raise-pr` posts the mention); there is no automatic review of agent-authored PRs. There is no PR template and no `AGENTS.md` symlink.
 
 **The pre-spec gate runs in CI too.** `/speckit.reviewissue` (step 2) is the one step whose cost is the wait, because it grounds itself in the codebase — so labelling an issue `review` runs it unattended and leaves the gap analysis as a comment. The workflow applies [`.claude/commands/speckit.reviewissue.md`](../.claude/commands/speckit.reviewissue.md), keeping the analysis single-sourced. `/speckit.confirmissue` finds a CI-posted review by sentinel like any other, folds the answers into the issue body, then deletes the comment.
 
-**The labels are the state** — the generic *Prefer the tracker's own state* rule, made concrete. A green run always removes the `review` label, and `/speckit.confirmissue` deletes the review comment once the decisions are in the body. So:
+**The labels are the state** — the generic *Context management* rule, made concrete. A green run always removes the `review` label, and `/speckit.confirmissue` deletes the review comment once the decisions are in the body. So:
 
 - **`review` labelled** — a review is pending; if it stays labelled, the run did not complete.
 - **unlabelled, with a `<!-- speckit:review -->` comment** — a review is posted and awaiting answers.
 - **`ready`, with a `## Confirmed decisions` section** — the gate is finished. `ready` takes precedence: an issue confirmed before this change carries both markers and is finished, not waiting.
 
-There is no failure comment: GitHub's failed-run notification is the alert. The workflow checks both post-conditions itself rather than trusting the agent's narration, because the action exits green whenever the model finishes its turn. Labelling an issue that is `ready`, or already has a review, posts nothing and just clears the label; to re-review a confirmed issue, remove `ready` first. Refining a review in place (step 6 of the command) stays local. One gap: a label applied by any account other than the gated one creates no run at all, so the issue stays labelled but silent. Rationale and residuals: CIRs [`2026-09-07-automated-prespec-review`](change-intent-records/2026-09-07-automated-prespec-review.md) and [`2026-09-11-confirmed-decisions-replace-the-review`](change-intent-records/2026-09-11-confirmed-decisions-replace-the-review.md).
+There is no failure comment: GitHub's failed-run notification is the alert, and the workflow checks both post-conditions itself. Labelling an issue that is `ready`, or already has a review, posts nothing and just clears the label; to re-review a confirmed issue, remove `ready` first. Refining a review in place (step 6 of the command) stays local. One gap: a label applied by any account other than the gated one creates no run at all, so the issue stays labelled but silent. Rationale and residuals: CIRs [`2026-09-07-automated-prespec-review`](change-intent-records/2026-09-07-automated-prespec-review.md) and [`2026-09-11-confirmed-decisions-replace-the-review`](change-intent-records/2026-09-11-confirmed-decisions-replace-the-review.md).
 
 ## Release pipeline
 
@@ -58,18 +52,18 @@ The generic enforcement layer as NetPace wires it. Hooks live in [`.claude/hooks
 
 | Generic gate | NetPace implementation | Event |
 |---|---|---|
-| Stale-build guard | `green-gate.sh` — denies `dotnet test --no-build` when a `*.cs` under `src/` is newer than the built assembly | PreToolUse(Bash) |
-| No skipped tests | `no-skipped-tests.sh` — blocks commits reintroducing the skip family (incl. xUnit-v3 `SkipUnless=`/`SkipWhen=`); `--check` mode for CI | PreToolUse(Bash) |
+| Stale-build guard | `green-gate.sh` — denies `dotnet test --no-build` when no test assembly is built or a `*.cs` under `src/` is newer than it | PreToolUse(Bash) |
+| No skipped tests | `no-skipped-tests.sh` — blocks any `git commit` while a skip-family construct (incl. xUnit-v3 `SkipUnless=`/`SkipWhen=`) exists under `src/`; a `--check` mode exists, but no workflow runs it yet | PreToolUse(Bash) |
 | Traceability gate | `traceability-gate.sh` — spec label ↔ test-plan scenario ↔ `// SCENARIO:` marker under `src/`, exact match; loop-guarded nudge, never a lock-out | Stop |
 | Upstream-file guard | `permissions.deny` — one `Edit(path)` rule each on `.claude/skills/speckit-*/SKILL.md`, `.specify/templates/*.md`, `.specify/scripts/bash/*.sh` (an `Edit` rule covers every file-editing tool, Write included) | settings |
 | PR pre-flight | `dotnet build ./src && dotnet test ./src` before `gh pr create` | PreToolUse(Bash), `if gh pr create` |
 | **Formatting** | **`/verify`'s formatting pass (step 1a) — `dotnet format style/whitespace ./src/NetPace.sln`, once per PR. Not a hook** (see below) | — |
 | **Test-green gate** | **`/verify`'s suite gate (step 1b) — a real `dotnet build ./src && dotnet test ./src`. Not a hook.** | — |
-| Fast/slow test categories | real-network integration tests live in a separate test category, excluded from the default run; the whole default suite is the completion gate | — |
+| Fast/slow test categories | none: the suite is fully mocked and fast, so there is no split | — |
 
-Every hook is **fail-open with an announced override** (`NETPACE_SKIP_GREEN_GATE=1`, `NETPACE_ALLOW_SKIPS=1`, `NETPACE_SKIP_TRACEABILITY_GATE=1`). In a harness edited with itself, a false block can lock out the tools that would fix it, so uncertain paths allow and the override announces itself on stderr.
+Every hook has an **announced override** (`NETPACE_SKIP_GREEN_GATE=1`, `NETPACE_ALLOW_SKIPS=1`, `NETPACE_SKIP_TRACEABILITY_GATE=1`). `green-gate.sh` and `traceability-gate.sh` fail open. `no-skipped-tests.sh` fails closed once a call is classified as a `git commit`, since a skip ban that fails open is the silent non-coverage it exists to stop.
 
-Each hook is a **script with a `.tests.sh` case matrix beside it**, per the generic *Modifying the harness itself* rule 1 (which also covers "only exit 2 blocks a `PreToolUse`"). The exception is the PR pre-flight: an inline command in `settings.json`, so a red suite exits 1, not 2 — it is reported but does not block `gh pr create`. The binding gate is `/verify`'s suite run. The hook matrices and `scripts/chain.tests.sh` are not yet gated in CI (#296).
+Each hook is a **script with a `.tests.sh` case matrix beside it** (generic *Modifying the harness itself*, rule 1). The exception is the PR pre-flight: an inline command in `settings.json`, so a red suite exits 1, not 2 — it is reported but does not block `gh pr create`. The binding gate is `/verify`'s suite run. The hook matrices and `scripts/chain.tests.sh` are not yet gated in CI (#296).
 
 **Two generic gates do not apply.** There is **no stack-guard** (no external service stack to orchestrate) and **no UI-automation denylist** (a console CLI has no browser UI to guard).
 
@@ -85,7 +79,7 @@ dotnet format style ./src/NetPace.sln && dotnet format whitespace ./src/NetPace.
 
 The explicit solution argument is **required**: `dotnet format` only looks in the *current directory*, and NetPace's solution lives under `src/`. Without it the command fails.
 
-**Why not per-commit.** Measured on this solution (84 `.cs` files, ~9,900 LOC): **21.4s** for one staged file, **29.5s** for seven. The cost is MSBuild **workspace load**, not file count, so every commit would pay ~20–30s regardless. A release cycle's drift, by contrast, is a handful of import reorderings and a couple of hundred trailing spaces on blank lines — nothing a reviewer would catch. The guide's "tens of seconds" holds even at this size, so "our solution is small enough to absorb it" does not survive.
+**Why not per-commit.** Measured when the solution had 84 `.cs` files (~9,900 LOC): **21.4s** for one staged file, **29.5s** for seven. The cost is MSBuild **workspace load**, not file count, so every commit would pay ~20–30s regardless. A release cycle's drift, by contrast, is a handful of import reorderings and a couple of hundred trailing spaces on blank lines — nothing a reviewer would catch. The guide's "tens of seconds" holds even at this size, so "our solution is small enough to absorb it" does not survive.
 
 **Line endings.** `.gitattributes` pins `*.cs text eol=lf`, matching `.editorconfig`'s `end_of_line = lf` and the LF the index stores. Without it, a Windows checkout with `core.autocrlf=true` gets a CRLF working tree, and `dotnet format whitespace` rewrites every file it touches — no committed diff, since commit normalises back, but thousands of phantom findings drowning the real ones. A Windows working tree created *before* the attribute needs a one-time refresh (re-clone, or `git rm --cached -r . && git reset --hard` on a clean tree); fresh clones and Linux checkouts are unaffected.
 
@@ -95,29 +89,45 @@ Follows the generic *build stage*. NetPace's specifics:
 
 - **Branch:** `feature/<N>-<short-slug>`, cut from `origin/main`. `/raise-pr` and `/study` read the issue number from this pattern.
 - **Commits:** `test: red phase for #<N> — …` for the red phase, then `Refs #<N>: …` in the imperative mood (constitution, *Git Workflow*).
-- **Suite:** `dotnet build ./src && dotnet test ./src`, never `--no-build` (`green-gate.sh` denies a stale one).
+- **Suite:** as in *The gates, concretely*.
 - **Docs it must update** (`CLAUDE.md`'s paired rules): `///` XML docs on any new or changed public `NetPace.Core` API; the README.md `--help` snapshot and USER_GUIDE.md for a changed CLI option; `docs/RELEASING.md` for a release-pipeline change; a Change-Intent Record where the change is non-obvious.
 
 ## `/verify`
 
 Follows the generic *verify gate*. NetPace's specifics:
 
-- **Formatting pass (step 1a):** `dotnet format style/whitespace ./src/NetPace.sln` (see *Formatting*).
-- **Suite gate (step 1b):** `dotnet build ./src && dotnet test ./src`. No external stack, so a full run is cheap.
-- **Review A (step 2):** the applicable `pr-review-toolkit` reviewers plus `/review-slop`, in two waves: the five report-only reviewers together, then `pr-review-toolkit:code-simplifier`, which edits files, alone.
-- **Review B:** the `@claude` action in `claude.yml` (see *CI*).
+- **Steps 1a/1b:** the formatting and test-green rows in *The gates, concretely*.
+- **Review A (step 2):** two waves of the applicable reviewers. Wave 1: the five report-only `pr-review-toolkit` reviewers and `/review-slop`, together. Wave 2: `pr-review-toolkit:code-simplifier`, which edits files, alone.
+
+## `/study`
+
+Follows the generic *study pass*. Records go to `docs/study/<N>.md`; the four levels are defined in [study/README.md](study/README.md). Each run commits `Refs #<N>: record study findings` on the feature branch.
+
+## Permissions
+
+The mechanism is in the generic *Permissions and unattended runs*. NetPace's rule changes:
+
+- `Bash(rm:*)` and `Bash(rmdir:*)` came off `ask` ([CIR](change-intent-records/2026-09-04-rm-off-the-ask-list.md)).
+- `Bash(git push:*)` moved to `allow`, so `/raise-pr` pushes without stopping; `Bash(chmod:*)` moved from `deny` to `ask` ([CIR](change-intent-records/2026-09-04-push-allow-chmod-ask.md)).
+- The six `Read(…)` deny rules were removed: their glob scope made every recursive read escalate to an approval no mode auto-grants ([CIR](change-intent-records/2026-09-04-read-deny-rules-removed.md)).
+
+`chmod` is now the only `ask` rule, so it is the one call a chained stage loses silently.
+
+## Chain
+
+Why `scripts/chain.sh` opens the PR without a pause: [CIR](change-intent-records/2026-09-14-chain-raises-pr-unattended.md).
 
 ## Spec-kit
 
-Pinned at **0.12.10.dev0** (as recorded in `.specify/init-options.json` and `.specify/integration.json`), initialised `--script sh`. Beyond the stock skills the spec route uses, this version installs `speckit-converge` (appends unbuilt work to `tasks.md` for `/speckit.implement` to finish) and `speckit-taskstoissues` (turns `tasks.md` into dependency-ordered GitHub issues); both are guarded like the rest and sit outside the standard sequence.
+Pinned at **0.12.10.dev0** (as recorded in `.specify/init-options.json` and `.specify/integration.json`), initialised `--script sh`. Stock commands are invoked as the hyphenated `/speckit-*` skills (e.g. `speckit-specify`); the dotted `speckit.*` ones are NetPace's own. Step 9's red-phase commit is `scripts/git-red-phase-commit.sh` (`.ps1` on Windows). Beyond the stock skills the spec route uses, this version installs the five `speckit-git-*` skills of the git extension, `speckit-converge` (appends unbuilt work to `tasks.md` for `/speckit.implement` to finish) and `speckit-taskstoissues` (turns `tasks.md` into dependency-ordered GitHub issues); both are guarded like the rest and sit outside the standard sequence.
 
 A `--force` re-init resets every stock skill's `disable-model-invocation` flag to `false`, so the flip must be re-applied after any upgrade; the upstream-file guard exists to stop that regression recurring (CIR: `2026-07-10-guard-speckit-files`; memory: `speckit_upgrade_procedure`). NetPace's custom `speckit.*` commands (`draftissue`, `reviewissue`, `confirmissue`, `testplan`, `testchecklist`) are authored here and untouched by upgrades; the guarded files are the hyphenated `speckit-*` skills.
 
 ## Token / context tooling
 
-Two of the three tools are wired into config. `rtk` has `Bash(rtk …)` allow-entries in `.claude/settings.json` and a prefix-strip in `green-gate.sh`'s `strip_cmd_prefixes()`, which assumes rtk may be in play. `context-mode` has `mcp__plugin_context-mode_context-mode__*` allow-entries and an `enabledPlugins` entry. `read-once` appears in the guides but in no config. As the generic guide warns, **nothing verifies any of it is installed**, and a missing tool fails silently.
+Two of the three tools are wired into config. `rtk` has `Bash(rtk …)` allow-entries in `.claude/settings.json` and a prefix-strip in `green-gate.sh`'s `strip_cmd_prefixes()`, which assumes rtk may be in play. `context-mode` has `mcp__plugin_context-mode_context-mode__*` allow-entries and an `enabledPlugins` entry. `read-once` appears in the guides but in no config.
 
-[`scripts/plugin-report.sh`](../scripts/plugin-report.sh) is that missing check: a manually-run report in four sections — `TOOLING` (each expected tool, `pr-review-toolkit` included: declared / installed / enabled / reachable), `CONFIG` (unresolvable hook and statusLine paths, dangling or duplicated allow-entries), `HOOKS` (what is registered and its per-invocation cost), and `PERFORMANCE` (live savings counters, where a tool exposes them).
+Nothing else checks the tools are installed. [`scripts/plugin-report.sh`](../scripts/plugin-report.sh) does: a manually-run report in four sections — `TOOLING` (each expected tool, `pr-review-toolkit` included: declared / installed / enabled / reachable), `CONFIG` (unresolvable hook and statusLine paths, dangling or duplicated allow-entries), `HOOKS` (what is registered and its per-invocation cost), and `PERFORMANCE` (live savings counters, where a tool exposes them).
 
 ```bash
 bash scripts/plugin-report.sh

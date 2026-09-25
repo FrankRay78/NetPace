@@ -9,7 +9,7 @@
 # on any failure. Run it after any edit to the chain.
 #
 # Reopening a real session and a real end-to-end run need a real model, so they are checked by
-# hand rather than faked here; docs/agentic-workflow-NetPace.md records how. That is the one
+# hand rather than faked here; docs/agentic-workflow.md (*The chain script*) records how. That is the one
 # scenario with no marker below — "A failed stage can be reopened".
 #
 #   Usage:  scripts/chain.tests.sh

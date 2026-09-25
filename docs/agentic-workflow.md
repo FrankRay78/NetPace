@@ -40,9 +40,9 @@ Every feature goes through the shared issue stage, then one of two routes; both 
 
 ### Which route do I use?
 
-Every piece of work starts as a drafted, reviewed and confirmed issue. The route depends on whether that issue can serve as the spec:
+Every piece of work starts as a reviewed and confirmed issue. The route depends on whether that issue can serve as the spec:
 
-- **Build route** — the issue already states checkable acceptance criteria: a bug with observed and expected behaviour, a small feature, a docs or tooling change. `/build` works straight from the issue; there is no other planning document. Every stage from `/build` to `/raise-pr` runs unattended, so the whole route can run from one command (see *Running the stages end to end*).
+- **Build route** — the issue already states checkable acceptance criteria: a bug with observed and expected behaviour, a small feature, a docs or tooling change. `/build` works straight from the issue; there is no other planning document. The whole route can run unattended (see *Running the stages end to end*).
 - **Full spec route** — the work is too large or uncertain for an issue: several user flows, open design questions, or a test plan that must be agreed before any code exists. The spec, test plan and task list add review checkpoints the build route lacks.
 
 When in doubt, try the build route. If `/build` reports that the issue does not settle the design, the issue needs a spec.
@@ -60,20 +60,19 @@ When in doubt, try the build route. If `/build` reports that the issue does not 
 8. `/speckit.testplan` ← review output carefully before continuing
 9. *red-phase commit* ← commit `test-plan.md` as locked intent (script per project)
 10. `/speckit.tasks`
-11. `/speckit.analyze` ← resolve HIGH/CRITICAL before branching; runs the test-plan cross-check via the `after_analyze` hook
+11. `/speckit.analyze` ← resolve HIGH/CRITICAL before implementing; runs the test-plan cross-check via the `after_analyze` hook
 12. `/speckit.implement` ← runs to suite-green, keeping the suite green on the inner loop at its own discretion. A **soft standard, not a per-turn gate**: the binding "green before a PR" guarantee is `/verify`'s suite run (see *Where the completion gate belongs*).
 13. `/speckit.testchecklist` ← run by hand; confirms every test-plan scenario has an honest test. `/verify` does not run it, since only this route has a test plan.
+14. `/study <issue>` ← record what surprised the implementation, if anything (see *The study pass*).
 
 ### Route B — the build route (an issue that is already its own spec)
-4. `/build <issue>` ← branch, RED, GREEN, refactor, docs, all committed. Unattended; ends at a green, committed branch (see *The build stage*).
-5. `/study <issue>` ← record what surprised the build, if anything (see *The study pass*).
+- `/build <issue>` ← branch, RED, GREEN, refactor, docs, all committed. Unattended; ends at a green, committed branch (see *The build stage*).
+- `/study <issue>` ← record what surprised the build, if anything (see *The study pass*).
 
 ### Shared — verify, then raise
-1. `/verify` ← one orchestrator: **format → full suite (the gate) → clean-context review → fix → commit.** Unattended, so it can drive a loop. Runs the PR review and slop review that used to be separate manual steps. Ends at a green, reviewed, fully-committed branch; it does **not** raise the PR.
-2. `/study <issue>` ← record what surprised the verify pass, if anything.
-3. `/raise-pr` ← push the branch and open the PR. Run by hand, it is a separate stage: the one irreversible, outward-facing act, and keeping it out of `/verify` makes everything before it freely re-runnable. When the stages are chained, it runs unattended too, and the deliberate human act moves to starting the chain against one named issue.
-
-Each stage ends with a one-line verdict (see *The result-line contract*), so a script can run the build route from `/build` to `/raise-pr` with nobody in the loop (see *Running the stages end to end*).
+- `/verify` ← one orchestrator: **format → full suite (the gate) → clean-context review → fix → re-run suite → commit.** Unattended, so it can drive a loop. Includes the PR review and slop review. Ends at a green, reviewed, fully-committed branch; it does **not** raise the PR.
+- `/study <issue>` ← record what surprised the verify pass, if anything.
+- `/raise-pr` ← delete the spec folder (spec route), push the branch, open the PR and request Review B. A separate stage because it is the one irreversible, outward-facing act; everything before it stays freely re-runnable.
 
 ### Periodic (not per-feature)
 - **capture learnings** — fold corrections back into memory/skills. Not part of `/verify`: it needs human curation and batches better, so run it at a supervised checkpoint after several features.
@@ -88,7 +87,7 @@ Each stage ends with a one-line verdict (see *The result-line contract*), so a s
 
 - **The issue is the spec.** `/build` reads the issue, not a spec folder, and implements every item of its acceptance-criteria checklist. Without a checklist, it derives the criteria from what the issue says (e.g. a bug's observed and expected behaviour) and writes them into its report for a reviewer to check. It never invents scope. It creates no spec folder, so spec-route gates find nothing to check.
 - **It decides alone, and writes each decision down.** Once it has an issue, `/build` never prompts. Where the issue is ambiguous, it picks the reading that fits the existing code and the issue's intent, and records the assumption in its report — where a reviewer finds every judgement call.
-- **Two named cases stop it instead.** A **public-API change** goes ahead only when the criteria require it, and is flagged in the report; a merely convenient one is not made. A **new dependency** is never added unattended: if the issue needs one, `/build` stops and says so. Both have costs beyond the branch.
+- **Two named cases are handled specially.** A **public-API change** goes ahead only when the criteria require it, and is flagged in the report; a merely convenient one is not made. A **new dependency** is never added unattended: if the issue needs one, `/build` stops and says so. Both have costs beyond the branch.
 - **RED first, proven by the real tool.** For production code, `/build` writes the failing tests first and must see them fail; tests that pass first time mean the behaviour exists already or the test misses the criterion. For a configuration, tooling or CI change, RED is the real tool failing before and passing after. Never write a stand-in test that reimplements a tool's check: it covers less and can pass when its own matching logic is wrong.
 - **Issue labels become test markers.** Each `**Scenario: X**` label on the issue gets at least one test with a matching marker, keeping label → test traceability without the spec and test-plan steps. No labels, no markers: an invented label looks like a traceability key but traces to nothing.
 - **Check the starting point before branching.** Require a clean tree and the main branch checked out, fetch the remote main, and refuse to start if local main has unpushed commits — the branch is cut from the remote, so they would silently be missing. A closed issue, or one with an open PR, also stops the run.
@@ -110,14 +109,14 @@ The steps between "implementation looks done" and "fit to become a PR" are a fix
 Properties worth copying:
 
 - **Format first, and commit it separately.** The formatting pass runs before the suite and commits on its own, so the gate covers it and the tree is clean again before review — which the later commit of review fixes depends on.
-- **Always run the whole suite — no docs-only skip.** This is the only suite run on the branch as it will be pushed: formatting and review fixes land after `/build`'s run, and a branch may not have come from `/build` at all. A skip would report a branch verified that no suite ran against.
+- **Always run the whole suite — no docs-only skip.** It is the first suite run after `/build`: formatting and review fixes land later, and a branch may not have come from `/build` at all. A skip would report a branch verified that no suite ran against.
 - **Unattended by design.** No prompts, so a loop can drive it feature after feature, as well as a person. Anything needing a human turns the pipeline into a wait.
 - **Stop-on-failure is global.** Dirty tree, red suite, a reviewer subagent errors: stop, report, run nothing later.
 - **Cheap preconditions first** (on a feature branch? commits over main?), or a full suite and review burn before a late guard trips.
 - **Review runs in clean context.** Reviewers see the diff, not the conversation that produced it. The *deciding and fixing* happens in the orchestrator's own loop; "clean context" governs the reviewing, not the fixing.
 - **Validate a finding before acting on it.** Reviewer severities are fickle: cross-check a "Critical" against the actual test and spec state rather than relaying it. Acting on a mislabelled finding is how a review makes code worse.
 - **Re-verify what review changed.** Post-gate fixes are unverified code: re-run the suite before reporting verified, or a bad fix reaches the PR unchecked. Then *commit* them — the PR stage pushes commits, and the gap before it is open-ended.
-- **Stop before the irreversible step.** End at the verified branch; leave pushing and the PR to a separate, deliberate invocation. Everything before it is safe to re-run; the outward-facing act is not, and it is the step worth a human's decision. A chain that runs the PR stage unattended moves that decision to starting the chain.
+- **Stop before the irreversible step.** End at the verified branch; leave pushing and the PR to a separate, deliberate invocation. Everything before it is safe to re-run; the outward-facing act is not, and it is the step worth a human's decision.
 - **Name what the review deferred.** A finding knowingly left out of scope must be named in the closing report — once the PR stage runs in a later session, that report is the only way a deferral reaches the PR body.
 
 **Two reviews, not one.** *Review A* is synchronous inside `/verify`: clean-context subagents over the diff, whose findings stay in the conversation for `capture-learnings`. *Review B* is the asynchronous agent review on the raised PR, requested by `/raise-pr`, for a human to read at merge. Nothing waits on Review B; blocking for minutes on a second review of the same diff buys little.
@@ -170,14 +169,14 @@ Every build-route stage after the issue stage runs unattended, so a script can t
 `scripts/chain.sh` implements the above, running each stage as a headless `claude -p` process under `--dangerously-skip-permissions`.
 
 - **Invocation.** `scripts/chain.sh <issue>` (bare or `#`-prefixed). `scripts/chain.sh --dry-run <issue>` lists the five stages and the command each would send, and runs nothing — no git command, no model. A real run costs the better part of an hour of model time for a small issue and opens a real PR, so dry-run first if in doubt.
-- **Prerequisites.** `git`, `claude`, `gh`, `jq` and `timeout` on PATH; `claude` and `gh` signed in; a clean checkout of `main`. The chain checks the five tools, that an issue was named, the clean tree and `main`; `/build` checks the fetch, unpushed commits and the issue.
-- **Configuration.** `CHAIN_MODEL` (default `claude-opus-5`) is the model for every stage. Per-stage time limits are build 2h, study 30m, verify 90m, raise-pr 30m; `CHAIN_STAGE_TIMEOUT` (seconds) overrides all four, for tuning from real runs.
-- **When a stage fails.** The closing message names the stage, its position (`[3/5]`) and the reason: the stage's own `FAILED reason=`, `no recognisable verdict`, `claude reported an error`, `reply was not JSON`, `claude exited with <code>`, or `stalled — exceeded <n>s`. Its second line gives `claude --resume <id>` for the failed stage, if the reply carried an id; otherwise it says to reopen the most recent headless session for the repo. Diagnose there, then run the remaining stages by hand, in order.
+- **Prerequisites.** `git`, `claude`, `gh`, `jq` and `timeout` on PATH; `claude` and `gh` signed in; a clean checkout of `main`. The chain checks the five tools, that an issue was named, the clean tree, `main`, and that `CHAIN_STAGE_TIMEOUT`, if set, is a whole number; `/build` checks the fetch, unpushed commits and the issue.
+- **Configuration** (the reference script's defaults). `CHAIN_MODEL` (default `claude-opus-5`) is the model for every stage. Per-stage time limits are build 2h, study 30m, verify 90m, raise-pr 30m; `CHAIN_STAGE_TIMEOUT` (seconds) overrides all four, for tuning from real runs.
+- **When a stage fails.** The closing message names the stage, its position (`[3/5]`) and the reason: the stage's own `FAILED reason=`, `no recognisable verdict`, `claude reported an error`, `reply was not JSON`, `claude exited with <code>`, `the stage could not be launched (exit <code>)`, `reply carried no session id, so the study pass could not resume it`, or `stalled — exceeded <n>s`. Its second line gives `claude --resume <id>` for the failed stage, if the reply carried an id; otherwise it says to reopen the most recent headless session for the repo. Diagnose there, then run the remaining stages by hand, in order.
 - **Tests.** `scripts/chain.tests.sh` covers order, resumed sessions, malformed and errored replies, failure, stall, refusals and dry run against a stub `claude` in throwaway repos, leaving your checkout untouched. Run it after any edit to the chain.
 
 Manual checks, with a real model:
 
-- **Reopening a failed stage's session.** From a clean `main`, force a stall with `CHAIN_STAGE_TIMEOUT=60 scripts/chain.sh <issue>`. Expect `chain: FAILED at [1/5] build — stalled — exceeded 60s`, exit 1, and no later stage; `claude --resume <id>` from the closing message should open the stalled `/build`. Remove any branch it left.
+- **Reopening a failed stage's session.** From a clean `main`, force a stall with `CHAIN_STAGE_TIMEOUT=60 scripts/chain.sh <issue>`. Expect `chain: FAILED at [1/5] build — stalled — exceeded 60s`, exit 1, no later stage, and a second line saying no session id was captured (a stalled stage never reports one). `claude --resume`, picking the most recent headless session, should open the stalled `/build`. Remove any branch it left.
 - **A full run** against a small ready issue: `scripts/chain.sh <issue>` from a clean `main`. Expect five `ok` lines in order, `chain: done — <pull request URL>`, exit 0, no prompt at any point, and a clean working tree.
 
 ---
@@ -242,15 +241,14 @@ Set the bar at **one green whole-suite run since the last code change**, and *ea
 
 Formatting is cosmetic and doesn't belong on the inner loop. A format-on-commit hook taxes **every** commit — on a real codebase the tool's workspace load takes tens of seconds — to fix what no reviewer would catch. Run it once per PR in the verify flow, where the cadence already costs minutes. (Boris Cherny's "formatting handles the last 10%" is right about the value and silent about the cadence; per-commit is the wrong one.)
 
-> Pre-allow safe commands in checked-in settings rather than disabling permission prompts wholesale (Boris Cherny): the agent flows, but high-stakes actions still surface.
-
 ### Permissions and unattended runs
 
 Claude Code's permission rules behave differently when nobody is there to answer a prompt; design unattended stages around that.
 
+- **Pre-allow safe commands in checked-in settings** rather than disabling prompts wholesale (Boris Cherny): the agent flows, but high-stakes actions still surface.
 - **`ask` rules outrank every permission mode.** `bypassPermissions` does not clear them; only removing the rule does. Subagents inherit the parent's mode — "if the parent uses `bypassPermissions` or `acceptEdits`, this takes precedence and can't be overridden" — so a reviewer subagent stopped on a permission has hit an `ask` rule, not the subagent boundary.
 - **Headless runs deny `ask` rules silently.** An `ask`-matched call prompts interactively, but a headless `claude -p` run can't prompt, so the call is denied and the worker carries on degraded. A green unattended run is not evidence its `ask` rules did no harm. If an unattended stage genuinely needs a command, give it an `allow` rule.
-- **Headless runs show which rule matched, and nothing more.** Under `claude -p --dangerously-skip-permissions`, every call an `allow`, `ask` or `deny` rule would stop comes back denied, with no person to mask it — a test of rule matching. Its blind spot: approvals that need an interactive screen don't fire headlessly. A recursive `grep` whose read scope overlaps a `Read(…)` deny rule prompts interactively but runs clean under `claude -p`, a false all-clear. It answers "which rule matched", not "would a person have been asked". It can't run in CI either: it needs the `claude` binary and a signed-in session.
+- **Headless runs show which rule matched, and nothing more.** Under `claude -p --dangerously-skip-permissions`, every call an `ask` or `deny` rule matches comes back denied, with no person to mask it — a test of rule matching. Its blind spot: approvals that need an interactive screen don't fire headlessly. A recursive `grep` whose read scope overlaps a `Read(…)` deny rule prompts interactively but runs clean under `claude -p`, a false all-clear. It answers "which rule matched", not "would a person have been asked". It can't run in CI either: it needs the `claude` binary and a signed-in session.
 
 ---
 
@@ -310,8 +308,9 @@ Keep Tier 2 short and high-signal; symlink `CLAUDE.md`↔`AGENTS.md` so every to
 The kinds of files a project adds to make this workflow operational (names illustrative):
 
 ### Agent configuration (`.claude/` or `.agents/`)
-- **settings** — checked-in permissions allowlist + hooks: *stale-build guard*, *traceability nudge*, any denylist gates backing a standing exclusion, and a deny path over upstream-managed vendored files. Not here: the test-green gate, which is a real suite run inside `/verify`. The one nearby hook re-runs the suite at `gh pr create`, which belongs to the PR stage.
-- **commands** — the slash commands above: `draftissue`, `reviewissue` and `confirmissue` (issue stage); `testplan` and `testchecklist` (spec route); `build` (build route); the `verify` orchestrator for the pre-PR steps; `raise-PR`, the separate stage after it; and `study`, run after build and after verify. Plus maintenance commands: slop review, dead-code audit, context-gardening, capture-learnings, `bugmagnet` (systematic test-coverage and edge-case discovery for one module) and `install-harness-tooling` (installs the token/context plugins below).
+- **settings** — checked-in permissions allowlist + hooks: *stale-build guard*, *traceability nudge*, any denylist gates backing a standing exclusion, and a deny path over upstream-managed vendored files. Not here: the test-green gate, which is a real suite run inside `/verify`.
+- **commands** — the slash commands above: `draftissue`, `reviewissue` and `confirmissue` (issue stage); `testplan` and `testchecklist` (spec route); `build` (build route); the `verify` orchestrator for the pre-PR steps; `raise-pr`, the separate stage after it; and `study`, run after build and after verify. Plus maintenance commands: slop review, dead-code audit, context-gardening, capture-learnings, `bugmagnet` (systematic test-coverage and edge-case discovery for one module) and `install-harness-tooling` (installs the token/context plugins below).
+- **scripts** — a red-phase commit helper (spec route step 9), and `chain.sh` with its stub-agent tests `chain.tests.sh` (see *The chain script*).
 - **skills / sub-agents** — simplifier, verifier, a `diagnose` skill (a reproduce → minimise → hypothesise → instrument → fix → regression-test loop for hard bugs), and any stack-orchestration script.
 
 ### spec-kit configuration (`.specify/`)
@@ -332,7 +331,7 @@ The kinds of files a project adds to make this workflow operational (names illus
 
 Harness changes can destroy the tool making the next change — a gate that blocks its own `git commit` is not hypothetical. Four rules:
 
-1. **Test every hook standalone with synthetic input** before wiring it into settings. Every hook is a tested script with its own test cases, never an inline one-liner in settings: an untested gate can silently do nothing (a bad path, a missing argument), which looks the same as a gate that passed. Only **exit code 2** blocks a Claude Code `PreToolUse` hook; any other non-zero exit is reported and ignored, so a blocking gate must exit 2.
+1. **Test every hook standalone with synthetic input** before wiring it into settings. Every hook is a tested script with its own test cases, never an inline one-liner in settings: an untested gate can silently do nothing (a bad path, a missing argument), which looks the same as a gate that passed. A Claude Code `PreToolUse` hook blocks only by exiting 2 or returning a JSON `permissionDecision: deny`; any other non-zero exit is reported and ignored.
 2. **Build fail-open, with an override, first.** Verify no lock-out, *then* tighten to fail-closed.
 3. **One mission per branch, its own PR.** Dogfood the workflow once the gate exists.
 4. **A human reviews each hook before it lands in settings.** Non-negotiable.
