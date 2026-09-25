@@ -82,33 +82,27 @@ The explicit solution argument is **required, not decorative**: `dotnet format` 
 
 ## `/build`
 
-NetPace's `/build` follows the generic *build stage* section as written, and makes these parts of it concrete:
+`/build` follows the generic *build stage*. NetPace's specifics:
 
-- **Preconditions against `origin/main`.** Before reading the issue, `/build` requires a clean tree, `main` checked out, a successful `git fetch origin main`, and no local commits ahead of `origin/main`. The last check exists because the branch is cut from `origin/main`: any unpushed local commits would be missing from it without warning. A closed issue, or one that already has an open linked PR, stops the run too.
-- **Branch naming that `/raise-pr` relies on.** The branch is `feature/<N>-<short-slug>`, cut with `git checkout -b feature/<N>-<slug> origin/main`. `/raise-pr` works out the PR title by removing the `feature/` prefix and the leading number, and works out `Closes #<N>` from that number; `/study` finds the issue the same way. If a branch with that name exists from an earlier attempt, `/build` deletes and recreates it, unless it holds commits `/build` has not inspected, in which case it stops.
-- **`Refs #N` in commits, never a closing keyword.** Commits say `Refs #<N>: …` in the imperative mood. The red-phase commit is `test: red phase for #<N> — …`. `Fix`/`Fixes`/`Close`/`Closes`/`Resolve`/`Resolves #<N>` would close the issue as soon as the commit reaches `main`, before review. Only the PR body's `Closes #<N>` should close it.
-- **The whole suite, not just the new tests.** `dotnet build ./src && dotnet test ./src` runs at RED, at GREEN and after any refactor, never with `--no-build` (`green-gate.sh` denies a stale one). A regression anywhere counts as a failure.
-- **The docs it must update.** A new or changed public `NetPace.Core` API needs `///` XML docs. A changed CLI option needs the README.md `--help` snapshot and USER_GUIDE.md updated. A release-pipeline change needs `docs/RELEASING.md` updated. A non-obvious change should be considered for a Change-Intent Record. All markdown is soft-wrapped.
-- **It leaves formatting to `/verify`.** `/build` does not run `dotnet format`, push or open a PR. It ends with everything committed and the tree clean, which is exactly what `/verify` requires before it starts.
+- **Branch:** `feature/<N>-<short-slug>`, cut from `origin/main`. `/raise-pr` and `/study` read the issue number from this pattern.
+- **Commits:** `test: red phase for #<N> — …` for the red phase, then `Refs #<N>: …` in the imperative mood (constitution, *Git Workflow*).
+- **Suite:** `dotnet build ./src && dotnet test ./src`, never `--no-build` (`green-gate.sh` denies a stale one).
+- **Docs it must update** (`CLAUDE.md`'s paired rules): `///` XML docs on any new or changed public `NetPace.Core` API; the README.md `--help` snapshot and USER_GUIDE.md for a changed CLI option; `docs/RELEASING.md` for a release-pipeline change; a Change-Intent Record where the change is non-obvious.
 
 ## `/verify`
 
-NetPace's `/verify` follows the generic *verify gate* section as written:
+`/verify` follows the generic *verify gate*. NetPace's specifics:
 
-- **Formats first.** The formatting pass (step 1a) runs `dotnet format style/whitespace ./src/NetPace.sln` and commits any result on its own, before the suite — so formatting is verified by the gate rather than landing after it, and the clean-tree invariant that committing the fixes (step 3) depends on survives. The explicit solution argument is load-bearing (see above).
-- **Always runs the suite.** The suite gate (step 1b) is `dotnet build ./src && dotnet test ./src` — no docs-only skip. The suite is fast (no external stack), and this is the only whole-suite run against the branch as it will be pushed. `/build` also runs the whole suite, but formatting and review fixes land after that run, and a branch may not have come from `/build` at all. The `gh pr create` pre-flight hook fires inside `/raise-pr`, a separate stage that, run by hand, may not follow for a long while, and it does not block. A skip here would therefore leave a branch reported as verified that no suite had run against.
-- **Stops before the PR.** `/verify` ends at a clean, fully-committed branch, which is exactly `/raise-pr`'s entry condition — so the two compose here with no adapter step.
-- **Review B posts.** Because `claude.yml` is wired, the async `@claude` review the generic flow describes actually appears on the PR — requested by `/raise-pr`, so it is downstream of `/verify` and nothing waits on it.
+- **Formatting pass (step 1a):** `dotnet format style/whitespace ./src/NetPace.sln` (see *Formatting*).
+- **Suite gate (step 1b):** `dotnet build ./src && dotnet test ./src`. The suite has no external stack, so a full run costs little.
+- **Review A (step 2):** the `pr-review-toolkit` reviewers that apply to the diff, plus `/review-slop`. They run in two waves: the five reviewers that only report findings run together, and `pr-review-toolkit:code-simplifier`, which edits files directly, runs alone after them.
+- **Review B:** the `@claude` action in `claude.yml` (see *CI*).
 
 ## Running the chain
 
-`scripts/chain.sh <issue>` carries one issue from a clean `main` to an open pull request with no prompt at any point. It runs `/build <issue>`, `/study <issue>`, `/verify`, `/study <issue>` and `/raise-pr <issue>` in that order, each as its own headless `claude -p` process, and starts a stage only after the previous one reported its own success verdict — `READY branch=`, `STUDIED issue=`, `VERIFIED branch=` and `RAISED pr=<url>`. Each study pass resumes the session of the stage it follows, so it studies what that stage saw; build, verify and raise-pr each start fresh.
+`scripts/chain.sh <issue>` is NetPace's implementation of the generic *Running the stages end to end*. It runs each stage as its own headless `claude -p` process. Why its last stage opens the PR without a pause is recorded in the [CIR](change-intent-records/2026-09-14-chain-raises-pr-unattended.md).
 
-Each verdict is a structured line rather than a phrase spotted in the prose around it. That matters most at the last stage: the commonest way `/raise-pr` fails is that a pull request for the branch is already open, and the error it reports then *contains* a valid pull request URL. A chain that accepted any URL would announce that older PR as the run's result, having pushed nothing.
-
-**A deliberate deviation from the generic guide.** The generic guide says to stop before the irreversible step and leave opening the pull request to a separate deliberate invocation. The chain's last stage pushes and opens the pull request unattended: the deliberate human act moves from raising the pull request to starting the chain against one named issue ([CIR](change-intent-records/2026-09-14-chain-raises-pr-unattended.md)). `/verify` and `/raise-pr` stay separate commands, so running them by hand keeps the pause.
-
-**Prerequisites.** `git`, `claude`, `gh`, `jq` and `timeout` on PATH; `claude` and `gh` signed in; a clean checkout of `main`. All five tools are checked before the first stage starts, so a missing one is named as itself rather than surfacing an hour later as a stage that produced no verdict. Beyond that the chain checks only that an issue was named, the tree is clean and `main` is checked out — `/build` checks the fetch, unpushed commits and the issue.
+**Prerequisites.** `git`, `claude`, `gh`, `jq` and `timeout` on PATH; `claude` and `gh` signed in; a clean checkout of `main`. The chain itself checks the five tools, that an issue was named, the clean tree and `main`; `/build` checks the fetch, unpushed commits and the issue.
 
 **Invocation.** `scripts/chain.sh 270` (or `#270`). `scripts/chain.sh --dry-run 270` lists the five stages and the command each would send, and runs nothing — no git command, no model.
 
@@ -116,13 +110,7 @@ Each verdict is a structured line rather than a phrase spotted in the prose arou
 
 **What it costs.** Substantial model time — the better part of an hour for a small issue — and a real pull request on GitHub. Run `--dry-run` first if in doubt.
 
-**When a stage fails.** The chain stops at once and starts nothing later. Its closing message names the stage, its position (`[3/5]`) and the reason — the stage's own `FAILED reason=`, `no recognisable verdict`, `claude reported an error`, `reply was not JSON`, `claude exited with <code>`, or `stalled — exceeded <n>s`. The chain resets, cleans and pushes nothing of its own, so the branch is as that stage left it. The second line of the message names the session to reopen — `claude --resume <id>` — whenever the reply parsed far enough to carry one; diagnose there, then run the remaining stages by hand in order, as the stages that succeeded need not be redone. Only when no session id was captured at all does it fall back to telling you to reopen the most recent headless session for this repo.
-
-One caveat on "as that stage left it": a stalled stage is ended by its time limit, which signals the stage's own process. Work that stage had already started in the background — a test run, a subagent — is not tracked and can still be writing to the tree while you diagnose. If a stall is what stopped the run, confirm nothing is still running before you read the working tree as final.
-
-**What it does not check.** The chain relies on each stage's own contract — committed and clean on exit, `/study` append-only, nothing pushed before `/raise-pr` — rather than re-checking it between stages. A stage that breaks its contract is caught by the next stage's own preconditions (`/verify` refuses a dirty tree), and that failure stops the chain.
-
-**Residual risk: silently denied `ask` rules.** Every stage runs headless under `--dangerously-skip-permissions`, where an `ask`-matched call is denied without a prompt (see [Permissions and unattended runs](agentic-workflow.md#permissions-and-unattended-runs)). A stage can carry on degraded and still report success; the chain does not detect it.
+**When a stage fails.** The closing message names the stage, its position (`[3/5]`) and the reason: the stage's own `FAILED reason=`, `no recognisable verdict`, `claude reported an error`, `reply was not JSON`, `claude exited with <code>`, or `stalled — exceeded <n>s`. Its second line gives `claude --resume <id>` for the failed stage's session, if the reply got far enough to include an id. If no id was captured, it tells you to reopen the most recent headless session for this repo instead. Stages run under `--dangerously-skip-permissions`, so the generic guide's residual risk from silently denied `ask` rules applies.
 
 **Tests.** `scripts/chain.tests.sh` proves the gating — order, resumed sessions, malformed and errored replies, failure, stall, refusals and dry run — against a stub `claude` in throwaway repos: no model is called and your checkout is untouched. It runs in seconds and should be run after any edit to the chain; like the hook matrices, it is not yet gated in CI (#296).
 

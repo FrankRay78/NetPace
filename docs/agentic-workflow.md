@@ -24,7 +24,7 @@ This document is **stack-generic**. A concrete project implements it by adding t
 
 Every piece of work starts as an issue that has been drafted, reviewed and confirmed. What happens next depends on whether that issue can serve as the spec:
 
-- **Use the build route** when the confirmed issue already states the behaviour you want as acceptance criteria that can be checked — a bug with observed and expected behaviour, a small feature, a docs or tooling change. `/build` works straight from the issue, and the issue is the only planning document.
+- **Use the build route** when the confirmed issue already states the behaviour you want as acceptance criteria that can be checked — a bug with observed and expected behaviour, a small feature, a docs or tooling change. `/build` works straight from the issue, and the issue is the only planning document. Every stage from `/build` to `/raise-pr` runs unattended, so the whole route can run end to end from one command (see *Running the stages end to end*).
 - **Use the full spec route** when the work is too large or too uncertain to fit in an issue — several user flows, open design questions, or a change that needs a test plan agreed before any code exists. The spec, test plan and task list give you checkpoints to review along the way, which the build route does not.
 
 When in doubt, try the build route first. If `/build` reports that the issue does not settle the design, that tells you the issue needs a spec.
@@ -74,35 +74,14 @@ Every feature goes through one shared issue stage, then one of two routes (see *
 ### Shared — verify, then raise
 1. `/verify` ← one orchestrator: **format → full suite (the gate) → clean-context review → fix → commit.** Runs unattended, so it can drive a loop. It runs the PR review and the slop review, which used to be separate manual steps. Ends at a green, reviewed, fully-committed branch — it does **not** raise the PR.
 2. `/study <issue>` ← record what surprised the verify pass, if anything.
-3. `/raise-pr` ← push the branch and open the PR. Run by hand, it is a separate stage: it is the one irreversible, outward-facing act in the sequence, and keeping it out of `/verify` is what makes everything before it freely re-runnable. A project may chain the stages end to end so that this step also runs unattended. The deliberate human act then moves to starting the chain against one named issue, and the project records that exception in its delta doc (for this repository, [Running the chain](agentic-workflow-NetPace.md#running-the-chain)).
+3. `/raise-pr` ← push the branch and open the PR. Run by hand, it is a separate stage: it is the one irreversible, outward-facing act in the sequence, and keeping it out of `/verify` is what makes everything before it freely re-runnable. When the stages are chained end to end, this step also runs unattended, and the deliberate human act moves to starting the chain against one named issue.
 
-Each stage ends with a one-line verdict, so the stages can be chained — see *The result-line contract*.
+Each stage ends with a one-line verdict (see *The result-line contract*), so on the build route a script can run every stage from `/build` to `/raise-pr` in order without anyone in the loop — see *Running the stages end to end*.
 
 ### Periodic (not per-feature)
 - **capture learnings** — fold corrections back into memory/skills. Deliberately *not* part of `/verify`: it needs human curation and batches better across several features, so run it at a supervised checkpoint after a batch.
 - **dead-code audit** — every few features or before a release; **not per-PR**.
 - **context gardening** — quarterly or after a big architectural shift.
-
----
-
-## The verify gate
-
-`/verify` exists because the steps between "implementation looks done" and "this branch is fit to become a PR" are a fixed sequence with one hard ordering constraint, and a human re-enacting them from prose gets it subtly wrong.
-
-**The suite runs first and everything else is downstream of its exit code.** This ordering is *structural*, not policed: review cannot begin against unverified or red code because it literally runs after the gate. Do not add a hook to enforce the ordering — the exit code **is** the gate. A hook that watches for the agent *claiming* green is exactly the anti-pattern the "gates attach to actions, not prose" rule warns against.
-
-Properties worth copying:
-
-- **Unattended by design.** No prompts anywhere in the flow, so `/verify` can be driven by an automated loop working features back-to-back, as well as invoked by hand. Anything that needs a human turns the pipeline into a wait.
-- **Stop-on-failure is global.** Dirty tree, suite not green, a reviewer subagent errors — stop at that step, report, and run nothing later.
-- **Preconditions run before the expensive work.** Check the cheap things first (on a feature branch? any commits over main?), or a full suite and full review burn before a late guard trips.
-- **Review runs in clean context.** Reviewers see the diff, not the conversation that produced it. The *deciding and fixing* legitimately happens in the orchestrator's own loop — "review in clean context" governs the reviewing, not the fixing.
-- **Validate a finding before acting on it.** Reviewer severities are fickle; cross-check a "Critical" against the actual test and spec state rather than relaying it verbatim. Acting on a mislabelled finding is how a review pass makes code worse.
-- **Re-verify what review changed.** Fixes applied after the gate are unverified code — re-run the suite before reporting the branch verified, or a bad fix reaches the PR green-unchecked. Then *commit* the fixes: the PR stage pushes commits, and because it is a separate stage the gap between the fix and the push is open-ended.
-- **Stop before the irreversible step.** End at the verified branch and leave pushing and opening the PR to a separate deliberate invocation. Everything up to that point is safe to re-run; the outward-facing act is not, and it is the one step worth a human's decision. A chain that runs the PR stage unattended does not remove that decision. It moves it to starting the chain.
-- **Name what the review deferred.** A finding consciously left as out-of-scope must be named in the closing report. Once the PR stage runs in a later session, that report is the only route by which a deferral reaches the PR body — an unnamed one is simply lost.
-
-**Two reviews, not one.** *Review A* is synchronous and inside `/verify` — clean-context subagents over the diff, whose findings are in-conversation and therefore available to `capture-learnings` later. *Review B* is the asynchronous agent review on the raised PR, requested by `/raise-pr`, for a human to read at merge. Nothing waits on Review B: blocking a pipeline for minutes to fold in a second review of the same diff buys little.
 
 ---
 
@@ -115,8 +94,36 @@ Properties worth copying:
 - **Two named cases stop it instead.** A **public-API change** goes ahead only when the issue's criteria require it, and the report flags it for review; a change that is merely convenient is not made. A **new dependency** is never added unattended. If the issue cannot be built without one, `/build` stops and reports that. Both are decisions with costs beyond the branch, so the agent does not make them.
 - **RED first, and the real tool proves it.** For production code, `/build` writes the failing tests before any implementation and must see them fail. If they pass on the first run, either the behaviour already exists or the test does not exercise the criterion. For a configuration, tooling or CI change, the RED step is the real tool failing before the change and passing after it. `/build` never writes a stand-in test that reimplements a check a tool already makes, because such a test covers less than the tool and can pass when its own matching logic is wrong.
 - **Issue labels become test markers.** If the issue carries `**Scenario: X**` labels, each one gets at least one test with a matching marker. This keeps the label → test traceability chain with the spec and test-plan steps left out, since the issue is the spec. If the issue has no labels, the tests get no markers. An invented label looks like a traceability key but traces to nothing.
+- **Check the starting point before branching.** `/build` requires a clean tree and the main branch checked out, fetches the remote main branch, and refuses to start if local main has commits the remote does not. The branch is cut from the remote main, so unpushed local commits would otherwise be missing from it without warning. A closed issue, or one that already has an open PR, also stops the run.
+- **Name the branch after the issue.** Put the issue number at the start of the branch name, after a fixed prefix, so the later stages can work out the issue from the branch alone. The PR stage uses it to add the closing keyword to the PR body, and the study pass uses it to file its record. A leftover branch from an earlier attempt is recreated, unless it holds commits `/build` has not inspected.
+- **Commits reference the issue but never close it.** A closing keyword in a commit message (`Fixes #N`, `Closes #N`) closes the issue as soon as the commit reaches the main branch, before anyone reviews it. Commits reference the issue, and only the PR body closes it.
+- **Run the whole suite, not just the new tests.** The suite runs after RED, after GREEN and after any refactor, and a regression anywhere counts as a failure. Updating the documentation that the change affects is part of the stage, not a follow-up.
+- **Leave formatting and the PR to later stages.** `/build` does not format, push or open a PR. It ends with everything committed and the tree clean, which is what `/verify` requires before it starts.
 - **Stop-on-failure is global.** A dirty tree, an issue that cannot be built as written, RED tests that do not fail, a suite that will not go green: `/build` stops at that step, reports it, and runs nothing later.
 - **It ends with a verdict line.** The last line is either `READY branch=<branch>`, meaning every criterion is implemented, the whole suite is green and the tree is clean, or `FAILED reason=<short reason>`. `/build` never prints `READY` over a red suite, an unimplemented criterion or an uncommitted change.
+
+---
+
+## The verify gate
+
+`/verify` exists because the steps between "implementation looks done" and "this branch is fit to become a PR" are a fixed sequence with one hard ordering constraint, and a human re-enacting them from prose gets it subtly wrong.
+
+**The suite runs first and everything else is downstream of its exit code.** This ordering is *structural*, not policed: review cannot begin against unverified or red code because it literally runs after the gate. Do not add a hook to enforce the ordering — the exit code **is** the gate. A hook that watches for the agent *claiming* green is exactly the anti-pattern the "gates attach to actions, not prose" rule warns against.
+
+Properties worth copying:
+
+- **Format first, and commit it separately.** The formatting pass runs before the suite and commits its result on its own. The gate then covers the formatting, and the tree is clean again before review starts, which the later commit of review fixes depends on.
+- **Always run the whole suite — no docs-only skip.** This is the only suite run against the branch as it will be pushed. `/build` runs the suite too, but formatting and review fixes land after that run, and a branch may not have come from `/build` at all. A skip here would leave a branch reported as verified that no suite ever ran against.
+- **Unattended by design.** No prompts anywhere in the flow, so `/verify` can be driven by an automated loop working features back-to-back, as well as invoked by hand. Anything that needs a human turns the pipeline into a wait.
+- **Stop-on-failure is global.** Dirty tree, suite not green, a reviewer subagent errors — stop at that step, report, and run nothing later.
+- **Preconditions run before the expensive work.** Check the cheap things first (on a feature branch? any commits over main?), or a full suite and full review burn before a late guard trips.
+- **Review runs in clean context.** Reviewers see the diff, not the conversation that produced it. The *deciding and fixing* legitimately happens in the orchestrator's own loop — "review in clean context" governs the reviewing, not the fixing.
+- **Validate a finding before acting on it.** Reviewer severities are fickle; cross-check a "Critical" against the actual test and spec state rather than relaying it verbatim. Acting on a mislabelled finding is how a review pass makes code worse.
+- **Re-verify what review changed.** Fixes applied after the gate are unverified code — re-run the suite before reporting the branch verified, or a bad fix reaches the PR green-unchecked. Then *commit* the fixes: the PR stage pushes commits, and because it is a separate stage the gap between the fix and the push is open-ended.
+- **Stop before the irreversible step.** End at the verified branch and leave pushing and opening the PR to a separate deliberate invocation. Everything up to that point is safe to re-run; the outward-facing act is not, and it is the one step worth a human's decision. A chain that runs the PR stage unattended does not remove that decision. It moves it to starting the chain.
+- **Name what the review deferred.** A finding consciously left as out-of-scope must be named in the closing report. Once the PR stage runs in a later session, that report is the only route by which a deferral reaches the PR body — an unnamed one is simply lost.
+
+**Two reviews, not one.** *Review A* is synchronous and inside `/verify` — clean-context subagents over the diff, whose findings are in-conversation and therefore available to `capture-learnings` later. *Review B* is the asynchronous agent review on the raised PR, requested by `/raise-pr`, for a human to read at merge. Nothing waits on Review B: blocking a pipeline for minutes to fold in a second review of the same diff buys little.
 
 ---
 
@@ -145,6 +152,23 @@ A chain starts the next stage only after the previous stage prints its success l
 
 - **The verdict is a structured line, not a phrase found in the prose.** A report can quote a string that looks like success. The obvious case is a PR stage that fails because a PR is already open, whose error message contains a valid PR URL. A chain that accepted any URL would report that old PR as its result.
 - **A stage prints its success line only for work it actually did.** `RAISED` names a PR that this run opened, and `READY` describes a suite that this run saw pass.
+
+---
+
+## Running the stages end to end
+
+On the build route, every stage after the issue stage runs unattended, so a script can carry one issue from a clean main branch to an open PR with no prompt at any point: `/build` → `/study` → `/verify` → `/study` → `/raise-pr`. Typed by hand, most of the elapsed time goes on waiting for a person to read each report and start the next stage, and the chain removes that wait.
+
+- **Each stage is its own headless agent process.** The script starts each stage as a fresh non-interactive run and reads its verdict line. Each study pass resumes the session of the stage it follows, so it studies what that stage actually saw. The other stages start fresh, so no stage inherits another's context.
+- **Gate on the verdict line, and stop at the first failure.** The next stage starts only after the previous stage prints its success line (see *The result-line contract*). A `FAILED` line, a missing or garbled verdict, an agent error or a timeout stops the chain, and no later stage runs. The closing message names the stage that failed, the reason, and the session to reopen to diagnose it. The stages that succeeded do not need to be run again.
+- **The chain changes nothing itself.** It does not reset, clean or push anything, so the branch is left as the failing stage left it. One caveat: when a stage is stopped by its time limit, work that stage started in the background, such as a test run or a subagent, may still be writing to the tree.
+- **Check prerequisites before spending model time.** Before the first stage, check that every tool the script needs is installed and that the starting state (an issue named, a clean tree, main checked out) holds. A missing tool should be reported as itself, not surface an hour later as a stage that produced no verdict. Give each stage a time limit, and offer a dry run that lists the stages and runs nothing.
+- **Rely on each stage's own contract rather than re-checking it.** The chain does not re-check between stages that the tree is clean or that nothing was pushed early. If a stage breaks its contract, the next stage's own preconditions catch it (`/verify` refuses a dirty tree), and that failure stops the chain.
+- **The human decision moves to the start.** The last stage pushes and opens the PR without a pause, which is a deliberate exception to *Stop before the irreversible step* in *The verify gate*. The decision a person makes is now starting the chain against one named issue. The commands stay separate, so running `/verify` and `/raise-pr` by hand keeps the pause.
+- **Residual risk: silently denied `ask` rules.** Every stage runs headless, where an `ask`-matched call is denied without a prompt (see *Permissions and unattended runs*). A stage can carry on with less and still report success, and the chain cannot detect that.
+- **Test the chain against a stub agent.** Check the order, the failure and timeout handling, and the treatment of malformed replies with a fake agent in throwaway repositories, so the tests take seconds and no model is called. The two things a stub cannot prove are reopening a failed stage's session and a full real run, so check those by hand.
+
+NetPace's script, its settings and its manual checks are described in the delta's [Running the chain](agentic-workflow-NetPace.md#running-the-chain).
 
 ---
 
