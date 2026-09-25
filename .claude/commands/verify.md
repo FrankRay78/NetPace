@@ -38,7 +38,7 @@ Raising the pull request is deliberately **not** a step either. It is the one ir
    - A **non-zero exit** from `dotnet format` is a real failure (bad workspace argument, unparseable source) ⇒ **STOP and report**. A clean run that merely rewrote files is not a failure.
    - Formatting deliberately precedes 1b so that any change it makes is verified by the suite below, rather than landing after the gate has already passed.
 
-   **1b — Full test run (always).** Run `dotnet build ./src && dotnet test ./src` — always, including docs-only branches. Do not add a skip path for docs-only branches: the suite is fast, and this run is the chain's **only unconditional whole-suite gate**. The `gh pr create` `PreToolUse` hook re-runs the suite, but that hook fires inside a separately invoked `/raise-pr` that may not happen for a long while, or at all — so skipping here would leave a branch reported verified that no suite ever ran against.
+   **1b — Full test run (always).** Run `dotnet build ./src && dotnet test ./src` — always, including docs-only branches. Do not add a skip path for docs-only branches: the suite is fast, and this is the first whole-suite gate after `/build`, whose run precedes formatting and review fixes. The `gh pr create` `PreToolUse` hook re-runs the suite, but that hook fires inside a separately invoked `/raise-pr` that may not happen for a long while, or at all — so skipping here would leave a branch reported verified that no suite ever ran against.
    - Gate on the run's **exit code**, not on any stored marker.
    - **Not green ⇒ STOP:** report the failures to the invoker and do nothing else — no review subagents.
    - **Green ⇒ continue.**

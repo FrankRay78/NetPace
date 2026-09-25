@@ -22,6 +22,6 @@
 
 *Rejected — narrowing the rule, e.g. `Bash(rm -rf /:*)`.* Matching is textual and the reviewers' teardown is `rm -rf "$SB"`, expanded at runtime, so a narrower literal rule would miss the dangerous case as readily as the benign one. A guard that a variable defeats is worse than no guard, because it reads as protection.
 
-*Note on the diagnosis.* The originating issue inferred that subagents were not inheriting the parent's `bypassPermissions` and falling back to `defaultMode`. That is not what happens — inheritance works and cannot be overridden — and the evidence for it (no `permissionMode` records for the reviewers) was an artifact: subagent turns are not written to the project transcript at all. The mechanism, and the headless-as-oracle technique that settled it, are recorded in [`../agentic-workflow-NetPace.md`](../agentic-workflow-NetPace.md#permissions-and-unattended-runs).
+*Note on the diagnosis.* The originating issue inferred that subagents were not inheriting the parent's `bypassPermissions` and falling back to `defaultMode`. That is not what happens — inheritance works and cannot be overridden — and the evidence for it (no `permissionMode` records for the reviewers) was an artifact: subagent turns are not written to the project transcript at all. The mechanism, and the headless-as-oracle technique that settled it, are recorded in [`../agentic-workflow.md`](../agentic-workflow.md#permissions-and-unattended-runs).
 
 **Date:** 2026-09-04
