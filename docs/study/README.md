@@ -20,6 +20,8 @@ The table is flat and append-only. There are no per-pass sections, no dates and 
 
 There is no separate evidence column. The Finding text names its own source inline where it has one — `Reviewer (…):`, `CI (…):`, a commit — which keeps a row auditable without a column that would be empty half the time.
 
+Each row is short: the Finding is one sentence naming the source and what went wrong, and Fix applied is a short phrase plus a commit. How a finding was confirmed and why it happened stay in the commit or the PR, so that the Finding column can be scanned across files for the same problem coming back.
+
 ## The four levels
 
 Every row is classified to exactly one level. The levels are not severities. They say **where the fix belongs**, which is what makes a recurring level actionable rather than merely interesting.
