@@ -104,7 +104,7 @@ That asymmetry makes headless a permission oracle **for rule matching** — run 
 ## Test-green gate & categories
 
 - The completion gate is the real suite run inside `/verify` (above), backed belt-and-braces by the `gh pr create` pre-flight hook — both are `dotnet build ./src && dotnet test ./src`. There is no ledger/Stop-hook proxy (the shape the generic guide's *Where the completion gate belongs* section warns against).
-- **Fast/slow split.** Real-network integration tests live in a **separate test category**, excluded from the default run, so the inner loop stays seconds-fast; the whole (default) suite is the completion gate.
+- **Single suite, no fast/slow split.** Every test is hermetic — no real-network integration category exists — so the whole (default) suite is the completion gate.
 - **Console output is verified by snapshot.** `NetPace.Console.Tests` uses `Spectre.Console.Testing` with `Expectations/*.verified.txt` snapshots — that is how a CLI covers the generic guide's *verify* duty for rendered output. Check the `*.verified.txt` before reporting an output mode as untested (memory: `feedback_console_output_snapshot_coverage`).
 
 ## Spec-kit
