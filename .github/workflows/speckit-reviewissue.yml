@@ -139,7 +139,10 @@ jobs:
       # the failures most likely to actually happen. Checking the sentinel rather than
       # merely "a comment exists" also catches a comment posted without the marker, which
       # /speckit.confirmissue would not find.
-      - name: Verify the review posted and the label cleared
+      # `needs answers` is applied here, not left to the model: the command file's
+      # instruction to add it was skipped on the first CI run that carried it (#296),
+      # and a verified post is the one point where the label is known to be true.
+      - name: Verify the review posted, mark it awaiting answers, and check the label cleared
         if: steps.guard.outputs.already_reviewed != 'true'
         env:
           GH_TOKEN: ${{ github.token }}
@@ -150,6 +153,7 @@ jobs:
             echo "::error::No <!-- speckit:review --> comment on #$ISSUE_NUMBER — the review did not post."
             exit 1
           fi
+          gh issue edit "$ISSUE_NUMBER" --repo "$GITHUB_REPOSITORY" --add-label "needs answers"
           gh issue view "$ISSUE_NUMBER" --repo "$GITHUB_REPOSITORY" --json labels \
             > .claude/scratch/issue-labels-after.json
           if jq -e '[.labels[].name] | index("review")' .claude/scratch/issue-labels-after.json > /dev/null; then
