@@ -1,0 +1,104 @@
+name: Shell Tests
+
+# Every committed `*.tests.sh` matrix runs here (issue #296). The scripts are discovered by name
+# rather than listed, so a new matrix is gated the moment it is committed, wherever it lives —
+# a per-file list is exactly how the three hook matrices came to be ungated in the first place.
+#
+# Deliberately its own workflow rather than a step in dotnet.yml: the matrices need only bash, jq,
+# git, gh and timeout on a non-root runner, all true of ubuntu-latest, so they run in parallel with
+# the .NET build and still report when it is red.
+
+on:
+  pull_request:
+    branches: [ "main" ]
+
+permissions:
+  contents: read
+
+jobs:
+  discover:
+    name: Discover matrices
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      scripts: ${{ steps.find.outputs.scripts }}
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Find every committed *.tests.sh
+      id: find
+      # Discovering nothing is a failure, not a pass: this repo has four matrices and two docs
+      # promise they run, so an empty result means the pattern or the naming convention has
+      # drifted — the one outcome that would otherwise report green having verified nothing.
+      # -z keeps paths raw, so a name core.quotePath would C-quote cannot corrupt the JSON.
+      run: |
+        set -euo pipefail
+        scripts=$(git ls-files -z '*.tests.sh' | jq -Rs -c 'split("\u0000") | map(select(length > 0))')
+        count=$(jq -r 'length' <<<"$scripts")
+        echo "Discovered $count: $scripts"
+        if [ "$count" -eq 0 ]; then
+          echo "::error::No *.tests.sh found — the discovery pattern or the naming convention has drifted."
+          exit 1
+        fi
+        echo "scripts=$scripts" >> "$GITHUB_OUTPUT"
+
+  run:
+    name: ${{ matrix.script }}
+    needs: discover
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      # Every matrix runs to completion and names its own failure, so one red script never hides
+      # the verdict of the others.
+      fail-fast: false
+      matrix:
+        script: ${{ fromJSON(needs.discover.outputs.scripts) }}
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Run ${{ matrix.script }}
+      # The script name comes from repository content, so it is passed through the environment and
+      # quoted rather than interpolated into the shell text.
+      env:
+        SCRIPT: ${{ matrix.script }}
+      run: |
+        set -euo pipefail
+        if [ ! -x "$SCRIPT" ]; then
+          echo "::error::$SCRIPT is committed without the executable bit."
+          exit 1
+        fi
+        "./$SCRIPT"
+
+  # The one check with a stable name, so branch protection has something to require: the matrix
+  # job's own names are derived from filenames and change whenever a matrix is added or renamed.
+  # Without this, a required check would have to name each script — the per-file list this design
+  # exists to avoid, relocated somewhere less visible than a workflow file.
+  gate:
+    name: shell-tests
+    needs: [ discover, run ]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+    - name: Every matrix ran and passed
+      # Compared against `success` explicitly: to GitHub, `skipped` and `cancelled` are not
+      # failures, and either would otherwise pass this gate without a matrix having run.
+      env:
+        DISCOVER_RESULT: ${{ needs.discover.result }}
+        RUN_RESULT: ${{ needs.run.result }}
+      run: |
+        set -euo pipefail
+        if [ "$DISCOVER_RESULT" != success ]; then
+          echo "::error::Discovery did not succeed ($DISCOVER_RESULT) — no matrix ran."
+          exit 1
+        fi
+        if [ "$RUN_RESULT" != success ]; then
+          echo "::error::One or more matrices did not pass ($RUN_RESULT); see the per-script jobs."
+          exit 1
+        fi
+        echo "Every discovered matrix passed."
