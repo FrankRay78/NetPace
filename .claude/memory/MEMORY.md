@@ -1,6 +1,7 @@
+
 <!-- Index of repo-tracked memory entries. One line per entry: `- [Title](file.md) — one-line hook`. No frontmatter on this file. -->
 
-- [Speckit git hooks: run auto-commit.sh directly, not via Skill tool](feedback_speckit_hooks.md) — disable-model-invocation: true blocks Skill; call the bash script directly
+- [Run speckit git hooks via their bash script](feedback_speckit_hooks.md) — disable-model-invocation: true blocks Skill; call the bash script directly
 - [Speckit testplan: after_analyze hook has no bash script — execute inline](feedback_speckit_testplan_hook.md) — read the .md and follow its steps before ending the response
 - [Spec-kit task lists prescribe tactics — treat them as suggestions](feedback_speckit_implementation_prescriptions.md) — distinguish prescribed *outcome* from prescribed *tactic*; prefer the simpler equivalent
 - [Challenge speculative numeric tolerances in test plans](feedback_speccheck_numeric_tolerance.md) — exact equality by default; only add tolerance when the operation actually introduces FP error
@@ -11,18 +12,13 @@
 - [Don't introduce column-aligned whitespace in code](feedback_no_column_alignment.md) — single-space tokens; aligned blocks cause diff churn and break outside the editor
 - [Scratch and staging files belong in .claude/scratch/](feedback_scratch_file_location.md) — gitignored; not /tmp, not ~/.claude/, not a top-level .scratch/
 - [Provider-agnostic types must not depend on concrete providers](project_dependency_direction.md) — Profile, SpeedUnit, etc. never reach forward into provider types; bridge lives on the provider side
-- [NetPace CLI feature issues must scope user-facing docs from the start](feedback_cli_feature_doc_scope.md) — first draft must include README --help, USER_GUIDE, design-doc cross-refs (no CHANGELOG — release notes are GitHub-auto-generated)
-- [Release-pipeline changes must update docs/RELEASING.md](feedback_release_pipeline_doc.md) — release matrix, runner-per-RID, naming convention, smoke-test contract live there; out-of-sync = future RID work costs extra
+- [NetPace CLI feature issues must scope user-facing docs from the start](feedback_cli_feature_doc_scope.md) — first draft must include the CLAUDE.md CLI-option docs set (no CHANGELOG)
 - [Verify-snapshot tests count as coverage in NetPace.Console.Tests](feedback_console_output_snapshot_coverage.md) — check Expectations/*.verified.txt before reporting an output mode as untested
 - [Speckit file guard is Edit-only by design](speckit_file_guard.md) — one `Edit(path)` deny rule per protected path; `Edit` covers `Write`, so parallel `Write`/`MultiEdit` rules only add startup warnings
 - [Spec-kit upgrade procedure](speckit_upgrade_procedure.md) — stock github/spec-kit via `specify` CLI; `init --here --force --integration claude --script sh` is additive/hash-guarded
-- [feedback_read_source_before_designing.md](feedback_read_source_before_designing.md) — read the source before designing a fix; verify a handed-down issue/spec diagnosis against HEAD before implementing
-- [dotnet test --no-build runs the stale test DLL](feedback_dotnet_test_no_build.md) — rebuild before trusting a test run; green-gate.sh denies a stale --no-build
-- [Re-run tests before declaring done](feedback_rerun_tests_before_done.md) — after any post-implementation edit, re-run `dotnet test ./src`; don't extrapolate an earlier green
-- [Never pipe a command whose pass/fail you are about to trust](feedback_background_script_output.md) — a pipeline's exit code is the filter's, not the suite's; a backgrounded job piped through `tail` also leaves an empty log
-- [Soft-wrap markdown — one line per paragraph](feedback_markdown_soft_wrap.md) — no manual ~80/100-col hard breaks; they reflow whole blocks and bury one-word edits in noisy diffs
-- [Explain tradeoffs in plain language before asking the user to decide](feedback_plain_language_decisions.md) — frame AskUserQuestion options by consequence/cost, not mechanism
+- [Read source before designing fixes](feedback_read_source_before_designing.md) — read the source before designing a fix; verify a handed-down issue/spec diagnosis against HEAD before implementing
+- [Trust only a fresh, rebuilt, unpiped test run](feedback_trusting_a_test_run.md) — re-run after the last edit, no stale `--no-build`, never pipe a run you trust; read Passed!/Failed!
+- [Decompose quantified claims — no flattering multipliers](feedback_plain_language_decisions.md) — name what an estimate is made of instead of a headline multiplier
 - [Be decisive when the evidence has already earned it](feedback_decisiveness_over_hedging.md) — state the verdict the gates already support; build within a decision already made rather than re-litigating it
-- [Audit the failure class after the second occurrence](feedback_audit_class_after_two_failures.md) — on the 2nd same-shape failure, enumerate every site and fix the class, not the instance
 - [OoklaSpeedtest latency-margin test is flaky under load](project_flaky_latency_margin_test.md) — wall-clock ±25% assertion; distinct from the ProfileXmlDocTests FileShare flake
 - [When the guard outgrows the fix, surface it as a decision](feedback_guard_outgrows_the_fix.md) — verification scaffolding bigger than the change means the wrong mechanism; ask before building

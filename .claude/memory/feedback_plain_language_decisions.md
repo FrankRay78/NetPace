@@ -1,15 +1,11 @@
 ---
-name: Explain tradeoffs in plain language before asking the user to decide
-description: When surfacing a technical decision, explain each option in plain, jargon-free language — consequences and analogies over internals — before asking the user to choose; and when you quantify a claim, decompose it rather than reaching for a flattering multiplier.
+name: Decompose quantified claims — no flattering multipliers
+description: When an option's cost or benefit is quantified for Frank, say what the estimate is made of rather than quoting a headline multiplier.
 type: feedback
 ---
 
-When NetPace work reaches a genuine decision point and you put it to the user (an `AskUserQuestion`, a "which approach?" prompt, a spec tradeoff), explain each option in **plain, jargon-free language first**: what it means for them, what it costs, what it unlocks — using analogies over internals. Lead with the consequence, not the mechanism. The user should be able to choose well without first having to decode framework names, protocol details, or implementation jargon.
+When putting a choice to Frank (framing rules: CLAUDE.md "Don't frame a decision in implementation jargon"), decompose any quantified cost or benefit instead of reaching for a round multiplier.
 
-**Why:** Frank's standing preference is to decide on the basis of *consequences*, not internals. Decisions framed in implementation vocabulary ("System.CommandLine vs a hand-rolled parser", "PreToolUse vs Stop hook", "bundle the amendment vs split the PR") push the translation work onto the reader and make the tradeoff harder to weigh, not easier. A one-line plain-language framing per option — *"this keeps one clean history but mixes a rule change with tooling; that keeps them separate at the cost of a second PR"* — lets the user exercise judgment on the thing that actually matters to them.
+**Why:** A calibrated "~30% fewer re-reads" can be checked part by part; a loose "2x faster" can't, and it erodes trust when it proves wrong.
 
-**How to apply:**
-- Before an `AskUserQuestion`, write each option's `description` as a plain-language consequence ("what you get / what it costs"), not a restatement of the mechanism. Keep the jargon term available for those who want it, but after the plain framing, not instead of it.
-- Prefer a concrete analogy or a before/after over an internals walkthrough when the internals aren't the point of the decision.
-- **Do not over-claim, either.** Plain language is not licence for a flattering round number. When an option's cost or benefit is quantified, decompose the estimate — say what it is made of — rather than reaching for a headline multiplier. A calibrated "~30% fewer re-reads" is worth more than a loose "2x faster", because the user can check the parts and tell you which one is wrong.
-- This is the *how you present* companion to surfacing tool/architecture tradeoffs as explicit user choices rather than burying them — surface the choice, and frame it in plain language. Pairs with [[feedback_decisiveness_over_hedging]]: frame the choice plainly, and only surface it at all when it is genuinely still open.
+**How to apply:** Next to any number in an option's description, name its components. Only surface the choice at all when it is genuinely open — see [[feedback_decisiveness_over_hedging]].

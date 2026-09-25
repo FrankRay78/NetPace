@@ -26,9 +26,7 @@ If any `→ CIR` row is ✅, write one.
 
 ## CIR Template
 
-Save CIRs in `docs/change-intent-records/` with descriptive filenames:
-- `2026-04-10-library-first-architecture.md`
-- `2026-04-15-async-cancellation-tokens.md`
+Save CIRs in `docs/change-intent-records/` as `YYYY-MM-DD-kebab-title.md`.
 
 ```markdown
 # [Descriptive Title]
@@ -44,32 +42,9 @@ Save CIRs in `docs/change-intent-records/` with descriptive filenames:
 **Date:** YYYY-MM-DD
 ```
 
-## Example CIR
+When a record overturns part of an earlier one, add `**Supersedes:** <link> — <which decision>` so the older record is read in light of the newer.
 
-```markdown
-# Using ISpeedTestService Interface
-
-**Intent:** Allow multiple speed test providers (Ookla, Fast.com, custom)
-without changing client code.
-
-**Behaviour:**
-- Given: Consumer has ISpeedTestService reference
-- When: Provider implementation is swapped via DI
-- Then: Consumer code requires no changes
-
-**Constraints:**
-- NetPace.Core must remain provider-agnostic
-- Public API cannot expose Ookla-specific types
-- Must support async/await with cancellation
-
-**Decisions:**
-- Chose interface over abstract base class
-  - Rejected: Abstract base class (limits inheritance flexibility)
-  - Rejected: Direct concrete type (tight coupling to Ookla)
-  - Chose: Interface (maximum flexibility, testability, DI-friendly)
-
-**Date:** 2024-08-15
-```
+For a worked example, see [`2026-09-03-whitespace-rules-match-stored-files.md`](../change-intent-records/2026-09-03-whitespace-rules-match-stored-files.md).
 
 ## References
 
