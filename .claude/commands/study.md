@@ -69,7 +69,7 @@ There is deliberately **no *Goal* level** — no row for "this work should not h
 
 4. **Decide what, if anything, was genuinely surprising.** For each candidate, apply both tests before it earns a row:
    - **Was it a surprise?** Something that was not anticipated by the issue as written and by a competent reading of the code. Work proceeding as expected is not a surprise, however much of it there was. A reviewer finding that had to be actioned *is* a surprise — it is exactly the kind of routine cost the accumulated tally exists to measure, and excluding it would leave the Execution count meaningless.
-   - **Can you point at the evidence?** Name the commit, the review comment, the failing test, the CI run. The Finding text carries its source inline where it has one — e.g. `Reviewer (silent-failure-hunter): …`, `CI (ubuntu-latest): …`. There is no separate evidence column; the row grounds itself in its own prose.
+   - **Can you point at the evidence?** Name the commit, the review comment, the failing test, the CI run. The Finding text carries its source inline where it has one — e.g. `Reviewer (silent-failure-hunter): …`, `CI (ubuntu-latest): …`. There is no separate evidence column. Grounding a row means naming a source a reader can check, not reproducing the argument: the reproduction, the mechanism and the proof stay in the commit, the review comment or the PR.
 
    If nothing passes both tests, go to step 7 with zero rows. That is the expected outcome for a clean run.
 
@@ -88,6 +88,22 @@ There is deliberately **no *Goal* level** — no row for "this work should not h
 
    - **Existing file** — append new rows to the same flat table; the H1 is already there and no title fetch is needed. Do **not** add a per-pass section, a date, or a pass identifier: a reader tallying levels never needs to know which pass wrote a row, and per-pass headings would fragment the table they are tallying.
    - **Dedup is a judgement call against the existing row text.** Read the rows already there; a finding already recorded is not recorded again, even if this run reached it by a different route. Leave every existing row exactly as it is — `/study` appends, it never edits or removes. **If every candidate is already present, nothing is written — go to step 7.**
+   - **Keep every row short.** A reader scans the Finding column across many files looking for the same problem coming back, and a long row buries the problem it is about.
+     - **Finding** — one sentence of about 30 words at most: the source, then what went wrong.
+     - **Fix applied** — a short phrase, plus the commit where there is one.
+     - Leave out how the problem was confirmed, why the tests missed it, mutation counts, and any comparison with other rows. Spotting a repeated problem is the reader's job, not the row's.
+
+     Good:
+
+     ```markdown
+     | Reviewer (silent-failure-hunter): `claude -p` errors flagged in `is_error` with exit 0 were reported as "no recognisable verdict" | Execution | Checked `is_error`; raw reply printed when it will not parse (576f865) |
+     ```
+
+     Too long — the same finding, with its mechanism and proof in the row:
+
+     ```markdown
+     | Reviewer (silent-failure-hunter Blocker): `claude -p` reports API errors, interrupted runs and exhausted turn limits in `is_error` inside the JSON while still exiting 0 — confirmed against a live call, where `is_error`, `subtype`, `result` and `session_id` are all top-level fields — while `jq`'s own exit 5 on a non-JSON reply was muted by `2>/dev/null` and the raw reply died with the function's `local`. Both surfaced as `no recognisable verdict`, blaming the stage for a missing token when the stage had never run, with the one artefact that would have explained it already discarded. | Execution | Envelope parsed once and checked, `is_error` reported as itself, raw reply printed when it will not parse (576f865) |
+     ```
    - The file contains **only** the H1 and the table. No evidence-sources line, no dates, no prose, no per-pass heading.
    - Write markdown one line per row and paragraph; no hard column wrapping.
 
