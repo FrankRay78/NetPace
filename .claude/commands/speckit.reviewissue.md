@@ -262,7 +262,13 @@ Post via `gh issue comment <number> --repo <owner/repo> --body "$(cat <<'EOF' ..
 - Never use unquoted `EOF` here — it will try to expand `$variable` references
   and break on backticks.
 
-After posting, return the comment URL and stop. Re-runs are handled by step 6.
+After posting, mark the issue as waiting on the author:
+
+```bash
+gh issue edit <number> --repo <owner/repo> --add-label "needs answers"
+```
+
+`/speckit.confirmissue` removes it when it applies `ready`. Then return the comment URL and stop. Re-runs are handled by step 6.
 
 ### 6. Refine an existing review comment (re-runs)
 
