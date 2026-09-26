@@ -18,21 +18,27 @@ The generic "CI on PR" step **applies fully**:
 | `shell-tests.yml` — Shell Tests | pull_request → main | runs every committed `*.tests.sh` matrix, one job per script |
 | `codeql.yml` — CodeQL | push/PR/weekly | security analysis (see the [supply-chain CIR](change-intent-records/2026-07-13-dependency-supply-chain-hardening.md)) |
 | `claude.yml` — Claude Code | `@claude` in an issue/PR comment by `FrankRay78` | **Review B** |
-| `speckit-reviewissue.yml` — Speckit Review Issue | `review` label applied to an issue (labeller-gated), or manual dispatch | runs the pre-spec gate unattended — see below |
+| `speckit-reviewissue.yml` — Speckit Review Issue | `review` label applied to an issue (labeller-gated), or manual dispatch | posts the pre-spec gap analysis unattended — see below |
+| `speckit-confirmissue.yml` — Speckit Confirm Issue | `confirm` label applied to an issue (labeller-gated), or manual dispatch | folds the answered review into the issue body unattended — see below |
 | `publish-nuget.yml` | tag push | publish `NetPace.Core` to NuGet |
 | `release-binaries.yml` | tag push | cross-platform binary release matrix |
 
 **Deviations from the generic Appendix.** Review B is mention-triggered only (`/raise-pr` posts the mention); there is no automatic review of agent-authored PRs. There is no PR template and no `AGENTS.md` symlink.
 
-**The pre-spec gate runs in CI too.** `/speckit.reviewissue` (step 2) is the one step whose cost is the wait, because it grounds itself in the codebase — so labelling an issue `review` runs it unattended and leaves the gap analysis as a comment. The workflow applies [`.claude/commands/speckit.reviewissue.md`](../.claude/commands/speckit.reviewissue.md), keeping the analysis single-sourced. `/speckit.confirmissue` finds a CI-posted review by sentinel like any other, folds the answers into the issue body, then deletes the comment.
+**The whole pre-spec gate runs in CI.** Both halves are label-triggered, so an issue raised away from the desk can be reviewed, answered and confirmed without a checkout. Labelling `review` runs [`.claude/commands/speckit.reviewissue.md`](../.claude/commands/speckit.reviewissue.md) and leaves the gap analysis as a comment; the author answers it inline in the GitHub UI; labelling `confirm` then runs [`.claude/commands/speckit.confirmissue.md`](../.claude/commands/speckit.confirmissue.md), which folds the answers into the issue body and deletes the comment. Each workflow applies its command as written, keeping the logic single-sourced. Both commands still run locally, unchanged.
 
-**The labels are the state** — the generic *Context management* rule, made concrete. A green run always removes the `review` label, and `/speckit.confirmissue` deletes the review comment once the decisions are in the body. So:
+The two workflows share one per-issue concurrency group, `speckit-issue-<n>`. Concurrency groups are repo-wide, so the shared *name* is what stops a review posting on top of a confirmation in flight.
+
+**The labels are the state** — the generic *Context management* rule, made concrete. A green run always removes the label that triggered it. So:
 
 - **`review` labelled** — a review is pending; if it stays labelled, the run did not complete.
 - **`needs answers`, with a `<!-- speckit:review -->` comment** — a review is posted and awaiting answers.
-- **`ready`, with a `## Confirmed decisions` section** — the gate is finished. `ready` takes precedence: an issue confirmed before this change carries both markers and is finished, not waiting.
+- **`confirm` labelled** — a confirmation is pending; if it stays labelled, the run did not complete and the issue is untouched — the answers are still there to fix and re-label.
+- **`ready`, with a `## Confirmed decisions` section** — the gate is finished. `ready` takes precedence: an issue confirmed before these changes carries both markers and is finished, not waiting.
 
-There is no failure comment: GitHub's failed-run notification is the alert, and the workflow checks both post-conditions itself. Labelling an issue that is `ready`, or already has a review, posts nothing and just clears the label; to re-review a confirmed issue, remove `ready` first. Refining a review in place (step 6 of the command) stays local. One gap: a label applied by any account other than the gated one creates no run at all, so the issue stays labelled but silent. Rationale and residuals: CIRs [`2026-09-07-automated-prespec-review`](change-intent-records/2026-09-07-automated-prespec-review.md) and [`2026-09-11-confirmed-decisions-replace-the-review`](change-intent-records/2026-09-11-confirmed-decisions-replace-the-review.md).
+There is no failure comment on either path: GitHub's failed-run notification is the alert, and each workflow checks its own post-conditions. The confirm workflow checks four — decisions on the body, `ready` on, `needs answers` off, no surviving review comment — because three of the command's own steps are deliberately never fatal, and without that check a half-finished confirmation would go green. It names every missing half in one run, and puts the command's report in the run summary, which on a stop is the only place the outstanding gaps appear.
+
+Labelling an issue that is `ready` posts nothing and just clears the label, on either path; labelling `review` on an issue that already has one does the same. To re-review a confirmed issue, remove `ready` first. Refining a review in place (step 6 of the review command) stays local. One gap on both paths: a label applied by any account other than the gated one creates no run at all, so the issue stays labelled but silent. Rationale and residuals: CIRs [`2026-09-07-automated-prespec-review`](change-intent-records/2026-09-07-automated-prespec-review.md), [`2026-09-11-confirmed-decisions-replace-the-review`](change-intent-records/2026-09-11-confirmed-decisions-replace-the-review.md) and [`2026-09-26-automated-prespec-confirmation`](change-intent-records/2026-09-26-automated-prespec-confirmation.md).
 
 ## Release pipeline
 
