@@ -73,6 +73,28 @@ run "$(pre 'chmod +x t.sh && ./t.sh')";          ok "chmod first, then run → d
 run "$(pre 'ls -l | chmod +x t.sh')";            ok "after a pipe → deny" denied
 run "$(pre 'chmod \
   +x t.sh')";                                    ok "line continuation → deny" denied
+run "$(pre 'cd /repo
+chmod +x t.sh
+./t.sh')";                                       ok "own line of a multi-line script → deny" denied
+run "$(pre 'set -e
+  chmod 755 scripts/x.sh')";                     ok "indented own line → deny" denied
+
+echo "heredoc bodies are data, not commands → allow:"
+run "$(pre "git commit -q -F - <<'EOF'
+Refs #293: refuse chmod +x
+chmod +x t.sh is what this gate stops
+EOF")";                                          ok "quoted-delimiter heredoc body → allow" allowed
+run "$(pre "cat <<EOF > notes.md
+chmod 755 t.sh
+EOF")";                                          ok "unquoted-delimiter heredoc body → allow" allowed
+run "$(pre "cat <<-EOF
+  chmod +x t.sh
+  EOF")";                                        ok "<<- indented terminator → allow" allowed
+# ...but a real chmod after the terminator is still seen.
+run "$(pre "cat <<'EOF' > t.sh
+echo hi
+EOF
+chmod +x t.sh")";                                ok "chmod after the terminator → deny" denied
 
 echo "text mentions are not commands → allow:"
 run "$(pre 'echo "run chmod +x t.sh"')";         ok "echo mention → allow" allowed
@@ -81,6 +103,17 @@ run "$(pre 'grep -rn "chmod +x" docs/')";        ok "grep for the text → allow
 run "$(pre 'bash t.sh')";                        ok "the prescribed alternative → allow" allowed
 run "$(pre 'chmodx +x t.sh')";                   ok "chmod is a prefix only → allow" allowed
 run "$(pre 'git add --chmod=+x t.sh')";          ok "git add --chmod=+x → allow" allowed
+
+# Regression (issue #293): a separator inside a quoted span must not manufacture a segment head.
+# The gate's first live call refused itself on a command whose only chmod sat inside quoted JSON.
+run "$(pre 'echo "cd /repo && chmod +x t.sh"')"; ok "quoted && before chmod → allow" allowed
+run "$(pre "echo 'cd /repo && chmod +x t.sh'")"; ok "single-quoted && before chmod → allow" allowed
+run "$(pre 'git commit -m "no cd x; chmod 755 y"')"; ok "quoted ; in a commit message → allow" allowed
+run "$(pre 'printf %s "{\"command\":\"cd /r && chmod +x t.sh\"}" | jq .')"; ok "quoted JSON payload → allow" allowed
+run "$(pre 'grep -rn "x && chmod +x" docs/')";   ok "grep for the chained form → allow" allowed
+run "$(pre 'echo "don'"'"'t && chmod +x f"')";   ok "apostrophe inside double quotes → allow" allowed
+# ...but a real chained chmod alongside quoted text is still refused.
+run "$(pre 'echo "note: chained" && chmod +x t.sh')"; ok "quoted text then real chmod → deny" denied
 
 echo "deny message names the alternative:"
 run "$(pre 'chmod +x t.sh')"
