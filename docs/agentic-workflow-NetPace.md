@@ -120,7 +120,7 @@ The mechanism is in the generic *Permissions and unattended runs*. NetPace's rul
 - `Bash(git push:*)` moved to `allow`, so `/raise-pr` pushes without stopping; `Bash(chmod:*)` moved from `deny` to `ask` ([CIR](change-intent-records/2026-09-04-push-allow-chmod-ask.md)).
 - The six `Read(…)` deny rules were removed: their glob scope made every recursive read escalate to an approval no mode auto-grants ([CIR](change-intent-records/2026-09-04-read-deny-rules-removed.md)).
 
-`chmod` is now the only `ask` rule, so it is the one call a chained stage loses silently.
+`chmod` is the only `ask` rule, so it is the one call a chained stage could lose silently — and the executable-bit forms no longer do. [`no-chmod.sh`](../.claude/hooks/no-chmod.sh) refuses them first with a message naming `bash script.sh`, so the agent is redirected rather than stalled or quietly degraded ([CIR](change-intent-records/2026-09-27-refuse-executable-bit-chmod.md)). The `ask` rule stays in place as the fail-open backstop for the forms the hook declines to decide.
 
 ## Chain
 
