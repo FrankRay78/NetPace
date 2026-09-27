@@ -29,7 +29,7 @@ jobs:
 
     - name: Find every committed *.tests.sh
       id: find
-      # Discovering nothing is a failure, not a pass: this repo has four matrices and two docs
+      # Discovering nothing is a failure, not a pass: this repo has several matrices and two docs
       # promise they run, so an empty result means the pattern or the naming convention has
       # drifted — the one outcome that would otherwise report green having verified nothing.
       # -z keeps paths raw, so a name core.quotePath would C-quote cannot corrupt the JSON.

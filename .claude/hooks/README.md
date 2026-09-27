@@ -2,7 +2,7 @@
 
 Repo-committed hooks so they travel to every checkout. Registered in [`.claude/settings.json`](../settings.json) once a human has reviewed them (harness-safety: a hook lands in `settings.json` only after review, because a bad hook can lock out the tools that would fix it).
 
-They **fail open**: any missing tool, unparseable input, or internal error is a no-op, never a false block. The only actions any hook takes are the narrow, high-confidence cases, each with an announced environment-variable override. Every gate is provable without a running app by a committed `*.tests.sh` matrix that drives it against a throwaway `CLAUDE_PROJECT_DIR`.
+They **fail open**: any missing tool, unparseable input, or internal error is a no-op, never a false block. The only actions any hook takes are the narrow, high-confidence cases, each with an announced environment-variable override. Every gate is provable without a running app by a committed `*.tests.sh` matrix that drives it on synthetic hook JSON — against a throwaway `CLAUDE_PROJECT_DIR` for the gates that read the filesystem.
 
 **Every `*.tests.sh` in the repo runs in CI.** [`shell-tests.yml`](../../.github/workflows/shell-tests.yml) finds them with `git ls-files '*.tests.sh'` instead of listing them, one matrix entry per script, so a new matrix is gated the moment it is committed and each failure names its own script. Still run the matrix yourself after any edit to a gate — CI is the backstop, not the first you hear of a break.
 
@@ -15,6 +15,23 @@ PreToolUse(Bash) gate that blocks a `git commit` while any banned skipped-test c
 ```bash
 .claude/hooks/no-skipped-tests.sh --check          # scan src/, exit 1 on any banned construct
 .claude/hooks/no-skipped-tests.tests.sh            # synthetic-sandbox matrix — non-zero on failure
+```
+
+## `no-chmod.sh` — executable-bit `chmod` refusal (issue #293)
+
+PreToolUse(Bash) gate that refuses a `chmod` which would set the executable bit, with a message naming `bash script.sh` as the alternative. The gated call is how an agent tries to run a throwaway script to verify its own work, and `Bash(chmod:*)` on `permissions.ask` makes it stall an interactive run and vanish silently in a headless one — in the #265 A/B comparisons two reviewers each blocked well over an hour on it. A one-line instruction to use `bash script.sh` removed the problem entirely in the follow-up run; this gate makes that instruction a gate rather than a rule the agent must remember.
+
+**Scope — executable-bit forms only.** `+x`, `u+x`, `u=rx`, `+rwx`, `755`, `4755`, a bare `7`. Forms that cannot set the bit are waved through and stay governed by the `ask` rule: `644`, `1644`, `-x`, `a-x`, `u+w`, `a=`, a `g+u` copy form, `--reference=`. `git add --chmod=+x <path>` is not a `chmod` call and is never refused — it is the way to record the bit on a committed file.
+
+**`Bash(chmod:*)` stays on `permissions.ask`.** The hook is the actionable layer, not a replacement: the `ask` rule is the fail-open backstop for the cases this gate declines to decide (an undecidable mode) and for any run where the hook does not fire at all. Keeping both means a miss costs a prompt, not a free pass. It also over-asks in one visible way — the harness's own matcher reads a `chmod` line inside a heredoc body or a multi-line commit message as an invocation, so writing about this rule can still prompt; put the message in a file and use `git commit -F <file>`.
+
+**Command detection:** `chmod` must be the head of a command *segment* — separators are `&&`, `||`, `;`, `|`, `&` and a newline — after stripping env-assignment and `rtk` prefixes. A whole-command substring match would fire on any mention; segment matching catches the chained forms that actually occur (`cd /repo && chmod +x t.sh`, a `chmod` line in a multi-line script) and leaves an `echo`, a commit message or a grep pattern alone. Quoted spans and heredoc bodies are masked before splitting, because a separator inside quoted text otherwise manufactures a fake segment head — which is how this gate refused its own first live call.
+
+**Fail open**, like `green-gate.sh`: a missing tool, unparseable input, or an undecidable mode is a no-op, with the `ask` rule behind it. Override: `NETPACE_ALLOW_CHMOD=1` (announced on stderr; `--check` ignores it). Registered **without** an `if` clause — an `if: "Bash(chmod:*)"` only sees a command whose first word is `chmod`, missing every chained form the segment scan exists for — and invoked via `bash` so it needs no working-tree executable bit.
+
+```bash
+bash .claude/hooks/no-chmod.sh --check 'chmod +x t.sh'   # exit 1 + the refusal message; 0 if allowed
+bash .claude/hooks/no-chmod.tests.sh                     # synthetic-JSON matrix — non-zero on failure
 ```
 
 ## `green-gate.sh` — `dotnet test --no-build` staleness guard
