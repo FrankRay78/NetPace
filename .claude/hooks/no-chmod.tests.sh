@@ -115,10 +115,21 @@ run "$(pre 'echo "don'"'"'t && chmod +x f"')";   ok "apostrophe inside double qu
 # ...but a real chained chmod alongside quoted text is still refused.
 run "$(pre 'echo "note: chained" && chmod +x t.sh')"; ok "quoted text then real chmod → deny" denied
 
+# SCENARIO: A gated call becomes a redirection, not a dead end
 echo "deny message names the alternative:"
 run "$(pre 'chmod +x t.sh')"
 ok "reason mentions 'bash'" 'echo "$OUTPUT" | jq -re ".hookSpecificOutput.permissionDecisionReason" | grep -q "bash "'
 ok "reason mentions the script form" 'echo "$OUTPUT" | jq -re ".hookSpecificOutput.permissionDecisionReason" | grep -q "bash script.sh"'
+
+# SCENARIO: An unattended run is not stalled by it
+# The decision must be `deny` — a settled outcome the run carries on from — and never `ask`,
+# which is the outcome that stalls an interactive run and vanishes in a headless one. This is the
+# observable property that keeps an unattended chain moving rather than waiting on a human.
+echo "the decision is settled, not deferred to a human:"
+run "$(pre 'chmod +x t.sh')"
+ok "decision is deny" 'echo "$OUTPUT" | jq -e ".hookSpecificOutput.permissionDecision==\"deny\"" >/dev/null'
+ok "decision is never ask" 'echo "$OUTPUT" | jq -e ".hookSpecificOutput.permissionDecision!=\"ask\"" >/dev/null'
+ok "hook exits 0 (the decision travels in the payload, not the exit code)" '[ "$RC" = 0 ]'
 
 echo "--check mode (classify one command string):"
 OUTPUT="$(bash "$HOOK" --check 'chmod +x t.sh' 2>&1)"; RC=$?
