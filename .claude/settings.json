@@ -95,6 +95,11 @@
           },
           {
             "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/no-chmod.sh\"",
+            "statusMessage": "Checking for a gated executable-bit chmod..."
+          },
+          {
+            "type": "command",
             "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/green-gate.sh\"",
             "statusMessage": "Guarding against dotnet test --no-build staleness..."
           },
