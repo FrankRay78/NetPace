@@ -56,6 +56,6 @@ Two guards keep it that way, and both matter more than completeness:
 ## Related
 
 - [`.claude/commands/study.md`](../../.claude/commands/study.md) — the command that writes these files.
-- [`.claude/commands/study-review.md`](../../.claude/commands/study-review.md) — the command that reads them back: clusters recurring findings, scores them by recurrence × cost × leverage, and implements or raises as issues the fixes you pick.
+- [`.claude/commands/study-review.md`](../../.claude/commands/study-review.md) — the command that reads them back: clusters recurring findings, scores them by recurrence × cost, flags where an existing rule has already failed, and implements or raises as issues the fixes you pick.
 - [`.claude/commands/capture-learnings.md`](../../.claude/commands/capture-learnings.md) — the adjacent, deliberately different reflection step. `/study` records what surprised the *agent* and only ever writes a record; `/capture-learnings` starts from what the *invoker* corrected, and its order of preference is to fix the rule that misfired, then to enforce it deterministically, and only then to write a memory entry. A study finding that looks mechanically enforceable is flagged for `/capture-learnings` rather than acted on here.
 - [`docs/agentic-workflow-NetPace.md`](../agentic-workflow-NetPace.md) — the surrounding workflow these records reflect on.
