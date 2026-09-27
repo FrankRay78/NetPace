@@ -35,7 +35,7 @@ Optional. Empty is the normal case: analyse every record. Issue numbers (`270 28
 
 3. **Tally.** Follow README read-back steps 1, 3 and 4:
    - Count rows per level, overall and per file.
-   - Recover the denominator: `gh pr list --state merged --limit 500 --json number,mergedAt` restricted to PRs merged on or after the earliest study file's first commit (`git log --diff-filter=A --format=%aI -- docs/study/<N>.md | tail -1`). If `gh` fails, report the denominator as unavailable with the error — never estimate it. Report rows per merged PR alongside it — the rate, not the raw count, is what one run can be compared against the next with.
+   - Recover the denominator: `gh pr list --state merged --limit 500 --json number,mergedAt` restricted to PRs merged on or after the earliest first commit among the files loaded in step 2 (run `git log --diff-filter=A --format=%aI -- docs/study/<N>.md | tail -1` for each and take the earliest). If `gh` fails, report the denominator as unavailable with the error — never estimate it. Report rows per merged PR alongside it — the rate, not the raw count, is what one run can be compared against the next with.
    - Name any level with zero rows.
 
 4. **Cluster by repeated shape.** Follow README read-back step 2: group rows that describe the *same class of mistake*, even when the issues, files and wording differ. A cluster is named in one line by the mistake, not by the symptom ("a new rule checked against the first-run path but not the refine-run path", not "pipe escaping"). A cluster may span levels; its level is the one most of its rows carry. A row can belong to only one cluster; a row that shares a shape with nothing is a cluster of one.
@@ -72,7 +72,7 @@ Optional. Empty is the normal case: analyse every record. Issue numbers (`270 28
 
    ## Proposals
 
-   ### 1. [Cluster name — the mistake, ≤12 words]  — score 6 (R3 × C2)
+   ### 1. [Cluster name — the mistake, ≤12 words] — score 6 (R3 × C2)
    Rows: 279#3, 280#8, 287#3
    Level: Execution
    Mitigation: [none | the existing rule or gate — and "failed: <row> postdates it" where one does]
