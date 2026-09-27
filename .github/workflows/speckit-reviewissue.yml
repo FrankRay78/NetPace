@@ -37,8 +37,12 @@ jobs:
     # post — orphaning any answers already written against the first review, which is the
     # exact harm the guard exists to prevent. Cancelling instead of queueing could kill a
     # run between its post and its label removal, so in-progress runs are left alone.
+    # The group is shared with speckit-confirmissue.yml, not private to this workflow:
+    # concurrency groups are repo-wide, so one name serialises review against confirm too.
+    # The two write the same state from opposite ends — a review posting mid-confirmation
+    # would land on top of decisions being saved.
     concurrency:
-      group: speckit-reviewissue-${{ github.event.issue.number || inputs.issue_number }}
+      group: speckit-issue-${{ github.event.issue.number || inputs.issue_number }}
       cancel-in-progress: false
     permissions:
       contents: read
