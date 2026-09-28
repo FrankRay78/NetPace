@@ -153,7 +153,7 @@ fire() {
 }
 
 chain_calls() { if [ -f "$STUB_DIR/chain-log" ]; then paste -sd, "$STUB_DIR/chain-log"; fi; }
-gh_writes() { grep -cE '^issue\|(edit|comment)\|' "$STUB_DIR/gh-log" 2>/dev/null || echo 0; }
+gh_writes() { { grep -E '^issue\|(edit|comment)\|' "$STUB_DIR/gh-log" 2>/dev/null || true; } | grep -c ''; }
 start_of() { grep "^$2=" "$STUB_DIR/start-$1" | cut -d= -f2-; }
 # Everything about a checkout a firing could change: commit, branch, tree (ignored files too),
 # and every local branch.
