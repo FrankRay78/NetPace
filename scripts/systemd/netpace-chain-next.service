@@ -1,0 +1,19 @@
+# The chain runner: one firing of scripts/chain-next.sh. Started by netpace-chain-next.timer.
+# Install, operate and diagnose: docs/agentic-workflow.md (The chain runner).
+#
+# Copy to ~/.config/systemd/user/ and edit the two paths below to match the build machine: user
+# units start with a minimal environment, so PATH must name where claude, dotnet, gh, jq, git,
+# flock and timeout live.
+
+[Unit]
+Description=NetPace chain runner: build the next ready issue to a pull request
+
+[Service]
+Type=oneshot
+Environment=CHAIN_NEXT_CLONE=%h/Repos/NetPace-runner
+Environment=PATH=%h/.local/bin:%h/.dotnet:%h/.dotnet/tools:/usr/local/bin:/usr/bin:/bin
+Environment=DOTNET_CLI_TELEMETRY_OPTOUT=1
+# The script runs from the clone it resets; it is written to survive that (see its header).
+ExecStart=/bin/bash %h/Repos/NetPace-runner/scripts/chain-next.sh
+# A chain run takes the better part of an hour, and chain.sh bounds each stage itself.
+TimeoutStartSec=infinity

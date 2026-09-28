@@ -179,6 +179,66 @@ Manual checks, with a real model:
 - **Reopening a failed stage's session.** From a clean `main`, force a stall with `CHAIN_STAGE_TIMEOUT=60 scripts/chain.sh <issue>`. Expect `chain: FAILED at [1/5] build — stalled — exceeded 60s`, exit 1, no later stage, and a second line saying no session id was captured (a stalled stage never reports one). `claude --resume`, picking the most recent headless session, should open the stalled `/build`. Remove any branch it left.
 - **A full run** against a small ready issue: `scripts/chain.sh <issue>` from a clean `main`. Expect five `ok` lines in order, `chain: done — <pull request URL>`, exit 0, no prompt at any point, and a clean working tree.
 
+### The chain runner
+
+`scripts/chain-next.sh` works through the `ready` backlog without anyone starting the chain. A systemd user timer fires it every 15 minutes on the build machine. Each firing picks the next eligible issue, resets a clone kept only for the runner to the latest `main`, and runs `scripts/chain.sh` against the issue there. It ends with an open pull request, or with the issue labelled `parked` and a comment saying why. It never merges, and it never pushes or deletes anything on GitHub itself; only the chain's own `/raise-pr` pushes.
+
+- **Selection.** An issue is eligible when it is open, labelled `ready`, not labelled `parked`, has no open pull request linked to it (one that closes it, or whose branch is `feature/<N>-…`), and has no open blocking issue (GitHub's native issue dependencies). The runner takes the lowest-numbered one; the issue body plays no part. Confirming an issue with `/speckit.confirmissue` therefore queues it, and merging a blocker's pull request unblocks the next issue in time for the next firing.
+- **One run at a time.** A firing while a run is in progress starts nothing and exits 0. systemd never starts an active service twice, and the runner also holds a lock, so a manual firing cannot overlap the timer's.
+- **A clean start in its own clone.** Before each run the clone is fetched, forced onto `origin/main`, and cleaned of every untracked and ignored file (`bin/`, `obj/` and `.claude/scratch/` included), so every run builds from scratch and uses the harness `main` holds now. Local branches whose upstream was deleted on GitHub are removed. The reset is destructive, so the runner refuses any directory that is not a full clone marked `chain-next.dedicated`, including a worktree of one. It changes no other checkout.
+- **Nothing to do is not an error.** With nothing eligible, a firing changes nothing and exits 0. A GitHub query that fails or returns something unreadable selects nothing and exits 1 (fail closed), and the next firing tries again.
+- **Failure parks the issue.** When the chain fails, the runner adds the `parked` label and comments with the failed stage and position (`[3/5] verify`), the reason from the chain's closing line, and the log path. The attempt's local `feature/<N>-*` branch is renamed to `attempt/<N>-<timestamp>` and named in the comment. The commits are kept for diagnosis, and the next `/build` can create the issue's branch afresh. Uncommitted changes are lost at the next reset. If `/raise-pr` pushed the branch but opened no pull request, the comment names that remote branch: remove or reuse it by hand before un-parking, or the next push is rejected. A parked issue is never retried automatically.
+- **Report mode.** `scripts/chain-next.sh --dry-run` names the issue the next firing would build (or says nothing is eligible). It only reads GitHub: no reset, no lock, no log, no label and no comment.
+- **Retention.** Logs and `attempt/*` branches are kept indefinitely; nothing prunes them.
+
+**Prerequisites** on the build machine: everything `scripts/chain.sh` needs (`git`, `claude`, `gh`, `jq`, `timeout`, `claude` and `gh` signed in non-interactively), plus `dotnet`, `flock` (util-linux) and systemd with lingering enabled for the build user (`loginctl enable-linger`), so the timer survives logout and reboot. The runner uses the same Claude subscription as interactive work and can contend with it.
+
+**One-time setup:**
+
+1. Clone the repository somewhere used only by the runner, with a full `git clone` rather than a worktree (worktrees share branches with the checkout they belong to). Mark it, and give it a git identity so the chain can commit:
+
+   ```bash
+   git clone https://github.com/<owner>/<repo>.git ~/Repos/NetPace-runner
+   git -C ~/Repos/NetPace-runner config chain-next.dedicated true
+   git -C ~/Repos/NetPace-runner config user.name "<name>"
+   git -C ~/Repos/NetPace-runner config user.email "<email>"
+   ```
+
+   Never edit anything in this clone by hand: each run discards it.
+2. Create the `parked` label once: `gh label create parked --description "The chain runner stopped on this issue; remove to retry"`.
+3. Install the schedule. The unit files are `scripts/systemd/netpace-chain-next.service` and `.timer`. Copy both to `~/.config/systemd/user/`. In the service, check `CHAIN_NEXT_CLONE`, the `ExecStart` path and `PATH`, which must name where `claude`, `dotnet`, `gh`, `jq`, `git`, `flock` and `timeout` live, because user units start with a minimal environment. Then:
+
+   ```bash
+   systemctl --user daemon-reload
+   scripts/chain-next.sh --dry-run    # with CHAIN_NEXT_CLONE set if not the default; confirms selection and gh access
+   systemctl --user enable --now netpace-chain-next.timer
+   ```
+
+**Configuration.** `CHAIN_NEXT_CLONE` is the dedicated clone (default `~/Repos/NetPace-runner`). `CHAIN_NEXT_STATE_DIR` holds `logs/` and the lock, outside the clone so the clean cannot delete them (default `~/.local/state/netpace-chain`). `CHAIN_MODEL` and `CHAIN_STAGE_TIMEOUT` pass through to the chain.
+
+**Operating it:**
+
+| To | Run |
+|---|---|
+| Start (and on every boot) | `systemctl --user enable --now netpace-chain-next.timer` |
+| Pause (a run in progress finishes) | `systemctl --user stop netpace-chain-next.timer` |
+| Stop a run in progress too | `systemctl --user stop netpace-chain-next.service` |
+| Resume | `systemctl --user start netpace-chain-next.timer` |
+| Fire once now | `systemctl --user start --no-block netpace-chain-next.service` |
+| See status and the next firing | `systemctl --user status netpace-chain-next.service` and `systemctl --user list-timers netpace-chain-next.timer` |
+| Read the runner's own output | `journalctl --user -u netpace-chain-next.service` |
+| Read one run's full chain output | `~/.local/state/netpace-chain/logs/<N>-<timestamp>.log` |
+| Retry a parked issue | Remove its `parked` label; the next firing picks it up |
+
+Stopping the service mid-run ends the chain without parking the issue. The next firing keeps the interrupted branch as an `attempt/*` branch and builds the issue again.
+
+**Tests.** `scripts/chain-next.tests.sh` covers selection (closed, not-ready, parked, blocked and already-raised issues), report mode, a clean start after a previous run, a reset that rewrites the runner's own source, parking and un-parking, kept attempt branches, overlapping firings, back-to-back runs, fail-closed queries and the dedicated-clone guard. It uses a stub `gh` and a stub `chain.sh` in throwaway repositories, so no model or GitHub call is made. Run it after any edit to the runner.
+
+Manual checks, on the build machine:
+
+- **Report against the real repository.** `scripts/chain-next.sh --dry-run` names the lowest-numbered eligible issue, matching what `gh issue list --label ready` and the issues' blockers and linked pull requests show, and leaves the clone, labels and comments unchanged.
+- **The installed timer.** After `enable --now`, `systemctl --user list-timers` shows the next firing, and `journalctl --user -u netpace-chain-next.service` shows `chain-next: nothing eligible.` (or a run) after it fires.
+
 ---
 
 ## Separation of Concerns
