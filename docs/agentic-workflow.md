@@ -195,22 +195,33 @@ Manual checks, with a real model:
 
 **One-time setup:**
 
-1. Clone the repository somewhere used only by the runner, with a full `git clone` rather than a worktree (worktrees share branches with the checkout they belong to). Mark it, and give it a git identity so the chain can commit:
+1. Clone the repository somewhere used only by the runner, with a full `git clone` rather than a worktree (worktrees share branches with the checkout they belong to). Mark it as the runner's:
 
    ```bash
    git clone https://github.com/<owner>/<repo>.git ~/Repos/NetPace-runner
    git -C ~/Repos/NetPace-runner config chain-next.dedicated true
-   git -C ~/Repos/NetPace-runner config user.name "<name>"
-   git -C ~/Repos/NetPace-runner config user.email "<email>"
    ```
 
-   Never edit anything in this clone by hand: each run discards it.
-2. Create the `parked` label once: `gh label create parked --description "The chain runner stopped on this issue; remove to retry"`.
-3. Install the schedule. The unit files are `scripts/systemd/netpace-chain-next.service` and `.timer`. Copy both to `~/.config/systemd/user/`. In the service, check `CHAIN_NEXT_CLONE`, the `ExecStart` path and `PATH`, which must name where `claude`, `dotnet`, `gh`, `jq`, `git`, `flock` and `timeout` live, because user units start with a minimal environment. Then:
+   The chain commits, so it needs a git identity. If the build user has no global `user.name` and `user.email`, set them in this clone with `git -C ~/Repos/NetPace-runner config user.name "<name>"` and the same for `user.email`. Never edit anything in this clone by hand: each run discards it.
+2. Create the `parked` label once: `gh label create parked --description "The chain runner stopped on this issue; remove to retry"`. Without it a failing issue cannot be parked, and the runner rebuilds it every firing.
+3. Check what the first firing would build. This only reads GitHub, so it also confirms `gh` access, and it changes nothing:
+
+   ```bash
+   bash ~/Repos/NetPace-runner/scripts/chain-next.sh --dry-run
+   ```
+
+   Set `CHAIN_NEXT_CLONE` first if the clone is not at the default path. The issue it names is built, and a real pull request opened, as soon as the timer is enabled in the next step.
+4. Install the schedule. Copy the unit files:
+
+   ```bash
+   mkdir -p ~/.config/systemd/user
+   cp ~/Repos/NetPace-runner/scripts/systemd/netpace-chain-next.{service,timer} ~/.config/systemd/user/
+   ```
+
+   Check three lines in the copied service: `CHAIN_NEXT_CLONE`, the `ExecStart` path and `PATH`. User units start with a minimal environment, so `PATH` must name where `claude`, `dotnet`, `gh`, `jq`, `git`, `flock` and `timeout` live. The shipped values suit a clone at `~/Repos/NetPace-runner` with those tools in `~/.local/bin`, `~/.dotnet` or `/usr/bin`. Then start it:
 
    ```bash
    systemctl --user daemon-reload
-   scripts/chain-next.sh --dry-run # with CHAIN_NEXT_CLONE set if not the default; confirms selection and gh access
    systemctl --user enable --now netpace-chain-next.timer
    ```
 

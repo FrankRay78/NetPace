@@ -126,7 +126,7 @@ The mechanism is in the generic *Permissions and unattended runs*. NetPace's rul
 
 Why `scripts/chain.sh` opens the PR without a pause: [CIR](change-intent-records/2026-09-14-chain-raises-pr-unattended.md).
 
-The chain runner (`scripts/chain-next.sh`, generic *The chain runner*) runs on the build VPS as a systemd user timer, with lingering already enabled for the build user. Its dedicated clone is `~/Repos/NetPace-runner`, and its logs are in `~/.local/state/netpace-chain/logs/`. `ready` is the only opt-in, so confirming an issue queues it. There is no separate queue label, and the runner never merges. It supersedes the dispatcher proposed in #266.
+The chain runner (`scripts/chain-next.sh`, generic *The chain runner*) runs on the build VPS as a systemd user timer, with lingering already enabled for the build user. Its dedicated clone is `~/Repos/NetPace-runner`, cloned from `https://github.com/FrankRay78/NetPace.git`, and its logs are in `~/.local/state/netpace-chain/logs/`. The shipped unit files work there unedited. `ready` is the only opt-in, so confirming an issue queues it. There is no separate queue label, and the runner never merges. It supersedes the dispatcher proposed in #266.
 
 ## Spec-kit
 
