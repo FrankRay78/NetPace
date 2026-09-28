@@ -39,7 +39,7 @@ Every row is classified to exactly one level. The levels are not severities. The
 
 ## How to read the files back
 
-Reading is done offline, by a human. `/study` writes; it never tallies, and it never draws a conclusion from what it wrote.
+Reading is done offline, on demand. `/study` writes; it never tallies, and it never draws a conclusion from what it wrote. `/study-review` runs the steps below across the folder, scores the recurring problems it finds, and proposes fixes for a human to pick from. It edits no record, so which rows have been dealt with is tracked by hand.
 
 1. **Tally the levels across every file.** The shape of the distribution is the finding — a large Execution count against a small Plan-spec count says the doing is lossy while the specs are mostly sound, and points the next improvement at the command prompts rather than at how issues are drafted.
 2. **Read the Finding text within the dominant level, looking for a repeated shape.** A level that is large because of twenty unrelated one-offs means something different from one that is large because the same class of mistake recurred; only the second names a specific fix.
@@ -56,5 +56,6 @@ Two guards keep it that way, and both matter more than completeness:
 ## Related
 
 - [`.claude/commands/study.md`](../../.claude/commands/study.md) — the command that writes these files.
+- [`.claude/commands/study-review.md`](../../.claude/commands/study-review.md) — the command that reads them back: clusters recurring findings, scores them by recurrence × cost, flags where an existing rule has already failed, and implements or raises as issues the fixes you pick.
 - [`.claude/commands/capture-learnings.md`](../../.claude/commands/capture-learnings.md) — the adjacent, deliberately different reflection step. `/study` records what surprised the *agent* and only ever writes a record; `/capture-learnings` starts from what the *invoker* corrected, and its order of preference is to fix the rule that misfired, then to enforce it deterministically, and only then to write a memory entry. A study finding that looks mechanically enforceable is flagged for `/capture-learnings` rather than acted on here.
 - [`docs/agentic-workflow-NetPace.md`](../agentic-workflow-NetPace.md) — the surrounding workflow these records reflect on.
