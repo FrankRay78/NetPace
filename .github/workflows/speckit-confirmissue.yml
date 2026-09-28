@@ -101,6 +101,14 @@ jobs:
       # itself — it needs the numeric comment id, which the GraphQL-backed `--json comments` does
       # not give — so the sentinel reaches it intact through its own call and the injected context
       # is not load-bearing. See CIR decision 3.
+      #
+      # Denied tool calls do not fail this step, and show_full_output: false logs only their
+      # count (`permission_denials_count`), not which calls were refused. To see them, reproduce
+      # locally with the same Claude Code version and read `permission_denials`:
+      #   claude -p '<task>' --permission-mode default --setting-sources project \
+      #     --allowedTools '<the claude_args list below>' --output-format json
+      # --setting-sources project keeps local user hooks and plugins out of the result. See CIR
+      # decision 12 for the two refusals this found.
       - name: Fold the answered review into the issue body
         if: steps.guard.outputs.already_confirmed != 'true'
         uses: anthropics/claude-code-action@v1
