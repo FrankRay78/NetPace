@@ -110,6 +110,8 @@ Follows the generic *verify gate*. NetPace's specifics:
 
 Follows the generic *study pass*. Records go to `docs/study/<N>.md`; the four levels are defined in [study/README.md](study/README.md). Each run commits `Refs #<N>: record study findings` on the feature branch.
 
+`/study-review` reads the records back periodically. It scores recurring findings and offers numbered fixes to implement or raise as issues. It keeps no state and never edits a record.
+
 ## Permissions
 
 The mechanism is in the generic *Permissions and unattended runs*. NetPace's rule changes:
