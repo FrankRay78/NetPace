@@ -59,7 +59,7 @@ jobs:
       # A workflow step, not a prompt instruction: a model can skip an instruction. Narrower than
       # the command's own "already confirmed" stop, which fires on the decisions section *or* the
       # label; this reads the label only. What it buys is not a green run — a genuinely confirmed
-      # issue passes all four post-conditions below without it — but a skipped twenty-minute agent
+      # issue passes all five post-conditions below without it — but a skipped twenty-minute agent
       # turn, and untrusted issue content kept away from an `issues: write` token.
       # The two reads are live rather than snapshotted because a local /speckit.confirmissue is a
       # second writer to the same state.
