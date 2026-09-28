@@ -7,7 +7,7 @@
 # dedicated clone to the latest main, and runs scripts/chain.sh against it there. It ends with
 # either an open pull request (chain.sh's last stage) or the issue labelled `parked` with a
 # comment naming the failed stage, the log and the kept branch. It never merges, and it never
-# deletes or pushes anything on GitHub.
+# itself deletes or pushes anything on GitHub; only the chain's /raise-pr stage pushes.
 #
 # WHY. chain.sh carries one named issue to a pull request, but someone still has to pick the
 # issue, and return the checkout to a clean main afterwards — the chain leaves its feature branch
@@ -26,7 +26,7 @@
 # (*The chain runner*). Unit files: scripts/systemd/. Tests: scripts/chain-next.tests.sh.
 #
 # Overrides: CHAIN_NEXT_CLONE is the dedicated clone (default ~/Repos/NetPace-runner).
-# CHAIN_NEXT_STATE_DIR holds logs/ and the lock (default ~/.local/state/netpace-chain).
+# CHAIN_NEXT_STATE_DIR holds logs/ and the lock (default ${XDG_STATE_HOME:-~/.local/state}/netpace-chain).
 #
 # The whole body is one function, called on the last line. The reset rewrites this very file
 # when main has changed it, and bash reads a script as it runs, so without that the rest of the
@@ -64,14 +64,15 @@ select_issue() {
   for n in $candidates; do
     blockers=$(gh api --paginate "repos/{owner}/{repo}/issues/$n/dependencies/blocked_by") \
       || die "refused — could not read what blocks #$n; nothing selected."
-    open=$(jq -s '[.[][] | select(.state == "open")] | length' <<<"$blockers" 2>/dev/null) \
+    open=$(jq -s '[.[][] | select(.state == "open")] | length' <<<"$blockers") \
       || die "refused — the blocker list for #$n was unreadable; nothing selected."
     if [ "$open" = 0 ]; then echo "$n"; return 0; fi
   done
 }
 
 # free_name <prefix> <exists-command…> — <prefix>, or <prefix>-2, -3… — the first the command
-# reports as not existing. Two attempts at one issue within a second would otherwise collide.
+# reports as not existing. Several branches set aside in one firing, or two attempts at one issue
+# within a second, would otherwise collide.
 free_name() {
   local base=$1 name=$1 i=1; shift
   while "$@" "$name"; do i=$((i+1)); name="$base-$i"; done
@@ -93,14 +94,15 @@ keep_attempts() {
   done
 }
 
-# reset_clone — the latest main, nothing else: no local change, no untracked or ignored file, and
-# no local branch whose upstream is gone (merged and deleted on GitHub).
+# reset_clone — the latest main: no local change, no untracked or ignored file, and no local
+# feature branch whose upstream is gone (merged and deleted on GitHub). attempt/* branches stay,
+# even when a pushed twin they still track has been removed by hand.
 reset_clone() {
   local gone
   git fetch -q --prune origin || die "could not fetch origin in $CLONE; nothing was run."
   git checkout -q -f -B main origin/main || die "could not check out origin/main in $CLONE; nothing was run."
   git clean -q -fdx || die "could not clean $CLONE; nothing was run."
-  for gone in $(git for-each-ref --format='%(refname:short) %(upstream:track)' refs/heads | awk '$2 == "[gone]" {print $1}'); do
+  for gone in $(git for-each-ref --format='%(refname:short) %(upstream:track)' refs/heads/feature | awk '$2 == "[gone]" {print $1}'); do
     git branch -q -D "$gone" || say "could not delete $gone, whose upstream is gone; continuing."
   done
 }
@@ -134,16 +136,14 @@ park() {
 }
 
 main() {
-  local dry_run=0 n log rc kept
-  case "${1:-}" in
-    --dry-run) dry_run=1; shift ;;
-  esac
+  local dry_run=0 n log rc kept attempts top git_dir common_dir
+  if [ "${1:-}" = --dry-run ]; then dry_run=1; shift; fi
   if [ $# -ne 0 ]; then usage; exit 1; fi
 
   CLONE=${CHAIN_NEXT_CLONE:-$HOME/Repos/NetPace-runner}
   STATE=${CHAIN_NEXT_STATE_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/netpace-chain}
 
-  for tool in git gh jq flock; do
+  for tool in git gh jq flock claude timeout; do
     command -v "$tool" >/dev/null 2>&1 || die "refused — $tool is not on PATH; nothing was run."
   done
 
@@ -152,7 +152,6 @@ main() {
   # checkout they belong to), and marked.
   [ -d "$CLONE" ] || die "refused — the runner's clone $CLONE does not exist; see docs/agentic-workflow.md (The chain runner)."
   cd "$CLONE" || die "refused — cannot enter $CLONE."
-  local top git_dir common_dir
   top=$(git rev-parse --show-toplevel 2>/dev/null) || die "refused — $CLONE is not a git repository."
   git_dir=$(cd "$(git rev-parse --git-dir)" && pwd -P)
   common_dir=$(cd "$(git rev-parse --git-common-dir)" && pwd -P)
@@ -168,8 +167,9 @@ main() {
   fi
 
   mkdir -p "$STATE/logs" || die "could not create $STATE/logs."
-  # One chain at a time. The timer never starts the service twice, but a manual firing could
-  # overlap it; a firing that finds the lock held is not an error, only a no-op.
+  # One chain at a time. The timer never starts the service twice, but running the script
+  # directly, outside systemd, could overlap it; a firing that finds the lock held is not an
+  # error, only a no-op.
   exec 9>>"$STATE/lock" || die "could not open the lock $STATE/lock."
   if ! flock -n 9; then say "a run is already in progress; nothing started."; exit 0; fi
 
@@ -179,10 +179,11 @@ main() {
   STAMP=$(date -u +%Y%m%dT%H%M%SZ)
   say "building #$n in $CLONE"
   reset_clone
-  for kept in $(keep_attempts "$n"); do say "kept an earlier attempt at #$n as $kept"; done
+  attempts=$(keep_attempts "$n") || die "could not set aside an earlier attempt at #$n; nothing was run."
+  for kept in $attempts; do say "kept an earlier attempt at #$n as $kept"; done
   log=$(free_name "$STATE/logs/$n-$STAMP" log_exists).log
-  # Started from the freshly reset main, so it is the chain.sh main holds now. Its stdin is closed
-  # and its descriptor 9 too, so no stage can hold the lock after the firing ends.
+  # Started from the freshly reset main, so it is the chain.sh main holds now. Its stdin is
+  # /dev/null and its descriptor 9 is closed, so no stage can hold the lock after the firing ends.
   bash scripts/chain.sh "$n" </dev/null 9>&- 2>&1 | tee "$log"
   rc=${PIPESTATUS[0]}
   if [ "$rc" = 0 ]; then

@@ -184,9 +184,9 @@ Manual checks, with a real model:
 `scripts/chain-next.sh` works through the `ready` backlog without anyone starting the chain. A systemd user timer fires it every 15 minutes on the build machine. Each firing picks the next eligible issue, resets a clone kept only for the runner to the latest `main`, and runs `scripts/chain.sh` against the issue there. It ends with an open pull request, or with the issue labelled `parked` and a comment saying why. It never merges, and it never pushes or deletes anything on GitHub itself; only the chain's own `/raise-pr` pushes.
 
 - **Selection.** An issue is eligible when it is open, labelled `ready`, not labelled `parked`, has no open pull request linked to it (one that closes it, or whose branch is `feature/<N>-…`), and has no open blocking issue (GitHub's native issue dependencies). The runner takes the lowest-numbered one; the issue body plays no part. Confirming an issue with `/speckit.confirmissue` therefore queues it, and merging a blocker's pull request unblocks the next issue in time for the next firing.
-- **One run at a time.** A firing while a run is in progress starts nothing and exits 0. systemd never starts an active service twice, and the runner also holds a lock, so a manual firing cannot overlap the timer's.
-- **A clean start in its own clone.** Before each run the clone is fetched, forced onto `origin/main`, and cleaned of every untracked and ignored file (`bin/`, `obj/` and `.claude/scratch/` included), so every run builds from scratch and uses the harness `main` holds now. Local branches whose upstream was deleted on GitHub are removed. The reset is destructive, so the runner refuses any directory that is not a full clone marked `chain-next.dedicated`, including a worktree of one. It changes no other checkout.
-- **Nothing to do is not an error.** With nothing eligible, a firing changes nothing and exits 0. A GitHub query that fails or returns something unreadable selects nothing and exits 1 (fail closed), and the next firing tries again.
+- **One run at a time.** A firing while a run is in progress starts nothing and exits 0. systemd never starts an active service twice, and the runner also holds a lock, so running the script directly cannot overlap the timer's run either.
+- **A clean start in its own clone.** Before each run the clone is fetched, forced onto `origin/main`, and cleaned of every untracked and ignored file (`bin/`, `obj/` and `.claude/scratch/` included), so every run builds from scratch and uses the harness `main` holds now. Local `feature/*` branches whose upstream was deleted on GitHub are removed; `attempt/*` branches are not. The reset is destructive, so the runner refuses any directory that is not a full clone marked `chain-next.dedicated`, including a worktree of one. It changes no other checkout.
+- **Nothing to do is not an error.** With nothing eligible, a firing changes nothing and exits 0. A GitHub query that fails or returns something unreadable selects nothing and exits 1 (fail closed), and the next firing tries again. So does a machine fault found before the chain starts (origin unreachable, a required tool missing from `PATH`): the issue is not parked for it.
 - **Failure parks the issue.** When the chain fails, the runner adds the `parked` label and comments with the failed stage and position (`[3/5] verify`), the reason from the chain's closing line, and the log path. The attempt's local `feature/<N>-*` branch is renamed to `attempt/<N>-<timestamp>` and named in the comment. The commits are kept for diagnosis, and the next `/build` can create the issue's branch afresh. Uncommitted changes are lost at the next reset. If `/raise-pr` pushed the branch but opened no pull request, the comment names that remote branch: remove or reuse it by hand before un-parking, or the next push is rejected. A parked issue is never retried automatically.
 - **Report mode.** `scripts/chain-next.sh --dry-run` names the issue the next firing would build (or says nothing is eligible). It only reads GitHub: no reset, no lock, no log, no label and no comment.
 - **Retention.** Logs and `attempt/*` branches are kept indefinitely; nothing prunes them.
@@ -210,11 +210,11 @@ Manual checks, with a real model:
 
    ```bash
    systemctl --user daemon-reload
-   scripts/chain-next.sh --dry-run    # with CHAIN_NEXT_CLONE set if not the default; confirms selection and gh access
+   scripts/chain-next.sh --dry-run # with CHAIN_NEXT_CLONE set if not the default; confirms selection and gh access
    systemctl --user enable --now netpace-chain-next.timer
    ```
 
-**Configuration.** `CHAIN_NEXT_CLONE` is the dedicated clone (default `~/Repos/NetPace-runner`). `CHAIN_NEXT_STATE_DIR` holds `logs/` and the lock, outside the clone so the clean cannot delete them (default `~/.local/state/netpace-chain`). `CHAIN_MODEL` and `CHAIN_STAGE_TIMEOUT` pass through to the chain.
+**Configuration.** `CHAIN_NEXT_CLONE` is the dedicated clone (default `~/Repos/NetPace-runner`). `CHAIN_NEXT_STATE_DIR` holds `logs/` and the lock, outside the clone so the clean cannot delete them (default `${XDG_STATE_HOME:-~/.local/state}/netpace-chain`). `CHAIN_MODEL` and `CHAIN_STAGE_TIMEOUT` pass through to the chain.
 
 **Operating it:**
 
@@ -227,12 +227,12 @@ Manual checks, with a real model:
 | Fire once now | `systemctl --user start --no-block netpace-chain-next.service` |
 | See status and the next firing | `systemctl --user status netpace-chain-next.service` and `systemctl --user list-timers netpace-chain-next.timer` |
 | Read the runner's own output | `journalctl --user -u netpace-chain-next.service` |
-| Read one run's full chain output | `~/.local/state/netpace-chain/logs/<N>-<timestamp>.log` |
+| Read one run's full chain output | `logs/<N>-<timestamp>.log` in the state directory (see *Configuration*) |
 | Retry a parked issue | Remove its `parked` label; the next firing picks it up |
 
-Stopping the service mid-run ends the chain without parking the issue. The next firing keeps the interrupted branch as an `attempt/*` branch and builds the issue again.
+Stopping the service mid-run ends the chain without parking the issue. The next firing that selects the issue keeps the interrupted branch as an `attempt/*` branch and builds the issue again.
 
-**Tests.** `scripts/chain-next.tests.sh` covers selection (closed, not-ready, parked, blocked and already-raised issues), report mode, a clean start after a previous run, a reset that rewrites the runner's own source, parking and un-parking, kept attempt branches, overlapping firings, back-to-back runs, fail-closed queries and the dedicated-clone guard. It uses a stub `gh` and a stub `chain.sh` in throwaway repositories, so no model or GitHub call is made. Run it after any edit to the runner.
+**Tests.** `scripts/chain-next.tests.sh` covers selection (closed, not-ready, parked, blocked and already-raised issues), report mode, a clean start after a previous run, a reset that rewrites the runner's own source, parking and un-parking, kept attempt branches (including one whose pushed twin was removed, and one that cannot be set aside), overlapping firings, back-to-back runs, fail-closed queries (each lookup failing on its own), machine faults that park nothing and the dedicated-clone guard. It uses a stub `gh` and a stub `chain.sh` in throwaway repositories, so no model or GitHub call is made. Run it after any edit to the runner.
 
 Manual checks, on the build machine:
 

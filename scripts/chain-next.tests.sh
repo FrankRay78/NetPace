@@ -9,8 +9,9 @@
 # dedicated clone under a mktemp sandbox — the shape the systemd unit runs it in — so your
 # checkout is never touched. Exits non-zero on any failure. Run it after any edit to the runner.
 #
-# The stub chain stands in for chain.sh and, like /build, refuses to start anywhere but a clean
-# main with no feature/<N>-* branch already present. That is what makes "the second run starts
+# The stub chain stands in for chain.sh: it refuses to start anywhere but a clean main and,
+# standing in for /build's stop on an uninspected earlier branch, fails at build when a
+# feature/<N>-* branch is already present. That is what makes "the second run starts
 # cleanly" and "an un-parked issue is built from scratch" observable: a runner that got the
 # starting point wrong would see the stub refuse.
 #
@@ -33,13 +34,13 @@ unset CHAIN_NEXT_CLONE CHAIN_NEXT_STATE_DIR
 # issues.json as [{number, state, labels:[names]}] and are filtered by whatever --state and
 # --label the runner asks for, so a runner that forgot to ask would see closed or unready ones.
 # Open pull requests live in prs.json; blockers in blocked-<n>.json. A gh-fail file makes every
-# call fail, as an outage would. Label and comment writes are applied to the stub's own state,
+# call fail, as an outage would; gh-fail-<command> fails only that command (gh-fail-pr, gh-fail-api). Label and comment writes are applied to the stub's own state,
 # so a parked issue stays parked for the next firing.
 mkdir -p "$SB/bin"
 cat > "$SB/bin/gh" <<'STUB'
 #!/usr/bin/env bash
 { for a in "$@"; do printf '%s|' "$a"; done; printf '\n'; } >> "$STUB_DIR/gh-log"
-if [ -f "$STUB_DIR/gh-fail" ]; then echo "gh: HTTP 502: Bad Gateway" >&2; exit 1; fi
+if [ -f "$STUB_DIR/gh-fail" ] || [ -f "$STUB_DIR/gh-fail-$1" ]; then echo "gh: HTTP 502: Bad Gateway" >&2; exit 1; fi
 args=("$@")
 opt() { local i; for ((i = 0; i < ${#args[@]}; i++)); do [ "${args[i]}" = "$1" ] && { printf '%s' "${args[i+1]}"; return; }; done; }
 case "$1 $2" in
@@ -71,6 +72,9 @@ case "$1 $2" in
 esac
 STUB
 chmod +x "$SB/bin/gh"
+# chain.sh needs claude; the stub chain never calls it, but the runner checks it is there.
+printf '#!/bin/sh\nexit 0\n' > "$SB/bin/claude"
+chmod +x "$SB/bin/claude"
 
 # The stub chain, committed to each case's origin as scripts/chain.sh so the runner meets it the
 # way it meets the real one: as whatever main holds after the reset. It records the starting
@@ -95,7 +99,7 @@ git commit -q --allow-empty -m "test: red phase for #$n"
 mkdir -p obj && echo build-output > obj/out.txt && echo half-written > "wip-$n.txt"
 echo "chain: [1/5] build — ok"
 if [ -f "$STUB_DIR/push-then-fail-$n" ]; then
-  git push -q origin "feature/$n-work"
+  git push -q -u origin "feature/$n-work"
   echo "chain: FAILED at [5/5] raise-pr — gh pr create failed"; exit 1
 fi
 if [ -f "$STUB_DIR/fail-$n" ]; then
@@ -103,7 +107,7 @@ if [ -f "$STUB_DIR/fail-$n" ]; then
   echo "chain: no later stage ran; reopen that stage with \`claude --resume sess-3\`."
   exit 1
 fi
-git push -q origin "feature/$n-work"
+git push -q -u origin "feature/$n-work"
 prs="$STUB_DIR/prs.json"; [ -f "$prs" ] || echo '[]' > "$prs"
 jq --argjson n "$n" '. += [{number: (100 + $n), headRefName: "feature/\($n)-work", closingIssuesReferences: [{number: $n}]}]' \
   "$prs" > "$prs.tmp" && mv "$prs.tmp" "$prs"
@@ -270,6 +274,19 @@ issues '[{"number":8,"state":"OPEN","labels":["ready"]}]'
 touch "$STUB_DIR/push-then-fail-8"
 fire
 ok "a branch pushed without a pull request is named in the comment and left on GitHub" '[ "$RC" != 0 ] && grep -qF "feature/8-work" "$STUB_DIR/comment-8.txt" && git -C "$ORIGIN" rev-parse -q --verify refs/heads/feature/8-work >/dev/null'
+kept=$(git -C "$CLONE" for-each-ref --format='%(refname:short)' 'refs/heads/attempt/8-*')
+# As the comment advises, someone removes the pushed branch by hand; then another issue is built.
+git -C "$ORIGIN" branch -D feature/8-work >/dev/null
+issues '[{"number":8,"state":"OPEN","labels":["ready","parked"]},{"number":9,"state":"OPEN","labels":["ready"]}]'
+fire
+ok "the kept attempt survives its pushed branch being removed from GitHub" '[ "$RC" = 0 ] && [ -n "$kept" ] && git -C "$CLONE" rev-parse -q --verify "refs/heads/$kept" >/dev/null'
+new_case
+issues '[{"number":8,"state":"OPEN","labels":["ready"]}]'
+# A leftover branch that cannot be set aside: a branch named `attempt` blocks every attempt/* name.
+git -C "$CLONE" branch -q feature/8-work
+git -C "$CLONE" branch -q attempt
+fire
+ok "a leftover branch that cannot be set aside stops the firing before any chain, parking nothing" '[ "$RC" != 0 ] && [ -z "$(chain_calls)" ] && [ "$(labels_of 8)" = ready ]'
 new_case
 issues '[{"number":8,"state":"OPEN","labels":["ready"]}]'
 # A run killed mid-way (a reboot, a stopped service) leaves its branch but parks nothing.
@@ -331,6 +348,33 @@ issues '[{"number":12,"state":"OPEN","labels":["ready"]}]'
 printf 'not json' > "$STUB_DIR/blocked-12.json"
 fire
 ok "an unreadable blocker list selects nothing rather than assuming unblocked" '[ "$RC" != 0 ] && [ -z "$(chain_calls)" ]'
+new_case
+issues '[{"number":12,"state":"OPEN","labels":["ready"]}]'
+touch "$STUB_DIR/gh-fail-api"
+fire
+ok "a failed blocker lookup selects nothing rather than assuming unblocked" '[ "$RC" != 0 ] && [ -z "$(chain_calls)" ]'
+new_case
+issues '[{"number":12,"state":"OPEN","labels":["ready"]}]'
+echo '[{"number":112,"headRefName":"feature/12-work","closingIssuesReferences":[{"number":12}]}]' > "$STUB_DIR/prs.json"
+touch "$STUB_DIR/gh-fail-pr"
+fire
+ok "a failed pull request lookup selects nothing rather than assuming none is open" '[ "$RC" != 0 ] && [ -z "$(chain_calls)" ]'
+
+echo "A machine fault is not blamed on the issue:"
+new_case
+issues '[{"number":12,"state":"OPEN","labels":["ready"]}]'
+mv "$ORIGIN" "$ORIGIN.away"
+fire
+ok "an unreachable origin starts no chain and parks nothing" '[ "$RC" != 0 ] && [ -z "$(chain_calls)" ] && [ "$(labels_of 12)" = ready ]'
+mv "$ORIGIN.away" "$ORIGIN"
+fire
+ok "and the next firing builds the issue" '[ "$RC" = 0 ] && [ "$(chain_calls)" = 12 ]'
+issues '[{"number":12,"state":"OPEN","labels":["ready"]},{"number":13,"state":"OPEN","labels":["ready"]}]'
+# Every PATH entry that holds a claude, dropped, with the stub gh kept.
+mkdir -p "$SB/noclaude" && ln -sf "$SB/bin/gh" "$SB/noclaude/gh"
+noclaude="$SB/noclaude:$(tr : '\n' <<<"$PATH" | while read -r d; do [ -x "$d/claude" ] || printf '%s:' "$d"; done)"
+OUTPUT="$(cd "$SB" && CHAIN_NEXT_CLONE="$CLONE" CHAIN_NEXT_STATE_DIR="$STATE" PATH="$noclaude" bash "$CLONE/scripts/chain-next.sh" </dev/null 2>&1)"; RC=$?
+ok "claude missing from PATH starts no chain, parks nothing and says so" '[ "$RC" != 0 ] && grep -qF claude <<<"$OUTPUT" && [ "$(chain_calls)" = 12 ] && [ "$(labels_of 13)" = ready ]'
 
 echo "Only its own checkout is ever touched:"
 new_case

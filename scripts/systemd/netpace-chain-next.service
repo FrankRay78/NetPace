@@ -1,9 +1,10 @@
 # The chain runner: one firing of scripts/chain-next.sh. Started by netpace-chain-next.timer.
 # Install, operate and diagnose: docs/agentic-workflow.md (The chain runner).
 #
-# Copy to ~/.config/systemd/user/ and edit the two paths below to match the build machine: user
-# units start with a minimal environment, so PATH must name where claude, dotnet, gh, jq, git,
-# flock and timeout live.
+# Copy to ~/.config/systemd/user/ and edit the three machine-specific lines below
+# (CHAIN_NEXT_CLONE, PATH and the ExecStart path) to match the build machine: user units start
+# with a minimal environment, so PATH must name where claude, dotnet, gh, jq, git, flock and
+# timeout live.
 
 [Unit]
 Description=NetPace chain runner: build the next ready issue to a pull request
