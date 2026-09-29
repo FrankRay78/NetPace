@@ -3,7 +3,7 @@
 # no-skipped-tests.tests.sh — standalone matrix for no-skipped-tests.sh (issue #91 B12).
 #
 # The gate reads the filesystem (it greps `$REPO_ROOT/src`), so a synthetic payload alone cannot
-# drive it. Like its fellow filesystem-reading gates green-gate.sh and traceability-gate.sh, it
+# drive it. Like its fellow filesystem-reading gate green-gate.sh, it
 # honours `CLAUDE_PROJECT_DIR`, so every case points it at a throwaway sandbox tree and asserts on
 # the real, unmodified gate. No fixture ever touches the repo's own src/.
 #
