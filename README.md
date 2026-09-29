@@ -207,11 +207,3 @@ But please **don't be offended** if I close or delete issues as I see fit.
 
 ## License
 Distributed under the MIT license. See `LICENSE` for more information.
-
-<br />
-
-
-## Contact
-Frank Ray - [LinkedIn](https://www.linkedin.com/in/frankray/) - [Better Software UK](https://bettersoftware.uk)
-
-GitHub: [https://github.com/FrankRay78/NetPace](https://github.com/FrankRay78/NetPace)
