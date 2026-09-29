@@ -1,21 +1,29 @@
 <!--
 Sync Impact Report:
-Version: 1.5.0 → 1.6.0
-Bump rationale: MINOR — adds a permissive-licensing constraint to Principle VI
-(Minimal Dependencies): runtime dependencies MUST be MIT/Apache-2.0/BSD, and copyleft
-(GPL/LGPL/AGPL) is prohibited without documented justification and maintainer sign-off.
-This materially expands existing dependency guidance with a new obligation rather than
-removing or inverting a principle, so it is MINOR, not a governance redefinition (MAJOR).
+Version: 1.8.1 → 2.0.0
+Bump rationale: MAJOR — Principle VIII (AC-to-Test Traceability) is redefined. Its
+traceability chain previously ran through a separate specification and test-plan document,
+a route produced only by the retired multi-stage planning pipeline. The chain is redefined
+to run from a `**Scenario:**` label in the GitHub issue straight to a matching `// SCENARIO:`
+marker in the test, and the label becomes conditional rather than mandatory.
+Redefining a principle is MAJOR under the Amendment Process, not a clarification.
 
-Modified Principles: VI — Minimal Dependencies (permissive-licensing bullet + rationale)
+Modified Principles: VIII — AC-to-Test Traceability (chain redefined, label made conditional);
+  IX — Behavioural Specification (housekeeping bullet and downstream references repointed)
 Modified Sections: N/A
 Added Sections: N/A
 Removed Sections: N/A
+Relocated: this file now lives at `docs/constitution.md`, alongside the rest of the project docs.
+Maintainer approval for the MAJOR amendment: issue #316.
 Downstream documents reviewed (per Amendment Process clause 4):
-  ✅ CLAUDE.md — the dependency-justification bullet is adjacent but unaffected; it constrains
-     whether a dep is added, not its licence, so the new constraint is complementary, not a conflict.
-  ✅ docs/conventions/ — no dependency-licensing guidance to update; the constitution is the source.
-Follow-up TODOs: None
+  ✅ CLAUDE.md — `@` import repointed to the new path; *Detailed References* gains
+     `docs/conventions/testing.md`, the new home for the test-authoring guidance §IX cites.
+  ✅ docs/conventions/testing.md — created by the same change; carries the outcome-not-mechanism
+     avoid/prefer guidance for tests that §IX's downstream-references note now points at.
+  ✅ .claude/commands/draftissue.md — retains the AC-drafting avoid/prefer guidance §IX cites;
+     renamed by the same change, so the citation is repathed.
+  ✅ .claude/commands/build.md — writes the `// SCENARIO:` markers §VIII now describes; its
+     own rule already matches the redefined chain and is repointed at this principle.
 -->
 
 # NetPace Constitution
@@ -123,17 +131,18 @@ All releases MUST follow semantic versioning (MAJOR.MINOR.PATCH):
 
 ### VIII. AC-to-Test Traceability
 
-All acceptance scenarios in `spec.md` MUST carry a `**Scenario:**` label:
+Where a GitHub issue's acceptance scenario carries a `**Scenario:**` label, at least one test MUST carry a `// SCENARIO:` marker naming it exactly:
 
 ```
-**Scenario: [Descriptive name]**
-Given [state], When [action], Then [outcome]
+issue:  **Scenario: Server list is screened before measuring**
+test:   // SCENARIO: Server list is screened before measuring
 ```
 
-Label names MUST match the `#### Scenario:` headers in `test-plan.md` exactly —
-they are the traceability key linking acceptance criteria → test scenarios → test code.
+The label is optional — an issue may carry none, and that is not a defect. Where one is present the matching marker is mandatory: the label-to-marker pair is the traceability key linking an acceptance criterion to the test that verifies it. Names MUST match exactly; a marker naming no label, or a label with no marker, traces nothing.
 
-**Rationale**: Consistent labels enable `/speckit.testchecklist` to verify end-to-end coverage automatically. Violations are flagged CRITICAL by `/speckit.analyze`.
+Markers MUST NOT be invented. A `// SCENARIO:` marker with no corresponding issue label looks like a traceability key and is worse than no marker at all.
+
+**Rationale**: The issue is the specification, so traceability runs directly from it to the test — one hop, verifiable by searching the issue body against the test files. Making the label conditional keeps lightweight issues cheap to write while preserving an exact, checkable link wherever an author chose to draw one.
 
 ### IX. Behavioural Specification (NON-NEGOTIABLE)
 
@@ -145,12 +154,12 @@ Acceptance criteria and tests MUST describe outcomes an outside observer can ver
 
 - ACs MUST be phrased as user-observable outcomes. Mechanism details MUST NOT appear in ACs, including: CSS classes, DOM IDs or element types, animation specifics, font names/weights/colours, and pixel measurements; HTTP methods, endpoint paths, and status codes; response/payload schemas (JSON keys, field names); database tables, collections, columns, or indexes; algorithm or protocol choices (hash functions, signature schemes, encryption modes); framework or library picks; storage technology; specific URLs or ports; timing values (Ns / Nms) and polling cadences; exact error message strings; and log line formats or log levels.
 - Tests MUST verify the AC as written, not the chosen implementation. A test that would fail under a different reasonable implementation of the same AC is testing mechanism, not outcome.
-- Project housekeeping (project exists, sln updated, scaffolding created) belongs in `tasks.md`, not in ACs.
+- Project housekeeping (project exists, sln updated, scaffolding created) is not an acceptance criterion — it is a step on the way to one, and belongs in the issue's technical notes.
 - **Regression exception**: an AC or test that pins a specific mechanism is permitted only when it exists to prevent a named, previously-fixed bug. Reference the bug in the AC text, scenario name, or a one-line comment in the test so future readers understand why the coupling exists.
 
-**Rationale**: Mechanism-coupled ACs invite brittle, implementation-mirroring tests that lock the codebase to its current shape and make refactors expensive. Outcome-level ACs preserve the implementer's freedom to choose the simplest mechanism, keep the test suite meaningful through refactors, and give `/speckit.analyze` an enforceable rule rather than style guidance.
+**Rationale**: Mechanism-coupled ACs invite brittle, implementation-mirroring tests that lock the codebase to its current shape and make refactors expensive. Outcome-level ACs preserve the implementer's freedom to choose the simplest mechanism, keep the test suite meaningful through refactors, and give a reviewer an enforceable rule rather than style guidance.
 
-**Downstream references**: detailed avoid/prefer guidance lives in `.claude/commands/speckit.draftissue.md` (AC drafting) and `.claude/commands/speckit.testplan.md` (test scenario authoring). Update those in lockstep with any change to this principle.
+**Downstream references**: detailed avoid/prefer guidance lives in `.claude/commands/draftissue.md` (AC drafting) and `docs/conventions/testing.md` (test authoring). Update those in lockstep with any change to this principle.
 
 ### X. No Skipped Tests (NON-NEGOTIABLE)
 
@@ -254,4 +263,4 @@ This constitution supersedes all other development practices and guides. All dev
 - Complexity MUST be justified against simplicity principles
 - For runtime development guidance, refer to `CLAUDE.md`
 
-**Version**: 1.8.1 | **Ratified**: 2026-04-10 | **Last Amended**: 2026-09-04
+**Version**: 2.0.0 | **Ratified**: 2026-04-10 | **Last Amended**: 2026-09-29

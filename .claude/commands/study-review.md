@@ -51,7 +51,7 @@ Optional. Empty is the normal case: analyse every record. Issue numbers (`270 28
    Rows that already say a finding was flagged for `/capture-learnings`, or that name "the second occurrence of that shape", are strong clustering signals — use them.
 
 5. **Propose a fix per cluster, and check it at HEAD.**
-   - Choose where the fix belongs from the cluster's level, per the README table: Execution → a command prompt, gate or tool; Plan-spec → how issues are drafted (`speckit.draftissue.md`, `speckit.reviewissue.md`); Codebase → the code itself; Environment → the environment, or how the harness depends on it. Prefer a deterministic mechanism (hook, CI check, test, script) over a prompt rule, and a prompt rule over a memory entry — the same order as `/capture-learnings`.
+   - Choose where the fix belongs from the cluster's level, per the README table: Execution → a command prompt, gate or tool; Plan-spec → how issues are drafted (`draftissue.md`, `reviewissue.md`); Codebase → the code itself; Environment → the environment, or how the harness depends on it. Prefer a deterministic mechanism (hook, CI check, test, script) over a prompt rule, and a prompt rule over a memory entry — the same order as `/capture-learnings`.
    - Name the specific file the fix would change, and **read it**. If the gap has already been closed at HEAD, drop the cluster and list it under *Already addressed at HEAD* with the file and line that closed it. Do not propose a fix to text you have not read.
    - **Find the existing mitigation.** Search `CLAUDE.md`, the constitution, `.claude/memory/`, `.claude/commands/`, `.claude/hooks/` and `.github/workflows/` for a rule or gate that already targets the cluster's mistake. It counts only if it targets the *same* mistake, not a neighbouring one, and you must quote the line that does; a thematic resemblance is not a mitigation. If one exists, date it (`git log --diff-filter=A --format=%aI -- <file> | tail -1`, or the commit that added the rule) and compare with the date each cluster row's study file gained that row (`git log -S '<distinctive phrase>' --format=%aI -- docs/study/<N>.md | tail -1`). If any row postdates the mitigation, the cluster is **mitigation failed**: name the mitigation, and propose a fix on a stronger tier than it — a prompt rule over a failed memory entry, a deterministic gate over a failed prompt rule. Never propose the same tier again — unless no stronger tier is practical (there is, for instance, no deterministic check of issue quality). Then say so in the Mitigation line, propose a more specific rule on the same tier, and route it as **Issue**, since whether that is enough is the invoker's call.
    - **Merge proposals that edit the same place.** Two clusters whose fixes change the same section of the same file become one proposal, listing both clusters' rows.
@@ -112,7 +112,7 @@ Optional. Empty is the normal case: analyse every record. Issue numbers (`270 28
 
    Score <s> (Recurrence <R> × Cost <C>) from `/study-review`; existing mitigation: <none, or the rule and whether it failed>.
 
-   Brief only — run `/speckit.draftissue #<this issue>` to shape it before `/build`.
+   Brief only — run `/draftissue #<this issue>` to shape it before `/build`.
    ```
 
    **Implement (`i`)** — only when at least one pick is `i`:
