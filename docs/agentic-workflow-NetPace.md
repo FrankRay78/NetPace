@@ -126,6 +126,8 @@ The mechanism is in the generic *Permissions and unattended runs*. NetPace's rul
 
 Why `scripts/chain.sh` opens the PR without a pause: [CIR](change-intent-records/2026-09-14-chain-raises-pr-unattended.md).
 
+The chain runner (`scripts/chain-next.sh`, generic *The chain runner*) runs on the build VPS as a systemd user timer, with lingering already enabled for the build user. Its dedicated clone is `~/Repos/NetPace-runner`, cloned from `https://github.com/FrankRay78/NetPace.git`, and its logs are in `~/.local/state/netpace-chain/logs/`. The shipped unit files work there unedited. `ready` is the only opt-in, so confirming an issue queues it. There is no separate queue label, and the runner never merges. It supersedes the dispatcher proposed in #266.
+
 ## Spec-kit
 
 Pinned at **0.12.10.dev0** (as recorded in `.specify/init-options.json` and `.specify/integration.json`), initialised `--script sh`. Stock commands are invoked as the hyphenated `/speckit-*` skills (e.g. `speckit-specify`); the dotted `speckit.*` ones are NetPace's own. Step 9's red-phase commit is `scripts/git-red-phase-commit.sh` (`.ps1` on Windows). Beyond the stock skills the spec route uses, this version installs the five `speckit-git-*` skills of the git extension, `speckit-converge` (appends unbuilt work to `tasks.md` for `/speckit.implement` to finish) and `speckit-taskstoissues` (turns `tasks.md` into dependency-ordered GitHub issues); both are guarded like the rest and sit outside the standard sequence.
