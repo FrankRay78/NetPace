@@ -7,6 +7,8 @@ a route produced only by the retired multi-stage planning pipeline. The chain is
 to run from a `**Scenario:**` label in the GitHub issue straight to a matching `// SCENARIO:`
 marker in the test, and the label becomes conditional rather than mandatory.
 Redefining a principle is MAJOR under the Amendment Process, not a clarification.
+Enforcement weakens with it: the `Stop` traceability gate hook is removed, so nothing mechanical
+now checks the label-to-marker pairing — `/build` writing the markers is the only enforcement.
 
 Modified Principles: VIII — AC-to-Test Traceability (chain redefined, label made conditional);
   IX — Behavioural Specification (housekeeping bullet and downstream references repointed)
