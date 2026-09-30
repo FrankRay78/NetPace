@@ -95,7 +95,7 @@ if [ -n "$(git for-each-ref --format='%(refname)' "refs/heads/feature/$n-*")" ];
   echo "chain: FAILED at [1/5] build — feature/$n-work already exists"; exit 1
 fi
 git checkout -q -b "feature/$n-work"
-git commit -q --allow-empty -m "test: red phase for #$n"
+git commit -q --allow-empty -m "Refs #$n: stub work"
 mkdir -p obj && echo build-output > obj/out.txt && echo half-written > "wip-$n.txt"
 echo "chain: [1/5] build — ok"
 if [ -f "$STUB_DIR/push-then-fail-$n" ]; then
@@ -258,7 +258,7 @@ ok "the comment names the failed stage and its reason" 'grep -qF "verify" "$STUB
 log=$(ls "$STATE"/logs/8-*.log 2>/dev/null | head -n 1)
 ok "the comment names the log, which holds the chain's full output" '[ -n "$log" ] && grep -qF "$log" "$STUB_DIR/comment-8.txt" && grep -qF "claude --resume sess-3" "$log"'
 kept=$(git -C "$CLONE" for-each-ref --format='%(refname:short)' 'refs/heads/attempt/8-*')
-ok "the attempt's work is kept on an attempt branch, which the comment names" '[ -n "$kept" ] && grep -qF "$kept" "$STUB_DIR/comment-8.txt" && [ "$(git -C "$CLONE" log -1 --format=%s "$kept")" = "test: red phase for #8" ]'
+ok "the attempt's work is kept on an attempt branch, which the comment names" '[ -n "$kept" ] && grep -qF "$kept" "$STUB_DIR/comment-8.txt" && [ "$(git -C "$CLONE" log -1 --format=%s "$kept")" = "Refs #8: stub work" ]'
 ok "no feature branch for the issue is left behind" '[ -z "$(git -C "$CLONE" for-each-ref "refs/heads/feature/8-*")" ]'
 ok "nothing is pushed" '[ -z "$(git -C "$ORIGIN" for-each-ref refs/heads/attempt refs/heads/feature)" ]'
 fire
