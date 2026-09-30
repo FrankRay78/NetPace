@@ -47,21 +47,3 @@ PreToolUse(Bash) gate that denies `dotnet test --no-build` when it would report 
 ```bash
 .claude/hooks/green-gate.tests.sh                  # synthetic-JSON matrix — non-zero on failure
 ```
-
-## `traceability-gate.sh` — AC↔marker traceability gate (Constitution §VIII)
-
-Stop hook enforcing the two exact-match edges of the §VIII traceability chain — spec.md `**Scenario: X**` label → test-plan.md `#### Scenario: X` header → test `// SCENARIO: X` marker under `src/`. It checks the edges a machine can decide; the judgment checks (fuzzy match, mock self-satisfaction, trivially-passing bodies, undocumented-test detection) stay in `/speckit.testchecklist`.
-
-| Edge | Rule | Direction |
-|------|------|-----------|
-| **spec ⟷ test-plan** | every `**Scenario: X**` label has exactly one matching `#### Scenario: X` header, and vice versa — a repeated name on either side is flagged (the label is a unique §VIII key) | bijection |
-| **test-plan → code** | every `#### Scenario: X` header has ≥1 matching `// SCENARIO: X` marker under `src/` (generated `obj/`/`bin/` copies excluded) | coverage only |
-
-**Scope — active specs only.** The gate reads `specs/*/spec.md`. Merged features have their specs deleted (leaving only drifted markers behind), so a repo with no in-flight feature — the steady state — is a clean no-op. The test-plan→code edge is deliberately **directional**: a marker with no plan scenario is not flagged, because `src/` accumulates markers from already-merged features whose specs are gone. "Undocumented test" is a judgment left to `/speckit.testchecklist`.
-
-**Staged fail-open:** a spec still being authored never blocks. No `test-plan.md`, or a plan with no scenarios yet → no-op. Plan scenarios present but zero have a marker → pre-implementation, so the coverage edge is skipped (only the spec⟷plan edge runs). Once any scenario has a marker, all must. It is loop-guarded (`stop_hook_active`), so it nudges at most once per turn and can never hard-lock. Override: `NETPACE_SKIP_TRACEABILITY_GATE=1` (announced on stderr).
-
-```bash
-.claude/hooks/traceability-gate.sh --check [specdir]   # report + exit 1 on any mismatch (CI/manual)
-.claude/hooks/traceability-gate.tests.sh               # synthetic-fixture matrix — non-zero on failure
-```

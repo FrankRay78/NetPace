@@ -206,14 +206,3 @@ csharp_style_expression_bodied_local_functions = false:silent
 [*.verified.{txt,xml,json}]
 insert_final_newline = false
 trim_trailing_whitespace = false
-
-# Upstream spec-kit assets, restored verbatim by `specify init --here --force`. Formatting them
-# would be undone on the next upgrade, so they are deliberately out of scope for the whitespace
-# rules; their line endings are still governed by .gitattributes.
-[.specify/**]
-insert_final_newline = false
-trim_trailing_whitespace = false
-
-[.claude/skills/speckit-*/**]
-insert_final_newline = false
-trim_trailing_whitespace = false

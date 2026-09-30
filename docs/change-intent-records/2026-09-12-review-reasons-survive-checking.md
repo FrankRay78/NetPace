@@ -1,6 +1,6 @@
 # A Review Reason Survives Being Checked
 
-**Intent:** Make every factual claim in a `/speckit.reviewissue` recommendation's *Reason* true when checked against the file, command output or issue text it names — so an author accepting a recommendation from the at-a-glance table, with little reading, is not quietly settling a decision on evidence that does not exist.
+**Intent:** Make every factual claim in a `/reviewissue` recommendation's *Reason* true when checked against the file, command output or issue text it names — so an author accepting a recommendation from the at-a-glance table, with little reading, is not quietly settling a decision on evidence that does not exist.
 
 **Behaviour:**
 
@@ -11,7 +11,7 @@
 **Constraints:**
 
 - Whether a recommendation is a good default is out of scope; only the truth of the evidence behind it is checked.
-- The same prompt runs locally and in `speckit-reviewissue.yml`, whose tool allowlist is `Read`, `Glob`, `Grep`, `Write` and two `gh` commands. The rule therefore names what to check against, not a tool to check it with. One visible consequence: a Reason citing another issue or PR is checkable locally but not in the workflow, which has no `gh issue view`, so the same true claim posts as evidence from a local run and as judgement from an automated one.
+- The same prompt runs locally and in `reviewissue.yml`, whose tool allowlist is `Read`, `Glob`, `Grep`, `Write` and two `gh` commands. The rule therefore names what to check against, not a tool to check it with. One visible consequence: a Reason citing another issue or PR is checkable locally but not in the workflow, which has no `gh issue view`, so the same true claim posts as evidence from a local run and as judgement from an automated one.
 - Prompt-only change, so Principle I's configuration-and-tooling carve-out governs. As in CIR [`2026-09-12-triageable-review-comment`](2026-09-12-triageable-review-comment.md), the invariant lives in a comment composed at runtime, so it is enforced by the command's own pre-post self-check rather than a gate.
 
 **Decisions:**

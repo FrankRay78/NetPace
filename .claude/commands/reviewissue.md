@@ -1,6 +1,6 @@
-# speckit.reviewissue
+# reviewissue
 
-Review a GitHub issue before taking it into SDD — identify gaps, clarifications, and context the spec author will need, then post the review as a comment on the issue for inline answering. Re-runs of this command **edit the same comment in place** to expand any question where the author asked for more options or said "not sure" — substantive answers are left untouched for `/speckit.confirmissue` to fold into the issue body, which deletes the comment once they are folded.
+Review a GitHub issue before building it — identify gaps, clarifications, and context the implementer will need, then post the review as a comment on the issue for inline answering. Re-runs of this command **edit the same comment in place** to expand any question where the author asked for more options or said "not sure" — substantive answers are left untouched for `/confirmissue` to fold into the issue body, which deletes the comment once they are folded.
 
 ---
 
@@ -20,11 +20,11 @@ You **MUST** resolve this before proceeding. If empty, ask the user which issue 
 
 ## Purpose
 
-This command is a **pre-specification gate**. It sits *before* `/speckit.specify`.
+This command is a **pre-build gate**. It sits *before* `/build`.
 
 Its job is to read an unrefined GitHub issue, cross-reference it against the
 current codebase (architecture, existing services, test data, docs), and surface
-everything that would otherwise block or distort a specification run:
+everything that would otherwise block or distort the build:
 
 - ambiguities in scope
 - undefined semantics (matching rules, thresholds, field lists)
@@ -48,9 +48,9 @@ Use `gh issue view <number> --repo <owner/repo> --json title,body,labels,comment
 
 Check two things, in this order.
 
-**First, is the issue already confirmed?** `/speckit.confirmissue` deletes the review once it has folded the answers into the issue body, so the review's absence no longer means "never reviewed". The `ready` label is what says the issue has been through this gate.
+**First, is the issue already confirmed?** `/confirmissue` deletes the review once it has folded the answers into the issue body, so the review's absence no longer means "never reviewed". The `ready` label is what says the issue has been through this gate.
 
-- **The issue carries the `ready` label** → **already confirmed**. **Stop.** Post nothing, edit nothing, and tell the user the issue has already been through the pre-specification gate, pointing them at its `## Confirmed decisions` section — or, if there is no such section, say so plainly: the label was applied by hand, and removing it is the fix. Say how to reopen it: remove the `ready` label (`gh issue edit <number> --repo <owner/repo> --remove-label ready`) and request the review again — an issue whose scope has moved is by definition no longer ready, and with the marker gone this command treats it as a first run. Never post a second review over settled decisions: it buries the `## Confirmed decisions` section under exactly the deliberation that confirming it was meant to clear away.
+- **The issue carries the `ready` label** → **already confirmed**. **Stop.** Post nothing, edit nothing, and tell the user the issue has already been through the pre-build gate, pointing them at its `## Confirmed decisions` section — or, if there is no such section, say so plainly: the label was applied by hand, and removing it is the fix. Say how to reopen it: remove the `ready` label (`gh issue edit <number> --repo <owner/repo> --remove-label ready`) and request the review again — an issue whose scope has moved is by definition no longer ready, and with the marker gone this command treats it as a first run. Never post a second review over settled decisions: it buries the `## Confirmed decisions` section under exactly the deliberation that confirming it was meant to clear away.
 
 **Otherwise, look for an existing review comment** marked with the sentinel `<!-- speckit:review -->`. If multiple comments carry the marker, use the most recent one by creation time.
 
@@ -92,7 +92,7 @@ Each gap (in either group) must:
   gap without a recommendation forces the author to originate the answer
   from scratch, which is exactly the work this command is meant to front-load.
 
-**Raise a gap only where the issue leaves something open.** A gap exists because the issue does not determine the answer — someone taking this into SDD would have to invent it or guess. Test every candidate against the issue as it stands: if the body, its acceptance criteria, its out-of-scope list, or an existing non-review comment (step 1) already settles the point, there is no gap, however squarely a category below invites one. A category you considered and found settled produces **nothing** — no gap, no placeholder, and no commentary bullet announcing that it is fine.
+**Raise a gap only where the issue leaves something open.** A gap exists because the issue does not determine the answer — someone building this would have to invent it or guess. Test every candidate against the issue as it stands: if the body, its acceptance criteria, its out-of-scope list, or an existing non-review comment (step 1) already settles the point, there is no gap, however squarely a category below invites one. A category you considered and found settled produces **nothing** — no gap, no placeholder, and no commentary bullet announcing that it is fine.
 
 Do **not** additionally ask whether the author would contest your recommendation — that is a judgement about a person rather than about the issue, and a wrong call settles a real decision silently. Every open point stays a numbered gap with its own answer slot, however confident the recommendation is.
 
@@ -107,7 +107,7 @@ Name the kind on the gap and say in one clause what would change. Where the call
 
 **Order the gaps, then number them.** Settle the order first; numbers are assigned to the ordered list, never the reverse:
 
-1. **By group** — all Requirements gaps, then all Technical gaps, because requirements are probed before any technical question. What is load-bearing here is the *grouping*, not the sequence: `/speckit.confirmissue` routes each folded decision by the heading its gap sat under (its step 4), so consequence ordering operates *within* a group and never moves a gap across the two.
+1. **By group** — all Requirements gaps, then all Technical gaps, because requirements are probed before any technical question. What is load-bearing here is the *grouping*, not the sequence: `/confirmissue` routes each folded decision by the heading its gap sat under (its step 4), so consequence ordering operates *within* a group and never moves a gap across the two.
 2. **By consequence within the group** — every *Changes what gets built* gap comes before every *Settles a detail* gap in the same group.
 3. **Number contiguously across both groups** (1, 2, 3, … not 1a, 1b), following that order. Contiguous numbering lets the author refer to a gap by a single number in chat.
 
@@ -120,7 +120,7 @@ Numbers are assigned once, when the comment is first composed. A refine run neve
 - **Scenarios** — the 1–3 user-action / system-response flows the feature must support; missing edge scenarios (empty state, error states from the user's POV).
 - **Scope & constraints** — contradictions between stated scope and available test data / reality (e.g. "issue says X-only, but test data is mostly Y"); items in Acceptance Criteria that are project-housekeeping rather than user-observable.
 - **Semantics of user-visible behaviour** — matching rules, comparison scope, case/whitespace handling, what the user sees at boundaries.
-- **Acceptance criteria from outside** — whether existing ACs are observable from outside the implementation by a user or external test; flag project-housekeeping items (project exists, sln updated, test scaffolding) — they belong in `/speckit.tasks`.
+- **Acceptance criteria from outside** — whether existing ACs are observable from outside the implementation by a user or external test; flag project-housekeeping items (project exists, sln updated, test scaffolding) — they belong in the issue's Technical notes, not its acceptance criteria.
 - **User-visible failure modes** — what the user sees when a dependency is unreachable, slow, or rejects them; fail-open vs fail-closed *from the user's viewpoint*.
 
 **Technical gaps** — surface gaps suggested by Step 2 (codebase grounding) plus any tech shape the issue itself already commits to. Let the author set the depth: they may want extensive tech review or none. Same test as above — consider each category, raise a gap only where something is genuinely unsettled.
@@ -133,7 +133,7 @@ Numbers are assigned once, when the comment is first composed. A refine run neve
 - **Operational** — ports, migrations, docker compose entries, deploy scripts.
 - **Tech failure modes** — unreachable dependencies, rate limits, retry policy, fail-open vs fail-closed at the system level.
 
-**Commentary** — remarks that inform the author reading this review and require no answer. That is the only kind of content the section carries. No downstream command parses it: `/speckit.confirmissue` folds only the numbered gaps into the issue body, and deletes this comment — commentary included — once it has. Write it for the person who reads the review, not for someone arriving at the issue afterwards.
+**Commentary** — remarks that inform the author reading this review and require no answer. That is the only kind of content the section carries. No downstream command parses it: `/confirmissue` folds only the numbered gaps into the issue body, and deletes this comment — commentary included — once it has. Write it for the person who reads the review, not for someone arriving at the issue afterwards.
 
 **Commentary or gap?** The line is the *source* of the constraint, not its force. A fact already true of the codebase is commentary, however binding it turns out to be in practice. A choice only the author can make, or an obligation this issue would newly impose, is never commentary — record it as a numbered gap. A convention that already governs this area stays commentary even when this issue is the first work to trigger it; only an obligation with no prior basis in the codebase is a gap.
 
@@ -152,17 +152,17 @@ Write what survives as bullets, not questions:
 Structure the comment body as follows. A table lists every gap up front so the author can triage the review before reading into it, and each gap then gets an inline answer slot (`> _Answer:_`) so they can respond beneath it in a single edit.
 
 ```markdown
-## Pre-specification review — gaps & clarifications
+## Issue review — gaps & clarifications
 
 <!-- speckit:review -->
 
-Before taking this into SDD, the following points need answers. The table lists every gap and what turns on it — use it to decide where to spend your attention, then record responses inline beneath each gap.
+Before building this, the following points need answers. The table lists every gap and what turns on it — use it to decide where to spend your attention, then record responses inline beneath each gap.
 
-> If an answer slot says `not sure`, `idk`, `tbd`, `more options`, `help me`, or similar hedge (anything that means "I want help, not a decision"), re-run `/speckit.reviewissue #N` and that question will be re-framed with extra options, a worked example, and a revised recommendation. Iterate as many times as you need.
+> If an answer slot says `not sure`, `idk`, `tbd`, `more options`, `help me`, or similar hedge (anything that means "I want help, not a decision"), re-run `/reviewissue #N` and that question will be re-framed with extra options, a worked example, and a revised recommendation. Iterate as many times as you need.
 >
-> If a gap turns out to be **out of scope** for this issue, answer with `out of scope: <one-line reason>` — `/speckit.confirmissue` will record it as a redirect. There is no separate "defer" path: anything not in scope here belongs in a different issue, not parked on this one.
+> If a gap turns out to be **out of scope** for this issue, answer with `out of scope: <one-line reason>` — `/confirmissue` will record it as a redirect. There is no separate "defer" path: anything not in scope here belongs in a different issue, not parked on this one.
 >
-> When all answers are concrete, run `/speckit.confirmissue #N` to fold them into the issue body as **Confirmed decisions**. That deletes this comment — the decisions are the record from then on, and you revise one by editing its bullet.
+> When all answers are concrete, run `/confirmissue #N` to fold them into the issue body as **Confirmed decisions**. That deletes this comment — the decisions are the record from then on, and you revise one by editing its bullet.
 
 ### Gaps at a glance
 
@@ -214,7 +214,7 @@ _<consequence kind>:_ <what a different answer would change, one clause>
 
 **The at-a-glance table.** One row per gap, in the same order as the gaps themselves, spanning both groups — so the consequence column is not sorted globally: it restarts at *Changes what gets built* where the Technical group begins. Titles in the `Gap` column match each gap's own title verbatim, and the consequence cell is a compression of the gap's own consequence line, so a row and its gap are unmistakably the same thing and never say different ones. Write every `|` in a cell's content as `\|` — the column dividers stay bare — in the title cell, the consequence cell, and inside inline code spans too, because GitHub splits a row into columns on an unescaped pipe before it renders code, so `` `A | B` `` in a cell breaks the row while `` `A \| B` `` renders as `A | B`. A gap title stays free to contain `|`: its title cell differs from the gap only by that escape and still counts as verbatim. Escape nothing outside the table — gap bodies, recommendations and commentary are prose where `|` is harmless. Always emit the table, even for a single gap: the author should never have to check whether it is there.
 
-**Never use the `**N. <title>**` form in the table, and never put a `> _Answer:_` line above the first group.** `/speckit.confirmissue` parses every `**N. <title>**` block in the comment as a gap, ending at its `> _Answer:_` line (its step 2). A row imitating that shape carries no answer slot of its own, so it either hard-stops the fold — step 2 refuses to fold anything while a parsed gap looks unanswered — or takes the first real gap's answer slot as its own and corrupts the decisions that do land. Table cells carry a bare number and plain text, which matches nothing the parser looks for.
+**Never use the `**N. <title>**` form in the table, and never put a `> _Answer:_` line above the first group.** `/confirmissue` parses every `**N. <title>**` block in the comment as a gap, ending at its `> _Answer:_` line (its step 2). A row imitating that shape carries no answer slot of its own, so it either hard-stops the fold — step 2 refuses to fold anything while a parsed gap looks unanswered — or takes the first real gap's answer slot as its own and corrupts the decisions that do land. Table cells carry a bare number and plain text, which matches nothing the parser looks for.
 
 **Length bound — 120 words per gap.** Count everything from the `**N. <title>**` line through to its `> _Answer:_` slot: the consequence line, the framing, every sub-bullet, and the recommendation with its reason. Count whitespace-separated words of the prose, taking a markdown link as its link text rather than its URL. The bound applies to the gap as a whole rather than to any one part of it, and to the comment as first composed — a refine run's expansion (step 6) may exceed it, where keeping the re-framing tight is the goal rather than the ceiling.
 
@@ -268,13 +268,13 @@ After posting, mark the issue as waiting on the author:
 gh issue edit <number> --repo <owner/repo> --add-label "needs answers"
 ```
 
-`/speckit.confirmissue` removes it when it applies `ready`. Then return the comment URL and stop. Re-runs are handled by step 6.
+`/confirmissue` removes it when it applies `ready`. Then return the comment URL and stop. Re-runs are handled by step 6.
 
 ### 6. Refine an existing review comment (re-runs)
 
 When step 1 detects an existing comment with `<!-- speckit:review -->`, **do not
 post a new comment** and **do not re-do gap analysis**. The downstream
-`/speckit.confirmissue` command depends on every numbered gap (with its
+`/confirmissue` command depends on every numbered gap (with its
 `**Recommendation:**` and `> _Answer:_` lines) staying in the comment until
 it folds them into the issue body. So this step is intentionally narrow:
 its only job is to expand questions where the author asked for help.
@@ -284,10 +284,10 @@ or via the comments JSON from step 1) and walk each numbered gap. For each:
 
 | Answer state | Heuristic | Action |
 |---|---|---|
-| **Substantive** | A concrete decision (value, yes/no, chosen option, explicit "use the recommendation"). | **Leave untouched.** `/speckit.confirmissue` will fold it into the issue body. |
-| **Out of scope** | Author's answer starts with `out of scope` (or `not for this issue`, `out of scope: <reason>`, etc.). | **Leave untouched.** `/speckit.confirmissue` records this as a Pattern C redirect. There is no separate "defer" path. |
+| **Substantive** | A concrete decision (value, yes/no, chosen option, explicit "use the recommendation"). | **Leave untouched.** `/confirmissue` will fold it into the issue body. |
+| **Out of scope** | Author's answer starts with `out of scope` (or `not for this issue`, `out of scope: <reason>`, etc.). | **Leave untouched.** `/confirmissue` records this as a Pattern C redirect. There is no separate "defer" path. |
 | **Empty** | `> _Answer:_` slot is blank. | **Leave untouched.** The author hasn't tried to answer yet — re-framing now would just be noise. |
-| **Hedging / asking for help** | Author's answer matches any hedging token (case-insensitive substring): `not sure`, `unsure`, `i'm not sure`, `dunno`, `idk`, `i don't know`, `???`, lone `?`, `help me`, `help`, `more options`, `more details`, `more detail`, `give me options`, `unclear`, `tbd`, `to be decided`. This list is the canonical dictionary — `/speckit.confirmissue` uses the same one to gate the body update. | **Re-frame this gap in place.** See rules below. |
+| **Hedging / asking for help** | Author's answer matches any hedging token (case-insensitive substring): `not sure`, `unsure`, `i'm not sure`, `dunno`, `idk`, `i don't know`, `???`, lone `?`, `help me`, `help`, `more options`, `more details`, `more detail`, `give me options`, `unclear`, `tbd`, `to be decided`. This list is the canonical dictionary — `/confirmissue` uses the same one to gate the body update. | **Re-frame this gap in place.** See rules below. |
 
 Re-framing rules (hedging case only):
 
@@ -295,20 +295,20 @@ Re-framing rules (hedging case only):
 - **Preserve the author's answer text** verbatim under the `> _Answer:_` line so they can see what they wrote last time.
 - **Expand the question body** with 2–4 concrete options laid out as a sub-list, each with a one-line trade-off. Add a worked example or a pointer to a comparable existing pattern in the codebase (read the codebase again if needed — surface defaults they may not have known existed: existing constants, sibling service patterns, port allocations, etc.).
 - **Revise the `> _**Recommendation:**_` line** if the new framing changes your call. Keep the `Reason:` either tied to checkable evidence or marked as your judgement (see *Every Reason survives being checked*).
-- **After ~2 hedging iterations on the same question** with no commitment, add a final option *"This may be out of scope for the current issue — answer `out of scope: <reason>` to drop it"* and call it out in the recommendation. Do not edit the gap out yourself — leave that to the author + `/speckit.confirmissue`.
+- **After ~2 hedging iterations on the same question** with no commitment, add a final option *"This may be out of scope for the current issue — answer `out of scope: <reason>` to drop it"* and call it out in the recommendation. Do not edit the gap out yourself — leave that to the author + `/confirmissue`.
 - **Keep the gap's consequence line and its table row in step with the re-framing.** If the new framing changes that gap's title or its consequence, update both places that state it — the `_<kind>:_` line on the gap body, and its row's title and consequence cells — and nothing else in the table. Never add, remove, reorder or renumber rows: the table mirrors the posted gap order, fixed when the comment was first composed. A consequence that changes after posting can therefore leave a *Changes what gets built* gap sitting below a *Settles a detail* one; that is the accepted cost of never renumbering a review the author already refers to by number.
 - **Do not retrofit the table onto an older comment.** A comment posted before the at-a-glance table and the consequence line existed has no row to update and no kind to restate — leave it that way. A refine run re-frames the hedging gap and nothing else; it never adds a table to a comment that has none.
 - **Do not touch any other gap.** Substantive, out-of-scope, and empty answers must come through byte-for-byte, and so must every table row but the one you changed. The Commentary section is also untouched.
 
-If no gap qualifies for re-framing, **make no edit** and report that in chat (the author either still has un-answered questions, or is ready for `/speckit.confirmissue`).
+If no gap qualifies for re-framing, **make no edit** and report that in chat (the author either still has un-answered questions, or is ready for `/confirmissue`).
 
 **How to write the edit:**
 
-Write the full updated comment body to `.claude/scratch/speckit-reviewissue-body.md` with the **Write tool** (never via shell heredoc — it'll bite you on backticks). Run `mkdir -p .claude/scratch` first if the directory does not yet exist (it is git-ignored). Then:
+Write the full updated comment body to `.claude/scratch/reviewissue-body.md` with the **Write tool** (never via shell heredoc — it'll bite you on backticks). Run `mkdir -p .claude/scratch` first if the directory does not yet exist (it is git-ignored). Then:
 
 ```bash
 gh api -X PATCH repos/<owner>/<repo>/issues/comments/<id> \
-  -F body=@.claude/scratch/speckit-reviewissue-body.md
+  -F body=@.claude/scratch/reviewissue-body.md
 ```
 
 (Omit the leading `/` on the endpoint — Git Bash on Windows rewrites `/repos/...`
@@ -317,7 +317,7 @@ as a filesystem path. `gh api` accepts both forms on Linux/macOS.)
 ### 7. Do not modify the issue body
 
 Your role is to comment, not edit. The issue author answers inline in the
-comment you posted (or in a follow-up), and then runs `/speckit.confirmissue`
+comment you posted (or in a follow-up), and then runs `/confirmissue`
 when ready — that command is the one that touches the issue body.
 
 ---
@@ -339,7 +339,7 @@ Keep your own chat response short. Tailor it to the run mode:
 **Refine run:**
 - confirm the issue refined (number + title)
 - list the gap numbers that were re-framed (e.g. *re-framed Q3 and Q5*)
-- if no gaps qualified for re-framing, say so explicitly and suggest the next step — either fill in remaining empty answers, or run `/speckit.confirmissue #N` if all answers are concrete
+- if no gaps qualified for re-framing, say so explicitly and suggest the next step — either fill in remaining empty answers, or run `/confirmissue #N` if all answers are concrete
 - return the comment URL
 
 Do **not** restate the full review in chat — it lives on the issue.
@@ -349,8 +349,6 @@ Do **not** restate the full review in chat — it lives on the issue.
 ## When NOT to use this command
 
 - The issue has already been confirmed — it carries the `ready` label and a `## Confirmed decisions` section. Reopen it deliberately (step 1) if its scope has moved.
-- The issue is already well-specified and has been through `/speckit.clarify`.
-- The user wants implementation, not specification prep — that is a different
-  workflow entirely.
-- There is no GitHub issue yet — use `/speckit.specify` directly from a
-  description instead.
+- The issue is already well-specified and needs no clarification.
+- The user wants implementation, not issue refinement — that is `/build`.
+- There is no GitHub issue yet — use `/draftissue` to raise one first.

@@ -49,15 +49,13 @@ Two named exceptions, because `CLAUDE.md` requires discussion for them:
 3. **Read the issue's criteria and its labels — two independent properties.** An issue may carry either, both, or neither; do not treat them as alternatives.
 
    **What to implement — the acceptance criteria.**
-   - If the body has an `## Acceptance criteria` section, that checklist **is** the criteria. Implement every item. This is the shape `/speckit.draftissue`'s template mandates, so it is the usual case for a refined issue.
+   - If the body has an `## Acceptance criteria` section, that checklist **is** the criteria. Implement every item. This is the shape `/draftissue`'s template mandates, so it is the usual case for a refined issue.
    - Otherwise, derive the criteria from what the body actually states — the observed-vs-expected behaviour of a bug, the described capability of a request — and write them into the final report so the reading can be checked. Do not invent scope to fill a gap.
    - A `## Capability` section's scenarios describe the *flows* the feature must support. Where a checklist is also present the checklist is the fuller list and the one to satisfy; the scenarios are context for the shape of the change, not a substitute for it.
 
    **How to label the tests — `**Scenario: X**` labels.**
-   - If the body carries one or more `**Scenario: X**` labels, give each at least one test carrying a `// SCENARIO: X` marker matching the label **exactly**. This preserves the Constitution §VIII chain — issue label → test marker — with the spec/test-plan hop collapsed out, since the issue is already the spec. The labels are a convention an author may use; no command guarantees them, so their absence is normal and not a defect in the issue.
+   - If the body carries one or more `**Scenario: X**` labels, give each at least one test carrying a `// SCENARIO: X` marker matching the label **exactly**. This is the Constitution §VIII traceability chain — issue label → test marker — and §VIII is the rule this step enforces. The labels are optional; an issue may carry none, and that is normal, not a defect in the issue.
    - If there are none, add no markers. An invented label is worse than none: it looks like a traceability key and traces to nothing.
-
-   Either way, **do not create a `specs/` folder.** `/build` deliberately sits outside the spec-kit pipeline: the traceability Stop hook reads active specs only, so with none present it is a clean no-op, and `/raise-pr`'s spec-cleanup step correctly finds nothing to delete. If an issue genuinely warrants a full spec, run the spec-kit chain instead of `/build`.
 
 4. **Branch.** Off the latest main, named for the issue:
 

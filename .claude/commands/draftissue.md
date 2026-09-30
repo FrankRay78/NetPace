@@ -1,6 +1,6 @@
-# speckit.draftissue
+# draftissue
 
-Turn an unstructured feature brief into a well-formed GitHub issue, ready for `/speckit.reviewissue` and then `/speckit.specify`.
+Turn an unstructured feature brief into a well-formed GitHub issue, ready for `/reviewissue` and then `/build`.
 
 ---
 
@@ -20,9 +20,9 @@ If empty, ask the user for the brief. Do not invent one.
 
 ## Purpose
 
-Pre-issue gate. Sits *before* `/speckit.reviewissue`, which sits before `/speckit.specify`.
+Pre-issue gate. Sits *before* `/reviewissue`, which sits before `/build`.
 
-Job: take a half-formed idea, surface the decisions the author hasn't made yet, work through them collaboratively, and emit a structured GitHub issue. The aim is that when `/speckit.reviewissue` later runs against the issue, it has substantive scope, acceptance criteria, and an explicit out-of-scope list to cross-check against the codebase.
+Job: take a half-formed idea, surface the decisions the author hasn't made yet, work through them collaboratively, and emit a structured GitHub issue. The aim is that when `/reviewissue` later runs against the issue, it has substantive scope, acceptance criteria, and an explicit out-of-scope list to cross-check against the codebase.
 
 Output: a GitHub issue created via `gh`. A transient draft file is used as the editing surface during iteration; it does not survive the run.
 
@@ -72,7 +72,7 @@ Identify the ~5–10 decisions the brief leaves open. For each, present:
 
 Each decision should be answerable with a short response. The user can rubber-stamp the lean or redirect.
 
-**Recommendation quality bar:** identical to `/speckit.reviewissue` — concrete actionable defaults (a value, a library, a field name, a scope call), not "consider X". The reason cites evidence: existing convention, framework behaviour, POC posture, codebase constraint. If you genuinely have no view, say so and list options with trade-offs; don't fake confidence.
+**Recommendation quality bar:** identical to `/reviewissue` — concrete actionable defaults (a value, a library, a field name, a scope call), not "consider X". The reason cites evidence: existing convention, framework behaviour, POC posture, codebase constraint. If you genuinely have no view, say so and list options with trade-offs; don't fake confidence.
 
 Common categories to probe (apply only those that fit the brief). Walk **Requirements** categories first — they shape the issue body's main half. Then walk **Technical** categories — suggest the ones Step 2 surfaced from the codebase, and let the author set the depth.
 
@@ -83,7 +83,7 @@ Common categories to probe (apply only those that fit the brief). Walk **Require
 - **Scenarios** — the 1–3 concrete flows the feature must support, phrased as user actions and observable system responses.
 - **Scope edges** — what's explicitly *out*. Be precise: actual scope decisions (e.g. "no admin UI in v1", "no migration of pre-existing records"), not technical defaults restated negatively.
 - **Semantics of user-visible behaviour** — matching rules, comparison scope, case/whitespace handling, what the user sees at boundaries.
-- **Acceptance criteria from outside** — what an observer (not the implementer) can see and check. Phrase each AC as a **user-observable outcome**, not the implementation mechanism that delivers it. Multiple reasonable implementations should satisfy the same AC. This is **Principle IX (Behavioural Specification)** in `.specify/memory/constitution.md` — `/speckit.analyze` enforces it.
+- **Acceptance criteria from outside** — what an observer (not the implementer) can see and check. Phrase each AC as a **user-observable outcome**, not the implementation mechanism that delivers it. Multiple reasonable implementations should satisfy the same AC. This is **Principle IX (Behavioural Specification)** in `docs/constitution.md` — `/reviewissue` checks it, and `docs/conventions/testing.md` carries the test-side counterpart.
 
   *The independence test*: would this AC still be true under a different reasonable implementation of the same feature? If no, you've described the mechanism — re-phrase at the level the user actually cares about.
 
@@ -97,7 +97,7 @@ Common categories to probe (apply only those that fit the brief). Walk **Require
   | "Setting is written to the `user_preferences` table and cached in Redis" | "User's setting is remembered across sessions and visible on next sign-in" |
   | "Endpoint returns `[]` when no matches found" | "User is shown a clear empty state when no results match" |
 
-  *Do not write into ACs*: CSS classes, DOM IDs or element types, animation specifics, font names/weights/colours, and pixel measurements; HTTP methods, endpoint paths, and status codes; response/payload schemas (JSON keys, field names); database tables, collections, columns, or indexes; algorithm or protocol choices (hash functions, signature schemes, encryption modes); framework or library picks; storage technology; specific URLs or ports; timing values (Ns / Nms) and polling cadences; exact error message strings; and log line formats or log levels. These are implementation choices, not acceptance criteria. Project-housekeeping items (project exists, sln updated, test scaffolding created) belong in `/speckit.tasks`, not here.
+  *Do not write into ACs*: CSS classes, DOM IDs or element types, animation specifics, font names/weights/colours, and pixel measurements; HTTP methods, endpoint paths, and status codes; response/payload schemas (JSON keys, field names); database tables, collections, columns, or indexes; algorithm or protocol choices (hash functions, signature schemes, encryption modes); framework or library picks; storage technology; specific URLs or ports; timing values (Ns / Nms) and polling cadences; exact error message strings; and log line formats or log levels. These are implementation choices, not acceptance criteria. Project-housekeeping items (project exists, sln updated, test scaffolding created) belong in the Technical notes, not here.
 
   *Regression exception*: an AC that pins a specific mechanism is permitted only when it exists to prevent a named, previously-fixed bug — reference the bug.
 - **User-visible failure modes** — what the user sees when a dependency is unreachable, slow, or rejects them; what's communicated; what stays available.
@@ -108,9 +108,9 @@ Common categories to probe (apply only those that fit the brief). Walk **Require
 - **Integration points** — which existing endpoints, schemas, events, or services the work depends on or extends.
 - **Data shape** — storage location, schema sketch, mutability — only at the level the brief already implies.
 - **Constraints / gotchas** — idempotency, latency budgets, coupling, conventions binding the new work.
-- **Open tech questions** — things the spec author will need to resolve in `/speckit.specify` or `/speckit.plan`.
+- **Open tech questions** — things the implementer will need to resolve while building.
 
-If a candidate question doesn't fit either group, it probably belongs downstream — leave it for `/speckit.specify` rather than forcing it into the issue.
+If a candidate question doesn't fit either group, it probably belongs downstream — leave it to the implementer rather than forcing it into the issue.
 
 ### 4. Iterate to lock decisions
 
@@ -139,7 +139,7 @@ Who uses this feature, in what context, and the task they are trying to accompli
 
 ## Capability
 
-What the feature *does* from outside, described as user-observable behaviour and the 1–3 scenarios that exercise it. Use whatever short sub-sections the feature needs. Do **not** specify ports, file paths under `src/`, polling cadences, framework picks, visual aesthetic anchors, or exact UI copy here — those are tech shape, not requirements. Defer them to the Technical notes section below or to `/speckit.specify`.
+What the feature *does* from outside, described as user-observable behaviour and the 1–3 scenarios that exercise it. Use whatever short sub-sections the feature needs. Do **not** specify ports, file paths under `src/`, polling cadences, framework picks, visual aesthetic anchors, or exact UI copy here — those are tech shape, not requirements. Defer them to the Technical notes section below, or leave them to the implementer.
 
 ## Out of scope
 
@@ -147,13 +147,13 @@ Bullet list of deliberate scope decisions. Phrase as "X is not in this issue", n
 
 ## Acceptance criteria
 
-Checklist of testable outcomes, **all observable from outside the implementation by a user or external test**. Project-housekeeping items (new project exists, sln updated, test scaffolding created) belong in `/speckit.tasks`, not here. Reference the project's test conventions where relevant.
+Checklist of testable outcomes, **all observable from outside the implementation by a user or external test**. Project-housekeeping items (new project exists, sln updated, test scaffolding created) belong in the Technical notes, not here. Reference the project's test conventions where relevant.
 
 ---
 
 ## Technical notes
 
-> Omit this entire `---`-separated block — heading and all — if no Technical notes content was captured. `/speckit.specify` and `/speckit.plan` are the canonical places to fix tech shape if the author wants to defer.
+> Omit this entire `---`-separated block — heading and all — if no Technical notes content was captured. Tech shape the author wants to defer can be left to the implementer at `/build` time.
 
 ### Where it lives
 ### Integration points
@@ -201,7 +201,7 @@ Confirm per-issue, not in bulk.
 
 ### 8. Stop
 
-Do not move on to `/speckit.specify` or implementation. The next step in the SDD workflow is `/speckit.reviewissue` against the new issue, which the user will trigger separately.
+Do not move on to implementation. The next step is `/reviewissue` against the new issue, which the user will trigger separately.
 
 If the repo has no GitHub remote, stop after step 6, leave the temp file in place, and tell the user — they can post it manually if needed.
 
@@ -220,7 +220,7 @@ Do **not** restate the full draft in chat — the issue itself is now canonical.
 
 ## When NOT to use this command
 
-- The user already has a structured issue body — go straight to `gh issue create` or to `/speckit.reviewissue`.
+- The user already has a structured issue body — go straight to `gh issue create` or to `/reviewissue`.
 - The brief is for a bug fix or trivial change — overhead isn't justified; just write the issue inline.
 - The user wants implementation, not issue authoring — wrong workflow.
 - The repo has no GitHub remote — the raise step will fail. You can still draft to the temp file, but tell the user up front and stop after review.

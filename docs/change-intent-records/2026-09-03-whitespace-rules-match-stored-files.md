@@ -11,7 +11,6 @@
 **Constraints:**
 
 - Verify snapshots (`*.verified.*`) are byte-exact records of program output. Their trailing whitespace and missing final newlines are content, not formatting; an editor honouring `.editorconfig` would silently rewrite them and change what the suite asserts.
-- `.specify/**` and `.claude/skills/speckit-*/**` are upstream spec-kit assets, restored verbatim by `specify init --here --force`. Formatting them would be undone on the next upgrade.
 - The guard has to stay proportionate to the problem. This is a one-line disagreement in a config file, not a subsystem.
 
 **Decisions:**

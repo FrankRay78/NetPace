@@ -1,4 +1,4 @@
-@.specify/memory/constitution.md
+@docs/constitution.md
 
 # NetPace Development Guide
 
@@ -78,13 +78,14 @@ dotnet test src --collect:"XPlat Code Coverage"
 Load these on demand for the matching topic:
 
 - **C# Style** — `docs/conventions/csharp-style.md` — read before writing or reviewing any .cs file.
+- **Testing** — `docs/conventions/testing.md` — read before writing tests: outcome-not-mechanism assertions, what makes a good scenario, the integrity failure modes that pass while verifying nothing.
 - **Change Intent Records** — `docs/conventions/change-intent-records.md` — read when deciding whether a change warrants documenting intent.
 - **Release Pipeline** — `docs/RELEASING.md` — release matrix (RIDs × variants), naming convention, runner-per-RID rationale, smoke-test contract, size-assertion contract. Update whenever you touch `release-binaries.yml`.
 - **Ookla Download/Upload Sizing** — `docs/architecture/download-upload-size-controls.md` — how `OoklaSpeedtestSettings` shapes per-request sizing, iterations, and parallelism; what `--downloadsize`/`--uploadsize` actually cap (total-byte budget); Docker OoklaServer endpoints for local verification.
 
 ---
 
-**Last Updated**: April 2026 · **Maintained by**: Frank Ray · **Constitution**: `.specify/memory/constitution.md`
+**Last Updated**: September 2026 · **Maintained by**: Frank Ray · **Constitution**: `docs/constitution.md`
 
 ---
 

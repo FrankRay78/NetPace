@@ -18,7 +18,6 @@
       "Bash(git restore:*)",
       "Bash(git push:*)",
       "Bash(cd \"d:/Source/Repos/NetPace\":*)",
-      "Bash(.specify/scripts/bash/:*)",
       "Bash(dotnet build:*)",
       "Bash(dotnet run:*)",
       "Bash(dotnet test:*)",
@@ -60,10 +59,7 @@
       "Bash(rtk gh *)",
       "Bash(rtk git status:*)",
       "Bash(rtk git log:*)",
-      "Bash(rtk git diff:*)",
-      "Bash(bash .specify/scripts/bash/:*)",
-      "Bash(.specify/extensions/git/scripts/bash/:*)",
-      "Bash(bash .specify/extensions/git/scripts/bash/:*)"
+      "Bash(rtk git diff:*)"
     ],
     "deny": [
       "Bash(sudo:*)",
@@ -72,10 +68,7 @@
       "Bash(curl:*)",
       "Bash(wget:*)",
       "Bash(ssh:*)",
-      "Bash(scp:*)",
-      "Edit(.claude/skills/speckit-*/SKILL.md)",
-      "Edit(.specify/templates/*.md)",
-      "Edit(.specify/scripts/bash/*.sh)"
+      "Bash(scp:*)"
     ],
     "ask": [
       "Bash(chmod:*)"
@@ -108,16 +101,6 @@
             "command": "dotnet build ./src && dotnet test ./src",
             "if": "Bash(gh pr create:*)",
             "statusMessage": "Running build and tests before PR creation..."
-          }
-        ]
-      }
-    ],
-    "Stop": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/traceability-gate.sh\""
           }
         ]
       }

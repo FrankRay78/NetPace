@@ -43,7 +43,7 @@ The order of preference for where a learning lands: **fix the rule that misfired
 
    **Discarded work** — `git log <default>..HEAD --oneline --reverse`, looking for revert pairs and commits a later commit undoes. Each pair is a design decision made and unmade; the learning is what would have avoided the round trip.
 
-   **Corroboration** — `git diff <default>...HEAD --name-status` for renames and moves, and any edits to `CLAUDE.md` or `.specify/memory/constitution.md`. A chat signal backed by a rework commit is higher confidence than either alone.
+   **Corroboration** — `git diff <default>...HEAD --name-status` for renames and moves, and any edits to `CLAUDE.md` or `docs/constitution.md`. A chat signal backed by a rework commit is higher confidence than either alone.
 
    When `has_branch_context` is false, skip this lens; the highest Confidence reachable in step 6 is then `Medium (chat only)`.
 
@@ -88,7 +88,7 @@ The order of preference for where a learning lands: **fix the rule that misfired
 
 9. **Write approved learnings**:
 
-   **Amend rule** — show the exact before/after for the offending line and apply on approval. An amendment to `.specify/memory/constitution.md` needs a version bump and a `Last Amended` date per its own Governance section, whose step 4 also requires noting which downstream documents (`CLAUDE.md`, `docs/conventions/`) were reviewed in lockstep.
+   **Amend rule** — show the exact before/after for the offending line and apply on approval. An amendment to `docs/constitution.md` needs a version bump and a `Last Amended` date per its own Governance section, whose step 4 also requires noting which downstream documents (`CLAUDE.md`, `docs/conventions/`) were reviewed in lockstep.
 
    **Deterministic** — these change how the harness or test suite behaves, so **propose, then apply only on explicit approval**; never silently edit `settings.json`. For a hook, permission, or env change, invoke the `update-config` skill with the concrete rule. For a code-shape or invariant rule, add the test following `CLAUDE.md` and the constitution's Testing Standards — including a RED run proving it fails on the violation.
 

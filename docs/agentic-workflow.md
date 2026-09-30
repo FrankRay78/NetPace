@@ -6,9 +6,9 @@ Provenance: this is the GENERIC, stack-portable workflow guide. Keep it stack-ne
 
 ## Introduction
 
-Write a spec before touching code, lock a test plan before writing a test, and **enforce both mechanically**. The result is a *harness*: an agent (Claude Code, Codex CLI, …) constrained by context, feedback loops and automated quality gates, so the agent does the work and the engineer reviews it.
+Draft an issue focused on outcomes and acceptance criteria before touching code, lock the failing tests before writing the implementation, and **enforce both mechanically**. The result is a *harness*: an agent (Claude Code, Codex CLI, …) constrained by context, feedback loops and automated quality gates, so the agent does the work and the engineer reviews it.
 
-**The workflow in one line:** draft, review and confirm an issue → build it by one of two routes (the full spec route for a large feature: spec → test plan → tasks → implement; or the lighter build route for an issue that is already its own spec) → verify → raise the PR → merge.
+**The workflow in one line:** draft, review and confirm an issue → build it → verify → raise the PR → merge.
 
 This document is **stack-generic**. A project implements it by adding the files in the [Appendix](#appendix--codebase-setup) and recording its deviations in a short companion "implementation delta" doc, so this guide stays the single shared source of truth across repos.
 
@@ -34,45 +34,25 @@ A useful frame is the **five duties of a harness** (OpenAI): **constrain** what 
 
 ## Workflow Execution Order
 
-> Slash-command names are the reference Claude Code/spec-kit set; a project may rename them. The *sequence* is the contract, not the names.
+> Slash-command names are this project's; another project may rename them. The *sequence* is the contract, not the names.
 
-Every feature goes through the shared issue stage, then one of two routes; both routes finish the same way.
+Every feature goes through the same four stages: the issue stage on the main branch, then build, verify and raise.
 
-### Which route do I use?
+### The issue stage (on the main branch)
+1. `/draftissue` ← optional; turn an unstructured brief into a well-formed issue
+2. `/reviewissue` ← pre-build gate; posts gaps + recommendations as an issue comment
+3. `/confirmissue` ← fold the answered review into a `## Confirmed decisions` section and label the issue `ready`
 
-Every piece of work starts as a reviewed and confirmed issue. The route depends on whether that issue can serve as the spec:
+The confirmed issue **is** the specification. There is no separate spec, test plan or task list: the acceptance criteria the issue stage settles are what the build stage implements and the verify stage checks. Design work that would once have gone into a planning document goes into the issue, where the review gate cross-checks it against the codebase before any branch exists.
 
-- **Build route** — the issue already states checkable acceptance criteria: a bug with observed and expected behaviour, a small feature, a docs or tooling change. `/build` works straight from the issue; there is no other planning document. The whole route can run unattended (see *Running the stages end to end*).
-- **Full spec route** — the work is too large or uncertain for an issue: several user flows, open design questions, or a test plan that must be agreed before any code exists. The spec, test plan and task list add review checkpoints the build route lacks.
-
-When in doubt, try the build route. If `/build` reports that the issue does not settle the design, the issue needs a spec.
-
-### Shared — the issue stage (on the main branch)
-1. `/speckit.draftissue` ← optional; turn an unstructured brief into a well-formed issue
-2. `/speckit.reviewissue` ← pre-spec gate; posts gaps + recommendations as an issue comment
-3. `/speckit.confirmissue` ← fold the answered review into a `## Confirmed decisions` section and label the issue `ready`
-
-### Route A — the full spec route (large features)
-4. `/speckit.specify`
-5. `/speckit.clarify` ← iterate until the spec feels complete
-6. `/speckit.checklist` ← resolve all gaps before continuing
-7. `/speckit.plan`
-8. `/speckit.testplan` ← review output carefully before continuing
-9. *red-phase commit* ← commit `test-plan.md` as locked intent (script per project)
-10. `/speckit.tasks`
-11. `/speckit.analyze` ← resolve HIGH/CRITICAL before implementing; runs the test-plan cross-check via the `after_analyze` hook
-12. `/speckit.implement` ← runs to suite-green, keeping the suite green on the inner loop at its own discretion. A **soft standard, not a per-turn gate**: the binding "green before a PR" guarantee is `/verify`'s suite run (see *Where the completion gate belongs*).
-13. `/speckit.testchecklist` ← run by hand; confirms every test-plan scenario has an honest test. `/verify` does not run it, since only this route has a test plan.
-14. `/study <issue>` ← record what surprised the implementation, if anything (see *The study pass*).
-
-### Route B — the build route (an issue that is already its own spec)
+### The build stage
 - `/build <issue>` ← branch, RED, GREEN, refactor, docs, all committed. Unattended; ends at a green, committed branch (see *The build stage*).
 - `/study <issue>` ← record what surprised the build, if anything (see *The study pass*).
 
 ### Shared — verify, then raise
 - `/verify` ← one orchestrator: **format → full suite (the gate) → clean-context review → fix → re-run suite → commit.** Unattended, so it can drive a loop. Includes the PR review and slop review. Ends at a green, reviewed, fully-committed branch; it does **not** raise the PR.
 - `/study <issue>` ← record what surprised the verify pass, if anything.
-- `/raise-pr` ← delete the spec folder (spec route), push the branch, open the PR and request Review B. A separate stage because it is the one irreversible, outward-facing act; everything before it stays freely re-runnable.
+- `/raise-pr` ← push the branch, open the PR and request Review B. A separate stage because it is the one irreversible, outward-facing act; everything before it stays freely re-runnable.
 
 ### Periodic (not per-feature)
 - **capture learnings** — fold corrections back into memory/skills. Not part of `/verify`: it needs human curation and batches better, so run it at a supervised checkpoint after several features.
@@ -89,7 +69,7 @@ When in doubt, try the build route. If `/build` reports that the issue does not 
 - **It decides alone, and writes each decision down.** Once it has an issue, `/build` never prompts. Where the issue is ambiguous, it picks the reading that fits the existing code and the issue's intent, and records the assumption in its report — where a reviewer finds every judgement call.
 - **Two named cases are handled specially.** A **public-API change** goes ahead only when the criteria require it, and is flagged in the report; a merely convenient one is not made. A **new dependency** is never added unattended: if the issue needs one, `/build` stops and says so. Both have costs beyond the branch.
 - **RED first, proven by the real tool.** For production code, `/build` writes the failing tests first and must see them fail; tests that pass first time mean the behaviour exists already or the test misses the criterion. For a configuration, tooling or CI change, RED is the real tool failing before and passing after. Never write a stand-in test that reimplements a tool's check: it covers less and can pass when its own matching logic is wrong.
-- **Issue labels become test markers.** Each `**Scenario: X**` label on the issue gets at least one test with a matching marker, keeping label → test traceability without the spec and test-plan steps. No labels, no markers: an invented label looks like a traceability key but traces to nothing.
+- **Issue labels become test markers.** Each `**Scenario: X**` label on the issue gets at least one test with a matching marker, keeping label → test traceability in a single hop from the issue. No labels, no markers: an invented label looks like a traceability key but traces to nothing.
 - **Check the starting point before branching.** Require a clean tree and the main branch checked out, fetch the remote main, and refuse to start if local main has unpushed commits — the branch is cut from the remote, so they would silently be missing. A closed issue, or one with an open PR, also stops the run.
 - **Name the branch after the issue.** Put the issue number first, after a fixed prefix, so later stages can read it from the branch: the PR stage adds the closing keyword, and the study pass files its record. A leftover branch from an earlier attempt is recreated, unless it holds commits `/build` has not inspected.
 - **Commits reference the issue but never close it.** A closing keyword in a commit (`Fixes #N`, `Closes #N`) closes the issue when the commit reaches main, before review. Only the PR body closes it.
@@ -183,7 +163,7 @@ Manual checks, with a real model:
 
 `scripts/chain-next.sh` works through the `ready` backlog without anyone starting the chain. A systemd user timer fires it every 15 minutes on the build machine. Each firing picks the next eligible issue, resets a clone kept only for the runner to the latest `main`, and runs `scripts/chain.sh` against the issue there. It ends with an open pull request, or with the issue labelled `parked` and a comment saying why. It never merges, and it never pushes or deletes anything on GitHub itself; only the chain's own `/raise-pr` pushes.
 
-- **Selection.** An issue is eligible when it is open, labelled `ready`, not labelled `parked`, has no open pull request linked to it (one that closes it, or whose branch is `feature/<N>-…`), and has no open blocking issue (GitHub's native issue dependencies). The runner takes the lowest-numbered one; the issue body plays no part. Confirming an issue with `/speckit.confirmissue` therefore queues it, and merging a blocker's pull request unblocks the next issue in time for the next firing.
+- **Selection.** An issue is eligible when it is open, labelled `ready`, not labelled `parked`, has no open pull request linked to it (one that closes it, or whose branch is `feature/<N>-…`), and has no open blocking issue (GitHub's native issue dependencies). The runner takes the lowest-numbered one; the issue body plays no part. Confirming an issue with `/confirmissue` therefore queues it, and merging a blocker's pull request unblocks the next issue in time for the next firing.
 - **One run at a time.** A firing while a run is in progress starts nothing and exits 0. systemd never starts an active service twice, and the runner also holds a lock, so running the script directly cannot overlap the timer's run either.
 - **A clean start in its own clone.** Before each run the clone is fetched, forced onto `origin/main`, and cleaned of every untracked and ignored file (`bin/`, `obj/` and `.claude/scratch/` included), so every run builds from scratch and uses the harness `main` holds now. Local `feature/*` branches whose upstream was deleted on GitHub are removed; `attempt/*` branches are not. The reset is destructive, so the runner refuses any directory that is not a full clone marked `chain-next.dedicated`, including a worktree of one. It changes no other checkout.
 - **Nothing to do is not an error.** With nothing eligible, a firing changes nothing and exits 0. A GitHub query that fails or returns something unreadable selects nothing and exits 1 (fail closed), and the next firing tries again. So does a machine fault found before the chain starts (origin unreachable, a required tool missing from `PATH`): the issue is not parked for it.
@@ -254,21 +234,21 @@ Manual checks, on the build machine:
 
 ## Separation of Concerns
 
-- **Spec (what & why):** requirements as normative SHALL/MUST statements. No test scenarios.
-- **Test plan (how you verify):** named scenarios derived from the complete spec, before tasks are decomposed.
-- **Tasks (how you build):** implementation breakdown informed by the test plan.
-- **Test checklist (did you honour it):** static analysis after implementation confirming every scenario has an honest test.
+- **The issue (what & why):** requirements as outcomes an outside observer can check, plus an explicit out-of-scope list. Settled at the issue stage, before a branch exists.
+- **The failing tests (how you verify):** written from the issue's acceptance criteria, before any implementation, and committed as the red phase.
+- **The implementation (how you build):** the minimum change that turns those tests green.
+- **The review (did you honour it):** clean-context reviewers over the branch diff, confirming each criterion is met by an honest test.
 
-### Spec the problem, not the solution
-A spec fixes *outcomes and constraints*, not mechanism. "A searchable audit log retained seven years without slowing writes" beats "create table audit_log with these eight columns" (chrismdp). As a rule: **acceptance criteria must read as user-observable outcomes that hold under any reasonable implementation.** Over-specifying the solution upfront is waterfall with new branding, and produces brittle, implementation-mirroring tests.
+### Specify the problem, not the solution
+An issue fixes *outcomes and constraints*, not mechanism. "A searchable audit log retained seven years without slowing writes" beats "create table audit_log with these eight columns" (chrismdp). As a rule: **acceptance criteria must read as user-observable outcomes that hold under any reasonable implementation.** Over-specifying the solution upfront is waterfall with new branding, and produces brittle, implementation-mirroring tests.
 
 ---
 
 ## Design Principles
 
 - **Single branch per feature, one mission.** Tests and implementation on one branch; commit history is the audit trail. When a second mission surfaces mid-flight, ship the first with documented known issues and open a separate branch.
-- **The test plan is the red-phase baseline.** In a statically-typed project, pre-implementation tests can't compile, so the committed `test-plan.md` is the locked intent and the test checklist enforces honesty.
-- **PR review is the integrity gate.** The reviewer diffs the test plan and checks the checklist report — not a binary pass/fail.
+- **The red-phase commit is the locked intent.** The failing tests are committed before the implementation exists, so the diff shows what was promised separately from what delivered it.
+- **PR review is the integrity gate.** The reviewer checks each acceptance criterion against the test that claims to cover it — not a binary pass/fail.
 
 ### Gates over rules
 A rule the agent must *remember* is weaker than a gate the system *enforces*. Karpathy notes the common failure modes (silent assumptions, overcomplication, orthogonal edits, weak success criteria) persist "despite a few simple attempts to fix it via instructions in CLAUDE.md." When a correction recurs, promote it from a written rule to a mechanical gate. **Gates attach to actions, not prose:** no hook can see the agent *say* "all tests pass", so enforcement hangs off concrete actions (a test run, a commit, a PR creation), never claims.
@@ -277,7 +257,7 @@ Three corollaries:
 
 - **Exclusions are amendment-level, not per-PR.** When the project deliberately excludes a tool or approach (a UI-automation framework, a dependency class), record it as a *standing, named exclusion* that changes only by explicit amendment, not something an agent or a single review can reason past. Left as prose, an agent re-derives the "reasonable" case for the excluded tool every time a gate blocks it. Back it with a denylist gate so the excluded path is mechanically impossible.
 - **Package operations as callable, self-documenting commands — not prose.** Anything the agent must do consistently, especially destructive or multi-step orchestration, belongs in one script/command (with real `--help` output), gated so the raw pieces can't be hand-assembled. Orchestration that lives only as prose gets re-enacted imperfectly and drifts.
-- **Guard the files an upgrade will overwrite.** When a vendored scaffolding tool (spec-kit or similar) generates files carrying local customisations, a `--force` re-init silently resets them — including settings that stop an agent invoking things it shouldn't. Deny the agent's edit path on upstream-managed files and keep genuine extension points editable. The upgrade writes files directly and is unaffected: the guard stops unattended drift, not deliberate action.
+- **Guard the files an upgrade will overwrite.** When a vendored tool — a scaffolding generator, a plugin pack, a shared config bundle — installs files that then carry local customisations, a forced re-install silently resets them, including settings that stop an agent invoking things it shouldn't. Deny the agent's edit path on upstream-managed files and keep genuine extension points editable. The upgrade writes files directly and is unaffected: the guard stops unattended drift, not deliberate action.
 
 ---
 
@@ -287,8 +267,8 @@ The *verify* and *correct* duties, made automatic. Minimum set:
 
 - **Stale-build guard.** Block running tests `--no-build` (or equivalent) when sources changed since the last build; stale binaries produce lying green results.
 - **The test-green gate.** The full suite must pass on the code about to become a PR. Put it in the verify flow, not the implement turn (see *Where the completion gate belongs*).
-- **Traceability gate.** The exact-match half of the test checklist — spec label ↔ test-plan scenario ↔ code marker, character for character — is a *deterministic* gate. The judgement half (mock self-satisfaction, trivial passes, fuzzy matches) stays a human-run review command. This one *does* belong at turn-end, as a loop-guarded nudge rather than a lock-out.
-- **No skipped tests.** Skipped, ignored and conditionally-skipped tests (including *runtime* skips) are banned by a static gate — they fake coverage and rot the spec→test trace. Genuinely untestable scenarios go in a documented "untested branches" table.
+- **Scenario traceability.** Where an issue labels a scenario, the test that covers it carries a matching marker, character for character. With the issue as the only planning document the check is one hop, so it rides along with the build and review stages rather than needing its own gate; the judgement half (mock self-satisfaction, trivial passes) stays with the reviewers.
+- **No skipped tests.** Skipped, ignored and conditionally-skipped tests (including *runtime* skips) are banned by a static gate — they fake coverage and rot the issue→test trace. Genuinely untestable scenarios go in a documented "untested branches" table.
 - **Fast/slow test categories.** Tag tests *unit* (fast, no external dependencies) or *integration* (slow, real stack) for seconds-fast inner-loop feedback. The whole suite, not the tagged subset, remains the completion gate.
 - **CI on PR** *(where the suite can run in CI).* Build + test on every PR, blocking merge. If the real test stack can't run in hosted CI (heavy infra, private-repo limits), keep the full gate local, let CI cover the deterministic subset, and say so.
 
@@ -367,7 +347,7 @@ Keep Tier 2 short and high-signal; symlink `CLAUDE.md`↔`AGENTS.md` so every to
 | Silent assumptions, no clarifying questions | plan-mode first; review/confirm gates surface decisions before code |
 | Overcomplication, bloated abstractions | slop review + simplifier sub-agent; "would a senior call this overcomplicated?" |
 | Orthogonal edits (touching unrelated code) | one-mission branch; "mention dead code, don't delete it"; diff-scoped review |
-| Weak success criteria | outcome-level ACs + test plan + the verify gate (a real suite run before the PR) |
+| Weak success criteria | outcome-level ACs + a red-phase test for each + the verify gate (a real suite run before the PR) |
 | Accidental vibe coding (ship unverified) | the mechanical enforcement layer; the verify gate's structural ordering |
 | Review fatigue | move recurring issues into skill files / gates, off the human's plate |
 | Harness change locks out the harness | build gates fail-open with an override first, verify, then tighten |
@@ -379,19 +359,18 @@ Keep Tier 2 short and high-signal; symlink `CLAUDE.md`↔`AGENTS.md` so every to
 The kinds of files a project adds to make this workflow operational (names illustrative):
 
 ### Agent configuration (`.claude/` or `.agents/`)
-- **settings** — checked-in permissions allowlist + hooks: *stale-build guard*, *traceability nudge*, any denylist gates backing a standing exclusion, and a deny path over upstream-managed vendored files. Not here: the test-green gate, which is a real suite run inside `/verify`.
-- **commands** — the slash commands above: `draftissue`, `reviewissue` and `confirmissue` (issue stage); `testplan` and `testchecklist` (spec route); `build` (build route); the `verify` orchestrator for the pre-PR steps; `raise-pr`, the separate stage after it; and `study`, run after build and after verify. Plus maintenance commands: slop review, dead-code audit, context-gardening, capture-learnings, study-review (reads the study records back and proposes scored fixes), `bugmagnet` (systematic test-coverage and edge-case discovery for one module) and `install-harness-tooling` (installs the token/context plugins below).
-- **scripts** — a red-phase commit helper (spec route step 9), and `chain.sh` with its stub-agent tests `chain.tests.sh` (see *The chain script*).
+- **settings** — checked-in permissions allowlist + hooks: *stale-build guard*, any denylist gates backing a standing exclusion, and a deny path over upstream-managed vendored files. Not here: the test-green gate, which is a real suite run inside `/verify`.
+- **commands** — the slash commands above: `draftissue`, `reviewissue` and `confirmissue` (issue stage); `build` (build stage); the `verify` orchestrator for the pre-PR steps; `raise-pr`, the separate stage after it; and `study`, run after build and after verify. Plus maintenance commands: slop review, dead-code audit, context-gardening, capture-learnings, study-review (reads the study records back and proposes scored fixes), `bugmagnet` (systematic test-coverage and edge-case discovery for one module) and `install-harness-tooling` (installs the token/context plugins below).
+- **scripts** — `chain.sh` with its stub-agent tests `chain.tests.sh`, and `chain-next.sh` for the unattended runner (see *The chain script*).
 - **skills / sub-agents** — simplifier, verifier, a `diagnose` skill (a reproduce → minimise → hypothesise → instrument → fix → regression-test loop for hard bugs), and any stack-orchestration script.
 
-### spec-kit configuration (`.specify/`)
-- **constitution** — project governance, versioned, supersedes other guides.
-- **extensions** — lifecycle hooks (git auto-commit per phase; test-plan cross-check).
+### Governance
+- **constitution** — project governance, versioned, supersedes other guides. Kept with the project docs, and loaded into every agent session.
 
 ### CI / SCM integration
 - **CI workflow** — build + test on PRs (full suite or deterministic subset; see enforcement).
 - **Agent review action** — auto-review on agent-authored PRs; respond to `@agent` mentions.
-- **PR template** — Summary, Spec link, Changed files, New artifacts.
+- **PR template** — Summary, issue link, Changed files, New artifacts.
 
 ### Conventions / reference
 - Detailed style guide; optional Change-Intent-Records (or an equivalent decision ledger).

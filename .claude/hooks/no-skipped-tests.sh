@@ -36,9 +36,9 @@
 set -uo pipefail
 
 # Root to scan. Honours CLAUDE_PROJECT_DIR (as the harness always sets it, and as the other
-# filesystem-reading gates green-gate.sh / traceability-gate.sh already do), falling back to the
-# script's own location. Matching traceability-gate.sh here keeps the FS-reading gates consistent
-# and lets a test matrix point this one at a sandbox by env var instead of relocating it.
+# filesystem-reading gate green-gate.sh already does), falling back to the script's own location.
+# Matching green-gate.sh here keeps the FS-reading gates consistent and lets a test matrix point
+# this one at a sandbox by env var instead of relocating it.
 REPO_ROOT="${CLAUDE_PROJECT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
 
 # Banned constructs: xUnit runtime skips (Skip.If/IfNot/Always/Unless, Assert.Skip), the
