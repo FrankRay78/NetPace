@@ -235,7 +235,7 @@ Manual checks, on the build machine:
 ## Separation of Concerns
 
 - **The issue (what & why):** requirements as outcomes an outside observer can check, plus an explicit out-of-scope list. Settled at the issue stage, before a branch exists.
-- **The failing tests (how you verify):** written from the issue's acceptance criteria, before any implementation, and committed as the red phase.
+- **The failing tests (how you verify):** written from the issue's acceptance criteria, before any implementation, and run to watch them fail.
 - **The implementation (how you build):** the minimum change that turns those tests green.
 - **The review (did you honour it):** clean-context reviewers over the branch diff, confirming each criterion is met by an honest test.
 
@@ -247,7 +247,6 @@ An issue fixes *outcomes and constraints*, not mechanism. "A searchable audit lo
 ## Design Principles
 
 - **Single branch per feature, one mission.** Tests and implementation on one branch; commit history is the audit trail. When a second mission surfaces mid-flight, ship the first with documented known issues and open a separate branch.
-- **The red-phase commit is the locked intent.** The failing tests are committed before the implementation exists, so the diff shows what was promised separately from what delivered it.
 - **PR review is the integrity gate.** The reviewer checks each acceptance criterion against the test that claims to cover it — not a binary pass/fail.
 
 ### Gates over rules
@@ -347,7 +346,7 @@ Keep Tier 2 short and high-signal; symlink `CLAUDE.md`↔`AGENTS.md` so every to
 | Silent assumptions, no clarifying questions | plan-mode first; review/confirm gates surface decisions before code |
 | Overcomplication, bloated abstractions | slop review + simplifier sub-agent; "would a senior call this overcomplicated?" |
 | Orthogonal edits (touching unrelated code) | one-mission branch; "mention dead code, don't delete it"; diff-scoped review |
-| Weak success criteria | outcome-level ACs + a red-phase test for each + the verify gate (a real suite run before the PR) |
+| Weak success criteria | outcome-level ACs + a test seen failing for each + the verify gate (a real suite run before the PR) |
 | Accidental vibe coding (ship unverified) | the mechanical enforcement layer; the verify gate's structural ordering |
 | Review fatigue | move recurring issues into skill files / gates, off the human's plate |
 | Harness change locks out the harness | build gates fail-open with an override first, verify, then tighten |
