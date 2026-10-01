@@ -1,0 +1,51 @@
+name: Traceability
+
+# Constitution §VIII's enforcement point (issue #319): every `**Scenario: X**` label on the issue
+# a branch implements must have a matching `SCENARIO: X` marker in a committed test file.
+#
+# Pre-merge, and only here. A PR passes through several stages that each touch the tests — build
+# writes the markers, verify refactors, a human edits — and this job sees the branch's final state
+# whichever of them dropped one. Checking earlier would judge a branch that is still being written.
+#
+# Deliberately its own workflow rather than a job in dotnet.yml or shell-tests.yml: the job name
+# becomes the required-status-check context, and keeping it here means an unrelated change to the
+# .NET build matrix or the shell-test discovery can never rename it out from under the ruleset.
+#
+# The check's own behaviour is gated separately — scripts/traceability-check.tests.sh is a
+# committed `*.tests.sh`, so shell-tests.yml discovers and runs it with no entry needed here.
+
+on:
+  pull_request:
+    branches: [ "main" ]
+
+permissions:
+  contents: read
+  issues: read
+
+jobs:
+  # Do NOT add a `paths:` filter or an `if:` condition to this job. To GitHub a skipped job is not
+  # a failure, so a required `traceability` context is satisfied by one that never ran — and since
+  # `pull_request` workflows are evaluated from the head ref, the branch adding the filter is the
+  # branch it stops gating. `shell-tests.yml` defends the same hazard with an explicit
+  # `result != success` gate job; this job stays unconditional instead, which needs no gate.
+  traceability:
+    name: traceability
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Check every labelled scenario traces to a test marker
+      # The branch comes from `github.head_ref` — the PR's source branch. The checked-out ref on a
+      # pull_request event is a detached merge commit, so the script's own fallback would read
+      # `HEAD` and find no issue number, passing without having checked anything.
+      #
+      # The repository is passed in rather than resolved with `gh repo view`: one fewer API call,
+      # and on a fork the value is the base repository, which is where the issue lives.
+      env:
+        GH_TOKEN: ${{ github.token }}
+        TRACEABILITY_BRANCH: ${{ github.head_ref }}
+        TRACEABILITY_REPO: ${{ github.repository }}
+      run: bash scripts/traceability-check.sh
