@@ -143,6 +143,8 @@ What the feature *does* from outside, described as user-observable behaviour and
 
 Give each test-verified scenario a `**Scenario: <name>**` label on its own line, with the Given-When-Then flow beneath it, as the Scenarios category above explains. A scenario only an external tool or gate can verify is left unlabelled.
 
+The label must be a bare line of the issue body. One written mid-sentence, in backticks, or inside a code fence is not read as a label — so write it directly into the body, **not** inside a fence like the illustration below, which is fenced only to show the shape.
+
 ```
 **Scenario: Server list is screened before measuring**
 Given a server list containing an unreachable host, when a test runs, then that host is not measured.

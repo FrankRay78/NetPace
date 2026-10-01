@@ -23,6 +23,11 @@ permissions:
   issues: read
 
 jobs:
+  # Do NOT add a `paths:` filter or an `if:` condition to this job. To GitHub a skipped job is not
+  # a failure, so a required `traceability` context is satisfied by one that never ran — and since
+  # `pull_request` workflows are evaluated from the head ref, the branch adding the filter is the
+  # branch it stops gating. `shell-tests.yml` defends the same hazard with an explicit
+  # `result != success` gate job; this job stays unconditional instead, which needs no gate.
   traceability:
     name: traceability
     runs-on: ubuntu-latest

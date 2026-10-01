@@ -11,9 +11,12 @@ the one issue the branch implements, and the `traceability` CI job runs it on ev
 to `main`. The 2.0.0 report's "nothing mechanical now checks the label-to-marker pairing" no
 longer holds and is corrected below.
 
-Modified Principles: VIII — AC-to-Test Traceability (comment syntax generalised, enforcement named)
+Modified Principles: VIII — AC-to-Test Traceability (comment syntax generalised, enforcement named,
+  and a new MUST added: a scenario only an external tool or gate can verify MUST be left
+  unlabelled, which is §I's configuration/tooling carve-out seen from the traceability side)
 Modified Sections: N/A
-Added Sections: N/A
+Added Sections: VIII — **Enforcement** paragraph (names the script and the CI job, and records
+  that the job is not yet a required check)
 Removed Sections: N/A
 Maintainer approval for the MINOR amendment: issue #319.
 Downstream documents reviewed (per Amendment Process clause 4):
@@ -23,7 +26,11 @@ Downstream documents reviewed (per Amendment Process clause 4):
      before, which is what made the check worth having.
   ✅ .claude/commands/reviewissue.md — reviewed, unchanged: it probes for missing edge scenarios,
      never for a missing label, so an unlabelled issue raises no gap. §VIII stays conditional.
-  ✅ .claude/commands/build.md — reviewed, unchanged: it already writes a marker per label.
+  ✅ .claude/commands/build.md — updated. It already wrote a marker per label, but still pinned
+     `// SCENARIO:` as the only form, which is the exact pinning this amendment generalises; it
+     now states the test file's own comment syntax, and that a marker counts only once committed.
+     The first pass recorded it here as "reviewed, unchanged" before reading it — the same slip
+     docs/study/319.md records for testing.md, found twice in one amendment.
   ✅ docs/agentic-workflow.md, docs/agentic-workflow-NetPace.md — the enforcement layer now
      describes the pre-merge check rather than saying the rule needs no gate of its own.
   ✅ docs/conventions/testing.md — its *Scenario traceability* section no longer pins `// SCENARIO:`
@@ -174,13 +181,15 @@ test:   // SCENARIO: Server list is screened before measuring
 
 The marker is written in the test file's own comment syntax, so a shell test matrix carries `# SCENARIO:` where a C# test carries `// SCENARIO:`. What must match exactly is the name after `SCENARIO:`, not the comment characters before it.
 
+The label itself must be a bare line of the issue body, outside any code fence: one written mid-sentence, in backticks, or inside a fence describes the convention rather than declaring a scenario, and is deliberately not read as a label. The example above is fenced for presentation only.
+
 The label is optional — an issue may carry none, and that is not a defect. Where one is present the matching marker is mandatory: the label-to-marker pair is the traceability key linking an acceptance criterion to the test that verifies it. Names MUST match exactly; a marker naming no label, or a label with no marker, traces nothing.
 
 A scenario that only an external tool or gate can verify — §I's configuration/tooling carve-out — MUST be left unlabelled. Labelling one demands a test that should not exist, and the only way to satisfy the demand is the hand-rolled stand-in §I bans.
 
 Markers MUST NOT be invented. A `SCENARIO:` marker with no corresponding issue label looks like a traceability key and is worse than no marker at all.
 
-**Enforcement**: `scripts/traceability-check.sh` checks the pairing for the one issue the current branch implements, and the `traceability` CI job runs it on every pull request to `main`, so a label whose marker was never written or was lost to a later edit blocks the merge. The direction is one way — label → marker — because a scenario may legitimately be covered by a test that already existed. The reverse direction (the invented-marker rule above) stays a judgement call for review. Agents run the same script locally before raising a PR (`CLAUDE.md`).
+**Enforcement**: `scripts/traceability-check.sh` checks the pairing for the one issue the current branch implements, and the `traceability` CI job runs it on every pull request to `main`, so a label whose marker was never written or was lost to a later edit is reported on the pull request. That job is **not yet registered in the `Main CI/CD` ruleset**, so today it reports without blocking; registering the fixed-name `traceability` context is the step that makes it binding. The direction is one way — label → marker — because a scenario may legitimately be covered by a test that already existed. The reverse direction (the invented-marker rule above) stays a judgement call for review. Agents run the same script locally before raising a PR (`CLAUDE.md`).
 
 **Rationale**: The issue is the specification, so traceability runs directly from it to the test — one hop, verifiable by searching the issue body against the test files. Making the label conditional keeps lightweight issues cheap to write while preserving an exact, checkable link wherever an author chose to draw one. The chain needs a gate because it spans artefacts no single stage owns: the issue is written at draft time, the marker at build time, and anything between then and merge can break the pair without either end looking wrong on its own.
 

@@ -54,7 +54,7 @@ Two named exceptions, because `CLAUDE.md` requires discussion for them:
    - A `## Capability` section's scenarios describe the *flows* the feature must support. Where a checklist is also present the checklist is the fuller list and the one to satisfy; the scenarios are context for the shape of the change, not a substitute for it.
 
    **How to label the tests — `**Scenario: X**` labels.**
-   - If the body carries one or more `**Scenario: X**` labels, give each at least one test carrying a `// SCENARIO: X` marker matching the label **exactly**. This is the Constitution §VIII traceability chain — issue label → test marker — and §VIII is the rule this step enforces. The labels are optional; an issue may carry none, and that is normal, not a defect in the issue.
+   - If the body carries one or more `**Scenario: X**` labels, give each at least one test carrying a `SCENARIO: X` marker matching the label **exactly** — written in that test file's own comment syntax, so `// SCENARIO: X` in a C# test and `# SCENARIO: X` in a `*.tests.sh` matrix. What must match character for character is the name after `SCENARIO:`, not the comment characters before it. This is the Constitution §VIII traceability chain — issue label → test marker — and §VIII is the rule this step enforces. The labels are optional; an issue may carry none, and that is normal, not a defect in the issue. Markers are read from **committed** files, so a marker is only credited once it is committed; verify with `bash scripts/traceability-check.sh`.
    - If there are none, add no markers. An invented label is worse than none: it looks like a traceability key and traces to nothing.
 
 4. **Branch.** Off the latest main, named for the issue:
