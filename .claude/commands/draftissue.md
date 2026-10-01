@@ -80,7 +80,7 @@ Common categories to probe (apply only those that fit the brief). Walk **Require
 
 - **User & persona** — who uses this feature, in what context, on what surface.
 - **Job-to-be-done** — the task the user is trying to accomplish; the observable outcome that means "done" from their viewpoint.
-- **Scenarios** — the 1–3 concrete flows the feature must support, phrased as user actions and observable system responses.
+- **Scenarios** — the 1–3 concrete flows the feature must support, phrased as user actions and observable system responses. Label each one a test will verify `**Scenario: <name>**` on its own line, by default: that label is the traceability key `/build` writes a matching `SCENARIO: <name>` marker against, and `scripts/traceability-check.sh` fails the pull request if the marker is missing (Constitution §VIII). Leave a scenario **unlabelled** when an external tool or gate decides it, not a test — "the formatter passes", "the build is warning-free" — per §I's configuration/tooling carve-out; labelling one of those demands a test that should not exist. The author may remove any label: §VIII is conditional, and an issue with none is not a defect.
 - **Scope edges** — what's explicitly *out*. Be precise: actual scope decisions (e.g. "no admin UI in v1", "no migration of pre-existing records"), not technical defaults restated negatively.
 - **Semantics of user-visible behaviour** — matching rules, comparison scope, case/whitespace handling, what the user sees at boundaries.
 - **Acceptance criteria from outside** — what an observer (not the implementer) can see and check. Phrase each AC as a **user-observable outcome**, not the implementation mechanism that delivers it. Multiple reasonable implementations should satisfy the same AC. This is **Principle IX (Behavioural Specification)** in `docs/constitution.md` — `/reviewissue` checks it, and `docs/conventions/testing.md` carries the test-side counterpart.
@@ -140,6 +140,13 @@ Who uses this feature, in what context, and the task they are trying to accompli
 ## Capability
 
 What the feature *does* from outside, described as user-observable behaviour and the 1–3 scenarios that exercise it. Use whatever short sub-sections the feature needs. Do **not** specify ports, file paths under `src/`, polling cadences, framework picks, visual aesthetic anchors, or exact UI copy here — those are tech shape, not requirements. Defer them to the Technical notes section below, or leave them to the implementer.
+
+Give each test-verified scenario a `**Scenario: <name>**` label on its own line, with the Given-When-Then flow beneath it, as the Scenarios category above explains. A scenario only an external tool or gate can verify is left unlabelled.
+
+```
+**Scenario: Server list is screened before measuring**
+Given a server list containing an unreachable host, when a test runs, then that host is not measured.
+```
 
 ## Out of scope
 

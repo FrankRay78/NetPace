@@ -95,4 +95,6 @@ The test calls a method whose body is still `throw new NotImplementedException()
 
 ## Scenario traceability
 
-Where the GitHub issue being built carries a `**Scenario: X**` label, at least one test must carry a `// SCENARIO: X` marker naming it exactly. Constitution §VIII is the rule; the short version is that names match character-for-character, the label is optional, and a marker that names no label is worse than no marker at all because it looks like a traceability key and traces nothing.
+Where the GitHub issue being built carries a `**Scenario: X**` label, at least one test must carry a `SCENARIO: X` marker naming it exactly — `// SCENARIO: X` in a C# test, `# SCENARIO: X` in a `*.tests.sh` matrix. Constitution §VIII is the rule; the short version is that names match character-for-character, the comment characters before the name do not matter, the label is optional, and a marker that names no label is worse than no marker at all because it looks like a traceability key and traces nothing.
+
+Run `bash scripts/traceability-check.sh` before raising a PR: it reads the issue number off the branch and names any label whose marker is missing. The `traceability` CI job runs the same script on every PR. It reads **committed** test files only, so a marker in an unstaged file does not count, and it ignores docs — including this one, which restates the rule and must never be what satisfies it.

@@ -1,5 +1,36 @@
 <!--
 Sync Impact Report:
+Version: 2.0.0 → 2.1.0
+Bump rationale: MINOR — Principle VIII (AC-to-Test Traceability) gains materially expanded
+guidance: the marker is stated to be written in the test file's own comment syntax (shell test
+matrices use `#`, which the previous `// SCENARIO:` wording described only for C#), and the
+principle now names its enforcement. The chain itself is unchanged and the label stays
+conditional, so this is expanded guidance, not a redefinition.
+Enforcement is restored: `scripts/traceability-check.sh` checks the label-to-marker pairing for
+the one issue the branch implements, and the `traceability` CI job runs it on every pull request
+to `main`. The 2.0.0 report's "nothing mechanical now checks the label-to-marker pairing" no
+longer holds and is corrected below.
+
+Modified Principles: VIII — AC-to-Test Traceability (comment syntax generalised, enforcement named)
+Modified Sections: N/A
+Added Sections: N/A
+Removed Sections: N/A
+Maintainer approval for the MINOR amendment: issue #319.
+Downstream documents reviewed (per Amendment Process clause 4):
+  ✅ CLAUDE.md — gains a paired rule to run the check before raising a PR.
+  ✅ .claude/commands/draftissue.md — now instructs the `**Scenario: X**` labels by default on
+     test-verified scenarios, and none on tool-verified ones (§I's carve-out). Nothing wrote them
+     before, which is what made the check worth having.
+  ✅ .claude/commands/reviewissue.md — reviewed, unchanged: it probes for missing edge scenarios,
+     never for a missing label, so an unlabelled issue raises no gap. §VIII stays conditional.
+  ✅ .claude/commands/build.md — reviewed, unchanged: it already writes a marker per label.
+  ✅ docs/agentic-workflow.md, docs/agentic-workflow-NetPace.md — the enforcement layer now
+     describes the pre-merge check rather than saying the rule needs no gate of its own.
+  ✅ docs/conventions/testing.md — its *Scenario traceability* section no longer pins `// SCENARIO:`
+     as the only marker form, and now points at the check. The check deliberately excludes docs, so
+     this file cannot be what satisfies a label it describes.
+
+--- superseded, retained for history ---
 Version: 1.8.1 → 2.0.0
 Bump rationale: MAJOR — Principle VIII (AC-to-Test Traceability) is redefined. Its
 traceability chain previously ran through a separate specification and test-plan document,
@@ -9,6 +40,7 @@ marker in the test, and the label becomes conditional rather than mandatory.
 Redefining a principle is MAJOR under the Amendment Process, not a clarification.
 Enforcement weakens with it: the `Stop` traceability gate hook is removed, so nothing mechanical
 now checks the label-to-marker pairing — `/build` writing the markers is the only enforcement.
+(Superseded at 2.1.0: the pairing is checked pre-merge again. See the report above.)
 
 Modified Principles: VIII — AC-to-Test Traceability (chain redefined, label made conditional);
   IX — Behavioural Specification (housekeeping bullet and downstream references repointed)
@@ -140,11 +172,17 @@ issue:  **Scenario: Server list is screened before measuring**
 test:   // SCENARIO: Server list is screened before measuring
 ```
 
+The marker is written in the test file's own comment syntax, so a shell test matrix carries `# SCENARIO:` where a C# test carries `// SCENARIO:`. What must match exactly is the name after `SCENARIO:`, not the comment characters before it.
+
 The label is optional — an issue may carry none, and that is not a defect. Where one is present the matching marker is mandatory: the label-to-marker pair is the traceability key linking an acceptance criterion to the test that verifies it. Names MUST match exactly; a marker naming no label, or a label with no marker, traces nothing.
 
-Markers MUST NOT be invented. A `// SCENARIO:` marker with no corresponding issue label looks like a traceability key and is worse than no marker at all.
+A scenario that only an external tool or gate can verify — §I's configuration/tooling carve-out — MUST be left unlabelled. Labelling one demands a test that should not exist, and the only way to satisfy the demand is the hand-rolled stand-in §I bans.
 
-**Rationale**: The issue is the specification, so traceability runs directly from it to the test — one hop, verifiable by searching the issue body against the test files. Making the label conditional keeps lightweight issues cheap to write while preserving an exact, checkable link wherever an author chose to draw one.
+Markers MUST NOT be invented. A `SCENARIO:` marker with no corresponding issue label looks like a traceability key and is worse than no marker at all.
+
+**Enforcement**: `scripts/traceability-check.sh` checks the pairing for the one issue the current branch implements, and the `traceability` CI job runs it on every pull request to `main`, so a label whose marker was never written or was lost to a later edit blocks the merge. The direction is one way — label → marker — because a scenario may legitimately be covered by a test that already existed. The reverse direction (the invented-marker rule above) stays a judgement call for review. Agents run the same script locally before raising a PR (`CLAUDE.md`).
+
+**Rationale**: The issue is the specification, so traceability runs directly from it to the test — one hop, verifiable by searching the issue body against the test files. Making the label conditional keeps lightweight issues cheap to write while preserving an exact, checkable link wherever an author chose to draw one. The chain needs a gate because it spans artefacts no single stage owns: the issue is written at draft time, the marker at build time, and anything between then and merge can break the pair without either end looking wrong on its own.
 
 ### IX. Behavioural Specification (NON-NEGOTIABLE)
 
@@ -265,4 +303,4 @@ This constitution supersedes all other development practices and guides. All dev
 - Complexity MUST be justified against simplicity principles
 - For runtime development guidance, refer to `CLAUDE.md`
 
-**Version**: 2.0.0 | **Ratified**: 2026-04-10 | **Last Amended**: 2026-09-29
+**Version**: 2.1.0 | **Ratified**: 2026-04-10 | **Last Amended**: 2026-10-01

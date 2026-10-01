@@ -15,6 +15,7 @@ The generic "CI on PR" step **applies fully**:
 |---|---|---|
 | `dotnet.yml` — Build and Test | pull_request → main | the generic **CI-on-PR** gate: build + test every PR |
 | `shell-tests.yml` — Shell Tests | pull_request → main | runs every committed `*.tests.sh` matrix, one job per script |
+| `traceability.yml` — Traceability | pull_request → main | the generic **scenario-traceability** gate: every `**Scenario:**` label on the branch's issue has a matching test marker |
 | `codeql.yml` — CodeQL | push/PR/weekly | security analysis (see the [supply-chain CIR](change-intent-records/2026-07-13-dependency-supply-chain-hardening.md)) |
 | `claude.yml` — Claude Code | `@claude` in an issue/PR comment by `FrankRay78` | **Review B** |
 | `reviewissue.yml` — Review Issue | `review` label applied to an issue (labeller-gated), or manual dispatch | posts the issue gap analysis unattended — see below |
@@ -63,9 +64,12 @@ The generic enforcement layer as NetPace wires it. Hooks live in [`.claude/hooks
 | PR pre-flight | `dotnet build ./src && dotnet test ./src` before `gh pr create` | PreToolUse(Bash), `if gh pr create` |
 | **Formatting** | **`/verify`'s formatting pass (step 1a) — `dotnet format style/whitespace ./src/NetPace.sln`, once per PR. Not a hook** (see below) | — |
 | **Test-green gate** | **`/verify`'s suite gate (step 1b) — a real `dotnet build ./src && dotnet test ./src`. Not a hook.** | — |
+| **Scenario traceability** | **`scripts/traceability-check.sh` — fails naming any `**Scenario: X**` label on the branch's issue with no matching `SCENARIO: X` marker in a committed test file. Not a hook:** the [`traceability.yml`](../.github/workflows/traceability.yml) `traceability` job runs it on every PR, and agents run it locally before raising one | pull_request → main |
 | Fast/slow test categories | none: the suite is fully mocked and fast, so there is no split | — |
 
 Every hook has an **announced override** (`NETPACE_SKIP_GREEN_GATE=1`, `NETPACE_ALLOW_SKIPS=1`). `green-gate.sh` fails open. `no-skipped-tests.sh` fails closed once a call is classified as a `git commit`, since a skip ban that fails open is the silent non-coverage it exists to stop.
+
+`traceability-check.sh` is not a hook and has **no override**: it fails closed on a missing tool, an unresolvable repository, or an auth, network or rate-limit failure, because a merge gate that passes without having run gives exactly the false comfort it exists to remove. GitHub answering "nothing at that number" is an answer rather than an outage, so a branch with no issue number and a number that is a pull request both pass with nothing to check. Its `traceability` job is a fixed-name context, but **it is not in the `Main CI/CD` ruleset yet** — adding it there is the post-merge step on issue #319, and until it is done a failure is reported on the PR without blocking the merge.
 
 Each hook is a **script with a `.tests.sh` case matrix beside it** (generic *Modifying the harness itself*, rule 1). The exception is the PR pre-flight: an inline command in `settings.json`, so a red suite exits 1, not 2 — it is reported but does not block `gh pr create`. The binding gate is `/verify`'s suite run. **Every `*.tests.sh` in the repo runs in CI**: [`shell-tests.yml`](../.github/workflows/shell-tests.yml) discovers them with `git ls-files '*.tests.sh'` rather than naming them, one matrix entry per script with `fail-fast: false`, so a new matrix is gated the moment it is committed and every failure is reported against the script that produced it. Its fixed-name `shell-tests` job is the one stable context branch protection can require; **it is not in the `Main CI/CD` ruleset yet**, so today a red matrix is reported on the PR without blocking the merge.
 
