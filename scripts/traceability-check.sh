@@ -123,11 +123,9 @@ esac
 # Read one stage at a time, each checked, rather than as one pipeline. A pipeline cannot be
 # checked here: `grep` exits 1 for the legitimate "this issue carries no labels", so a blanket
 # `|| die` would reject every unlabelled issue, and `pipefail` reports only the rightmost
-# non-zero status, which `grep`'s 1 masks. Leaving it unchecked was the alternative, and it made
-# every failure in the chain — a missing `tr`, a non-GNU `awk`, a locale abort, a body field that
-# is absent or null — indistinguishable from "no labels", i.e. a silent pass. Six routes reached
-# that one quiet verdict and five of them were failures: the exact outcome the DESIGN RULE above
-# exists to prevent.
+# non-zero status, which `grep`'s 1 masks. Unchecked, every failure in the chain — a missing `tr`,
+# a non-GNU `awk`, a locale abort, a body field that is absent or null — would be
+# indistinguishable from "no labels", i.e. a silent pass.
 
 printf '%s' "$RESPONSE" | jq -e 'has("body") and (.body | type == "string")' >/dev/null 2>&1 \
   || die "'gh issue view' returned no readable body for #$ISSUE, so its labels cannot be read. A response of that shape means the field changed or the reply was partial, not that the issue is unlabelled."
@@ -135,11 +133,10 @@ printf '%s' "$RESPONSE" | jq -e 'has("body") and (.body | type == "string")' >/d
 printf '%s' "$RESPONSE" | jq -r '.body' | tr -d '\r' > "$TMP/body" \
   || die "could not read the body of issue #$ISSUE."
 
-# Fenced blocks, dropped by their own delimiter. A bare toggle was wrong twice over: an
-# unterminated fence hid every label below it, and a `~~~` block quoting a ``` line — which is
-# precisely what an issue documenting this convention contains — closed a fence it never opened.
-# So only the delimiter that opened a block may close it, and a block still open at EOF is a
-# malformed body, which fails rather than passing as unlabelled.
+# Fenced blocks, dropped by their own delimiter: only the delimiter that opened a block may close
+# it, so a `~~~` block quoting a ``` line — which is precisely what an issue documenting this
+# convention contains — stays one block. A block still open at EOF would hide every label below
+# it, so it is a malformed body, which fails rather than passing as unlabelled.
 awk '
   match($0, /^[[:space:]]*(```+|~~~+)/) {
     marker = substr($0, RSTART, RLENGTH)
@@ -178,10 +175,9 @@ LABELS="$(printf '%s\n' "$RAW_LABELS" \
 # --- the markers ------------------------------------------------------------------
 # Committed test files only, in two shapes: any `*.tests.sh`, and `*.cs` inside a `*Tests*`
 # project directly under src/. Scanning `HEAD` rather than the working tree is what makes
-# "committed" true, and the distinction is not academic: reading the working tree counted a file
-# that had been `git add`ed and never committed, which is not what merges either. Production code
-# and docs are excluded for the same reason: docs/conventions/testing.md restates the §VIII rule
-# verbatim, so a docs-wide scan would let the rule's own description satisfy it.
+# "committed" true: a file that is `git add`ed and never committed is not what merges. Production
+# code and docs are excluded: docs/conventions/testing.md restates the §VIII rule verbatim, so a
+# docs-wide scan would let the rule's own description satisfy it.
 #
 # `:(glob)` on the first pathspec is load-bearing: it stops `*` at a `/`, which is what pins the
 # `*Tests*` directory to being an immediate child of src/ — `src/Foo/BarTests/x.cs` is production
@@ -201,9 +197,8 @@ LABELS="$(printf '%s\n' "$RAW_LABELS" \
 # literal newline, and why its fixture names are fictional.
 # Exit 1 is "no markers anywhere", which is a real state on a branch whose tests are not written
 # yet and is answered by the verdict below. Anything above it is the scan failing, and that must
-# not be read as "no markers": discarding this stderr turned a sparse checkout or an unreadable
-# path into a FAIL telling the author to add a marker that is already there, character for
-# character.
+# not be read as "no markers": that would turn a sparse checkout or an unreadable path into a FAIL
+# telling the author to add a marker that is already there, character for character.
 MARKER_LINES="$(git -C "$REPO_ROOT" grep -hE --no-line-number --no-column '^[[:space:]/#]*SCENARIO:' \
   HEAD -- ':(glob)src/*Tests*/**/*.cs' '*.tests.sh' 2>"$TMP/grep-err")"
 SCAN_RC=$?
@@ -224,9 +219,8 @@ MARKERS="$(printf '%s\n' "$MARKER_LINES" \
   | trim)"
 
 # --- the verdict ------------------------------------------------------------------
-# Both verdicts carry the marker count. Every stage above is checked now, but the counts are what
-# make a run self-diagnosing after the fact: "0 markers scanned" alongside a list of unmatched
-# labels reads very differently from "72 scanned", and the difference is invisible without it.
+# Both verdicts carry the marker count, which makes a run self-diagnosing after the fact: "0
+# markers scanned" alongside a list of unmatched labels reads very differently from "72 scanned".
 scanned="$(printf '%s' "$MARKERS" | grep -c . || true)"
 
 missing=""
