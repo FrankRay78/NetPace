@@ -22,8 +22,7 @@
 # has been selected. Logs and the lock live outside the clone, or `clean -fdx` would delete them.
 #
 # Prerequisites: git, gh, jq and flock on PATH, plus chain.sh's own (claude, timeout); gh and
-# claude signed in; a git identity in the clone. Setup and operation:
-# docs/agentic-workflow-NetPace.md (*The chain runner*). Unit files: scripts/systemd/. Tests:
+# claude signed in; a git identity in the clone. Unit files: scripts/systemd/. Tests:
 # scripts/chain-next.tests.sh.
 #
 # Overrides: CHAIN_NEXT_CLONE is the dedicated clone (default ~/Repos/NetPace-runner).
@@ -151,7 +150,7 @@ main() {
   # The reset below is destructive, so the clone must be exactly the one set aside for it: its
   # top level, not a worktree (worktrees share the marker and would share branches with the
   # checkout they belong to), and marked.
-  [ -d "$CLONE" ] || die "refused — the runner's clone $CLONE does not exist; see docs/agentic-workflow-NetPace.md (The chain runner)."
+  [ -d "$CLONE" ] || die "refused — the runner's clone $CLONE does not exist; create it, or set CHAIN_NEXT_CLONE to where it is."
   cd "$CLONE" || die "refused — cannot enter $CLONE."
   top=$(git rev-parse --show-toplevel 2>/dev/null) || die "refused — $CLONE is not a git repository."
   git_dir=$(cd "$(git rev-parse --git-dir)" && pwd -P)
