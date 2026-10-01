@@ -1,6 +1,5 @@
 # Fires netpace-chain-next.service every 15 minutes. A firing while a run is in progress does
 # nothing: systemd does not start an active service twice, and the script also holds a lock.
-# Install, operate and diagnose: docs/agentic-workflow-NetPace.md (The chain runner).
 
 [Unit]
 Description=NetPace chain runner: check for a ready issue every 15 minutes
