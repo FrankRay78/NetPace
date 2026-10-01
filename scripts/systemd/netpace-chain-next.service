@@ -1,5 +1,5 @@
 # The chain runner: one firing of scripts/chain-next.sh. Started by netpace-chain-next.timer.
-# Install, operate and diagnose: docs/agentic-workflow.md (The chain runner).
+# Install, operate and diagnose: docs/agentic-workflow-NetPace.md (The chain runner).
 #
 # Copy to ~/.config/systemd/user/ and edit the three machine-specific lines below
 # (CHAIN_NEXT_CLONE, PATH and the ExecStart path) to match the build machine: user units start
