@@ -110,12 +110,15 @@ jobs:
             echo "already_reviewed=true" >> "$GITHUB_OUTPUT"
           fi
 
-      # Delta 3 names a body-file path under `ci-scratch/` because headless Claude Code refuses
-      # any agent write under `.claude/`, whatever `--allowedTools` says — the same refusal
-      # confirmissue.yml routes round (its CIR, decision 12). Left unnamed, the agent reached for
-      # the command file's `.claude/scratch/`, was refused, and posting then depended on it
-      # improvising another path: run 36915917745 ended green-but-silent on #239. The shell steps
-      # here stay on `.claude/scratch/`, because the protection binds the agent, not the runner.
+      # The body-file delta in the prompt below names a path under `ci-scratch/` because headless
+      # Claude Code refuses agent writes under `.claude/scratch/`, whatever `--allowedTools` says —
+      # the same refusal confirmissue.yml routes round (decision 12 of
+      # docs/change-intent-records/2026-09-26-automated-prespec-confirmation.md). Left unnamed,
+      # the only path the command file offers is `.claude/scratch/`: a local headless run was
+      # refused there and posted only by improvising another path. On #239 the agent step exited
+      # green having posted nothing — presumed to be the same refusal without the recovery — and
+      # only the verify step below turned the run red. The shell steps here stay on
+      # `.claude/scratch/`, because the protection binds the agent, not the runner.
       - name: Run issue review
         if: steps.guard.outputs.already_reviewed != 'true'
         uses: anthropics/claude-code-action@v1
