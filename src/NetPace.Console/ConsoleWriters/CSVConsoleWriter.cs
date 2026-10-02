@@ -21,7 +21,6 @@ public sealed class CSVConsoleWriter : IConsoleWriter
 
         // Display speed test result. Count columns (which carry no units) sit adjacent to each
         // speed column so a single row distinguishes total from partial failure.
-        // Speed and header cells are formatted from the measurement, so they exist only where the test ran.
         var (downloadSpeed, downloadHeader) = FormatSpeedColumn(downloadResult, "Download", settings);
         var (uploadSpeed, uploadHeader) = FormatSpeedColumn(uploadResult, "Upload", settings);
 
@@ -74,14 +73,14 @@ public sealed class CSVConsoleWriter : IConsoleWriter
     /// </summary>
     private static (string? Speed, string? Header) FormatSpeedColumn(SpeedTestResult? result, string label, SpeedTestCommandSettings settings)
     {
-        if (result is not { } measurement) return (null, null);
+        if (result is null) return (null, null);
 
         if (!settings.CSVHeaderUnits)
         {
-            return (measurement.GetSpeedString(settings.SpeedUnit, settings.SpeedUnitSystem, settings.SpeedScale), label);
+            return (result.GetSpeedString(settings.SpeedUnit, settings.SpeedUnitSystem, settings.SpeedScale), label);
         }
 
-        var (speed, unit) = measurement.GetSpeedStringParts(settings.SpeedUnit, settings.SpeedUnitSystem, settings.SpeedScale);
+        var (speed, unit) = result.GetSpeedStringParts(settings.SpeedUnit, settings.SpeedUnitSystem, settings.SpeedScale);
         return (speed, $"{label} ({unit})");
     }
 }

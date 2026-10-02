@@ -4,8 +4,10 @@ namespace NetPace.Core;
 /// The latency test result for a specific server.
 /// </summary>
 /// <remarks>
-/// Every property is <see langword="required"/>: a result reports measured values, so omitting one
-/// would publish a default that is indistinguishable from a real measurement.
+/// Every property is <c>required</c>, so no value this record reports can be silently defaulted —
+/// each must be stated at construction. It does not follow that a stated value was measured: a
+/// caller that skipped the latency measurement states <see cref="LatencyMilliseconds"/> as zero
+/// explicitly, and this type does not distinguish that from a measured zero.
 /// </remarks>
 public sealed record LatencyTestResult
 {

@@ -96,20 +96,20 @@ public sealed class DefaultConsoleWriter : IConsoleWriter
             // Display detailed diagnostics
             ByteSize size; TimeSpan elapsed;
 
-            if (downloadResult is { } measuredDownload)
+            if (downloadResult is not null)
             {
-                size = ByteSize.FromBytes(measuredDownload.BytesProcessed);
-                elapsed = TimeSpan.FromMilliseconds(measuredDownload.ElapsedMilliseconds);
+                size = ByteSize.FromBytes(downloadResult.BytesProcessed);
+                elapsed = TimeSpan.FromMilliseconds(downloadResult.ElapsedMilliseconds);
                 console.WriteLine($"{size} downloaded in {elapsed.Humanize()}");
             }
-            if (uploadResult is { } measuredUpload)
+            if (uploadResult is not null)
             {
-                size = ByteSize.FromBytes(measuredUpload.BytesProcessed);
-                elapsed = TimeSpan.FromMilliseconds(measuredUpload.ElapsedMilliseconds);
+                size = ByteSize.FromBytes(uploadResult.BytesProcessed);
+                elapsed = TimeSpan.FromMilliseconds(uploadResult.ElapsedMilliseconds);
                 console.WriteLine($"{size} uploaded in {elapsed.Humanize()}");
             }
 
-            if (!(settings.NoDownload && settings.NoUpload))
+            if (downloadResult is not null || uploadResult is not null)
             {
                 console.WriteLine("");
             }
@@ -128,8 +128,8 @@ public sealed class DefaultConsoleWriter : IConsoleWriter
         {
             settings.IncludeTimestamp ? clock.Now.ToString(settings.DateTimeFormat) : null,
             !settings.NoLatency ? $"Latency: {fastest.LatencyMilliseconds} ms" : null,
-            downloadResult is { } download ? $"Download: {download.GetSpeedString(settings.SpeedUnit, settings.SpeedUnitSystem, settings.SpeedScale)}{download.GetFailureAnnotation()}" : null,
-            uploadResult is { } upload ? $"Upload: {upload.GetSpeedString(settings.SpeedUnit, settings.SpeedUnitSystem, settings.SpeedScale)}{upload.GetFailureAnnotation()}" : null
+            downloadResult is not null ? $"Download: {downloadResult.GetSpeedString(settings.SpeedUnit, settings.SpeedUnitSystem, settings.SpeedScale)}{downloadResult.GetFailureAnnotation()}" : null,
+            uploadResult is not null ? $"Upload: {uploadResult.GetSpeedString(settings.SpeedUnit, settings.SpeedUnitSystem, settings.SpeedScale)}{uploadResult.GetFailureAnnotation()}" : null
         }.Where(s => !string.IsNullOrEmpty(s))));
 
 
