@@ -16,7 +16,7 @@
 # starting point wrong would see the stub refuse.
 #
 # The installed systemd timer and a real run against GitHub need the build machine, so they are
-# checked by hand; docs/agentic-workflow.md (*The chain runner*) records how.
+# checked by hand.
 #
 #   Usage:  scripts/chain-next.tests.sh
 
