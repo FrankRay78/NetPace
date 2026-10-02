@@ -125,9 +125,92 @@ The mechanism is in the generic *Permissions and unattended runs*. NetPace's rul
 
 ## Chain
 
+The generic *Running the stages end to end*, *The chain script* and *The chain runner* say what a chain and a runner must do. This section is the runbook for NetPace's two scripts: how each is invoked, configured, operated and tested.
+
 Why `scripts/chain.sh` opens the PR without a pause: [CIR](change-intent-records/2026-09-14-chain-raises-pr-unattended.md).
 
-The chain runner (`scripts/chain-next.sh`, generic *The chain runner*) runs on the build VPS as a systemd user timer, with lingering already enabled for the build user. Its dedicated clone is `~/Repos/NetPace-runner`, cloned from `https://github.com/FrankRay78/NetPace.git`, and its logs are in `~/.local/state/netpace-chain/logs/`. The shipped unit files work there unedited. `ready` is the only opt-in, so confirming an issue queues it. There is no separate queue label, and the runner never merges. It supersedes the dispatcher proposed in #266.
+### The chain script
+
+[`scripts/chain.sh`](../scripts/chain.sh) runs the five stages for one issue.
+
+- **Invocation.** `scripts/chain.sh <issue>` (bare or `#`-prefixed). `scripts/chain.sh --dry-run <issue>` lists the five stages and the command each would send, and runs nothing — no git command, no model.
+- **Prerequisites.** `git`, `claude`, `gh`, `jq` and `timeout` on PATH; `claude` and `gh` signed in; a clean checkout of `main`. The chain checks the five tools, that an issue was named, the clean tree, `main`, and that `CHAIN_STAGE_TIMEOUT`, if set, is a whole number; `/build` checks the fetch, unpushed commits and the issue.
+- **Configuration.** `CHAIN_MODEL` (default `claude-opus-5`) is the model for every stage. Per-stage time limits are build 2h, study 30m, verify 90m, raise-pr 30m; `CHAIN_STAGE_TIMEOUT` (seconds) overrides all four, for tuning from real runs.
+- **When a stage fails.** The closing message names the stage, its position (`[3/5]`) and the reason: the stage's own `FAILED reason=`, `no recognisable verdict`, `claude reported an error`, `reply was not JSON`, `claude exited with <code>`, `the stage could not be launched (exit <code>)`, `reply carried no session id, so the study pass could not resume it`, or `stalled — exceeded <n>s`. Its second line gives `claude --resume <id>` for the failed stage, if the reply carried an id; otherwise it says to reopen the most recent headless session for the repo. Diagnose there, then run the remaining stages by hand, in order.
+- **Tests.** [`scripts/chain.tests.sh`](../scripts/chain.tests.sh) covers order, resumed sessions, malformed and errored replies, failure, stall, refusals and dry run against a stub `claude` in throwaway repos, leaving your checkout untouched. Run it after any edit to the chain.
+
+Manual checks, with a real model:
+
+- **Reopening a failed stage's session.** From a clean `main`, force a stall with `CHAIN_STAGE_TIMEOUT=60 scripts/chain.sh <issue>`. Expect `chain: FAILED at [1/5] build — stalled — exceeded 60s`, exit 1, no later stage, and a second line saying no session id was captured (a stalled stage never reports one). `claude --resume`, picking the most recent headless session, should open the stalled `/build`. Remove any branch it left.
+- **A full run** against a small ready issue: `scripts/chain.sh <issue>` from a clean `main`. Expect five `ok` lines in order, `chain: done — <pull request URL>`, exit 0, no prompt at any point, and a clean working tree.
+
+### The chain runner
+
+[`scripts/chain-next.sh`](../scripts/chain-next.sh) runs on the build VPS, fired every 15 minutes by a systemd user timer, with lingering already enabled for the build user. The shipped unit files in [`scripts/systemd/`](../scripts/systemd/) work there unedited. `ready` is the only opt-in, so confirming an issue queues it. There is no separate queue label. It supersedes the dispatcher proposed in #266.
+
+How NetPace meets the generic runner rules:
+
+- **One run at a time.** systemd never starts an active service twice, and the runner also holds a `flock` lock, so running the script directly cannot overlap the timer's run either.
+- **A clean start.** The clone is forced onto `origin/main` and cleaned with `git clean -fdx`, which takes `bin/`, `obj/` and `.claude/scratch/` with it. The runner refuses any directory not marked `chain-next.dedicated`.
+- **Tracker.** GitHub, read through `gh`; "blocking issue" means GitHub's native issue dependencies.
+- **Report mode.** `scripts/chain-next.sh --dry-run`.
+
+**Prerequisites** on the build machine: everything `scripts/chain.sh` needs (`git`, `claude`, `gh`, `jq`, `timeout`, `claude` and `gh` signed in non-interactively), plus `dotnet`, `flock` (util-linux) and systemd with lingering enabled for the build user (`loginctl enable-linger`), so the timer survives logout and reboot.
+
+**One-time setup:**
+
+1. Clone the repository somewhere used only by the runner, with a full `git clone` rather than a worktree. Mark it as the runner's:
+
+   ```bash
+   git clone https://github.com/FrankRay78/NetPace.git ~/Repos/NetPace-runner
+   git -C ~/Repos/NetPace-runner config chain-next.dedicated true
+   ```
+
+   If the build user has no global `user.name` and `user.email`, set them in this clone with `git -C ~/Repos/NetPace-runner config user.name "<name>"` and the same for `user.email`.
+2. Create the `parked` label once: `gh label create parked --description "The chain runner stopped on this issue; remove to retry"`.
+3. Check what the first firing would build. This only reads GitHub, so it also confirms `gh` access, and it changes nothing:
+
+   ```bash
+   bash ~/Repos/NetPace-runner/scripts/chain-next.sh --dry-run
+   ```
+
+   Set `CHAIN_NEXT_CLONE` first if the clone is not at the default path. The issue it names is built, and a real pull request opened, as soon as the timer is enabled in the next step.
+4. Install the schedule. Copy the unit files:
+
+   ```bash
+   mkdir -p ~/.config/systemd/user
+   cp ~/Repos/NetPace-runner/scripts/systemd/netpace-chain-next.{service,timer} ~/.config/systemd/user/
+   ```
+
+   Check three lines in the copied service: `CHAIN_NEXT_CLONE`, the `ExecStart` path and `PATH`. User units start with a minimal environment, so `PATH` must name where `claude`, `dotnet`, `gh`, `jq`, `git`, `flock` and `timeout` live. The shipped values suit a clone at `~/Repos/NetPace-runner` with those tools in `~/.local/bin`, `~/.dotnet` or `/usr/bin`. Then start it:
+
+   ```bash
+   systemctl --user daemon-reload
+   systemctl --user enable --now netpace-chain-next.timer
+   ```
+
+**Configuration.** `CHAIN_NEXT_CLONE` is the dedicated clone (default `~/Repos/NetPace-runner`). `CHAIN_NEXT_STATE_DIR` holds `logs/` and the lock, outside the clone so the clean cannot delete them (default `${XDG_STATE_HOME:-~/.local/state}/netpace-chain`). `CHAIN_MODEL` and `CHAIN_STAGE_TIMEOUT` pass through to the chain.
+
+**Operating it:**
+
+| To | Run |
+|---|---|
+| Start (and on every boot) | `systemctl --user enable --now netpace-chain-next.timer` |
+| Pause (a run in progress finishes) | `systemctl --user stop netpace-chain-next.timer` |
+| Stop a run in progress too (the issue is not parked) | `systemctl --user stop netpace-chain-next.service` |
+| Resume | `systemctl --user start netpace-chain-next.timer` |
+| Fire once now | `systemctl --user start --no-block netpace-chain-next.service` |
+| See status and the next firing | `systemctl --user status netpace-chain-next.service` and `systemctl --user list-timers netpace-chain-next.timer` |
+| Read the runner's own output | `journalctl --user -u netpace-chain-next.service` |
+| Read one run's full chain output | `logs/<N>-<timestamp>.log` in the state directory (see *Configuration*) |
+| Retry a parked issue | Remove its `parked` label; the next firing picks it up |
+
+**Tests.** [`scripts/chain-next.tests.sh`](../scripts/chain-next.tests.sh) covers selection (closed, not-ready, parked, blocked and already-raised issues), report mode, a clean start after a previous run, a reset that rewrites the runner's own source, parking and un-parking, kept attempt branches (including one whose pushed twin was removed, and one that cannot be set aside), overlapping firings, back-to-back runs, fail-closed queries (each lookup failing on its own), machine faults that park nothing and the dedicated-clone guard. It uses a stub `gh` and a stub `chain.sh` in throwaway repositories, so no model or GitHub call is made. Run it after any edit to the runner.
+
+Manual checks, on the build machine:
+
+- **Report against the real repository.** `scripts/chain-next.sh --dry-run` names the lowest-numbered eligible issue, matching what `gh issue list --label ready` and the issues' blockers and linked pull requests show, and leaves the clone, labels and comments unchanged.
+- **The installed timer.** After `enable --now`, `systemctl --user list-timers` shows the next firing, and `journalctl --user -u netpace-chain-next.service` shows `chain-next: nothing eligible.` (or a run) after it fires.
 
 ## Token / context tooling
 
