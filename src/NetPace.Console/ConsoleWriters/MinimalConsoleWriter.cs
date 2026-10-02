@@ -11,8 +11,9 @@ public sealed class MinimalConsoleWriter : IConsoleWriter
         var fastest = await ServerSelector.GetServerAsync(speedTestClient, settings, cancellationToken);
 
 
-        var downloadResult = new SpeedTestResult();
-        var uploadResult = new SpeedTestResult();
+        // A test that did not run is absent, never a zeroed result.
+        SpeedTestResult? downloadResult = null;
+        SpeedTestResult? uploadResult = null;
 
         // Perform speed test.
         if (!settings.NoDownload) downloadResult = await speedTestClient.GetDownloadSpeedAsync(fastest.Server, cancellationToken);
@@ -24,14 +25,14 @@ public sealed class MinimalConsoleWriter : IConsoleWriter
         {
             settings.IncludeTimestamp ? clock.Now.ToString(settings.DateTimeFormat) : null,
             !settings.NoLatency ? $"Latency: {fastest.LatencyMilliseconds} ms" : null,
-            !settings.NoDownload ? $"Download: {downloadResult.GetSpeedString(settings.SpeedUnit, settings.SpeedUnitSystem, settings.SpeedScale)}{downloadResult.GetFailureAnnotation()}" : null,
-            !settings.NoUpload ? $"Upload: {uploadResult.GetSpeedString(settings.SpeedUnit, settings.SpeedUnitSystem, settings.SpeedScale)}{uploadResult.GetFailureAnnotation()}" : null
+            downloadResult is { } download ? $"Download: {download.GetSpeedString(settings.SpeedUnit, settings.SpeedUnitSystem, settings.SpeedScale)}{download.GetFailureAnnotation()}" : null,
+            uploadResult is { } upload ? $"Upload: {upload.GetSpeedString(settings.SpeedUnit, settings.SpeedUnitSystem, settings.SpeedScale)}{upload.GetFailureAnnotation()}" : null
         }.Where(s => !string.IsNullOrEmpty(s))));
 
         return new SpeedTestOutcome
         {
-            Download = settings.NoDownload ? null : downloadResult,
-            Upload = settings.NoUpload ? null : uploadResult
+            Download = downloadResult,
+            Upload = uploadResult
         };
     }
 }

@@ -13,5 +13,5 @@ public sealed record LatencyTestResult
     /// <summary>
     /// Gets the measured latency to the server, in milliseconds.
     /// </summary>
-    public long LatencyMilliseconds { get; init; }
+    public required long LatencyMilliseconds { get; init; }
 }

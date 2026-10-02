@@ -45,8 +45,9 @@ public sealed class DefaultConsoleWriter : IConsoleWriter
         }
 
 
-        var downloadResult = new SpeedTestResult();
-        var uploadResult = new SpeedTestResult();
+        // A test that did not run is absent, never a zeroed result.
+        SpeedTestResult? downloadResult = null;
+        SpeedTestResult? uploadResult = null;
 
         // Perform speed test
         if (!(settings.NoDownload && settings.NoUpload))
@@ -95,16 +96,16 @@ public sealed class DefaultConsoleWriter : IConsoleWriter
             // Display detailed diagnostics
             ByteSize size; TimeSpan elapsed;
 
-            if (!settings.NoDownload)
+            if (downloadResult is { } measuredDownload)
             {
-                size = ByteSize.FromBytes(downloadResult.BytesProcessed);
-                elapsed = TimeSpan.FromMilliseconds(downloadResult.ElapsedMilliseconds);
+                size = ByteSize.FromBytes(measuredDownload.BytesProcessed);
+                elapsed = TimeSpan.FromMilliseconds(measuredDownload.ElapsedMilliseconds);
                 console.WriteLine($"{size} downloaded in {elapsed.Humanize()}");
             }
-            if (!settings.NoUpload)
+            if (uploadResult is { } measuredUpload)
             {
-                size = ByteSize.FromBytes(uploadResult.BytesProcessed);
-                elapsed = TimeSpan.FromMilliseconds(uploadResult.ElapsedMilliseconds);
+                size = ByteSize.FromBytes(measuredUpload.BytesProcessed);
+                elapsed = TimeSpan.FromMilliseconds(measuredUpload.ElapsedMilliseconds);
                 console.WriteLine($"{size} uploaded in {elapsed.Humanize()}");
             }
 
@@ -127,8 +128,8 @@ public sealed class DefaultConsoleWriter : IConsoleWriter
         {
             settings.IncludeTimestamp ? clock.Now.ToString(settings.DateTimeFormat) : null,
             !settings.NoLatency ? $"Latency: {fastest.LatencyMilliseconds} ms" : null,
-            !settings.NoDownload ? $"Download: {downloadResult.GetSpeedString(settings.SpeedUnit, settings.SpeedUnitSystem, settings.SpeedScale)}{downloadResult.GetFailureAnnotation()}" : null,
-            !settings.NoUpload ? $"Upload: {uploadResult.GetSpeedString(settings.SpeedUnit, settings.SpeedUnitSystem, settings.SpeedScale)}{uploadResult.GetFailureAnnotation()}" : null
+            downloadResult is { } download ? $"Download: {download.GetSpeedString(settings.SpeedUnit, settings.SpeedUnitSystem, settings.SpeedScale)}{download.GetFailureAnnotation()}" : null,
+            uploadResult is { } upload ? $"Upload: {upload.GetSpeedString(settings.SpeedUnit, settings.SpeedUnitSystem, settings.SpeedScale)}{upload.GetFailureAnnotation()}" : null
         }.Where(s => !string.IsNullOrEmpty(s))));
 
 
@@ -136,8 +137,8 @@ public sealed class DefaultConsoleWriter : IConsoleWriter
 
         return new SpeedTestOutcome
         {
-            Download = settings.NoDownload ? null : downloadResult,
-            Upload = settings.NoUpload ? null : uploadResult
+            Download = downloadResult,
+            Upload = uploadResult
         };
     }
 

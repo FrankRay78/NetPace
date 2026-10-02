@@ -10,8 +10,9 @@ public sealed class CSVConsoleWriter : IConsoleWriter
         var fastest = await ServerSelector.GetServerAsync(speedTestClient, settings, cancellationToken);
 
 
-        var downloadResult = new SpeedTestResult();
-        var uploadResult = new SpeedTestResult();
+        // A test that did not run is absent, never a zeroed result.
+        SpeedTestResult? downloadResult = null;
+        SpeedTestResult? uploadResult = null;
 
         // Perform speed test.
         if (!settings.NoDownload) downloadResult = await speedTestClient.GetDownloadSpeedAsync(fastest.Server, cancellationToken);
@@ -20,19 +21,10 @@ public sealed class CSVConsoleWriter : IConsoleWriter
 
         // Display speed test result. Count columns (which carry no units) sit adjacent to each
         // speed column so a single row distinguishes total from partial failure.
-        var downloadSpeed = settings.CSVHeaderUnits
-            ? downloadResult.GetSpeedStringParts(settings.SpeedUnit, settings.SpeedUnitSystem, settings.SpeedScale).speed
-            : downloadResult.GetSpeedString(settings.SpeedUnit, settings.SpeedUnitSystem, settings.SpeedScale);
-        var uploadSpeed = settings.CSVHeaderUnits
-            ? uploadResult.GetSpeedStringParts(settings.SpeedUnit, settings.SpeedUnitSystem, settings.SpeedScale).speed
-            : uploadResult.GetSpeedString(settings.SpeedUnit, settings.SpeedUnitSystem, settings.SpeedScale);
+        // Speed and header cells are formatted from the measurement, so they exist only where the test ran.
+        var (downloadSpeed, downloadHeader) = FormatSpeedColumn(downloadResult, "Download", settings);
+        var (uploadSpeed, uploadHeader) = FormatSpeedColumn(uploadResult, "Upload", settings);
 
-        var downloadHeader = settings.CSVHeaderUnits
-            ? $"Download ({downloadResult.GetSpeedStringParts(settings.SpeedUnit, settings.SpeedUnitSystem, settings.SpeedScale).unit})"
-            : "Download";
-        var uploadHeader = settings.CSVHeaderUnits
-            ? $"Upload ({uploadResult.GetSpeedStringParts(settings.SpeedUnit, settings.SpeedUnitSystem, settings.SpeedScale).unit})"
-            : "Upload";
         var latencyValue = settings.CSVHeaderUnits ? $"{fastest.LatencyMilliseconds}" : $"{fastest.LatencyMilliseconds} ms";
         var latencyHeader = settings.CSVHeaderUnits ? "Latency (ms)" : "Latency";
 
@@ -43,12 +35,12 @@ public sealed class CSVConsoleWriter : IConsoleWriter
             {
                 "Timestamp",
                 !settings.NoLatency ? latencyHeader : null,
-                !settings.NoDownload ? downloadHeader : null,
-                !settings.NoDownload ? "DownloadSucceeded" : null,
-                !settings.NoDownload ? "DownloadFailed" : null,
-                !settings.NoUpload ? uploadHeader : null,
-                !settings.NoUpload ? "UploadSucceeded" : null,
-                !settings.NoUpload ? "UploadFailed" : null,
+                downloadHeader,
+                downloadResult is not null ? "DownloadSucceeded" : null,
+                downloadResult is not null ? "DownloadFailed" : null,
+                uploadHeader,
+                uploadResult is not null ? "UploadSucceeded" : null,
+                uploadResult is not null ? "UploadFailed" : null,
                 "IPAddress",
                 "Hostname"
             }.Where(s => s is not null)));
@@ -59,20 +51,37 @@ public sealed class CSVConsoleWriter : IConsoleWriter
         {
             clock.Now.ToString(settings.DateTimeFormat),
             !settings.NoLatency ? latencyValue : null,
-            !settings.NoDownload ? downloadSpeed : null,
-            !settings.NoDownload ? $"{downloadResult.RequestsSucceeded}" : null,
-            !settings.NoDownload ? $"{downloadResult.RequestsFailed}" : null,
-            !settings.NoUpload ? uploadSpeed : null,
-            !settings.NoUpload ? $"{uploadResult.RequestsSucceeded}" : null,
-            !settings.NoUpload ? $"{uploadResult.RequestsFailed}" : null,
+            downloadSpeed,
+            downloadResult?.RequestsSucceeded.ToString(),
+            downloadResult?.RequestsFailed.ToString(),
+            uploadSpeed,
+            uploadResult?.RequestsSucceeded.ToString(),
+            uploadResult?.RequestsFailed.ToString(),
             clientInfoProvider.GetIPAddress(),
             clientInfoProvider.GetHostname()
         }.Where(s => s is not null)));
 
         return new SpeedTestOutcome
         {
-            Download = settings.NoDownload ? null : downloadResult,
-            Upload = settings.NoUpload ? null : uploadResult
+            Download = downloadResult,
+            Upload = uploadResult
         };
+    }
+
+    /// <summary>
+    /// Formats the speed cell and its column header for one direction, or a pair of nulls where
+    /// that test did not run and there is no measurement to report.
+    /// </summary>
+    private static (string? Speed, string? Header) FormatSpeedColumn(SpeedTestResult? result, string label, SpeedTestCommandSettings settings)
+    {
+        if (result is not { } measurement) return (null, null);
+
+        if (!settings.CSVHeaderUnits)
+        {
+            return (measurement.GetSpeedString(settings.SpeedUnit, settings.SpeedUnitSystem, settings.SpeedScale), label);
+        }
+
+        var (speed, unit) = measurement.GetSpeedStringParts(settings.SpeedUnit, settings.SpeedUnitSystem, settings.SpeedScale);
+        return (speed, $"{label} ({unit})");
     }
 }
