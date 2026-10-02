@@ -110,6 +110,15 @@ jobs:
             echo "already_reviewed=true" >> "$GITHUB_OUTPUT"
           fi
 
+      # The body-file delta in the prompt below names a path under `ci-scratch/` because headless
+      # Claude Code refuses agent writes under `.claude/scratch/`, whatever `--allowedTools` says —
+      # the same refusal confirmissue.yml routes round (decision 12 of
+      # docs/change-intent-records/2026-09-26-automated-prespec-confirmation.md). Left unnamed,
+      # the only path the command file offers is `.claude/scratch/`: a local headless run was
+      # refused there and posted only by improvising another path. On #239 the agent step exited
+      # green having posted nothing — presumed to be the same refusal without the recovery — and
+      # only the verify step below turned the run red. The shell steps here stay on
+      # `.claude/scratch/`, because the protection binds the agent, not the runner.
       - name: Run issue review
         if: steps.guard.outputs.already_reviewed != 'true'
         uses: anthropics/claude-code-action@v1
@@ -127,7 +136,7 @@ jobs:
 
             1. The fetch and mode detection in the resolve-and-detect step (step 1 at the time of writing) are already done. This issue is neither confirmed nor already reviewed — it carries no `ready` label and no review comment, or the run would have stopped before reaching you. So this is a first run: do the full gap analysis and post a new comment. Do still apply the rest of step 1 against the snapshot: where an existing non-review comment already resolves a gap, do not raise it again.
             2. Step 4's link rules tell you to resolve the default branch with `gh repo view`. Do not — it is `main`, given above. Use it for the absolute GitHub links those rules require.
-            3. Step 5 posts with a quoted heredoc. Instead, write the body to a file with the Write tool and post it with `gh issue comment <number> --repo <repo> --body-file <path>`. The comment body is identical either way; a plain file argument is simply more predictable through the tool allowlist than a command substitution.
+            3. Step 5 posts with a quoted heredoc. Instead, write the body to `ci-scratch/reviewissue-body.md` with the Write tool and post it with `gh issue comment <number> --repo <repo> --body-file ci-scratch/reviewissue-body.md`. Do not write it under `.claude/scratch/` — `.claude/` is write-protected in this headless run. The comment body is identical either way; a plain file argument is simply more predictable through the tool allowlist than a command substitution.
 
             Ground the review in this checkout by actually reading files — `CLAUDE.md`, `docs/constitution.md`, the `src/` tree, `docs/`, the neighbouring code the issue would touch. The review must cite real paths and real conventions from this repository, not observations that would fit any codebase.
 
