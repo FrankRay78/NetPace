@@ -3,6 +3,10 @@ namespace NetPace.Core;
 /// <summary>
 /// The latency test result for a specific server.
 /// </summary>
+/// <remarks>
+/// Every property is <see langword="required"/>: a result reports measured values, so omitting one
+/// would publish a default that is indistinguishable from a real measurement.
+/// </remarks>
 public sealed record LatencyTestResult
 {
     /// <summary>

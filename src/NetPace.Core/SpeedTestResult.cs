@@ -3,6 +3,11 @@ namespace NetPace.Core;
 /// <summary>
 /// The speed test result.
 /// </summary>
+/// <remarks>
+/// Every property is <see langword="required"/>: a result reports measured values, so omitting one
+/// would publish a default that is indistinguishable from a real measurement. Where a test did not
+/// run, represent that as the absence of a result rather than a zeroed one.
+/// </remarks>
 public sealed record SpeedTestResult
 {
     /// <summary>
