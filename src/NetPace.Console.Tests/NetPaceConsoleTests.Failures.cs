@@ -220,16 +220,21 @@ public sealed partial class NetPaceConsoleTests
         }
 
         [Theory]
-        [InlineData("--csv")]
-        [InlineData("--json")]
-        public async Task FailOn_Total_Exits_One_On_All_Failed_Test_In_Machine_Formats(string format)
+        [InlineData("--csv", false)]
+        [InlineData("--csv", true)]
+        [InlineData("--json", false)]
+        [InlineData("--json", true)]
+        public async Task FailOn_Total_Exits_One_On_All_Failed_Test_In_Machine_Formats(string format, bool downloadFails)
         {
             // --fail-on reads the outcome each writer returns, so a writer that drops a result
             // silently disables the exit-code policy for its own format. Every format has to trip
-            // on the same all-failed measurement.
+            // on the same all-failed measurement, and each direction is exercised separately so a
+            // writer that carried only one of the two measurements still fails this test.
 
-            // Given every upload request fails.
-            var service = new ScriptedSpeedTester { UploadFactory = _ => ScriptedSpeedTester.AllFailed(32) };
+            // Given every request of one direction fails.
+            var service = downloadFails
+                ? new ScriptedSpeedTester { DownloadFactory = _ => ScriptedSpeedTester.AllFailed(32) }
+                : new ScriptedSpeedTester { UploadFactory = _ => ScriptedSpeedTester.AllFailed(32) };
             var host = HostWith(service);
 
             // When

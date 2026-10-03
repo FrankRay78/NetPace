@@ -26,10 +26,11 @@ public sealed class CSVConsoleWriter : IConsoleWriter
 
         var latencyValue = settings.CSVHeaderUnits ? $"{fastest.LatencyMilliseconds}" : $"{fastest.LatencyMilliseconds} ms";
 
-        // Header row. Each label takes its unit from the same formatting call that produced the
-        // cell below it, so a row and its header cannot disagree about the unit. Under --loop and
-        // --count only the first iteration emits a header, so the labels are composed in here
-        // rather than built and discarded on every row.
+        // Header row, emitted on the first iteration only. Each speed label takes its unit from
+        // the same formatting call that produced the cell below it, so the header cannot disagree
+        // with the row it heads. Later rows re-derive their own unit, so agreement across a
+        // multi-row run rests on SpeedTestCommandSettings.Validate rejecting --csv-header-units
+        // with an Auto scale under --loop/--count; revisit this if that rule is ever relaxed.
         if (initialSpeedTest)
         {
             var latencyHeader = settings.CSVHeaderUnits ? "Latency (ms)" : "Latency";
