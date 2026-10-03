@@ -1,4 +1,4 @@
-using NetPace.Core.Clients.Ookla;
+﻿using NetPace.Core.Clients.Ookla;
 
 namespace NetPace.Console.Tests;
 
@@ -214,6 +214,26 @@ public sealed partial class NetPaceConsoleTests
 
             // When
             var result = await host.RunAsync(["--fail-on", "Total"]);
+
+            // Then
+            Assert.Equal(1, result.ExitCode);
+        }
+
+        [Theory]
+        [InlineData("--csv")]
+        [InlineData("--json")]
+        public async Task FailOn_Total_Exits_One_On_All_Failed_Test_In_Machine_Formats(string format)
+        {
+            // --fail-on reads the outcome each writer returns, so a writer that drops a result
+            // silently disables the exit-code policy for its own format. Every format has to trip
+            // on the same all-failed measurement.
+
+            // Given every upload request fails.
+            var service = new ScriptedSpeedTester { UploadFactory = _ => ScriptedSpeedTester.AllFailed(32) };
+            var host = HostWith(service);
+
+            // When
+            var result = await host.RunAsync([format, "--fail-on", "Total"]);
 
             // Then
             Assert.Equal(1, result.ExitCode);

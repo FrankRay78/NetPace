@@ -60,11 +60,7 @@ public sealed class CSVConsoleWriter : IConsoleWriter
             clientInfoProvider.GetHostname()
         }.Where(s => s is not null)));
 
-        return new SpeedTestOutcome
-        {
-            Download = downloadResult,
-            Upload = uploadResult
-        };
+        return SpeedTestOutcome.Create(downloadResult, uploadResult);
     }
 
     /// <summary>
