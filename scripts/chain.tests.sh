@@ -115,6 +115,13 @@ new_case
 reply 1 'READY branch=feature/270-x'
 chain "#270"
 ok "an issue written #270 is the same issue" 'prompt_is 1 "/build 270"'
+# Regression (#242): /verify reported `## VERIFIED `branch=…``, and markdown landing between
+# the verdict's two words parked a verified branch as a stage with no verdict.
+new_case
+reply 1 'READY `branch=feature/270-x`'; reply 2 '**STUDIED** issue=270 rows=0'; reply 3 '## VERIFIED `branch=feature/270-x`'
+reply 4 'STUDIED `issue=270 rows=1`'; reply 5 'RAISED pr=https://github.com/o/r/pull/9'
+chain 270
+ok "markdown between a verdict's two words is still that verdict" '[ "$RC" = 0 ] && [ "$(calls)" = 5 ]'
 
 # // SCENARIO: A failing stage stops the run
 echo "A failing stage stops the run:"

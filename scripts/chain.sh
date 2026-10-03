@@ -138,7 +138,8 @@ run_stage() {
   # Deliberately not anchored, unlike the two scans above: only /raise-pr's prompt pins its verdict
   # to a line of its own, so the other four may arrive decorated as markdown, and an anchor would
   # abort a healthy run over a bullet. A report quoting someone else's success verdict is covered
-  # by the FAILED scan running first.
+  # by the FAILED scan running first. The same decoration can land between a verdict's two words
+  # (`VERIFIED \`branch=…\``, which parked a verified #242), so each pattern allows punctuation there.
   grep -qE -- "$verdict" <<<"$STAGE_RESULT" || fail "$pos" "$name" "no recognisable verdict"
   echo "chain: [$pos/5] $name — ok"
 }
@@ -173,16 +174,16 @@ if [ "$branch" != main ]; then
   exit 1
 fi
 
-run_stage 1 build "/build $issue" 'READY branch=' "$BUILD_LIMIT"
+run_stage 1 build "/build $issue" 'READY[^[:alnum:]]*branch=' "$BUILD_LIMIT"
 build_session=$STAGE_SESSION
 # The study passes exist to study what the stage before them saw. A reply with no session id
 # would resume nothing and study a fresh session, which reports an honest, empty success.
 [ -n "$build_session" ] || fail 1 build "reply carried no session id, so the study pass could not resume it"
-run_stage 2 study "/study $issue" 'STUDIED issue=' "$STUDY_LIMIT" "$build_session"
-run_stage 3 verify /verify 'VERIFIED branch=' "$VERIFY_LIMIT"
+run_stage 2 study "/study $issue" 'STUDIED[^[:alnum:]]*issue=' "$STUDY_LIMIT" "$build_session"
+run_stage 3 verify /verify 'VERIFIED[^[:alnum:]]*branch=' "$VERIFY_LIMIT"
 verify_session=$STAGE_SESSION
 [ -n "$verify_session" ] || fail 3 verify "reply carried no session id, so the study pass could not resume it"
-run_stage 4 study "/study $issue" 'STUDIED issue=' "$STUDY_LIMIT" "$verify_session"
+run_stage 4 study "/study $issue" 'STUDIED[^[:alnum:]]*issue=' "$STUDY_LIMIT" "$verify_session"
 run_stage 5 raise-pr "/raise-pr $issue" "$PR_VERDICT" "$RAISE_PR_LIMIT"
 
 pr_url=$(grep -m1 -oE -- "$PR_VERDICT" <<<"$STAGE_RESULT")
