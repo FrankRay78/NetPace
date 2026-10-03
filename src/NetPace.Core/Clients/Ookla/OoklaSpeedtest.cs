@@ -348,10 +348,22 @@ public sealed class OoklaSpeedtest : ISpeedTestService
                 }
 
                 // A cancellation raised locally because the byte budget was reached is not a
-                // failure - the request is simply excluded (see the cts gate below). Any other
-                // exception (transport error, TLS, timeout, or a non-success HTTP status surfaced
-                // by EnsureSuccessStatusCode) is a per-request failure, aggregated into the counts
-                // rather than swallowed. Its bytes remain zero.
+                // failure - the request is simply excluded. Any other exception (transport error,
+                // TLS, timeout, or a non-success HTTP status surfaced by EnsureSuccessStatusCode)
+                // is a per-request failure, aggregated into the counts rather than swallowed. Its
+                // bytes remain zero.
+                //
+                // wasCancelledLocally is read here without holding lockObject, deliberately. It is
+                // not what classifies the request: the authoritative exclusion is the
+                // `if (!cts.IsCancellationRequested)` gate in the finally block below, and
+                // cts.Cancel() is called inside that same lock immediately after the flag is set.
+                // Acquiring the lock is a full fence, so any thread reaching the gate after the
+                // cancelling thread released it observes IsCancellationRequested == true and is
+                // excluded from completedCount, failedCount and succeededCount entirely. A stale
+                // `false` read here therefore only sets requestFailed on a request whose counts are
+                // never applied, and cancellation is monotonic so there is no path back to false.
+                // This read is defence-in-depth in front of the gate, not the mechanism that
+                // decides the count - it is not a data race.
                 if (!(e is OperationCanceledException && wasCancelledLocally))
                 {
                     requestFailed = true;
