@@ -1,4 +1,4 @@
-﻿namespace NetPace.Console.Tests;
+namespace NetPace.Console.Tests;
 
 public sealed partial class NetPaceConsoleTests
 {
