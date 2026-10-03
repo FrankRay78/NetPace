@@ -1,6 +1,6 @@
 namespace NetPace.Core.Tests;
 
-public class SpeedTestResultTests
+public partial class SpeedTestResultTests
 {
     [InlineData(0, 1000, "0 Bps")]
     [InlineData(1, 1000, "1 Bps")]
@@ -29,7 +29,7 @@ public class SpeedTestResultTests
     public void Should_Calculate_Bytes_Per_Second_Correctly_SI(long bytesProcessed, long elapsedMilliseconds, string expected)
     {
         // Given
-        var result = new SpeedTestResult { BytesProcessed = bytesProcessed, ElapsedMilliseconds = elapsedMilliseconds };
+        var result = new SpeedTestResult { BytesProcessed = bytesProcessed, ElapsedMilliseconds = elapsedMilliseconds, RequestsSucceeded = 1, RequestsFailed = 0 };
 
         // When
         var speedString = result.GetSpeedString(SpeedUnit.BytesPerSecond, SpeedUnitSystem.SI);
@@ -67,7 +67,7 @@ public class SpeedTestResultTests
     public void Should_Calculate_Bytes_Per_Second_Correctly_IEC(long bytesProcessed, long elapsedMilliseconds, string expected)
     {
         // Given
-        var result = new SpeedTestResult { BytesProcessed = bytesProcessed, ElapsedMilliseconds = elapsedMilliseconds };
+        var result = new SpeedTestResult { BytesProcessed = bytesProcessed, ElapsedMilliseconds = elapsedMilliseconds, RequestsSucceeded = 1, RequestsFailed = 0 };
 
         // When
         var speedString = result.GetSpeedString(SpeedUnit.BytesPerSecond, SpeedUnitSystem.IEC);
@@ -101,7 +101,7 @@ public class SpeedTestResultTests
     public void Should_Calculate_Bits_Per_Second_Correctly_SI(long bytesProcessed, long elapsedMilliseconds, string expected)
     {
         // Given
-        var result = new SpeedTestResult { BytesProcessed = bytesProcessed, ElapsedMilliseconds = elapsedMilliseconds };
+        var result = new SpeedTestResult { BytesProcessed = bytesProcessed, ElapsedMilliseconds = elapsedMilliseconds, RequestsSucceeded = 1, RequestsFailed = 0 };
 
         // When
         var speedString = result.GetSpeedString(SpeedUnit.BitsPerSecond, SpeedUnitSystem.SI);
@@ -135,7 +135,7 @@ public class SpeedTestResultTests
     public void Should_Calculate_Bits_Per_Second_Correctly_IEC(long bytesProcessed, long elapsedMilliseconds, string expected)
     {
         // Given
-        var result = new SpeedTestResult { BytesProcessed = bytesProcessed, ElapsedMilliseconds = elapsedMilliseconds };
+        var result = new SpeedTestResult { BytesProcessed = bytesProcessed, ElapsedMilliseconds = elapsedMilliseconds, RequestsSucceeded = 1, RequestsFailed = 0 };
 
         // When
         var speedString = result.GetSpeedString(SpeedUnit.BitsPerSecond, SpeedUnitSystem.IEC);
@@ -207,7 +207,7 @@ public class SpeedTestResultTests
     public void Should_Calculate_Bytes_Per_Second_With_Fixed_Scale_SI(SpeedScale scale, long bytesProcessed, long elapsedMilliseconds, string expected)
     {
         // Given
-        var result = new SpeedTestResult { BytesProcessed = bytesProcessed, ElapsedMilliseconds = elapsedMilliseconds };
+        var result = new SpeedTestResult { BytesProcessed = bytesProcessed, ElapsedMilliseconds = elapsedMilliseconds, RequestsSucceeded = 1, RequestsFailed = 0 };
 
         // When
         var speedString = result.GetSpeedString(SpeedUnit.BytesPerSecond, SpeedUnitSystem.SI, scale);
@@ -286,7 +286,7 @@ public class SpeedTestResultTests
     public void Should_Calculate_Bytes_Per_Second_With_Fixed_Scale_IEC(SpeedScale scale, long bytesProcessed, long elapsedMilliseconds, string expected)
     {
         // Given
-        var result = new SpeedTestResult { BytesProcessed = bytesProcessed, ElapsedMilliseconds = elapsedMilliseconds };
+        var result = new SpeedTestResult { BytesProcessed = bytesProcessed, ElapsedMilliseconds = elapsedMilliseconds, RequestsSucceeded = 1, RequestsFailed = 0 };
 
         // When
         var speedString = result.GetSpeedString(SpeedUnit.BytesPerSecond, SpeedUnitSystem.IEC, scale);
@@ -364,7 +364,7 @@ public class SpeedTestResultTests
     public void Should_Calculate_Bits_Per_Second_With_Fixed_Scale_SI(SpeedScale scale, long bytesProcessed, long elapsedMilliseconds, string expected)
     {
         // Given
-        var result = new SpeedTestResult { BytesProcessed = bytesProcessed, ElapsedMilliseconds = elapsedMilliseconds };
+        var result = new SpeedTestResult { BytesProcessed = bytesProcessed, ElapsedMilliseconds = elapsedMilliseconds, RequestsSucceeded = 1, RequestsFailed = 0 };
 
         // When
         var speedString = result.GetSpeedString(SpeedUnit.BitsPerSecond, SpeedUnitSystem.SI, scale);
@@ -444,7 +444,7 @@ public class SpeedTestResultTests
     public void Should_Calculate_Bits_Per_Second_With_Fixed_Scale_IEC(SpeedScale scale, long bytesProcessed, long elapsedMilliseconds, string expected)
     {
         // Given
-        var result = new SpeedTestResult { BytesProcessed = bytesProcessed, ElapsedMilliseconds = elapsedMilliseconds };
+        var result = new SpeedTestResult { BytesProcessed = bytesProcessed, ElapsedMilliseconds = elapsedMilliseconds, RequestsSucceeded = 1, RequestsFailed = 0 };
 
         // When
         var speedString = result.GetSpeedString(SpeedUnit.BitsPerSecond, SpeedUnitSystem.IEC, scale);

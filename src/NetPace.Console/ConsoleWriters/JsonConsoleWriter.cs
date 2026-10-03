@@ -11,8 +11,9 @@ public sealed class JsonConsoleWriter : IConsoleWriter
         var fastest = await ServerSelector.GetServerAsync(speedTestClient, settings, cancellationToken);
 
 
-        var downloadResult = new SpeedTestResult();
-        var uploadResult = new SpeedTestResult();
+        // A test that did not run is absent, never a zeroed result.
+        SpeedTestResult? downloadResult = null;
+        SpeedTestResult? uploadResult = null;
 
         // Perform speed test.
         if (!settings.NoDownload) downloadResult = await speedTestClient.GetDownloadSpeedAsync(fastest.Server, cancellationToken);
@@ -21,8 +22,8 @@ public sealed class JsonConsoleWriter : IConsoleWriter
 
         // Display speed test result.
         var latencyFormatted = !settings.NoLatency ? $"{fastest.LatencyMilliseconds} ms" : null;
-        var downloadFormatted = !settings.NoDownload ? downloadResult.GetSpeedString(settings.SpeedUnit, settings.SpeedUnitSystem, settings.SpeedScale) : null;
-        var uploadFormatted = !settings.NoUpload ? uploadResult.GetSpeedString(settings.SpeedUnit, settings.SpeedUnitSystem, settings.SpeedScale) : null;
+        var downloadFormatted = downloadResult?.GetSpeedString(settings.SpeedUnit, settings.SpeedUnitSystem, settings.SpeedScale);
+        var uploadFormatted = uploadResult?.GetSpeedString(settings.SpeedUnit, settings.SpeedUnitSystem, settings.SpeedScale);
 
         var jsonResult = new JsonResult
         {
@@ -32,11 +33,11 @@ public sealed class JsonConsoleWriter : IConsoleWriter
             Timestamp = clock.Now.ToString(settings.DateTimeFormat),
             Latency = latencyFormatted,
             DownloadSpeed = downloadFormatted,
-            DownloadSucceeded = settings.NoDownload ? null : downloadResult.RequestsSucceeded,
-            DownloadFailed = settings.NoDownload ? null : downloadResult.RequestsFailed,
+            DownloadSucceeded = downloadResult?.RequestsSucceeded,
+            DownloadFailed = downloadResult?.RequestsFailed,
             UploadSpeed = uploadFormatted,
-            UploadSucceeded = settings.NoUpload ? null : uploadResult.RequestsSucceeded,
-            UploadFailed = settings.NoUpload ? null : uploadResult.RequestsFailed,
+            UploadSucceeded = uploadResult?.RequestsSucceeded,
+            UploadFailed = uploadResult?.RequestsFailed,
             IPAddress = clientInfoProvider.GetIPAddress(),
             Hostname = clientInfoProvider.GetHostname()
         };
@@ -50,8 +51,8 @@ public sealed class JsonConsoleWriter : IConsoleWriter
 
         return new SpeedTestOutcome
         {
-            Download = settings.NoDownload ? null : downloadResult,
-            Upload = settings.NoUpload ? null : uploadResult
+            Download = downloadResult,
+            Upload = uploadResult
         };
     }
 }
