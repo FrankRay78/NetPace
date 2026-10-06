@@ -135,30 +135,29 @@ public sealed class OoklaSpeedtest : ISpeedTestService
             throw new ArgumentException("At least one server must be provided.", nameof(servers));
         }
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(settings.ServerDiscovery.ScreeningRequestCount, nameof(settings.ServerDiscovery.ScreeningRequestCount));
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(settings.ServerDiscovery.ServerTimeoutMilliseconds, nameof(settings.ServerDiscovery.ServerTimeoutMilliseconds));
 
         var screened = new LatencyTestResult?[servers.Length];
         var screeningLock = new object();
         var serversScreened = 0;
 
-        // One ceiling for the whole pass, not a budget per candidate. Candidates are screened
-        // concurrently, so the ceiling costs about one timeout rather than one per candidate -
-        // which is what makes screening every discovered server affordable, and what keeps the
-        // time taken to choose a server from growing with the length of the server list.
-        using var ceilingCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        // One ceiling for the whole pass, not a budget per candidate - see ServerTimeoutMilliseconds.
+        var ceilingCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
 
         async Task ScreenAndRecordAsync(int index)
         {
             var result = await ScreenServerAsync(servers[index], ceilingCts.Token).ConfigureAwait(false);
 
-            // Recorded and reported under one lock, so the final read below sees every result a
-            // candidate finished, a consumer callback is never entered concurrently, and the
-            // percentage it is handed matches the number screened at that moment.
+            // Recorded and reported under one lock, so a consumer callback is never entered
+            // concurrently and the percentage it is handed matches the number screened at that
+            // moment. Nothing is reported once the pass is over, because a candidate abandoned at
+            // the ceiling can still finish after the caller has moved on.
             lock (screeningLock)
             {
                 screened[index] = result;
                 serversScreened++;
 
-                if (!cancellationToken.IsCancellationRequested)
+                if (!ceilingCts.IsCancellationRequested)
                 {
                     ReportProgress(progress, new SpeedTestProgress
                     {
@@ -174,13 +173,36 @@ public sealed class OoklaSpeedtest : ISpeedTestService
             screenings[index] = ScreenAndRecordAsync(index);
         }
 
+        var allScreenings = Task.WhenAll(screenings);
         var ceiling = Task.Delay(settings.ServerDiscovery.ServerTimeoutMilliseconds, ceilingCts.Token);
-        await Task.WhenAny(Task.WhenAll(screenings), ceiling).ConfigureAwait(false);
+        await Task.WhenAny(allScreenings, ceiling).ConfigureAwait(false);
 
         // Stop the ceiling timer, and abandon any candidate still outstanding rather than waiting
-        // on it: the ceiling is a wall-clock bound on choosing a server. Before these budgets
-        // existed, a server answering in 20s-60s per request could stall a run for minutes.
+        // on it: the ceiling is a wall-clock bound on choosing a server, and awaiting an
+        // outstanding request would make it advisory rather than hard.
         ceilingCts.Cancel();
+
+        // An abandoned candidate is still tidied up after. Observe whatever it throws, so a fault
+        // cannot vanish as an unobserved task exception, and dispose the ceiling only once no
+        // screening can still be reading its token.
+        _ = allScreenings.ContinueWith(
+            completed =>
+            {
+                _ = completed.Exception;
+                ceilingCts.Dispose();
+            },
+            CancellationToken.None,
+            TaskContinuationOptions.ExecuteSynchronously,
+            TaskScheduler.Default);
+
+        // A screening that faulted is a defect in NetPace rather than a verdict on a server, so it
+        // surfaces instead of being recorded as one more unreachable candidate. Only a fault from
+        // the completed pass can be surfaced this way; one from a candidate abandoned at the
+        // ceiling is observed above, because nothing is waiting on it by then.
+        if (allScreenings.IsFaulted)
+        {
+            throw allScreenings.Exception!.GetBaseException();
+        }
 
         // Honour any user cancellation during the screening pass.
         cancellationToken.ThrowIfCancellationRequested();
@@ -200,9 +222,10 @@ public sealed class OoklaSpeedtest : ISpeedTestService
     }
 
     /// <summary>
-    /// Screens one server - is it reachable, and roughly how fast? - returning <c>null</c> only
-    /// when it did not answer at all, which is the one thing that drops a candidate out of
-    /// selection. A reachable but slow server returns a figure and simply ranks lower.
+    /// Screens one server - is it reachable, and roughly how fast? - returning <c>null</c> when the
+    /// candidate cannot be ranked: its URL is missing or not absolute, no request completed inside
+    /// the ceiling, or what answered was not a speed test server. A server that answered correctly
+    /// at least once returns a figure and simply ranks lower when it is slow.
     /// </summary>
     /// <remarks>
     /// Deliberately far cheaper than <see cref="GetServerLatencyAsync(IServer, CancellationToken)"/>,
@@ -246,11 +269,14 @@ public sealed class OoklaSpeedtest : ISpeedTestService
                     fastestMilliseconds = stopwatch.ElapsedMilliseconds;
                 }
             }
-            catch (Exception)
+            catch (Exception e) when (e is HttpRequestException or IOException or OperationCanceledException)
             {
-                // A server that cannot be reached is ranked out, not an error - finding that out is
-                // what screening is for. Whatever earlier requests achieved still counts, and the
-                // surrounding pass reports when no candidate answered at all.
+                // Unreachable, or abandoned at the ceiling: ranked out rather than raised, because
+                // finding that out is what screening is for. Whatever earlier requests achieved
+                // still counts, and the surrounding pass reports when no candidate answered at all.
+                // Anything else - a disposed client, a bad proxy, an exhausted socket pool - is a
+                // fault in NetPace rather than a verdict on this server, so it is left to propagate
+                // instead of being disguised as one unreachable candidate.
                 break;
             }
         }

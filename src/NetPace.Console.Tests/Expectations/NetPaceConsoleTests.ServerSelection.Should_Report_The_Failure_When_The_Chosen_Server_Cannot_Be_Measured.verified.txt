@@ -1,0 +1,1 @@
+﻿Error: Server returned incorrect test string for latency.txt

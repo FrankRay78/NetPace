@@ -99,9 +99,9 @@ public sealed class ListServersCommand(IAnsiConsole console, ISpeedTestService s
             .AutoClear(false)
             .StartAsync(async ctx =>
             {
-                // Screen each server through the same path auto-selection uses, so a server listed
-                // with a latency here is one a real run would consider, and update the table as
-                // they come back.
+                // Screen each server through the same path auto-selection uses, so a latency
+                // listed here means a real run would consider that server. The table is updated
+                // as each result comes back.
                 for (int i = 0; i < servers.Count; i++)
                 {
                     var server = servers[i];
@@ -112,8 +112,12 @@ public sealed class ListServersCommand(IAnsiConsole console, ISpeedTestService s
 
                         table.UpdateCell(i, 3, $"{latencyResult.LatencyMilliseconds}ms");
                     }
-                    catch (Exception)
+                    catch (Exception e) when (e is not ArgumentException)
                     {
+                        // Screening reports an unreachable candidate by throwing, so this is the
+                        // ordinary path for a server that did not answer. A provider misconfigured
+                        // through its settings also throws, as ArgumentException - that must reach
+                        // the user rather than print a dash against every server in the list.
                         table.UpdateCell(i, 3, "-");
                     }
 

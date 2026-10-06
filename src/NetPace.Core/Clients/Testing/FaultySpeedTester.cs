@@ -35,6 +35,9 @@ public class FaultySpeedTester : ISpeedTestService
         string.Equals(sponsor, "Test Sponsor 2", StringComparison.Ordinal) &&
         string.Equals(methodName, nameof(GetServerLatencyAsync), StringComparison.Ordinal);
 
+    private bool CanBeScreened(IServer server) =>
+        !IsFaulted(server.Sponsor, nameof(GetServerLatencyAsync));
+
     private void AssertNotFaulted(IServer server, string methodName)
     {
         if (IsFaulted(server.Sponsor, methodName))
@@ -87,13 +90,13 @@ public class FaultySpeedTester : ISpeedTestService
 
     /// <inheritdoc/>
     /// <remarks>
-    /// A server this tester cannot ping cannot be screened either - screening is a cheap latency
-    /// probe - so a faulted candidate drops out of selection rather than being ranked, and a
-    /// selection with nothing left reports that no servers are available.
+    /// Screening is itself a latency probe, so a server this tester cannot ping drops out of
+    /// selection rather than being ranked, and a selection left with nothing reports that no
+    /// servers are available.
     /// </remarks>
     public Task<LatencyTestResult> GetFastestServerByLatencyAsync(IServer[] servers, IProgress<SpeedTestProgress> progress, CancellationToken cancellationToken = default)
     {
-        var reachable = servers.Where(server => !IsFaulted(server.Sponsor, nameof(GetServerLatencyAsync))).ToArray();
+        var reachable = servers.Where(CanBeScreened).ToArray();
 
         if (reachable.Length == 0)
         {

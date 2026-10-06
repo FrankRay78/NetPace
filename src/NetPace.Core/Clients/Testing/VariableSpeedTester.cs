@@ -75,13 +75,22 @@ public class VariableSpeedTester : ISpeedTestService
     /// <summary>
     /// The latency the current speed test stands for, whether it is being screened or measured.
     /// </summary>
-    private LatencyTestResult LatencyForCurrentTest(IServer server) => callCount switch
+    private LatencyTestResult LatencyForCurrentTest(IServer server)
     {
-        1 => new LatencyTestResult { Server = server, LatencyMilliseconds = 75 },
-        2 => new LatencyTestResult { Server = server, LatencyMilliseconds = 100 },
-        3 => new LatencyTestResult { Server = server, LatencyMilliseconds = 150 },
-        _ => new LatencyTestResult { Server = server, LatencyMilliseconds = 100 },
-    };
+        // Call 1: 75ms
+        // Call 2: 100ms
+        // Call 3: 150ms
+        // Call 4+: 100ms
+
+        long latencyMilliseconds = callCount switch
+        {
+            1 => 75,
+            3 => 150,
+            _ => 100
+        };
+
+        return new LatencyTestResult { Server = server, LatencyMilliseconds = latencyMilliseconds };
+    }
 
     /// <inheritdoc/>
     public Task<IServer[]> GetServersAsync(CancellationToken cancellationToken = default)

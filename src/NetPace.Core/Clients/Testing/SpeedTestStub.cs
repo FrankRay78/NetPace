@@ -107,14 +107,17 @@ public sealed class SpeedTestStub : ISpeedTestService
             progress.Report(new SpeedTestProgress { PercentageComplete = 100 });
         }
 
-        // Every candidate offered is screened, and the lowest-numbered one wins. Honouring the
-        // array matters: callers screen a single candidate through this method as well as a list.
-        var fastest = servers.OrderBy(server => GetServerID(server.Url)).First();
+        // Every candidate offered is screened and the lowest-numbered one wins. Callers screen a
+        // single candidate through this method as well as a list, so the winner is taken from the
+        // array given rather than from the stub's own server list.
+        var fastest = servers.OrderBy(candidate => GetServerID(candidate.Url)).First();
+
+        var serverID = GetServerID(fastest.Url);
 
         var latencyResult = new LatencyTestResult
         {
             Server = fastest,
-            LatencyMilliseconds = GetServerID(fastest.Url) * 100
+            LatencyMilliseconds = serverID * 100
         };
 
         return Task.FromResult(latencyResult);

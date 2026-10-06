@@ -39,6 +39,8 @@ Two properties make the ceiling affordable where the old per-candidate budget wa
 - **Concurrency.** Candidates are screened at the same time, so the worst case is about one timeout rather than one per server. The time taken to choose a server does not grow with the length of the server list, which is why nothing has to cap how many servers discovery returns.
 - **Stragglers are abandoned, not awaited.** At the ceiling, screening takes whatever answered and moves on. Waiting for an outstanding request would make the ceiling advisory, and a handler that ignores cancellation would make it meaningless.
 
+Abandoned is not forgotten, though: an abandoned candidate contributes no result and reports no progress once the pass is over, and whatever it throws on its way out is observed rather than left to surface as an unobserved task exception. A fault raised by a candidate that finished inside the ceiling is reported to the caller, because a screening that throws something other than "unreachable" is a defect in NetPace rather than a verdict on a server. A fault from a candidate abandoned at the ceiling can only be observed and discarded — by then nothing is waiting on it, which is the price of keeping the ceiling hard.
+
 `ScreeningRequestCount` sits beside the ceiling and sets how many requests each server is sent. The screening figure is the **fastest** of the requests that completed, not their average: screening has no warm-up, so the first request carries connection setup the link itself is not responsible for.
 
 ## Once chosen, the server does not change

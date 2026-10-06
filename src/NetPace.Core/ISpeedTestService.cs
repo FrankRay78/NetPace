@@ -58,7 +58,8 @@ public interface ISpeedTestService
     /// <remarks>
     /// Screening is a cheap ranking pass, not a measurement: every server is screened under one
     /// overall ceiling, and a server that is reachable but slow ranks lower rather than dropping
-    /// out. Only a server that did not answer at all is excluded. The latency returned is
+    /// out. A server is reachable when at least one of its screening requests completes inside the
+    /// ceiling; only a server with no completed request drops out. The latency returned is
     /// therefore a screening figure - call <see cref="GetServerLatencyAsync(IServer, CancellationToken)"/>
     /// on the winner for a figure to report.
     /// </remarks>
@@ -66,6 +67,7 @@ public interface ISpeedTestService
     /// <param name="cancellationToken">The token to allow the operation to be cancelled.</param>
     /// <returns>The reachable server with the lowest screening latency, and that latency in milliseconds.</returns>
     /// <exception cref="Exception">Thrown when no given server could be reached.</exception>
+    /// <exception cref="ArgumentOutOfRangeException">Thrown when the provider is configured with a non-positive screening request count or screening ceiling.</exception>
     public Task<LatencyTestResult> GetFastestServerByLatencyAsync(IServer[] servers, CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -74,7 +76,8 @@ public interface ISpeedTestService
     /// <remarks>
     /// Screening is a cheap ranking pass, not a measurement: every server is screened under one
     /// overall ceiling, and a server that is reachable but slow ranks lower rather than dropping
-    /// out. Only a server that did not answer at all is excluded. The latency returned is
+    /// out. A server is reachable when at least one of its screening requests completes inside the
+    /// ceiling; only a server with no completed request drops out. The latency returned is
     /// therefore a screening figure - call <see cref="GetServerLatencyAsync(IServer, CancellationToken)"/>
     /// on the winner for a figure to report.
     /// </remarks>
@@ -83,6 +86,7 @@ public interface ISpeedTestService
     /// <param name="cancellationToken">The token to allow the operation to be cancelled.</param>
     /// <returns>The reachable server with the lowest screening latency, and that latency in milliseconds.</returns>
     /// <exception cref="Exception">Thrown when no given server could be reached.</exception>
+    /// <exception cref="ArgumentOutOfRangeException">Thrown when the provider is configured with a non-positive screening request count or screening ceiling.</exception>
     public Task<LatencyTestResult> GetFastestServerByLatencyAsync(IServer[] servers, IProgress<SpeedTestProgress> progress, CancellationToken cancellationToken = default);
 
     /// <summary>

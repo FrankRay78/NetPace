@@ -200,14 +200,17 @@ public sealed partial class OoklaSpeedtestTests
             Assert.Equal("servers", exception.ParamName);
         }
 
-        [Fact]
-        public async Task GetFastestServerByLatencyAsync_ScreeningRequestCount_NotPositive_ThrowsArgumentOutOfRangeException()
+        [Theory]
+        [InlineData(0)]
+        [InlineData(-1)]
+        [InlineData(-100)]
+        public async Task GetFastestServerByLatencyAsync_ScreeningRequestCount_NotPositive_ThrowsArgumentOutOfRangeException(int screeningRequestCount)
         {
             // Given a screening count that would send no requests, so every candidate would look
             // unreachable and the run would report that no servers were found.
             var settings = new OoklaSpeedtestSettings
             {
-                ServerDiscovery = new() { ScreeningRequestCount = 0 }
+                ServerDiscovery = new() { ScreeningRequestCount = screeningRequestCount }
             };
             var speedtest = new OoklaSpeedtest(settings);
             IServer[] servers = [new Server { Url = "http://example.com/", Sponsor = "Sponsor", Location = "Location" }];
@@ -218,6 +221,31 @@ public sealed partial class OoklaSpeedtestTests
 
             // Then
             Assert.Equal(nameof(ServerDiscoverySettings.ScreeningRequestCount), exception.ParamName);
+        }
+
+        [Theory]
+        [InlineData(0)]
+        [InlineData(-1)]
+        [InlineData(-100)]
+        public async Task GetFastestServerByLatencyAsync_ServerTimeoutMilliseconds_NotPositive_ThrowsArgumentOutOfRangeException(int serverTimeoutMilliseconds)
+        {
+            // Given a screening ceiling that is not a positive span of time. Zero would abandon
+            // every candidate before it could answer and report that no servers were found, and a
+            // negative value would remove the bound on choosing a server altogether - so the
+            // ceiling is rejected up front rather than silently defeating itself.
+            var settings = new OoklaSpeedtestSettings
+            {
+                ServerDiscovery = new() { ServerTimeoutMilliseconds = serverTimeoutMilliseconds }
+            };
+            var speedtest = new OoklaSpeedtest(settings);
+            IServer[] servers = [new Server { Url = "http://example.com/", Sponsor = "Sponsor", Location = "Location" }];
+
+            // When
+            var exception = await Assert.ThrowsAsync<ArgumentOutOfRangeException>(
+                () => speedtest.GetFastestServerByLatencyAsync(servers));
+
+            // Then
+            Assert.Equal(nameof(ServerDiscoverySettings.ServerTimeoutMilliseconds), exception.ParamName);
         }
 
         [Fact]

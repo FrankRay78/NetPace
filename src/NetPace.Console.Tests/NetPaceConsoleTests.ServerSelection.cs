@@ -1,5 +1,3 @@
-using Microsoft.Extensions.DependencyInjection;
-
 namespace NetPace.Console.Tests;
 
 public sealed partial class NetPaceConsoleTests
@@ -16,6 +14,17 @@ public sealed partial class NetPaceConsoleTests
             new Server { Location = "Location 2", Sponsor = "Test Sponsor 2", Url = "http://test2.com" },
             new Server { Location = "Location 3", Sponsor = "Test Sponsor 3", Url = "http://test3.com" },
         ];
+
+        /// <summary>
+        /// The screening latency a candidate answers with, or <c>null</c> when it cannot be
+        /// screened at all - which is how a candidate drops out of selection.
+        /// </summary>
+        private static int? ScreeningLatencyFor(IServer server) => server.Sponsor switch
+        {
+            "Test Sponsor 1" => 10,
+            "Test Sponsor 3" => 30,
+            _ => null,
+        };
 
         [Fact]
         public async Task Should_Report_The_Measured_Latency_Of_The_Chosen_Server()
@@ -53,6 +62,35 @@ public sealed partial class NetPaceConsoleTests
         }
 
         [Fact]
+        public async Task Should_Report_The_Failure_When_The_Chosen_Server_Cannot_Be_Measured()
+        {
+            // Given screening chooses a server successfully, and measuring that server then fails.
+            // Splitting one call into two created this window, and the run is meant to fail in it
+            // rather than quietly fall back to the next-ranked candidate.
+            var mock = new SpeedTestMock
+            {
+                GetServersAsyncFunc = _ => Task.FromResult(discoveredServers),
+                GetFastestServerByLatencyAsyncFunc = (servers, _, _) =>
+                    Task.FromResult(new LatencyTestResult { Server = servers[0], LatencyMilliseconds = 5 }),
+                GetServerLatencyAsyncFunc = (_, _, _) =>
+                    throw new Exception("Server returned incorrect test string for latency.txt"),
+            };
+
+            var services = new ServiceCollection();
+            services.AddSingleton<ISpeedTestService>(mock);
+            services.AddSingleton<IClock, ClockStub>();
+            services.AddSingleton<IWaiter, NoDelayStub>();
+            var host = GetCommandLineTestHost(services);
+
+            // When
+            var result = await host.RunAsync([]);
+
+            // Then the measurement failure is what the user is told about, and no download or
+            // upload figure is reported for a server whose latency could not be measured.
+            await Verify(result.Output);
+        }
+
+        [Fact]
         public async Task Should_List_The_Screening_Latency_And_Omit_It_For_A_Server_Selection_Could_Not_Reach()
         {
             // SCENARIO: A user lists available servers
@@ -64,14 +102,22 @@ public sealed partial class NetPaceConsoleTests
                 GetServersAsyncFunc = _ => Task.FromResult(discoveredServers),
                 GetFastestServerByLatencyAsyncFunc = (servers, _, _) =>
                 {
-                    var candidate = servers[0];
-                    if (candidate.Sponsor == "Test Sponsor 2")
+                    // Honour the whole array rather than assuming one candidate per call: rank the
+                    // candidates that can be screened and report "no servers" only when none can.
+                    // That is the documented contract, so this stands in for screening however the
+                    // command chooses to batch its candidates.
+                    var ranked = servers
+                        .Select(candidate => new { candidate, latency = ScreeningLatencyFor(candidate) })
+                        .Where(entry => entry.latency is not null)
+                        .OrderBy(entry => entry.latency)
+                        .ToArray();
+
+                    if (ranked.Length == 0)
                     {
                         throw new Exception("No servers available");
                     }
 
-                    var latency = candidate.Sponsor == "Test Sponsor 1" ? 10 : 30;
-                    return Task.FromResult(new LatencyTestResult { Server = candidate, LatencyMilliseconds = latency });
+                    return Task.FromResult(new LatencyTestResult { Server = ranked[0].candidate, LatencyMilliseconds = ranked[0].latency!.Value });
                 },
                 GetServerLatencyAsyncFunc = (server, _, _) =>
                     Task.FromResult(new LatencyTestResult { Server = server, LatencyMilliseconds = 999 }),
@@ -79,8 +125,6 @@ public sealed partial class NetPaceConsoleTests
 
             var services = new ServiceCollection();
             services.AddSingleton<ISpeedTestService>(mock);
-            services.AddSingleton<IClock, ClockStub>();
-            services.AddSingleton<IWaiter, NoDelayStub>();
             var host = GetCommandLineTestHost(services);
 
             // When

@@ -20,6 +20,7 @@ public sealed record ServerDiscoverySettings
     /// This is a ceiling on the whole screening pass, not a budget per server: candidates are
     /// screened concurrently, so the worst case is roughly one timeout rather than one per server.
     /// A candidate that has not answered by the ceiling is treated as unreachable and drops out.
+    /// Must be positive; a non-positive value is rejected when selection runs, not at construction.
     /// </remarks>
     public int ServerTimeoutMilliseconds { get; init; } = 2000;
 
@@ -31,6 +32,7 @@ public sealed record ServerDiscoverySettings
     /// Screening only has to rank candidates, so it is deliberately far cheaper than the full
     /// latency measurement taken of the winner afterwards
     /// (<see cref="LatencyTestSettings.LatencyTestIterations"/>).
+    /// Must be positive; a non-positive value is rejected when selection runs, not at construction.
     /// </remarks>
     public int ScreeningRequestCount { get; init; } = 3;
 }
