@@ -167,7 +167,7 @@ public sealed partial class OoklaSpeedtestTests
         // When
         var exception = await Record.ExceptionAsync(() => speedtest.GetFastestServerByLatencyAsync(servers));
 
-        // Then the message the console turns into "No speed test servers were found" is unchanged.
+        // Then the message the console surfaces as "Error: No servers available" is unchanged.
         exception.ShouldNotBeNull();
         exception.Message.ShouldBe("No servers available");
     }
