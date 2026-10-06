@@ -53,20 +53,36 @@ public interface ISpeedTestService
     public Task<LatencyTestResult> GetServerLatencyAsync(string serverUrl, IProgress<LatencyTestProgress> progress, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Determines the fastest server based on latency from a given list of servers.
+    /// Screens every given server and returns the fastest one that could be reached.
     /// </summary>
-    /// <param name="servers">An array of servers to test for latency.</param>
+    /// <remarks>
+    /// Screening is a cheap ranking pass, not a measurement: every server is screened under one
+    /// overall ceiling, and a server that is reachable but slow ranks lower rather than dropping
+    /// out. Only a server that did not answer at all is excluded. The latency returned is
+    /// therefore a screening figure - call <see cref="GetServerLatencyAsync(IServer, CancellationToken)"/>
+    /// on the winner for a figure to report.
+    /// </remarks>
+    /// <param name="servers">An array of servers to screen.</param>
     /// <param name="cancellationToken">The token to allow the operation to be cancelled.</param>
-    /// <returns>The server with the lowest latency and its latency in milliseconds.</returns>
+    /// <returns>The reachable server with the lowest screening latency, and that latency in milliseconds.</returns>
+    /// <exception cref="Exception">Thrown when no given server could be reached.</exception>
     public Task<LatencyTestResult> GetFastestServerByLatencyAsync(IServer[] servers, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Determines the fastest server based on latency from a given list of servers.
+    /// Screens every given server and returns the fastest one that could be reached.
     /// </summary>
-    /// <param name="servers">An array of servers to test for latency.</param>
+    /// <remarks>
+    /// Screening is a cheap ranking pass, not a measurement: every server is screened under one
+    /// overall ceiling, and a server that is reachable but slow ranks lower rather than dropping
+    /// out. Only a server that did not answer at all is excluded. The latency returned is
+    /// therefore a screening figure - call <see cref="GetServerLatencyAsync(IServer, CancellationToken)"/>
+    /// on the winner for a figure to report.
+    /// </remarks>
+    /// <param name="servers">An array of servers to screen.</param>
     /// <param name="progress">A progress reporter that receives server selection progress updates.</param>
     /// <param name="cancellationToken">The token to allow the operation to be cancelled.</param>
-    /// <returns>The server with the lowest latency and its latency in milliseconds.</returns>
+    /// <returns>The reachable server with the lowest screening latency, and that latency in milliseconds.</returns>
+    /// <exception cref="Exception">Thrown when no given server could be reached.</exception>
     public Task<LatencyTestResult> GetFastestServerByLatencyAsync(IServer[] servers, IProgress<SpeedTestProgress> progress, CancellationToken cancellationToken = default);
 
     /// <summary>

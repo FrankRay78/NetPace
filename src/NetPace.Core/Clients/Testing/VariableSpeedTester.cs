@@ -29,15 +29,12 @@ public class VariableSpeedTester : ISpeedTestService
                 // The first server is always the fastest
                 var server = servers[0];
 
-                LatencyTestResult result = callCount switch
-                {
-                    1 => new LatencyTestResult { Server = server, LatencyMilliseconds = 75 },
-                    2 => new LatencyTestResult { Server = server, LatencyMilliseconds = 100 },
-                    3 => new LatencyTestResult { Server = server, LatencyMilliseconds = 150 },
-                    _ => new LatencyTestResult { Server = server, LatencyMilliseconds = 100 },
-                };
-                return Task.FromResult(result);
+                return Task.FromResult(LatencyForCurrentTest(server));
             },
+
+            // A caller screens the servers and then measures the winner, so both calls land within
+            // one test and must report the figure that test stands for.
+            GetServerLatencyAsyncFunc = (server, _, _) => Task.FromResult(LatencyForCurrentTest(server)),
 
             GetDownloadSpeedAsyncFunc = (server, _, _) =>
             {
@@ -74,6 +71,17 @@ public class VariableSpeedTester : ISpeedTestService
             }
         };
     }
+
+    /// <summary>
+    /// The latency the current speed test stands for, whether it is being screened or measured.
+    /// </summary>
+    private LatencyTestResult LatencyForCurrentTest(IServer server) => callCount switch
+    {
+        1 => new LatencyTestResult { Server = server, LatencyMilliseconds = 75 },
+        2 => new LatencyTestResult { Server = server, LatencyMilliseconds = 100 },
+        3 => new LatencyTestResult { Server = server, LatencyMilliseconds = 150 },
+        _ => new LatencyTestResult { Server = server, LatencyMilliseconds = 100 },
+    };
 
     /// <inheritdoc/>
     public Task<IServer[]> GetServersAsync(CancellationToken cancellationToken = default)

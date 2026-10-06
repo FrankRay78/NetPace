@@ -99,15 +99,16 @@ public sealed class ListServersCommand(IAnsiConsole console, ISpeedTestService s
             .AutoClear(false)
             .StartAsync(async ctx =>
             {
-                // Fetch the latency for each server
-                // and update the table as they come back
+                // Screen each server through the same path auto-selection uses, so a server listed
+                // with a latency here is one a real run would consider, and update the table as
+                // they come back.
                 for (int i = 0; i < servers.Count; i++)
                 {
                     var server = servers[i];
 
                     try
                     {
-                        var latencyResult = await speedTestClient.GetServerLatencyAsync(server, cancellationToken);
+                        var latencyResult = await speedTestClient.GetFastestServerByLatencyAsync([server], cancellationToken);
 
                         table.UpdateCell(i, 3, $"{latencyResult.LatencyMilliseconds}ms");
                     }

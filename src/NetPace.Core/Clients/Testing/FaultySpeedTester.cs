@@ -82,13 +82,25 @@ public class FaultySpeedTester : ISpeedTestService
     /// <inheritdoc/>
     public Task<LatencyTestResult> GetFastestServerByLatencyAsync(IServer[] servers, CancellationToken cancellationToken = default)
     {
-        return inner.GetFastestServerByLatencyAsync(servers, cancellationToken);
+        return GetFastestServerByLatencyAsync(servers, new NullProgress<SpeedTestProgress>(), cancellationToken);
     }
 
     /// <inheritdoc/>
+    /// <remarks>
+    /// A server this tester cannot ping cannot be screened either - screening is a cheap latency
+    /// probe - so a faulted candidate drops out of selection rather than being ranked, and a
+    /// selection with nothing left reports that no servers are available.
+    /// </remarks>
     public Task<LatencyTestResult> GetFastestServerByLatencyAsync(IServer[] servers, IProgress<SpeedTestProgress> progress, CancellationToken cancellationToken = default)
     {
-        return inner.GetFastestServerByLatencyAsync(servers, progress, cancellationToken);
+        var reachable = servers.Where(server => !IsFaulted(server.Sponsor, nameof(GetServerLatencyAsync))).ToArray();
+
+        if (reachable.Length == 0)
+        {
+            throw new Exception("No servers available");
+        }
+
+        return inner.GetFastestServerByLatencyAsync(reachable, progress, cancellationToken);
     }
 
     /// <inheritdoc/>

@@ -45,7 +45,11 @@ internal static class ServerSelector
                 {
                     throw new Exception("No servers available");
                 }
-                return await speedTestClient.GetFastestServerByLatencyAsync(servers, cancellationToken);
+                // Screening chooses the server; the latency NetPace reports is then measured
+                // properly, on the winner only. Once chosen, the server is not swapped out: if its
+                // measurement fails, the run fails rather than falling back to another candidate.
+                var fastest = await speedTestClient.GetFastestServerByLatencyAsync(servers, cancellationToken);
+                return await speedTestClient.GetServerLatencyAsync(fastest.Server, cancellationToken);
             }
             else
             {

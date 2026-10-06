@@ -1,0 +1,28 @@
+﻿
+Press CTRL+C to exit.
+
+┌────────────┬────────────────┬──────────────────┬─────────┐
+│ Location   │ Sponsor        │ Url              │ Latency │
+├────────────┼────────────────┼──────────────────┼─────────┤
+│ Location 1 │ Test Sponsor 1 │ http://test1.com │ 10ms    │
+│ Location 2 │ Test Sponsor 2 │ http://test2.com │         │
+│ Location 3 │ Test Sponsor 3 │ http://test3.com │         │
+└────────────┴────────────────┴──────────────────┴─────────┘┌────────────┬────────────────┬──────────────────┬─────────┐
+│ Location   │ Sponsor        │ Url              │ Latency │
+├────────────┼────────────────┼──────────────────┼─────────┤
+│ Location 1 │ Test Sponsor 1 │ http://test1.com │ 10ms    │
+│ Location 2 │ Test Sponsor 2 │ http://test2.com │ -       │
+│ Location 3 │ Test Sponsor 3 │ http://test3.com │         │
+└────────────┴────────────────┴──────────────────┴─────────┘┌────────────┬────────────────┬──────────────────┬─────────┐
+│ Location   │ Sponsor        │ Url              │ Latency │
+├────────────┼────────────────┼──────────────────┼─────────┤
+│ Location 1 │ Test Sponsor 1 │ http://test1.com │ 10ms    │
+│ Location 2 │ Test Sponsor 2 │ http://test2.com │ -       │
+│ Location 3 │ Test Sponsor 3 │ http://test3.com │ 30ms    │
+└────────────┴────────────────┴──────────────────┴─────────┘┌────────────┬────────────────┬──────────────────┬─────────┐
+│ Location   │ Sponsor        │ Url              │ Latency │
+├────────────┼────────────────┼──────────────────┼─────────┤
+│ Location 1 │ Test Sponsor 1 │ http://test1.com │ 10ms    │
+│ Location 2 │ Test Sponsor 2 │ http://test2.com │ -       │
+│ Location 3 │ Test Sponsor 3 │ http://test3.com │ 30ms    │
+└────────────┴────────────────┴──────────────────┴─────────┘

@@ -1,4 +1,5 @@
 using NetPace.Core.Clients.Ookla;
+using NetPace.Core.Clients.Ookla.Settings;
 
 namespace NetPace.Core.Tests;
 
@@ -197,6 +198,26 @@ public sealed partial class OoklaSpeedtestTests
 
             // Then
             Assert.Equal("servers", exception.ParamName);
+        }
+
+        [Fact]
+        public async Task GetFastestServerByLatencyAsync_ScreeningRequestCount_NotPositive_ThrowsArgumentOutOfRangeException()
+        {
+            // Given a screening count that would send no requests, so every candidate would look
+            // unreachable and the run would report that no servers were found.
+            var settings = new OoklaSpeedtestSettings
+            {
+                ServerDiscovery = new() { ScreeningRequestCount = 0 }
+            };
+            var speedtest = new OoklaSpeedtest(settings);
+            IServer[] servers = [new Server { Url = "http://example.com/", Sponsor = "Sponsor", Location = "Location" }];
+
+            // When
+            var exception = await Assert.ThrowsAsync<ArgumentOutOfRangeException>(
+                () => speedtest.GetFastestServerByLatencyAsync(servers));
+
+            // Then
+            Assert.Equal(nameof(ServerDiscoverySettings.ScreeningRequestCount), exception.ParamName);
         }
 
         [Fact]

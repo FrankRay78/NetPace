@@ -89,13 +89,13 @@ public sealed class SpeedTestStub : ISpeedTestService
     }
 
     /// <inheritdoc/>
-    public Task<LatencyTestResult> GetFastestServerByLatencyAsync(IServer[] ignoredServers, CancellationToken cancellationToken = default)
+    public Task<LatencyTestResult> GetFastestServerByLatencyAsync(IServer[] servers, CancellationToken cancellationToken = default)
     {
-        return GetFastestServerByLatencyAsync(ignoredServers, new NullProgress<SpeedTestProgress>(), cancellationToken);
+        return GetFastestServerByLatencyAsync(servers, new NullProgress<SpeedTestProgress>(), cancellationToken);
     }
 
     /// <inheritdoc/>
-    public Task<LatencyTestResult> GetFastestServerByLatencyAsync(IServer[] ignoredServers, IProgress<SpeedTestProgress> progress, CancellationToken cancellationToken = default)
+    public Task<LatencyTestResult> GetFastestServerByLatencyAsync(IServer[] servers, IProgress<SpeedTestProgress> progress, CancellationToken cancellationToken = default)
     {
         if (progress is not null)
         {
@@ -107,15 +107,14 @@ public sealed class SpeedTestStub : ISpeedTestService
             progress.Report(new SpeedTestProgress { PercentageComplete = 100 });
         }
 
-        // The fastest server in this stub is always the first one.
-        var server = servers[0];
-
-        var serverID = GetServerID(server.Url);
+        // Every candidate offered is screened, and the lowest-numbered one wins. Honouring the
+        // array matters: callers screen a single candidate through this method as well as a list.
+        var fastest = servers.OrderBy(server => GetServerID(server.Url)).First();
 
         var latencyResult = new LatencyTestResult
         {
-            Server = server,
-            LatencyMilliseconds = serverID * 100
+            Server = fastest,
+            LatencyMilliseconds = GetServerID(fastest.Url) * 100
         };
 
         return Task.FromResult(latencyResult);
