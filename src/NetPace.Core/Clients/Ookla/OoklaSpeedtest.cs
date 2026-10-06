@@ -348,10 +348,27 @@ public sealed class OoklaSpeedtest : ISpeedTestService
                 }
 
                 // A cancellation raised locally because the byte budget was reached is not a
-                // failure - the request is simply excluded (see the cts gate below). Any other
-                // exception (transport error, TLS, timeout, or a non-success HTTP status surfaced
-                // by EnsureSuccessStatusCode) is a per-request failure, aggregated into the counts
-                // rather than swallowed. Its bytes remain zero.
+                // failure - the request is simply excluded. Any other exception (transport error,
+                // TLS, timeout, or a non-success HTTP status surfaced by EnsureSuccessStatusCode)
+                // is a per-request failure, aggregated into the counts rather than swallowed. Its
+                // bytes remain zero.
+                //
+                // wasCancelledLocally is read here without holding lockObject, deliberately. This is
+                // a benign race, not a correctness bug: bool loads are atomic in .NET, so the read
+                // cannot tear and staleness is the only failure mode to account for. It is also not
+                // what classifies the request - the authoritative exclusion is the
+                // `if (!cts.IsCancellationRequested)` gate in the finally block below, which guards
+                // completedCount, failedCount, succeededCount and totalBytesReturned alike.
+                //
+                // The flag is set and cts.Cancel() called on the next line inside the same lock the
+                // gate acquires, so no thread can pass the gate between those two statements. Any
+                // request whose counts are applied therefore ran its gate before cancellation, which
+                // means its read of wasCancelledLocally was not stale; and cancellation is monotonic,
+                // so there is no path back to false. A stale `false` read can only set requestFailed
+                // on a request whose counts are discarded anyway.
+                //
+                // This argument breaks if cts.Cancel() moves out of that lock, or if any counter
+                // update moves outside the gate.
                 if (!(e is OperationCanceledException && wasCancelledLocally))
                 {
                     requestFailed = true;

@@ -49,10 +49,6 @@ public sealed class JsonConsoleWriter : IConsoleWriter
 
         console.WriteLine(jsonString);
 
-        return new SpeedTestOutcome
-        {
-            Download = downloadResult,
-            Upload = uploadResult
-        };
+        return SpeedTestOutcome.Create(downloadResult, uploadResult);
     }
 }

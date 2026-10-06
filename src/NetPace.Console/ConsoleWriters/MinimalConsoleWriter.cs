@@ -29,10 +29,6 @@ public sealed class MinimalConsoleWriter : IConsoleWriter
             uploadResult is not null ? $"Upload: {uploadResult.GetSpeedString(settings.SpeedUnit, settings.SpeedUnitSystem, settings.SpeedScale)}{uploadResult.GetFailureAnnotation()}" : null
         }.Where(s => !string.IsNullOrEmpty(s))));
 
-        return new SpeedTestOutcome
-        {
-            Download = downloadResult,
-            Upload = uploadResult
-        };
+        return SpeedTestOutcome.Create(downloadResult, uploadResult);
     }
 }
