@@ -72,7 +72,7 @@ public sealed class OoklaSpeedtest : ISpeedTestService
         ArgumentNullException.ThrowIfNull(server);
         ArgumentException.ThrowIfNullOrWhiteSpace(server.Url);
 
-        var latencyUrl = GetBaseUrl(server.Url) + "latency.txt";
+        var latencyUrl = GetBaseUrl(server.Url) + LatencyFileName;
         var pings = new List<long>();
         var stopwatch = new Stopwatch();
 
@@ -94,7 +94,7 @@ public sealed class OoklaSpeedtest : ISpeedTestService
             var testString = await httpClient.GetStringWithTimeoutAsync(latencyUrl, TimeSpan.FromMilliseconds(httpTimeoutMilliseconds), cancellationToken).ConfigureAwait(false);
             stopwatch.Stop();
 
-            if (!testString.StartsWith("test=test"))
+            if (!testString.StartsWith(LatencyResponsePrefix))
             {
                 throw new InvalidOperationException("Server returned incorrect test string for latency.txt");
             }
