@@ -52,7 +52,7 @@ public static class Program
 
         var csvOption = new Option<bool>("--csv")
         {
-            Description = "Display minimal output in CSV format (always includes timestamp).",
+            Description = "Display output as a single CSV row (always includes timestamp).",
             DefaultValueFactory = _ => false
         };
 
@@ -85,6 +85,12 @@ public static class Program
         var jsonPrettyOption = new Option<bool>("--json-pretty")
         {
             Description = "Display output in Json format (pretty print).",
+            DefaultValueFactory = _ => false
+        };
+
+        var minimalOption = new Option<bool>("--minimal")
+        {
+            Description = "Display the result as a single compact line.\nIdeal for batch scripts and redirected output.",
             DefaultValueFactory = _ => false
         };
 
@@ -162,11 +168,22 @@ public static class Program
             DefaultValueFactory = _ => SpeedUnitSystem.SI
         };
 
-        var verbosityOption = new Option<Verbosity>("--verbosity")
+        // --verbosity is retired, but stays registered so that a script still passing it gets a
+        // message naming the removal rather than a generic unrecognised-option error. It takes an
+        // optional string so that every former value - and no value at all - lands on the same
+        // error instead of a built-in parse failure. Hidden, so --help does not advertise it.
+        var verbosityOption = new Option<string>("--verbosity")
         {
-            Description = "The verbosity level. <Minimal, Normal, Debug>\nMinimal is ideal for batch scripts and redirected output.",
-            DefaultValueFactory = _ => Verbosity.Normal
+            Description = "Removed.",
+            Arity = ArgumentArity.ZeroOrOne,
+            Hidden = true
         };
+        verbosityOption.Validators.Add(result =>
+        {
+            // No replacement is named: --minimal covers only the former Minimal value, so pointing
+            // at it would mislead anyone who was passing Normal or Debug.
+            result.AddError("--verbosity has been removed, see --help.");
+        });
 
         var fileOption = new Option<string>("--file")
         {
@@ -204,6 +221,7 @@ public static class Program
         command.Options.Add(csvHeaderUnitsOption);
         command.Options.Add(jsonOption);
         command.Options.Add(jsonPrettyOption);
+        command.Options.Add(minimalOption);
         command.Options.Add(noLatencyOption);
         command.Options.Add(noDownloadOption);
         command.Options.Add(noUploadOption);
@@ -222,6 +240,28 @@ public static class Program
         command.Options.Add(quietOption);
         command.Options.Add(failOnOption);
 
+        // Exactly one output format may be selected. --json-pretty shapes the JSON format rather
+        // than selecting a second one, so it counts as JSON and stays usable alongside --json.
+        // Reported as a parse error so the conflict surfaces before any measurement runs.
+        command.Validators.Add(result =>
+        {
+            var csv = result.GetValue(csvOption);
+            var json = result.GetValue(jsonOption);
+            var jsonPretty = result.GetValue(jsonPrettyOption);
+            var minimal = result.GetValue(minimalOption);
+
+            var formatsSelected = (csv ? 1 : 0) + (json || jsonPretty ? 1 : 0) + (minimal ? 1 : 0);
+            if (formatsSelected <= 1) return;
+
+            var switches = new List<string>();
+            if (csv) switches.Add("--csv");
+            if (json) switches.Add("--json");
+            if (jsonPretty) switches.Add("--json-pretty");
+            if (minimal) switches.Add("--minimal");
+
+            result.AddError($"Only one output format may be specified: {string.Join(", ", switches)}.");
+        });
+
         // Set command action
         command.SetAction((Func<ParseResult, CancellationToken, Task<int>>)(async (parseResult, cancellationToken) =>
         {
@@ -238,6 +278,7 @@ public static class Program
                     CSVHeaderUnits = parseResult.GetValue(csvHeaderUnitsOption),
                     Json = parseResult.GetValue(jsonOption),
                     JsonPretty = parseResult.GetValue(jsonPrettyOption),
+                    Minimal = parseResult.GetValue(minimalOption),
                     NoLatency = parseResult.GetValue(noLatencyOption),
                     NoDownload = parseResult.GetValue(noDownloadOption),
                     NoUpload = parseResult.GetValue(noUploadOption),
@@ -250,7 +291,6 @@ public static class Program
                     SpeedUnit = parseResult.GetValue(unitOption),
                     SpeedScale = parseResult.GetValue(unitScaleOption),
                     SpeedUnitSystem = parseResult.GetValue(unitSystemOption),
-                    Verbosity = parseResult.GetValue(verbosityOption),
                     OutputFile = parseResult.GetValue(fileOption) ?? string.Empty,
                     FileModeValue = parseResult.GetValue(fileModeOption),
                     Quiet = parseResult.GetValue(quietOption),

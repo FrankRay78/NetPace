@@ -180,26 +180,9 @@ public sealed partial class NetPaceConsoleTests
             var host = HostWith(service);
 
             // When
-            var result = await host.RunAsync(["--verbosity", "Minimal"]);
+            var result = await host.RunAsync(["--minimal"]);
 
             // Then the token annotation carries the failure.
-            Assert.Equal(0, result.ExitCode);
-            Assert.Contains("32 of 32 requests failed", result.Output);
-        }
-
-        [Fact]
-        public async Task Debug_Annotates_The_Token()
-        {
-            // SCENARIO: Normal + verbosity gradation - Debug
-
-            var service = new ScriptedSpeedTester { UploadFactory = _ => ScriptedSpeedTester.AllFailed(32) };
-            var host = HostWith(service);
-
-            // When
-            var result = await host.RunAsync(["--verbosity", "Debug"]);
-
-            // Then Debug reports the same counts as normal verbosity - the failure is described
-            // by the counts, not by per-request detail.
             Assert.Equal(0, result.ExitCode);
             Assert.Contains("32 of 32 requests failed", result.Output);
         }
@@ -290,23 +273,6 @@ public sealed partial class NetPaceConsoleTests
         }
 
         [Fact]
-        public async Task Json_Debug_Reports_Only_The_Counts()
-        {
-            // Debug verbosity adds no per-request detail to a machine format.
-
-            // Given every upload request fails.
-            var service = new ScriptedSpeedTester { UploadFactory = _ => ScriptedSpeedTester.AllFailed(32) };
-            var host = HostWith(service);
-
-            // When
-            var result = await host.RunAsync(["--json", "--verbosity", "Debug"]);
-
-            // Then the JSON carries the counts and nothing else.
-            Assert.Equal(0, result.ExitCode);
-            Assert.Contains("\"UploadFailed\":32", result.Output);
-        }
-
-        [Fact]
         public async Task Quiet_All_Failed_Signals_Through_The_Exit_Code()
         {
             // --quiet asks for no output at all, so the counts go unseen. --fail-on is how a quiet
@@ -372,7 +338,7 @@ public sealed partial class NetPaceConsoleTests
             var host = HostWith(service);
 
             // When run with --count under --fail-on total.
-            var result = await host.RunAsync(["--count", "5", "--fail-on", "Total", "--verbosity", "Minimal"]);
+            var result = await host.RunAsync(["--count", "5", "--fail-on", "Total", "--minimal"]);
 
             // Then it exits 1 at the first triggering measurement - the snapshot carries one
             // result line, not five.
@@ -393,7 +359,7 @@ public sealed partial class NetPaceConsoleTests
             var host = HostWith(mock);
 
             // When run with --count under --fail-on total.
-            var result = await host.RunAsync(["--count", "5", "--fail-on", "Total", "--verbosity", "Minimal"]);
+            var result = await host.RunAsync(["--count", "5", "--fail-on", "Total", "--minimal"]);
 
             // Then the process stops at the first iteration rather than reporting all five.
             Assert.Equal(1, result.ExitCode);

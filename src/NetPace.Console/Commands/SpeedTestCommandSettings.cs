@@ -23,7 +23,7 @@ public sealed class SpeedTestCommandSettings
     public required TimeSpan Delay { get; init; }
 
     /// <summary>
-    /// Display minimal output in CSV format.
+    /// Display output as a single CSV row.
     /// </summary>
     public required bool CSV { get; init; }
 
@@ -111,9 +111,9 @@ public sealed class SpeedTestCommandSettings
     public required SpeedUnitSystem SpeedUnitSystem { get; init; }
 
     /// <summary>
-    /// The verbosity level.
+    /// Display the result as a single compact line.
     /// </summary>
-    public required Verbosity Verbosity { get; init; }
+    public required bool Minimal { get; init; }
 
     /// <summary>
     /// Write output to file.

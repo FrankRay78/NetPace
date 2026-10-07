@@ -42,7 +42,7 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
             {
                 { CSV: true } => new CSVConsoleWriter(),
                 { Json: true } or { JsonPretty: true } => new JsonConsoleWriter(),
-                { Verbosity: Verbosity.Minimal } => new MinimalConsoleWriter(),
+                { Minimal: true } => new MinimalConsoleWriter(),
                 _ => new DefaultConsoleWriter()
             };
 

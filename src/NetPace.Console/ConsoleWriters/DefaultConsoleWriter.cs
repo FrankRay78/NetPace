@@ -91,31 +91,6 @@ public sealed class DefaultConsoleWriter : IConsoleWriter
         }
 
 
-        if ((settings.Verbosity & Verbosity.Debug) != 0)
-        {
-            // Display detailed diagnostics
-            ByteSize size; TimeSpan elapsed;
-
-            if (downloadResult is not null)
-            {
-                size = ByteSize.FromBytes(downloadResult.BytesProcessed);
-                elapsed = TimeSpan.FromMilliseconds(downloadResult.ElapsedMilliseconds);
-                console.WriteLine($"{size} downloaded in {elapsed.Humanize()}");
-            }
-            if (uploadResult is not null)
-            {
-                size = ByteSize.FromBytes(uploadResult.BytesProcessed);
-                elapsed = TimeSpan.FromMilliseconds(uploadResult.ElapsedMilliseconds);
-                console.WriteLine($"{size} uploaded in {elapsed.Humanize()}");
-            }
-
-            if (downloadResult is not null || uploadResult is not null)
-            {
-                console.WriteLine("");
-            }
-        }
-
-
         if ((settings.NoDownload && settings.NoUpload) && console.Profile.Capabilities.Interactive)
         {
             // Latency only test: Add an extra blank line for formatting.
