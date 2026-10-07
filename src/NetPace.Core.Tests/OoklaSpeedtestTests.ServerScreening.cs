@@ -18,6 +18,12 @@ public sealed partial class OoklaSpeedtestTests
     private const string ScreeningResponseBody = "test=test";
 
     /// <summary>
+    /// Bounds a call that a broken ceiling would leave waiting forever, so that regression fails
+    /// the test instead of hanging the run. It is not a timing assertion.
+    /// </summary>
+    private static readonly TimeSpan HangGuard = TimeSpan.FromSeconds(10);
+
+    /// <summary>
     /// Answers the screening request for <paramref name="latencyUrl"/> only once
     /// <paramref name="delayMilliseconds"/> has passed, so a test can place a candidate either
     /// side of the screening ceiling.
@@ -33,9 +39,9 @@ public sealed partial class OoklaSpeedtestTests
     }
 
     /// <summary>
-    /// Never answers the screening request for <paramref name="latencyUrl"/>, and ignores being
-    /// cancelled, so only the screening ceiling can end the wait. No real delay is involved, which
-    /// keeps a test of the ceiling from depending on how late a loaded machine fires a timer.
+    /// Never answers the screening request for <paramref name="latencyUrl"/>, so the request stays
+    /// pending until screening gives up on it at the ceiling. That leaves the ceiling as the only
+    /// timer in the test, rather than a second one racing it.
     /// </summary>
     private static void NeverRespond(MockHttpMessageHandler mockHttp, string latencyUrl)
     {
@@ -129,19 +135,24 @@ public sealed partial class OoklaSpeedtestTests
     [InlineData("ftp://files.example.com/speedtest/upload.php")]
     [InlineData("file:///etc/hosts")]
     [InlineData("mailto:someone@example.com")]
-    public async Task GetFastestServerByLatencyAsync_CandidateUrlIsNotAWebAddress_IsRankedOutAndAGoodServerIsStillChosen(string malformedUrl)
+    [InlineData("good.com/speedtest/upload.php")]
+    [InlineData("/speedtest/upload.php")]
+    [InlineData("   ")]
+    [InlineData("")]
+    [InlineData(null)]
+    public async Task GetFastestServerByLatencyAsync_CandidateUrlIsNotAWebAddress_IsRankedOutAndAGoodServerIsStillChosen(string? malformedUrl)
     {
         // Given a server list - which comes from a remote feed NetPace does not control - carrying
         // one entry that is not a web address, ahead of a server that answers normally. The
-        // handler refuses such an address as the shipped transport does; the mock alone would
-        // answer it like any other request and hide the failure.
+        // handler refuses such an address with the exception the shipped transport raises, so
+        // the test fails the way a real run would rather than on a mock's own unmatched request.
         using var goodServerHandler = new MockHttpMessageHandler();
         goodServerHandler.When("http://good.com/latency.txt")
                          .Respond("text/plain", ScreeningResponseBody);
 
         using var httpClient = new HttpClient(new WebAddressesOnlyHandler(goodServerHandler));
         var speedtest = new OoklaSpeedtest(new OoklaSpeedtestSettings(), httpClient, new DelayProviderStub());
-        var malformedServer = new Server { Url = malformedUrl, Sponsor = "MalformedSponsor", Location = "MalformedLocation" };
+        var malformedServer = new Server { Url = malformedUrl!, Sponsor = "MalformedSponsor", Location = "MalformedLocation" };
         var goodServer = new Server { Url = "http://good.com/", Sponsor = "GoodSponsor", Location = "GoodLocation" };
 
         // When
@@ -149,6 +160,28 @@ public sealed partial class OoklaSpeedtestTests
 
         // Then one bad entry does not cost the run its server.
         result.Server.ShouldBe(goodServer);
+    }
+
+    [Theory]
+    [InlineData("https://secure.com/")]
+    [InlineData("HTTPS://SECURE.COM/")]
+    [InlineData("HTTP://PLAIN.COM/")]
+    public async Task GetFastestServerByLatencyAsync_CandidateUrlIsAWebAddressInAnyCasing_IsChosen(string serverUrl)
+    {
+        // Given a server whose address is a web address, secure or not, however it is cased.
+        using var mockHttp = new MockHttpMessageHandler();
+        mockHttp.When("*/latency.txt")
+                .Respond("text/plain", ScreeningResponseBody);
+
+        var httpClient = mockHttp.ToHttpClient();
+        var speedtest = new OoklaSpeedtest(new OoklaSpeedtestSettings(), httpClient, new DelayProviderStub());
+        var server = new Server { Url = serverUrl, Sponsor = "WebSponsor", Location = "WebLocation" };
+
+        // When
+        var result = await speedtest.GetFastestServerByLatencyAsync([server]);
+
+        // Then ranking out what is not a web address has not cost a server that is one.
+        result.Server.ShouldBe(server);
     }
 
     [Fact]
@@ -208,7 +241,7 @@ public sealed partial class OoklaSpeedtestTests
 
         // When
         var stopwatch = Stopwatch.StartNew();
-        var result = await speedtest.GetFastestServerByLatencyAsync(candidates.ToArray());
+        var result = await speedtest.GetFastestServerByLatencyAsync(candidates.ToArray()).WaitAsync(HangGuard);
         stopwatch.Stop();
 
         // Then the responsive server is chosen, and the choice did not cost one timeout per
@@ -242,7 +275,7 @@ public sealed partial class OoklaSpeedtestTests
         ];
 
         // When
-        var exception = await Record.ExceptionAsync(() => speedtest.GetFastestServerByLatencyAsync(servers));
+        var exception = await Record.ExceptionAsync(() => speedtest.GetFastestServerByLatencyAsync(servers).WaitAsync(HangGuard));
 
         // Then the message the console surfaces as "Error: No servers available" is unchanged.
         exception.ShouldNotBeNull();

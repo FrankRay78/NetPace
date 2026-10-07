@@ -137,11 +137,35 @@ public sealed partial class NetPaceConsoleTests
         }
 
         [Fact]
+        public async Task Should_Report_A_Misconfigured_Provider_Rather_Than_Listing_Every_Server_As_Unreachable()
+        {
+            // Given a provider whose settings make screening impossible for any server.
+            var mock = new SpeedTestMock
+            {
+                GetServersAsyncFunc = _ => Task.FromResult(discoveredServers),
+                GetFastestServerByLatencyAsyncFunc = (_, _, _) =>
+                    throw new ArgumentOutOfRangeException("ScreeningRequestCount"),
+            };
+
+            var services = new ServiceCollection();
+            services.AddSingleton<ISpeedTestService>(mock);
+            var host = GetCommandLineTestHost(services);
+
+            // When
+            var result = await host.RunAsync(["servers", "-l"]);
+
+            // Then the user is told about the misconfiguration, instead of reading a table that
+            // says no server could be reached.
+            Assert.NotEqual(0, result.ExitCode);
+            await Verify(result.Output);
+        }
+
+        [Fact]
         public async Task Should_List_Latencies_Without_Waiting_On_One_Server_Before_Screening_The_Next()
         {
             // Given every server answers its screening only once all of them have been asked, so
-            // a listing that waits on one server before asking the next can never be answered and
-            // each row gives up instead.
+            // a listing that waits on one server before asking the next leaves every server but
+            // the last unanswered, and those rows give up instead.
             var screeningsAsked = 0;
             var allServersAsked = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
 
