@@ -7,7 +7,7 @@ namespace NetPace.Core.Clients.Testing;
 /// </summary>
 public sealed class SpeedTestStub : ISpeedTestService
 {
-    private readonly IServer[] servers = new IServer[]
+    private readonly IServer[] stubServers = new IServer[]
     {
         new Server { Location = "Location 1", Sponsor = "Test Sponsor 1", Url = "http://test1.com" },
         new Server { Location = "Location 2", Sponsor = "Test Sponsor 2", Url = "http://test2.com" },
@@ -32,7 +32,7 @@ public sealed class SpeedTestStub : ISpeedTestService
     private int GetServerID(string serverUrl)
     {
         // First see if we can match the server on our 'pre-canned list'
-        var matched = servers.FirstOrDefault(s => s.Url.Equals(serverUrl));
+        var matched = stubServers.FirstOrDefault(s => s.Url.Equals(serverUrl));
 
         return matched != null
             ? int.Parse(matched.Sponsor!.Replace("Test Sponsor ", ""))
@@ -42,7 +42,7 @@ public sealed class SpeedTestStub : ISpeedTestService
     /// <inheritdoc/>
     public Task<IServer[]> GetServersAsync(CancellationToken cancellationToken = default)
     {
-        return Task.FromResult(servers);
+        return Task.FromResult(stubServers);
     }
 
     /// <inheritdoc/>

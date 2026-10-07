@@ -78,19 +78,12 @@ public sealed partial class OoklaSpeedtestTests
         // achieve, so it is ranked on that figure rather than discarded for the later failure - the
         // all-or-nothing probe this replaced would have dropped it and chosen the slower server.
         const int steadyDelayMilliseconds = 60;
-        using var mockHttp = new MockHttpMessageHandler();
+        using var mockHttp = new MockHttpMessageHandler(BackendDefinitionBehavior.Always);
 
-        var flakyRequests = 0;
+        mockHttp.Expect("http://flaky.com/latency.txt")
+                .Respond("text/plain", ScreeningResponseBody);
         mockHttp.When("http://flaky.com/latency.txt")
-                .Respond(_ =>
-                {
-                    if (Interlocked.Increment(ref flakyRequests) > 1)
-                    {
-                        throw new HttpRequestException("Connection reset.");
-                    }
-
-                    return Task.FromResult(new HttpResponseMessage { Content = new StringContent(ScreeningResponseBody) });
-                });
+                .Throw(new HttpRequestException("Connection reset."));
 
         RespondAfterDelay(mockHttp, "http://steady.com/latency.txt", steadyDelayMilliseconds);
 
@@ -189,7 +182,8 @@ public sealed partial class OoklaSpeedtestTests
     {
         // Given a client that cannot make any request at all, so the failure says nothing about
         // whether the candidate is reachable.
-        var httpClient = new MockHttpMessageHandler().ToHttpClient();
+        using var mockHttp = new MockHttpMessageHandler();
+        var httpClient = mockHttp.ToHttpClient();
         httpClient.Dispose();
 
         var speedtest = new OoklaSpeedtest(new OoklaSpeedtestSettings(), httpClient, new DelayProviderStub());
