@@ -1,5 +1,46 @@
 <!--
 Sync Impact Report:
+Version: 2.1.0 → 2.1.1
+Bump rationale: PATCH — Principle III's third output bullet described the shipped `--verbosity`
+surface (Minimal / Normal / Debug levels). Issue #267 retires that switch for a `--minimal`
+format peer of `--csv` and `--json`, so the bullet described a surface that no longer exists.
+The replacement states what the CLI now does and names the mistake it corrects: a format
+selector is not a level, and one option must not carry both jobs. Nothing is added, removed or
+redefined at the level of a principle, so this is a clarification. Maintainer confirmed PATCH
+in issue #267 ("Confirmed decisions → Requirements → Constitution Principle III"). Note for
+review: the replacement bullet carries a normative MUST NOT the old one did not, which a
+reviewer could reasonably read as expanded guidance (MINOR) rather than a clarification.
+
+Modified Principles: III — CLI Excellence (the verbosity-levels bullet is replaced by the
+  one-switch-per-format rule; the output-formats bullet now lists the default and minimal
+  formats alongside CSV and JSON)
+Modified Sections: Performance & Scale → Units and Formatting (the output-modes list gains
+  minimal, matching the formats bullet above)
+Added Sections: N/A
+Removed Sections: N/A
+Maintainer approval for the PATCH amendment: issue #267.
+Downstream documents reviewed (per Amendment Process clause 4):
+  ✅ CLAUDE.md — *Units and Formatting* said formatting must match across "normal, CSV and JSON
+     output", which omitted the compact format even before it had its own switch; it now names
+     default, minimal, CSV and JSON. The *CLI Help Behaviour* section is unchanged: help is still
+     intercepted at position 0 or as the second token, and `--minimal` changes nothing there.
+     The paired rule "don't change a CLI option without updating user-facing docs" is what sent
+     this change to README.md and USER_GUIDE.md.
+  ✅ docs/conventions/testing.md — reviewed, unchanged. Its snapshot rule is what governs the
+     15 retired `verbosity=` snapshots and the changed help snapshot, and it already reads on
+     format-agnostic terms; it names no output mode of its own.
+  ✅ .claude/commands/draftissue.md, reviewissue.md, confirmissue.md — reviewed, unchanged. They
+     mention CSV and JSON only as worked examples of ACs and mechanism detail, never as a list of
+     NetPace's output modes, so no enumeration there goes stale.
+  ✅ README.md, USER_GUIDE.md — updated. The README `--help` block drops `--verbosity` and gains
+     `--minimal`; USER_GUIDE gains a *Choosing an output format* section stating the one-format
+     rule, and its "at any verbosity" phrasing — which named the switch as a lowercase noun and
+     so survived a search for `--verbosity` — is reworded.
+  ✅ docs/change-intent-records/2026-05-15-profile-cli-switch.md — reviewed, deliberately
+     unchanged. It cites `--verbosity` as a binding precedent that was true when written; a
+     change-intent record is a dated record, not a live reference.
+
+--- superseded, retained for history ---
 Version: 2.0.0 → 2.1.0
 Bump rationale: MINOR — Principle VIII (AC-to-Test Traceability) gains materially expanded
 guidance: the marker is stated to be written in the test file's own comment syntax (shell test
@@ -115,9 +156,9 @@ The command-line interface MUST follow industry best practices:
 - Use Spectre.Console for all console output and interaction
 - Support `--help` and `--version` flags
 - Provide clear error messages with actionable guidance
-- Support multiple output formats (normal, CSV, JSON) for scripting
+- Support multiple output formats (default, minimal, CSV, JSON) for scripting
 - Default behavior should work for most users without flags
-- Verbosity levels: Minimal (scripts), Normal (users), Debug (troubleshooting)
+- Output format is selected by one switch per format, and exactly one may be selected: a format selector is not a level on a scale, and the two MUST NOT be conflated in a single option
 
 **Rationale**: CLI applications are tools for users. Following established guidelines ensures NetPace is intuitive, scriptable, and professional.
 
@@ -288,7 +329,7 @@ Before committing, verify:
 - Support SI (1000-based) and IEC (1024-based) unit systems
 - Support BitsPerSecond and BytesPerSecond
 - Auto-scale by default (Mbps, Gbps) with user override
-- Consistent formatting across all output modes (normal, CSV, JSON)
+- Consistent formatting across all output modes (default, minimal, CSV, JSON)
 
 ## Governance
 
@@ -312,4 +353,4 @@ This constitution supersedes all other development practices and guides. All dev
 - Complexity MUST be justified against simplicity principles
 - For runtime development guidance, refer to `CLAUDE.md`
 
-**Version**: 2.1.0 | **Ratified**: 2026-04-10 | **Last Amended**: 2026-10-01
+**Version**: 2.1.1 | **Ratified**: 2026-04-10 | **Last Amended**: 2026-10-07

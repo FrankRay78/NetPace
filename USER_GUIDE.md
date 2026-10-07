@@ -15,6 +15,11 @@ Produce CSV output with test results in megabits, suitable for parsing:
 NetPace --csv --csv-header-units --unit-scale Mega
 ```
 
+Report the result as a single compact line:
+```bash
+NetPace --minimal
+```
+
 Run download test only:  
 ```bash
 NetPace --no-upload
@@ -59,6 +64,24 @@ Limit download to 50 MiB and upload to 20 MiB (for low bandwidth connections):
 ```bash
 NetPace --downloadsize 50 --uploadsize 20
 ```
+
+---
+
+## Choosing an output format
+
+With no format switch, NetPace renders the rich terminal output: a live progress display while each test runs, then the result. That is the right default at a terminal, and it is what you get if you pass nothing.
+
+Three switches select a different format instead:
+
+| Switch | Output |
+| --- | --- |
+| `--minimal` | The result as a single compact line. No live progress display. |
+| `--csv` | A single CSV row, always including a timestamp. `--csv-header-units` and `--csv-delimiter` shape it. |
+| `--json` | A JSON object. `--json-pretty` indents it for reading. |
+
+`--minimal`, `--csv` and `--json` are peers, and exactly one of them may be selected. Passing two together is an error naming the conflict, so a stray or mistyped flag in a script fails loudly instead of quietly producing the wrong format. `--json --json-pretty` is not a conflict: `--json-pretty` shapes the JSON format rather than selecting a second one.
+
+Every format composes with the result-shaping options — `--timestamp`, `--unit`, `--unit-scale`, `--unit-system`, and skipping individual tests with `--no-latency` / `--no-download` / `--no-upload`. `--quiet` suppresses the result entirely whichever format you chose, while `--file` writes it to disk.
 
 ---
 
@@ -120,7 +143,7 @@ A speed test runs many small requests in parallel and reports the aggregate thro
 
 Every output format carries the counts:
 
-**Normal / Minimal** — the result token is annotated only when requests failed:
+**Default / `--minimal`** — the result token is annotated only when requests failed:
 ```
 Latency: 24 ms, Download: 512.6 Mbps, Upload: 0 bps (32 of 32 requests failed)
 ```
@@ -135,7 +158,7 @@ Timestamp,Latency,Download,DownloadSucceeded,DownloadFailed,Upload,UploadSucceed
 { "UploadSpeed": "0 bps", "UploadSucceeded": 0, "UploadFailed": 32, … }
 ```
 
-The counts are the whole signal — no output mode adds a prose warning on top of them, at any verbosity. `--quiet` suppresses them along with the rest of the output; use `--fail-on` to detect an all-failed measurement in that mode.
+The counts are the whole signal — no output format adds a prose warning on top of them. `--quiet` suppresses them along with the rest of the output; use `--fail-on` to detect an all-failed measurement in that mode.
 
 ### Exit codes
 
