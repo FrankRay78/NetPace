@@ -1,5 +1,3 @@
-using Microsoft.Extensions.DependencyInjection;
-
 namespace NetPace.Console.Tests;
 
 /// <summary>
@@ -18,6 +16,11 @@ public sealed partial class NetPaceConsoleTests
             services.AddSingleton<IClock, ClockStub>();
             services.AddSingleton<IWaiter, NoDelayStub>();
             return new CommandLineTestHost(services);
+        }
+
+        private static string[] ArgsFrom(string commandLine)
+        {
+            return commandLine.Split(' ', StringSplitOptions.RemoveEmptyEntries);
         }
 
         [Fact]
@@ -51,19 +54,26 @@ public sealed partial class NetPaceConsoleTests
         [Theory]
         [InlineData("")]
         [InlineData("--minimal")]
-        [InlineData("--verbosity Debug")]
+        [InlineData("--csv")]
+        [InlineData("--json")]
+        [InlineData("--no-download")]
         public async Task No_Invocation_Emits_Bytes_And_Duration_Prose(string commandLine)
         {
-            // The bytes-and-duration lines the retired --verbosity Debug added are gone, and no
-            // switch brings them back - including the invocation that used to ask for them.
+            // The bytes-and-duration lines the retired --verbosity Debug added (Refs #267) are
+            // gone, and no format brings them back. Every row here is an invocation that runs to
+            // completion and reaches a writer: the exit-code assertion is what keeps that true,
+            // because an invocation rejected at parse time would satisfy the prose assertions
+            // without ever producing output. --verbosity itself is covered by the rejection
+            // theory below, not here.
 
             // Given
             var host = HostWith();
 
             // When
-            var result = await host.RunAsync(commandLine.Split(' ', StringSplitOptions.RemoveEmptyEntries));
+            var result = await host.RunAsync(ArgsFrom(commandLine));
 
             // Then
+            Assert.Equal(0, result.ExitCode);
             Assert.DoesNotContain("downloaded in", result.Output);
             Assert.DoesNotContain("uploaded in", result.Output);
         }
@@ -80,7 +90,7 @@ public sealed partial class NetPaceConsoleTests
             var host = HostWith();
 
             // When
-            var result = await host.RunAsync(commandLine.Split(' ', StringSplitOptions.RemoveEmptyEntries));
+            var result = await host.RunAsync(ArgsFrom(commandLine));
 
             // Then the error says the switch is gone and points at --help, and names no
             // replacement - --minimal replaces only one of the three former values.
@@ -102,11 +112,66 @@ public sealed partial class NetPaceConsoleTests
             var host = HostWith();
 
             // When
-            var result = await host.RunAsync(commandLine.Split(' ', StringSplitOptions.RemoveEmptyEntries));
+            var result = await host.RunAsync(ArgsFrom(commandLine));
 
             // Then the error identifies which switches conflicted rather than silently picking one.
             Assert.Equal(1, result.ExitCode);
             Assert.Contains($"Only one output format may be specified: {conflict}.", result.Output);
+        }
+
+        [Theory]
+        [InlineData("-q")]
+        [InlineData("--quiet")]
+        public async Task Output_Format_Conflict_Is_Reported_Even_When_Quiet(string quiet)
+        {
+            // A script that suppresses output still needs to be told why it got nothing back,
+            // so the conflict is reported despite --quiet - as configuration errors already are.
+
+            // Given
+            var host = HostWith();
+
+            // When
+            var result = await host.RunAsync([quiet, "--csv", "--minimal"]);
+
+            // Then
+            Assert.Equal(1, result.ExitCode);
+            Assert.Contains("Only one output format may be specified: --csv, --minimal.", result.Output);
+        }
+
+        [Fact]
+        public async Task Output_Format_Conflict_Does_Not_Hide_An_Unrelated_Option_Error()
+        {
+            // Regression (Refs #267): reporting the conflict as a command-level parse error made
+            // System.CommandLine discard every option-level error, so a run with two mistakes
+            // reported only the format one - and the --verbosity removal notice, the message most
+            // likely to accompany a stale format flag, was the one hidden.
+
+            // Given
+            var host = HostWith();
+
+            // When both a format conflict and an unparseable option value are present.
+            var result = await host.RunAsync(["--csv", "--json", "--unit", "NotAUnit"]);
+
+            // Then the option error is reported rather than masked by the conflict.
+            Assert.Equal(1, result.ExitCode);
+            Assert.Contains("NotAUnit", result.Output);
+        }
+
+        [Fact]
+        public async Task Retired_Verbosity_Is_Reported_Alongside_An_Output_Format_Conflict()
+        {
+            // Regression (Refs #267): see above - a script migrating off --verbosity is exactly
+            // the script carrying a stale format flag, so this pair must not swallow the notice.
+
+            // Given
+            var host = HostWith();
+
+            // When
+            var result = await host.RunAsync(["--verbosity", "Minimal", "--csv", "--json"]);
+
+            // Then
+            Assert.Equal(1, result.ExitCode);
+            Assert.Contains("--verbosity has been removed, see --help.", result.Output);
         }
 
         [Fact]

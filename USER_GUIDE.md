@@ -71,15 +71,15 @@ NetPace --downloadsize 50 --uploadsize 20
 
 With no format switch, NetPace renders the rich terminal output: a live progress display while each test runs, then the result. That is the right default at a terminal, and it is what you get if you pass nothing.
 
-Three switches select a different format instead:
+Three alternative formats are available instead:
 
 | Switch | Output |
 | --- | --- |
 | `--minimal` | The result as a single compact line. No live progress display. |
 | `--csv` | A single CSV row, always including a timestamp. `--csv-header-units` and `--csv-delimiter` shape it. |
-| `--json` | A JSON object. `--json-pretty` indents it for reading. |
+| `--json` | A JSON object. `--json-pretty` selects the same format and indents it for reading. |
 
-`--minimal`, `--csv` and `--json` are peers, and exactly one of them may be selected. Passing two together is an error naming the conflict, so a stray or mistyped flag in a script fails loudly instead of quietly producing the wrong format. `--json --json-pretty` is not a conflict: `--json-pretty` shapes the JSON format rather than selecting a second one.
+`--minimal`, `--csv` and `--json` are peers, and exactly one format may be selected. Passing two together is an error naming the conflict, so a stray or mistyped flag in a script fails loudly instead of quietly producing the wrong format. `--json-pretty` counts as selecting JSON, so `--json --json-pretty` is the one combination allowed — they are the same format, indented — while `--csv --json-pretty` and `--json-pretty --minimal` are conflicts like any other pair.
 
 Every format composes with the result-shaping options — `--timestamp`, `--unit`, `--unit-scale`, `--unit-system`, and skipping individual tests with `--no-latency` / `--no-download` / `--no-upload`. `--quiet` suppresses the result entirely whichever format you chose, while `--file` writes it to disk.
 

@@ -171,19 +171,16 @@ public static class Program
         // --verbosity is retired, but stays registered so that a script still passing it gets a
         // message naming the removal rather than a generic unrecognised-option error. It takes an
         // optional string so that every former value - and no value at all - lands on the same
-        // error instead of a built-in parse failure. Hidden, so --help does not advertise it.
+        // error instead of a built-in parse failure. Hidden, and CustomHelpProvider strips hidden
+        // options, so --help does not advertise it.
         var verbosityOption = new Option<string>("--verbosity")
         {
-            Description = "Removed.",
             Arity = ArgumentArity.ZeroOrOne,
             Hidden = true
         };
-        verbosityOption.Validators.Add(result =>
-        {
-            // No replacement is named: --minimal covers only the former Minimal value, so pointing
-            // at it would mislead anyone who was passing Normal or Debug.
-            result.AddError("--verbosity has been removed, see --help.");
-        });
+        // No replacement is named: --minimal covers only the former Minimal value, so pointing at
+        // it would mislead anyone who was passing Normal or Debug.
+        verbosityOption.Validators.Add(result => result.AddError("--verbosity has been removed, see --help."));
 
         var fileOption = new Option<string>("--file")
         {
@@ -239,28 +236,6 @@ public static class Program
         command.Options.Add(fileModeOption);
         command.Options.Add(quietOption);
         command.Options.Add(failOnOption);
-
-        // Exactly one output format may be selected. --json-pretty shapes the JSON format rather
-        // than selecting a second one, so it counts as JSON and stays usable alongside --json.
-        // Reported as a parse error so the conflict surfaces before any measurement runs.
-        command.Validators.Add(result =>
-        {
-            var csv = result.GetValue(csvOption);
-            var json = result.GetValue(jsonOption);
-            var jsonPretty = result.GetValue(jsonPrettyOption);
-            var minimal = result.GetValue(minimalOption);
-
-            var formatsSelected = (csv ? 1 : 0) + (json || jsonPretty ? 1 : 0) + (minimal ? 1 : 0);
-            if (formatsSelected <= 1) return;
-
-            var switches = new List<string>();
-            if (csv) switches.Add("--csv");
-            if (json) switches.Add("--json");
-            if (jsonPretty) switches.Add("--json-pretty");
-            if (minimal) switches.Add("--minimal");
-
-            result.AddError($"Only one output format may be specified: {string.Join(", ", switches)}.");
-        });
 
         // Set command action
         command.SetAction((Func<ParseResult, CancellationToken, Task<int>>)(async (parseResult, cancellationToken) =>

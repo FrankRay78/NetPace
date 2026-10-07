@@ -1,4 +1,3 @@
-using ByteSizeLib;
 using NetPace.Console.ConsoleWriters;
 using NetPace.Core;
 
