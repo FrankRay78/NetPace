@@ -36,7 +36,10 @@ CHAIN_MODEL="${CHAIN_MODEL:-claude-opus-5}"
 # Per-stage time limits in seconds, conservative until tuned from real runs.
 BUILD_LIMIT=${CHAIN_STAGE_TIMEOUT:-7200}
 STUDY_LIMIT=${CHAIN_STAGE_TIMEOUT:-1800}
-VERIFY_LIMIT=${CHAIN_STAGE_TIMEOUT:-5400}
+# Three times the other stages' headroom: /verify reviews in rounds up to its own bound of three,
+# each round a fresh set of reviewer subagents plus a suite re-run, so the stage is three passes
+# long in the worst case rather than one.
+VERIFY_LIMIT=${CHAIN_STAGE_TIMEOUT:-16200}
 RAISE_PR_LIMIT=${CHAIN_STAGE_TIMEOUT:-1800}
 
 usage() {

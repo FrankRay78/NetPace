@@ -105,7 +105,8 @@ Follows the generic *build stage*. NetPace's specifics:
 Follows the generic *verify gate*. NetPace's specifics:
 
 - **Steps 1a/1b:** the formatting and test-green rows in *The gates, concretely*.
-- **Review A (step 2):** two waves of the applicable reviewers. Wave 1: the five report-only `pr-review-toolkit` reviewers and `/review-slop`, together. Wave 2: `pr-review-toolkit:code-simplifier`, which edits files, alone.
+- **Review A (steps 2–3), round one:** two waves of the applicable reviewers. Wave 1: the five report-only `pr-review-toolkit` reviewers and `/review-slop`, together. Wave 2: `pr-review-toolkit:code-simplifier`, which edits files, alone.
+- **Review A, follow-up rounds:** a single parallel wave over the previous round's commit only — `pr-review-toolkit:code-reviewer` and `pr-review-toolkit:silent-failure-hunter`, plus `pr-review-toolkit:pr-test-analyzer` when that commit touched a test. No `code-simplifier`, so no wave 2. Bound at three rounds in total; beyond it the verdict is `FAILED reason=review rounds did not converge` ([CIR](change-intent-records/2026-10-07-verify-reviews-its-own-fixes.md)).
 
 ## `/study`
 
@@ -135,7 +136,7 @@ Why `scripts/chain.sh` opens the PR without a pause: [CIR](change-intent-records
 
 - **Invocation.** `scripts/chain.sh <issue>` (bare or `#`-prefixed). `scripts/chain.sh --dry-run <issue>` lists the five stages and the command each would send, and runs nothing — no git command, no model.
 - **Prerequisites.** `git`, `claude`, `gh`, `jq` and `timeout` on PATH; `claude` and `gh` signed in; a clean checkout of `main`. The chain checks the five tools, that an issue was named, the clean tree, `main`, and that `CHAIN_STAGE_TIMEOUT`, if set, is a whole number; `/build` checks the fetch, unpushed commits and the issue.
-- **Configuration.** `CHAIN_MODEL` (default `claude-opus-5`) is the model for every stage. Per-stage time limits are build 2h, study 30m, verify 90m, raise-pr 30m; `CHAIN_STAGE_TIMEOUT` (seconds) overrides all four, for tuning from real runs.
+- **Configuration.** `CHAIN_MODEL` (default `claude-opus-5`) is the model for every stage. Per-stage time limits are build 2h, study 30m, verify 4h30m, raise-pr 30m; `CHAIN_STAGE_TIMEOUT` (seconds) overrides all four, for tuning from real runs. Verify's limit is three times a single pass because its review runs in rounds, bounded at three.
 - **When a stage fails.** The closing message names the stage, its position (`[3/5]`) and the reason: the stage's own `FAILED reason=`, `no recognisable verdict`, `claude reported an error`, `reply was not JSON`, `claude exited with <code>`, `the stage could not be launched (exit <code>)`, `reply carried no session id, so the study pass could not resume it`, or `stalled — exceeded <n>s`. Its second line gives `claude --resume <id>` for the failed stage, if the reply carried an id; otherwise it says to reopen the most recent headless session for the repo. Diagnose there, then run the remaining stages by hand, in order.
 - **Tests.** [`scripts/chain.tests.sh`](../scripts/chain.tests.sh) covers order, resumed sessions, malformed and errored replies, failure, stall, refusals and dry run against a stub `claude` in throwaway repos, leaving your checkout untouched. Run it after any edit to the chain.
 
