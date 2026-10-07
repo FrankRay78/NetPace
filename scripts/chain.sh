@@ -36,11 +36,11 @@ CHAIN_MODEL="${CHAIN_MODEL:-claude-opus-5}"
 # Per-stage time limits in seconds, conservative until tuned from real runs.
 BUILD_LIMIT=${CHAIN_STAGE_TIMEOUT:-7200}
 STUDY_LIMIT=${CHAIN_STAGE_TIMEOUT:-1800}
-# Three times verify's own former limit of 5400: /verify reviews in rounds up to its own bound of
-# three, each round a reviewer set plus a suite re-run. Follow-up rounds are cheaper than round one
-# (narrower reviewer set, fix diff only), so 3x is deliberate headroom, not a measured figure.
-# Note CHAIN_STAGE_TIMEOUT replaces this too: setting it to a single stage's worth, 5400 included,
-# caps a three-round verify at one pass and reports a progressing loop as a stall.
+# 16200 = 3 x the 5400s a single pass was sized at, the 3 being the round bound in verify.md:
+# /verify reviews in rounds, each a reviewer set plus a suite re-run. Follow-up rounds are cheaper
+# than round one (narrower set, fix diff only), so this is deliberate headroom, not a measurement.
+# Setting CHAIN_STAGE_TIMEOUT to a value sized for a single pass, 5400 included, caps verify at one
+# round and reports a progressing loop as a stall.
 VERIFY_LIMIT=${CHAIN_STAGE_TIMEOUT:-16200}
 RAISE_PR_LIMIT=${CHAIN_STAGE_TIMEOUT:-1800}
 
