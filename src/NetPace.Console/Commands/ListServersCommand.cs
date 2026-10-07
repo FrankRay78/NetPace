@@ -99,25 +99,40 @@ public sealed class ListServersCommand(IAnsiConsole console, ISpeedTestService s
             .AutoClear(false)
             .StartAsync(async ctx =>
             {
-                // Fetch the latency for each server
-                // and update the table as they come back
-                for (int i = 0; i < servers.Count; i++)
+                // Screen each server through the same path auto-selection uses, so a latency
+                // listed here means a real run would consider that server. The servers are
+                // screened together, as selection screens them, so the listing takes about one
+                // screening ceiling rather than one per unreachable server. Each row is filled in
+                // as its result comes back; the table is not safe to change from two rows at once.
+                var tableLock = new object();
+
+                async Task ScreenRowAsync(int row)
                 {
-                    var server = servers[i];
+                    string latency;
 
                     try
                     {
-                        var latencyResult = await speedTestClient.GetServerLatencyAsync(server, cancellationToken);
+                        var latencyResult = await speedTestClient.GetFastestServerByLatencyAsync([servers[row]], cancellationToken);
 
-                        table.UpdateCell(i, 3, $"{latencyResult.LatencyMilliseconds}ms");
+                        latency = $"{latencyResult.LatencyMilliseconds}ms";
                     }
-                    catch (Exception)
+                    catch (Exception e) when (e is not ArgumentException)
                     {
-                        table.UpdateCell(i, 3, "-");
+                        // Screening reports an unreachable candidate by throwing, so this is the
+                        // ordinary path for a server that did not answer. A provider misconfigured
+                        // through its settings also throws, as ArgumentException - that must reach
+                        // the user rather than print a dash against every server in the list.
+                        latency = "-";
                     }
 
-                    ctx.Refresh();
+                    lock (tableLock)
+                    {
+                        table.UpdateCell(row, 3, latency);
+                        ctx.Refresh();
+                    }
                 }
+
+                await Task.WhenAll(Enumerable.Range(0, servers.Count).Select(ScreenRowAsync));
             });
     }
 }

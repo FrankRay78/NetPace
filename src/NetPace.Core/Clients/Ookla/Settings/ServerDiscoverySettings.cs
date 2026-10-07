@@ -14,7 +14,25 @@ public sealed record ServerDiscoverySettings
     public string ServersUrl { get; init; } = "http://www.speedtest.net/speedtest-servers.php";
 
     /// <summary>
-    /// The timeout duration in milliseconds when probing a server.
+    /// The overall ceiling in milliseconds on screening the discovered servers to choose one.
     /// </summary>
+    /// <remarks>
+    /// This is a ceiling on the whole screening pass, not a budget per server: candidates are
+    /// screened concurrently, so the worst case is roughly one timeout rather than one per server.
+    /// A candidate that has not answered by the ceiling is treated as unreachable and drops out.
+    /// Must be positive; a non-positive value is rejected when selection runs, not at construction.
+    /// </remarks>
     public int ServerTimeoutMilliseconds { get; init; } = 2000;
+
+    /// <summary>
+    /// The number of requests sent to each server when screening it, with no deliberate waiting
+    /// between them. The fastest of the requests that completed is the server's screening latency.
+    /// </summary>
+    /// <remarks>
+    /// Screening only has to rank candidates, so it is deliberately far cheaper than the full
+    /// latency measurement taken of the winner afterwards
+    /// (<see cref="LatencyTestSettings.LatencyTestIterations"/>).
+    /// Must be positive; a non-positive value is rejected when selection runs, not at construction.
+    /// </remarks>
+    public int ScreeningRequestCount { get; init; } = 3;
 }

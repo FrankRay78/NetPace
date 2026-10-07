@@ -15,6 +15,9 @@ namespace NetPace.Core.Clients.Ookla;
 /// </summary>
 public sealed class OoklaSpeedtest : ISpeedTestService
 {
+    private const string LatencyFileName = "latency.txt";
+    private const string LatencyResponsePrefix = "test=test";
+
     private readonly HttpClient httpClient;
     private readonly OoklaSpeedtestSettings settings;
     private readonly IDelayProvider delayProvider;
@@ -69,7 +72,7 @@ public sealed class OoklaSpeedtest : ISpeedTestService
         ArgumentNullException.ThrowIfNull(server);
         ArgumentException.ThrowIfNullOrWhiteSpace(server.Url);
 
-        var latencyUrl = GetBaseUrl(server.Url) + "latency.txt";
+        var latencyUrl = GetBaseUrl(server.Url) + LatencyFileName;
         var pings = new List<long>();
         var stopwatch = new Stopwatch();
 
@@ -91,7 +94,7 @@ public sealed class OoklaSpeedtest : ISpeedTestService
             var testString = await httpClient.GetStringWithTimeoutAsync(latencyUrl, TimeSpan.FromMilliseconds(httpTimeoutMilliseconds), cancellationToken).ConfigureAwait(false);
             stopwatch.Stop();
 
-            if (!testString.StartsWith("test=test"))
+            if (!testString.StartsWith(LatencyResponsePrefix))
             {
                 throw new InvalidOperationException("Server returned incorrect test string for latency.txt");
             }
@@ -131,59 +134,159 @@ public sealed class OoklaSpeedtest : ISpeedTestService
         {
             throw new ArgumentException("At least one server must be provided.", nameof(servers));
         }
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(settings.ServerDiscovery.ScreeningRequestCount, nameof(settings.ServerDiscovery.ScreeningRequestCount));
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(settings.ServerDiscovery.ServerTimeoutMilliseconds, nameof(settings.ServerDiscovery.ServerTimeoutMilliseconds));
 
-        var serverProbes = new List<LatencyTestResult>();
+        var screened = new LatencyTestResult?[servers.Length];
+        var screeningLock = new object();
+        var serversScreened = 0;
 
-        for (int i = 0; i < servers.Length; i++)
+        // One ceiling for the whole pass, not a budget per candidate - see ServerTimeoutMilliseconds.
+        var ceilingCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+
+        async Task ScreenAndRecordAsync(int index)
         {
-            cancellationToken.ThrowIfCancellationRequested();
+            var result = await ScreenServerAsync(servers[index], ceilingCts.Token).ConfigureAwait(false);
 
-            // Bump up the fastest server probe by a slight margin
-            // Apply a minimum threshold to prevent timeouts from becoming too aggressive
-            var serverTimeoutMilliseconds = serverProbes.Count == 0
-                ? settings.ServerDiscovery.ServerTimeoutMilliseconds
-                : (int)(serverProbes.Min(p => p.LatencyMilliseconds) * 1.5);
-
-            const int minimumTimeoutMilliseconds = 100;
-            var effectiveTimeout = Math.Max(minimumTimeoutMilliseconds, serverTimeoutMilliseconds);
-
-            // Automatically cancel the server probe ar the effective timeout
-            using var cts = new CancellationTokenSource();
-            cts.CancelAfter(effectiveTimeout);
-            using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cts.Token, cancellationToken);
-
-            try
+            // Recorded and reported under one lock, so a consumer callback is never entered
+            // concurrently and the percentage it is handed matches the number screened at that
+            // moment. Nothing is reported once the pass is over, because a candidate abandoned at
+            // the ceiling can still finish after the caller has moved on.
+            lock (screeningLock)
             {
-                var latencyResult = await GetServerLatencyAsync(servers[i], linkedCts.Token);
+                screened[index] = result;
+                serversScreened++;
 
-                serverProbes.Add(latencyResult);
-            }
-            catch (Exception e)
-            {
-                if (e is OperationCanceledException && cancellationToken.IsCancellationRequested)
+                if (!ceilingCts.IsCancellationRequested)
                 {
-                    // Propagate user cancelled exceptions
-                    throw;
+                    ReportProgress(progress, new SpeedTestProgress
+                    {
+                        PercentageComplete = serversScreened * 100 / servers.Length
+                    });
                 }
-
-                // A exception was thrown when pinging the server
-                // Ignore and continue with the next server
             }
-
-            // Report progress after each server is tested
-            var percentageComplete = (i + 1) * 100 / servers.Length;
-            ReportProgress(progress, new SpeedTestProgress { PercentageComplete = percentageComplete });
         }
 
-        // Honour any user cancellations during/after the last probe.
+        var screenings = new Task[servers.Length];
+        for (var index = 0; index < servers.Length; index++)
+        {
+            screenings[index] = ScreenAndRecordAsync(index);
+        }
+
+        var allScreenings = Task.WhenAll(screenings);
+        var ceiling = Task.Delay(settings.ServerDiscovery.ServerTimeoutMilliseconds, ceilingCts.Token);
+        await Task.WhenAny(allScreenings, ceiling).ConfigureAwait(false);
+
+        // Stop the ceiling timer, and abandon any candidate still outstanding rather than waiting
+        // on it: the ceiling is a wall-clock bound on choosing a server, and awaiting an
+        // outstanding request would make it advisory rather than hard.
+        ceilingCts.Cancel();
+
+        // An abandoned candidate is still tidied up after. Observe whatever it throws, so a fault
+        // cannot vanish as an unobserved task exception, and dispose the ceiling only once no
+        // screening can still be reading its token.
+        _ = allScreenings.ContinueWith(
+            completed =>
+            {
+                _ = completed.Exception;
+                ceilingCts.Dispose();
+            },
+            CancellationToken.None,
+            TaskContinuationOptions.ExecuteSynchronously,
+            TaskScheduler.Default);
+
+        // A screening that faulted is a defect in NetPace rather than a verdict on a server, so it
+        // surfaces instead of being recorded as one more unreachable candidate. Only a fault from
+        // the completed pass can be surfaced this way; one from a candidate abandoned at the
+        // ceiling is observed above, because nothing is waiting on it by then.
+        if (allScreenings.IsFaulted)
+        {
+            throw allScreenings.Exception!.GetBaseException();
+        }
+
+        // Honour any user cancellation during the screening pass.
         cancellationToken.ThrowIfCancellationRequested();
 
-        if (serverProbes.Count == 0)
+        LatencyTestResult[] reachable;
+        lock (screeningLock)
+        {
+            reachable = screened.OfType<LatencyTestResult>().ToArray();
+        }
+
+        if (reachable.Length == 0)
         {
             throw new Exception("No servers available");
         }
 
-        return serverProbes.OrderBy(s => s.LatencyMilliseconds).First();
+        return reachable.OrderBy(result => result.LatencyMilliseconds).First();
+    }
+
+    /// <summary>
+    /// Screens one server - is it reachable, and roughly how fast? - returning <c>null</c> when the
+    /// candidate cannot be ranked: its URL is missing or not a web address, no request completed
+    /// inside the ceiling, or what answered was not a speed test server. A server that answered
+    /// correctly at least once returns a figure and simply ranks lower when it is slow.
+    /// </summary>
+    /// <remarks>
+    /// Deliberately far cheaper than <see cref="GetServerLatencyAsync(IServer, CancellationToken)"/>,
+    /// which is the measurement taken of the winner afterwards: a few requests with no deliberate
+    /// waiting between them, and a partial answer is kept rather than discarded. The figure is the
+    /// fastest request that completed, because screening has no warm-up and the first request
+    /// carries connection setup the link itself is not responsible for.
+    /// </remarks>
+    private async Task<LatencyTestResult?> ScreenServerAsync(IServer server, CancellationToken cancellationToken)
+    {
+        // The server list comes from a remote feed, so an entry NetPace cannot request is ranked
+        // out here rather than left to throw from the transport and fail the whole selection.
+        if (!Uri.TryCreate(server.Url, UriKind.Absolute, out var serverUri) ||
+            (serverUri.Scheme != Uri.UriSchemeHttp && serverUri.Scheme != Uri.UriSchemeHttps))
+        {
+            return null;
+        }
+
+        var latencyUrl = GetBaseUrl(server.Url) + LatencyFileName;
+        var stopwatch = new Stopwatch();
+        long? fastestMilliseconds = null;
+
+        for (var request = 0; request < settings.ServerDiscovery.ScreeningRequestCount; request++)
+        {
+            if (cancellationToken.IsCancellationRequested)
+            {
+                break;
+            }
+
+            try
+            {
+                stopwatch.Restart();
+                var testString = await httpClient.GetStringAsync(latencyUrl, cancellationToken).ConfigureAwait(false);
+                stopwatch.Stop();
+
+                if (!testString.StartsWith(LatencyResponsePrefix))
+                {
+                    // Something answered, but it is not a speed test server.
+                    return null;
+                }
+
+                if (fastestMilliseconds is null || stopwatch.ElapsedMilliseconds < fastestMilliseconds)
+                {
+                    fastestMilliseconds = stopwatch.ElapsedMilliseconds;
+                }
+            }
+            catch (Exception e) when (e is HttpRequestException or IOException or OperationCanceledException)
+            {
+                // Unreachable, or abandoned at the ceiling: ranked out rather than raised, because
+                // finding that out is what screening is for. Whatever earlier requests achieved
+                // still counts, and the surrounding pass reports when no candidate answered at all.
+                // Anything else - a disposed client, a bad proxy, an exhausted socket pool - is a
+                // fault in NetPace rather than a verdict on this server, so it is left to propagate
+                // instead of being disguised as one unreachable candidate.
+                break;
+            }
+        }
+
+        return fastestMilliseconds is null
+            ? null
+            : new LatencyTestResult { Server = server, LatencyMilliseconds = fastestMilliseconds.Value };
     }
 
     /// <inheritdoc/>

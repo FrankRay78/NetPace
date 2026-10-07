@@ -82,6 +82,7 @@ Load these on demand for the matching topic:
 - **Testing** — `docs/conventions/testing.md` — read before writing tests: outcome-not-mechanism assertions, what makes a good scenario, the integrity failure modes that pass while verifying nothing.
 - **Change Intent Records** — `docs/conventions/change-intent-records.md` — read when deciding whether a change warrants documenting intent.
 - **Release Pipeline** — `docs/RELEASING.md` — release matrix (RIDs × variants), naming convention, runner-per-RID rationale, smoke-test contract, size-assertion contract. Update whenever you touch `release-binaries.yml`.
+- **Server Screening and Measurement** — `docs/architecture/server-screening-and-measurement.md` — read before changing server selection, the latency probe, or the settings that bound either; records why choosing and measuring are separate jobs and why the ceiling on choosing must stay.
 - **Ookla Download/Upload Sizing** — `docs/architecture/download-upload-size-controls.md` — how `OoklaSpeedtestSettings` shapes per-request sizing, iterations, and parallelism; what `--downloadsize`/`--uploadsize` actually cap (total-byte budget); Docker OoklaServer endpoints for local verification.
 
 ---

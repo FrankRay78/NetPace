@@ -7,7 +7,7 @@ namespace NetPace.Core.Clients.Testing;
 /// </summary>
 public sealed class SpeedTestStub : ISpeedTestService
 {
-    private readonly IServer[] servers = new IServer[]
+    private readonly IServer[] stubServers = new IServer[]
     {
         new Server { Location = "Location 1", Sponsor = "Test Sponsor 1", Url = "http://test1.com" },
         new Server { Location = "Location 2", Sponsor = "Test Sponsor 2", Url = "http://test2.com" },
@@ -32,7 +32,7 @@ public sealed class SpeedTestStub : ISpeedTestService
     private int GetServerID(string serverUrl)
     {
         // First see if we can match the server on our 'pre-canned list'
-        var matched = servers.FirstOrDefault(s => s.Url.Equals(serverUrl));
+        var matched = stubServers.FirstOrDefault(s => s.Url.Equals(serverUrl));
 
         return matched != null
             ? int.Parse(matched.Sponsor!.Replace("Test Sponsor ", ""))
@@ -42,7 +42,7 @@ public sealed class SpeedTestStub : ISpeedTestService
     /// <inheritdoc/>
     public Task<IServer[]> GetServersAsync(CancellationToken cancellationToken = default)
     {
-        return Task.FromResult(servers);
+        return Task.FromResult(stubServers);
     }
 
     /// <inheritdoc/>
@@ -89,13 +89,13 @@ public sealed class SpeedTestStub : ISpeedTestService
     }
 
     /// <inheritdoc/>
-    public Task<LatencyTestResult> GetFastestServerByLatencyAsync(IServer[] ignoredServers, CancellationToken cancellationToken = default)
+    public Task<LatencyTestResult> GetFastestServerByLatencyAsync(IServer[] servers, CancellationToken cancellationToken = default)
     {
-        return GetFastestServerByLatencyAsync(ignoredServers, new NullProgress<SpeedTestProgress>(), cancellationToken);
+        return GetFastestServerByLatencyAsync(servers, new NullProgress<SpeedTestProgress>(), cancellationToken);
     }
 
     /// <inheritdoc/>
-    public Task<LatencyTestResult> GetFastestServerByLatencyAsync(IServer[] ignoredServers, IProgress<SpeedTestProgress> progress, CancellationToken cancellationToken = default)
+    public Task<LatencyTestResult> GetFastestServerByLatencyAsync(IServer[] servers, IProgress<SpeedTestProgress> progress, CancellationToken cancellationToken = default)
     {
         if (progress is not null)
         {
@@ -107,14 +107,16 @@ public sealed class SpeedTestStub : ISpeedTestService
             progress.Report(new SpeedTestProgress { PercentageComplete = 100 });
         }
 
-        // The fastest server in this stub is always the first one.
-        var server = servers[0];
+        // Every candidate offered is screened and the lowest-numbered one wins. Callers screen a
+        // single candidate through this method as well as a list, so the winner is taken from the
+        // array given rather than from the stub's own server list.
+        var fastest = servers.OrderBy(candidate => GetServerID(candidate.Url)).First();
 
-        var serverID = GetServerID(server.Url);
+        var serverID = GetServerID(fastest.Url);
 
         var latencyResult = new LatencyTestResult
         {
-            Server = server,
+            Server = fastest,
             LatencyMilliseconds = serverID * 100
         };
 
