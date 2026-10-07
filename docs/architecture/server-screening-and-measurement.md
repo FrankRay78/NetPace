@@ -20,7 +20,7 @@ Choosing a server and measuring a server are two different jobs with two differe
 
 ## Screening ranks, it does not reject
 
-A server is **reachable** when at least one of its screening requests completes inside the ceiling. A reachable but slow server is a valid candidate that simply loses. Only a server that produced no completed request at all drops out.
+A server is **reachable** when at least one of its screening requests completes inside the ceiling. A reachable but slow server is a valid candidate that simply loses. Only a server that produced no completed request at all drops out. That includes an entry whose address is not an `http` or `https` URL: the list comes from a remote feed, so an entry NetPace cannot request is ranked out like any other unreachable server rather than allowed to fail the whole selection.
 
 That distinction is the whole bug this design replaced. Selection used to apply a per-candidate budget — the discovery timeout for the first candidate, then a fraction of the best latency seen so far, with a floor well below the probe's own minimum runtime — to a *full latency measurement*. Three things followed:
 
@@ -49,9 +49,9 @@ If the winner's full measurement fails, the run fails. It does not fall back to 
 
 ## `servers -l` lists what selection would rank
 
-`ListServersCommand` screens each server through `GetFastestServerByLatencyAsync`, one candidate at a time, so the latency it lists is the figure auto-selection ranks on. A server listed with a latency is a server a real run would consider; a server listed with `-` could not be reached, and a run would not have used it either. That equivalence is the point — the table and the run used to disagree because they probed differently.
+`ListServersCommand` screens each server through `GetFastestServerByLatencyAsync`, one candidate per call so that every server gets a figure rather than only the winner, and with all the calls in flight together so the listing takes about one ceiling rather than one per unreachable server. The latency it lists is the figure auto-selection ranks on. A server listed with a latency is a server a real run would consider; a server listed with `-` could not be reached, and a run would not have used it either. That equivalence is the point — the table and the run used to disagree because they probed differently.
 
-Rows keep their discovered order and are not re-sorted by latency: "ranked" means the user can see and compare the figures, not that the table reorders itself.
+Rows keep their discovered order and are not re-sorted by latency, though they fill in as each server answers rather than top to bottom: "ranked" means the user can see and compare the figures, not that the table reorders itself.
 
 `servers -f` routes through the same selection path and so stays consistent for free. It reports the screening figure, as the `-l` table does.
 

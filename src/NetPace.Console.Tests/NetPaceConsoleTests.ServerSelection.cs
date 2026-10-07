@@ -135,5 +135,46 @@ public sealed partial class NetPaceConsoleTests
             Assert.Equal(0, result.ExitCode);
             await Verify(result.Output);
         }
+
+        [Fact]
+        public async Task Should_List_Latencies_Without_Waiting_On_One_Server_Before_Screening_The_Next()
+        {
+            // Given every server answers its screening only once all of them have been asked, so
+            // a listing that waits on one server before asking the next can never be answered and
+            // each row gives up instead.
+            var screeningsAsked = 0;
+            var allServersAsked = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+
+            var mock = new SpeedTestMock
+            {
+                GetServersAsyncFunc = _ => Task.FromResult(discoveredServers),
+                GetFastestServerByLatencyAsyncFunc = async (servers, _, cancellationToken) =>
+                {
+                    if (Interlocked.Increment(ref screeningsAsked) == discoveredServers.Length)
+                    {
+                        allServersAsked.SetResult();
+                    }
+
+                    await allServersAsked.Task.WaitAsync(TimeSpan.FromSeconds(5), cancellationToken);
+
+                    return new LatencyTestResult { Server = servers[0], LatencyMilliseconds = Array.IndexOf(discoveredServers, servers[0]) + 71 };
+                },
+            };
+
+            var services = new ServiceCollection();
+            services.AddSingleton<ISpeedTestService>(mock);
+            var host = GetCommandLineTestHost(services);
+
+            // When
+            var result = await host.RunAsync(["servers", "-l"]);
+
+            // Then every server is listed with its latency. These are targeted assertions rather
+            // than a snapshot because the rows fill in as the servers answer, and that order is
+            // not part of what the listing promises.
+            Assert.Equal(0, result.ExitCode);
+            Assert.Contains("71ms", result.Output);
+            Assert.Contains("72ms", result.Output);
+            Assert.Contains("73ms", result.Output);
+        }
     }
 }

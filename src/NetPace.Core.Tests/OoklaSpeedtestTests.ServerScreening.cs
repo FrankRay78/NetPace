@@ -32,6 +32,17 @@ public sealed partial class OoklaSpeedtestTests
                 });
     }
 
+    /// <summary>
+    /// Never answers the screening request for <paramref name="latencyUrl"/>, and ignores being
+    /// cancelled, so only the screening ceiling can end the wait. No real delay is involved, which
+    /// keeps a test of the ceiling from depending on how late a loaded machine fires a timer.
+    /// </summary>
+    private static void NeverRespond(MockHttpMessageHandler mockHttp, string latencyUrl)
+    {
+        mockHttp.When(latencyUrl)
+                .Respond(_ => new TaskCompletionSource<HttpResponseMessage>().Task);
+    }
+
     [Fact]
     public async Task GetFastestServerByLatencyAsync_ReachableButSlowServer_IsSelectedRatherThanRejected()
     {
@@ -114,6 +125,51 @@ public sealed partial class OoklaSpeedtestTests
         result.Server.ShouldBe(fasterServer);
     }
 
+    [Theory]
+    [InlineData("ftp://files.example.com/speedtest/upload.php")]
+    [InlineData("file:///etc/hosts")]
+    [InlineData("mailto:someone@example.com")]
+    public async Task GetFastestServerByLatencyAsync_CandidateUrlIsNotAWebAddress_IsRankedOutAndAGoodServerIsStillChosen(string malformedUrl)
+    {
+        // Given a server list - which comes from a remote feed NetPace does not control - carrying
+        // one entry that is not a web address, ahead of a server that answers normally. The
+        // handler refuses such an address as the shipped transport does; the mock alone would
+        // answer it like any other request and hide the failure.
+        using var goodServerHandler = new MockHttpMessageHandler();
+        goodServerHandler.When("http://good.com/latency.txt")
+                         .Respond("text/plain", ScreeningResponseBody);
+
+        using var httpClient = new HttpClient(new WebAddressesOnlyHandler(goodServerHandler));
+        var speedtest = new OoklaSpeedtest(new OoklaSpeedtestSettings(), httpClient, new DelayProviderStub());
+        var malformedServer = new Server { Url = malformedUrl, Sponsor = "MalformedSponsor", Location = "MalformedLocation" };
+        var goodServer = new Server { Url = "http://good.com/", Sponsor = "GoodSponsor", Location = "GoodLocation" };
+
+        // When
+        var result = await speedtest.GetFastestServerByLatencyAsync([malformedServer, goodServer]);
+
+        // Then one bad entry does not cost the run its server.
+        result.Server.ShouldBe(goodServer);
+    }
+
+    [Fact]
+    public async Task GetFastestServerByLatencyAsync_FaultThatIsNotAboutTheServer_SurfacesRatherThanReportingNoServers()
+    {
+        // Given a client that cannot make any request at all, so the failure says nothing about
+        // whether the candidate is reachable.
+        var httpClient = new MockHttpMessageHandler().ToHttpClient();
+        httpClient.Dispose();
+
+        var speedtest = new OoklaSpeedtest(new OoklaSpeedtestSettings(), httpClient, new DelayProviderStub());
+        var server = new Server { Url = "http://anywhere.com/", Sponsor = "AnySponsor", Location = "AnyLocation" };
+
+        // When
+        var exception = await Record.ExceptionAsync(() => speedtest.GetFastestServerByLatencyAsync([server]));
+
+        // Then the caller is told what actually went wrong, instead of being told the server list
+        // was unreachable.
+        exception.ShouldBeOfType<ObjectDisposedException>();
+    }
+
     [Fact]
     public async Task GetFastestServerByLatencyAsync_ManyUnresponsiveCandidates_ChoosesWithinTheCeiling()
     {
@@ -122,9 +178,8 @@ public sealed partial class OoklaSpeedtestTests
         // bounded and must not grow with the number of slow candidates. That is why this test
         // asserts on wall-clock time, which tests here otherwise avoid.
 
-        // Given six candidates far slower than the ceiling, and one that answers at once.
+        // Given six candidates that never answer, and one that answers at once.
         const int unresponsiveCandidateCount = 6;
-        const int unresponsiveDelayMilliseconds = 900;
         const int ceilingMilliseconds = 500;
 
         using var mockHttp = new MockHttpMessageHandler();
@@ -133,7 +188,7 @@ public sealed partial class OoklaSpeedtestTests
         for (var candidate = 0; candidate < unresponsiveCandidateCount; candidate++)
         {
             var url = $"http://unresponsive{candidate}.com/";
-            RespondAfterDelay(mockHttp, url + "latency.txt", unresponsiveDelayMilliseconds);
+            NeverRespond(mockHttp, url + "latency.txt");
             candidates.Add(new Server { Url = url, Sponsor = $"Unresponsive{candidate}", Location = "Nowhere" });
         }
 
@@ -157,7 +212,7 @@ public sealed partial class OoklaSpeedtestTests
         stopwatch.Stop();
 
         // Then the responsive server is chosen, and the choice did not cost one timeout per
-        // candidate: screened one after another, the six slow candidates alone would take 5.4s.
+        // candidate: screened one after another, the six silent candidates alone would take 3s.
         result.Server.ShouldBe(promptServer);
         stopwatch.ElapsedMilliseconds.ShouldBeLessThan(2000);
     }
@@ -167,12 +222,11 @@ public sealed partial class OoklaSpeedtestTests
     {
         // SCENARIO: No server can be reached
 
-        // Given every candidate is slower than the ceiling allows.
-        const int unresponsiveDelayMilliseconds = 900;
+        // Given no candidate answers before the ceiling.
         const int ceilingMilliseconds = 300;
 
         using var mockHttp = new MockHttpMessageHandler();
-        RespondAfterDelay(mockHttp, "*/latency.txt", unresponsiveDelayMilliseconds);
+        NeverRespond(mockHttp, "*/latency.txt");
 
         var httpClient = mockHttp.ToHttpClient();
         var settings = new OoklaSpeedtestSettings
@@ -193,5 +247,24 @@ public sealed partial class OoklaSpeedtestTests
         // Then the message the console surfaces as "Error: No servers available" is unchanged.
         exception.ShouldNotBeNull();
         exception.Message.ShouldBe("No servers available");
+    }
+
+    /// <summary>
+    /// Refuses any request that is not for a web address, exactly as the transport NetPace ships
+    /// with does, and hands everything else to <paramref name="innerHandler"/>.
+    /// </summary>
+    private sealed class WebAddressesOnlyHandler(HttpMessageHandler innerHandler) : DelegatingHandler(innerHandler)
+    {
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            var scheme = request.RequestUri!.Scheme;
+
+            if (scheme != Uri.UriSchemeHttp && scheme != Uri.UriSchemeHttps)
+            {
+                throw new NotSupportedException($"The '{scheme}' scheme is not supported.");
+            }
+
+            return base.SendAsync(request, cancellationToken);
+        }
     }
 }
