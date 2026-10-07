@@ -189,8 +189,7 @@ public sealed partial class OoklaSpeedtestTests
     {
         // Given a client that cannot make any request at all, so the failure says nothing about
         // whether the candidate is reachable.
-        using var mockHttp = new MockHttpMessageHandler();
-        var httpClient = mockHttp.ToHttpClient();
+        var httpClient = new MockHttpMessageHandler().ToHttpClient();
         httpClient.Dispose();
 
         var speedtest = new OoklaSpeedtest(new OoklaSpeedtestSettings(), httpClient, new DelayProviderStub());
