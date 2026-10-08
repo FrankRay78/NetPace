@@ -1,33 +1,19 @@
 # A Format Selector Is Not A Verbosity Level
 
-**Intent:** Stop `--verbosity` presenting a format choice as a level on a scale. Its three values were three unrelated things: `Minimal` selected a different console writer, `Normal` was the absence of any choice, and `Debug` added two prose lines. Because the option took one value, `--verbosity Minimal --verbosity Debug` was not expressible — so a user could not ask for terse output *and* extra detail at once. That combination is what the `--diagnostics` work (#268) needs, so the switch had to be split before that work could have a sane surface.
-
-**Behaviour:**
-
-- Given no format switch, when NetPace runs, then it renders the rich terminal output — unchanged from `--verbosity Normal`.
-- Given `--minimal`, when NetPace runs, then it writes the compact single-line result, byte-identical to what `--verbosity Minimal` produced, and composes with timestamp, unit, scale, system and test-skipping options the same way.
-- Given two output-format switches, when NetPace parses them, then it exits `1` naming the conflict, rather than silently picking one.
-- Given `--verbosity` with any value or none, when NetPace parses it, then it exits `1` saying the switch has been removed and pointing at `--help`.
-- Given any invocation at all, when NetPace writes its output, then no bytes-downloaded or bytes-uploaded prose line appears.
-
-**Constraints:**
-
-- A breaking change to the CLI surface at version 1.0.0. Principle VII scopes semantic versioning to the `NetPace.Core` NuGet surface, which this does not touch, so whether the CLI break warrants a major bump is a maintainer call before release.
-- `--verbosity` is a documented switch that may be sitting in someone's script or cron job. A generic `Unrecognized command or argument` tells that person nothing about what happened to it.
-- `--json-pretty` is not a second format. It shapes the JSON format, so `--json --json-pretty` had to keep working while `--csv --json-pretty` became an error.
+**Intent:** `--verbosity` presented a format choice as a level on a scale: `Minimal` selected a different writer, `Normal` was no choice, `Debug` added prose. One option could not carry terse output *and* extra detail together, which the `--diagnostics` work (#268) needs, so the switch was split first. Current behaviour is in USER_GUIDE ("Choosing an output format").
 
 **Decisions:**
 
-1. **Rejected: consolidate `--csv`, `--json` and `--minimal` into one `--format <value>` option.** It is the tidier surface, and it is the shape the retired `--verbosity` was reaching for. Rejected because it breaks two further switches that work correctly today in order to solve a problem this change does not have — the three peer flags are already unambiguous once only one may be chosen. Chose three boolean peers.
+1. **Rejected: one `--format <value>` option.** Tidier, but it breaks `--csv` and `--json`, which work today, to solve a problem this change doesn't have. Chose three boolean peers, at most one selectable. `--json-pretty` shapes JSON rather than selecting a format, so `--json --json-pretty` stays valid.
 
-2. **Rejected: keep `--verbosity` as a deprecated alias that works for one release.** The usual kindness for a documented switch, and it was considered. Rejected because `--minimal` replaces only one of the three former values: an alias would have to guess what `Normal` and `Debug` now mean, and `Debug`'s behaviour is being deleted outright, not relocated. A switch that silently does something other than what it used to is worse than one that stops. Chose removal with an explanatory error.
+2. **Rejected: keep `--verbosity` as a deprecated alias.** `--minimal` replaces only one of three former values; an alias would have to guess what `Normal` and `Debug` now mean. A switch that silently does something else is worse than one that stops.
 
-3. **Rejected: delete the option and let the parser report it.** Simplest, and no code to carry. Rejected because the parser's generic unrecognised-argument message is exactly the outcome constraint two rules out. Chose a hidden `--verbosity` option, still registered so the parser recognises it, carrying a validator that rejects every invocation. Its argument arity is zero-or-one and its type is `string` so that no former value, and no value at all, can reach a built-in parse error ahead of the intended message — the error is identical in all five cases. `CustomHelpProvider` now filters `Hidden` options, because it had been rendering every registered option regardless.
+3. **Rejected: delete the option and let the parser report it.** The generic unrecognised-argument message tells someone with `--verbosity` in a script or cron job nothing. Chose a hidden, still-registered option that rejects every invocation with one removal message (mechanism: comment in `Program.cs`).
 
-4. **The error names no replacement.** `--minimal` would be the obvious thing to suggest, but it is right only for the person who was passing `Minimal`. Anyone who was passing `Normal` or `Debug` would be sent to a switch that does not do what they asked for. `--help` is the honest destination.
+4. **The error names no replacement.** `--minimal` is right only for someone who passed `Minimal`; `Normal` and `Debug` users would be sent somewhere that doesn't do what they asked. `--help` is the honest destination.
 
-5. **Rejecting two format switches rides along with this change, deliberately.** It is a second behaviour change, and on its own it would not justify a break: today `--csv --json` quietly picks one and ignores the other, so a stray or mistyped flag in a script produces the wrong format indefinitely with nothing to signal it. Since the switch surface is already breaking here, fixing it now costs users one break instead of two.
+5. **Rejecting two format switches rides along deliberately.** Alone it wouldn't justify a break, but `--csv --json` silently picking one hides a mistyped flag indefinitely. The surface is already breaking, so this costs users one break instead of two.
 
-6. **The Debug prose is removed, not relocated.** It is a weaker version of what `--diagnostics` (#268) will provide, and keeping it anywhere on stdout would make it impossible for that work to state that stdout is unaffected by the diagnostics switch.
+6. **The Debug prose is removed, not relocated.** It is a weaker version of what #268 will provide, and keeping it on stdout would stop #268 from promising stdout is unaffected by diagnostics.
 
 **Date:** 2026-10-07
