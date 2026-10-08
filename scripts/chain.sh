@@ -40,8 +40,8 @@ STUDY_LIMIT=${CHAIN_STAGE_TIMEOUT:-1800}
 # /verify reviews in rounds, each a reviewer set plus a suite re-run. Follow-up rounds are cheaper
 # than round one (narrower set, fix diff only), so this is deliberate headroom, not a measurement.
 # CHAIN_STAGE_TIMEOUT replaces every stage's limit, so setting it to a value sized for a single
-# pass, 5400 included, kills verify mid-round with no verdict and reports a progressing loop as a
-# stall.
+# pass, 5400 included, can kill a multi-round verify mid-round with no verdict and report a
+# progressing loop as a stall.
 VERIFY_LIMIT=${CHAIN_STAGE_TIMEOUT:-16200}
 RAISE_PR_LIMIT=${CHAIN_STAGE_TIMEOUT:-1800}
 
@@ -141,11 +141,13 @@ run_stage() {
   # the phrase in ordinary prose, and an unanchored scan would abort a healthy run over it.
   reason=$(grep -m1 -oE '^[[:space:]]*[*_>-]*[[:space:]]*FAILED reason=.*' <<<"$STAGE_RESULT")
   if [ -n "$reason" ]; then fail "$pos" "$name" "${reason#*FAILED reason=}"; fi
-  # Deliberately not anchored, unlike the two scans above: /raise-pr's and /verify's prompts pin
-  # their verdicts to a line of their own, but the rest may arrive decorated as markdown, and an
-  # anchor would abort a healthy run over a bullet. A report quoting someone else's success verdict is covered
-  # by the FAILED scan running first. The same decoration can land between a verdict's two words
-  # (`VERIFIED \`branch=…\``, which parked a verified #242), so each pattern allows punctuation there.
+  # Deliberately not anchored, unlike the two scans above. /raise-pr's verdict is anchored by its
+  # own pattern, and /verify's prompt asks for a plain verdict line too, but this scan does not
+  # rely on that: a verdict may still arrive decorated as markdown, and an anchor would abort a
+  # healthy run over a bullet. A report quoting someone else's success verdict is covered by the
+  # FAILED scan running first, provided its own FAILED line is plain enough for that scan to
+  # match. The same decoration can land between a verdict's two words (`VERIFIED \`branch=…\``,
+  # which parked a verified #242), so each pattern allows punctuation there.
   grep -qE -- "$verdict" <<<"$STAGE_RESULT" || fail "$pos" "$name" "no recognisable verdict"
   echo "chain: [$pos/5] $name — ok"
 }
