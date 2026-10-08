@@ -82,7 +82,7 @@ Either invariant failing fails the entire release job; no archives are attached.
 
 ## NuGet metadata
 
-The `IsAotCompatible=true` property on `NetPace.Core.csproj` causes the build to emit `[assembly: AssemblyMetadata("IsTrimmable", "True")]` into the packaged DLL — the standard .NET marker NuGet uses to surface AOT compatibility to consumers. The `publish-nuget.yml` workflow is unchanged by this feature and continues to consume the property transparently.
+The `IsAotCompatible=true` property on `NetPace.Core.csproj` causes `dotnet pack` to emit `[assembly: AssemblyMetadata("IsTrimmable", "True")]` into the packaged DLL — the standard .NET marker NuGet uses to surface AOT compatibility to consumers. The `publish-nuget.yml` workflow is unchanged by this feature and continues to consume the property transparently.
 
 ## Conditional NuGet publish
 
@@ -96,22 +96,13 @@ The GitHub Release / binary-attachment flow via `release-binaries.yml` is unaffe
 
 ## Source-build version
 
-`src/Directory.Build.props` pins all four version properties — `Version`, `FileVersion`, `AssemblyVersion`, `InformationalVersion` — to `0.0.0`. `netpace --version` from a local `dotnet build` or `dotnet run` therefore reports `0.0.0`, via `AssemblyVersion` specifically: `Program.RunAsync` reads `Assembly.GetName().Version` and prints `Major.Minor.Build`, so that is the only one of the four the output reflects.
+`src/Directory.Build.props` pins all four version properties — `Version`, `FileVersion`, `AssemblyVersion`, `InformationalVersion` — to `0.0.0`, so `netpace --version` from a local `dotnet build` or `dotnet run` reports `0.0.0`.
 
-**Why**: `0.0.0` is below every release tag and matches none of them, so a build from source cannot be mistaken for a release. A plausible-looking placeholder has caused exactly that mistake before — the pin read `1.0.0` while the latest tag was `0.25.0`, and NetPace was discussed in issues and records as though already past its pre-1.0 stance (#331).
+**Why**: `0.0.0` is below every release tag and matches none of them, so a build from source cannot be mistaken for a release. The pin previously read `1.0.0` while every release tag was `0.y.z`, and NetPace was discussed as though it had already reached 1.0.0 (#331).
 
-**The released executables carry the tag; the NuGet package's assembly does not.** The two release workflows differ, and the difference matters:
+**Released executables report their tag.** `release-binaries.yml` passes all four properties from the tag to each `dotnet publish`, overriding the placeholder.
 
-- `release-binaries.yml` passes all four properties to each `dotnet publish`, and none of those steps uses `--no-build`, so the compiler receives the tag. The attached archives hold one executable each, and the `NetPace.Core` code bundled inside them by `PublishSingleFile`/AOT carries the tag too, via the project reference.
-- `publish-nuget.yml` does **not** reach the compiler with it. It builds first with no version properties, then packs with `--no-build`. It does pass `AssemblyVersion`, `FileVersion` and `InformationalVersion` — they are already there — but they are compiler inputs and the compiler never runs, so only the package version reaches the `.nuspec` and the other three have no effect anywhere. A published package is versioned by its tag while the `NetPace.Core.dll` inside it keeps this placeholder. Reproducing the workflow's own sequence with a `9.9.9` override gives a nuspec at `9.9.9` and a packaged assembly at `0.0.0`.
-
-So the NuGet package is the only standalone distribution of `NetPace.Core`, and no separately consumable `NetPace.Core` assembly has reported its tag since `0.4.3`.
-
-**What this changes, and for whom** (Constitution VII, *Pre-1.0 stance* — a break must be stated plainly; the issue or pull request is where that obligation is discharged): `SignAssembly` is on, so `AssemblyVersion` is part of strong-name identity. Every package on nuget.org from `0.4.3` onwards contains `NetPace.Core, Version=1.0.0.0` — PR #21 removed the per-release `<Version>` and left the SDK's own `1.0.0` default, and PR #46 re-pinned that same value explicitly. Only `0.1.0` through `0.4.0`, published before the `--no-build` pack path existed, carry the version their tag set. The next package published from this branch contains `Version=0.0.0.0`. .NET resolves by simple name and does not hard-enforce strong-name versions on load, so runtime breakage is unlikely — but a library consumer inspecting the installed assembly, or any diagnostic reporting `Assembly.GetName().Version`, now sees `0.0.0` for a real release, and MSBuild conflict resolution ranks a `0.0.0.0` assembly below any other copy on the graph. The commit still distinguishes one published package from another in two places: the packaged `InformationalVersion` reads `0.0.0+<sha>`, and the nuspec records `<repository commit="...">`.
-
-**Known issue**: the mismatch between a package's version and its assembly's version is not caused by this placeholder — it dates from PR #21, which is why `0.4.3` onwards all read `1.0.0.0`. The placeholder only changes which wrong value ships. Fixing it is a release-pipeline change and therefore separate work: give the Build step the same four properties, or drop `--no-build` from Pack. Whichever is chosen, update this section with it.
-
-**No gate proves a release reports its tag.** The AOT smoke test checks only the exit code of `--version`, never its text, so the placeholder is outside the smoke-test contract. The `Should_Display_Version` snapshot in `src/NetPace.Console.Tests/Expectations/` gates the *source-build* direction only, and only for `AssemblyVersion` in `NetPace.Console`: because the output is `Major.Minor.Build`, changing the first three fields of that value without updating the snapshot fails the suite, while a fourth-field change does not. `Version`, `FileVersion` and `InformationalVersion` are ungated and could drift — including back to a release-looking `1.0.0` — with the suite still green.
+**Known issue — the assembly inside the NuGet package does not.** `publish-nuget.yml` builds with no version properties and then packs with `--no-build`, so the tag reaches the package version but not the compiler: the published package is versioned by its tag while the `NetPace.Core.dll` inside it carries the placeholder as its assembly version. Fixing that is a release-pipeline change — pass the same four properties to the Build step, or drop `--no-build` from Pack — and this section must be updated with it.
 
 ## SDK version pinning
 
