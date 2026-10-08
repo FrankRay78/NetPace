@@ -98,11 +98,11 @@ The GitHub Release / binary-attachment flow via `release-binaries.yml` is unaffe
 
 `src/Directory.Build.props` pins all four version properties — `Version`, `FileVersion`, `AssemblyVersion`, `InformationalVersion` — to `0.0.0`, so `netpace --version` from a local `dotnet build` or `dotnet run` reports `0.0.0`.
 
-**Why**: `0.0.0` is below every release tag and matches none of them, so a build from source cannot be mistaken for a release. The pin previously read `1.0.0` while every release tag was `0.y.z`, and NetPace was discussed as though it had already reached 1.0.0 (#331).
+**Why**: `0.0.0` is below every release tag and matches none of them, so a build from source cannot be mistaken for a release.
 
 **Released executables report their tag.** `release-binaries.yml` passes all four properties from the tag to each `dotnet publish`, overriding the placeholder.
 
-**Known issue — the assembly inside the NuGet package does not.** `publish-nuget.yml` builds with no version properties and then packs with `--no-build`, so the tag reaches the package version but not the compiler: the published package is versioned by its tag while the `NetPace.Core.dll` inside it carries the placeholder as its assembly version. Fixing that is a release-pipeline change — pass the same four properties to the Build step, or drop `--no-build` from Pack — and this section must be updated with it.
+**Known issue — the assembly inside the NuGet package does not.** `publish-nuget.yml` builds with no version properties and then packs with `--no-build`, so the tag reaches the package version but not the compiler: the published package is versioned by its tag while the `NetPace.Core.dll` inside it carries the placeholder as its assembly version.
 
 ## SDK version pinning
 

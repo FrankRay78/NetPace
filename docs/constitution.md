@@ -1,14 +1,14 @@
 <!--
 Sync Impact Report:
 Version: 2.1.1 → 2.2.0
-Bump rationale: MINOR — Principles III and VII each gain a new provision for a project whose every release is `0.y.z`. VII gains a **Pre-1.0 stance** block: no prior discussion or approval for a breaking change, no deprecation period, no MAJOR/MINOR/PATCH classification, no release-note callout, and one remaining obligation (say what breaks and for whom). III gains the matching exception to "follow clig.dev strictly", so its deprecation advice does not apply pre-1.0, plus the preference that a removed option fail with a message naming the removal. Neither existing rule is removed or redefined — both lapse the moment 1.0.0 is tagged, needing no further amendment — so this is materially expanded guidance, clause 3's MINOR.
+Bump rationale: MINOR — Principles III and VII each gain a new provision for a project whose every release is `0.y.z`. VII gains a **Pre-1.0 stance** block: no prior discussion or approval for a breaking change, no deprecation period, no MAJOR/MINOR/PATCH classification, no release-note callout, and one remaining obligation (say what breaks and for whom). III gains the matching exception to "follow clig.dev strictly", so its deprecation advice does not apply pre-1.0, plus the preference that a removed option fail with a message naming the removal. Neither existing rule is removed or redefined — the two new provisions lapse the moment 1.0.0 is tagged — so this is materially expanded guidance, clause 3's MINOR.
 Modified Principles: III — CLI Excellence (clig.dev bullet and Rationale); VII — Semantic Versioning (Pre-1.0 stance block added, Rationale extended)
 Modified Sections: N/A
 Added Sections: VII — **Pre-1.0 stance** block
 Removed Sections: N/A
 Maintainer approval for the MINOR amendment: issue #331 ("Raising this issue is that approval").
 Downstream documents reviewed (per Amendment Process clause 4):
-  ✅ CLAUDE.md — the "Constitution rules apply as written" bullet keeps its "discuss public-API changes before implementing (VII)" clause and gains a one-line pre-1.0 override, so the return at 1.0.0 is a deletion, not a rewrite (issue #331 confirmed decision).
+  ✅ CLAUDE.md — the "Constitution rules apply as written" bullet keeps its "discuss public-API changes before implementing (VII)" clause and gains a one-line pre-1.0 override, so nothing needs editing at 1.0.0 (issue #331 confirmed decision).
   ✅ .claude/commands/build.md — the "Public `NetPace.Core` API changes" named exception keeps its wording and gains the same one-line override, which states that the bullet is scope discipline rather than a discussion duty. The "New `NetPace.Core` dependencies" exception is untouched: a dependency is not a breaking change and the stance does not reach it.
   ✅ .claude/skills/diagnose/NETPACE.md — the "prior approval" clause in Phase 5's done-list keeps its wording and gains the same one-line override. The XML-docs half of that clause is Principle V and is unaffected.
   ✅ README.md and resources/nuget/README.md — both gain the standing pre-1.0 notice the stance's release-notes bullet relies on. Without it the bullet would warn nobody.
@@ -193,9 +193,9 @@ All releases MUST follow semantic versioning (MAJOR.MINOR.PATCH):
 - Document breaking changes in release notes
 - Discuss public API changes before implementation
 
-**Pre-1.0 stance**: while every released version of NetPace is below 1.0.0, the bullets above do not govern breaking changes. The following governs instead, and overrides any rule elsewhere in this constitution, in `CLAUDE.md`, or in an agent prompt that says otherwise:
+**Pre-1.0 stance**: while every released version of NetPace is below 1.0.0, the bullets above do not govern breaking changes or public API changes. The following governs instead, and overrides any rule elsewhere in this constitution, in `CLAUDE.md`, or in an agent prompt that says otherwise:
 
-- A breaking change to the CLI or to `NetPace.Core` that improves the app needs NO prior discussion and NO approval, and needs no justification against the bullets above.
+- A breaking or public API change to the CLI or to `NetPace.Core` that improves the app needs NO prior discussion and NO approval, and needs no justification against the bullets above.
 - One obligation remains: the issue or pull request making the change MUST state plainly what breaks and for whom. The maintainer sees every break; they are not asked to approve it first.
 - There is NO deprecation period. An option, output format or public library member may be removed or renamed outright in any release.
 - Nobody classifies a change as MAJOR, MINOR or PATCH. The maintainer chooses the version number when tagging a release.
