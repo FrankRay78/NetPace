@@ -94,6 +94,16 @@ The `IsAotCompatible=true` property on `NetPace.Core.csproj` causes `dotnet pack
 
 The GitHub Release / binary-attachment flow via `release-binaries.yml` is unaffected and ships every tag.
 
+## Source-build version
+
+`src/Directory.Build.props` pins all four version properties — `Version`, `FileVersion`, `AssemblyVersion`, `InformationalVersion` — to `0.0.0`, so `netpace --version` from a local `dotnet build` or `dotnet run` reports `0.0.0`.
+
+**Why**: `0.0.0` is below every release tag and matches none of them, so a build from source cannot be mistaken for a release. A plausible-looking placeholder has caused exactly that mistake before — the pin read `1.0.0` while the latest tag was `0.25.0`, and NetPace was discussed in issues and records as though already past its pre-1.0 stance (#331).
+
+**Tagged releases are unaffected.** `release-binaries.yml` and `publish-nuget.yml` each extract the version from the tag and pass all four properties on every `dotnet publish`/`pack`, overriding the placeholder — so a release reports the version of its tag. The AOT smoke test checks only the exit code of `--version`, never its text, so the placeholder is outside the smoke-test contract.
+
+The console `--version` output is locked by the `Should_Display_Version` snapshot in `src/NetPace.Console.Tests/Expectations/`, which is the gate on this placeholder: changing it without updating the snapshot fails the suite.
+
 ## SDK version pinning
 
 The .NET SDK version is encoded in two places, both targeting **.NET 10 (LTS)**:
