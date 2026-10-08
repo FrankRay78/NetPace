@@ -60,7 +60,7 @@ public sealed partial class NetPaceConsoleTests
         var host = GetCommandLineTestHost(services);
 
         // When
-        var result = await host.RunAsync(["-t", "--loop", "--verbosity", "Minimal"], cancellationTokenSource.Token);
+        var result = await host.RunAsync(["-t", "--loop", "--minimal"], cancellationTokenSource.Token);
 
         // Then
         Assert.Equal(0, result.ExitCode);
@@ -79,7 +79,7 @@ public sealed partial class NetPaceConsoleTests
         var host = GetCommandLineTestHost(services);
 
         // When
-        var result = await host.RunAsync(["-t", "--count", $"{count}", "--verbosity", "Minimal"]);
+        var result = await host.RunAsync(["-t", "--count", $"{count}", "--minimal"]);
 
         // Then
         Assert.Equal(0, result.ExitCode);
@@ -100,7 +100,7 @@ public sealed partial class NetPaceConsoleTests
         var host = GetCommandLineTestHost(services);
 
         // When
-        var result = await host.RunAsync(["-t", "--count", $"{count}", "--delay", $"{delay}", "--verbosity", "Minimal"]);
+        var result = await host.RunAsync(["-t", "--count", $"{count}", "--delay", $"{delay}", "--minimal"]);
 
         // Then
         Assert.Equal(count - 1, waiter.CallCount);
@@ -119,32 +119,11 @@ public sealed partial class NetPaceConsoleTests
         var host = GetCommandLineTestHost(services);
 
         // When
-        var result = await host.RunAsync(["--count", "3", "--unit-scale", "Mega", "--verbosity", "Minimal"]);
+        var result = await host.RunAsync(["--count", "3", "--unit-scale", "Mega", "--minimal"]);
 
         // Then
         Assert.Equal(0, result.ExitCode);
         await Verify(result.Output);
-    }
-
-    [InlineData("Minimal")]
-    [InlineData("Normal")]
-    [InlineData("Debug")]
-    [Theory]
-    public async Task Should_Perform_Speed_Test_With_Verbosity(string verbosity)
-    {
-        // Given
-        var services = new ServiceCollection();
-        services.AddSingleton<ISpeedTestService, SpeedTestStub>();
-        services.AddSingleton<IClock, ClockStub>();
-        services.AddSingleton<IWaiter, NoDelayStub>();
-        var host = GetCommandLineTestHost(services);
-
-        // When
-        var result = await host.RunAsync(["--verbosity", verbosity]);
-
-        // Then
-        Assert.Equal(0, result.ExitCode);
-        await Verify(result.Output).UseParameters(verbosity);
     }
 
     [InlineData("http://test1.com")]
@@ -233,11 +212,10 @@ public sealed partial class NetPaceConsoleTests
         await Verify(result.Output).UseParameters(unit, unitSystem);
     }
 
-    [InlineData("Minimal")]
-    [InlineData("Normal")]
-    [InlineData("Debug")]
+    [InlineData(false)]
+    [InlineData(true)]
     [Theory]
-    public async Task Should_Not_Perform_Download_Speed_Test(string verbosity)
+    public async Task Should_Not_Perform_Download_Speed_Test(bool minimal)
     {
         // Given
         var services = new ServiceCollection();
@@ -247,18 +225,17 @@ public sealed partial class NetPaceConsoleTests
         var host = GetCommandLineTestHost(services);
 
         // When
-        var result = await host.RunAsync(["--no-download", "--verbosity", verbosity]);
+        var result = await host.RunAsync(minimal ? ["--no-download", "--minimal"] : ["--no-download"]);
 
         // Then
         Assert.Equal(0, result.ExitCode);
-        await Verify(result.Output).UseParameters(verbosity);
+        await Verify(result.Output).UseParameters(minimal);
     }
 
-    [InlineData("Minimal")]
-    [InlineData("Normal")]
-    [InlineData("Debug")]
+    [InlineData(false)]
+    [InlineData(true)]
     [Theory]
-    public async Task Should_Not_Perform_Upload_Speed_Test(string verbosity)
+    public async Task Should_Not_Perform_Upload_Speed_Test(bool minimal)
     {
         // Given
         var services = new ServiceCollection();
@@ -268,18 +245,17 @@ public sealed partial class NetPaceConsoleTests
         var host = GetCommandLineTestHost(services);
 
         // When
-        var result = await host.RunAsync(["--no-upload", "--verbosity", verbosity]);
+        var result = await host.RunAsync(minimal ? ["--no-upload", "--minimal"] : ["--no-upload"]);
 
         // Then
         Assert.Equal(0, result.ExitCode);
-        await Verify(result.Output).UseParameters(verbosity);
+        await Verify(result.Output).UseParameters(minimal);
     }
 
-    [InlineData("Minimal")]
-    [InlineData("Normal")]
-    [InlineData("Debug")]
+    [InlineData(false)]
+    [InlineData(true)]
     [Theory]
-    public async Task Should_Not_Perform_Download_Upload_Speed_Test(string verbosity)
+    public async Task Should_Not_Perform_Download_Upload_Speed_Test(bool minimal)
     {
         // Given
         var services = new ServiceCollection();
@@ -289,18 +265,17 @@ public sealed partial class NetPaceConsoleTests
         var host = GetCommandLineTestHost(services);
 
         // When
-        var result = await host.RunAsync(["--no-download", "--no-upload", "--verbosity", verbosity]);
+        var result = await host.RunAsync(minimal ? ["--no-download", "--no-upload", "--minimal"] : ["--no-download", "--no-upload"]);
 
         // Then
         Assert.Equal(0, result.ExitCode);
-        await Verify(result.Output).UseParameters(verbosity);
+        await Verify(result.Output).UseParameters(minimal);
     }
 
-    [InlineData("Minimal")]
-    [InlineData("Normal")]
-    [InlineData("Debug")]
+    [InlineData(false)]
+    [InlineData(true)]
     [Theory]
-    public async Task Should_Not_Perform_Latency_Test(string verbosity)
+    public async Task Should_Not_Perform_Latency_Test(bool minimal)
     {
         // Given
         var services = new ServiceCollection();
@@ -310,11 +285,11 @@ public sealed partial class NetPaceConsoleTests
         var host = GetCommandLineTestHost(services);
 
         // When
-        var result = await host.RunAsync(["--no-latency", "--verbosity", verbosity]);
+        var result = await host.RunAsync(minimal ? ["--no-latency", "--minimal"] : ["--no-latency"]);
 
         // Then
         Assert.Equal(0, result.ExitCode);
-        await Verify(result.Output).UseParameters(verbosity);
+        await Verify(result.Output).UseParameters(minimal);
     }
 
     [Fact]
@@ -379,7 +354,7 @@ public sealed partial class NetPaceConsoleTests
         var host = GetCommandLineTestHost(services);
 
         // When
-        var result = await host.RunAsync(["-t", "--loop", "--verbosity", "Minimal"], cancellationTokenSource.Token);
+        var result = await host.RunAsync(["-t", "--loop", "--minimal"], cancellationTokenSource.Token);
 
         // Then
         Assert.Equal(0, result.ExitCode);
@@ -400,7 +375,7 @@ public sealed partial class NetPaceConsoleTests
         var host = GetCommandLineTestHost(services);
 
         // When
-        var result = await host.RunAsync(["-t", "--count", "100", "--verbosity", "Minimal"], cancellationTokenSource.Token);
+        var result = await host.RunAsync(["-t", "--count", "100", "--minimal"], cancellationTokenSource.Token);
 
         // Then
         Assert.Equal(0, result.ExitCode);
@@ -477,7 +452,7 @@ public sealed partial class NetPaceConsoleTests
         var host = GetCommandLineTestHost(services);
 
         // When
-        var result = await host.RunAsync(["-t", "--count", "100", "--verbosity", "Minimal"], cancellationTokenSource.Token);
+        var result = await host.RunAsync(["-t", "--count", "100", "--minimal"], cancellationTokenSource.Token);
 
         // Then
         Assert.Equal(0, result.ExitCode);
@@ -506,7 +481,7 @@ public sealed partial class NetPaceConsoleTests
         var host = GetCommandLineTestHost(services);
 
         // When
-        var result = await host.RunAsync(["-t", "--count", "100", "--verbosity", "Minimal"], cancellationTokenSource.Token);
+        var result = await host.RunAsync(["-t", "--count", "100", "--minimal"], cancellationTokenSource.Token);
 
         // Then
         Assert.Equal(0, result.ExitCode);

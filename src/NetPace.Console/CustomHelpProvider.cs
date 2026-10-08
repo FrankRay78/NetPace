@@ -85,6 +85,10 @@ internal static class CustomHelpProvider
         // We want to keep only our custom one with "Prints version information."
         sortedOptions.RemoveAll(o => o.Name == "--version" && (o.Description?.Contains("Show version information") ?? false));
 
+        // Hidden options are registered only so that passing them produces a useful error; help
+        // must not advertise them.
+        sortedOptions.RemoveAll(o => o.Hidden);
+
         // Ensure --help is included and put it first
         var helpOption = sortedOptions.FirstOrDefault(o => o.Name == "--help");
         if (helpOption != null)

@@ -23,7 +23,7 @@ public sealed class SpeedTestCommandSettings
     public required TimeSpan Delay { get; init; }
 
     /// <summary>
-    /// Display minimal output in CSV format.
+    /// Display output as a single CSV row.
     /// </summary>
     public required bool CSV { get; init; }
 
@@ -111,9 +111,9 @@ public sealed class SpeedTestCommandSettings
     public required SpeedUnitSystem SpeedUnitSystem { get; init; }
 
     /// <summary>
-    /// The verbosity level.
+    /// Display the result as a single compact line.
     /// </summary>
-    public required Verbosity Verbosity { get; init; }
+    public required bool Minimal { get; init; }
 
     /// <summary>
     /// Write output to file.
@@ -144,6 +144,23 @@ public static class SpeedTestCommandSettingsExtensions
     /// <returns>Throws an exception if validation fails.</returns>
     public static void Validate(this SpeedTestCommandSettings settings)
     {
+        // Exactly one output format may be selected. --json-pretty shapes the JSON format rather
+        // than selecting a second one, so it counts as JSON and stays usable alongside --json.
+        // Checked here rather than as a parse validator: a command-level parse error discards every
+        // option-level error, which hid an unparseable --unit and the --verbosity removal notice
+        // whenever a format conflict was present too.
+        var formatsSelected = (settings.CSV ? 1 : 0) + (settings.Json || settings.JsonPretty ? 1 : 0) + (settings.Minimal ? 1 : 0);
+        if (formatsSelected > 1)
+        {
+            var switches = new List<string>();
+            if (settings.CSV) switches.Add("--csv");
+            if (settings.Json) switches.Add("--json");
+            if (settings.JsonPretty) switches.Add("--json-pretty");
+            if (settings.Minimal) switches.Add("--minimal");
+
+            throw new ArgumentException($"Only one output format may be specified: {string.Join(", ", switches)}.");
+        }
+
         if (settings.CSV && settings.CSVHeaderUnits && settings.SpeedScale == SpeedScale.Auto && (settings.Loop || settings.Count > 1))
         {
             throw new ArgumentException("The --unit-scale option must not be <Auto> for multiple speed tests (eg. --loop or --count).");

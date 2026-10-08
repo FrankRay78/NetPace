@@ -1,5 +1,12 @@
 <!--
 Sync Impact Report:
+Version: 2.1.0 → 2.1.1
+Bump rationale: PATCH — Principle III's verbosity-levels bullet described the `--verbosity` surface that issue #267 retires for a `--minimal` format peer of `--csv` and `--json`. The replacement states the one-switch-per-format rule. Maintainer confirmed PATCH in #267. For review: the new bullet carries a normative MUST NOT the old one did not, which could read as MINOR.
+Modified Principles: III — CLI Excellence
+Modified Sections: Performance & Scale → Units and Formatting (output-modes list gains minimal)
+Downstream reviewed (Amendment Process clause 4): CLAUDE.md (Units and Formatting), README.md, USER_GUIDE.md updated; docs/conventions/testing.md, .claude/commands/{draftissue,reviewissue,confirmissue}.md and the profile-CLI-switch CIR (a dated record) unchanged.
+
+--- superseded, retained for history ---
 Version: 2.0.0 → 2.1.0
 Bump rationale: MINOR — Principle VIII (AC-to-Test Traceability) gains materially expanded
 guidance: the marker is stated to be written in the test file's own comment syntax (shell test
@@ -115,9 +122,9 @@ The command-line interface MUST follow industry best practices:
 - Use Spectre.Console for all console output and interaction
 - Support `--help` and `--version` flags
 - Provide clear error messages with actionable guidance
-- Support multiple output formats (normal, CSV, JSON) for scripting
+- Support multiple output formats (default, minimal, CSV, JSON) for scripting
 - Default behavior should work for most users without flags
-- Verbosity levels: Minimal (scripts), Normal (users), Debug (troubleshooting)
+- Output format is selected by one switch per format, and exactly one may be selected: a format selector is not a level on a scale, and the two MUST NOT be conflated in a single option
 
 **Rationale**: CLI applications are tools for users. Following established guidelines ensures NetPace is intuitive, scriptable, and professional.
 
@@ -288,7 +295,7 @@ Before committing, verify:
 - Support SI (1000-based) and IEC (1024-based) unit systems
 - Support BitsPerSecond and BytesPerSecond
 - Auto-scale by default (Mbps, Gbps) with user override
-- Consistent formatting across all output modes (normal, CSV, JSON)
+- Consistent formatting across all output modes (default, minimal, CSV, JSON)
 
 ## Governance
 
@@ -312,4 +319,4 @@ This constitution supersedes all other development practices and guides. All dev
 - Complexity MUST be justified against simplicity principles
 - For runtime development guidance, refer to `CLAUDE.md`
 
-**Version**: 2.1.0 | **Ratified**: 2026-04-10 | **Last Amended**: 2026-10-01
+**Version**: 2.1.1 | **Ratified**: 2026-04-10 | **Last Amended**: 2026-10-07
