@@ -558,9 +558,10 @@ public sealed partial class NetPaceConsoleTests
     [InlineData("-v")]
     [InlineData("--version")]
     [Theory]
-    // SCENARIO: A build from source reports a version below 1.0.0
     public async Task Should_Display_Version(string version)
     {
+        // SCENARIO: A build from source reports a version below 1.0.0
+
         // Given
         var services = new ServiceCollection();
         services.AddSingleton<ISpeedTestService, SpeedTestStub>();

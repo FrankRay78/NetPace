@@ -96,13 +96,20 @@ The GitHub Release / binary-attachment flow via `release-binaries.yml` is unaffe
 
 ## Source-build version
 
-`src/Directory.Build.props` pins all four version properties — `Version`, `FileVersion`, `AssemblyVersion`, `InformationalVersion` — to `0.0.0`, so `netpace --version` from a local `dotnet build` or `dotnet run` reports `0.0.0`.
+`src/Directory.Build.props` pins all four version properties — `Version`, `FileVersion`, `AssemblyVersion`, `InformationalVersion` — to `0.0.0`. `netpace --version` from a local `dotnet build` or `dotnet run` therefore reports `0.0.0`, via `AssemblyVersion` specifically: `Program.RunAsync` reads `Assembly.GetName().Version` and prints `Major.Minor.Build`, so that is the only one of the four the output reflects.
 
 **Why**: `0.0.0` is below every release tag and matches none of them, so a build from source cannot be mistaken for a release. A plausible-looking placeholder has caused exactly that mistake before — the pin read `1.0.0` while the latest tag was `0.25.0`, and NetPace was discussed in issues and records as though already past its pre-1.0 stance (#331).
 
-**Tagged releases are unaffected.** `release-binaries.yml` and `publish-nuget.yml` each extract the version from the tag and pass all four properties on every `dotnet publish`/`pack`, overriding the placeholder — so a release reports the version of its tag. The AOT smoke test checks only the exit code of `--version`, never its text, so the placeholder is outside the smoke-test contract.
+**Released binaries carry the tag; the NuGet package's assembly does not.** The two release workflows differ, and the difference matters:
 
-The console `--version` output is locked by the `Should_Display_Version` snapshot in `src/NetPace.Console.Tests/Expectations/`, which is the gate on this placeholder: changing it without updating the snapshot fails the suite.
+- `release-binaries.yml` passes all four properties to each `dotnet publish`, and to the dedicated `dotnet build` of the standalone `NetPace.Core.dll` asset. None of those steps uses `--no-build`, so the compiler receives the tag and every attached binary reports it.
+- `publish-nuget.yml` does **not** reach the compiler with it. It builds first with no version properties, then packs with `--no-build`, so the four `-p:` arguments land only in the `.nuspec`. A published package is versioned by its tag while the `NetPace.Core.dll` inside it keeps this placeholder. Verified by reproducing the workflow's own sequence: nuspec `<version>` took the override, the packaged assembly carried `0.0.0`.
+
+**What this changes, and for whom** (Constitution VII, *Pre-1.0 stance* — a break must be stated plainly): `SignAssembly` is on, so `AssemblyVersion` is part of strong-name identity. Packages already on nuget.org were built by this same `--no-build` path while the pin read `1.0.0`, so they contain `NetPace.Core, Version=1.0.0.0`; the next package published from this branch contains `Version=0.0.0.0`. .NET resolves by simple name and does not hard-enforce strong-name versions on load, so runtime breakage is unlikely — but a library consumer inspecting the installed assembly, or any diagnostic reporting `Assembly.GetName().Version`, now sees `0.0.0` for a real release, and MSBuild conflict resolution ranks a `0.0.0.0` assembly below any other copy on the graph.
+
+**Known issue, deferred**: the `publish-nuget.yml` gap above pre-dates this placeholder — it shipped `1.0.0` assemblies against tag-versioned nuspecs in exactly the same way — so fixing the pipeline is separate work, tracked apart from #331. The fix is to give the Build step the same four properties or to drop `--no-build` from Pack; whichever is chosen, update this section with it.
+
+**No gate proves a release reports its tag.** The AOT smoke test checks only the exit code of `--version`, never its text, so the placeholder is outside the smoke-test contract. The `Should_Display_Version` snapshot in `src/NetPace.Console.Tests/Expectations/` gates the *source-build* direction only, and only for `AssemblyVersion` in `NetPace.Console`: changing that value without updating the snapshot fails the suite. `Version`, `FileVersion` and `InformationalVersion` are ungated and could drift — including back to a release-looking `1.0.0` — with the suite still green.
 
 ## SDK version pinning
 
