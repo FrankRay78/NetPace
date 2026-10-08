@@ -84,6 +84,14 @@ Either invariant failing fails the entire release job; no archives are attached.
 
 The `IsAotCompatible=true` property on `NetPace.Core.csproj` causes `dotnet pack` to emit `[assembly: AssemblyMetadata("IsTrimmable", "True")]` into the packaged DLL — the standard .NET marker NuGet uses to surface AOT compatibility to consumers. The `publish-nuget.yml` workflow is unchanged by this feature and continues to consume the property transparently.
 
+## NuGet package version
+
+`publish-nuget.yml` takes the version from the tag and passes it to both steps that need it. The Build step receives `Version`, `AssemblyVersion`, `FileVersion` and `InformationalVersion`, because the compiler stamps those into `NetPace.Core.dll`. The Pack step runs with `--no-build`, so it can set only the package's own version.
+
+**Version check**: before pushing, the `Verify packed library version` step unpacks the `.nupkg` and fails the job unless every `NetPace.Core.dll` inside reports the tag as its assembly version, file version and informational version. Nothing is pushed to nuget.org when it fails.
+
+**Why**: with the version passed only to Pack, the package carried the tag while the library inside kept the placeholder from `src/Directory.Build.props`, and nothing checked it (#341).
+
 ## Conditional NuGet publish
 
 `publish-nuget.yml` only packs and pushes `NetPace.Core` when `src/NetPace.Core/**` has changed between the current tag and the previous tag. On CLI-only tags (the common case — ~90% of releases), the workflow logs a skip message and exits successfully without invoking `dotnet pack` or `nuget push`.
