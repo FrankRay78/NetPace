@@ -40,7 +40,7 @@ Do not add tests for the `--flag --help` pattern — it is not expected to work.
 
 ### Units and Formatting
 
-`--unit-scale` overrides auto-scaling; formatting must match across normal, CSV and JSON output.
+`--unit-scale` overrides auto-scaling; formatting must match across default, minimal, CSV and JSON output.
 
 ### Result, Extension and Settings Patterns
 

@@ -52,7 +52,7 @@ public static class Program
 
         var csvOption = new Option<bool>("--csv")
         {
-            Description = "Display minimal output in CSV format (always includes timestamp).",
+            Description = "Display output as a single CSV row (always includes timestamp).",
             DefaultValueFactory = _ => false
         };
 
@@ -85,6 +85,12 @@ public static class Program
         var jsonPrettyOption = new Option<bool>("--json-pretty")
         {
             Description = "Display output in Json format (pretty print).",
+            DefaultValueFactory = _ => false
+        };
+
+        var minimalOption = new Option<bool>("--minimal")
+        {
+            Description = "Display the result as a single compact line.\nIdeal for batch scripts and redirected output.",
             DefaultValueFactory = _ => false
         };
 
@@ -162,11 +168,19 @@ public static class Program
             DefaultValueFactory = _ => SpeedUnitSystem.SI
         };
 
-        var verbosityOption = new Option<Verbosity>("--verbosity")
+        // --verbosity is retired, but stays registered so that a script still passing it gets a
+        // message naming the removal rather than a generic unrecognised-option error. It takes an
+        // optional string so that every former value - and no value at all - lands on the same
+        // error instead of a built-in parse failure. Hidden, and CustomHelpProvider strips hidden
+        // options, so --help does not advertise it.
+        var verbosityOption = new Option<string>("--verbosity")
         {
-            Description = "The verbosity level. <Minimal, Normal, Debug>\nMinimal is ideal for batch scripts and redirected output.",
-            DefaultValueFactory = _ => Verbosity.Normal
+            Arity = ArgumentArity.ZeroOrOne,
+            Hidden = true
         };
+        // No replacement is named: --minimal covers only the former Minimal value, so pointing at
+        // it would mislead anyone who was passing Normal or Debug.
+        verbosityOption.Validators.Add(result => result.AddError("--verbosity has been removed, see --help."));
 
         var fileOption = new Option<string>("--file")
         {
@@ -204,6 +218,7 @@ public static class Program
         command.Options.Add(csvHeaderUnitsOption);
         command.Options.Add(jsonOption);
         command.Options.Add(jsonPrettyOption);
+        command.Options.Add(minimalOption);
         command.Options.Add(noLatencyOption);
         command.Options.Add(noDownloadOption);
         command.Options.Add(noUploadOption);
@@ -238,6 +253,7 @@ public static class Program
                     CSVHeaderUnits = parseResult.GetValue(csvHeaderUnitsOption),
                     Json = parseResult.GetValue(jsonOption),
                     JsonPretty = parseResult.GetValue(jsonPrettyOption),
+                    Minimal = parseResult.GetValue(minimalOption),
                     NoLatency = parseResult.GetValue(noLatencyOption),
                     NoDownload = parseResult.GetValue(noDownloadOption),
                     NoUpload = parseResult.GetValue(noUploadOption),
@@ -250,7 +266,6 @@ public static class Program
                     SpeedUnit = parseResult.GetValue(unitOption),
                     SpeedScale = parseResult.GetValue(unitScaleOption),
                     SpeedUnitSystem = parseResult.GetValue(unitSystemOption),
-                    Verbosity = parseResult.GetValue(verbosityOption),
                     OutputFile = parseResult.GetValue(fileOption) ?? string.Empty,
                     FileModeValue = parseResult.GetValue(fileModeOption),
                     Quiet = parseResult.GetValue(quietOption),

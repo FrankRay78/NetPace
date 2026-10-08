@@ -105,14 +105,10 @@ public sealed partial class NetPaceConsoleTests
             Assert.Empty(result.Output);
         }
 
-        [InlineData("-q", "Minimal")]
-        [InlineData("-q", "Normal")]
-        [InlineData("-q", "Debug")]
-        [InlineData("--quiet", "Minimal")]
-        [InlineData("--quiet", "Normal")]
-        [InlineData("--quiet", "Debug")]
+        [InlineData("-q")]
+        [InlineData("--quiet")]
         [Theory]
-        public async Task Should_Suppress_Console_With_Verbosity_In_Quiet_Mode(string quiet, string verbosity)
+        public async Task Should_Suppress_Console_With_Minimal_In_Quiet_Mode(string quiet)
         {
             // Given
             var services = new ServiceCollection();
@@ -122,7 +118,7 @@ public sealed partial class NetPaceConsoleTests
             var host = GetCommandLineTestHost(services);
 
             // When
-            var result = await host.RunAsync([quiet, "--verbosity", verbosity]);
+            var result = await host.RunAsync([quiet, "--minimal"]);
 
             // Then
             Assert.Equal(0, result.ExitCode);
