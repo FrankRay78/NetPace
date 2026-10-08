@@ -7,6 +7,9 @@ Network speed tester including server discovery, latency measurement, download a
 
 Built with .NET 10.0 — runs on Windows, Linux, and macOS.
 
+> [!IMPORTANT]\
+> **NetPace is pre-1.0.** Any release may change or remove command-line options, output formats or `NetPace.Core` library members, without a deprecation period. Backward compatibility will be maintained from 1.0.0 onwards.
+
 <p align="left">
     <a href="https://github.com/FrankRay78/NetPace/issues/new?labels=needs%20triage,bug&template=bug-report---.md">Report Bug</a>
     -

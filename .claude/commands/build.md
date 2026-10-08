@@ -31,6 +31,8 @@ Two named exceptions, because `CLAUDE.md` requires discussion for them:
 - **Public `NetPace.Core` API changes.** If the issue's acceptance criteria *require* one, the issue is the discussion — proceed, and call it out prominently in the final report so it gets scrutiny at review. If a public API change is merely *convenient* and not required by the criteria, do not make it.
 - **New `NetPace.Core` dependencies.** Do not add one. If the issue cannot be built without it, STOP and report that — the dependency decision is not yours to make unattended.
 
+**Pre-1.0 override**: while every released version is below 1.0.0, a breaking change to the CLI or to `NetPace.Core` needs no prior discussion or approval and no MAJOR/MINOR/PATCH classification (Constitution VII, *Pre-1.0 stance*). So the first bullet is scope discipline, not a discussion duty: build what the criteria require, report what breaks and for whom, and do not stop for approval of the break. The dependency bullet is unaffected — a new dependency is not a breaking change.
+
 ---
 
 ## Steps

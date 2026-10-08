@@ -2,6 +2,8 @@
 
 Network speed test library including server discovery, latency measurement, download and upload speed testing.
 
+> **NetPace is pre-1.0.** Any release may change or remove command-line options, output formats or `NetPace.Core` library members, without a deprecation period. Backward compatibility will be maintained from 1.0.0 onwards.
+
 Fan of NetPace? Consider giving the [repo](https://github.com/FrankRay78/NetPace) a star ⭐ - it helps others find it too.
 
 ## Quick Start

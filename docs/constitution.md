@@ -1,5 +1,23 @@
 <!--
 Sync Impact Report:
+Version: 2.1.1 → 2.2.0
+Bump rationale: MINOR — Principles III and VII each gain a new provision for a project whose every release is `0.y.z`. VII gains a **Pre-1.0 stance** block: no prior discussion or approval for a breaking change, no deprecation period, no MAJOR/MINOR/PATCH classification, no release-note callout, and one remaining obligation (say what breaks and for whom). III gains the matching exception to "follow clig.dev strictly", so its deprecation advice does not apply pre-1.0, plus the preference that a removed option fail with a message naming the removal. Neither existing rule is removed or redefined — the two new provisions lapse the moment 1.0.0 is tagged — so this is materially expanded guidance, clause 3's MINOR.
+Modified Principles: III — CLI Excellence (clig.dev bullet and Rationale); VII — Semantic Versioning (Pre-1.0 stance block added, Rationale extended)
+Modified Sections: N/A
+Added Sections: VII — **Pre-1.0 stance** block
+Removed Sections: N/A
+Maintainer approval for the MINOR amendment: issue #331 ("Raising this issue is that approval").
+Downstream documents reviewed (per Amendment Process clause 4):
+  ✅ CLAUDE.md — the "Constitution rules apply as written" bullet keeps its "discuss public-API changes before implementing (VII)" clause and gains a one-line pre-1.0 override, so nothing needs editing at 1.0.0 (issue #331 confirmed decision).
+  ✅ .claude/commands/build.md — the "Public `NetPace.Core` API changes" named exception keeps its wording and gains the same one-line override, which states that the bullet is scope discipline rather than a discussion duty. The "New `NetPace.Core` dependencies" exception is untouched: a dependency is not a breaking change and the stance does not reach it.
+  ✅ .claude/skills/diagnose/NETPACE.md — the "prior approval" clause in Phase 5's done-list keeps its wording and gains the same one-line override. The XML-docs half of that clause is Principle V and is unaffected.
+  ✅ README.md and resources/nuget/README.md — both gain the standing pre-1.0 notice the stance's release-notes bullet relies on. Without it the bullet would warn nobody.
+  ✅ docs/RELEASING.md — gains a **Source-build version** section. `release-binaries.yml` overrides all four version properties from the tag, so the `0.0.0` placeholder is release-pipeline knowledge and belongs here.
+  ✅ docs/conventions/testing.md — reviewed, unchanged: it governs assertion style and test integrity, and says nothing about versioning or deprecation.
+  ✅ .claude/commands/{draftissue,reviewissue,confirmissue,verify,raise-pr}.md — reviewed, unchanged. None carries a semver, deprecation or breaking-change rule, so none contradicts the stance; `/reviewissue` runs grounded in this constitution and picks the stance up from here.
+  ✅ docs/change-intent-records/* — deliberately unchanged. The three records that re-derived the stance (2026-10-03, 2026-10-02, 2026-05-15) are dated history, explicitly out of scope in #331.
+
+--- superseded, retained for history ---
 Version: 2.1.0 → 2.1.1
 Bump rationale: PATCH — Principle III's verbosity-levels bullet described the `--verbosity` surface that issue #267 retires for a `--minimal` format peer of `--csv` and `--json`. The replacement states the one-switch-per-format rule. Maintainer confirmed PATCH in #267. For review: the new bullet carries a normative MUST NOT the old one did not, which could read as MINOR.
 Modified Principles: III — CLI Excellence
@@ -118,7 +136,7 @@ Every feature MUST start as a standalone library (`NetPace.Core`) before CLI imp
 
 The command-line interface MUST follow industry best practices:
 
-- Follow [CLI Guidelines (clig.dev)](https://clig.dev/) strictly
+- Follow [CLI Guidelines (clig.dev)](https://clig.dev/) strictly, with one exception while NetPace is pre-1.0 (Principle VII): clig.dev's advice to warn users before changing or removing an option does NOT apply, because there is no deprecation period. A removed or renamed option SHOULD fail with a message saying it was removed, where that is simple to do — a preference, never a requirement, and a review MUST NOT raise its absence as a gap. The exception lapses when 1.0.0 is tagged.
 - Use Spectre.Console for all console output and interaction
 - Support `--help` and `--version` flags
 - Provide clear error messages with actionable guidance
@@ -126,7 +144,7 @@ The command-line interface MUST follow industry best practices:
 - Default behavior should work for most users without flags
 - Output format is selected by one switch per format, and exactly one may be selected: a format selector is not a level on a scale, and the two MUST NOT be conflated in a single option
 
-**Rationale**: CLI applications are tools for users. Following established guidelines ensures NetPace is intuitive, scriptable, and professional.
+**Rationale**: CLI applications are tools for users. Following established guidelines ensures NetPace is intuitive, scriptable, and professional. The pre-1.0 exception exists because "strictly" was being read as importing clig.dev's deprecation advice wholesale: the review of #267 raised a warning period for `--verbosity` that the maintainer did not want, and the exception settles that question once rather than per option.
 
 ### IV. Cross-Platform Compatibility
 
@@ -175,7 +193,17 @@ All releases MUST follow semantic versioning (MAJOR.MINOR.PATCH):
 - Document breaking changes in release notes
 - Discuss public API changes before implementation
 
-**Rationale**: NuGet consumers depend on predictable versioning to avoid breaking changes. Semantic versioning is industry standard for package distribution.
+**Pre-1.0 stance**: while every released version of NetPace is below 1.0.0, the bullets above do not govern breaking changes or public API changes. The following governs instead, and overrides any rule elsewhere in this constitution, in `CLAUDE.md`, or in an agent prompt that says otherwise:
+
+- A breaking or public API change to the CLI or to `NetPace.Core` that improves the app needs NO prior discussion and NO approval, and needs no justification against the bullets above.
+- One obligation remains: the issue or pull request making the change MUST state plainly what breaks and for whom. The maintainer sees every break; they are not asked to approve it first.
+- There is NO deprecation period. An option, output format or public library member may be removed or renamed outright in any release.
+- Nobody classifies a change as MAJOR, MINOR or PATCH. The maintainer chooses the version number when tagging a release.
+- A breaking change need NOT be called out in release notes. Users are warned once, by the standing pre-1.0 notice in `README.md` and `resources/nuget/README.md`.
+
+The stance ends when a 1.0.0 release is tagged. From that point the bullets above apply in full, with no further amendment to this principle needed. No date or milestone for 1.0.0 is implied.
+
+**Rationale**: NuGet consumers depend on predictable versioning to avoid breaking changes. Semantic versioning is industry standard for package distribution. The pre-1.0 stance is stated here because it was previously written down only in dated change-intent records that no rule reads, so every breaking change was re-argued from first principles and reached the same conclusion each time — #267 over a `--verbosity` deprecation period, #268 over whether adding members to `ISpeedTestService` was MAJOR or MINOR. Semver itself reserves `0.y.z` for exactly this: a public API that may change at any time. Stating it once removes a recurring negotiation without weakening anything that will apply from 1.0.0.
 
 ### VIII. AC-to-Test Traceability
 
@@ -319,4 +347,4 @@ This constitution supersedes all other development practices and guides. All dev
 - Complexity MUST be justified against simplicity principles
 - For runtime development guidance, refer to `CLAUDE.md`
 
-**Version**: 2.1.1 | **Ratified**: 2026-04-10 | **Last Amended**: 2026-10-07
+**Version**: 2.2.0 | **Ratified**: 2026-04-10 | **Last Amended**: 2026-10-08
