@@ -55,21 +55,53 @@ jobs:
       - name: Restore dependencies
         run: dotnet restore src
 
+      # The compiler stamps the library's version, so the Build step needs the tag: Pack runs
+      # with --no-build and can only set the package's own version.
       - name: Build
-        run: dotnet build src --configuration Release --no-restore
+        env:
+          VERSION: ${{ steps.get_version.outputs.version }}
+        run: |
+          dotnet build src \
+            --configuration Release \
+            --no-restore \
+            -p:Version="$VERSION" \
+            -p:AssemblyVersion="$VERSION" \
+            -p:FileVersion="$VERSION" \
+            -p:InformationalVersion="$VERSION"
 
       - name: Pack
+        env:
+          VERSION: ${{ steps.get_version.outputs.version }}
         run: |
           dotnet pack src/NetPace.Core/NetPace.Core.csproj \
             --configuration Release \
             --no-build \
-            -p:PackageVersion=${{ steps.get_version.outputs.version }} \
-            -p:Version=${{ steps.get_version.outputs.version }} \
-            -p:AssemblyVersion=${{ steps.get_version.outputs.version }} \
-            -p:FileVersion=${{ steps.get_version.outputs.version }} \
-            -p:InformationalVersion=${{ steps.get_version.outputs.version }} \
+            -p:PackageVersion="$VERSION" \
+            -p:Version="$VERSION" \
+            -p:AssemblyVersion="$VERSION" \
+            -p:FileVersion="$VERSION" \
+            -p:InformationalVersion="$VERSION" \
             -p:RepositoryUrl=https://github.com/FrankRay78/NetPace \
             -o ./output
+
+      - name: Verify packed library version
+        shell: pwsh
+        env:
+          EXPECTED_VERSION: ${{ steps.get_version.outputs.version }}
+        run: |
+          $unpacked = Join-Path $env:RUNNER_TEMP 'nupkg'
+          [System.IO.Compression.ZipFile]::ExtractToDirectory((Get-Item ./output/*.nupkg).FullName, $unpacked)
+          $libraries = @(Get-ChildItem $unpacked -Recurse -Filter NetPace.Core.dll)
+          if ($libraries.Count -eq 0) { throw 'No NetPace.Core.dll found in the package.' }
+          foreach ($library in $libraries) {
+            $assembly = [System.Reflection.AssemblyName]::GetAssemblyName($library.FullName).Version.ToString(3)
+            $info = [System.Diagnostics.FileVersionInfo]::GetVersionInfo($library.FullName)
+            $informational = ($info.ProductVersion -split '\+')[0]
+            Write-Host "$($library.FullName): assembly=$assembly file=$($info.FileVersion) informational=$informational"
+            if ($assembly -ne $env:EXPECTED_VERSION -or $info.FileVersion -ne $env:EXPECTED_VERSION -or $informational -ne $env:EXPECTED_VERSION) {
+              throw "Packed library does not report the tag's version $env:EXPECTED_VERSION."
+            }
+          }
 
       - name: Publish to NuGet
         run: |
