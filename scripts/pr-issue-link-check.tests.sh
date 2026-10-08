@@ -141,7 +141,8 @@ failed() { [ "$RC" = 1 ]; }
 linked() { passed && printf '%s' "$OUTPUT" | grep -qF 'OK'; }
 exempt() { passed && printf '%s' "$OUTPUT" | grep -qF 'exempt'; }
 names()  { printf '%s' "$OUTPUT" | grep -qF -- "$1"; }
-# asked ARGS — the `gh` stub was invoked with exactly this argument string.
+# asked ARGS — some `gh` invocation's argument string contained this substring. A superset of flags
+# satisfies it, so it pins that an argument was PASSED, not that the argument list was exactly this.
 asked()  { grep -qF -- "$1" "$STUB_DIR/argv"; }
 # never_asked — no `gh` call was made at all, which is what a reference rejected on its own shape
 # (a leading zero, too many digits, another repository) must cost.
@@ -288,6 +289,103 @@ run $'- outer\n    - Closes #401\n' FrankRay78
 ok "…and so does a nested bullet"                    'linked'
 new_case
 issue 401 OPEN
+# Indented code is measured four columns past the list item's CONTENT column, not past column 0.
+# For "- item" that column is 2, so four and five spaces are content and six is code. Every
+# expectation in this block was taken from GitHub's own renderer, not from reading the spec.
+run $'- item\n\n     Closes #401\n' FrankRay78
+ok "five spaces in a list is still content"          'linked'
+new_case
+issue 401 OPEN
+run $'- item\n\n      Closes #401\n' FrankRay78
+ok "six spaces in a list is code"                    'failed && names "no closing keyword"'
+new_case
+issue 401 OPEN
+run $'- item\n\n        Closes #401\n' FrankRay78
+ok "…and so is eight"                                'failed && names "no closing keyword"'
+new_case
+issue 401 OPEN
+run $'1. item\n\n   Closes #401\n' FrankRay78
+ok "an ordered list continuation links"              'linked'
+new_case
+issue 401 OPEN
+# The tab stop is four columns, and inside a list that is what decides the verdict: one tab reaches
+# column 4, short of this item's code threshold of 6, so GitHub renders it as content and links it.
+# An eight-column stop would make the same line code — which is why the plain tab cases above, where
+# any stop clears the bar, cannot pin the width on their own.
+run $'- item\n\n\tCloses #401\n' FrankRay78
+ok "one tab in a list is content, not code"          'linked'
+new_case
+issue 401 OPEN
+run $'- item\n\n\t\tCloses #401\n' FrankRay78
+ok "…and two tabs is code"                           'failed && names "no closing keyword"'
+new_case
+issue 401 OPEN
+# Only `1.` may interrupt a paragraph, so this "2." is prose and does not raise the code threshold.
+run $'text\n2. not a list\n\n    Closes #401\n' FrankRay78
+ok "a 2. line mid-paragraph does not open a list"    'failed && names "no closing keyword"'
+new_case
+issue 401 OPEN
+run $'- item\n\n```\nx\n```\n\n    Closes #401\n' FrankRay78
+ok "a fence at column 0 closes the list"             'failed && names "no closing keyword"'
+new_case
+issue 401 OPEN
+run $'- item\n\n para\n\n    Closes #401\n' FrankRay78
+ok "a 1-3 space paragraph closes the list"           'failed && names "no closing keyword"'
+new_case
+issue 401 OPEN
+# What matters is whether the LAST EMITTED LINE was paragraph text, not whether it was blank. These
+# four positions differ between the two readings, and GitHub starts a code block in all of them.
+run '    Closes #401' FrankRay78
+ok "an indented block at the start of the body fails" 'failed && names "no closing keyword"'
+new_case
+issue 401 OPEN
+run $'# Heading\n    Closes #401\n' FrankRay78
+ok "…and one straight after a heading"               'failed && names "no closing keyword"'
+new_case
+issue 401 OPEN
+run $'---\n    Closes #401\n' FrankRay78
+ok "…and one after a thematic break"                 'failed && names "no closing keyword"'
+new_case
+issue 401 OPEN
+run $'```\nx\n```\n    Closes #401\n' FrankRay78
+ok "…and one after a closed fence"                   'failed && names "no closing keyword"'
+new_case
+issue 401 OPEN
+# An indented chunk cannot interrupt a paragraph, so this one is prose and GitHub links it.
+run $'some text\n    Closes #401\n' FrankRay78
+ok "an indented line inside a paragraph still links" 'linked'
+new_case
+issue 401 OPEN
+# A blockquote renders as its own block: quoted prose links, quoted code does not.
+run '> Closes #401' FrankRay78
+ok "a blockquoted reference links"                   'linked'
+new_case
+issue 401 OPEN
+run $'> ```\n> Closes #401\n> ```\n' FrankRay78
+ok "a blockquoted fence still fences"                'failed && names "no closing keyword"'
+new_case
+issue 401 OPEN
+run $'> text\n>\n>     Closes #401\n' FrankRay78
+ok "a blockquoted indented block is still code"      'failed && names "no closing keyword"'
+new_case
+issue 401 OPEN
+# Two unbalanced backticks in separate paragraphs are prose, not a span across the blank line.
+# Pairing them deleted every line between, including the keyword doing its job.
+run $'Run `make\n\nCloses #401\n\nNote the ` character.\n' FrankRay78
+ok "unpaired backticks across paragraphs still link" 'linked'
+new_case
+issue 401 OPEN
+run $'Do not write `Closes\n#401` in the body.\n' FrankRay78
+ok "…but a span inside one paragraph still hides it" 'failed && names "no closing keyword"'
+new_case
+issue 401 OPEN
+# The opening fence may be indented up to three spaces, and the closer need not match its indent.
+# Without the marker cleanup this reports an unterminated fence on a well-formed body.
+run $'  ```\nCloses #401\n```\n' FrankRay78
+ok "an indented opening fence still fences"          'failed && names "no closing keyword"'
+ok "…and is not reported as unterminated"            '! names "unterminated"'
+new_case
+issue 401 OPEN
 # A pull request template is mostly commented-out instructions, so this is the shape most likely to
 # quote the convention. GitHub does not render an HTML comment and does not link inside one.
 run '<!-- Closes #401 -->' FrankRay78
@@ -302,9 +400,20 @@ run '<!-- a note --> Closes #401' FrankRay78
 ok "a closed HTML comment beside a real link passes" 'linked'
 new_case
 issue 401 OPEN
+# An opener with no closer is literal text to GitHub, not a comment that swallows the rest of the
+# body — verified against GitHub's renderer, which still links a reference sitting above one.
+run $'Closes #401\n<!-- oops\n' FrankRay78
+ok "an unterminated comment leaves a real link alone" 'linked'
+new_case
+issue 401 OPEN
 run 'Closes <!-- not a comment at all #401' FrankRay78
-ok "an unterminated HTML comment fails closed"       'failed && names "unterminated HTML comment"'
-ok "…and does not call it an unlinked body"          '! names "no closing keyword"'
+ok "…and is not itself a reference"                  'failed && names "no closing keyword"'
+new_case
+issue 401 OPEN
+# A comment may contain backticks — a pull request template routinely does. Stripping spans first
+# would pair those backticks across the `-->` and misread a terminated comment as unterminated.
+run $'<!-- a `b` c -->\nCloses #401 `d` e\n' FrankRay78
+ok "a comment containing backticks still closes"     'linked'
 new_case
 issue 401 OPEN
 # A span that collapses must not let the text either side become adjacent.
@@ -346,19 +455,32 @@ ok "…and names the repository it resolved to"        'names "not an issue in o
 ok "…and never claims the body is linked"            '! names "OK"'
 new_case
 issue 401 OPEN
+# GitHub DOES resolve a leading-zero reference — verified against its own renderer, where `#0401`
+# and `#00401` both autolink to 401. Rejecting them would fail a pull request that really does
+# close its issue, so they are stripped to the number GitHub would resolve and looked up.
 run 'Closes #0401' FrankRay78
-ok "a leading-zero reference fails"                  'failed && names "leading zero"'
-ok "…under the number the author actually typed"     'names "#0401"'
-ok "…without spending a lookup on it"                'never_asked'
+ok "a leading-zero reference is resolved, not refused" 'linked'
+ok "…and the lookup uses the number without zeros"   'asked "issue view 401 --json url,state -R o/r"'
+new_case
+issue 401 OPEN
+run 'Closes #00401' FrankRay78
+ok "…however many zeros"                             'linked'
 new_case
 issue 401 OPEN
 run 'Closes #99999999999999999999401' FrankRay78
+# `$((10#…))` used to wrap this to 200376420520689065 and look THAT up, naming an issue the body
+# never mentioned. The digits are now counted, not evaluated.
 ok "a reference with too many digits fails"          'failed && names "too many digits"'
 ok "…and never names a number the body lacks"        '! names "#200376420520689065"'
+ok "…and spends no lookup on it"                     'never_asked'
 new_case
 issue 401 OPEN
 run 'Closes #0' FrankRay78
-ok "#0 fails and says so"                            'failed && names "#0 is not an issue number"'
+ok "zero is rejected by name"                        'failed && names "zero is not an issue number"'
+new_case
+issue 401 OPEN
+run 'Closes #000' FrankRay78
+ok "…and so is a run of zeros"                       'failed && names "zero is not an issue number"'
 new_case
 issue 401 OPEN
 run 'Closes #401' FrankRay78
@@ -469,7 +591,7 @@ new_case
 issue 401 OPEN
 # A single missing tool, rather than an emptied PATH — here `tr`, which the precondition loop refuses
 # on before any parsing begins. Asserting the tool BY NAME is the point: `names "is not available"`
-# alone passes for any of the twelve, so a symlink this loop silently failed to create would leave
+# alone passes for any tool in that loop, so a symlink this loop silently failed to create would leave
 # the case green while testing a different tool than it claims.
 mkdir -p "$SB/notr" || setup_fail "mkdir notr"
 for t in gh jq grep sed awk mktemp rm cat dirname env printf chmod; do

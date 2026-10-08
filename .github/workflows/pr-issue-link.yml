@@ -1,8 +1,10 @@
 name: PR Issue Link
 
 # Every pull request must close an open issue (issue #332). The PR body has to carry a closing
-# keyword naming an existing, open issue in this repository; a bare `#N` reference or a
-# Development-sidebar link alone does not count, because neither one closes the issue on merge.
+# keyword naming an existing, open issue in this repository. A bare `#N` reference does not count,
+# because it closes nothing on merge. A Development-sidebar link does not count either, but for a
+# different reason: it DOES close its issue on merge, and is excluded because it lives outside the
+# body, where neither this check nor a reviewer reading the diff can see it.
 #
 # `edited` is in the trigger list on purpose. The usual failure is a body that names no issue, and
 # the fix is an edit rather than a push — without `edited` the author would have to push an empty
@@ -31,8 +33,11 @@ permissions:
   issues: read
   # Needed because GitHub numbers issues and pull requests from one sequence: `gh issue view <N>`
   # resolves a PULL REQUEST at that number, and the check reports that as its own verdict ("#N is a
-  # pull request, not an issue"). Without this scope that read is denied, the failure does not match
-  # GitHub's not-found wording, and the run degrades to the outage message instead.
+  # pull request, not an issue"). Granting the scope is what keeps that verdict correct. What a
+  # DENIED read looks like was not established on this branch — GraphQL is documented to answer
+  # not-found rather than forbidden for objects a token may not see, which would make the check
+  # report "no issue at that number" about an issue that exists — so do not remove this scope on the
+  # assumption the failure would be obvious. See the CIR residual.
   pull-requests: read
 
 jobs:

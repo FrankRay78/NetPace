@@ -21,11 +21,20 @@
 # setting is "merging this will close an issue" — so GitHub's own grammar is the authority. Rejecting
 # `Fixed #332`, which GitHub does link and close, would fail a correctly-linked pull request.
 #
-# WHAT IS DELIBERATELY NOT A LINK. GitHub does not create a closing link from inside a code block,
-# so neither does this check: fenced blocks and inline-code spans are stripped before matching. That
-# is not pedantry — this repo's own prompts and docs quote `Closes #<N>` constantly, so a pull
-# request whose body *describes* the convention would otherwise satisfy the gate it is describing.
-# A keyword inside a longer word ("Precloses") is not a keyword either, for the same reason.
+# WHAT IS DELIBERATELY NOT A LINK. GitHub creates no closing link from text it renders as code, or
+# from text it does not render at all, so neither does this check. Stripped before matching: fenced
+# blocks, indented blocks, code spans of any backtick-run length, and HTML comments — each of them
+# inside a blockquote too. That is not pedantry: this repo's own prompts and docs quote `Closes #<N>`
+# constantly, and a pull request template is mostly commented-out instructions, so a body that
+# *describes* the convention would otherwise satisfy the gate it is describing. A keyword inside a
+# longer word ("Precloses") is not a keyword either, for the same reason.
+#
+# The block rules follow CommonMark because GitHub does, and the cases that distinguish them from a
+# naive reading are pinned in the matrix with expectations taken from GitHub's own renderer rather
+# than from reading the spec: an indented chunk cannot interrupt a paragraph, but it does open a code
+# block at the start of the body and after a heading, a thematic break or a fence; inside a list,
+# code starts four columns past the ITEM'S CONTENT column, so five spaces may be prose where six is
+# code; and only `1.` may interrupt a paragraph as an ordered marker.
 #
 # EXEMPTION — `dependabot[bot]` only, decided before the body is read, because a dependency bump has
 # no issue to name and nobody writes its body. This check has no label-based exemption and no bypass
@@ -49,8 +58,9 @@
 #
 # Injectable inputs, so a local run or a test can target any pull request: the body as
 # $PR_ISSUE_LINK_BODY, the author as $PR_ISSUE_LINK_AUTHOR, the repository as $PR_ISSUE_LINK_REPO.
-# The body and the author are one unit — supplying the author alone is a fail-closed error rather
-# than an empty body — and passing a pull request number always re-fetches both from GitHub.
+# The two are not symmetrical and it is worth knowing which way round: supplying the author without
+# the body is a fail-closed error, while supplying the body without the author re-fetches both and
+# discards the injected body. Passing a pull request number re-fetches both either way.
 # Verify any edit with pr-issue-link-check.tests.sh.
 
 set -uo pipefail
@@ -99,7 +109,9 @@ fi
 # keyword" — a verdict about a body that was never supplied, sending the author to fix something
 # already correct. That is the one conflation the whole design rule above exists to prevent, and the
 # guard belongs here because the `gh pr view` path below has its own and this path had none.
-if [ -n "$AUTHOR" ] && [ -z "${PR_ISSUE_LINK_BODY+set}" ]; then
+# Scoped to the injected path: with a pull request number the body is re-fetched below regardless, so
+# an author left over in the environment must not stop a human running `… check.sh 331`.
+if [ -z "$PR_NUMBER" ] && [ -n "$AUTHOR" ] && [ -z "${PR_ISSUE_LINK_BODY+set}" ]; then
   die "PR_ISSUE_LINK_AUTHOR is set but PR_ISSUE_LINK_BODY is not, so no body was supplied to check. A body the check never received is not a body without a closing keyword."
 fi
 BODY="${PR_ISSUE_LINK_BODY-}"
@@ -159,26 +171,61 @@ awk '
     }
     return out
   }
+  function islist(s) { return s ~ /^ ? ? ?([-*+]|[0-9]+[.)])([[:space:]]|$)/ }
   {
-    line = expand($0)
+    line = $0
+    # Blockquote markers come off first. GitHub renders quoted content as its own block, so quoted
+    # code is code and quoted prose links — but a `>` is not whitespace, so the fence and indent
+    # tests below would silently never match inside a quote. Stripping the marker lets one set of
+    # block rules decide both cases instead of two.
+    while (line ~ /^ ? ? ?> ?/) sub(/^ ? ? ?> ?/, "", line)
+    line = expand(line)
 
-    if (match(line, /^[[:space:]]*(```+|~~~+)/)) {
+    if (match(line, /^ ? ? ?(```+|~~~+)/)) {
       marker = substr(line, RSTART, RLENGTH)
       gsub(/[^`~]/, "", marker)
-      if (fence == "") { fence = marker; next }
-      if (substr(marker, 1, 1) == substr(fence, 1, 1) && length(marker) >= length(fence)) fence = ""
+      if (fence == "") fence = marker
+      else if (substr(marker, 1, 1) == substr(fence, 1, 1) && length(marker) >= length(fence)) fence = ""
+      # A fence boundary ends whatever block preceded it, a list included.
+      inpara = 0; inlist = 0; listcol = 0
       next
     }
     if (fence != "") next
 
-    if (line ~ /^[[:space:]]*$/) { blank = 1; print ""; next }
+    if (line ~ /^[[:space:]]*$/) { inpara = 0; print ""; next }
 
     indent = match(line, /[^ ]/) - 1
-    if (indent == 0) inlist = 0
-    if (line ~ /^ ? ? ?([-*+]|[0-9]+[.)])( |$)/) inlist = 1
 
-    if (indent >= 4 && !inlist && (blank || incode)) { incode = 1; blank = 0; next }
-    incode = 0; blank = 0
+    # A thematic break or an ATX heading is prose, and ends the paragraph before it. Checked ahead
+    # of the list test because `* * *` and `- - -` would otherwise read as list markers.
+    if (line ~ /^ ? ? ?-[[:space:]]*-[[:space:]]*-[-[:space:]]*$/ ||
+        line ~ /^ ? ? ?\*[[:space:]]*\*[[:space:]]*\*[*[:space:]]*$/ ||
+        line ~ /^ ? ? ?_[[:space:]]*_[[:space:]]*_[_[:space:]]*$/ ||
+        line ~ /^ ? ? ?#+([[:space:]]|$)/) {
+      inpara = 0
+      print line
+      next
+    }
+
+    # Indented code is measured from the open list item s CONTENT column, not from column 0, which
+    # is CommonMark s actual rule: four spaces past where the item s text starts. So a list opens,
+    # records that column, and closes again when a block appears to the left of it.
+    if (indent < listcol && !islist(line)) { inlist = 0; listcol = 0 }
+    if (islist(line)) {
+      # Any bullet may interrupt a paragraph; of the ordered markers only `1.` may, so a prose line
+      # beginning "2. " is not a list and must not raise the bar for what counts as code below it.
+      if (!inpara || line !~ /^ ? ? ?[0-9]+[.)]/ || line ~ /^ ? ? ?1[.)]/) {
+        inlist = 1
+        if (match(line, /^ ? ? ?([-*+]|[0-9]+[.)])[[:space:]]+/)) listcol = RLENGTH
+      }
+    }
+
+    # An indented chunk cannot interrupt a paragraph, so what matters is whether the LAST EMITTED
+    # LINE was paragraph text — not whether the last line was blank. The two differ after a
+    # heading, a thematic break, a fence, and at the very start of the body, and in every one of
+    # those positions CommonMark starts a code block where a blank-line test would not.
+    if (indent >= (inlist ? listcol + 4 : 4) && !inpara) { print ""; next }
+    inpara = 1
     print line
   }
   END { if (fence != "") exit 3 }
@@ -204,6 +251,27 @@ awk '
   { text = text $0 "\n" }
   END {
     sent = sprintf("%c", 1)
+
+    # Comments before spans, because a comment may legitimately CONTAIN backticks — a pull request
+    # template routinely does — and running the span pass first lets those backticks pair across the
+    # closing `-->`, which then reads as an unterminated comment that is in fact terminated.
+    # An opener with no closer is left as literal text, which is what GitHub renders it as.
+    out = ""
+    while ((p = index(text, "<!--")) > 0) {
+      q = index(substr(text, p + 4), "-->")
+      if (q == 0) break
+      out = out substr(text, 1, p - 1) sent
+      text = substr(text, p + 4 + q + 2)
+    }
+    text = out text
+
+    # A code span is a run of N backticks closed by a run of exactly N — which is why a plain
+    # `s/`[^`]*`//g` is not enough: against ``Closes #1`` it matches the two adjacent backticks as
+    # an EMPTY span, deletes them, and leaves the reference behind.
+    #
+    # The search for the closer stops at a blank line, because a code span cannot contain one. Two
+    # unbalanced backticks in separate paragraphs are ordinary prose to GitHub, and pairing them
+    # would delete every line between — including a closing keyword that was doing its job.
     n = length(text); out = ""; i = 1
     while (i <= n) {
       if (substr(text, i, 1) != "`") { out = out substr(text, i, 1); i++; continue }
@@ -211,29 +279,22 @@ awk '
       run = j - i
       k = j; found = 0
       while (k <= n) {
+        if (substr(text, k, 2) == "\n\n") break
         if (substr(text, k, 1) == "`") {
           m = k; while (m <= n && substr(text, m, 1) == "`") m++
           if (m - k == run) { found = 1; break }
           k = m
         } else k++
       }
+      # Replaced by one \001 rather than deleted, so the text either side does not become adjacent:
+      # "Closes `x` #1" must not collapse into something matching "Closes #1".
       if (found) { out = out sent; i = m; continue }
       out = out substr(text, i, run); i = j
     }
-    while ((p = index(out, "<!--")) > 0) {
-      rest = substr(out, p + 4)
-      q = index(rest, "-->")
-      if (q == 0) exit 4
-      out = substr(out, 1, p - 1) sent substr(rest, q + 3)
-    }
     printf "%s", out
   }
-' "$TMP/prose" > "$TMP/plain"
-case $? in
-  0) ;;
-  4) die "this pull request body has an unterminated HTML comment, so any reference after it cannot be read. Close the comment — an unreadable body is not an unlinked one." ;;
-  *) die "could not strip code spans from the pull request body." ;;
-esac
+' "$TMP/prose" > "$TMP/plain" \
+  || die "could not strip code spans from the pull request body."
 
 # --- the closing references -------------------------------------------------------
 # Three reference shapes, because all three are things GitHub links: bare `#N`, cross-repository
@@ -267,12 +328,17 @@ SEEN=""
 while IFS= read -r candidate; do
   [ -n "$candidate" ] || continue
 
-  # The trailing digits are the number in all three shapes, and they are kept EXACTLY as written.
-  # Normalising them was the earlier mistake: `$((10#$NUM))` turned `#0401` into a lookup of 401 and
-  # reported the body linked, when GitHub renders `#0401` as plain text and links nothing — and on a
-  # very long run of digits the same arithmetic wrapped, naming an issue the body never mentioned.
-  # A reference GitHub will not resolve is rejected under the number the author actually typed.
-  NUM="$(printf '%s' "$candidate" | sed -E 's/^.*[^0-9]([0-9]+)$/\1/')" \
+  # The trailing digits are the number in all three shapes. WRITTEN is what the author typed, and is
+  # what every message quotes back; NUM is the number GitHub would resolve.
+  #
+  # Leading zeros are stripped rather than rejected, because GitHub does resolve them: verified
+  # against its own renderer, `#0332` and `#00332` both autolink to issue 332, so rejecting them
+  # would fail a pull request that genuinely closes its issue. They are stripped TEXTUALLY, not with
+  # `$((10#$NUM))`, which silently wrapped a long run of digits and named an issue the body never
+  # mentioned. The digit guard below catches that run instead.
+  WRITTEN="$(printf '%s' "$candidate" | sed -E 's/^.*[^0-9]([0-9]+)$/\1/')" \
+    || die "could not read the issue number out of a closing reference."
+  NUM="$(printf '%s' "$WRITTEN" | sed -E 's/^0+//')" \
     || die "could not read the issue number out of a closing reference."
 
   QUAL=""
@@ -282,8 +348,9 @@ while IFS= read -r candidate; do
     QUAL="${BASH_REMATCH[1]}"
   fi
 
-  # $QUAL is empty for a bare reference, which leaves the label as the `#N` that was written.
-  LABEL="$QUAL#$NUM"
+  # $QUAL is empty for a bare reference, which leaves the label as the `#N` that was written. The
+  # label quotes the author's own spelling, so a rejected `#0401` is reported as `#0401`.
+  LABEL="$QUAL#$WRITTEN"
 
   # One reference, one lookup and one line of report, however many times the body repeats it.
   case "$SEEN" in
@@ -293,9 +360,9 @@ while IFS= read -r candidate; do
 
   # Shapes GitHub itself will not resolve, rejected before a lookup rather than normalised into one.
   case "$NUM" in
-    0) REJECTED+="$LABEL — #0 is not an issue number"$'\n'; continue ;;
-    0*) REJECTED+="$LABEL — written with a leading zero, which GitHub does not link"$'\n'; continue ;;
+    '') REJECTED+="$LABEL — zero is not an issue number"$'\n'; continue ;;
   esac
+  # Verified against GitHub's renderer: a ten-digit reference does not autolink, so it closes nothing.
   if [ "${#NUM}" -gt 9 ]; then
     REJECTED+="$LABEL — too many digits to be an issue number"$'\n'
     continue
@@ -364,9 +431,9 @@ done <<< "$CANDIDATES"
   fi
   printf '\n'
   printf "Issue #332: add a line to the body naming the issue this pull request closes — 'Closes #<N>',\n"
-  printf "or any of 'close'/'fix'/'resolve' including their past tenses, in any case — where #<N> is an\n"
-  printf "open issue in this repository, written at its exact number. A bare '#<N>' reference does not\n"
-  printf 'count, nor does a Development-sidebar link, nor a reference inside a code block, a code span\n'
-  printf 'or an HTML comment. Only dependabot[bot] is exempt; there is no label exemption.\n'
+  printf "or any of close/closes/closed, fix/fixes/fixed, resolve/resolves/resolved, in any case — where\n"
+  printf "#<N> is an open issue in this repository. A bare '#<N>' reference does not count, nor does a\n"
+  printf 'Development-sidebar link, nor a reference inside a code block, a code span or an HTML comment.\n'
+  printf 'Only dependabot[bot] is exempt; there is no label exemption.\n'
 } >&2
 exit 1
