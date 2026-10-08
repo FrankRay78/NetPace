@@ -2,6 +2,8 @@
 
 Network speed test library including server discovery, latency measurement, download and upload speed testing.
 
+Fan of NetPace? Consider giving the [repo](https://github.com/FrankRay78/NetPace) a star ⭐ - it helps others find it too.
+
 ## Quick Start
 
 ```csharp
