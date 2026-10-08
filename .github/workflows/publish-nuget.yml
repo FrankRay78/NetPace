@@ -58,25 +58,29 @@ jobs:
       # The compiler stamps the library's version, so the Build step needs the tag: Pack runs
       # with --no-build and can only set the package's own version.
       - name: Build
+        env:
+          VERSION: ${{ steps.get_version.outputs.version }}
         run: |
           dotnet build src \
             --configuration Release \
             --no-restore \
-            -p:Version=${{ steps.get_version.outputs.version }} \
-            -p:AssemblyVersion=${{ steps.get_version.outputs.version }} \
-            -p:FileVersion=${{ steps.get_version.outputs.version }} \
-            -p:InformationalVersion=${{ steps.get_version.outputs.version }}
+            -p:Version="$VERSION" \
+            -p:AssemblyVersion="$VERSION" \
+            -p:FileVersion="$VERSION" \
+            -p:InformationalVersion="$VERSION"
 
       - name: Pack
+        env:
+          VERSION: ${{ steps.get_version.outputs.version }}
         run: |
           dotnet pack src/NetPace.Core/NetPace.Core.csproj \
             --configuration Release \
             --no-build \
-            -p:PackageVersion=${{ steps.get_version.outputs.version }} \
-            -p:Version=${{ steps.get_version.outputs.version }} \
-            -p:AssemblyVersion=${{ steps.get_version.outputs.version }} \
-            -p:FileVersion=${{ steps.get_version.outputs.version }} \
-            -p:InformationalVersion=${{ steps.get_version.outputs.version }} \
+            -p:PackageVersion="$VERSION" \
+            -p:Version="$VERSION" \
+            -p:AssemblyVersion="$VERSION" \
+            -p:FileVersion="$VERSION" \
+            -p:InformationalVersion="$VERSION" \
             -p:RepositoryUrl=https://github.com/FrankRay78/NetPace \
             -o ./output
 
