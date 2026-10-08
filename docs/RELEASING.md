@@ -110,7 +110,7 @@ The GitHub Release / binary-attachment flow via `release-binaries.yml` is unaffe
 
 **Released executables report their tag.** `release-binaries.yml` passes all four properties from the tag to each `dotnet publish`, overriding the placeholder.
 
-**Known issue — the assembly inside the NuGet package does not.** `publish-nuget.yml` builds with no version properties and then packs with `--no-build`, so the tag reaches the package version but not the compiler: the published package is versioned by its tag while the `NetPace.Core.dll` inside it carries the placeholder as its assembly version.
+**The `NetPace.Core` package reports its tag too.** `publish-nuget.yml` passes the same four properties to its Build step, and the `Verify packed library version` step fails the job if the packed library does not report the tag (see *NuGet package version*).
 
 ## SDK version pinning
 
