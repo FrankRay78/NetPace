@@ -20,9 +20,20 @@ on:
     types: [ opened, reopened, synchronize, edited, ready_for_review ]
     branches: [ "main" ]
 
+# `edited` fires on every save of the body, so without this two quick edits start two runs of the
+# same required context and the older one can be the last to report its (stale) conclusion.
+concurrency:
+  group: issue-link-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
   issues: read
+  # Needed because GitHub numbers issues and pull requests from one sequence: `gh issue view <N>`
+  # resolves a PULL REQUEST at that number, and the check reports that as its own verdict ("#N is a
+  # pull request, not an issue"). Without this scope that read is denied, the failure does not match
+  # GitHub's not-found wording, and the run degrades to the outage message instead.
+  pull-requests: read
 
 jobs:
   # Do NOT add a `paths:` filter or an `if:` condition to this job. To GitHub a skipped job is not

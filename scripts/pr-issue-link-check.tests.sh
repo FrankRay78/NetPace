@@ -58,6 +58,11 @@ new_case() {
   mkdir -p "$STUB_DIR" "$SB/bin" "$WORK" || setup_fail "mkdir"
   cat > "$SB/bin/gh" <<'STUB'
 #!/usr/bin/env bash
+# Every invocation is recorded so a case can assert on the ARGUMENTS, not just the reply. Without
+# this, dropping `-R "$REPO_SLUG"` or the pull request number from the real check leaves the whole
+# matrix green: the stub answers the same either way, so the targeting that matters on a fork is
+# exactly what no assertion sees.
+printf '%s\n' "$*" >> "$STUB_DIR/argv"
 case "$1" in
   repo)
     if [ -f "$STUB_DIR/repo-unreachable" ]; then cat "$STUB_DIR/repo-unreachable" >&2; exit 1; fi
@@ -82,6 +87,10 @@ STUB
 
 # issue N STATE — the stub's reply for issue N.
 issue() { jq -n --arg s "$2" --arg u "https://github.com/o/r/issues/$1" '{url:$u,state:$s}' > "$STUB_DIR/issue-$1.json" || setup_fail "issue $1"; }
+# issue_elsewhere N SLUG — N was transferred out of o/r. `gh issue view` follows GitHub's redirect
+# and answers with the issue's NEW home, exit 0, state OPEN, so only the url reveals that merging
+# here closes nothing.
+issue_elsewhere() { jq -n --arg u "https://github.com/$2/issues/55" '{url:$u,state:"OPEN"}' > "$STUB_DIR/issue-$1.json" || setup_fail "issue_elsewhere $1"; }
 # pull N — the stub's reply when N is a pull request. GitHub numbers issues and pull requests from
 # one sequence, so `gh issue view` resolves a pull request and exits 0; the url tells them apart.
 pull() { jq -n --arg u "https://github.com/o/r/pull/$1" '{url:$u,state:"OPEN"}' > "$STUB_DIR/issue-$1.json" || setup_fail "pull $1"; }
@@ -117,12 +126,26 @@ run_local() {
     PR_ISSUE_LINK_REPO=o/r bash "$CHECK" "$@" 2>&1)"; RC=$?
 }
 
+# run_on_path DIR BODY AUTHOR — as `run`, but with PATH replaced by DIR, for the cases where a tool
+# the check needs is absent. The interpreter is named by absolute path, since a PATH without `bash`
+# on it would otherwise stop `bash` itself resolving and report 127 — the check never running, read
+# as the check's own verdict.
+run_on_path() {
+  OUTPUT="$(env STUB_DIR="$STUB_DIR" PATH="$1" CLAUDE_PROJECT_DIR="$WORK" PR_ISSUE_LINK_REPO=o/r \
+    PR_ISSUE_LINK_BODY="$2" PR_ISSUE_LINK_AUTHOR="$3" "$BASH_BIN" "$CHECK" 2>&1)"; RC=$?
+}
+
 passed() { [ "$RC" = 0 ]; }
 failed() { [ "$RC" = 1 ]; }
 # A pass must say WHICH pass it is: "exempt" and "checked and linked" are different answers.
 linked() { passed && printf '%s' "$OUTPUT" | grep -qF 'OK'; }
 exempt() { passed && printf '%s' "$OUTPUT" | grep -qF 'exempt'; }
 names()  { printf '%s' "$OUTPUT" | grep -qF -- "$1"; }
+# asked ARGS — the `gh` stub was invoked with exactly this argument string.
+asked()  { grep -qF -- "$1" "$STUB_DIR/argv"; }
+# never_asked — no `gh` call was made at all, which is what a reference rejected on its own shape
+# (a leading zero, too many digits, another repository) must cost.
+never_asked() { ! [ -s "$STUB_DIR/argv" ]; }
 
 echo "pr-issue-link-check.tests.sh"
 echo ""
@@ -216,6 +239,11 @@ run '#401 closes the last gap.' FrankRay78
 ok "a keyword AFTER the reference fails"             'failed && names "no closing keyword"'
 new_case
 issue 401 OPEN
+# The separator accepts whitespace, or a colon with whitespace after it, but never nothing.
+run 'Closes#401' FrankRay78
+ok "a keyword with no separator fails"               'failed && names "no closing keyword"'
+new_case
+issue 401 OPEN
 # GitHub does not link a reference inside a code block, and this repo's own prompts quote the
 # convention constantly — a body describing it must not satisfy the gate by accident.
 run $'Write the body like this:\n\n```\nCloses #401\n```\n' FrankRay78
@@ -226,8 +254,80 @@ run 'The body must carry `Closes #401` before merge.' FrankRay78
 ok "a reference inside inline code fails"            'failed && names "no closing keyword"'
 new_case
 issue 401 OPEN
+# A code span is a run of N backticks closed by a run of exactly N. A single-backtick matcher reads
+# the two adjacent backticks here as an EMPTY span, deletes them, and leaves the reference exposed.
+run 'The body must carry ``Closes #401`` before merge.' FrankRay78
+ok "a reference inside a double-backtick span fails"  'failed && names "no closing keyword"'
+new_case
+issue 401 OPEN
+run 'Write ``````Closes #401`````` in the body.' FrankRay78
+ok "…and inside a six-backtick span"                 'failed && names "no closing keyword"'
+new_case
+issue 401 OPEN
+# An unmatched run is not a span, so it must not swallow the rest of the body.
+run 'A stray ` backtick, then Closes #401' FrankRay78
+ok "an unmatched backtick does not hide a real link" 'linked'
+new_case
+issue 401 OPEN
+# Four spaces is an indented code block in GFM, and GitHub links nothing inside one.
+run $'Write the body like this:\n\n    Closes #401\n' FrankRay78
+ok "a reference in an indented code block fails"     'failed && names "no closing keyword"'
+new_case
+issue 401 OPEN
+run $'Write the body like this:\n\n\tCloses #401\n' FrankRay78
+ok "…and in a tab-indented one"                      'failed && names "no closing keyword"'
+new_case
+issue 401 OPEN
+# The list exception, and the reason the rule above cannot be "drop anything indented by four":
+# inside a list that indentation is CONTENT, which GitHub renders as prose and does link.
+run $'- the first change\n\n    Closes #401\n' FrankRay78
+ok "an indented line inside a list still links"      'linked'
+new_case
+issue 401 OPEN
+run $'- outer\n    - Closes #401\n' FrankRay78
+ok "…and so does a nested bullet"                    'linked'
+new_case
+issue 401 OPEN
+# A pull request template is mostly commented-out instructions, so this is the shape most likely to
+# quote the convention. GitHub does not render an HTML comment and does not link inside one.
+run '<!-- Closes #401 -->' FrankRay78
+ok "a reference inside an HTML comment fails"        'failed && names "no closing keyword"'
+new_case
+issue 401 OPEN
+run $'<!--\nCloses #401\n-->\n' FrankRay78
+ok "…including one spanning several lines"           'failed && names "no closing keyword"'
+new_case
+issue 401 OPEN
+run '<!-- a note --> Closes #401' FrankRay78
+ok "a closed HTML comment beside a real link passes" 'linked'
+new_case
+issue 401 OPEN
+run 'Closes <!-- not a comment at all #401' FrankRay78
+ok "an unterminated HTML comment fails closed"       'failed && names "unterminated HTML comment"'
+ok "…and does not call it an unlinked body"          '! names "no closing keyword"'
+new_case
+issue 401 OPEN
+# A span that collapses must not let the text either side become adjacent.
+run 'Closes `the thing` #401' FrankRay78
+ok "a span between keyword and reference breaks it"  'failed && names "no closing keyword"'
+new_case
+issue 401 OPEN
 run $'```\nCloses #401\n```\n\nCloses #401\n' FrankRay78
 ok "a fenced example beside a real link still passes" 'linked'
+new_case
+issue 401 OPEN
+# The fence state machine: only the delimiter that opened a block may close it, so this stays one
+# block rather than ending at the ``` line. A boolean toggle would end it there and expose the ref.
+run $'~~~\n```\nCloses #401\n~~~\n' FrankRay78
+ok "a tilde fence quoting a backtick line stays shut" 'failed && names "no closing keyword"'
+new_case
+issue 401 OPEN
+run $'````\n```\nCloses #401\n````\n' FrankRay78
+ok "a long fence is not closed by a shorter one"     'failed && names "no closing keyword"'
+new_case
+issue 401 OPEN
+run $'```text\nCloses #401\n```\n' FrankRay78
+ok "a fence with an info string still fences"        'failed && names "no closing keyword"'
 
 echo ""
 echo "The number must be an open issue in THIS repository:"
@@ -235,6 +335,36 @@ new_case
 run 'Closes #499' FrankRay78
 ok "a number with no issue behind it fails"          'failed && names "#499"'
 ok "…and says the issue does not exist"              'names "no issue at that number"'
+new_case
+issue_elsewhere 401 other/elsewhere
+# A bare #401 that was transferred out of o/r still resolves here through GitHub's redirect, exit 0
+# and OPEN, so a `*/issues/*` substring test reports the body linked and prints the OTHER
+# repository's url in its own success line — while merging closes nothing in o/r.
+run 'Closes #401' FrankRay78
+ok "a transferred issue fails"                       'failed && names "#401"'
+ok "…and names the repository it resolved to"        'names "not an issue in o/r"'
+ok "…and never claims the body is linked"            '! names "OK"'
+new_case
+issue 401 OPEN
+run 'Closes #0401' FrankRay78
+ok "a leading-zero reference fails"                  'failed && names "leading zero"'
+ok "…under the number the author actually typed"     'names "#0401"'
+ok "…without spending a lookup on it"                'never_asked'
+new_case
+issue 401 OPEN
+run 'Closes #99999999999999999999401' FrankRay78
+ok "a reference with too many digits fails"          'failed && names "too many digits"'
+ok "…and never names a number the body lacks"        '! names "#200376420520689065"'
+new_case
+issue 401 OPEN
+run 'Closes #0' FrankRay78
+ok "#0 fails and says so"                            'failed && names "#0 is not an issue number"'
+new_case
+issue 401 OPEN
+run 'Closes #401' FrankRay78
+# The repository is injected precisely so a fork checks the BASE repo, where the issue lives.
+# Dropping `-R` leaves every other case green, because the stub answers the same either way.
+ok "the lookup is targeted at the injected repo"     'linked && asked "issue view 401 --json url,state -R o/r"'
 new_case
 issue 402 CLOSED
 run 'Closes #402' FrankRay78
@@ -309,6 +439,14 @@ issue 401 OPEN
 pr 'Closes #401' FrankRay78
 run_local 77
 ok "a PR named by number passes"                     'linked'
+# The number must actually reach `gh`. Dropping it leaves the check silently reading the CURRENT
+# branch's pull request while this case still reports green.
+ok "…and the number reaches the lookup"              'asked "pr view 77 --json body,author -R o/r"'
+new_case
+issue 401 OPEN
+pr 'Closes #401' FrankRay78
+run_local 'not-a-number'
+ok "a non-numeric PR argument fails closed"          'failed && names "is not a pull request number"'
 new_case
 pr 'Refs #401' FrankRay78
 run_local
@@ -322,26 +460,25 @@ echo ""
 echo "Fail-closed guards — a gate that cannot run must not report green:"
 new_case
 issue 401 OPEN
-# PATH is emptied so the check cannot find `gh`. The interpreter is named by absolute path, since
-# an emptied PATH would otherwise stop `bash` itself resolving and report 127 — the check never
-# running, read as the check's own verdict. Asserting rc=1 rather than non-zero is what pins that.
+# PATH is emptied so the check cannot find `gh`. Asserting rc=1 rather than non-zero is what pins
+# that the check ran and rendered a verdict, rather than never starting.
 mkdir -p "$SB/empty" || setup_fail "mkdir empty"
-OUTPUT="$(env STUB_DIR="$STUB_DIR" PATH="$SB/empty" PR_ISSUE_LINK_REPO=o/r \
-  PR_ISSUE_LINK_BODY='Closes #401' PR_ISSUE_LINK_AUTHOR=FrankRay78 "$BASH_BIN" "$CHECK" 2>&1)"; RC=$?
-ok "missing tooling fails closed"                    'failed'
+run_on_path "$SB/empty" 'Closes #401' FrankRay78
+ok "missing tooling fails closed"                    'failed && names "is not available"'
 new_case
 issue 401 OPEN
-# A single missing tool, rather than an emptied PATH. The emptied-PATH case above hides `gh` first,
-# so it never reaches the parsing stages — where a missing `tr` must not report a linked body as
-# carrying no closing keyword.
+# A single missing tool, rather than an emptied PATH — here `tr`, which the precondition loop refuses
+# on before any parsing begins. Asserting the tool BY NAME is the point: `names "is not available"`
+# alone passes for any of the twelve, so a symlink this loop silently failed to create would leave
+# the case green while testing a different tool than it claims.
 mkdir -p "$SB/notr" || setup_fail "mkdir notr"
 for t in gh jq grep sed awk mktemp rm cat dirname env printf chmod; do
-  p="$(command -v "$t")" && ln -sf "$p" "$SB/notr/$t"
+  p="$(command -v "$t")" || setup_fail "command -v $t"
+  ln -sf "$p" "$SB/notr/$t" || setup_fail "link $t"
 done
 ln -sf "$SB/bin/gh" "$SB/notr/gh" || setup_fail "link gh stub"
-OUTPUT="$(env STUB_DIR="$STUB_DIR" PATH="$SB/notr" PR_ISSUE_LINK_REPO=o/r \
-  PR_ISSUE_LINK_BODY='Closes #401' PR_ISSUE_LINK_AUTHOR=FrankRay78 "$BASH_BIN" "$CHECK" 2>&1)"; RC=$?
-ok "one missing tool fails closed, not quietly"      'failed && names "is not available"'
+run_on_path "$SB/notr" 'Closes #401' FrankRay78
+ok "one missing tool fails closed, not quietly"      'failed && names "'"'"'tr'"'"' is not available"'
 new_case
 issue_unreachable 401 'gh: HTTP 401: Bad credentials'
 run 'Closes #401' FrankRay78
@@ -384,9 +521,28 @@ new_case
 pr_raw '{"body":"Closes #401"}'
 run_local
 ok "a PR reply with no author fails closed"          'failed && names "no readable author"'
+new_case
+issue 401 OPEN
+# An injected author with no injected body: the workflow's env key renamed, or a trigger whose
+# payload lacks the field. Reporting "no closing keyword" here would send the author to fix a body
+# that was never supplied — the answer/outage conflation, in the one place that had no guard.
+OUTPUT="$(env STUB_DIR="$STUB_DIR" PATH="$SB/bin:$PATH" CLAUDE_PROJECT_DIR="$WORK" \
+  PR_ISSUE_LINK_REPO=o/r PR_ISSUE_LINK_AUTHOR=FrankRay78 bash "$CHECK" 2>&1)"; RC=$?
+ok "an author with no body at all fails closed"      'failed && names "no body was supplied"'
+ok "…and does not call it an unlinked body"          '! names "no closing keyword"'
+new_case
+issue 401 OPEN
+# Set-but-empty is a real body that genuinely carries no link, and must keep saying so.
+run '' FrankRay78
+ok "an injected empty body is still unlinked"        'failed && names "no closing keyword"'
 
 echo ""
-echo "Carriage returns — GitHub serves CRLF for a body edited in the web UI:"
+# GitHub serves CRLF for a body edited in the web UI, so every verdict must be the same as it is for
+# the LF form. These cases pin that equivalence, which is the user-visible property. They do NOT
+# isolate `tr -d '\r'` — the scanning stages absorb a stray \r on their own, so deleting the `tr`
+# leaves them green. It stays because it normalises the input once rather than relying on each stage
+# to keep doing so; do not read these cases as proving it is load-bearing.
+echo "Carriage returns — a web-UI body must reach the same verdict as its LF form:"
 new_case
 issue 401 OPEN
 run $'## Summary\r\n\r\nCloses #401\r' FrankRay78
@@ -395,8 +551,22 @@ new_case
 issue 401 OPEN
 run $'```\r\nCloses #401\r\n```\r' FrankRay78
 ok "…and a CRLF fence still hides what it fences"    'failed && names "no closing keyword"'
+new_case
+issue 401 OPEN
+run $'Like this:\r\n\r\n    Closes #401\r\n' FrankRay78
+ok "…and a CRLF indented block still hides it"       'failed && names "no closing keyword"'
+new_case
+issue 401 OPEN
+run $'<!--\r\nCloses #401\r\n-->\r\n' FrankRay78
+ok "…and a CRLF HTML comment still hides it"         'failed && names "no closing keyword"'
+new_case
+issue 401 OPEN
+run $'- the first change\r\n\r\n    Closes #401\r\n' FrankRay78
+ok "…and a CRLF list continuation still links"       'linked'
 
 echo ""
 echo "----------------------------------------"
-echo "cases: $cases   passed: $pass   failed: $fail"
+# Cases and assertions are counted separately because a case may assert more than once — a bare
+# "passed: 59" beside "cases: 55" reads as a counting bug to anyone checking the gate's own gate.
+echo "cases: $cases   assertions: $pass passed, $fail failed"
 [ "$fail" -eq 0 ] || exit 1
