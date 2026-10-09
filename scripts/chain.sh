@@ -36,13 +36,12 @@ CHAIN_MODEL="${CHAIN_MODEL:-claude-opus-5}"
 # Per-stage time limits in seconds, conservative until tuned from real runs.
 BUILD_LIMIT=${CHAIN_STAGE_TIMEOUT:-7200}
 STUDY_LIMIT=${CHAIN_STAGE_TIMEOUT:-1800}
-# 16200 = 3 x the 5400s a single pass was sized at, the 3 being the round bound in verify.md:
-# /verify reviews in rounds, each a reviewer set plus a suite re-run. Follow-up rounds are cheaper
-# than round one (narrower set, fix diff only), so this is deliberate headroom, not a measurement.
-# CHAIN_STAGE_TIMEOUT replaces every stage's limit, so setting it to a value sized for a single
-# pass, 5400 included, can kill a multi-round verify mid-round with no verdict and report a
-# progressing loop as a stall.
-VERIFY_LIMIT=${CHAIN_STAGE_TIMEOUT:-16200}
+# 7200s (2h), sized from a measured run rather than a per-round multiplier. On #328's branch the
+# unattended chain ran three full rounds, each with fixes and a suite re-run, in about 48 minutes,
+# and a follow-up round cost roughly a third of round one; verify.md's four rounds, the last of
+# which never fixes, should land near an hour. The limit is the stage's only stall detector, so
+# the headroom is deliberately about twice the measurement and no more.
+VERIFY_LIMIT=${CHAIN_STAGE_TIMEOUT:-7200}
 RAISE_PR_LIMIT=${CHAIN_STAGE_TIMEOUT:-1800}
 
 usage() {
@@ -70,18 +69,63 @@ fi
 
 # An override that is not a whole number reaches `timeout` as a bad argument, which would surface
 # as an unhelpful launch failure blamed on the stage. Reject it here, where the cause is obvious.
-case "${CHAIN_STAGE_TIMEOUT:-0}" in ''|*[!0-9]*)
-  echo "chain: refused — CHAIN_STAGE_TIMEOUT must be a whole number of seconds." >&2; exit 1 ;;
-esac
+# Zero is a whole number and passes to `timeout` happily, where it means *no limit* — which
+# silently removes the only stall detector any stage has, so a hung run is never reported at all.
+# Tested with ${VAR+x} rather than ${VAR:-0}, so an unset override is not read as a zero one.
+if [ -n "${CHAIN_STAGE_TIMEOUT+x}" ]; then
+  case "$CHAIN_STAGE_TIMEOUT" in ''|*[!0-9]*)
+    echo "chain: refused — CHAIN_STAGE_TIMEOUT must be a whole number of seconds; got '$CHAIN_STAGE_TIMEOUT'." >&2; exit 1 ;;
+  esac
+  if [ "$CHAIN_STAGE_TIMEOUT" -eq 0 ]; then
+    echo "chain: refused — CHAIN_STAGE_TIMEOUT=0 means no time limit, so a hung stage would never be reported; no stage was started." >&2; exit 1
+  fi
+fi
 
 # raise-pr's verdict. Unlike the other four the payload is a URL, so it is pinned to its own
 # structured line: a bare URL anywhere in the report would also match the text of a /raise-pr
 # that declined to open one and merely quoted the PR that already exists.
 PR_VERDICT='^RAISED pr=https://github\.com/[^[:space:]]+/pull/[0-9]+'
 
-# fail <position> <name> <reason> — the closing message, then stop. Nothing is undone: the
-# branch and working tree stay exactly as the failed stage left them, for diagnosis.
+# A stage's own failure verdict. Still line-anchored — /study's job is recording what went wrong,
+# so its report quotes the phrase in ordinary prose, and an unanchored scan would abort a healthy
+# run over it — but tolerant of anything a model might put between the anchor and the verdict, and
+# between the verdict's two words: a heading, a bullet, bold, a backtick, a numbered-list prefix
+# or a double space. All of those were silently missed, and a missed failure verdict costs the run
+# its reason and, with the success scan below, can let the chain read a failed stage as a success.
+FAIL_VERDICT='^[[:space:]]*([0-9]+[.)][[:space:]]*)?[^[:alnum:]]*FAILED[^[:alnum:]]*reason='
+
+# branch_state — what a stopping run leaves behind: the commits the current branch holds over
+# main, and whether the working tree is dirty. Read-only, like everything else the chain does to
+# the repository. Printed *before* fail()'s closing lines, not after, because both
+# chain.tests.sh and chain-next.sh locate the verdict at the tail of the output.
+branch_state() {
+  local branch commits status
+  if ! branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null) || [ -z "$branch" ]; then
+    echo "chain: the branch state could not be read; git did not name a branch."
+  elif ! commits=$(git log main..HEAD --oneline 2>/dev/null); then
+    echo "chain: the commits $branch holds over main could not be read."
+  elif [ -z "$commits" ]; then
+    echo "chain: $branch holds no commits over main."
+  else
+    echo "chain: $branch holds $(grep -c '' <<<"$commits") commit(s) over main:"
+    sed 's/^/  /' <<<"$commits"
+  fi
+  if ! status=$(git status --porcelain 2>/dev/null); then
+    echo "chain: the working tree state could not be read."
+  elif [ -z "$status" ]; then
+    echo "chain: the working tree is clean."
+  else
+    echo "chain: the working tree has uncommitted changes ($(grep -c '' <<<"$status") path(s))."
+  fi
+}
+
+# fail <position> <name> <reason> — the branch state, the closing message, then stop. Nothing is
+# undone: the branch and working tree stay exactly as the failed stage left them, for diagnosis.
+# The state lines exist because a stage killed at its time limit leaves no report at all, and a
+# /verify stopped mid-loop can leave green, committed, unread fix commits behind — so the closing
+# output has to say whether there is work on the branch before anyone continues it by hand.
 fail() {
+  branch_state
   echo "chain: FAILED at [$1/5] $2 — $3"
   if [ -n "${STAGE_SESSION:-}" ]; then
     echo "chain: no later stage ran; reopen that stage with \`claude --resume $STAGE_SESSION\`."
@@ -137,17 +181,22 @@ run_stage() {
     fail "$pos" "$name" "claude reported an error${subtype:+ ($subtype)} — ${STAGE_RESULT:-no detail}"
   fi
   # A stage's own FAILED verdict wins even when a success verdict appears in the same report.
-  # It must open its own line: /study's job is recording what went wrong, so its report quotes
-  # the phrase in ordinary prose, and an unanchored scan would abort a healthy run over it.
-  reason=$(grep -m1 -oE '^[[:space:]]*[*_>-]*[[:space:]]*FAILED reason=.*' <<<"$STAGE_RESULT")
-  if [ -n "$reason" ]; then fail "$pos" "$name" "${reason#*FAILED reason=}"; fi
+  # See FAIL_VERDICT for why it stays line-anchored and what decoration it now tolerates. The
+  # reason is what follows `reason=` with any trailing markup removed, so a verdict wrapped in
+  # bold or backticks yields the bare reason rather than `suite red**`.
+  reason=$(grep -m1 -E -- "$FAIL_VERDICT" <<<"$STAGE_RESULT")
+  if [ -n "$reason" ]; then
+    reason=$(sed -E -e "s/$FAIL_VERDICT//" -e 's/[[:space:]]*[*_`~]+[[:space:]]*$//' <<<"$reason")
+    fail "$pos" "$name" "$reason"
+  fi
   # Deliberately not anchored, unlike the FAILED scan above. /raise-pr's verdict is anchored by its
   # own pattern, and /verify's prompt asks for a plain verdict line too, but this scan does not
   # rely on that: a verdict may still arrive decorated as markdown, and an anchor would abort a
   # healthy run over a bullet. A report quoting someone else's success verdict is covered by the
-  # FAILED scan running first, provided its own FAILED line is plain enough for that scan to
-  # match. The same decoration can land between a verdict's two words (`VERIFIED \`branch=…\``,
-  # which parked a verified #242), so the three unanchored patterns allow punctuation there.
+  # FAILED scan running first. The same decoration can land between a verdict's two words
+  # (`VERIFIED \`branch=…\``, which parked a verified #242), so the three unanchored patterns
+  # allow punctuation there — but each requires a non-alphanumeric character or the line start
+  # *before* the success word, so `UNVERIFIED branch=x` is not read as a verified branch.
   grep -qE -- "$verdict" <<<"$STAGE_RESULT" || fail "$pos" "$name" "no recognisable verdict"
   echo "chain: [$pos/5] $name — ok"
 }
@@ -182,16 +231,16 @@ if [ "$branch" != main ]; then
   exit 1
 fi
 
-run_stage 1 build "/build $issue" 'READY[^[:alnum:]]*branch=' "$BUILD_LIMIT"
+run_stage 1 build "/build $issue" '(^|[^[:alnum:]])READY[^[:alnum:]]*branch=' "$BUILD_LIMIT"
 build_session=$STAGE_SESSION
 # The study passes exist to study what the stage before them saw. A reply with no session id
 # would resume nothing and study a fresh session, which reports an honest, empty success.
 [ -n "$build_session" ] || fail 1 build "reply carried no session id, so the study pass could not resume it"
-run_stage 2 study "/study $issue" 'STUDIED[^[:alnum:]]*issue=' "$STUDY_LIMIT" "$build_session"
-run_stage 3 verify /verify 'VERIFIED[^[:alnum:]]*branch=' "$VERIFY_LIMIT"
+run_stage 2 study "/study $issue" '(^|[^[:alnum:]])STUDIED[^[:alnum:]]*issue=' "$STUDY_LIMIT" "$build_session"
+run_stage 3 verify /verify '(^|[^[:alnum:]])VERIFIED[^[:alnum:]]*branch=' "$VERIFY_LIMIT"
 verify_session=$STAGE_SESSION
 [ -n "$verify_session" ] || fail 3 verify "reply carried no session id, so the study pass could not resume it"
-run_stage 4 study "/study $issue" 'STUDIED[^[:alnum:]]*issue=' "$STUDY_LIMIT" "$verify_session"
+run_stage 4 study "/study $issue" '(^|[^[:alnum:]])STUDIED[^[:alnum:]]*issue=' "$STUDY_LIMIT" "$verify_session"
 run_stage 5 raise-pr "/raise-pr $issue" "$PR_VERDICT" "$RAISE_PR_LIMIT"
 
 pr_url=$(grep -m1 -oE -- "$PR_VERDICT" <<<"$STAGE_RESULT")
