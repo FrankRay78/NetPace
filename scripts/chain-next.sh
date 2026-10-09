@@ -110,9 +110,15 @@ reset_clone() {
 # park <n> <log> — label the issue parked and say why on it, from the chain's closing line.
 park() {
   local n=$1 log=$2 closing stage reason kept remote body
-  closing=$(grep -E '^chain: FAILED at \[[0-9]+/5\] ' "$log" | tail -n 1)
+  # The stage total is matched as any number, not the current one. A firing runs the park() it
+  # loaded before the reset pulled main's chain.sh, so a change to how many stages the chain has
+  # would otherwise park that firing's failure as "before the first stage". #334's change from
+  # five stages to three is such a change, and this cannot cover it: a firing that loaded the
+  # park() from before it still matches a total of five. Matching any total keeps the next change
+  # to the stage count from doing the same.
+  closing=$(grep -E '^chain: FAILED at \[[0-9]+/[0-9]+\] ' "$log" | tail -n 1)
   if [ -n "$closing" ]; then
-    stage=$(sed -E 's/^chain: FAILED at (\[[0-9]+\/5\] [^ ]+) — .*/\1/' <<<"$closing")
+    stage=$(sed -E 's/^chain: FAILED at (\[[0-9]+\/[0-9]+\] [^ ]+) — .*/\1/' <<<"$closing")
     reason=${closing#* — }
   else
     stage="before the first stage"

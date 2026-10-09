@@ -91,20 +91,20 @@ if [ -n "$(git status --porcelain)" ] || [ "$(git rev-parse --abbrev-ref HEAD)" 
   echo "chain: refused — not a clean main"; exit 1
 fi
 if [ -n "$(git for-each-ref --format='%(refname)' "refs/heads/feature/$n-*")" ]; then
-  echo "chain: [1/5] build — starting"
-  echo "chain: FAILED at [1/5] build — feature/$n-work already exists"; exit 1
+  echo "chain: [1/3] build — starting"
+  echo "chain: FAILED at [1/3] build — feature/$n-work already exists"; exit 1
 fi
 git checkout -q -b "feature/$n-work"
 git commit -q --allow-empty -m "Refs #$n: stub work"
 mkdir -p obj && echo build-output > obj/out.txt && echo half-written > "wip-$n.txt"
-echo "chain: [1/5] build — ok"
+echo "chain: [1/3] build — ok"
 if [ -f "$STUB_DIR/push-then-fail-$n" ]; then
   git push -q -u origin "feature/$n-work"
-  echo "chain: FAILED at [5/5] raise-pr — gh pr create failed"; exit 1
+  echo "chain: FAILED at [3/3] raise-pr — gh pr create failed"; exit 1
 fi
 if [ -f "$STUB_DIR/fail-$n" ]; then
-  echo "chain: FAILED at [3/5] verify — suite red"
-  echo "chain: no later stage ran; reopen that stage with \`claude --resume sess-3\`."
+  echo "chain: FAILED at [2/$(cat "$STUB_DIR/chain-total" 2>/dev/null || echo 3)] verify — suite red"
+  echo "chain: no later stage ran; reopen that stage with \`claude --resume sess-2\`."
   exit 1
 fi
 git push -q -u origin "feature/$n-work"
@@ -254,9 +254,9 @@ touch "$STUB_DIR/fail-8"
 fire
 ok "exits non-zero" '[ "$RC" != 0 ]'
 ok "the issue is marked parked" '[ "$(labels_of 8)" = "ready,parked" ]'
-ok "the comment names the failed stage and its reason" 'grep -qF "verify" "$STUB_DIR/comment-8.txt" && grep -qF "3/5" "$STUB_DIR/comment-8.txt" && grep -qF "suite red" "$STUB_DIR/comment-8.txt"'
+ok "the comment names the failed stage and its reason" 'grep -qF "stopped at **[2/3] verify** — suite red" "$STUB_DIR/comment-8.txt"'
 log=$(ls "$STATE"/logs/8-*.log 2>/dev/null | head -n 1)
-ok "the comment names the log, which holds the chain's full output" '[ -n "$log" ] && grep -qF "$log" "$STUB_DIR/comment-8.txt" && grep -qF "claude --resume sess-3" "$log"'
+ok "the comment names the log, which holds the chain's full output" '[ -n "$log" ] && grep -qF "$log" "$STUB_DIR/comment-8.txt" && grep -qF "claude --resume sess-2" "$log"'
 kept=$(git -C "$CLONE" for-each-ref --format='%(refname:short)' 'refs/heads/attempt/8-*')
 ok "the attempt's work is kept on an attempt branch, which the comment names" '[ -n "$kept" ] && grep -qF "$kept" "$STUB_DIR/comment-8.txt" && [ "$(git -C "$CLONE" log -1 --format=%s "$kept")" = "Refs #8: stub work" ]'
 ok "no feature branch for the issue is left behind" '[ -z "$(git -C "$CLONE" for-each-ref "refs/heads/feature/8-*")" ]'
@@ -269,6 +269,13 @@ ok "once un-parked it is picked up, with nothing restarted" '[ "$RC" = 0 ] && [ 
 ok "and built from scratch on a clean main" '[ "$(start_of 2 branch)" = main ] && [ -z "$(start_of 2 status)" ] && grep -qF "pull/108" <<<"$OUTPUT"'
 ok "the earlier attempt's work is still there" 'git -C "$CLONE" rev-parse -q --verify "refs/heads/$kept" >/dev/null'
 ok "the retry has a log of its own; the first is kept" '[ "$(ls "$STATE"/logs/8-*.log | grep -c "")" = 2 ] && [ -f "$log" ]'
+# A firing parks with the park() it loaded before the reset, so it can meet a chain.sh that
+# counts its stages out of a different total than the one current when the runner was written.
+new_case
+issues '[{"number":8,"state":"OPEN","labels":["ready"]}]'
+touch "$STUB_DIR/fail-8"; echo 5 > "$STUB_DIR/chain-total"
+fire
+ok "a chain with a different number of stages is still parked at its stage" '[ "$RC" != 0 ] && grep -qF "stopped at **[2/5] verify** — suite red" "$STUB_DIR/comment-8.txt"'
 new_case
 issues '[{"number":8,"state":"OPEN","labels":["ready"]}]'
 touch "$STUB_DIR/push-then-fail-8"

@@ -2,8 +2,8 @@
 #
 # chain.tests.sh — standalone test matrix for chain.sh.
 #
-# The chain's one job is gating: which stage starts, in what order, resuming which session, and
-# what happens when a stage fails. All of that is provable from outside with a stub `claude`
+# The chain's one job is gating: which stage starts, in what order, and what happens when a stage
+# fails. All of that is provable from outside with a stub `claude`
 # first on PATH, so no model is called and nothing is spent. Every case runs the chain inside a
 # throwaway git repo under a mktemp sandbox, so your checkout is never touched. Exits non-zero
 # on any failure. Run it after any edit to the chain.
@@ -94,29 +94,30 @@ closing() { printf '%s\n' "$OUTPUT" | tail -n 2; }
 last_line() { printf '%s\n' "$OUTPUT" | tail -n 1; }
 
 # SCENARIO: One issue to a pull request
+# SCENARIO: Chain runs build, verify and raise-pr with no study pass
 echo "One issue to a pull request:"
 new_case
 reply 1 $'Built.\nEverything committed.\nREADY branch=feature/270-x'
-reply 2 'STUDIED issue=270 rows=0'
-reply 3 'VERIFIED branch=feature/270-x'
-reply 4 'STUDIED issue=270 rows=1'
-reply 5 $'Related work: https://github.com/o/r/pull/1\nRAISED pr=https://github.com/o/r/pull/9'
+reply 2 'VERIFIED branch=feature/270-x'
+reply 3 $'Related work: https://github.com/o/r/pull/1\nRAISED pr=https://github.com/o/r/pull/9'
 CHAIN_MODEL=test-model chain 270
 ok "exits 0" '[ "$RC" = 0 ]'
-ok "exactly five stages started" '[ "$(calls)" = 5 ]'
-ok "stages in order: build, study, verify, study, raise-pr" 'prompt_is 1 "/build 270" && prompt_is 2 "/study 270" && prompt_is 3 "/verify" && prompt_is 4 "/study 270" && prompt_is 5 "/raise-pr 270"'
-ok "first study resumes build's session" 'call 2 | grep -qF -- "--resume|sess-1|"'
-ok "second study resumes verify's session" 'call 4 | grep -qF -- "--resume|sess-3|"'
-ok "build, verify and raise-pr start fresh sessions" '[ "$(calls)" = 5 ] && ! call 1 | grep -qF -- "--resume|" && ! call 3 | grep -qF -- "--resume|" && ! call 5 | grep -qF -- "--resume|"'
-ok "every stage uses the one chosen model" '[ "$(grep -cF -- "--model|test-model|" "$STUB_DIR/log" 2>/dev/null)" = 5 ]'
-ok "no stage is asked to prompt for permission" '[ "$(grep -cF -- "--dangerously-skip-permissions|" "$STUB_DIR/log" 2>/dev/null)" = 5 ]'
+ok "exactly three stages started" '[ "$(calls)" = 3 ]'
+ok "stages in order: build, verify, raise-pr" 'prompt_is 1 "/build 270" && prompt_is 2 "/verify" && prompt_is 3 "/raise-pr 270"'
+ok "no stage is a study pass" '! grep -qF -- "/study" "$STUB_DIR/log"'
+# Six lines, because each stage prints both a "— starting" and an "— ok" line. The negative
+# half is what a stray `[n/5]` left in a message would fail on.
+ok "every stage counts itself out of three" '[ "$(grep -c "chain: \\[[0-9]*/3\\]" <<<"$OUTPUT")" = 6 ] && ! grep -q "chain: \\[[0-9]*/5\\]" <<<"$OUTPUT"'
+ok "every stage starts a fresh session" '! grep -qF -- "--resume|" "$STUB_DIR/log"'
+ok "every stage uses the one chosen model" '[ "$(grep -cF -- "--model|test-model|" "$STUB_DIR/log" 2>/dev/null)" = 3 ]'
+ok "no stage is asked to prompt for permission" '[ "$(grep -cF -- "--dangerously-skip-permissions|" "$STUB_DIR/log" 2>/dev/null)" = 3 ]'
 ok "no stage can read the terminal" '[ ! -f "$STUB_DIR/stdin-leak" ]'
 ok "the closing line names the pull request that was raised" 'last_line | grep -qF "chain: done — https://github.com/o/r/pull/9"'
 new_case
-reply 1 'READY branch=feature/270-x'; reply 2 'STUDIED issue=270 rows=0'; reply 3 'VERIFIED branch=feature/270-x'
-reply 4 'STUDIED issue=270 rows=1'; reply 5 'RAISED pr=https://github.com/o/r/pull/9'
+reply 1 'READY branch=feature/270-x'; reply 2 'VERIFIED branch=feature/270-x'
+reply 3 'RAISED pr=https://github.com/o/r/pull/9'
 chain 270
-ok "with no override every stage still names the default model" '[ "$RC" = 0 ] && [ "$(grep -cF -- "--model|claude-opus-5|" "$STUB_DIR/log")" = 5 ]'
+ok "with no override every stage still names the default model" '[ "$RC" = 0 ] && [ "$(grep -cF -- "--model|claude-opus-5|" "$STUB_DIR/log")" = 3 ]'
 new_case
 reply 1 'READY branch=feature/270-x'
 chain "#270"
@@ -124,10 +125,15 @@ ok "an issue written #270 is the same issue" 'prompt_is 1 "/build 270"'
 # Regression (#242): /verify reported `## VERIFIED `branch=…``, and markdown landing between
 # the verdict's two words parked a verified branch as a stage with no verdict.
 new_case
-reply 1 'READY `branch=feature/270-x`'; reply 2 '**STUDIED** issue=270 rows=0'; reply 3 '## VERIFIED `branch=feature/270-x`'
-reply 4 'STUDIED `issue=270 rows=1`'; reply 5 'RAISED pr=https://github.com/o/r/pull/9'
+reply 1 'READY `branch=feature/270-x`'; reply 2 '## VERIFIED `branch=feature/270-x`'
+reply 3 'RAISED pr=https://github.com/o/r/pull/9'
 chain 270
-ok "markdown between a verdict's two words is still that verdict" '[ "$RC" = 0 ] && [ "$(calls)" = 5 ]'
+ok "markdown between a verdict's two words is still that verdict" '[ "$RC" = 0 ] && [ "$(calls)" = 3 ]'
+new_case
+reply 1 '**READY** branch=feature/270-x'; reply 2 '**VERIFIED** branch=feature/270-x'
+reply 3 'RAISED pr=https://github.com/o/r/pull/9'
+chain 270
+ok "a verdict word wrapped in bold is still that verdict" '[ "$RC" = 0 ] && [ "$(calls)" = 3 ]'
 # Each decoration, one shape per case rather than four bundled into one, so a broken shape names
 # itself. The failure verdict gets the same treatment below; this is the direction whose own
 # scenario is "a stage that reported success is never stopped because of text it quotes".
@@ -142,35 +148,35 @@ for ok_verdict in \
   '   READY branch=feature/270-x'
 do
   new_case
-  reply 1 "$ok_verdict"; reply 2 'STUDIED issue=270 rows=0'; reply 3 'VERIFIED branch=feature/270-x'
-  reply 4 'STUDIED issue=270 rows=1'; reply 5 'RAISED pr=https://github.com/o/r/pull/9'
+  reply 1 "$ok_verdict"; reply 2 'VERIFIED branch=feature/270-x'
+  reply 3 'RAISED pr=https://github.com/o/r/pull/9'
   chain 270
-  ok "a decorated success verdict still starts the next stage: $ok_verdict" '[ "$RC" = 0 ] && [ "$(calls)" = 5 ]'
+  ok "a decorated success verdict still starts the next stage: $ok_verdict" '[ "$RC" = 0 ] && [ "$(calls)" = 3 ]'
 done
 # "Final non-blank line" is only half-tested if nothing ever follows the verdict. A report ending in
 # a blank or whitespace-only line is what the `*[![:space:]]*` guard in read_verdict exists for, and
 # a trailing-space line is what a markdown hard break leaves behind.
 for trailer in $'READY branch=feature/270-x\n' $'READY branch=feature/270-x\n\n' $'READY branch=feature/270-x\n   \n' $'READY branch=feature/270-x\n\t'; do
   new_case
-  reply 1 "$trailer"; reply 2 'STUDIED issue=270 rows=0'; reply 3 'VERIFIED branch=feature/270-x'
-  reply 4 'STUDIED issue=270 rows=1'; reply 5 'RAISED pr=https://github.com/o/r/pull/9'
+  reply 1 "$trailer"; reply 2 'VERIFIED branch=feature/270-x'
+  reply 3 'RAISED pr=https://github.com/o/r/pull/9'
   chain 270
-  ok "a blank or whitespace-only line below the verdict does not hide it" '[ "$RC" = 0 ] && [ "$(calls)" = 5 ]'
+  ok "a blank or whitespace-only line below the verdict does not hide it" '[ "$RC" = 0 ] && [ "$(calls)" = 3 ]'
 done
 
 # SCENARIO: A failing stage stops the run
 echo "A failing stage stops the run:"
 new_case
 reply 1 'READY branch=feature/270-x'
-reply 2 'STUDIED issue=270 rows=0'
-reply 3 $'Suite failed.\nFAILED reason=suite red'
+reply 2 $'Suite failed.\nFAILED reason=suite red'
 before="$(repo_state)"
 chain 270
 ok "exits 1" '[ "$RC" = 1 ]'
-ok "no stage after verify started" '[ "$(calls)" = 3 ]'
-ok "closing message names verify, 3/5 and the reason" 'closing | grep -q verify && closing | grep -qF 3/5 && closing | grep -q "suite red"'
+ok "no stage after verify started" '[ "$(calls)" = 2 ]'
+ok "closing message names verify, 2/3 and the reason" 'closing | grep -q verify && closing | grep -qF 2/3 && closing | grep -q "suite red"'
+ok "the failure reason names no study pass" '! grep -qi study <<<"$OUTPUT"'
 ok "closing message says how to reopen the session" 'closing | grep -q "claude --resume"'
-ok "closing message names the session to reopen" 'closing | grep -qF "claude --resume sess-3"'
+ok "closing message names the session to reopen" 'closing | grep -qF "claude --resume sess-2"'
 ok "branch, commits and working tree untouched" '[ "$(repo_state)" = "$before" ]'
 new_case
 reply 1 $'READY branch=feature/270-x\nFAILED reason=half built'
@@ -178,29 +184,20 @@ chain 270
 ok "the final line decides, so a success line above a failure verdict is a failure" '[ "$RC" = 1 ] && [ "$(calls)" = 1 ] && closing | grep -q "half built"'
 new_case
 reply 1 'READY branch=feature/270-x'
-reply 2 $'Row 1 records that the build stage can print FAILED reason=<text> and stop.\nSTUDIED issue=270 rows=1'
-reply 3 'VERIFIED branch=feature/270-x'
-reply 4 'STUDIED issue=270 rows=1'
-reply 5 'RAISED pr=https://github.com/o/r/pull/9'
+reply 2 $'Round 2 noted that the build stage can print FAILED reason=<text> and stop.\nVERIFIED branch=feature/270-x'
+reply 3 'RAISED pr=https://github.com/o/r/pull/9'
 chain 270
-ok "a study pass that quotes 'FAILED reason=' mid-sentence does not stop the run" '[ "$RC" = 0 ] && [ "$(calls)" = 5 ]'
-new_case
-reply 1 'READY branch=feature/270-x'
-reply 2 'STUDIED issue=270 rows=0'
-printf 'claude: command failed before it could start' > "$STUB_DIR/reply-3.json"
-chain 270
-ok "a stage that fails before its reply is read names no earlier stage's session" '[ "$RC" = 1 ] && [ "$(calls)" = 3 ] && ! closing | grep -q "sess-2" && closing | grep -q "no session id was captured"'
+ok "a report that quotes 'FAILED reason=' mid-sentence does not stop the run" '[ "$RC" = 0 ] && [ "$(calls)" = 3 ]'
 new_case
 reply 1 'READY branch=feature/270-x'
 printf 'claude: command failed before it could start' > "$STUB_DIR/reply-2.json"
 chain 270
-ok "a resuming stage that fails that early names the session it resumed" '[ "$RC" = 1 ] && [ "$(calls)" = 2 ] && closing | grep -qF "claude --resume sess-1"'
+ok "a stage that fails before its reply is read names no earlier stage's session" '[ "$RC" = 1 ] && [ "$(calls)" = 2 ] && ! closing | grep -q "sess-1" && closing | grep -q "no session id was captured"'
 new_case
 reply 1 'READY branch=feature/270-x'
-reply 2 'STUDIED issue=270 rows=0'
-echo 30 > "$STUB_DIR/sleep-3"
+echo 30 > "$STUB_DIR/sleep-2"
 CHAIN_STAGE_TIMEOUT=1 chain 270
-ok "a stalled stage names no earlier stage's session either" '[ "$RC" = 1 ] && ! closing | grep -q "sess-2" && closing | grep -q "no session id was captured"'
+ok "a stalled stage names no earlier stage's session either" '[ "$RC" = 1 ] && ! closing | grep -q "sess-1" && closing | grep -q "no session id was captured"'
 
 # SCENARIO: A stage with no readable verdict is a failure
 echo "A stage with no readable verdict is a failure:"
@@ -224,14 +221,15 @@ chain 270
 ok "an errored reply is reported as the error, not as a missing verdict" '[ "$RC" = 1 ] && grep -q "529 overloaded" <<<"$OUTPUT" && ! closing | grep -q "no readable verdict"'
 new_case
 jq -n '{type:"result",subtype:"success",is_error:false,result:"READY branch=feature/270-x"}' > "$STUB_DIR/reply-1.json"
+reply 2 'VERIFIED branch=feature/270-x'; reply 3 'RAISED pr=https://github.com/o/r/pull/9'
 chain 270
-ok "a reply with no session id stops rather than studying a fresh session" '[ "$RC" = 1 ] && [ "$(calls)" = 1 ] && grep -q "session id" <<<"$OUTPUT"'
+ok "a reply with no session id does not stop the run — no later stage needs one" '[ "$RC" = 0 ] && [ "$(calls)" = 3 ]'
 new_case
-reply 1 'READY branch=feature/270-x'; reply 2 'STUDIED issue=270 rows=0'; reply 3 'VERIFIED branch=feature/270-x'
-reply 4 'STUDIED issue=270 rows=1'
-reply 5 'A pull request for this branch already exists: https://github.com/o/r/pull/8'
+reply 1 'READY branch=feature/270-x'; reply 2 'VERIFIED branch=feature/270-x'
+reply 3 'A pull request for this branch already exists: https://github.com/o/r/pull/8'
 chain 270
 ok "a mentioned pull request is not a raised one" '[ "$RC" = 1 ] && closing | grep -q "no readable verdict" && ! last_line | grep -q "chain: done"'
+ok "the last stage is named raise-pr, third of three" 'closing | grep -qF "chain: FAILED at [3/3] raise-pr — "'
 
 # SCENARIO: A stalled stage ends the run
 echo "A stalled stage ends the run:"
@@ -273,7 +271,7 @@ new_case
 before="$(repo_state)"
 chain --dry-run 270
 ok "exits 0" '[ "$RC" = 0 ]'
-ok "lists the five commands in run order" '[ "$(grep -oE "/(build|study|verify|raise-pr)( 270)?" <<<"$OUTPUT" | paste -sd,)" = "/build 270,/study 270,/verify,/study 270,/raise-pr 270" ]'
+ok "lists the three commands in run order" '[ "$(grep -oE "/(build|study|verify|raise-pr)( 270)?" <<<"$OUTPUT" | paste -sd,)" = "/build 270,/verify,/raise-pr 270" ]'
 ok "no stage started" '[ "$(calls)" = 0 ]'
 ok "branch, commits and working tree untouched" '[ "$(repo_state)" = "$before" ]'
 new_case
@@ -310,14 +308,13 @@ do
   new_case
   reply 1 "Report of the build stage."$'\n'"$decorated"
   chain 270
-  ok "stops at build with the bare reason: $decorated" '[ "$RC" = 1 ] && [ "$(calls)" = 1 ] && closing | grep -qxF "chain: FAILED at [1/5] build — suite red"'
+  ok "stops at build with the bare reason: $decorated" '[ "$RC" = 1 ] && [ "$(calls)" = 1 ] && closing | grep -qxF "chain: FAILED at [1/3] build — suite red"'
 done
 new_case
 reply 1 'READY branch=feature/270-x'
-reply 2 'STUDIED issue=270 rows=0'
-reply 3 $'Nothing to verify.\n\nFAILED reason=no commits on this branch over main'
+reply 2 $'Nothing to verify.\n\nFAILED reason=no commits on this branch over main'
 chain 270
-ok "a /verify precondition stop reaches the chain as its own reason" '[ "$RC" = 1 ] && [ "$(calls)" = 3 ] && closing | grep -qF "no commits on this branch over main" && ! closing | grep -q "no readable verdict"'
+ok "a /verify precondition stop reaches the chain as its own reason" '[ "$RC" = 1 ] && [ "$(calls)" = 2 ] && closing | grep -qF "no commits on this branch over main" && ! closing | grep -q "no readable verdict"'
 new_case
 reply 1 $'Something went wrong.\nFAILED reason='
 chain 270
@@ -327,34 +324,27 @@ ok "a failure verdict with no reason still stops, and says the reason is missing
 echo "A failure report that mentions the success verdict is not a success:"
 new_case
 reply 1 'READY branch=feature/270-x'
-reply 2 'STUDIED issue=270 rows=0'
-reply 3 $'The branch is not VERIFIED — branch=feature/270-x stays unverified.\n\n## FAILED reason=last review round found a material problem'
+reply 2 $'The branch is not VERIFIED — branch=feature/270-x stays unverified.\n\n## FAILED reason=last review round found a material problem'
 chain 270
-ok "a decorated failure outranks prose that names the success verdict" '[ "$RC" = 1 ] && [ "$(calls)" = 3 ] && closing | grep -qF "last review round found a material problem"'
+ok "a decorated failure outranks prose that names the success verdict" '[ "$RC" = 1 ] && [ "$(calls)" = 2 ] && closing | grep -qF "last review round found a material problem"'
 
 # SCENARIO: A word that merely contains the success word is not a success verdict
 echo "A word that merely contains the success word is not a success verdict:"
 new_case
 reply 1 'READY branch=feature/270-x'
-reply 2 'STUDIED issue=270 rows=0'
-reply 3 'The branch is UNVERIFIED branch=feature/270-x and a human should look.'
+reply 2 'The branch is UNVERIFIED branch=feature/270-x and a human should look.'
 chain 270
-ok "UNVERIFIED branch= is not the verify verdict" '[ "$RC" = 1 ] && [ "$(calls)" = 3 ] && closing | grep -q "no readable verdict"'
+ok "UNVERIFIED branch= is not the verify verdict" '[ "$RC" = 1 ] && [ "$(calls)" = 2 ] && closing | grep -q "no readable verdict"'
 new_case
 reply 1 'The branch is UNREADY branch=feature/270-x.'
 chain 270
 ok "UNREADY branch= is not the build verdict" '[ "$RC" = 1 ] && [ "$(calls)" = 1 ] && closing | grep -q "no readable verdict"'
-new_case
-reply 1 'READY branch=feature/270-x'
-reply 2 'The issue is UNSTUDIED issue=270 so far.'
-chain 270
-ok "UNSTUDIED issue= is not the study verdict" '[ "$RC" = 1 ] && [ "$(calls)" = 2 ] && closing | grep -q "no readable verdict"'
 
 # SCENARIO: A report that quotes a failure verdict does not stop a healthy stage
 echo "A report that quotes a failure verdict does not stop a healthy stage:"
 # Everything a report has been seen to show a failure verdict *inside*: a backtick fence, a tilde
 # fence, an indented block, a bullet, a numbered item, a blockquote and a markdown table row
-# (/study's native output). None of them is the report's last line, so none of them is the verdict.
+# (a review finding's native shape). None of them is the report's last line, so none of them is the verdict.
 new_case
 reply 1 'RED evidence — the verdicts this stage can print:
 
@@ -377,14 +367,12 @@ FAILED reason=the issue is unbuildable as written
 | FAILED reason=<text> | the stage stopped |
 
 READY branch=feature/270-x'
-reply 2 'STUDIED issue=270 rows=0'
-reply 3 'VERIFIED branch=feature/270-x'
-reply 4 '| Reviewer: the chain read `FAILED reason=suite red` out of a code block | Execution | fixed |
+reply 2 '| Reviewer: the chain read `FAILED reason=suite red` out of a code block | Execution | fixed |
 
-STUDIED issue=270 rows=1'
-reply 5 'RAISED pr=https://github.com/o/r/pull/9'
+VERIFIED branch=feature/270-x'
+reply 3 'RAISED pr=https://github.com/o/r/pull/9'
 chain 270
-ok "quoted failure verdicts in fences, lists, tables and quotations do not stop the run" '[ "$RC" = 0 ] && [ "$(calls)" = 5 ] && [ "$(last_line)" = "chain: done — https://github.com/o/r/pull/9" ]'
+ok "quoted failure verdicts in fences, lists, tables and quotations do not stop the run" '[ "$RC" = 0 ] && [ "$(calls)" = 3 ] && [ "$(last_line)" = "chain: done — https://github.com/o/r/pull/9" ]'
 # The shape that made dropping fenced blocks before the scan unworkable (#333, reverted d2addd8):
 # an unclosed fence hid every line beneath it, including a correctly written verdict.
 new_case
@@ -394,18 +382,17 @@ reply 1 'RED evidence:
 FAILED reason=suite red
 
 READY branch=feature/270-x'
-reply 2 'STUDIED issue=270 rows=0'; reply 3 'VERIFIED branch=feature/270-x'
-reply 4 'STUDIED issue=270 rows=1'; reply 5 'RAISED pr=https://github.com/o/r/pull/9'
+reply 2 'VERIFIED branch=feature/270-x'; reply 3 'RAISED pr=https://github.com/o/r/pull/9'
 chain 270
-ok "an unclosed fence above the verdict does not hide it" '[ "$RC" = 0 ] && [ "$(calls)" = 5 ]'
+ok "an unclosed fence above the verdict does not hide it" '[ "$RC" = 0 ] && [ "$(calls)" = 3 ]'
 
 # SCENARIO: A failed stage never starts the next stage
 echo "A failed stage never starts the next stage:"
 new_case
-reply 1 'READY branch=feature/270-x'; reply 2 'STUDIED issue=270 rows=0'
-reply 3 $'Round four: the branch is VERIFIED branch=feature/270-x in every respect but one.\nFAILED reason=last review round found a material problem'
+reply 1 'READY branch=feature/270-x'
+reply 2 $'Round four: the branch is VERIFIED branch=feature/270-x in every respect but one.\nFAILED reason=last review round found a material problem'
 chain 270
-ok "a failure verdict last is a failure however the report reads above it" '[ "$RC" = 1 ] && [ "$(calls)" = 3 ] && closing | grep -qxF "chain: FAILED at [3/5] verify — last review round found a material problem"'
+ok "a failure verdict last is a failure however the report reads above it" '[ "$RC" = 1 ] && [ "$(calls)" = 2 ] && closing | grep -qxF "chain: FAILED at [2/3] verify — last review round found a material problem"'
 # The four reports confirmed to have passed a failed /verify through to a raised pull request. The
 # first three pair a failure line the old scan missed with success-shaped prose it matched; the
 # fourth wrote no failure line at all, and was caught only because the success word no longer
@@ -418,10 +405,10 @@ for shaped in \
   $'Result: NOT-VERIFIED branch=feature/270-x'
 do
   new_case
-  reply 1 'READY branch=feature/270-x'; reply 2 'STUDIED issue=270 rows=0'
-  reply 3 "$shaped"
+  reply 1 'READY branch=feature/270-x'
+  reply 2 "$shaped"
   chain 270
-  ok "no later stage starts after: ${shaped//$'\n'/; }" '[ "$RC" = 1 ] && [ "$(calls)" = 3 ] && ! grep -q "chain: done" <<<"$OUTPUT"'
+  ok "no later stage starts after: ${shaped//$'\n'/; }" '[ "$RC" = 1 ] && [ "$(calls)" = 2 ] && ! grep -q "chain: done" <<<"$OUTPUT"'
 done
 
 # SCENARIO: A report with no clear verdict stops the run
@@ -429,7 +416,7 @@ echo "A report with no clear verdict stops the run:"
 new_case
 reply 1 $'Built it.\n\n```\nREADY branch=feature/270-x\n```'
 chain 270
-ok "a fenced verdict is not a verdict, and the closing line says the verdict could not be read" '[ "$RC" = 1 ] && [ "$(calls)" = 1 ] && closing | grep -qxF "chain: FAILED at [1/5] build — no readable verdict — the last line of the report is not a verdict"'
+ok "a fenced verdict is not a verdict, and the closing line says the verdict could not be read" '[ "$RC" = 1 ] && [ "$(calls)" = 1 ] && closing | grep -qxF "chain: FAILED at [1/3] build — no readable verdict — the last line of the report is not a verdict"'
 new_case
 reply 1 $'READY branch=feature/270-x\n\nRun /verify next.'
 chain 270
@@ -449,10 +436,10 @@ for hedged in \
   '**VERIFIED branch=feature/270-x** (2 Important deferred, see above)'
 do
   new_case
-  reply 1 'READY branch=feature/270-x'; reply 2 'STUDIED issue=270 rows=0'
-  reply 3 "$hedged"
+  reply 1 'READY branch=feature/270-x'
+  reply 2 "$hedged"
   chain 270
-  ok "a verdict line carrying anything but the verdict is not a success: $hedged" '[ "$RC" = 1 ] && [ "$(calls)" = 3 ] && closing | grep -q "no readable verdict" && ! grep -q "chain: done" <<<"$OUTPUT"'
+  ok "a verdict line carrying anything but the verdict is not a success: $hedged" '[ "$RC" = 1 ] && [ "$(calls)" = 2 ] && closing | grep -q "no readable verdict" && ! grep -q "chain: done" <<<"$OUTPUT"'
 done
 # A truncated reply is the commonest way a payload goes missing, and an empty one must not read as
 # a verdict for whatever branch or issue the reader assumes.
@@ -461,10 +448,10 @@ reply 1 'READY branch='
 chain 270
 ok "an empty payload is not a verdict" '[ "$RC" = 1 ] && [ "$(calls)" = 1 ] && closing | grep -q "no readable verdict"'
 new_case
-reply 1 'READY branch=feature/270-x'; reply 2 'STUDIED issue=270 rows=0'
-reply 3 'VERIFIED branch='
+reply 1 'READY branch=feature/270-x'
+reply 2 'VERIFIED branch='
 chain 270
-ok "an empty branch payload does not verify a branch" '[ "$RC" = 1 ] && [ "$(calls)" = 3 ] && closing | grep -q "no readable verdict"'
+ok "an empty branch payload does not verify a branch" '[ "$RC" = 1 ] && [ "$(calls)" = 2 ] && closing | grep -q "no readable verdict"'
 # Markdown's other code block: four spaces or a tab. Stripping leading whitespace without limit let
 # an indented quotation sit last and be read as the stage's own verdict — the one shape where a
 # quotation *could* fake position.
@@ -494,22 +481,22 @@ echo "The stated reason is the stage's reason:"
 new_case
 reply 1 $'Something went wrong.\nFAILED reason=   '
 chain 270
-ok "a whitespace-only reason is reported as missing, with no dangling dash" '[ "$RC" = 1 ] && closing | grep -qxF "chain: FAILED at [1/5] build — the stage reported a failure with no reason"'
+ok "a whitespace-only reason is reported as missing, with no dangling dash" '[ "$RC" = 1 ] && closing | grep -qxF "chain: FAILED at [1/3] build — the stage reported a failure with no reason"'
 new_case
 reply 1 $'Formatting failed.\nFAILED reason=the tool that failed is `dotnet format`'
 chain 270
-ok "a reason that legitimately ends in a backtick keeps it" '[ "$RC" = 1 ] && closing | grep -qxF "chain: FAILED at [1/5] build — the tool that failed is \`dotnet format\`"'
+ok "a reason that legitimately ends in a backtick keeps it" '[ "$RC" = 1 ] && closing | grep -qxF "chain: FAILED at [1/3] build — the tool that failed is \`dotnet format\`"'
 # The case above never reaches the closing-run strip: with no emphasis opening the line, the whole
 # block is skipped. These three do reach it, which is where "stripped only when the same run closes
 # the line it opened" is actually decided — and the last of them marks the limit of the rule.
 new_case
 reply 1 $'Formatting failed.\n**FAILED reason=the tool that failed is `dotnet format`**'
 chain 270
-ok "a bold-wrapped verdict keeps a reason ending in a backtick" '[ "$RC" = 1 ] && closing | grep -qxF "chain: FAILED at [1/5] build — the tool that failed is \`dotnet format\`"'
+ok "a bold-wrapped verdict keeps a reason ending in a backtick" '[ "$RC" = 1 ] && closing | grep -qxF "chain: FAILED at [1/3] build — the tool that failed is \`dotnet format\`"'
 new_case
 reply 1 $'Formatting failed.\n`FAILED reason=the tool that failed is `dotnet format``'
 chain 270
-ok "a balanced backtick wrap keeps a reason that also ends in a backtick" '[ "$RC" = 1 ] && closing | grep -qxF "chain: FAILED at [1/5] build — the tool that failed is \`dotnet format\`"'
+ok "a balanced backtick wrap keeps a reason that also ends in a backtick" '[ "$RC" = 1 ] && closing | grep -qxF "chain: FAILED at [1/3] build — the tool that failed is \`dotnet format\`"'
 # The one shape where the reason loses a character: the wrap is unbalanced, so the single trailing
 # backtick is both the reason's own and the only candidate for the closing run. Nothing short of
 # parsing markdown can tell those apart, and the reason still arrives — pinned so the limit is known
@@ -517,19 +504,19 @@ ok "a balanced backtick wrap keeps a reason that also ends in a backtick" '[ "$R
 new_case
 reply 1 $'Formatting failed.\n`FAILED reason=the tool that failed is `dotnet format`'
 chain 270
-ok "an unbalanced backtick wrap costs the reason its final backtick" '[ "$RC" = 1 ] && closing | grep -qxF "chain: FAILED at [1/5] build — the tool that failed is \`dotnet format"'
+ok "an unbalanced backtick wrap costs the reason its final backtick" '[ "$RC" = 1 ] && closing | grep -qxF "chain: FAILED at [1/3] build — the tool that failed is \`dotnet format"'
 # A failure verdict wrapped in bold with a space inside the run used to lose its reason entirely:
 # the marker strip runs before the emphasis run is removed, leaving a leading space behind.
 new_case
 reply 1 $'Something broke.\n** FAILED reason=suite red**'
 chain 270
-ok "a space inside the emphasis run does not cost the reason" '[ "$RC" = 1 ] && closing | grep -qxF "chain: FAILED at [1/5] build — suite red"'
+ok "a space inside the emphasis run does not cost the reason" '[ "$RC" = 1 ] && closing | grep -qxF "chain: FAILED at [1/3] build — suite red"'
 new_case
 reply 1 $'Built on Windows.\r\nFAILED reason=suite red\r'
 chain 270
-ok "a CRLF report leaves no carriage return in the reason" '[ "$RC" = 1 ] && closing | grep -qxF "chain: FAILED at [1/5] build — suite red"'
+ok "a CRLF report leaves no carriage return in the reason" '[ "$RC" = 1 ] && closing | grep -qxF "chain: FAILED at [1/3] build — suite red"'
 new_case
-reply 1 $'Study table:\n| FAILED reason=suite red |'
+reply 1 $'Findings table:\n| FAILED reason=suite red |'
 chain 270
 ok "a table-row verdict is unreadable rather than a reason with a stray pipe" '[ "$RC" = 1 ] && closing | grep -q "no readable verdict" && ! closing | grep -qF "|"'
 
@@ -547,9 +534,8 @@ for raised in \
   '> RAISED pr=https://github.com/o/r/pull/9'
 do
   new_case
-  reply 1 'READY branch=feature/270-x'; reply 2 'STUDIED issue=270 rows=0'; reply 3 'VERIFIED branch=feature/270-x'
-  reply 4 'STUDIED issue=270 rows=1'
-  reply 5 "An earlier attempt left https://github.com/o/r/pull/8 behind."$'\n'"$raised"
+  reply 1 'READY branch=feature/270-x'; reply 2 'VERIFIED branch=feature/270-x'
+  reply 3 "An earlier attempt left https://github.com/o/r/pull/8 behind."$'\n'"$raised"
   chain 270
   ok "the run ends naming the pull request: $raised" '[ "$RC" = 0 ] && [ "$(last_line)" = "chain: done — https://github.com/o/r/pull/9" ]'
 done
@@ -576,7 +562,7 @@ chain 270
 ok "names the branch and how many commits it holds over main" 'grep -qF "feature/270-x holds 2 commit(s) over main" <<<"$OUTPUT"'
 ok "lists those commits" 'grep -qF "add the first thing" <<<"$OUTPUT" && grep -qF "add the second thing" <<<"$OUTPUT"'
 ok "says the working tree has uncommitted changes" 'grep -q "working tree has uncommitted changes" <<<"$OUTPUT"'
-ok "the closing lines still sit at the tail, after the branch state" '[ "$RC" = 1 ] && closing | grep -qF "chain: FAILED at [1/5] build — suite red" && last_line | grep -q "claude --resume"'
+ok "the closing lines still sit at the tail, after the branch state" '[ "$RC" = 1 ] && closing | grep -qF "chain: FAILED at [1/3] build — suite red" && last_line | grep -q "claude --resume"'
 ok "reporting the state changed nothing in the repository" '[ "$(repo_state)" = "$(cat "$STUB_DIR/state-after-act")" ]'
 new_case
 cat > "$STUB_DIR/act-1" <<'ACT'
@@ -609,19 +595,19 @@ before="$(repo_state)"
 CHAIN_STAGE_TIMEOUT=0 chain --dry-run 270
 ok "a zero override is still told what would run" '[ "$RC" = 0 ] && [ "$(calls)" = 0 ] && [ "$(repo_state)" = "$before" ]'
 new_case
-reply 1 'READY branch=feature/270-x'; reply 2 'STUDIED issue=270 rows=0'; reply 3 'VERIFIED branch=feature/270-x'
-reply 4 'STUDIED issue=270 rows=1'; reply 5 'RAISED pr=https://github.com/o/r/pull/9'
+reply 1 'READY branch=feature/270-x'; reply 2 'VERIFIED branch=feature/270-x'
+reply 3 'RAISED pr=https://github.com/o/r/pull/9'
 CHAIN_STAGE_TIMEOUT=60 chain 270
-ok "a non-zero override is still accepted" '[ "$RC" = 0 ] && [ "$(calls)" = 5 ]'
+ok "a non-zero override is still accepted" '[ "$RC" = 0 ] && [ "$(calls)" = 3 ]'
 new_case
 before="$(repo_state)"
 CHAIN_STAGE_TIMEOUT=abc chain 270
 ok "an override that is not a whole number is refused before any stage starts" '[ "$RC" = 1 ] && [ "$(calls)" = 0 ] && grep -q "CHAIN_STAGE_TIMEOUT" <<<"$OUTPUT" && [ "$(repo_state)" = "$before" ]'
 new_case
-reply 1 'READY branch=feature/270-x'; reply 2 'STUDIED issue=270 rows=0'; reply 3 'VERIFIED branch=feature/270-x'
-reply 4 'STUDIED issue=270 rows=1'; reply 5 'RAISED pr=https://github.com/o/r/pull/9'
+reply 1 'READY branch=feature/270-x'; reply 2 'VERIFIED branch=feature/270-x'
+reply 3 'RAISED pr=https://github.com/o/r/pull/9'
 CHAIN_STAGE_TIMEOUT= chain 270
-ok "an empty override is no override" '[ "$RC" = 0 ] && [ "$(calls)" = 5 ]'
+ok "an empty override is no override" '[ "$RC" = 0 ] && [ "$(calls)" = 3 ]'
 
 # SCENARIO: A stage that rewrites the chain script does not derail the run
 # Bash reads a script from disk as it runs it, so a stage that edits chain.sh in place — any issue
@@ -634,10 +620,10 @@ cp "$CHAIN" "$SB/case$cases/chain.sh"
 cat > "$STUB_DIR/act-1" <<ACT
 for _ in \$(seq 1 4000); do echo 'exit 97'; done > "$SB/case$cases/chain.sh"
 ACT
-reply 1 'READY branch=feature/270-x'; reply 2 'STUDIED issue=270 rows=0'; reply 3 'VERIFIED branch=feature/270-x'
-reply 4 'STUDIED issue=270 rows=1'; reply 5 'RAISED pr=https://github.com/o/r/pull/9'
+reply 1 'READY branch=feature/270-x'; reply 2 'VERIFIED branch=feature/270-x'
+reply 3 'RAISED pr=https://github.com/o/r/pull/9'
 CHAIN="$SB/case$cases/chain.sh" chain 270
-ok "the run finishes on the script it started with" '[ "$RC" = 0 ] && [ "$(calls)" = 5 ] && [ "$(last_line)" = "chain: done — https://github.com/o/r/pull/9" ]'
+ok "the run finishes on the script it started with" '[ "$RC" = 0 ] && [ "$(calls)" = 3 ] && [ "$(last_line)" = "chain: done — https://github.com/o/r/pull/9" ]'
 
 echo ""
 echo "RESULT: $pass passed, $fail failed"
