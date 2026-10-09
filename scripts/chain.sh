@@ -89,7 +89,7 @@ PR_VERDICT='^RAISED pr=https://github\.com/[^[:space:]]+/pull/[0-9]+'
 
 # A stage's own failure verdict. Still line-anchored — /study's job is recording what went wrong,
 # so its report quotes the phrase in ordinary prose, and an unanchored scan would abort a healthy
-# run over it — but tolerant of anything a model might put between the anchor and the verdict, and
+# run over it — but tolerant of punctuation and whitespace between the anchor and the verdict, and
 # between the verdict's two words: a heading, a bullet, bold, a backtick, a numbered-list prefix
 # or a double space. All of those were silently missed, and a missed failure verdict costs the run
 # its reason and, with the success scan below, can let the chain read a failed stage as a success.
@@ -199,7 +199,8 @@ run_stage() {
   # own pattern, and /verify's prompt asks for a plain verdict line too, but this scan does not
   # rely on that: a verdict may still arrive decorated as markdown, and an anchor would abort a
   # healthy run over a bullet. A report quoting someone else's success verdict is covered by the
-  # FAILED scan running first. The same decoration can land between a verdict's two words
+  # FAILED scan running first, provided its own FAILED line is one FAIL_VERDICT matches. The same
+  # decoration can land between a verdict's two words
   # (`VERIFIED \`branch=…\``, which parked a verified #242), so the three unanchored patterns
   # allow punctuation there — but each requires a non-alphanumeric character or the line start
   # *before* the success word, so `UNVERIFIED branch=x` is not read as a verified branch.
