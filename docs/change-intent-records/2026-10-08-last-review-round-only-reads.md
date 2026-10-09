@@ -11,7 +11,7 @@
 **Decisions:**
 
 - *Last round reads, rather than raising the bound again.* Raising it moves the same problem one round out; a read-only last round removes it, and costs one extra review instead of one extra review-plus-fix-plus-suite-run.
-- *Materiality is the reviewer's rating, not the orchestrator's.* Any reviewer's confirmed Blocker/Important in the branch's own code fails the run. The orchestrator may reject a finding as false; it may not re-rate a real one. Otherwise the thing deciding the verdict is the thing that wants the run to finish.
+- *Materiality is the reviewer's rating, not the orchestrator's.* Any reviewer's confirmed Blocker/Important in the branch's own code, or caused by it, fails the run. The orchestrator may reject a finding as false; it may not re-rate a real one. Otherwise the thing deciding the verdict is the thing that wants the run to finish.
 - *Rejected: comparing each round's fix size with the last.* A five-line fix followed by an eight-line one says nothing about whether the branch is sound, least of all when the lines are comments.
 - *The `(round <n>, unreviewed)` commit marker and the `review rounds did not converge` verdict are gone.* Both described a state the loop can no longer reach. Reviewer-error and time-limit stops can still leave an unread commit and keep their reporting.
 - *`VERIFY_LIMIT` 16200s → 7200s, sized from a measurement.* #328's chain ran three full rounds in ~48 minutes; four rounds, the last without a fix, land near an hour. The limit is the stage's only stall detector, so headroom comes from a measured run rather than a per-round multiplier — and a hung `/verify` is now reported after 2h instead of 4h30m.
