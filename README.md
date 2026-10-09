@@ -33,8 +33,7 @@ Fan of NetPace? Consider giving the [repo](https://github.com/FrankRay78/NetPace
 
 
 ## About The Project
-A cross-platform command-line application for performing network speed tests, including server discovery, latency measurement, download and upload speed testing. 
-The core speed test library, `NetPace.Core`, has been designed for developer use and can be installed via [NuGet](https://www.nuget.org/packages/NetPace.Core/).
+A cross-platform command-line application for performing network speed tests, including server discovery, latency measurement, download and upload speed testing. The core speed test library, `NetPace.Core`, has been designed for developer use and can be installed via [NuGet](https://www.nuget.org/packages/NetPace.Core/).
 
 NetPace is not affiliated with or endorsed by Ookla or [Speedtest by Ookla](https://www.speedtest.net/) in any way, although their servers are used by the default speed test provider.
 

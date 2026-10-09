@@ -171,8 +171,7 @@ jq -n --rawfile b .claude/scratch/confirmissue-body.md '{body: $b}' > .claude/sc
 gh api --method PATCH repos/<owner>/<repo>/issues/<number> --input .claude/scratch/confirmissue-patch.json --jq .html_url
 ```
 
-(Omit the leading `/` on the endpoint — Git Bash on Windows rewrites `/repos/...`
-as a filesystem path. `gh api` accepts both forms on Linux/macOS.)
+(Omit the leading `/` on the endpoint — Git Bash on Windows rewrites `/repos/...` as a filesystem path. `gh api` accepts both forms on Linux/macOS.)
 
 **Confirm the patch landed before going on.** The `--jq .html_url` above prints the issue URL on success; a failed PATCH prints an error instead. If the body did not land, **stop here** — do not apply the label and do not delete the review. Steps 6 and 7 both assume the decisions are safely on the issue, and step 7 is irreversible.
 

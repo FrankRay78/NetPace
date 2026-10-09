@@ -101,9 +101,7 @@ The cap on screening exists to stop a single pathological server stalling a run:
 
 ## Choosing a profile
 
-The `--profile` flag bundles per-request payload sizes, parallelism, and a total-byte
-cap into one switch. Pick the profile that matches your link, and NetPace adapts the
-traffic shape to suit it. `Medium` is the default.
+The `--profile` flag bundles per-request payload sizes, parallelism, and a total-byte cap into one switch. Pick the profile that matches your link, and NetPace adapts the traffic shape to suit it. `Medium` is the default.
 
 | Profile | Use it when… | Total per run (down + up, approx) |
 |---|---|---|
@@ -120,8 +118,7 @@ Decision guide:
 - Gigabit fibre or business link? → `--profile large`.
 - 10 Gbps inter-DC saturation? → `--profile mega`.
 
-You can still pin a hard cap on top of a profile — the profile sets per-request shape,
-`--downloadsize` / `--uploadsize` override only the total cap:
+You can still pin a hard cap on top of a profile — the profile sets per-request shape, `--downloadsize` / `--uploadsize` override only the total cap:
 
 ```bash
 NetPace --profile large --downloadsize 200
