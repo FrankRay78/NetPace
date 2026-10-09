@@ -1,10 +1,9 @@
 name: PR Issue Link
 
-# Every pull request must close an open issue (issue #332). The PR body has to carry a closing
-# keyword naming an existing, open issue in this repository. A bare `#N` reference does not count,
-# because it closes nothing on merge. A Development-sidebar link does not count either, but for a
-# different reason: it DOES close its issue on merge, and is excluded because it lives outside the
-# body, where neither this check nor a reviewer reading the diff can see it.
+# Every pull request must close an open issue (issue #332). The question "will merging this close an
+# issue?" is put to GitHub — `closingIssuesReferences` on the pull request — rather than worked out
+# from the body, so a closing keyword in the body and an issue attached through the Development
+# sidebar both count, and a bare `#N` reference, which closes nothing, does not.
 #
 # `edited` is in the trigger list on purpose. The usual failure is a body that names no issue, and
 # the fix is an edit rather than a push — without `edited` the author would have to push an empty
@@ -13,9 +12,6 @@ name: PR Issue Link
 # Deliberately its own workflow rather than a job in dotnet.yml or shell-tests.yml: the job name
 # becomes the required-status-check context, and keeping it here means an unrelated change to the
 # .NET build matrix or the shell-test discovery can never rename it out from under the ruleset.
-#
-# The check's own behaviour is gated separately — scripts/pr-issue-link-check.tests.sh is a
-# committed `*.tests.sh`, so shell-tests.yml discovers and runs it with no entry needed here.
 
 on:
   pull_request:
@@ -29,15 +25,7 @@ concurrency:
   cancel-in-progress: true
 
 permissions:
-  contents: read
   issues: read
-  # Needed because GitHub numbers issues and pull requests from one sequence: `gh issue view <N>`
-  # resolves a PULL REQUEST at that number, and the check reports that as its own verdict ("#N is a
-  # pull request, not an issue"). Granting the scope is what keeps that verdict correct. What a
-  # DENIED read looks like was not established on this branch — GraphQL is documented to answer
-  # not-found rather than forbidden for objects a token may not see, which would make the check
-  # report "no issue at that number" about an issue that exists — so do not remove this scope on the
-  # assumption the failure would be obvious. See the CIR residual.
   pull-requests: read
 
 jobs:
@@ -48,24 +36,45 @@ jobs:
   issue-link:
     name: issue-link
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 5
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-
-    - name: Check the body closes an open issue
-      # The body is author-controlled content, so it is passed through the environment and read
-      # there rather than interpolated into the shell text of this step.
-      #
-      # The author comes from `user.login` rather than being inferred: the dependabot exemption is
-      # the one thing that turns the gate off, so it is decided from the event payload's own field.
-      #
-      # The repository is passed in rather than resolved with `gh repo view`: one fewer API call,
-      # and on a fork the value is the base repository, which is where the issue lives.
+    - name: Check the pull request closes an open issue
+      # Everything from the event arrives through the environment rather than being interpolated
+      # into the shell text. Any failure to reach or read GitHub's answer fails the step, because
+      # the shell runs with `-e`: a gate that could not run must not report green.
       env:
         GH_TOKEN: ${{ github.token }}
-        PR_ISSUE_LINK_BODY: ${{ github.event.pull_request.body }}
-        PR_ISSUE_LINK_AUTHOR: ${{ github.event.pull_request.user.login }}
-        PR_ISSUE_LINK_REPO: ${{ github.repository }}
-      run: bash scripts/pr-issue-link-check.sh
+        REPO: ${{ github.repository }}
+        PR: ${{ github.event.pull_request.number }}
+        AUTHOR: ${{ github.event.pull_request.user.login }}
+      run: |
+        # A dependency bump has no issue to name. dependabot is the only exemption.
+        if [ "$AUTHOR" = 'dependabot[bot]' ]; then
+          echo "dependabot is exempt — nothing to check."
+          exit 0
+        fi
+
+        closes=$(gh api graphql \
+          -f query='query($owner: String!, $name: String!, $number: Int!) {
+            repository(owner: $owner, name: $name) {
+              pullRequest(number: $number) {
+                closingIssuesReferences(first: 100) { nodes { number state repository { nameWithOwner } } }
+              }
+            }
+          }' \
+          -f owner="${REPO%/*}" -f name="${REPO#*/}" -F number="$PR" \
+          --jq '[.data.repository.pullRequest.closingIssuesReferences.nodes[]
+                 | select(.state == "OPEN" and .repository.nameWithOwner == env.REPO)
+                 | "#\(.number)"] | join(" ")')
+
+        if [ -n "$closes" ]; then
+          echo "OK — merging pull request #$PR closes $closes."
+          exit 0
+        fi
+
+        echo "::error::Pull request #$PR does not close an open issue in $REPO."
+        echo "Add a line such as 'Closes #<N>' to the pull request body, where #<N> is an open issue in"
+        echo "this repository, or attach the issue under Development in the sidebar. A bare '#<N>'"
+        echo "reference does not count. Only dependabot is exempt."
+        exit 1
