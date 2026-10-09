@@ -1,6 +1,6 @@
 name: PR Issue Link
 
-# Every pull request must close an open issue (issue #332). The question "will merging this close an
+# Every pull request must close an open issue. The question "will merging this close an
 # issue?" is put to GitHub — `closingIssuesReferences` on the pull request — rather than worked out
 # from the body, so a closing keyword in the body and an issue attached through the Development
 # sidebar both count, and a bare `#N` reference, which closes nothing, does not.
