@@ -187,10 +187,7 @@ run_stage() {
   # See FAIL_VERDICT for why it stays line-anchored and what decoration it now tolerates. The
   # reason is what follows `reason=` with any trailing markup removed, so a verdict wrapped in
   # bold or backticks yields the bare reason rather than `suite red**`.
-  # Fenced blocks are dropped first: a fence is where a report shows examples, not where a stage
-  # states its verdict, and /build's report on #333 quoted failure verdicts in one as its RED
-  # evidence, stopping a build that had ended READY.
-  reason=$(awk '/^[[:space:]]*```/ { fenced = !fenced; next } !fenced' <<<"$STAGE_RESULT" | grep -m1 -E -- "$FAIL_VERDICT")
+  reason=$(grep -m1 -E -- "$FAIL_VERDICT" <<<"$STAGE_RESULT")
   if [ -n "$reason" ]; then
     reason=$(sed -E -e "s/$FAIL_VERDICT//" -e 's/[[:space:]]*[*_`~]+[[:space:]]*$//' <<<"$reason")
     # A bare `FAILED reason=` is a malformed report, but the stage still failed. Say so, rather

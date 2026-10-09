@@ -152,21 +152,6 @@ reply 4 'STUDIED issue=270 rows=1'
 reply 5 'RAISED pr=https://github.com/o/r/pull/9'
 chain 270
 ok "a study pass that quotes 'FAILED reason=' mid-sentence does not stop the run" '[ "$RC" = 0 ] && [ "$(calls)" = 5 ]'
-# Regression (#333's own chain run): /build's report showed example failure verdicts in a fenced
-# block as its RED evidence, and the chain read one as the stage's verdict and stopped a build
-# that had ended READY.
-new_case
-reply 1 $'RED evidence:\n\n```\n## FAILED reason=suite red   → no recognisable verdict\nFAILED reason=suite red\n```\n\nREADY branch=feature/270-x'
-reply 2 'STUDIED issue=270 rows=0'
-reply 3 'VERIFIED branch=feature/270-x'
-reply 4 'STUDIED issue=270 rows=1'
-reply 5 'RAISED pr=https://github.com/o/r/pull/9'
-chain 270
-ok "a failure verdict quoted inside a fenced block does not stop the run" '[ "$RC" = 0 ] && [ "$(calls)" = 5 ]'
-new_case
-reply 1 $'What the suite printed:\n\n```\nFAILED reason=quoted example\n```\n\nFAILED reason=suite red'
-chain 270
-ok "a failure verdict after a fenced block still stops the run with its own reason" '[ "$RC" = 1 ] && [ "$(calls)" = 1 ] && closing | grep -qxF "chain: FAILED at [1/5] build — suite red"'
 new_case
 reply 1 'READY branch=feature/270-x'
 reply 2 'STUDIED issue=270 rows=0'
