@@ -92,6 +92,9 @@ PR_VERDICT='^RAISED pr=https://github\.com/[^[:space:]]+/pull/[0-9]+'
 # between the verdict's two words: a heading, a bullet, bold, a backtick, a numbered-list prefix
 # or a double space. All of those were silently missed, and a missed failure verdict costs the run
 # its reason and, with the success scan below, can let the chain read a failed stage as a success.
+# The trade-off is deliberate and narrow: a report that *opens a line* with the verdict, decorated
+# or not, is taken at its word, so a /study row listing the phrase as a numbered or bulleted item
+# would stop the run. Quoting it mid-sentence, which is what /study actually does, still does not.
 FAIL_VERDICT='^[[:space:]]*([0-9]+[.)][[:space:]]*)?[^[:alnum:]]*FAILED[^[:alnum:]]*reason='
 
 # branch_state — what a stopping run leaves behind: the commits the current branch holds over
@@ -187,7 +190,9 @@ run_stage() {
   reason=$(grep -m1 -E -- "$FAIL_VERDICT" <<<"$STAGE_RESULT")
   if [ -n "$reason" ]; then
     reason=$(sed -E -e "s/$FAIL_VERDICT//" -e 's/[[:space:]]*[*_`~]+[[:space:]]*$//' <<<"$reason")
-    fail "$pos" "$name" "$reason"
+    # A bare `FAILED reason=` is a malformed report, but the stage still failed. Say so, rather
+    # than closing with a dangling dash that reads like the reason was lost in transit.
+    fail "$pos" "$name" "${reason:-the stage reported a failure with no reason}"
   fi
   # Deliberately not anchored, unlike the FAILED scan above. /raise-pr's verdict is anchored by its
   # own pattern, and /verify's prompt asks for a plain verdict line too, but this scan does not

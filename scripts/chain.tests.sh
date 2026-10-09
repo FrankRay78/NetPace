@@ -278,6 +278,10 @@ reply 2 'STUDIED issue=270 rows=0'
 reply 3 $'FAILED reason=no commits on this branch over main\n\nNothing to verify.'
 chain 270
 ok "a /verify precondition stop reaches the chain as its own reason" '[ "$RC" = 1 ] && [ "$(calls)" = 3 ] && closing | grep -qF "no commits on this branch over main" && ! closing | grep -q "no recognisable verdict"'
+new_case
+reply 1 $'Something went wrong.\nFAILED reason='
+chain 270
+ok "a failure verdict with no reason still stops, and says the reason is missing" '[ "$RC" = 1 ] && [ "$(calls)" = 1 ] && closing | grep -qF "build — the stage reported a failure with no reason"'
 
 # // SCENARIO: A failure report that mentions the success verdict is not a success
 echo "A failure report that mentions the success verdict is not a success:"
