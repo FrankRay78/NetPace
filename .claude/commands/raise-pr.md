@@ -14,9 +14,11 @@ Optionally a GitHub issue number — bare (`248`), hashed (`#248`), or a full is
 
 ## Steps
 
-1. **Get branch name**: Run `git rev-parse --abbrev-ref HEAD`. If the result is `main`, stop immediately and output: "Run /raise-pr from a feature branch, not main."
+Every STOP below is a **failure**, so each ends its report with the *Final report*'s `FAILED reason=` verdict line as the last line and nothing after it — the explanatory sentence for a human goes *above* it. A stop message whose last line is not the verdict reaches `scripts/chain.sh` as the far less useful `no readable verdict` instead of the reason, and `scripts/chain-next.sh` then parks the issue with that non-reason.
 
-2. **Check for commits**: Run `git log main..HEAD --oneline`. If the output is empty, stop immediately and output: "No commits found on this branch compared to main — nothing to raise a PR for."
+1. **Get branch name**: Run `git rev-parse --abbrev-ref HEAD`. If the result is `main`, stop immediately and output: "Run /raise-pr from a feature branch, not main." Verdict: `FAILED reason=/raise-pr was run on main, not a feature branch`.
+
+2. **Check for commits**: Run `git log main..HEAD --oneline`. If the output is empty, stop immediately and output: "No commits found on this branch compared to main — nothing to raise a PR for." Verdict: `FAILED reason=no commits on this branch over main`.
 
 3. **Infer PR title**: Take the branch name from step 1, strip any leading path segment (`feat/`, `fix/`, `chore/`, `docs/`, etc.), strip any leading `NNN-` numeric prefix on the remaining segment, replace hyphens with spaces, and apply title case. Examples: `feature/316-remove-planning-pipeline` → `Remove Planning Pipeline`; `chore/docs-tidy` → `Docs Tidy`.
 
@@ -74,6 +76,8 @@ Optionally a GitHub issue number — bare (`248`), hashed (`#248`), or a full is
    End the review with a recommendation whether to merge the PR, and if not, what you suggest needs addressing first.
    ```
 
-8. **Output result**: Print `RAISED pr=<url>` on a line of its own, naming the pull request this run opened — and print it only for a pull request this run actually opened. If no PR was opened, for any reason, print `FAILED reason=<short reason>` instead and never the `RAISED` line, even when the report quotes the URL of a PR that already exists. The two lines are the machine-readable verdict: `scripts/chain.sh` gates its last stage on them, and a bare URL in the surrounding prose is deliberately not enough, because the commonest failure here — a PR already open for this branch — reports an error whose text contains a perfectly good PR URL.
+8. **Output result**: First print step 4's outcome in whichever of its three forms applies — `Closes #<N> — <issue title>`; `No closing keyword: <reason>` (the branch carries no issue number; `#<N>` is a pull request; `#<N>` is closed); or `Closing keyword unverified: <gh stderr>` — so the invoker can see from the output alone what merging this PR will close, if anything.
 
-    Then print step 4's outcome in whichever of its three forms applies — `Closes #<N> — <issue title>`; `No closing keyword: <reason>` (the branch carries no issue number; `#<N>` is a pull request; `#<N>` is closed); or `Closing keyword unverified: <gh stderr>` — so the invoker can see from the output alone what merging this PR will close, if anything.
+    **Then close the report with the verdict on its own last line** — plain, at column 1, nothing else on that line and nothing after it. `RAISED pr=<url>`, naming the pull request this run opened, and only for a pull request this run actually opened. If no PR was opened, for any reason, the last line is `FAILED reason=<short reason>` and never the `RAISED` line, even when the report above quotes the URL of a PR that already exists.
+
+    That line is the machine-readable verdict: `scripts/chain.sh` reads the last non-blank line of the report and nothing else, so anything written after it — a next-steps note, a fence — costs the run its verdict *after* a real pull request is already open, which is the worst moment to lose it. Decoration on the line itself is tolerated (one bullet, heading, numbered-item or blockquote marker, and a wrapping run of `*`, `_` or backticks), but the line must open with the verdict word: a bare URL in the prose above is deliberately not enough, because the commonest failure here — a PR already open for this branch — reports an error whose text contains a perfectly good PR URL. Two limits apply to the line, and both cost the verdict at that same worst moment: **the URL must be bare**, so write `pr=https://github.com/o/r/pull/9` and not a markdown autolink (`<…>`) or link (`[…](…)`); and **nothing else may share the line**, so a parenthetical such as `RAISED pr=<url> (draft, CI red)` is read as no verdict at all.

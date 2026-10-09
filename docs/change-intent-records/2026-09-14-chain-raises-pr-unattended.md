@@ -4,7 +4,7 @@
 
 **Behaviour:**
 - Given a ready issue and a clean `main`, when the chain runs and every stage reports its own success verdict, then the last stage pushes the branch and opens the pull request with no prompt at any point.
-- Given any stage fails, stalls or reports no recognisable verdict, when that stage ends, then no later stage — `/raise-pr` included — starts, and the closing message names the stage and the reason.
+- Given any stage fails, stalls or reports a verdict the chain cannot read, when that stage ends, then no later stage — `/raise-pr` included — starts, and the closing message names the stage and the reason.
 - Given `/verify` is invoked on its own, when it completes, then it still pushes nothing and opens no pull request; only a run of the chain, or a separate `/raise-pr`, does.
 
 **Constraints:**

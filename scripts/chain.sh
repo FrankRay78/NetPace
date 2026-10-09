@@ -3,10 +3,11 @@
 # chain.sh — carry one GitHub issue from a clean main to an open pull request, unattended.
 #
 # Runs /build, /verify, /raise-pr for the named issue, each as its own headless `claude -p`
-# process, starting a stage only after the previous one reported its own success verdict. Every
-# stage starts a fresh session and inherits no context. The first stage that fails — a FAILED
-# verdict, no recognisable verdict, a non-zero exit, or a stall past its time limit — stops the
-# run, and the closing line names the stage, its position and the reason.
+# process, starting a stage only after the previous one reported its own success verdict on the
+# last line of its report. Every stage starts a fresh session and inherits no context. The first
+# stage that fails — a FAILED verdict, a verdict the chain cannot read, a non-zero exit, or a
+# stall past its time limit — stops the run, and the closing line names the stage, its position
+# and the reason.
 #
 # WHY. Typed by hand, the chain spends most of its wall-clock waiting for someone to read one
 # stage's report and start the next. The ordering is enforced here, outside the model, so no
@@ -79,21 +80,88 @@ if [ -n "${CHAIN_STAGE_TIMEOUT:-}" ]; then
   fi
 fi
 
-# raise-pr's verdict. Unlike the other two the payload is a URL, so it is pinned to its own
-# structured line: a bare URL anywhere in the report would also match the text of a /raise-pr
-# that declined to open one and merely quoted the PR that already exists.
-PR_VERDICT='^RAISED pr=https://github\.com/[^[:space:]]+/pull/[0-9]+'
+# HOW A STAGE'S VERDICT IS READ: BY POSITION. The report's final non-blank line is the verdict,
+# and no other line of the report is read at all — so nothing the report quotes, in a code block,
+# a list, a table or a quotation, can be taken for the stage's own decision. Before #345 the chain
+# scanned the whole report for verdict-shaped prose, and that reading was wrong in both directions:
+# #333's own run was stopped at a /build that had succeeded, over a failure verdict the report
+# showed as RED evidence inside a code block; and, the dangerous direction, a failed /verify whose
+# report also carried a success-shaped phrase was read as a success and carried through to a real
+# pull request. Every added pattern brought its own exceptions, and dropping fenced blocks before
+# the scan was tried and reverted (#333, dd1cdfe/d2addd8) because an unclosed fence hid correctly
+# written verdicts. Position cannot be faked by anything the report quotes, and it removes pattern
+# tolerance instead of adding to it.
+#
+# The one tolerance kept is decoration ON that line, because the verdict is written by a model and
+# prompts asking for a plain line do not always get one: one leading heading, blockquote, bullet or
+# numbered-item marker — one, not a stack of them — and a run of `*`, `_` or backticks wrapping the
+# verdict. #242 was a verified branch parked over ``## VERIFIED `branch=…` ``. Anything else — a
+# verdict fenced, buried mid-sentence, or sharing its line with anything else at all — is no
+# verdict, and the run stops saying so rather than guessing. That is the cheap direction to be
+# wrong in: a false stop costs the rest of one run, a false success opens a pull request off
+# unverified work.
+#
+# Two consequences of that last clause, both of which cost a false success before they were closed:
+# the success patterns are anchored at BOTH ends with a non-empty payload, so a line that opens with
+# the verdict word and then contradicts itself (`VERIFIED branch=x, FAILED reason=suite red`, or
+# `VERIFIED branch=x — except the suite is red`) is not a success. Anchoring only the start left the
+# failure test — which matches `^FAILED` and so cannot see a `FAILED` mid-line — unable to catch it.
+# And only up to three leading spaces are stripped, because four spaces or a tab open markdown's
+# other kind of code block: stripping those indiscriminately let an indented block quoting a success
+# verdict sit last and be read as the stage's own, which is precisely what position is meant to
+# prevent.
 
-# A stage's own failure verdict. Still line-anchored — a stage's report may quote the phrase in
-# ordinary prose while describing what it found, and an unanchored scan would abort a healthy run
-# over it — but tolerant of punctuation and whitespace between the anchor and the verdict, and
-# between the verdict's two words: a heading, a bullet, bold, a backtick, a numbered-list prefix
-# or a double space. All of those were silently missed, and a missed failure verdict costs the run
-# its reason and, with the success scan below, can let the chain read a failed stage as a success.
-# The trade-off is deliberate and narrow: a report that *opens a line* with the verdict, decorated
-# or not, is taken at its word, so a report listing the phrase as a numbered or bulleted item
-# would stop the run. Quoting it mid-sentence does not.
-FAIL_VERDICT='^[[:space:]]*([0-9]+[.)][[:space:]]*)?[^[:alnum:]]*FAILED[^[:alnum:]]*reason='
+# One leading markdown marker, with its whitespace. `-`, `*` and `+` count as a bullet only when
+# whitespace follows, so the `**` opening a bold verdict is not read as one and left half-stripped.
+VERDICT_MARKER='^(#+[[:space:]]+|>[[:space:]]*|[-+*][[:space:]]+|[0-9]+[.)][[:space:]]+)'
+# A run of emphasis characters opening the verdict line.
+VERDICT_EMPHASIS='^([*_`]+)'
+# A stage's own failure verdict, and its reason. Whitespace and punctuation are tolerated between
+# the two words, which is where a model's markup lands. Unanchored at the end, unlike the three
+# success patterns below: the reason is free prose and runs to the end of the line by definition.
+FAIL_VERDICT='^FAILED[^[:alnum:]]*reason=(.*)$'
+# The two success verdicts whose payload is a single token. Anchored at both ends, and the payload
+# must be non-empty: `VERIFIED branch=` is a truncated report, not a verified branch, and anything
+# after the payload means the line is not just the verdict.
+READY_VERDICT='^READY[^[:alnum:]]*branch=[^[:space:]]+$'
+VERIFIED_VERDICT='^VERIFIED[^[:alnum:]]*branch=[^[:space:]]+$'
+# raise-pr's verdict. Unlike the other two the payload is a URL, so the pattern carries that URL's
+# shape and the line must still open with the verdict: a bare URL is not a verdict, because the
+# commonest failure at that stage — a pull request already open for the branch — reports an error
+# whose text contains a perfectly good pull request URL. The URL must be bare: a markdown autolink
+# (`<…>`) or link (`[…](…)`) around it is not read, and raise-pr.md says so.
+PR_VERDICT='^RAISED[^[:alnum:]]*pr=(https://github\.com/[^[:space:]]+/pull/[0-9]+)[^[:alnum:]]*$'
+
+# read_verdict <report> — the report's verdict line, normalised, left in $STAGE_VERDICT. Empty when
+# the report has no non-blank line at all, which is no verdict like any other unreadable line.
+read_verdict() {
+  local line='' l open
+  # The final non-blank line. The carriage-return strip is belt-and-braces rather than load-bearing
+  # — `[[:space:]]` already covers \r both in the blank test below and in the trailing-space strip —
+  # but it keeps the \r off the reason at the point the line is chosen, where it is easiest to see.
+  while IFS= read -r l || [ -n "$l" ]; do
+    l=${l%$'\r'}
+    case $l in *[![:space:]]*) line=$l ;; esac
+  done <<<"$1"
+  # Up to three leading spaces only: four, or a tab, is markdown's indented code block, and a
+  # quotation that can be indented into position is a quotation that can fake being the verdict.
+  line=$(sed -E -e 's/^ {0,3}//' -e "s/$VERDICT_MARKER//" -e 's/[[:space:]]+$//' <<<"$line")
+  if [[ $line =~ $VERDICT_EMPHASIS ]]; then
+    open=${BASH_REMATCH[1]}
+    line=${line#"$open"}
+    # The closing run is stripped only when the same run closes the line that it opened, so a
+    # reason ending in a backtick keeps it — including under a balanced wrap, where the run strips
+    # the wrapper's backtick and leaves the reason's. The one shape that loses a character is an
+    # unbalanced wrap, where the single trailing backtick is both at once; telling those apart
+    # needs a markdown parser, and the reason still arrives.
+    line=${line%"$open"}
+    # The marker strip above ran before the emphasis run was removed, so re-strip the space a
+    # shape like `** FAILED reason=…**` leaves behind — otherwise the line is unreadable and the
+    # stage's own reason is lost with it.
+    line=${line#"${line%%[![:space:]]*}"}
+  fi
+  STAGE_VERDICT=$line
+}
 
 # branch_state — what a stopping run leaves behind: the commits the current branch holds over
 # main, and whether the working tree is dirty. Read-only, like everything else the chain does to
@@ -136,14 +204,16 @@ fail() {
   exit 1
 }
 
-# run_stage <position> <name> <prompt> <verdict ERE> <limit>
-# Prints the stage's report, and leaves the report text in $STAGE_RESULT and the session id in
-# $STAGE_SESSION — globals: the caller reads the last report for the `chain: done` line, and fail()
-# reads the session id to name the session to reopen. A success verdict is searched for anywhere
-# in the report: it is not reliably the last line.
+# run_stage <position> <name> <prompt> <success verdict ERE> <limit>
+# Prints the stage's report, and leaves the report text in $STAGE_RESULT, the normalised verdict
+# line in $STAGE_VERDICT and the session id in $STAGE_SESSION — globals: the caller reads the last
+# stage's verdict for the `chain: done` line, and fail() reads the session id to name the session
+# to reopen. The success ERE is matched against the verdict line alone, anchored at both ends, so
+# neither a longer word merely ending in the verdict word (`UNVERIFIED branch=…`) nor a verdict
+# sharing its line with anything else (`VERIFIED branch=x, FAILED reason=…`) is that verdict.
 run_stage() {
   local pos=$1 name=$2 prompt=$3 verdict=$4 limit=$5
-  local reply rc reason is_error subtype
+  local reply rc reason reply_type is_error subtype started elapsed
   # Cleared before the call, so a stage that fails before the parse below — a stall, a launch
   # failure, a reply that is not JSON — does not leave the previous stage's id in place and send
   # the reader to an already-finished session. Empty is the "no session id was captured" fallback.
@@ -152,10 +222,20 @@ run_stage() {
   # The prompt must be the positional straight after -p, and stdin must be redirected, or the
   # call stalls on the terminal (both recorded in plugin-report.sh). The prompt stays quoted
   # because a variadic flag would otherwise eat its second word as a separate positional.
+  started=$SECONDS
   reply=$(timeout --kill-after=60 "$limit" claude -p "$prompt" --model "$CHAIN_MODEL" --output-format json --dangerously-skip-permissions </dev/null)
   rc=$?
-  # A stage that exits 124 on its own account is reported as a stall too: telling them apart
-  # needs --preserve-status and a wall-clock check, which is not worth it.
+  elapsed=$((SECONDS - started))
+  # 124 is timeout's own report that the limit was reached. 137 is the stage killed by SIGKILL,
+  # which `timeout --kill-after` also produces once its TERM has gone unheeded — so the elapsed
+  # time, not the exit code, is what tells a stall from a kill that arrived from outside (an
+  # out-of-memory kill is the real case). Calling that a stall sends whoever reads the closing line
+  # hunting a hung stage that never existed, when what they need to look at is the machine. A stage
+  # that exits 124 on its own account is still reported as a stall: telling that apart needs
+  # --preserve-status, which is not worth it.
+  if [ "$rc" = 137 ] && [ "$elapsed" -lt "$limit" ]; then
+    fail "$pos" "$name" "killed (exit 137) after ${elapsed}s, before its ${limit}s time limit"
+  fi
   case $rc in
     0) ;;
     124|137) fail "$pos" "$name" "stalled — exceeded ${limit}s" ;;
@@ -163,10 +243,20 @@ run_stage() {
     *) fail "$pos" "$name" "claude exited with $rc" ;;
   esac
   # Parsed once, checking that it is JSON at all: a plain-text error from claude would otherwise
-  # become an empty report and be misdiagnosed below as a stage that produced no verdict.
-  if ! jq -e . >/dev/null 2>&1 <<<"$reply"; then
+  # become an empty report and be misdiagnosed below as a stage that produced no verdict. `jq -e`
+  # on `type` rather than on the document itself, so a reply of `null` or `false` — valid JSON,
+  # which jq -e reports as a falsy last output — is not blamed on the parser. The type that same
+  # parse printed is what the shape check below reads, so the reply is never parsed twice.
+  if ! reply_type=$(jq -e -r 'type' 2>/dev/null <<<"$reply"); then
     printf '%s\n' "$reply" >&2
     fail "$pos" "$name" "reply was not JSON (raw reply above)"
+  fi
+  # Every field below is read off an object. A reply that is valid JSON but an array, a string or a
+  # number yields nothing for any of them, which would otherwise surface as a stage that produced
+  # no verdict — blaming the stage for a reply shape it never chose.
+  if [ "$reply_type" != object ]; then
+    printf '%s\n' "$reply" >&2
+    fail "$pos" "$name" "reply was not a JSON object (raw reply above)"
   fi
   is_error=$(jq -r '.is_error // false' <<<"$reply")
   subtype=$(jq -r '.subtype // empty' <<<"$reply")
@@ -179,27 +269,23 @@ run_stage() {
   if [ "$is_error" = true ]; then
     fail "$pos" "$name" "claude reported an error${subtype:+ ($subtype)} — ${STAGE_RESULT:-no detail}"
   fi
-  # A stage's own FAILED verdict wins even when a success verdict appears in the same report.
-  # See FAIL_VERDICT for why it stays line-anchored and what decoration it now tolerates. The
-  # reason is what follows `reason=` with any trailing markup removed, so a verdict wrapped in
-  # bold or backticks yields the bare reason rather than `suite red**`.
-  reason=$(grep -m1 -E -- "$FAIL_VERDICT" <<<"$STAGE_RESULT")
-  if [ -n "$reason" ]; then
-    reason=$(sed -E -e "s/$FAIL_VERDICT//" -e 's/[[:space:]]*[*_`~]+[[:space:]]*$//' <<<"$reason")
+  # The verdict, read by position — see the block above read_verdict. What stops a failed stage
+  # starting the next one is position, not this test order: `^FAILED` and the three success patterns
+  # are mutually exclusive on one normalised line, so neither ordering could read both. Failure is
+  # tested first only so the stage's own reason is what the closing line reports.
+  read_verdict "$STAGE_RESULT"
+  if [[ $STAGE_VERDICT =~ $FAIL_VERDICT ]]; then
+    reason=$(sed -E -e 's/^[[:space:]]+//' -e 's/[[:space:]]+$//' <<<"${BASH_REMATCH[1]}")
     # A bare `FAILED reason=` is a malformed report, but the stage still failed. Say so, rather
     # than closing with a dangling dash that reads like the reason was lost in transit.
     fail "$pos" "$name" "${reason:-the stage reported a failure with no reason}"
   fi
-  # Deliberately not anchored, unlike the FAILED scan above. /raise-pr's verdict is anchored by its
-  # own pattern, and /verify's prompt asks for a plain verdict line too, but this scan does not
-  # rely on that: a verdict may still arrive decorated as markdown, and an anchor would abort a
-  # healthy run over a bullet. A report quoting someone else's success verdict is covered by the
-  # FAILED scan running first, provided its own FAILED line is one FAIL_VERDICT matches. The same
-  # decoration can land between a verdict's two words
-  # (`VERIFIED \`branch=…\``, which parked a verified #242), so the two unanchored patterns
-  # allow punctuation there — but each requires a non-alphanumeric character or the line start
-  # *before* the success word, so `UNVERIFIED branch=x` is not read as a verified branch.
-  grep -qE -- "$verdict" <<<"$STAGE_RESULT" || fail "$pos" "$name" "no recognisable verdict"
+  # Neither verdict readable: the run stops, and says that rather than naming a reason it does not
+  # have. Reported distinctly from a stage that failed with a reason, because they send whoever
+  # reads the closing line to different places — the stage's own work, or the way it wrote its
+  # report. A verdict the chain cannot read is never retried and never guessed at.
+  [[ $STAGE_VERDICT =~ $verdict ]] \
+    || fail "$pos" "$name" "no readable verdict — the last line of the report is not a verdict"
   echo "chain: [$pos/3] $name — ok"
 }
 
@@ -239,11 +325,14 @@ fi
 # cannot change what the rest of the run does. Without the group the run carried on from its old
 # position in the new file and executed whatever text it landed in (#348).
 {
-  run_stage 1 build "/build $issue" '(^|[^[:alnum:]])READY[^[:alnum:]]*branch=' "$BUILD_LIMIT"
-  run_stage 2 verify /verify '(^|[^[:alnum:]])VERIFIED[^[:alnum:]]*branch=' "$VERIFY_LIMIT"
+  run_stage 1 build "/build $issue" "$READY_VERDICT" "$BUILD_LIMIT"
+  run_stage 2 verify /verify "$VERIFIED_VERDICT" "$VERIFY_LIMIT"
   run_stage 3 raise-pr "/raise-pr $issue" "$PR_VERDICT" "$RAISE_PR_LIMIT"
 
-  pr_url=$(grep -m1 -oE -- "$PR_VERDICT" <<<"$STAGE_RESULT")
-  echo "chain: done — ${pr_url#RAISED pr=}"
+  # Re-matched rather than read out of run_stage's own match, so the URL reported is demonstrably
+  # the one on the verdict line this script just accepted.
+  pr_url=''
+  [[ $STAGE_VERDICT =~ $PR_VERDICT ]] && pr_url=${BASH_REMATCH[1]}
+  echo "chain: done — $pr_url"
   exit 0
 }

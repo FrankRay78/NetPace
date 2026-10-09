@@ -1,5 +1,18 @@
 <!--
 Sync Impact Report:
+Version: 2.2.1 → 2.2.2
+Bump rationale: PATCH — wording only. Principle VIII's Enforcement paragraph said the `traceability` CI job was not yet registered in the `Main CI/CD` ruleset and so reported without blocking. The ruleset was edited on 2026-10-02 and now requires the `build` and `traceability` contexts, so the paragraph states that a failure blocks the merge. The rule itself is unchanged; the stale wording was found while triaging issue #259.
+Modified Principles: VIII — AC-to-Test Traceability (Enforcement paragraph)
+Modified Sections: N/A
+Added Sections: N/A
+Removed Sections: N/A
+Downstream documents reviewed (per Amendment Process clause 4):
+  ✅ CLAUDE.md — updated: the traceability bullet no longer says a red check is reported without blocking.
+  ✅ docs/agentic-workflow-NetPace.md — updated: the `traceability-check.sh` paragraph no longer names registration as an outstanding post-merge step. Its `issue-link` and `shell-tests` paragraphs are unchanged, because neither context is in the ruleset and the repository-admin bypass actor is still present.
+  ✅ docs/conventions/testing.md — updated: the same "not yet a required check" clause.
+  ✅ .github/workflows/traceability.yml, scripts/traceability-check.sh — reviewed, unchanged: neither claims the context is unregistered.
+
+--- superseded, retained for history ---
 Version: 2.2.0 → 2.2.1
 Bump rationale: PATCH — wording only. The 2.1.0 report (retained below for history) cited `docs/study/319.md` as the record of a slip found twice in one amendment. Issue #334 removes the study mechanism and that folder with it, so the citation now points at nothing; the sentence keeps the observation and drops the dangling reference. No principle, rule or section changes.
 Modified Principles: N/A
@@ -239,7 +252,7 @@ A scenario that only an external tool or gate can verify — §I's configuration
 
 Markers MUST NOT be invented. A `SCENARIO:` marker with no corresponding issue label looks like a traceability key and is worse than no marker at all.
 
-**Enforcement**: `scripts/traceability-check.sh` checks the pairing for the one issue the current branch implements, and the `traceability` CI job runs it on every pull request to `main`, so a label whose marker was never written or was lost to a later edit is reported on the pull request. That job is **not yet registered in the `Main CI/CD` ruleset**, so today it reports without blocking; registering the fixed-name `traceability` context is the step that makes it binding. The direction is one way — label → marker — because a scenario may legitimately be covered by a test that already existed. The reverse direction (the invented-marker rule above) stays a judgement call for review. Agents run the same script locally before raising a PR (`CLAUDE.md`).
+**Enforcement**: `scripts/traceability-check.sh` checks the pairing for the one issue the current branch implements, and the `traceability` CI job runs it on every pull request to `main`, so a label whose marker was never written or was lost to a later edit is reported on the pull request. The fixed-name `traceability` context is a required check in the `Main CI/CD` ruleset, so a failure blocks the merge. The direction is one way — label → marker — because a scenario may legitimately be covered by a test that already existed. The reverse direction (the invented-marker rule above) stays a judgement call for review. Agents run the same script locally before raising a PR (`CLAUDE.md`).
 
 **Rationale**: The issue is the specification, so traceability runs directly from it to the test — one hop, verifiable by searching the issue body against the test files. Making the label conditional keeps lightweight issues cheap to write while preserving an exact, checkable link wherever an author chose to draw one. The chain needs a gate because it spans artefacts no single stage owns: the issue is written at draft time, the marker at build time, and anything between then and merge can break the pair without either end looking wrong on its own.
 
@@ -362,4 +375,4 @@ This constitution supersedes all other development practices and guides. All dev
 - Complexity MUST be justified against simplicity principles
 - For runtime development guidance, refer to `CLAUDE.md`
 
-**Version**: 2.2.1 | **Ratified**: 2026-04-10 | **Last Amended**: 2026-10-09
+**Version**: 2.2.2 | **Ratified**: 2026-04-10 | **Last Amended**: 2026-10-09

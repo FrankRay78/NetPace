@@ -37,15 +37,15 @@ Two named exceptions, because `CLAUDE.md` requires discussion for them:
 
 ## Steps
 
-1. **Preconditions.** All must hold:
-   - `git status --porcelain` is empty. If not, STOP: "Commit or stash your changes before building." A dirty tree would be swept into the issue's branch at step 4.
-   - `git rev-parse --abbrev-ref HEAD` is `main`. If not, STOP: "Run /build from main — it creates the issue's branch itself."
-   - `git fetch origin main` succeeds.
-   - `git log origin/main..main --oneline` is empty. If not, STOP: "Local main has unpushed commits — push or discard them before building." Step 4 branches from `origin/main`, so those commits would be silently absent from the issue's branch.
+1. **Preconditions.** All must hold. Every STOP in this step and the next is a **failure**, so each ends its report with the *Final report*'s `FAILED reason=` verdict line as the last line and nothing after it — the explanatory sentence for a human goes *above* it. A stop message whose last line is not the verdict reaches `scripts/chain.sh` as the far less useful `no readable verdict` instead of the reason, and `scripts/chain-next.sh` then parks the issue with that non-reason. These stops are the ones that matter most for that: the chain deliberately does not check the fetch, unpushed commits or the issue itself, because `/build` does.
+   - `git status --porcelain` is empty. If not, STOP: "Commit or stash your changes before building." A dirty tree would be swept into the issue's branch at step 4. Verdict: `FAILED reason=the working tree has uncommitted changes`.
+   - `git rev-parse --abbrev-ref HEAD` is `main`. If not, STOP: "Run /build from main — it creates the issue's branch itself." Verdict: `FAILED reason=/build was not run from main`.
+   - `git fetch origin main` succeeds. If not, STOP with `FAILED reason=git fetch origin main failed`.
+   - `git log origin/main..main --oneline` is empty. If not, STOP: "Local main has unpushed commits — push or discard them before building." Step 4 branches from `origin/main`, so those commits would be silently absent from the issue's branch. Verdict: `FAILED reason=local main has unpushed commits`.
 
 2. **Read the issue.** `gh issue view <N>`.
-   - If it is closed, or already has an open linked PR, STOP and say which — it is built or in flight.
-   - If it is open but states no desired behaviour you could build against, STOP and report that you cannot proceed without inventing scope. This is a report that `/build` cannot do its job — **not** a judgement about whether the issue is large enough to warrant a plan first. That routing decision belongs to whoever drafted the issue and invoked `/build`; take whatever you are handed and build it.
+   - If it is closed, or already has an open linked PR, STOP and say which — it is built or in flight. Verdict: `FAILED reason=the issue is already built or in flight`.
+   - If it is open but states no desired behaviour you could build against, STOP and report that you cannot proceed without inventing scope. Verdict: `FAILED reason=the issue states no behaviour to build against`. This is a report that `/build` cannot do its job — **not** a judgement about whether the issue is large enough to warrant a plan first. That routing decision belongs to whoever drafted the issue and invoked `/build`; take whatever you are handed and build it.
    - Work on this issue only. Do not fold in adjacent improvements you notice along the way (`CLAUDE.md`: don't fold a second mission into an in-flight branch) — note them in the final report instead.
 
 3. **Read the issue's criteria and its labels — two independent properties.** An issue may carry either, both, or neither; do not treat them as alternatives.
@@ -97,6 +97,11 @@ Two named exceptions, because `CLAUDE.md` requires discussion for them:
 - **RED evidence**: the failing-test output you saw before writing production code.
 - **What you changed**, at a behaviour level, and how each acceptance criterion is met.
 - **Any assumption** you made on an ambiguous point, any public-API change, and anything you deliberately left out of scope.
-- Then exactly one of:
-  - `READY branch=<branch>` — every criterion implemented, whole suite green, everything committed, tree clean. Follow with: "Run `/verify` to format, gate, review and commit, then `/raise-pr` to push and open the PR — `/raise-pr` derives `Closes #<N>` from this branch name and verifies it before use, then reports what it settled; check that line to confirm the link was made."
-  - `FAILED reason=<short reason>` — you could not reach that state. Report the wall you actually hit, discovered by working: the criteria conflict, they do not determine the design, the change is larger than they describe. Do not fabricate READY.
+- On the way to a `READY` verdict, add this **above the verdict line** — it is boilerplate this command mandates, and appending it below the verdict is the commonest way to lose the verdict: "Run `/verify` to format, gate, review and commit, then `/raise-pr` to push and open the PR — `/raise-pr` derives `Closes #<N>` from this branch name and verifies it before use, then reports what it settled; check that line to confirm the link was made."
+
+**Close the report with the verdict on its own last line** — plain, at column 1, nothing else on that line and nothing after it. Exactly one of:
+
+- `READY branch=<branch>` — every criterion implemented, whole suite green, everything committed, tree clean.
+- `FAILED reason=<short reason>` — you could not reach that state. Report the wall you actually hit, discovered by working: the criteria conflict, they do not determine the design, the change is larger than they describe. Do not fabricate READY.
+
+`scripts/chain.sh` reads the last non-blank line of the report and nothing else, so one more sentence, a closing pleasantry or a code fence after the verdict costs the run its verdict and stops the chain. The upside of reading only that line: quoting either verdict *earlier* in the report — as RED evidence, in a code block, a list or a table — is free and cannot be mistaken for your own. Decoration on that one line is tolerated, not invited: one leading heading, bullet, numbered-item or blockquote marker, a wrapping run of `*`, `_` or backticks, and an indent of up to three spaces are stripped. Nothing else is — a four-space indent is a code block, and a line carrying anything besides the verdict is read as no verdict at all.

@@ -6,7 +6,7 @@
 
 **Behaviour:** `.claude/commands/verify.md` steps 2–3. Rounds one to three may fix; a fourth round reviews the third fix and makes no edit. A material finding there is `FAILED reason=last review round found a material problem`; otherwise the branch is verified with that round's minor findings listed as not fixed.
 
-**Constraints:** `/verify` runs unattended as stage 3 of `scripts/chain.sh`, so it must terminate and stay within the verdict vocabulary the chain scans for.
+**Constraints:** `/verify` runs unattended as stage 3 of `scripts/chain.sh`, so it must terminate and stay within the verdict vocabulary the chain reads. (Since #345 the chain reads that verdict off the report's last non-blank line rather than scanning the prose for it; the vocabulary is unchanged, the mechanism is not.)
 
 **Decisions:**
 

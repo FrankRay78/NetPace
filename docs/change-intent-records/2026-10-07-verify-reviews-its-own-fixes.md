@@ -8,7 +8,7 @@
 
 **Behaviour:** The mechanics live in `.claude/commands/verify.md` steps 2–3. In short: each round's edits are committed and the next round reviews exactly that commit; the loop ends when a round changes nothing, or `FAILED reason=review rounds did not converge` after three rounds.
 
-**Constraints:** `/verify` runs unattended as stage 3 of `scripts/chain.sh`, so it must terminate, and its verdict must stay within the vocabulary `chain.sh` scans for.
+**Constraints:** `/verify` runs unattended as stage 3 of `scripts/chain.sh`, so it must terminate, and its verdict must stay within the vocabulary `chain.sh` reads. (Since #345 that verdict is read off the report's last non-blank line rather than scanned for in the prose.)
 
 **Decisions:**
 
