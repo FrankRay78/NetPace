@@ -112,7 +112,8 @@ park() {
   local n=$1 log=$2 closing stage reason kept remote body
   # The stage total is matched as any number, not the current one. A firing runs the park() it
   # loaded before the reset pulled main's chain.sh, so a change to how many stages the chain has
-  # would otherwise park that firing's failure as "before the first stage" (#334).
+  # would otherwise park that firing's failure as "before the first stage". That is what #334's
+  # own change from five stages to three did to the firing in flight; this guards the next one.
   closing=$(grep -E '^chain: FAILED at \[[0-9]+/[0-9]+\] ' "$log" | tail -n 1)
   if [ -n "$closing" ]; then
     stage=$(sed -E 's/^chain: FAILED at (\[[0-9]+\/[0-9]+\] [^ ]+) — .*/\1/' <<<"$closing")

@@ -138,7 +138,7 @@ fail() {
 
 # run_stage <position> <name> <prompt> <verdict ERE> <limit>
 # Prints the stage's report, and leaves the report text in $STAGE_RESULT and the session id in
-# $STAGE_SESSION — globals: the caller reads the last report for the closing line, and fail()
+# $STAGE_SESSION — globals: the caller reads the last report for the `chain: done` line, and fail()
 # reads the session id to name the session to reopen. A success verdict is searched for anywhere
 # in the report: it is not reliably the last line.
 run_stage() {

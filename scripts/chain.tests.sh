@@ -127,7 +127,7 @@ reply 3 'RAISED pr=https://github.com/o/r/pull/9'
 chain 270
 ok "markdown between a verdict's two words is still that verdict" '[ "$RC" = 0 ] && [ "$(calls)" = 3 ]'
 new_case
-reply 1 'READY branch=feature/270-x'; reply 2 '**VERIFIED** branch=feature/270-x'
+reply 1 '**READY** branch=feature/270-x'; reply 2 '**VERIFIED** branch=feature/270-x'
 reply 3 'RAISED pr=https://github.com/o/r/pull/9'
 chain 270
 ok "a verdict word wrapped in bold is still that verdict" '[ "$RC" = 0 ] && [ "$(calls)" = 3 ]'

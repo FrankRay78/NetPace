@@ -12,7 +12,7 @@ Downstream documents reviewed (per Amendment Process clause 4):
   ✅ .claude/commands/verify.md — updated by #334: the chain's line-anchored failure scan no longer explains itself by naming `/study`.
   ✅ scripts/traceability-check.sh — updated by #334: its branch-parsing note no longer cites `/study` as a peer parser.
   ✅ docs/conventions/testing.md, docs/conventions/change-intent-records.md — reviewed, unchanged: neither mentions study records.
-  ✅ docs/change-intent-records/* — deliberately unchanged. Dated records that mention study are history; `2026-10-09-study-removed.md` supersedes the one that records a study decision, and the `docs/study/` records the others cite now live only in git history.
+  ✅ docs/change-intent-records/* — deliberately unchanged. Dated records that mention study are history; `2026-10-09-study-removed.md` supersedes the one whose chain included study passes, and the `docs/study/` records the others cite now live only in git history.
 
 --- superseded, retained for history ---
 Version: 2.1.1 → 2.2.0

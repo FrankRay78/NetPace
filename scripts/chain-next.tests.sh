@@ -103,7 +103,7 @@ if [ -f "$STUB_DIR/push-then-fail-$n" ]; then
   echo "chain: FAILED at [3/3] raise-pr — gh pr create failed"; exit 1
 fi
 if [ -f "$STUB_DIR/fail-$n" ]; then
-  echo "chain: FAILED at [2/3] verify — suite red"
+  echo "chain: FAILED at [2/$(cat "$STUB_DIR/chain-total" 2>/dev/null || echo 3)] verify — suite red"
   echo "chain: no later stage ran; reopen that stage with \`claude --resume sess-2\`."
   exit 1
 fi
@@ -269,6 +269,13 @@ ok "once un-parked it is picked up, with nothing restarted" '[ "$RC" = 0 ] && [ 
 ok "and built from scratch on a clean main" '[ "$(start_of 2 branch)" = main ] && [ -z "$(start_of 2 status)" ] && grep -qF "pull/108" <<<"$OUTPUT"'
 ok "the earlier attempt's work is still there" 'git -C "$CLONE" rev-parse -q --verify "refs/heads/$kept" >/dev/null'
 ok "the retry has a log of its own; the first is kept" '[ "$(ls "$STATE"/logs/8-*.log | grep -c "")" = 2 ] && [ -f "$log" ]'
+# A firing parks with the park() it loaded before the reset, so it can meet a chain.sh that
+# counts its stages out of a different total than the one current when the runner was written.
+new_case
+issues '[{"number":8,"state":"OPEN","labels":["ready"]}]'
+touch "$STUB_DIR/fail-8"; echo 5 > "$STUB_DIR/chain-total"
+fire
+ok "a chain with a different number of stages is still parked at its stage" '[ "$RC" != 0 ] && grep -qF "stopped at **[2/5] verify** — suite red" "$STUB_DIR/comment-8.txt"'
 new_case
 issues '[{"number":8,"state":"OPEN","labels":["ready"]}]'
 touch "$STUB_DIR/push-then-fail-8"
