@@ -1,0 +1,80 @@
+name: PR Issue Link
+
+# Every pull request must close an open issue. The question "will merging this close an
+# issue?" is put to GitHub — `closingIssuesReferences` on the pull request — rather than worked out
+# from the body, so a closing keyword in the body and an issue attached through the Development
+# sidebar both count, and a bare `#N` reference, which closes nothing, does not.
+#
+# `edited` is in the trigger list on purpose. The usual failure is a body that names no issue, and
+# the fix is an edit rather than a push — without `edited` the author would have to push an empty
+# commit to re-run the gate it already told them how to satisfy.
+#
+# Deliberately its own workflow rather than a job in dotnet.yml or shell-tests.yml: the job name
+# becomes the required-status-check context, and keeping it here means an unrelated change to the
+# .NET build matrix or the shell-test discovery can never rename it out from under the ruleset.
+
+on:
+  pull_request:
+    types: [ opened, reopened, synchronize, edited, ready_for_review ]
+    branches: [ "main" ]
+
+# `edited` fires on every save of the body, so without this two quick edits start two runs of the
+# same required context and the older one can be the last to report its (stale) conclusion.
+concurrency:
+  group: issue-link-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  issues: read
+  pull-requests: read
+
+jobs:
+  # Do NOT add a `paths:` filter or an `if:` condition to this job. To GitHub a skipped job is not
+  # a failure, so a required `issue-link` context is satisfied by one that never ran — and since
+  # `pull_request` workflows are evaluated from the head ref, the branch adding the filter is the
+  # branch it stops gating. The same hazard, and the same answer, as `traceability.yml`.
+  issue-link:
+    name: issue-link
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+    - name: Check the pull request closes an open issue
+      # Everything from the event arrives through the environment rather than being interpolated
+      # into the shell text. Any failure to reach or read GitHub's answer fails the step, because
+      # the shell runs with `-e`: a gate that could not run must not report green.
+      env:
+        GH_TOKEN: ${{ github.token }}
+        REPO: ${{ github.repository }}
+        PR: ${{ github.event.pull_request.number }}
+        AUTHOR: ${{ github.event.pull_request.user.login }}
+      run: |
+        # A dependency bump has no issue to name. dependabot is the only exemption.
+        if [ "$AUTHOR" = 'dependabot[bot]' ]; then
+          echo "dependabot is exempt — nothing to check."
+          exit 0
+        fi
+
+        closes=$(gh api graphql \
+          -f query='query($owner: String!, $name: String!, $number: Int!) {
+            repository(owner: $owner, name: $name) {
+              pullRequest(number: $number) {
+                closingIssuesReferences(first: 100) { nodes { number state repository { nameWithOwner } } }
+              }
+            }
+          }' \
+          -f owner="${REPO%/*}" -f name="${REPO#*/}" -F number="$PR" \
+          --jq '[.data.repository.pullRequest.closingIssuesReferences.nodes[]
+                 | select(.state == "OPEN" and .repository.nameWithOwner == env.REPO)
+                 | "#\(.number)"] | join(" ")')
+
+        if [ -n "$closes" ]; then
+          echo "OK — merging pull request #$PR closes $closes."
+          exit 0
+        fi
+
+        echo "::error::Pull request #$PR does not close an open issue in $REPO."
+        echo "Add a line such as 'Closes #<N>' to the pull request body, where #<N> is an open issue in"
+        echo "this repository, or attach the issue under Development in the sidebar. A bare '#<N>'"
+        echo "reference does not count. Only dependabot is exempt."
+        exit 1
