@@ -110,9 +110,9 @@ reset_clone() {
 # park <n> <log> — label the issue parked and say why on it, from the chain's closing line.
 park() {
   local n=$1 log=$2 closing stage reason kept remote body
-  closing=$(grep -E '^chain: FAILED at \[[0-9]+/5\] ' "$log" | tail -n 1)
+  closing=$(grep -E '^chain: FAILED at \[[0-9]+/3\] ' "$log" | tail -n 1)
   if [ -n "$closing" ]; then
-    stage=$(sed -E 's/^chain: FAILED at (\[[0-9]+\/5\] [^ ]+) — .*/\1/' <<<"$closing")
+    stage=$(sed -E 's/^chain: FAILED at (\[[0-9]+\/3\] [^ ]+) — .*/\1/' <<<"$closing")
     reason=${closing#* — }
   else
     stage="before the first stage"

@@ -1,5 +1,20 @@
 <!--
 Sync Impact Report:
+Version: 2.2.0 → 2.2.1
+Bump rationale: PATCH — wording only. The 2.1.0 report (retained below for history) cited `docs/study/319.md` as the record of a slip found twice in one amendment. Issue #334 removes the study mechanism and that folder with it, so the citation now points at nothing; the sentence keeps the observation and drops the dangling reference. No principle, rule or section changes.
+Modified Principles: N/A
+Modified Sections: Sync Impact Report (the retained 2.1.0 entry's downstream note for .claude/commands/build.md)
+Added Sections: N/A
+Removed Sections: N/A
+Downstream documents reviewed (per Amendment Process clause 4):
+  ✅ CLAUDE.md — reviewed, unchanged: it carries no reference to the study mechanism or to `docs/study/`.
+  ✅ docs/agentic-workflow.md, docs/agentic-workflow-NetPace.md — updated by #334: the study pass, its verdict row and its `docs/study/README.md` link are gone, and the chain is described as three stages.
+  ✅ .claude/commands/verify.md — updated by #334: the chain's line-anchored failure scan no longer explains itself by naming `/study`.
+  ✅ scripts/traceability-check.sh — updated by #334: its branch-parsing note no longer cites `/study` as a peer parser.
+  ✅ docs/conventions/testing.md, docs/conventions/change-intent-records.md — reviewed, unchanged: neither mentions study records.
+  ✅ docs/change-intent-records/* — deliberately unchanged. Dated records that mention study are history; `2026-10-09-study-removed.md` supersedes the decisions they record.
+
+--- superseded, retained for history ---
 Version: 2.1.1 → 2.2.0
 Bump rationale: MINOR — Principles III and VII each gain a new provision for a project whose every release is `0.y.z`. VII gains a **Pre-1.0 stance** block: no prior discussion or approval for a breaking change, no deprecation period, no MAJOR/MINOR/PATCH classification, no release-note callout, and one remaining obligation (say what breaks and for whom). III gains the matching exception to "follow clig.dev strictly", so its deprecation advice does not apply pre-1.0, plus the preference that a removed option fail with a message naming the removal. Neither existing rule is removed or redefined — the two new provisions lapse the moment 1.0.0 is tagged — so this is materially expanded guidance, clause 3's MINOR.
 Modified Principles: III — CLI Excellence (clig.dev bullet and Rationale); VII — Semantic Versioning (Pre-1.0 stance block added, Rationale extended)
@@ -55,7 +70,7 @@ Downstream documents reviewed (per Amendment Process clause 4):
      `// SCENARIO:` as the only form, which is the exact pinning this amendment generalises; it
      now states the test file's own comment syntax, and that a marker counts only once committed.
      The first pass recorded it here as "reviewed, unchanged" before reading it — the same slip
-     docs/study/319.md records for testing.md, found twice in one amendment.
+     made for testing.md, found twice in one amendment.
   ✅ docs/agentic-workflow.md, docs/agentic-workflow-NetPace.md — the enforcement layer now
      describes the pre-merge check rather than saying the rule needs no gate of its own.
   ✅ docs/conventions/testing.md — its *Scenario traceability* section no longer pins `// SCENARIO:`
@@ -347,4 +362,4 @@ This constitution supersedes all other development practices and guides. All dev
 - Complexity MUST be justified against simplicity principles
 - For runtime development guidance, refer to `CLAUDE.md`
 
-**Version**: 2.2.0 | **Ratified**: 2026-04-10 | **Last Amended**: 2026-10-08
+**Version**: 2.2.1 | **Ratified**: 2026-04-10 | **Last Amended**: 2026-10-09

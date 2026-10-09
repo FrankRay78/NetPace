@@ -91,19 +91,19 @@ if [ -n "$(git status --porcelain)" ] || [ "$(git rev-parse --abbrev-ref HEAD)" 
   echo "chain: refused — not a clean main"; exit 1
 fi
 if [ -n "$(git for-each-ref --format='%(refname)' "refs/heads/feature/$n-*")" ]; then
-  echo "chain: [1/5] build — starting"
-  echo "chain: FAILED at [1/5] build — feature/$n-work already exists"; exit 1
+  echo "chain: [1/3] build — starting"
+  echo "chain: FAILED at [1/3] build — feature/$n-work already exists"; exit 1
 fi
 git checkout -q -b "feature/$n-work"
 git commit -q --allow-empty -m "Refs #$n: stub work"
 mkdir -p obj && echo build-output > obj/out.txt && echo half-written > "wip-$n.txt"
-echo "chain: [1/5] build — ok"
+echo "chain: [1/3] build — ok"
 if [ -f "$STUB_DIR/push-then-fail-$n" ]; then
   git push -q -u origin "feature/$n-work"
-  echo "chain: FAILED at [5/5] raise-pr — gh pr create failed"; exit 1
+  echo "chain: FAILED at [3/3] raise-pr — gh pr create failed"; exit 1
 fi
 if [ -f "$STUB_DIR/fail-$n" ]; then
-  echo "chain: FAILED at [3/5] verify — suite red"
+  echo "chain: FAILED at [2/3] verify — suite red"
   echo "chain: no later stage ran; reopen that stage with \`claude --resume sess-3\`."
   exit 1
 fi
@@ -254,7 +254,7 @@ touch "$STUB_DIR/fail-8"
 fire
 ok "exits non-zero" '[ "$RC" != 0 ]'
 ok "the issue is marked parked" '[ "$(labels_of 8)" = "ready,parked" ]'
-ok "the comment names the failed stage and its reason" 'grep -qF "verify" "$STUB_DIR/comment-8.txt" && grep -qF "3/5" "$STUB_DIR/comment-8.txt" && grep -qF "suite red" "$STUB_DIR/comment-8.txt"'
+ok "the comment names the failed stage and its reason" 'grep -qF "verify" "$STUB_DIR/comment-8.txt" && grep -qF "2/3" "$STUB_DIR/comment-8.txt" && grep -qF "suite red" "$STUB_DIR/comment-8.txt"'
 log=$(ls "$STATE"/logs/8-*.log 2>/dev/null | head -n 1)
 ok "the comment names the log, which holds the chain's full output" '[ -n "$log" ] && grep -qF "$log" "$STUB_DIR/comment-8.txt" && grep -qF "claude --resume sess-3" "$log"'
 kept=$(git -C "$CLONE" for-each-ref --format='%(refname:short)' 'refs/heads/attempt/8-*')
