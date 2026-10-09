@@ -238,18 +238,25 @@ if [ "$branch" != main ]; then
   exit 1
 fi
 
-run_stage 1 build "/build $issue" '(^|[^[:alnum:]])READY[^[:alnum:]]*branch=' "$BUILD_LIMIT"
-build_session=$STAGE_SESSION
-# The study passes exist to study what the stage before them saw. A reply with no session id
-# would resume nothing and study a fresh session, which reports an honest, empty success.
-[ -n "$build_session" ] || fail 1 build "reply carried no session id, so the study pass could not resume it"
-run_stage 2 study "/study $issue" '(^|[^[:alnum:]])STUDIED[^[:alnum:]]*issue=' "$STUDY_LIMIT" "$build_session"
-run_stage 3 verify /verify '(^|[^[:alnum:]])VERIFIED[^[:alnum:]]*branch=' "$VERIFY_LIMIT"
-verify_session=$STAGE_SESSION
-[ -n "$verify_session" ] || fail 3 verify "reply carried no session id, so the study pass could not resume it"
-run_stage 4 study "/study $issue" '(^|[^[:alnum:]])STUDIED[^[:alnum:]]*issue=' "$STUDY_LIMIT" "$verify_session"
-run_stage 5 raise-pr "/raise-pr $issue" "$PR_VERDICT" "$RAISE_PR_LIMIT"
+# Everything from the first stage on is one brace group, closed by its own `exit`. Bash reads a
+# script from disk as it runs it, but parses a whole compound command before running any of it —
+# so a stage that edits this file in place, as any issue whose work is the chain itself must,
+# cannot change what the rest of the run does. Without the group the run carried on from its old
+# position in the new file and executed whatever text it landed in (#348).
+{
+  run_stage 1 build "/build $issue" '(^|[^[:alnum:]])READY[^[:alnum:]]*branch=' "$BUILD_LIMIT"
+  build_session=$STAGE_SESSION
+  # The study passes exist to study what the stage before them saw. A reply with no session id
+  # would resume nothing and study a fresh session, which reports an honest, empty success.
+  [ -n "$build_session" ] || fail 1 build "reply carried no session id, so the study pass could not resume it"
+  run_stage 2 study "/study $issue" '(^|[^[:alnum:]])STUDIED[^[:alnum:]]*issue=' "$STUDY_LIMIT" "$build_session"
+  run_stage 3 verify /verify '(^|[^[:alnum:]])VERIFIED[^[:alnum:]]*branch=' "$VERIFY_LIMIT"
+  verify_session=$STAGE_SESSION
+  [ -n "$verify_session" ] || fail 3 verify "reply carried no session id, so the study pass could not resume it"
+  run_stage 4 study "/study $issue" '(^|[^[:alnum:]])STUDIED[^[:alnum:]]*issue=' "$STUDY_LIMIT" "$verify_session"
+  run_stage 5 raise-pr "/raise-pr $issue" "$PR_VERDICT" "$RAISE_PR_LIMIT"
 
-pr_url=$(grep -m1 -oE -- "$PR_VERDICT" <<<"$STAGE_RESULT")
-echo "chain: done — ${pr_url#RAISED pr=}"
-exit 0
+  pr_url=$(grep -m1 -oE -- "$PR_VERDICT" <<<"$STAGE_RESULT")
+  echo "chain: done — ${pr_url#RAISED pr=}"
+  exit 0
+}
