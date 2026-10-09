@@ -335,7 +335,8 @@ printf 'one\n' > a.txt; git add a.txt; git commit -q -m "Refs #270: add the firs
 printf 'wip\n' > b.txt
 ACT
 echo 30 > "$STUB_DIR/sleep-1"
-CHAIN_STAGE_TIMEOUT=1 chain 270
+# A longer limit than the other stall cases: this stub does git work before it sleeps.
+CHAIN_STAGE_TIMEOUT=3 chain 270
 ok "a stage killed at its time limit still has its branch state reported" '[ "$RC" = 1 ] && closing | grep -q stalled && grep -qF "feature/270-x holds 1 commit(s) over main" <<<"$OUTPUT" && grep -q "working tree has uncommitted changes" <<<"$OUTPUT"'
 
 # // SCENARIO: A stopped run with nothing left behind says so
@@ -370,7 +371,7 @@ new_case
 reply 1 'READY branch=feature/270-x'; reply 2 'STUDIED issue=270 rows=0'; reply 3 'VERIFIED branch=feature/270-x'
 reply 4 'STUDIED issue=270 rows=1'; reply 5 'RAISED pr=https://github.com/o/r/pull/9'
 CHAIN_STAGE_TIMEOUT= chain 270
-ok "an empty override is no override, as before" '[ "$RC" = 0 ] && [ "$(calls)" = 5 ]'
+ok "an empty override is no override" '[ "$RC" = 0 ] && [ "$(calls)" = 5 ]'
 
 echo ""
 echo "RESULT: $pass passed, $fail failed"

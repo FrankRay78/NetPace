@@ -100,8 +100,8 @@ FAIL_VERDICT='^[[:space:]]*([0-9]+[.)][[:space:]]*)?[^[:alnum:]]*FAILED[^[:alnum
 
 # branch_state — what a stopping run leaves behind: the commits the current branch holds over
 # main, and whether the working tree is dirty. Read-only, like everything else the chain does to
-# the repository. Printed *before* fail()'s closing lines, not after, so the verdict stays the
-# last thing in the output: chain.tests.sh reads it from the tail, and so does a person.
+# the repository. Printed *before* fail()'s closing lines, not after, so the two closing lines stay
+# the last thing in the output: chain.tests.sh reads them from the tail, and so does a person.
 branch_state() {
   local branch commits status
   if ! branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null) || [ -z "$branch" ]; then
