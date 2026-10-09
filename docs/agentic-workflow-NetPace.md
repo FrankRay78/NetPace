@@ -104,7 +104,7 @@ The explicit solution argument is **required**: `dotnet format` only looks in th
 
 Follows the generic *build stage*. NetPace's specifics:
 
-- **Branch:** `feature/<N>-<short-slug>`, cut from `origin/main`. `/raise-pr` and `/study` read the issue number from this pattern.
+- **Branch:** `feature/<N>-<short-slug>`, cut from `origin/main`. `/raise-pr`, `/verify`, `scripts/traceability-check.sh` and `scripts/chain-next.sh` all read the issue number from this pattern.
 - **Commits:** `Refs #<N>: …` in the imperative mood (constitution, *Git Workflow*). The failing tests are committed with the implementation that turns them green, never on their own.
 - **Suite:** as in *The gates, concretely*.
 - **Docs it must update** (`CLAUDE.md`'s paired rules): `///` XML docs on any new or changed public `NetPace.Core` API; the README.md `--help` snapshot and USER_GUIDE.md for a changed CLI option; `docs/RELEASING.md` for a release-pipeline change; a Change-Intent Record where the change is non-obvious.
@@ -116,12 +116,6 @@ Follows the generic *verify gate*. NetPace's specifics:
 - **Steps 1a/1b:** the formatting and test-green rows in *The gates, concretely*.
 - **Review A (steps 2–3), round one:** two waves of the applicable reviewers. Wave 1: the five report-only `pr-review-toolkit` reviewers and `/review-slop`, together. Wave 2: `pr-review-toolkit:code-simplifier`, which edits files, alone.
 - **Review A, follow-up rounds:** a single parallel wave over the previous round's commit only — `pr-review-toolkit:code-reviewer` and `pr-review-toolkit:silent-failure-hunter` always, plus `pr-review-toolkit:pr-test-analyzer`, `pr-review-toolkit:comment-analyzer` and `pr-review-toolkit:type-design-analyzer` when that commit touched a test, a comment or doc, or a type respectively. No `code-simplifier`, so no wave 2, and no `/review-slop` — left out on cost rather than because it is already covered, since round one swept the branch before the fix commit existed and so never saw the fix diff. Bound at four rounds in total ([CIR](change-intent-records/2026-10-08-last-review-round-only-reads.md)).
-
-## `/study`
-
-Follows the generic *study pass*. Records go to `docs/study/<N>.md`; the four levels are defined in [study/README.md](study/README.md). Each run commits `Refs #<N>: record study findings` on the feature branch.
-
-`/study-review` reads the records back periodically. It scores recurring findings and offers numbered fixes to implement or raise as issues. It keeps no state and never edits a record.
 
 ## Permissions
 
@@ -137,24 +131,24 @@ The mechanism is in the generic *Permissions and unattended runs*. NetPace's rul
 
 The generic *Running the stages end to end*, *The chain script* and *The chain runner* say what a chain and a runner must do. This section is the runbook for NetPace's two scripts: how each is invoked, configured, operated and tested.
 
-Why `scripts/chain.sh` opens the PR without a pause: [CIR](change-intent-records/2026-09-14-chain-raises-pr-unattended.md).
+Why `scripts/chain.sh` opens the PR without a pause: [CIR](change-intent-records/2026-09-14-chain-raises-pr-unattended.md). Why it no longer studies: [CIR](change-intent-records/2026-10-09-study-removed.md).
 
 ### The chain script
 
-[`scripts/chain.sh`](../scripts/chain.sh) runs the five stages for one issue.
+[`scripts/chain.sh`](../scripts/chain.sh) runs the three stages for one issue.
 
-- **Invocation.** `scripts/chain.sh <issue>` (bare or `#`-prefixed). `scripts/chain.sh --dry-run <issue>` lists the five stages and the command each would send, and runs nothing — no git command, no model.
+- **Invocation.** `scripts/chain.sh <issue>` (bare or `#`-prefixed). `scripts/chain.sh --dry-run <issue>` lists the three stages and the command each would send, and runs nothing — no git command, no model.
 - **Prerequisites.** `git`, `claude`, `gh`, `jq` and `timeout` on PATH; `claude` and `gh` signed in; a clean checkout of `main`. The chain checks the five tools, that an issue was named, the clean tree, `main`, and that `CHAIN_STAGE_TIMEOUT`, if set to a value, is a whole number **above zero** — zero reaches `timeout` as *no limit*, switching off the stage's only stall detector; `/build` checks the fetch, unpushed commits and the issue.
-- **Configuration.** `CHAIN_MODEL` (default `claude-opus-5`) is the model for every stage. Per-stage time limits are build 2h, study 30m, verify 2h, raise-pr 30m; `CHAIN_STAGE_TIMEOUT` (seconds) overrides all four, for tuning from real runs, and is refused at zero. Verify's 2h is sized from a measured run, not a per-round multiplier: on #328's branch the chain ran three full rounds with fixes and suite re-runs in about 48 minutes, and a follow-up round cost roughly a third of round one, so four rounds — the last of which never fixes — should land near an hour. The limit is the stage's only stall detector, so an override sized for a single pass can still kill a multi-round verify mid-round and report a progressing loop as `stalled`.
-- **When a stage fails.** The closing message names the stage, its position (`[3/5]`) and the reason: the stage's own `FAILED reason=`, `the stage reported a failure with no reason`, `no recognisable verdict`, `claude reported an error`, `reply was not JSON`, `claude exited with <code>`, `the stage could not be launched (exit <code>)`, `reply carried no session id, so the study pass could not resume it`, or `stalled — exceeded <n>s`. Its second line gives `claude --resume <id>` for the failed stage, if the reply carried an id; otherwise it says to reopen the most recent headless session for the repo. Diagnose there, then run the remaining stages by hand, in order.
+- **Configuration.** `CHAIN_MODEL` (default `claude-opus-5`) is the model for every stage. Per-stage time limits are build 2h, verify 2h, raise-pr 30m; `CHAIN_STAGE_TIMEOUT` (seconds) overrides all three, for tuning from real runs, and is refused at zero. Verify's 2h is sized from a measured run, not a per-round multiplier: on #328's branch the chain ran three full rounds with fixes and suite re-runs in about 48 minutes, and a follow-up round cost roughly a third of round one, so four rounds — the last of which never fixes — should land near an hour. The limit is the stage's only stall detector, so an override sized for a single pass can still kill a multi-round verify mid-round and report a progressing loop as `stalled`.
+- **When a stage fails.** The closing message names the stage, its position (`[2/3]`) and the reason: the stage's own `FAILED reason=`, `the stage reported a failure with no reason`, `no recognisable verdict`, `claude reported an error`, `reply was not JSON`, `claude exited with <code>`, `the stage could not be launched (exit <code>)`, or `stalled — exceeded <n>s`. Its second line gives `claude --resume <id>` for the failed stage, if the reply carried an id; otherwise it says to reopen the most recent headless session for the repo. Diagnose there, then run the remaining stages by hand, in order.
 - **What the stopped run left behind.** Immediately *before* those two lines the chain prints the commits the current branch holds over `main` — or that it holds none — and whether the working tree has uncommitted changes. That is the state to read before continuing by hand: a stage killed at its time limit leaves no report of its own, and a `/verify` stopped mid-loop can leave green, committed fix commits nobody has reviewed. The lines are `git log`/`git status` output and change nothing. They sit before those two lines so the closing lines stay the last thing in the output, where [`chain.tests.sh`](../scripts/chain.tests.sh) and a reader both look for them; the parked-issue comment carries the stage and reason only, not this state.
-- **Reading the verdict.** The failure scan is anchored to the start of a line — so a `/study` report quoting the phrase in prose cannot abort a healthy run — but within that line it tolerates punctuation and whitespace before and between `FAILED` and `reason=`, and one leading list number (a heading, a bullet, bold, backticks, a numbered-list prefix, a double space) and strips trailing markup off the reason. The build, study and verify success scans each require a non-alphanumeric character or the line start before the verdict word, so `UNVERIFIED branch=…` is not read as a verified branch; raise-pr's is pinned to the start of its own line and tolerates no decoration. Those three are otherwise unanchored, so a decorated verdict still passes (#242) and negating prose like `not VERIFIED … branch=…` still matches — which is why a stage's report must never contain the other verdict's word.
-- **Tests.** [`scripts/chain.tests.sh`](../scripts/chain.tests.sh) covers order, resumed sessions, malformed and errored replies, failure, stall, refusals and dry run against a stub `claude` in throwaway repos, leaving your checkout untouched. Run it after any edit to the chain.
+- **Reading the verdict.** The failure scan is anchored to the start of a line — so a report quoting the phrase in prose cannot abort a healthy run — but within that line it tolerates punctuation and whitespace before and between `FAILED` and `reason=`, and one leading list number (a heading, a bullet, bold, backticks, a numbered-list prefix, a double space) and strips trailing markup off the reason. The build and verify success scans each require a non-alphanumeric character or the line start before the verdict word, so `UNVERIFIED branch=…` is not read as a verified branch; raise-pr's is pinned to the start of its own line and tolerates no decoration. Those two are otherwise unanchored, so a decorated verdict still passes (#242) and negating prose like `not VERIFIED … branch=…` still matches — which is why a stage's report must never contain the other verdict's word.
+- **Tests.** [`scripts/chain.tests.sh`](../scripts/chain.tests.sh) covers order, malformed and errored replies, failure, stall, refusals and dry run against a stub `claude` in throwaway repos, leaving your checkout untouched. Run it after any edit to the chain.
 
 Manual checks, with a real model:
 
-- **Reopening a failed stage's session.** From a clean `main`, force a stall with `CHAIN_STAGE_TIMEOUT=60 scripts/chain.sh <issue>`. Expect `chain: FAILED at [1/5] build — stalled — exceeded 60s`, exit 1, no later stage, and a second line saying no session id was captured (a stalled stage never reports one). `claude --resume`, picking the most recent headless session, should open the stalled `/build`. Remove any branch it left.
-- **A full run** against a small ready issue: `scripts/chain.sh <issue>` from a clean `main`. Expect five `ok` lines in order, `chain: done — <pull request URL>`, exit 0, no prompt at any point, and a clean working tree.
+- **Reopening a failed stage's session.** From a clean `main`, force a stall with `CHAIN_STAGE_TIMEOUT=60 scripts/chain.sh <issue>`. Expect `chain: FAILED at [1/3] build — stalled — exceeded 60s`, exit 1, no later stage, and a second line saying no session id was captured (a stalled stage never reports one). `claude --resume`, picking the most recent headless session, should open the stalled `/build`. Remove any branch it left.
+- **A full run** against a small ready issue: `scripts/chain.sh <issue>` from a clean `main`. Expect three `ok` lines in order, `chain: done — <pull request URL>`, exit 0, no prompt at any point, and a clean working tree.
 
 ### The chain runner
 
@@ -248,4 +242,3 @@ Install status is deliberately **not** recorded in any doc: it is per-box and ma
 - [RELEASING.md](RELEASING.md) — the release matrix and its contracts.
 - [conventions/change-intent-records.md](conventions/change-intent-records.md) — when a change warrants a CIR; [conventions/csharp-style.md](conventions/csharp-style.md) — C# style.
 - [../.claude/hooks/README.md](../.claude/hooks/README.md) — per-hook documentation.
-- [study/README.md](study/README.md) — the `/study` records: what surprised a piece of work, classified by where the fix belongs, so the harness can be improved from evidence.

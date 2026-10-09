@@ -20,7 +20,7 @@
 # invented" is the other half of §VIII and stays a judgement call for review.
 #
 # SCOPE — one issue, read off the branch. The `<prefix>/<N>-<slug>` shape `/build` produces gives
-# the number, exactly as /raise-pr and /study already parse it. A branch carrying no number has
+# the number, exactly as /raise-pr already parses it. A branch carrying no number has
 # nothing to check and passes: a pull request raised outside the issue flow is valid.
 #
 # DESIGN RULE: fail CLOSED — the opposite of the .claude/hooks/ convention, and deliberately so.
@@ -74,7 +74,7 @@ fi
 
 # Only the `<prefix>/<N>-<slug>` shape, and only the LEADING number of the segment after the
 # prefix. Anchoring the digits to the start of that segment is what keeps `feature/net10-upgrade`
-# from yielding 10 — the same restriction /raise-pr and /study apply, for the same reason: a
+# from yielding 10 — the same restriction /raise-pr applies, for the same reason: a
 # number guessed from elsewhere in the name checks the wrong issue with full confidence.
 ISSUE=""
 if [[ "$BRANCH" == */* ]] && [[ "${BRANCH#*/}" =~ ^0*([0-9]+)- ]]; then

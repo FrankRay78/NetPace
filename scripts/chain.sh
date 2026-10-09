@@ -2,11 +2,11 @@
 #
 # chain.sh — carry one GitHub issue from a clean main to an open pull request, unattended.
 #
-# Runs /build, /study, /verify, /study, /raise-pr for the named issue, each as its own headless
-# `claude -p` process, starting a stage only after the previous one reported its own success
-# verdict. Each study pass resumes the session of the stage it follows. The first stage that
-# fails — a FAILED verdict, no recognisable verdict, a non-zero exit, or a stall past its time
-# limit — stops the run, and the closing line names the stage, its position and the reason.
+# Runs /build, /verify, /raise-pr for the named issue, each as its own headless `claude -p`
+# process, starting a stage only after the previous one reported its own success verdict. Every
+# stage starts a fresh session and inherits no context. The first stage that fails — a FAILED
+# verdict, no recognisable verdict, a non-zero exit, or a stall past its time limit — stops the
+# run, and the closing line names the stage, its position and the reason.
 #
 # WHY. Typed by hand, the chain spends most of its wall-clock waiting for someone to read one
 # stage's report and start the next. The ordering is enforced here, outside the model, so no
@@ -35,7 +35,6 @@ CHAIN_MODEL="${CHAIN_MODEL:-claude-opus-5}"
 
 # Per-stage time limits in seconds, conservative until tuned from real runs.
 BUILD_LIMIT=${CHAIN_STAGE_TIMEOUT:-7200}
-STUDY_LIMIT=${CHAIN_STAGE_TIMEOUT:-1800}
 # 7200s (2h), sized from a measured run rather than a per-round multiplier. On #328's branch the
 # unattended chain ran three full rounds, each with fixes and a suite re-run, in about 48 minutes,
 # and a follow-up round cost roughly a third of round one; verify.md's four rounds, the last of
@@ -60,10 +59,8 @@ case "$issue" in ''|*[!0-9]*) usage; exit 1 ;; esac
 if [ "$dry_run" = 1 ]; then
   echo "chain: dry run for issue #$issue — nothing will be run"
   echo "  1. build: /build $issue"
-  echo "  2. study: /study $issue (resumes build's session)"
-  echo "  3. verify: /verify"
-  echo "  4. study: /study $issue (resumes verify's session)"
-  echo "  5. raise-pr: /raise-pr $issue"
+  echo "  2. verify: /verify"
+  echo "  3. raise-pr: /raise-pr $issue"
   exit 0
 fi
 
@@ -82,20 +79,20 @@ if [ -n "${CHAIN_STAGE_TIMEOUT:-}" ]; then
   fi
 fi
 
-# raise-pr's verdict. Unlike the other four the payload is a URL, so it is pinned to its own
+# raise-pr's verdict. Unlike the other two the payload is a URL, so it is pinned to its own
 # structured line: a bare URL anywhere in the report would also match the text of a /raise-pr
 # that declined to open one and merely quoted the PR that already exists.
 PR_VERDICT='^RAISED pr=https://github\.com/[^[:space:]]+/pull/[0-9]+'
 
-# A stage's own failure verdict. Still line-anchored — /study's job is recording what went wrong,
-# so its report quotes the phrase in ordinary prose, and an unanchored scan would abort a healthy
-# run over it — but tolerant of punctuation and whitespace between the anchor and the verdict, and
+# A stage's own failure verdict. Still line-anchored — a stage's report may quote the phrase in
+# ordinary prose while describing what it found, and an unanchored scan would abort a healthy run
+# over it — but tolerant of punctuation and whitespace between the anchor and the verdict, and
 # between the verdict's two words: a heading, a bullet, bold, a backtick, a numbered-list prefix
 # or a double space. All of those were silently missed, and a missed failure verdict costs the run
 # its reason and, with the success scan below, can let the chain read a failed stage as a success.
 # The trade-off is deliberate and narrow: a report that *opens a line* with the verdict, decorated
-# or not, is taken at its word, so a /study row listing the phrase as a numbered or bulleted item
-# would stop the run. Quoting it mid-sentence, which is what /study actually does, still does not.
+# or not, is taken at its word, so a report listing the phrase as a numbered or bulleted item
+# would stop the run. Quoting it mid-sentence does not.
 FAIL_VERDICT='^[[:space:]]*([0-9]+[.)][[:space:]]*)?[^[:alnum:]]*FAILED[^[:alnum:]]*reason='
 
 # branch_state — what a stopping run leaves behind: the commits the current branch holds over
@@ -130,7 +127,7 @@ branch_state() {
 # output has to say whether there is work on the branch before anyone continues it by hand.
 fail() {
   branch_state
-  echo "chain: FAILED at [$1/5] $2 — $3"
+  echo "chain: FAILED at [$1/3] $2 — $3"
   if [ -n "${STAGE_SESSION:-}" ]; then
     echo "chain: no later stage ran; reopen that stage with \`claude --resume $STAGE_SESSION\`."
   else
@@ -139,25 +136,23 @@ fail() {
   exit 1
 }
 
-# run_stage <position> <name> <prompt> <verdict ERE> <limit> [session id to resume]
+# run_stage <position> <name> <prompt> <verdict ERE> <limit>
 # Prints the stage's report, and leaves the report text in $STAGE_RESULT and the session id in
-# $STAGE_SESSION — globals the caller reads (the study stages resume them, and the closing line
-# reads the last report). A success verdict is searched for anywhere in the report: it is not
-# reliably the last line.
+# $STAGE_SESSION — globals: the caller reads the last report for the `chain: done` line, and fail()
+# reads the session id to name the session to reopen. A success verdict is searched for anywhere
+# in the report: it is not reliably the last line.
 run_stage() {
-  local pos=$1 name=$2 prompt=$3 verdict=$4 limit=$5 resume=${6:-}
+  local pos=$1 name=$2 prompt=$3 verdict=$4 limit=$5
   local reply rc reason is_error subtype
-  # Until the reply is parsed the only session this stage has is the one it resumed, so that is
-  # what STAGE_SESSION holds. Without this a stage that fails before the parse below — a stall, a
-  # launch failure, a reply that is not JSON — leaves the previous stage's id in place, and the
-  # closing line sends them to an already-finished session. Fresh stages reset to empty, which is
-  # the "no session id was captured" fallback; the study passes keep the id they were resuming.
-  STAGE_SESSION=$resume
-  echo "chain: [$pos/5] $name — starting"
+  # Cleared before the call, so a stage that fails before the parse below — a stall, a launch
+  # failure, a reply that is not JSON — does not leave the previous stage's id in place and send
+  # the reader to an already-finished session. Empty is the "no session id was captured" fallback.
+  STAGE_SESSION=
+  echo "chain: [$pos/3] $name — starting"
   # The prompt must be the positional straight after -p, and stdin must be redirected, or the
   # call stalls on the terminal (both recorded in plugin-report.sh). The prompt stays quoted
   # because a variadic flag would otherwise eat its second word as a separate positional.
-  reply=$(timeout --kill-after=60 "$limit" claude -p "$prompt" --model "$CHAIN_MODEL" --output-format json --dangerously-skip-permissions ${resume:+--resume "$resume"} </dev/null)
+  reply=$(timeout --kill-after=60 "$limit" claude -p "$prompt" --model "$CHAIN_MODEL" --output-format json --dangerously-skip-permissions </dev/null)
   rc=$?
   # A stage that exits 124 on its own account is reported as a stall too: telling them apart
   # needs --preserve-status and a wall-clock check, which is not worth it.
@@ -201,11 +196,11 @@ run_stage() {
   # healthy run over a bullet. A report quoting someone else's success verdict is covered by the
   # FAILED scan running first, provided its own FAILED line is one FAIL_VERDICT matches. The same
   # decoration can land between a verdict's two words
-  # (`VERIFIED \`branch=…\``, which parked a verified #242), so the three unanchored patterns
+  # (`VERIFIED \`branch=…\``, which parked a verified #242), so the two unanchored patterns
   # allow punctuation there — but each requires a non-alphanumeric character or the line start
   # *before* the success word, so `UNVERIFIED branch=x` is not read as a verified branch.
   grep -qE -- "$verdict" <<<"$STAGE_RESULT" || fail "$pos" "$name" "no recognisable verdict"
-  echo "chain: [$pos/5] $name — ok"
+  echo "chain: [$pos/3] $name — ok"
 }
 
 # Every tool the run depends on, named before an hour of model time is spent. Without this a
@@ -245,16 +240,8 @@ fi
 # position in the new file and executed whatever text it landed in (#348).
 {
   run_stage 1 build "/build $issue" '(^|[^[:alnum:]])READY[^[:alnum:]]*branch=' "$BUILD_LIMIT"
-  build_session=$STAGE_SESSION
-  # The study passes exist to study what the stage before them saw. A reply with no session id
-  # would resume nothing and study a fresh session, which reports an honest, empty success.
-  [ -n "$build_session" ] || fail 1 build "reply carried no session id, so the study pass could not resume it"
-  run_stage 2 study "/study $issue" '(^|[^[:alnum:]])STUDIED[^[:alnum:]]*issue=' "$STUDY_LIMIT" "$build_session"
-  run_stage 3 verify /verify '(^|[^[:alnum:]])VERIFIED[^[:alnum:]]*branch=' "$VERIFY_LIMIT"
-  verify_session=$STAGE_SESSION
-  [ -n "$verify_session" ] || fail 3 verify "reply carried no session id, so the study pass could not resume it"
-  run_stage 4 study "/study $issue" '(^|[^[:alnum:]])STUDIED[^[:alnum:]]*issue=' "$STUDY_LIMIT" "$verify_session"
-  run_stage 5 raise-pr "/raise-pr $issue" "$PR_VERDICT" "$RAISE_PR_LIMIT"
+  run_stage 2 verify /verify '(^|[^[:alnum:]])VERIFIED[^[:alnum:]]*branch=' "$VERIFY_LIMIT"
+  run_stage 3 raise-pr "/raise-pr $issue" "$PR_VERDICT" "$RAISE_PR_LIMIT"
 
   pr_url=$(grep -m1 -oE -- "$PR_VERDICT" <<<"$STAGE_RESULT")
   echo "chain: done — ${pr_url#RAISED pr=}"

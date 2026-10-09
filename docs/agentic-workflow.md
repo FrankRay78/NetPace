@@ -47,11 +47,9 @@ The confirmed issue **is** the specification. There is no separate spec, test pl
 
 ### The build stage
 - `/build <issue>` ← branch, RED, GREEN, refactor, docs, all committed. Unattended; ends at a green, committed branch (see *The build stage*).
-- `/study <issue>` ← record what surprised the build, if anything (see *The study pass*).
 
 ### Shared — verify, then raise
 - `/verify` ← one orchestrator: **format → full suite (the gate) → clean-context review → fix → format → re-run suite → commit → review that commit → …** until a round changes nothing, within a fixed bound whose last round only reads. Unattended, so it can drive a loop. Includes the PR review and slop review. Ends at a green, reviewed, fully-committed branch; it does **not** raise the PR.
-- `/study <issue>` ← record what surprised the verify pass, if anything.
 - `/raise-pr` ← push the branch, open the PR and request Review B. A separate stage because it is the one irreversible, outward-facing act; everything before it stays freely re-runnable.
 
 ### Periodic (not per-feature)
@@ -71,7 +69,7 @@ The confirmed issue **is** the specification. There is no separate spec, test pl
 - **RED first, proven by the real tool.** For production code, `/build` writes the failing tests first and must see them fail; tests that pass first time mean the behaviour exists already or the test misses the criterion. For a configuration, tooling or CI change, RED is the real tool failing before and passing after. Never write a stand-in test that reimplements a tool's check: it covers less and can pass when its own matching logic is wrong.
 - **Issue labels become test markers.** Each `**Scenario: X**` label on the issue gets at least one test with a matching marker, in that test file's own comment syntax, keeping label → test traceability in a single hop from the issue. No labels, no markers: an invented label looks like a traceability key but traces to nothing. The pairing is gated pre-merge rather than trusted to this stage — see *Mechanical enforcement layer*.
 - **Check the starting point before branching.** Require a clean tree and the main branch checked out, fetch the remote main, and refuse to start if local main has unpushed commits — the branch is cut from the remote, so they would silently be missing. A closed issue, or one with an open PR, also stops the run.
-- **Name the branch after the issue.** Put the issue number first, after a fixed prefix, so later stages can read it from the branch: the PR stage adds the closing keyword, and the study pass files its record. A leftover branch from an earlier attempt is recreated, unless it holds commits `/build` has not inspected.
+- **Name the branch after the issue.** Put the issue number first, after a fixed prefix, so later stages can read it from the branch: the PR stage adds the closing keyword, and the pre-merge traceability check reads the issue it must trace. A leftover branch from an earlier attempt is recreated, unless it holds commits `/build` has not inspected.
 - **Commits reference the issue but never close it.** A closing keyword in a commit (`Fixes #N`, `Closes #N`) closes the issue when the commit reaches main, before review. Only the PR body closes it.
 - **Run the whole suite, not just the new tests** — after RED, after GREEN and after any refactor; a regression anywhere is a failure. Updating the docs the change affects is part of the stage.
 - **Leave formatting and the PR to later stages.** `/build` does not format, push or open a PR. It ends committed and clean, which is what `/verify` requires.
@@ -105,16 +103,6 @@ Properties worth copying:
 
 ---
 
-## The study pass
-
-`/study` records what *surprised* a piece of work — a mid-way redesign, a review finding that had to be acted on, an ambiguous criterion — as one classified row per surprise in a per-issue record. Across many issues, the rows show which part of the harness keeps costing time. It runs after `/build` and after `/verify`, and can run repeatedly. It changes no source file and blocks nothing, so a failure costs only the record.
-
-- **Record only surprises backed by evidence.** Asked what surprised it, a model readily invents plausible surprises. Every row must point to a commit, review comment, failing test or CI run; anything else is left out.
-- **A clean run writes nothing.** There is no "nothing notable" row, so a record's existence means the work taught something, and every row can be trusted.
-- **"Could not look" is not "found nothing".** A run that could not gather its evidence fails rather than reporting a clean result.
-
----
-
 ## The result-line contract
 
 Each stage ends with **one machine-readable verdict line** — the shared interface that lets a script chain the stages without a person reading each report:
@@ -122,7 +110,6 @@ Each stage ends with **one machine-readable verdict line** — the shared interf
 | Stage | Success | Failure |
 |---|---|---|
 | `/build` | `READY branch=<branch>` | `FAILED reason=<short reason>` |
-| `/study` | `STUDIED issue=<N> rows=<n>` | `FAILED reason=<short reason>` |
 | `/verify` | `VERIFIED branch=<branch>` | `FAILED reason=<short reason>` |
 | `/raise-pr` | `RAISED pr=<url>` | `FAILED reason=<short reason>` |
 
@@ -135,9 +122,9 @@ A chain starts the next stage only on the previous stage's success line, and sto
 
 ## Running the stages end to end
 
-Every build-route stage after the issue stage runs unattended, so a script can take one issue from a clean main branch to an open PR with no prompt: `/build` → `/study` → `/verify` → `/study` → `/raise-pr`. By hand, most of the elapsed time is waiting for a person to read each report and start the next stage; the chain removes that wait.
+Every build-route stage after the issue stage runs unattended, so a script can take one issue from a clean main branch to an open PR with no prompt: `/build` → `/verify` → `/raise-pr`. By hand, most of the elapsed time is waiting for a person to read each report and start the next stage; the chain removes that wait.
 
-- **Each stage is its own headless agent process.** The script starts each as a fresh non-interactive run and reads its verdict line. Each study pass resumes the session of the stage it follows, so it studies what that stage saw; the others start fresh and inherit no context.
+- **Each stage is its own headless agent process.** The script starts each as a fresh non-interactive run and reads its verdict line. Every stage starts fresh and inherits no context, so each is reached only through the previous stage's verdict and the state it left on the branch.
 - **Gate on the verdict line; stop at the first failure.** The next stage starts only on the previous one's success line. A `FAILED` line, a missing or garbled verdict, an agent error or a timeout stops the chain. The closing message names the stage, the reason, and the session to reopen; stages that succeeded need not re-run.
 - **Scan for failure permissively and for success precisely — and run the failure scan first.** The two scans fail in opposite directions, so they need opposite tolerances. A failure verdict a model decorated as a heading, a bullet, bold, a backticked phrase or a numbered item is still a failure, so tolerate decoration before and between its words and strip trailing markup off the reason; keep it anchored to the start of a line, or a report that merely *quotes* the phrase in prose aborts a healthy run. The success scan has the reverse problem: unanchored, it matches a longer word that merely ends in the verdict word (`UNVERIFIED branch=…`) and it cannot read negation, so require a non-alphanumeric character or the line start before the verdict word and accept that `not VERIFIED … branch=…` still matches. A missed failure line plus prose like that is how a chain opens a pull request off a failed branch.
 - **The chain changes nothing itself — but it says what was left.** It resets, cleans and pushes nothing, so the branch is as the failing stage left it. For the same reason its closing output has to *describe* that state: the commits the branch holds over the trunk, or that it holds none, and whether the working tree is dirty. A stage killed at its time limit leaves no report of its own, and a review loop stopped mid-way can leave committed, tested, unread fixes behind, so without those lines whoever picks the branch up continues over work nobody has checked. Reading is not writing: the lines are `git log` and `git status` output and change nothing. Put them *before* the closing verdict line, so the closing message stays the last thing the output says. Caveat: a stage stopped by its time limit may leave background work (a test run, a subagent) still writing to the tree.
@@ -162,7 +149,7 @@ Its stub-agent test matrix is `chain.tests.sh`; run it after any edit to the cha
 - **A clean start in its own clone.** Before each run the clone is fetched, forced onto the remote main, and cleaned of every untracked and ignored file (build output and scratch files included), so every run builds from scratch and uses the harness main holds now. Local `feature/*` branches whose upstream was deleted on the remote are removed; `attempt/*` branches are not. The reset is destructive, so the runner refuses any directory that is not a full clone explicitly marked as the runner's, including a worktree of one (worktrees share branches with the checkout they belong to). It changes no other checkout. Nobody edits that clone by hand: each run discards it.
 - **State lives outside the clone.** Logs and the lock sit where the clean cannot delete them.
 - **Nothing to do is not an error.** With nothing eligible, a firing changes nothing and exits 0. A tracker query that fails or returns something unreadable selects nothing and exits 1 (fail closed), and the next firing tries again. So does a machine fault found before the chain starts (the remote unreachable, a required tool missing from `PATH`): the issue is not parked for it.
-- **Failure parks the issue.** When the chain fails, the runner adds the `parked` label and comments with the failed stage and position (`[3/5] verify`), the reason from the chain's closing line, and the log path. The attempt's local `feature/<N>-*` branch is renamed to `attempt/<N>-<timestamp>` and named in the comment. The commits are kept for diagnosis, and the next `/build` can create the issue's branch afresh. Uncommitted changes are lost at the next reset. If `/raise-pr` pushed the branch but opened no pull request, the comment names that remote branch: remove or reuse it by hand before un-parking, or the next push is rejected. A parked issue is never retried automatically; removing the label is the retry.
+- **Failure parks the issue.** When the chain fails, the runner adds the `parked` label and comments with the failed stage and position (`[2/3] verify`), the reason from the chain's closing line, and the log path. The attempt's local `feature/<N>-*` branch is renamed to `attempt/<N>-<timestamp>` and named in the comment. The commits are kept for diagnosis, and the next `/build` can create the issue's branch afresh. Uncommitted changes are lost at the next reset. If `/raise-pr` pushed the branch but opened no pull request, the comment names that remote branch: remove or reuse it by hand before un-parking, or the next push is rejected. A parked issue is never retried automatically; removing the label is the retry.
 - **An interrupted run parks nothing.** Stopping the runner mid-run ends the chain without parking the issue. The next firing that selects the issue keeps the interrupted branch as an `attempt/*` branch and builds the issue again.
 - **Report mode.** A dry run names the issue the next firing would build (or says nothing is eligible). It only reads the tracker: no reset, no lock, no log, no label and no comment.
 - **Retention.** Logs and `attempt/*` branches are kept indefinitely; nothing prunes them.
@@ -308,7 +295,7 @@ The kinds of files a project adds to make this workflow operational (names illus
 
 ### Agent configuration (`.claude/` or `.agents/`)
 - **settings** — checked-in permissions allowlist + hooks: *stale-build guard*, any denylist gates backing a standing exclusion, and a deny path over upstream-managed vendored files. Not here: the test-green gate, which is a real suite run inside `/verify`.
-- **commands** — the slash commands above: `draftissue`, `reviewissue` and `confirmissue` (issue stage); `build` (build stage); the `verify` orchestrator for the pre-PR steps; `raise-pr`, the separate stage after it; and `study`, run after build and after verify. Plus maintenance commands: slop review, dead-code audit, context-gardening, capture-learnings, study-review (reads the study records back and proposes scored fixes), `bugmagnet` (systematic test-coverage and edge-case discovery for one module) and `install-harness-tooling` (installs the token/context plugins below).
+- **commands** — the slash commands above: `draftissue`, `reviewissue` and `confirmissue` (issue stage); `build` (build stage); the `verify` orchestrator for the pre-PR steps; and `raise-pr`, the separate stage after it. Plus maintenance commands: slop review, dead-code audit, context-gardening, capture-learnings, `bugmagnet` (systematic test-coverage and edge-case discovery for one module) and `install-harness-tooling` (installs the token/context plugins below).
 - **scripts** — `chain.sh` with its stub-agent tests `chain.tests.sh`, and `chain-next.sh` for the unattended runner (see *The chain script* and *The chain runner*).
 - **skills / sub-agents** — simplifier, verifier, a `diagnose` skill (a reproduce → minimise → hypothesise → instrument → fix → regression-test loop for hard bugs), and any stack-orchestration script.
 
