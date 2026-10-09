@@ -102,6 +102,8 @@ ok "exits 0" '[ "$RC" = 0 ]'
 ok "exactly three stages started" '[ "$(calls)" = 3 ]'
 ok "stages in order: build, verify, raise-pr" 'prompt_is 1 "/build 270" && prompt_is 2 "/verify" && prompt_is 3 "/raise-pr 270"'
 ok "no stage is a study pass" '! grep -qF -- "/study" "$STUB_DIR/log"'
+# Six lines, because each stage prints both a "— starting" and an "— ok" line. The negative
+# half is what a stray `[n/5]` left in a message would fail on.
 ok "every stage counts itself out of three" '[ "$(grep -c "chain: \\[[0-9]*/3\\]" <<<"$OUTPUT")" = 6 ] && ! grep -q "chain: \\[[0-9]*/5\\]" <<<"$OUTPUT"'
 ok "every stage starts a fresh session" '! grep -qF -- "--resume|" "$STUB_DIR/log"'
 ok "every stage uses the one chosen model" '[ "$(grep -cF -- "--model|test-model|" "$STUB_DIR/log" 2>/dev/null)" = 3 ]'
