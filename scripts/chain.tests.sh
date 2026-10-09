@@ -31,13 +31,16 @@ printf 'this must never reach a stage\n' > "$SB/stdin-data"
 # The stub claude. One log line per invocation, arguments separated by `|` so a lost quote is
 # visible as a new field rather than hidden by space-joining. The reply is the canned JSON the
 # case wrote for that call number. A sleep-<n> file makes call n record its PID and sleep
-# instead — exec, so the recorded PID is the sleeping process itself.
+# instead — exec, so the recorded PID is the sleeping process itself. An act-<n> file is a script
+# run in the case repo before call n replies, so a case can give the repository the branch,
+# commits and working-tree state a real stage would have left behind.
 mkdir -p "$SB/bin"
 cat > "$SB/bin/claude" <<'STUB'
 #!/usr/bin/env bash
 { for a in "$@"; do printf '%s|' "$a"; done; printf '\n'; } >> "$STUB_DIR/log"
 if IFS= read -r -t 0.1 _ <&0 2>/dev/null; then printf 'leaked\n' >> "$STUB_DIR/stdin-leak"; fi
 n=$(grep -c '' "$STUB_DIR/log")
+if [ -f "$STUB_DIR/act-$n" ]; then bash "$STUB_DIR/act-$n" || exit 1; fi
 if [ -f "$STUB_DIR/sleep-$n" ]; then
   echo $$ > "$STUB_DIR/pid-$n"
   exec sleep "$(cat "$STUB_DIR/sleep-$n")"
@@ -247,6 +250,128 @@ git -C "$REPO" checkout -q -b feature/x
 before="$(repo_state)"
 chain --dry-run 270
 ok "a feature branch is still told what would run" '[ "$RC" = 0 ] && [ "$(calls)" = 0 ] && [ "$(repo_state)" = "$before" ]'
+
+# // SCENARIO: A decorated failure verdict still stops the run
+echo "A decorated failure verdict still stops the run:"
+# Every shape chain.sh's line-anchored failure scan used to miss, the one it matched while
+# capturing the trailing markup as part of the reason, and the blockquote it always read, kept as
+# a guard. Each must stop the run AND yield the bare reason, so the assertion pins the whole
+# closing line rather than just the exit code.
+for decorated in \
+  '## FAILED reason=suite red' \
+  '**FAILED** reason=suite red' \
+  '**FAILED reason=suite red**' \
+  '- **FAILED reason=suite red**' \
+  '1. FAILED reason=suite red' \
+  '+ FAILED reason=suite red' \
+  '`FAILED reason=suite red`' \
+  'FAILED  reason=suite red' \
+  '> FAILED reason=suite red'
+do
+  new_case
+  reply 1 "Report of the build stage."$'\n'"$decorated"
+  chain 270
+  ok "stops at build with the bare reason: $decorated" '[ "$RC" = 1 ] && [ "$(calls)" = 1 ] && closing | grep -qxF "chain: FAILED at [1/5] build — suite red"'
+done
+new_case
+reply 1 'READY branch=feature/270-x'
+reply 2 'STUDIED issue=270 rows=0'
+reply 3 $'FAILED reason=no commits on this branch over main\n\nNothing to verify.'
+chain 270
+ok "a /verify precondition stop reaches the chain as its own reason" '[ "$RC" = 1 ] && [ "$(calls)" = 3 ] && closing | grep -qF "no commits on this branch over main" && ! closing | grep -q "no recognisable verdict"'
+new_case
+reply 1 $'Something went wrong.\nFAILED reason='
+chain 270
+ok "a failure verdict with no reason still stops, and says the reason is missing" '[ "$RC" = 1 ] && [ "$(calls)" = 1 ] && closing | grep -qF "build — the stage reported a failure with no reason"'
+
+# // SCENARIO: A failure report that mentions the success verdict is not a success
+echo "A failure report that mentions the success verdict is not a success:"
+new_case
+reply 1 'READY branch=feature/270-x'
+reply 2 'STUDIED issue=270 rows=0'
+reply 3 $'## FAILED reason=last review round found a material problem\n\nThe branch is not VERIFIED — branch=feature/270-x stays unverified.'
+chain 270
+ok "a decorated failure outranks prose that trips the success scan" '[ "$RC" = 1 ] && [ "$(calls)" = 3 ] && closing | grep -qF "last review round found a material problem"'
+
+# // SCENARIO: A word that merely contains the success word is not a success verdict
+echo "A word that merely contains the success word is not a success verdict:"
+new_case
+reply 1 'READY branch=feature/270-x'
+reply 2 'STUDIED issue=270 rows=0'
+reply 3 'The branch is UNVERIFIED branch=feature/270-x and a human should look.'
+chain 270
+ok "UNVERIFIED branch= is not the verify verdict" '[ "$RC" = 1 ] && [ "$(calls)" = 3 ] && closing | grep -q "no recognisable verdict"'
+new_case
+reply 1 'The branch is UNREADY branch=feature/270-x.'
+chain 270
+ok "UNREADY branch= is not the build verdict" '[ "$RC" = 1 ] && [ "$(calls)" = 1 ] && closing | grep -q "no recognisable verdict"'
+new_case
+reply 1 'READY branch=feature/270-x'
+reply 2 'The issue is UNSTUDIED issue=270 so far.'
+chain 270
+ok "UNSTUDIED issue= is not the study verdict" '[ "$RC" = 1 ] && [ "$(calls)" = 2 ] && closing | grep -q "no recognisable verdict"'
+
+# // SCENARIO: A stopped run says what state the branch is in
+echo "A stopped run says what state the branch is in:"
+new_case
+cat > "$STUB_DIR/act-1" <<'ACT'
+git checkout -q -b feature/270-x
+printf 'one\n' > a.txt; git add a.txt; git commit -q -m "Refs #270: add the first thing"
+printf 'two\n' > b.txt; git add b.txt; git commit -q -m "Refs #270: add the second thing"
+printf 'wip\n' > c.txt
+{ git rev-parse HEAD; git rev-parse --abbrev-ref HEAD; git status --porcelain; } > "$STUB_DIR/state-after-act"
+ACT
+reply 1 $'Built, then the suite went red.\nFAILED reason=suite red'
+chain 270
+ok "names the branch and how many commits it holds over main" 'grep -qF "feature/270-x holds 2 commit(s) over main" <<<"$OUTPUT"'
+ok "lists those commits" 'grep -qF "add the first thing" <<<"$OUTPUT" && grep -qF "add the second thing" <<<"$OUTPUT"'
+ok "says the working tree has uncommitted changes" 'grep -q "working tree has uncommitted changes" <<<"$OUTPUT"'
+ok "the closing lines still sit at the tail, after the branch state" '[ "$RC" = 1 ] && closing | grep -qF "chain: FAILED at [1/5] build — suite red" && last_line | grep -q "claude --resume"'
+ok "reporting the state changed nothing in the repository" '[ "$(repo_state)" = "$(cat "$STUB_DIR/state-after-act")" ]'
+new_case
+cat > "$STUB_DIR/act-1" <<'ACT'
+git checkout -q -b feature/270-x
+printf 'one\n' > a.txt; git add a.txt; git commit -q -m "Refs #270: add the first thing"
+printf 'wip\n' > b.txt
+ACT
+echo 30 > "$STUB_DIR/sleep-1"
+# A longer limit than the other stall cases: this stub does git work before it sleeps.
+CHAIN_STAGE_TIMEOUT=3 chain 270
+ok "a stage killed at its time limit still has its branch state reported" '[ "$RC" = 1 ] && closing | grep -q stalled && grep -qF "feature/270-x holds 1 commit(s) over main" <<<"$OUTPUT" && grep -q "working tree has uncommitted changes" <<<"$OUTPUT"'
+
+# // SCENARIO: A stopped run with nothing left behind says so
+echo "A stopped run with nothing left behind says so:"
+new_case
+reply 1 $'Could not build it.\nFAILED reason=issue unbuildable as written'
+before="$(repo_state)"
+chain 270
+ok "says the branch holds no commits over main and the tree is clean" '[ "$RC" = 1 ] && grep -q "holds no commits over main" <<<"$OUTPUT" && grep -q "working tree is clean" <<<"$OUTPUT"'
+ok "branch, commits and working tree untouched" '[ "$(repo_state)" = "$before" ]'
+
+# // SCENARIO: A zero time limit is refused
+echo "A zero time limit is refused:"
+new_case
+before="$(repo_state)"
+CHAIN_STAGE_TIMEOUT=0 chain 270
+ok "exits 1 naming the override, no stage started, nothing changed" '[ "$RC" = 1 ] && [ "$(calls)" = 0 ] && grep -q "CHAIN_STAGE_TIMEOUT" <<<"$OUTPUT" && [ "$(repo_state)" = "$before" ]'
+new_case
+before="$(repo_state)"
+CHAIN_STAGE_TIMEOUT=0 chain --dry-run 270
+ok "a zero override is still told what would run" '[ "$RC" = 0 ] && [ "$(calls)" = 0 ] && [ "$(repo_state)" = "$before" ]'
+new_case
+reply 1 'READY branch=feature/270-x'; reply 2 'STUDIED issue=270 rows=0'; reply 3 'VERIFIED branch=feature/270-x'
+reply 4 'STUDIED issue=270 rows=1'; reply 5 'RAISED pr=https://github.com/o/r/pull/9'
+CHAIN_STAGE_TIMEOUT=60 chain 270
+ok "a non-zero override is still accepted" '[ "$RC" = 0 ] && [ "$(calls)" = 5 ]'
+new_case
+before="$(repo_state)"
+CHAIN_STAGE_TIMEOUT=abc chain 270
+ok "an override that is not a whole number is refused before any stage starts" '[ "$RC" = 1 ] && [ "$(calls)" = 0 ] && grep -q "CHAIN_STAGE_TIMEOUT" <<<"$OUTPUT" && [ "$(repo_state)" = "$before" ]'
+new_case
+reply 1 'READY branch=feature/270-x'; reply 2 'STUDIED issue=270 rows=0'; reply 3 'VERIFIED branch=feature/270-x'
+reply 4 'STUDIED issue=270 rows=1'; reply 5 'RAISED pr=https://github.com/o/r/pull/9'
+CHAIN_STAGE_TIMEOUT= chain 270
+ok "an empty override is no override" '[ "$RC" = 0 ] && [ "$(calls)" = 5 ]'
 
 echo ""
 echo "RESULT: $pass passed, $fail failed"

@@ -2,6 +2,8 @@
 
 **Supersedes:** [2026-09-25-verify-reviewer-waves.md](2026-09-25-verify-reviewer-waves.md) — "Step 3 is untouched". Step 3 now commits per round and decides whether another round runs; the two-wave rule governs round one only.
 
+**Superseded in part by:** [2026-10-08-last-review-round-only-reads.md](2026-10-08-last-review-round-only-reads.md) — "Bound of three, round one included" and its `VERIFY_LIMIT` sizing. Read the bound, the `unreviewed` marker and the non-convergence verdict below as the history they are; everything else here stands.
+
 **Intent:** A branch reported `VERIFIED` should contain no change that only the test suite has looked at. On #239 / PR #327, `/verify`'s fix commit narrowed a blanket `catch` in `OoklaSpeedtest.ScreenServerAsync`, letting a non-HTTP server URL fail the whole selection. No reviewer read it and no test covered it, so the branch was reported verified.
 
 **Behaviour:** The mechanics live in `.claude/commands/verify.md` steps 2–3. In short: each round's edits are committed and the next round reviews exactly that commit; the loop ends when a round changes nothing, or `FAILED reason=review rounds did not converge` after three rounds.
