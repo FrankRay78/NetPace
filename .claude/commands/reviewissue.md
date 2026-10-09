@@ -22,9 +22,7 @@ You **MUST** resolve this before proceeding. If empty, ask the user which issue 
 
 This command is a **pre-build gate**. It sits *before* `/build`.
 
-Its job is to read an unrefined GitHub issue, cross-reference it against the
-current codebase (architecture, existing services, test data, docs), and surface
-everything that would otherwise block or distort the build:
+Its job is to read an unrefined GitHub issue, cross-reference it against the current codebase (architecture, existing services, test data, docs), and surface everything that would otherwise block or distort the build:
 
 - ambiguities in scope
 - undefined semantics (matching rules, thresholds, field lists)
@@ -33,8 +31,7 @@ everything that would otherwise block or distort the build:
 - inconsistencies between the issue text and reality on disk
 - missing non-functional requirements (auth, rate limits, data seeding)
 
-The output is a **single GitHub comment** posted on the issue, structured so the
-issue author can record answers inline beneath each question.
+The output is a **single GitHub comment** posted on the issue, structured so the issue author can record answers inline beneath each question.
 
 ---
 
@@ -42,9 +39,7 @@ issue author can record answers inline beneath each question.
 
 ### 1. Fetch the issue and detect mode
 
-Use `gh issue view <number> --repo <owner/repo> --json title,body,labels,comments`
-(infer owner/repo from the URL if given, otherwise use the current repository's
-`origin`).
+Use `gh issue view <number> --repo <owner/repo> --json title,body,labels,comments` (infer owner/repo from the URL if given, otherwise use the current repository's `origin`).
 
 Check two things, in this order.
 
@@ -59,13 +54,11 @@ Check two things, in this order.
 
 Issues confirmed before the review was deleted on confirmation still carry their old review comment: the `ready` check catches them first, and the sentinel catches them if the label was never applied.
 
-If existing non-review comments already resolve a gap you would otherwise raise,
-do not raise it again.
+If existing non-review comments already resolve a gap you would otherwise raise, do not raise it again.
 
 ### 2. Ground the review in the codebase
 
-Before drafting gaps, read enough of the codebase to make the review *specific*
-rather than generic. At minimum:
+Before drafting gaps, read enough of the codebase to make the review *specific* rather than generic. At minimum:
 
 - `CLAUDE.md` and any documents it links (architecture, cheatsheet, testing conventions)
 - The source tree area the issue is adding to or changing
@@ -73,8 +66,7 @@ rather than generic. At minimum:
 - Test data, fixtures, and seed scripts referenced (directly or by implication) in the issue
 - Deployment/docker config if the issue touches runtime shape
 
-If the issue names a path (e.g. `src/GovernmentIdentityService/`), check whether
-that path already exists and what conventions its siblings follow.
+If the issue names a path (e.g. `src/GovernmentIdentityService/`), check whether that path already exists and what conventions its siblings follow.
 
 ### 3. Identify gaps
 
@@ -84,12 +76,7 @@ Each gap (in either group) must:
 
 - be answerable with a short written response (not "go figure it out")
 - cite concrete evidence from the issue or codebase where relevant
-- end with a **Recommendation:** line — your best call with a
-  one-sentence *Reason*. This is mandatory, not optional. The author should
-  be able to read the recommendation and either accept it (record a short
-  affirmative answer) or redirect it (record their chosen alternative). A
-  gap without a recommendation forces the author to originate the answer
-  from scratch, which is exactly the work this command is meant to front-load.
+- end with a **Recommendation:** line — your best call with a one-sentence *Reason*. This is mandatory, not optional. The author should be able to read the recommendation and either accept it (record a short affirmative answer) or redirect it (record their chosen alternative). A gap without a recommendation forces the author to originate the answer from scratch, which is exactly the work this command is meant to front-load.
 
 **Raise a gap only where the issue leaves something open.** A gap exists because the issue does not determine the answer — someone building this would have to invent it or guess. Test every candidate against the issue as it stands: if the body, its acceptance criteria, its out-of-scope list, or an existing non-review comment (step 1) already settles the point, there is no gap, however squarely a category below invites one. A category you considered and found settled produces **nothing** — no gap, no placeholder, and no commentary bullet announcing that it is fine.
 
@@ -211,45 +198,28 @@ Before building this, the following points need answers. The table lists every g
 
 **Check the draft before posting.** Composing to a bound is not the same as meeting one — count, do not estimate. Before step 5 posts, verify against the draft: one table row per gap, its title matching the gap verbatim and its type matching the group heading the gap sits under; no unescaped `|` anywhere in the table's content, inside inline code included, so every row renders as exactly three columns; every gap carrying a recommendation with its one-sentence reason, and an answer slot; every factual claim in every Reason checked against what it names, a claim found false dropped, and a claim that cannot be checked kept only inside a judgement Reason (see *Every Reason survives being checked* below); every gap within the bound, counted rather than judged; and no line above the first group heading matching either `**N. <title>**` or `> _Answer:_`. Fix what fails and re-check. This applies again to a refine run's edit (step 6), minus the bound, with the pipe check limited to the row it changed and the Reason check limited to the gap it re-framed — every other row and gap passes through as posted.
 
-**Recommendation quality bar:** the recommendation must be a concrete,
-actionable default (a value, a library, a field name, an HTTP status, an
-"in/out of scope" call) — not a meta-suggestion like "consider X". If you
-genuinely have no view, say so explicitly and list the options with their
-trade-offs; don't fake confidence. The *Reason* cites the evidence that led
-you there (existing convention in the codebase, Fabric/framework behaviour,
-POC posture, etc.), not a restatement of the recommendation.
+**Recommendation quality bar:** the recommendation must be a concrete, actionable default (a value, a library, a field name, an HTTP status, an "in/out of scope" call) — not a meta-suggestion like "consider X". If you genuinely have no view, say so explicitly and list the options with their trade-offs; don't fake confidence. The *Reason* cites the evidence that led you there (existing convention in the codebase, Fabric/framework behaviour, POC posture, etc.), not a restatement of the recommendation.
 
 **Every Reason survives being checked.** A Reason either cites something checkable — a file or line, command output, the issue's own text — or says plainly that it is your judgement (`Reason: my judgement — <why>.`), so the author can tell an evidenced recommendation from an opinion. Before posting, check every factual claim in every Reason against the thing it names: re-open the file, re-run the search, re-read the issue text, rather than trusting what you remember reading. A claim about how the repository or harness behaves — "X is the standing default", "every sibling does Y" — is a factual claim even though it names no source: search the repository for where that behaviour would be set or shown, and finding nothing means the claim fails. A claim that fails is dropped, and the Reason rewritten as your judgement without it — a `my judgement` label never carries a claim already found false. A claim this run's tools cannot check (in the automated workflow, anything outside the checkout and the issue snapshot, such as another issue's text) may stay, but only inside a judgement Reason. Either way the Recommendation stays, and a failed check never blocks posting. On a refine run's edit (step 6) the check covers only the re-framed gap's Reason; every other gap passes through as posted. The check establishes only that the evidence is true — whether the recommendation is a good default stays the author's call when answering.
 
-**Link rules** — the comment is rendered on `https://github.com/<owner>/<repo>/issues/<N>`,
-so GitHub resolves relative paths against the *issue URL*, not the repo root
-(`[foo](src/Foo.cs)` becomes `…/issues/src/Foo.cs` — broken). Every link to a
-file, directory, or line range **must** be an absolute GitHub URL:
+**Link rules** — the comment is rendered on `https://github.com/<owner>/<repo>/issues/<N>`, so GitHub resolves relative paths against the *issue URL*, not the repo root (`[foo](src/Foo.cs)` becomes `…/issues/src/Foo.cs` — broken). Every link to a file, directory, or line range **must** be an absolute GitHub URL:
 
 - File: `https://github.com/<owner>/<repo>/blob/<default-branch>/<path>`
 - File with line: append `#L<line>` or `#L<start>-L<end>`
 - Directory: `https://github.com/<owner>/<repo>/tree/<default-branch>/<path>`
 
-Resolve `<owner>/<repo>` from the issue (already known from step 1) and
-`<default-branch>` via `gh repo view <owner>/<repo> --json defaultBranchRef --jq .defaultBranchRef.name`
-once at the start of step 4 — reuse the result for every link in the body.
-The link *text* can stay short (e.g. `[Program.cs:232-233](https://github.com/owner/repo/blob/main/src/NetPace.Console/Program.cs#L232-L233)`) so readability is unaffected.
+Resolve `<owner>/<repo>` from the issue (already known from step 1) and `<default-branch>` via `gh repo view <owner>/<repo> --json defaultBranchRef --jq .defaultBranchRef.name` once at the start of step 4 — reuse the result for every link in the body. The link *text* can stay short (e.g. `[Program.cs:232-233](https://github.com/owner/repo/blob/main/src/NetPace.Console/Program.cs#L232-L233)`) so readability is unaffected.
 
-This rule applies equally to refine-run edits in step 6 — any new links added
-during re-framing must use the same absolute form.
+This rule applies equally to refine-run edits in step 6 — any new links added during re-framing must use the same absolute form.
 
 ### 5. Post the comment (first run only)
 
 Post via `gh issue comment <number> --repo <owner/repo> --body "$(cat <<'EOF' ... EOF)"`.
 
-**Escaping rules** — the heredoc body will contain backticks for inline code
-(paths, class names, file names). To avoid shell interpretation issues:
+**Escaping rules** — the heredoc body will contain backticks for inline code (paths, class names, file names). To avoid shell interpretation issues:
 
-- Use `'EOF'` (quoted) as the heredoc delimiter — this disables shell
-  expansion inside the body, so backticks, `$`, and `\` are all passed through
-  literally.
-- Never use unquoted `EOF` here — it will try to expand `$variable` references
-  and break on backticks.
+- Use `'EOF'` (quoted) as the heredoc delimiter — this disables shell expansion inside the body, so backticks, `$`, and `\` are all passed through literally.
+- Never use unquoted `EOF` here — it will try to expand `$variable` references and break on backticks.
 
 After posting, mark the issue as waiting on the author:
 
@@ -261,15 +231,9 @@ gh issue edit <number> --repo <owner/repo> --add-label "needs answers"
 
 ### 6. Refine an existing review comment (re-runs)
 
-When step 1 detects an existing comment with `<!-- speckit:review -->`, **do not
-post a new comment** and **do not re-do gap analysis**. The downstream
-`/confirmissue` command depends on every numbered gap (with its
-`**Recommendation:**` and `> _Answer:_` lines) staying in the comment until
-it folds them into the issue body. So this step is intentionally narrow:
-its only job is to expand questions where the author asked for help.
+When step 1 detects an existing comment with `<!-- speckit:review -->`, **do not post a new comment** and **do not re-do gap analysis**. The downstream `/confirmissue` command depends on every numbered gap (with its `**Recommendation:**` and `> _Answer:_` lines) staying in the comment until it folds them into the issue body. So this step is intentionally narrow: its only job is to expand questions where the author asked for help.
 
-Fetch the comment body verbatim (e.g. `gh api repos/<owner>/<repo>/issues/comments/<id>`
-or via the comments JSON from step 1) and walk each numbered gap. For each:
+Fetch the comment body verbatim (e.g. `gh api repos/<owner>/<repo>/issues/comments/<id>` or via the comments JSON from step 1) and walk each numbered gap. For each:
 
 | Answer state | Heuristic | Action |
 |---|---|---|
@@ -300,14 +264,11 @@ gh api -X PATCH repos/<owner>/<repo>/issues/comments/<id> \
   -F body=@.claude/scratch/reviewissue-body.md
 ```
 
-(Omit the leading `/` on the endpoint — Git Bash on Windows rewrites `/repos/...`
-as a filesystem path. `gh api` accepts both forms on Linux/macOS.)
+(Omit the leading `/` on the endpoint — Git Bash on Windows rewrites `/repos/...` as a filesystem path. `gh api` accepts both forms on Linux/macOS.)
 
 ### 7. Do not modify the issue body
 
-Your role is to comment, not edit. The issue author answers inline in the
-comment you posted (or in a follow-up), and then runs `/confirmissue`
-when ready — that command is the one that touches the issue body.
+Your role is to comment, not edit. The issue author answers inline in the comment you posted (or in a follow-up), and then runs `/confirmissue` when ready — that command is the one that touches the issue body.
 
 ---
 
