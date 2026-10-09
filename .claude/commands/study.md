@@ -96,7 +96,7 @@ There is deliberately **no *Goal* level** — no row for "this work should not h
      Good:
 
      ```markdown
-     | Reviewer (silent-failure-hunter): `claude -p` errors flagged in `is_error` with exit 0 were reported as "no recognisable verdict" | Execution | Checked `is_error`; raw reply printed when it will not parse (576f865) |
+     | Reviewer (silent-failure-hunter): `claude -p` errors flagged in `is_error` with exit 0 were reported as a verdict the chain could not read | Execution | Checked `is_error`; raw reply printed when it will not parse (576f865) |
      ```
 
      Too long — the same finding, with its mechanism and proof in the row:
@@ -139,4 +139,4 @@ There is deliberately **no *Goal* level** — no row for "this work should not h
 - `STUDIED issue=<N> rows=<n>` — `rows=<n>` counts the rows this run added, so `rows=0` is the verdict for a clean run and for a re-run with nothing new. On `rows=0` nothing was written, so the tree is exactly as it was found — which is not the same as clean: if the step-1 baseline was non-empty, say so and name the paths, because `/verify` refuses to start on a dirty tree.
 - `FAILED reason=<short reason>` — a precondition or a step stopped the run. The repository is unchanged, unless the report explicitly names paths left modified. This never blocks anything else; it means only that no record was written.
 
-`scripts/chain.sh` reads the last non-blank line of the report and nothing else, so the verdict must be the last thing written — a row table, a closing sentence or a code fence beneath it costs the run its verdict and stops the chain. This matters more here than anywhere: recording what went wrong is `/study`'s whole job, so its rows routinely quote `FAILED reason=…` and the chain's own verdict words. Above the verdict line that is free — in prose, a bullet, a fence or a table row — and cannot be mistaken for this run's own verdict.
+`scripts/chain.sh` reads the last non-blank line of the report and nothing else, so the verdict must be the last thing written — a row table, a closing sentence or a code fence beneath it costs the run its verdict and stops the chain. This matters more here than anywhere: recording what went wrong is `/study`'s whole job, so its rows routinely quote `FAILED reason=…` and the chain's own verdict words. Above the verdict line that is free — in prose, a bullet, a fence or a table row — and cannot be mistaken for this run's own verdict. Decoration on that one line is tolerated, not invited: one leading heading, bullet, numbered-item or blockquote marker, a wrapping run of `*`, `_` or backticks, and an indent of up to three spaces are stripped. Nothing else is — a four-space indent is a code block, and a line carrying anything besides the verdict is read as no verdict at all.
