@@ -138,9 +138,9 @@ fail() {
 
 # run_stage <position> <name> <prompt> <verdict ERE> <limit>
 # Prints the stage's report, and leaves the report text in $STAGE_RESULT and the session id in
-# $STAGE_SESSION — globals the caller reads: fail() names the session to reopen, and the closing
-# line reads the last report. A success verdict is searched for anywhere in the report: it is not
-# reliably the last line.
+# $STAGE_SESSION — globals: the caller reads the last report for the closing line, and fail()
+# reads the session id to name the session to reopen. A success verdict is searched for anywhere
+# in the report: it is not reliably the last line.
 run_stage() {
   local pos=$1 name=$2 prompt=$3 verdict=$4 limit=$5
   local reply rc reason is_error subtype

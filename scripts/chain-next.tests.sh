@@ -104,7 +104,7 @@ if [ -f "$STUB_DIR/push-then-fail-$n" ]; then
 fi
 if [ -f "$STUB_DIR/fail-$n" ]; then
   echo "chain: FAILED at [2/3] verify — suite red"
-  echo "chain: no later stage ran; reopen that stage with \`claude --resume sess-3\`."
+  echo "chain: no later stage ran; reopen that stage with \`claude --resume sess-2\`."
   exit 1
 fi
 git push -q -u origin "feature/$n-work"
@@ -254,9 +254,9 @@ touch "$STUB_DIR/fail-8"
 fire
 ok "exits non-zero" '[ "$RC" != 0 ]'
 ok "the issue is marked parked" '[ "$(labels_of 8)" = "ready,parked" ]'
-ok "the comment names the failed stage and its reason" 'grep -qF "verify" "$STUB_DIR/comment-8.txt" && grep -qF "2/3" "$STUB_DIR/comment-8.txt" && grep -qF "suite red" "$STUB_DIR/comment-8.txt"'
+ok "the comment names the failed stage and its reason" 'grep -qF "stopped at **[2/3] verify** — suite red" "$STUB_DIR/comment-8.txt"'
 log=$(ls "$STATE"/logs/8-*.log 2>/dev/null | head -n 1)
-ok "the comment names the log, which holds the chain's full output" '[ -n "$log" ] && grep -qF "$log" "$STUB_DIR/comment-8.txt" && grep -qF "claude --resume sess-3" "$log"'
+ok "the comment names the log, which holds the chain's full output" '[ -n "$log" ] && grep -qF "$log" "$STUB_DIR/comment-8.txt" && grep -qF "claude --resume sess-2" "$log"'
 kept=$(git -C "$CLONE" for-each-ref --format='%(refname:short)' 'refs/heads/attempt/8-*')
 ok "the attempt's work is kept on an attempt branch, which the comment names" '[ -n "$kept" ] && grep -qF "$kept" "$STUB_DIR/comment-8.txt" && [ "$(git -C "$CLONE" log -1 --format=%s "$kept")" = "Refs #8: stub work" ]'
 ok "no feature branch for the issue is left behind" '[ -z "$(git -C "$CLONE" for-each-ref "refs/heads/feature/8-*")" ]'

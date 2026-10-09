@@ -126,6 +126,11 @@ reply 1 'READY `branch=feature/270-x`'; reply 2 '## VERIFIED `branch=feature/270
 reply 3 'RAISED pr=https://github.com/o/r/pull/9'
 chain 270
 ok "markdown between a verdict's two words is still that verdict" '[ "$RC" = 0 ] && [ "$(calls)" = 3 ]'
+new_case
+reply 1 'READY branch=feature/270-x'; reply 2 '**VERIFIED** branch=feature/270-x'
+reply 3 'RAISED pr=https://github.com/o/r/pull/9'
+chain 270
+ok "a verdict word wrapped in bold is still that verdict" '[ "$RC" = 0 ] && [ "$(calls)" = 3 ]'
 
 # // SCENARIO: A failing stage stops the run
 echo "A failing stage stops the run:"
@@ -188,6 +193,7 @@ reply 1 'READY branch=feature/270-x'; reply 2 'VERIFIED branch=feature/270-x'
 reply 3 'A pull request for this branch already exists: https://github.com/o/r/pull/8'
 chain 270
 ok "a mentioned pull request is not a raised one" '[ "$RC" = 1 ] && closing | grep -q "no recognisable verdict" && ! last_line | grep -q "chain: done"'
+ok "the last stage is named raise-pr, third of three" 'closing | grep -qF "chain: FAILED at [3/3] raise-pr — "'
 
 # // SCENARIO: A stalled stage ends the run
 echo "A stalled stage ends the run:"

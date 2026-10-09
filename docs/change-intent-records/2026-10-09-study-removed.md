@@ -1,12 +1,12 @@
 # The study mechanism is removed, and nothing replaces it
 
-**Supersedes:** [2026-09-14-chain-raises-pr-unattended.md](2026-09-14-chain-raises-pr-unattended.md) — the gate list in *Decisions*. The pull request is no longer reachable past "both study passes", because there are none; `/verify`'s green suite and review are now the whole gate before `/raise-pr`.
+**Supersedes:** [2026-09-14-chain-raises-pr-unattended.md](2026-09-14-chain-raises-pr-unattended.md) — the gate list in *Constraints*, and the five-stage sequence in its *Intent* and `--dry-run` constraint. The pull request is no longer reachable past "both study passes", because there are none; `/verify`'s green suite and review are now the whole gate before `/raise-pr`.
 
 **Intent:** Stop paying chain time and chain failure modes for records that never produced usable guidance. Issue #334 has the evidence, from a `/study-review` run on 2026-10-08: of 163 rows across the 19 records then present, 111 were Execution and most of those opened `Reviewer (…):` — an in-branch `/verify` finding caught and fixed in the same run, which is the harness working rather than a surprise. Two rows recorded something that got past `/verify`.
 
 **Behaviour:** `scripts/chain.sh` runs build, verify, raise-pr and counts stages out of three. `/study`, `/study-review` and `docs/study/` no longer exist.
 
-**Constraints:** Dated change-intent records that mention study stay as written; this record supersedes the decisions they carry rather than rewriting history.
+**Constraints:** Dated change-intent records that mention study stay as written rather than being rewritten. Only the record named above carries a study decision, which this one supersedes; the others cite `docs/study/` records as evidence, and those now live only in git history.
 
 **Decisions:**
 
