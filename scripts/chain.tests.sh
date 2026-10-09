@@ -373,6 +373,22 @@ reply 4 'STUDIED issue=270 rows=1'; reply 5 'RAISED pr=https://github.com/o/r/pu
 CHAIN_STAGE_TIMEOUT= chain 270
 ok "an empty override is no override" '[ "$RC" = 0 ] && [ "$(calls)" = 5 ]'
 
+# // SCENARIO: A stage that rewrites the chain script does not derail the run
+# Bash reads a script from disk as it runs it, so a stage that edits chain.sh in place — any issue
+# whose work is the chain itself — used to leave the run executing whatever text sat at its old
+# position in the new file (#348, which parked #345 after a build that had succeeded). The case
+# runs a copy, and its first stage overwrites that copy in place with nothing but `exit 97`.
+echo "A stage that rewrites the chain script does not derail the run:"
+new_case
+cp "$CHAIN" "$SB/case$cases/chain.sh"
+cat > "$STUB_DIR/act-1" <<ACT
+for _ in \$(seq 1 4000); do echo 'exit 97'; done > "$SB/case$cases/chain.sh"
+ACT
+reply 1 'READY branch=feature/270-x'; reply 2 'STUDIED issue=270 rows=0'; reply 3 'VERIFIED branch=feature/270-x'
+reply 4 'STUDIED issue=270 rows=1'; reply 5 'RAISED pr=https://github.com/o/r/pull/9'
+CHAIN="$SB/case$cases/chain.sh" chain 270
+ok "the run finishes on the script it started with" '[ "$RC" = 0 ] && [ "$(calls)" = 5 ] && [ "$(last_line)" = "chain: done — https://github.com/o/r/pull/9" ]'
+
 echo ""
 echo "RESULT: $pass passed, $fail failed"
 [ "$fail" = 0 ]
