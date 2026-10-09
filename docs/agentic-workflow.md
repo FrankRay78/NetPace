@@ -55,6 +55,7 @@ The confirmed issue **is** the specification. There is no separate spec, test pl
 ### Periodic (not per-feature)
 - **capture learnings** — fold corrections back into memory/skills. Not part of `/verify`: it needs human curation and batches better, so run it at a supervised checkpoint after several features.
 - **dead-code audit** — every few features or before a release; **not per-PR**.
+- **codebase audit** — after a batch of merges or before a release; **not per-PR**. The whole-tree counterpart to the diff-shaped reviewers, which have nothing to read once a branch has merged: several independent lenses over the committed tree, every finding challenged by a separate agent given the claim alone, and the survivors raised as one issue. It records findings and changes nothing.
 - **context gardening** — quarterly or after a big architectural shift.
 
 ---
@@ -300,7 +301,7 @@ The kinds of files a project adds to make this workflow operational (names illus
 
 ### Agent configuration (`.claude/` or `.agents/`)
 - **settings** — checked-in permissions allowlist + hooks: *stale-build guard*, any denylist gates backing a standing exclusion, and a deny path over upstream-managed vendored files. Not here: the test-green gate, which is a real suite run inside `/verify`.
-- **commands** — the slash commands above: `draftissue`, `reviewissue` and `confirmissue` (issue stage); `build` (build stage); the `verify` orchestrator for the pre-PR steps; and `raise-pr`, the separate stage after it. Plus maintenance commands: slop review, dead-code audit, context-gardening, capture-learnings, `bugmagnet` (systematic test-coverage and edge-case discovery for one module) and `install-harness-tooling` (installs the token/context plugins below).
+- **commands** — the slash commands above: `draftissue`, `reviewissue` and `confirmissue` (issue stage); `build` (build stage); the `verify` orchestrator for the pre-PR steps; and `raise-pr`, the separate stage after it. Plus maintenance commands: slop review, dead-code audit, codebase audit, context-gardening, capture-learnings, `bugmagnet` (systematic test-coverage and edge-case discovery for one module) and `install-harness-tooling` (installs the token/context plugins below).
 - **scripts** — `chain.sh` with its stub-agent tests `chain.tests.sh`, and `chain-next.sh` for the unattended runner (see *The chain script* and *The chain runner*).
 - **skills / sub-agents** — simplifier, verifier, a `diagnose` skill (a reproduce → minimise → hypothesise → instrument → fix → regression-test loop for hard bugs), and any stack-orchestration script.
 

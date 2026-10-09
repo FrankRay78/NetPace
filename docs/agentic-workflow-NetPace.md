@@ -117,6 +117,16 @@ Follows the generic *verify gate*. NetPace's specifics:
 - **Review A (steps 2–3), round one:** two waves of the applicable reviewers. Wave 1: the five report-only `pr-review-toolkit` reviewers and `/review-slop`, together. Wave 2: `pr-review-toolkit:code-simplifier`, which edits files, alone.
 - **Review A, follow-up rounds:** a single parallel wave over the previous round's commit only — `pr-review-toolkit:code-reviewer` and `pr-review-toolkit:silent-failure-hunter` always, plus `pr-review-toolkit:pr-test-analyzer`, `pr-review-toolkit:comment-analyzer` and `pr-review-toolkit:type-design-analyzer` when that commit touched a test, a comment or doc, or a type respectively. No `code-simplifier`, so no wave 2, and no `/review-slop` — left out on cost rather than because it is already covered, since round one swept the branch before the fix commit existed and so never saw the fix diff. Bound at four rounds in total ([CIR](change-intent-records/2026-10-08-last-review-round-only-reads.md)).
 
+## `/audit-codebase`
+
+Follows the generic *codebase audit* periodic task. NetPace's specifics:
+
+- **Argument:** a tag or commit that starts the "what changed" window, normally the last release tag. With none, the command asks and stops.
+- **Lenses:** constitutional conformance, test-suite integrity, docs against code, harness consistency, and dead code and duplication.
+- **Evidence gathered first:** the build and suite with coverage (`dotnet-coverage`), `dotnet list package --deprecated` and `--outdated`, `nuget-license`, Roslynator's unused-symbol search and `jscpd`. The four that are not part of the SDK run one-shot at a pinned version (`dotnet tool exec`, `npx`), so the command adds no tool manifest. A tool that cannot run is named in the report rather than stopping the audit.
+- **Output:** one issue labelled `housekeeping`, never `ready`, `review` or `confirm`, so neither the chain runner nor the issue-review workflows pick it up.
+- **Not covered:** security and mutation testing ([CIR](change-intent-records/2026-10-09-codebase-audit-command.md)).
+
 ## Permissions
 
 The mechanism is in the generic *Permissions and unattended runs*. NetPace's rule changes:
