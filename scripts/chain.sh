@@ -40,7 +40,7 @@ STUDY_LIMIT=${CHAIN_STAGE_TIMEOUT:-1800}
 # unattended chain ran three full rounds, each with fixes and a suite re-run, in about 48 minutes,
 # and a follow-up round cost roughly a third of round one; verify.md's four rounds, the last of
 # which never fixes, should land near an hour. The limit is the stage's only stall detector, so
-# the headroom is deliberately about twice the measurement and no more.
+# the headroom is deliberately about twice that projection and no more.
 VERIFY_LIMIT=${CHAIN_STAGE_TIMEOUT:-7200}
 RAISE_PR_LIMIT=${CHAIN_STAGE_TIMEOUT:-1800}
 
@@ -71,9 +71,10 @@ fi
 # as an unhelpful launch failure blamed on the stage. Reject it here, where the cause is obvious.
 # Zero is a whole number and passes to `timeout` happily, where it means *no limit* — which
 # silently removes the only stall detector any stage has, so a hung run is never reported at all.
-# Tested with ${VAR+x} rather than ${VAR:-0}, so an unset override is not read as a zero one.
-if [ -n "${CHAIN_STAGE_TIMEOUT+x}" ]; then
-  case "$CHAIN_STAGE_TIMEOUT" in ''|*[!0-9]*)
+# Tested for a non-empty value rather than through ${VAR:-0}, so an unset or empty override, which
+# the limits above already treat as no override, is not read as a zero one.
+if [ -n "${CHAIN_STAGE_TIMEOUT:-}" ]; then
+  case "$CHAIN_STAGE_TIMEOUT" in *[!0-9]*)
     echo "chain: refused — CHAIN_STAGE_TIMEOUT must be a whole number of seconds; got '$CHAIN_STAGE_TIMEOUT'." >&2; exit 1 ;;
   esac
   if [ "$CHAIN_STAGE_TIMEOUT" -eq 0 ]; then
@@ -99,8 +100,8 @@ FAIL_VERDICT='^[[:space:]]*([0-9]+[.)][[:space:]]*)?[^[:alnum:]]*FAILED[^[:alnum
 
 # branch_state — what a stopping run leaves behind: the commits the current branch holds over
 # main, and whether the working tree is dirty. Read-only, like everything else the chain does to
-# the repository. Printed *before* fail()'s closing lines, not after, because both
-# chain.tests.sh and chain-next.sh locate the verdict at the tail of the output.
+# the repository. Printed *before* fail()'s closing lines, not after, so the verdict stays the
+# last thing in the output: chain.tests.sh reads it from the tail, and so does a person.
 branch_state() {
   local branch commits status
   if ! branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null) || [ -z "$branch" ]; then
