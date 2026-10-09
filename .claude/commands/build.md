@@ -97,6 +97,11 @@ Two named exceptions, because `CLAUDE.md` requires discussion for them:
 - **RED evidence**: the failing-test output you saw before writing production code.
 - **What you changed**, at a behaviour level, and how each acceptance criterion is met.
 - **Any assumption** you made on an ambiguous point, any public-API change, and anything you deliberately left out of scope.
-- Then exactly one of:
-  - `READY branch=<branch>` — every criterion implemented, whole suite green, everything committed, tree clean. Follow with: "Run `/verify` to format, gate, review and commit, then `/raise-pr` to push and open the PR — `/raise-pr` derives `Closes #<N>` from this branch name and verifies it before use, then reports what it settled; check that line to confirm the link was made."
-  - `FAILED reason=<short reason>` — you could not reach that state. Report the wall you actually hit, discovered by working: the criteria conflict, they do not determine the design, the change is larger than they describe. Do not fabricate READY.
+- On the way to a `READY` verdict, add: "Run `/verify` to format, gate, review and commit, then `/raise-pr` to push and open the PR — `/raise-pr` derives `Closes #<N>` from this branch name and verifies it before use, then reports what it settled; check that line to confirm the link was made."
+
+**Close the report with the verdict on its own last line** — plain, at column 1, nothing else on that line and nothing after it. Exactly one of:
+
+- `READY branch=<branch>` — every criterion implemented, whole suite green, everything committed, tree clean.
+- `FAILED reason=<short reason>` — you could not reach that state. Report the wall you actually hit, discovered by working: the criteria conflict, they do not determine the design, the change is larger than they describe. Do not fabricate READY.
+
+`scripts/chain.sh` reads the last non-blank line of the report and nothing else, so one more sentence, a closing pleasantry or a code fence after the verdict costs the run its verdict and stops the chain. The upside of reading only that line: quoting either verdict *earlier* in the report — as RED evidence, in a code block, a list or a table — is free and cannot be mistaken for your own.

@@ -133,6 +133,10 @@ There is deliberately **no *Goal* level** — no row for "this work should not h
 - **What was recorded** — each row's finding and level, or an explicit statement that nothing was recorded and why that is the normal outcome. On a re-run, say what was added and what was recognised as already present.
 - **Anything flagged for `/capture-learnings`** — findings that look mechanically enforceable, which `/study` deliberately did not act on.
 - **Any pre-existing working-tree changes** from the step-1 baseline to files other than `docs/study/<N>.md`, left untouched and named.
-- Then exactly one of:
-  - `STUDIED issue=<N> rows=<n>` — `rows=<n>` counts the rows this run added, so `rows=0` is the verdict for a clean run and for a re-run with nothing new. On `rows=0` nothing was written, so the tree is exactly as it was found — which is not the same as clean: if the step-1 baseline was non-empty, say so and name the paths, because `/verify` refuses to start on a dirty tree.
-  - `FAILED reason=<short reason>` — a precondition or a step stopped the run. The repository is unchanged, unless the report explicitly names paths left modified. This never blocks anything else; it means only that no record was written.
+
+**Close the report with the verdict on its own last line** — plain, at column 1, nothing else on that line and nothing after it. Exactly one of:
+
+- `STUDIED issue=<N> rows=<n>` — `rows=<n>` counts the rows this run added, so `rows=0` is the verdict for a clean run and for a re-run with nothing new. On `rows=0` nothing was written, so the tree is exactly as it was found — which is not the same as clean: if the step-1 baseline was non-empty, say so and name the paths, because `/verify` refuses to start on a dirty tree.
+- `FAILED reason=<short reason>` — a precondition or a step stopped the run. The repository is unchanged, unless the report explicitly names paths left modified. This never blocks anything else; it means only that no record was written.
+
+`scripts/chain.sh` reads the last non-blank line of the report and nothing else, so the verdict must be the last thing written — a row table, a closing sentence or a code fence beneath it costs the run its verdict and stops the chain. This matters more here than anywhere: recording what went wrong is `/study`'s whole job, so its rows routinely quote `FAILED reason=…` and the chain's own verdict words. Above the verdict line that is free — in prose, a bullet, a fence or a table row — and cannot be mistaken for this run's own verdict.

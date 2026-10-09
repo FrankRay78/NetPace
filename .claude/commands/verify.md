@@ -20,7 +20,7 @@ Raising the pull request is deliberately **not** a step either. It is the one ir
 
 ## Steps
 
-0. **Preconditions (before any suite run or review).** Each of the three is a **failure**, so each STOPS with the *Final report*'s `FAILED reason=` verdict line and nothing before it — these are the first thing an unattended invoker reads, and a stop message with no verdict line reaches `scripts/chain.sh` as the far less useful `no recognisable verdict` instead of the reason. Report the reason below verbatim; the explanatory sentence after it is for a human and goes beneath the verdict line.
+0. **Preconditions (before any suite run or review).** Each of the three is a **failure**, so each STOPS with the *Final report*'s `FAILED reason=` verdict line as the report's last line and nothing after it — a stop message whose last line is not the verdict reaches `scripts/chain.sh` as the far less useful `no readable verdict` instead of the reason. Report the reason below verbatim; the explanatory sentence for a human goes *above* the verdict line.
    - Run `git rev-parse --abbrev-ref HEAD`. If it is `main`, STOP immediately with `FAILED reason=/verify was run on main, not a feature branch`. Do not run the format pass or the suite, do not spawn reviewers.
    - Run `git log main..HEAD --oneline`. If empty, STOP immediately with `FAILED reason=no commits on this branch over main`. Do not run the suite or spawn reviewers.
    - Require a **clean working tree**. Run `git status --porcelain`; if it is non-empty, STOP with `FAILED reason=the working tree has uncommitted changes`, adding that committing or stashing them is the recovery. A clean tree is what makes step 3 simple and correct: after the review, *anything* that shows up in the tree is a review edit and nothing else, so there is no need to separate review edits from pre-existing local changes.
@@ -113,28 +113,25 @@ Raising the pull request is deliberately **not** a step either. It is the one ir
 
 ## Final report
 
-**Open the report with the verdict on its own first line, undecorated, at column 1**, with nothing before or after it on that line. Write exactly one of these two — on success:
-
-```
-VERIFIED branch=<branch>
-```
-
-or, on any failure:
-
-```
-FAILED reason=<short reason>
-```
-
-The fixed reasons this command emits are `last review round found a material problem` (step 3), `the last review round edited the branch` (step 3), `dotnet format failed` (step 1a or step 3) and step 0's three precondition reasons. Anything else is a short reason of your own.
-
-`scripts/chain.sh` scans for the `FAILED` verdict **anchored to the start of a line** — deliberately, so that `/study` quoting the phrase in prose cannot abort a healthy run. Within that line the scan now tolerates punctuation and whitespace before and between the verdict's two words, and one leading list number, and strips trailing markup from the reason, so a heading, a bullet, bold, backticks, a numbered-list prefix or a double space no longer costs the run its reason. **That tolerance is a safety net, not a licence: still write the verdict plain at column 1.** The anchor still binds — a verdict buried mid-sentence is not a verdict, and neither is one with any word or other letter or digit before `FAILED` on its line (`Verdict: FAILED reason=…`).
-
-One rule follows from how the success scan works. It is unanchored and matches anywhere in the report, so decoration around the pair survives (`**VERIFIED branch=x**`) and so does punctuation between the two words (``VERIFIED `branch=x` `` matches — the shape that once parked a verified #242). It now requires a non-alphanumeric character or the line start before the verdict word, so `UNVERIFIED branch=x` no longer matches, but it still does not care about context: `not VERIFIED branch=x` does. So **never write the other verdict's word anywhere in the report** — in a `FAILED` report not even the bare word `VERIFIED`, because the scan needs nothing but punctuation between it and a `branch=` later on the same line (`not VERIFIED — branch=x stays unverified` matches). The failure scan runs first and wins, so a plain `FAILED` line protects you; a report that trips the success scan *and* omits a readable failure line is read by the chain as a success, and `/raise-pr` then opens a real pull request off a branch that failed. Never report verified over a red suite, an unresolved confirmed blocker (other than one in pre-existing or adjacent code the branch did not cause, found and deferred by name in the last round), an unresolved confirmed Important within the scope of the change, a material last-round finding, an uncommitted change, or a committed change no review round read.
-
-Then, beneath that line:
+Report, in this order:
 
 - Whether formatting changed anything, and the commit if it did — step 1a's, and any round whose commit carried formatting alongside its fix.
 - The suite result(s).
 - **How many review rounds ran**, and for each round that applied edits, the commit it made. A run whose first round led to no edits reports one round. Say explicitly whether a last, read-only round ran and what it reported.
 - Which review findings were fixed-and-committed, and — **named explicitly** — any confirmed finding deferred as an out-of-scope follow-up, plus any finding the last round raised and left unfixed (with its severity). This report is the only route by which a deferred finding reaches the PR body, because `/raise-pr` runs in a separate session; an unnamed deferral is a lost one.
-- On a `VERIFIED` verdict, follow with: "Run `/raise-pr` to push the branch and open the PR — it derives `Closes #<N>` from this branch name and verifies it before use, then reports what it settled; check that line to confirm the link was made. The `@claude` Review B posts async on the raised PR, and `/capture-learnings` folds it in when you next review the batch."
+- On the way to a `VERIFIED` verdict, add: "Run `/raise-pr` to push the branch and open the PR — it derives `Closes #<N>` from this branch name and verifies it before use, then reports what it settled; check that line to confirm the link was made. The `@claude` Review B posts async on the raised PR, and `/capture-learnings` folds it in when you next review the batch."
+
+**Close the report with the verdict on its own last line** — plain, at column 1, nothing else on that line and nothing after it. Exactly one of:
+
+- `VERIFIED branch=<branch>` — on success.
+- `FAILED reason=<short reason>` — on any failure.
+
+Both are written bare, never inside a code fence: `scripts/chain.sh` reads the last non-blank line of the report, so a fence closing beneath the verdict is the last line and the verdict is lost. The fixed reasons this command emits are `last review round found a material problem` (step 3), `the last review round edited the branch` (step 3), `dotnet format failed` (step 1a or step 3) and step 0's three precondition reasons. Anything else is a short reason of your own.
+
+That one line is the whole of what the chain reads, which is what makes it safe and what makes it strict:
+
+- **Nothing may follow it.** Not a closing sentence, not a fence, not a blank-line-and-a-postscript. A report whose last line is anything but a verdict stops the chain as unreadable — a safe stop, but a wasted run.
+- **Nothing above it can be mistaken for it.** Quote either verdict as often as the report needs to — `not VERIFIED`, a `FAILED reason=` a reviewer raised, a table of both — and it changes nothing. The rule that used to forbid writing the other verdict's word anywhere in the report is gone with the prose scanning that needed it.
+- **Decoration on the verdict line is tolerated, not invited.** A leading heading, bullet or blockquote marker, and a run of `*`, `_` or backticks wrapping the line, are stripped; `Verdict: FAILED reason=…` is not a verdict, because the line must open with the verdict word.
+
+Never report verified over a red suite, an unresolved confirmed blocker (other than one in pre-existing or adjacent code the branch did not cause, found and deferred by name in the last round), an unresolved confirmed Important within the scope of the change, a material last-round finding, an uncommitted change, or a committed change no review round read.
