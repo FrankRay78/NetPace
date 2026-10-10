@@ -28,9 +28,10 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
         finally
         {
             // Written after the last per-iteration flush, and from a finally because a run that
-            // threw an operational fault is exactly when its diagnostics matter most.
+            // threw an operational fault is exactly when its diagnostics matter most. exitCode is
+            // 1 here when RunAsync threw, which matches what the top-level handler returns.
             recorder.Record("run.end", ("exit", exitCode.ToString(CultureInfo.InvariantCulture)));
-            recorder.Flush();
+            FlushDiagnostics();
         }
     }
 
@@ -95,7 +96,7 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
 
                     // Flushed per iteration so a long run reports as it goes and the buffer does
                     // not grow without bound.
-                    recorder.Flush();
+                    FlushDiagnostics();
 
                     firstLoop = false;
 
@@ -140,7 +141,7 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
 
                     // Flushed per iteration so a long run reports as it goes and the buffer does
                     // not grow without bound.
-                    recorder.Flush();
+                    FlushDiagnostics();
 
                     if ((i + 1) < settings.Count)
                     {
@@ -190,6 +191,30 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
             {
                 disposable.Dispose();
             }
+        }
+    }
+
+    /// <summary>
+    /// Writes the buffered diagnostic records out. A stream that cannot be written is left
+    /// unreported rather than raised.
+    /// </summary>
+    /// <remarks>
+    /// Diagnostics are a second stream alongside the result, so one that cannot be written must not
+    /// decide the run's fate: raising here would turn a completed measurement into a non-zero exit,
+    /// and from the <c>finally</c> in <see cref="ExecuteAsync"/> it would replace the very exception
+    /// the records were written to explain. Nothing is written about the failure either, because
+    /// there is nowhere to write it: the stream that would carry the message is the one that just
+    /// failed, and <see cref="RunAsync"/> has already torn the console down by the time the last
+    /// flush runs. The unwritten records stay buffered, so a later flush still carries them.
+    /// </remarks>
+    private void FlushDiagnostics()
+    {
+        try
+        {
+            recorder.Flush();
+        }
+        catch (IOException)
+        {
         }
     }
 

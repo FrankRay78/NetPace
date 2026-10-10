@@ -173,7 +173,7 @@ The result is byte-for-byte what the same invocation produces without the switch
 
 `--diagnostics` works alongside whichever output format you chose, and is unaffected by `--quiet`. It never writes to the `--file` target.
 
-Each line is one record, as `key=value` pairs:
+Each line is one record, as `key=value` pairs (an excerpt — a real run also carries the `screening` and `latency` test blocks, and `server.selected` appears after them):
 
 ```
 ts=1980-01-01T10:05:00.000 event=run.start version=0.25.0 runtime=".NET 10.0.0" os="Linux 6.8.0-137-generic" arch=x64
@@ -195,7 +195,7 @@ What the records cover:
 | `test.start` / `test.end` | Which tests ran — `screening`, `latency`, `download`, `upload` — and, on `test.end`, the total `requests`, how many `succeeded`, `failed` or were `cancelled`, and the `bytes` the successful ones moved. Those totals cover exactly the `request` lines above them, so the two always reconcile. |
 | `request` | One per request, with its sequence number, address, outcome, bytes, duration and — where it did not succeed — the `reason` and, if an exception was involved, its `exception` type. `status=` is `ok`, `failed` or `cancelled`. |
 
-Every line repeats enough to stand alone, so `grep status=failed diagnostics.log` is a complete triage pass. Nothing is summarised away: every measured request gets its own record, including the latency probes made while choosing a server. Two requests are not recorded individually: the initial server-list fetch, whose failure surfaces as the run's error instead; and a screening request that finishes after the selection ceiling has already passed, which arrives too late for the `test.end` it would belong to and is dropped so that summary stays exact. Both mean a candidate you expected to see may be absent rather than untried. Record volume is driven by how many servers the feed offers — roughly three records per candidate screened — on top of the request counts your `--profile` sets, so expect a few hundred lines from a default run.
+Every line repeats enough to stand alone, so `grep status=failed diagnostics.log` is a complete triage pass. Nothing is summarised away: every measured request gets its own record, including the latency probes made while choosing a server. Two kinds of request are not recorded individually: the initial server-list fetch, whose failure surfaces as the run's error instead; and a screening request that finishes after the selection ceiling has already passed, which arrives too late for the `test.end` it would belong to and is dropped so that summary stays exact — so a candidate you expected to see may be absent rather than untried. One request appears that you did not ask for: the upload test resolves its endpoint with an empty probe POST first, which takes the opening `seq` numbers of that test and reads `bytes=0`, so `test.end requests=` counts one more than the uploads measured (more, if the server redirects several times). Record volume is driven by how many servers the feed offers — roughly three records per candidate screened — on top of the request counts your `--profile` sets, so expect a few hundred lines from a default run.
 
 Under `--count` or `--loop`, `run.start`, `run.invocation` and `run.end` appear once, and the test and request records repeat per iteration.
 

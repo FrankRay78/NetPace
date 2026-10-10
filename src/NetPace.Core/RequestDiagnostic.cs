@@ -35,8 +35,8 @@ public sealed record RequestDiagnostic
     public required RequestOutcome Outcome { get; init; }
 
     /// <summary>
-    /// Gets the number of bytes this request moved. Zero for a request that failed before
-    /// transferring anything.
+    /// Gets the number of bytes this request moved. Zero for a request whose transfer did not
+    /// complete, even where some bytes had already arrived.
     /// </summary>
     public required long BytesProcessed { get; init; }
 
@@ -46,8 +46,9 @@ public sealed record RequestDiagnostic
     public required long ElapsedMilliseconds { get; init; }
 
     /// <summary>
-    /// Gets why the request did not succeed, or <see langword="null"/> when it did. For a failure
-    /// this is the exception chain's messages joined with <c>" &lt;- "</c>, outermost first.
+    /// Gets why the request did not succeed, or <see langword="null"/> when it did. Where an
+    /// exception caused the failure this is its chain's messages joined with <c>" &lt;- "</c>,
+    /// outermost first; otherwise a short description of what happened.
     /// </summary>
     public string? FailureReason { get; init; }
 

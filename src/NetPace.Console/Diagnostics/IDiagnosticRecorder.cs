@@ -33,5 +33,9 @@ public interface IDiagnosticRecorder
     /// <summary>
     /// Writes every record collected so far, in the order they were recorded, and clears the buffer.
     /// </summary>
+    /// <remarks>
+    /// May throw if the underlying stream cannot be written. Whatever did not reach the stream
+    /// stays buffered for a later flush to retry, so a failure loses no record.
+    /// </remarks>
     void Flush();
 }

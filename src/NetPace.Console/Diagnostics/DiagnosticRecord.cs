@@ -57,10 +57,11 @@ public static class DiagnosticRecord
     /// A value, bare unless it needs quoting.
     /// </summary>
     /// <remarks>
-    /// Newlines and carriage returns are escaped whatever the value looks like, because exception
-    /// messages are frequently multi-line and a raw newline mid-record would split one record into
-    /// two lines that each mean nothing. Backslashes are escaped too, so a value ending in one
-    /// cannot close its own quote with <c>\"</c> and swallow the rest of the line.
+    /// Newlines, carriage returns and tabs are escaped whatever the value looks like, because
+    /// exception messages are frequently multi-line and a raw newline mid-record would split one
+    /// record into two lines that each mean nothing, while a raw tab is whitespace a reader
+    /// splitting fields would take for a separator. Backslashes are escaped too, so a value ending
+    /// in one cannot close its own quote with <c>\"</c> and swallow the rest of the line.
     /// <para>
     /// The backslash pass must stay first. Escaping quotes first turns <c>a"b</c> into
     /// <c>a\"b</c>, and a later backslash pass then doubles that escape into <c>a\\"b</c>,
@@ -79,13 +80,15 @@ public static class DiagnosticRecord
             .Replace("\\", "\\\\", StringComparison.Ordinal)
             .Replace("\"", "\\\"", StringComparison.Ordinal)
             .Replace("\r", "\\r", StringComparison.Ordinal)
-            .Replace("\n", "\\n", StringComparison.Ordinal);
+            .Replace("\n", "\\n", StringComparison.Ordinal)
+            .Replace("\t", "\\t", StringComparison.Ordinal);
 
+        // A quote in the escaped value can only have come from one in the original, which the
+        // inequality below has already caught - so there is no separate check for it.
         bool needsQuoting = escaped.Length == 0 ||
             !string.Equals(escaped, value, StringComparison.Ordinal) ||
             escaped.Contains(' ', StringComparison.Ordinal) ||
-            escaped.Contains('=', StringComparison.Ordinal) ||
-            escaped.Contains('"', StringComparison.Ordinal);
+            escaped.Contains('=', StringComparison.Ordinal);
 
         return needsQuoting ? $"\"{escaped}\"" : escaped;
     }

@@ -43,8 +43,9 @@ public sealed class CommandLineTestHost
         // Default IClientInfoProvider stub unless a test already registered one
         serviceCollection.TryAddSingleton<IClientInfoProvider, ClientInfoProviderStub>();
 
-        // Fixed stand-in values for the version, runtime and OS, and a counting clock for record
-        // timestamps: all four differ between machines, which would make a snapshot machine-specific.
+        // Fixed stand-in values for the version, runtime, OS and architecture, and a counting clock
+        // for record timestamps: all of them differ between machines, which would make a snapshot
+        // machine-specific.
         serviceCollection.TryAddSingleton<IEnvironmentInfoProvider, EnvironmentInfoProviderStub>();
         serviceCollection.TryAddSingleton<IDiagnosticClock, IncrementingDiagnosticClockStub>();
 

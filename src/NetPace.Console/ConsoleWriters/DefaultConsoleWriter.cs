@@ -10,7 +10,7 @@ public sealed class DefaultConsoleWriter : IConsoleWriter
     {
 
         // Get the server to use for speed testing.
-        var selection = await console.Progress()
+        var fastest = await console.Progress()
             .AutoClear(true)
             .Columns(
             [
@@ -30,9 +30,6 @@ public sealed class DefaultConsoleWriter : IConsoleWriter
                     fastestServerProgress.StopTask();
                 }
             });
-
-        var fastest = selection.Result;
-        recorder.RecordServerSelected(selection);
 
 
         // Display server latency.
