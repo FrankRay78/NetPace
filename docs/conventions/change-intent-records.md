@@ -44,7 +44,7 @@ Save CIRs in `docs/change-intent-records/` as `YYYY-MM-DD-kebab-title.md`.
 **Date:** YYYY-MM-DD
 ```
 
-**Keep it short.** Record only what is written nowhere else: the decisions a future maintainer might question, and the alternatives rejected. Write one-line bullets, not paragraphs. Do not restate scenarios, constraints or reasoning that the issue, the PR, or the code and prompts already carry — link to them. The record for #328 was first written at 39 lines, most of it duplicating `verify.md` and the issue, and had to be trimmed in review (PR #330).
+**Keep it short.** Record only what is written nowhere else: the decisions a future maintainer might question, and the alternatives rejected. Write one-line bullets, not paragraphs. Do not restate scenarios, constraints or reasoning that the issue, the PR, or the code and prompts already carry — link to them. One record was first written at 39 lines, most of it duplicating `verify.md` and the issue, and had to be trimmed in review.
 
 When a record overturns part of an earlier one, add `**Supersedes:** <link> — <which decision>` so the older record is read in light of the newer.
 

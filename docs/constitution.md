@@ -1,7 +1,7 @@
 <!--
 Sync Impact Report:
 Version: 2.2.2 → 2.2.3
-Bump rationale: PATCH — wording only, and only inside a retained Sync Impact Report. The 2.1.0 entry's *Added Sections* line still described §VIII's Enforcement paragraph as recording that the `traceability` job is not yet a required check. That was true when written and was corrected in the principle itself at 2.2.2, but the retained entry asserted it unqualified, so a reader skimming the history could take it for the current state. It now carries the same supersession note the 2.0.0 entry already carries. No principle, rule or section changes.
+Bump rationale: PATCH — wording only, and only inside a retained Sync Impact Report. The 2.1.0 entry's *Added Sections* line still described §VIII's Enforcement paragraph as recording that the `traceability` job is not yet a required check. That was true when written and was corrected in the principle itself at 2.2.2, but the retained entry asserted it unqualified, so a reader skimming the history could take it for the current state. It now carries the same supersession note the 2.0.0 entry already carries. No principle, rule or section of this document changes.
 Modified Principles: N/A
 Modified Sections: Sync Impact Report (the retained 2.1.0 entry's *Added Sections* line)
 Added Sections: N/A
@@ -9,8 +9,8 @@ Removed Sections: N/A
 Downstream documents reviewed (per Amendment Process clause 4):
   ✅ CLAUDE.md — updated: gains a paired rule placing an issue number in a change-intent record and nowhere else in the codebase, with §IX's regression reference as the one exception. Its traceability bullet is unchanged and already states that a red check blocks the merge.
   ✅ docs/conventions/change-intent-records.md — updated: gains the matching line from the record's side, so the rule reads the same whichever document a writer reaches for first.
-  ✅ docs/conventions/testing.md — reviewed, unchanged: its *Regression exception* is the one place outside a record where an issue number is allowed, and its traceability section already states that the check blocks the merge.
-  ✅ docs/agentic-workflow-NetPace.md — reviewed, unchanged: its `traceability-check.sh` paragraph already names the context as a required check that blocks the merge. The `issue-link` and `shell-tests` paragraphs keep their "not in the ruleset yet" wording, because neither context is in the ruleset today.
+  ✅ docs/conventions/testing.md — reviewed, unchanged: its *Regression exception* documents the one case outside a record where an issue number is allowed — a regression test or acceptance criterion naming the bug it guards against — and its traceability section already states that the check blocks the merge.
+  ✅ docs/agentic-workflow-NetPace.md — reviewed, unchanged: its `traceability-check.sh` paragraph already names the context as a required check that blocks the merge. The `issue-link` and `shell-tests` paragraphs keep their "not in the ruleset yet" wording, because neither context was in the ruleset at this amendment.
 
 --- superseded, retained for history ---
 Version: 2.2.1 → 2.2.2
