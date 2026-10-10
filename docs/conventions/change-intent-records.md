@@ -10,6 +10,8 @@
 
 Change Intent Records capture the **why** behind non-obvious decisions made during development. They complement code comments (which explain "how") by documenting the reasoning, alternatives considered, and constraints that led to a particular implementation choice.
 
+A record is also the one place in the codebase where a GitHub issue number belongs. The only exception is a regression test or acceptance criterion naming the bug it guards against (Constitution §IX's *Regression exception*, worked in [`testing.md`](testing.md)). Everywhere else the reasoning stays as prose and the number goes, because an issue thread cited for its reasoning is standing in for a record that was never written — write the record and link that instead.
+
 **Decision table** — does this change need a CIR?
 
 | Question | → CIR | → No CIR |
@@ -42,7 +44,7 @@ Save CIRs in `docs/change-intent-records/` as `YYYY-MM-DD-kebab-title.md`.
 **Date:** YYYY-MM-DD
 ```
 
-**Keep it short.** Record only what is written nowhere else: the decisions a future maintainer might question, and the alternatives rejected. Write one-line bullets, not paragraphs. Do not restate scenarios, constraints or reasoning that the issue, the PR, or the code and prompts already carry — link to them. The record for #328 was first written at 39 lines, most of it duplicating `verify.md` and the issue, and had to be trimmed in review (PR #330).
+**Keep it short.** Record only what is written nowhere else: the decisions a future maintainer might question, and the alternatives rejected. Write one-line bullets, not paragraphs. Do not restate scenarios, constraints or reasoning that the issue, the PR, or the code and prompts already carry — link to them. One record was first written at 39 lines, most of it duplicating `verify.md` and the issue, and had to be trimmed in review.
 
 When a record overturns part of an earlier one, add `**Supersedes:** <link> — <which decision>` so the older record is read in light of the newer.
 
