@@ -742,20 +742,17 @@ public sealed class OoklaSpeedtest : ISpeedTestService
                                 outcome = RequestOutcome.Succeeded;
                             }
 
-                            if (diagnostics is not null)
+                            ReportProgress(diagnostics, new RequestDiagnostic
                             {
-                                ReportProgress(diagnostics, new RequestDiagnostic
-                                {
-                                    StartedAt = startedAt,
-                                    Sequence = sequence,
-                                    Url = urlOf(data),
-                                    Outcome = outcome,
-                                    BytesProcessed = bytesReturned,
-                                    ElapsedMilliseconds = elapsedMilliseconds,
-                                    FailureReason = failureReason,
-                                    FailureType = failureType
-                                });
-                            }
+                                StartedAt = startedAt,
+                                Sequence = sequence,
+                                Url = urlOf(data),
+                                Outcome = outcome,
+                                BytesProcessed = bytesReturned,
+                                ElapsedMilliseconds = elapsedMilliseconds,
+                                FailureReason = failureReason,
+                                FailureType = failureType
+                            });
                         }
                     }
                 }
@@ -907,20 +904,17 @@ public sealed class OoklaSpeedtest : ISpeedTestService
 
         var cancelled = failure is OperationCanceledException && cancellationToken.IsCancellationRequested;
 
-        if (diagnostics is not null)
+        ReportProgress(diagnostics, new RequestDiagnostic
         {
-            ReportProgress(diagnostics, new RequestDiagnostic
-            {
-                StartedAt = startedAt,
-                Sequence = sequence,
-                Url = url,
-                Outcome = cancelled ? RequestOutcome.Cancelled : RequestOutcome.Failed,
-                BytesProcessed = 0,
-                ElapsedMilliseconds = elapsedMilliseconds,
-                FailureReason = cancelled ? CancelledByCaller : DescribeFailure(failure),
-                FailureType = cancelled ? null : failure.GetType().Name
-            });
-        }
+            StartedAt = startedAt,
+            Sequence = sequence,
+            Url = url,
+            Outcome = cancelled ? RequestOutcome.Cancelled : RequestOutcome.Failed,
+            BytesProcessed = 0,
+            ElapsedMilliseconds = elapsedMilliseconds,
+            FailureReason = cancelled ? CancelledByCaller : DescribeFailure(failure),
+            FailureType = cancelled ? null : failure.GetType().Name
+        });
     }
 
     /// <summary>
