@@ -2,7 +2,7 @@
 
 **Supersedes:** [2026-09-25-verify-reviewer-waves.md](2026-09-25-verify-reviewer-waves.md) — "Step 3 is untouched". Step 3 now commits per round and decides whether another round runs; the two-wave rule governs round one only.
 
-**Superseded in part by:** [2026-10-08-last-review-round-only-reads.md](2026-10-08-last-review-round-only-reads.md) — "Bound of three, round one included" and its `VERIFY_LIMIT` sizing. Read the bound, the `unreviewed` marker and the non-convergence verdict below as the history they are; everything else here stands.
+**Superseded by:** [2026-10-10-verify-reviews-once.md](2026-10-10-verify-reviews-once.md) — the review loop this record introduced. `/verify` now reviews once, and the pull-request review reads its fix. Read this record as history. (The [2026-10-08](2026-10-08-last-review-round-only-reads.md) record had earlier replaced its bound and `VERIFY_LIMIT` sizing.)
 
 **Intent:** A branch reported `VERIFIED` should contain no change that only the test suite has looked at. On #239 / PR #327, `/verify`'s fix commit narrowed a blanket `catch` in `OoklaSpeedtest.ScreenServerAsync`, letting a non-HTTP server URL fail the whole selection. No reviewer read it and no test covered it, so the branch was reported verified.
 
