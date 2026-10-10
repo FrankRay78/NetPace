@@ -133,4 +133,51 @@ public class FaultySpeedTester : ISpeedTestService
         AssertNotFaulted(server, nameof(GetUploadSpeedAsync));
         return inner.GetUploadSpeedAsync(server, progress, cancellationToken);
     }
+
+    /// <inheritdoc/>
+    public Task<LatencyTestResult> GetServerLatencyAsync(IServer server, IProgress<LatencyTestProgress>? progress, IProgress<RequestDiagnostic>? diagnostics, CancellationToken cancellationToken = default)
+    {
+        AssertNotFaulted(server, nameof(GetServerLatencyAsync));
+        return inner.GetServerLatencyAsync(server, progress, diagnostics, cancellationToken);
+    }
+
+    /// <inheritdoc/>
+    public async Task<LatencyTestResult> GetServerLatencyAsync(string serverUrl, IProgress<LatencyTestProgress>? progress, IProgress<RequestDiagnostic>? diagnostics, CancellationToken cancellationToken = default)
+    {
+        var result = await inner.GetServerLatencyAsync(serverUrl, progress, diagnostics, cancellationToken);
+        AssertNotFaulted(result.Server, nameof(GetServerLatencyAsync));
+        return result;
+    }
+
+    /// <inheritdoc/>
+    /// <remarks>
+    /// Screening is itself a latency probe, so a server this tester cannot ping drops out of
+    /// selection rather than being ranked, and a selection left with nothing reports that no
+    /// servers are available.
+    /// </remarks>
+    public Task<LatencyTestResult> GetFastestServerByLatencyAsync(IServer[] servers, IProgress<SpeedTestProgress>? progress, IProgress<RequestDiagnostic>? diagnostics, CancellationToken cancellationToken = default)
+    {
+        var reachable = servers.Where(CanBeScreened).ToArray();
+
+        if (reachable.Length == 0)
+        {
+            throw new Exception("No servers available");
+        }
+
+        return inner.GetFastestServerByLatencyAsync(reachable, progress, diagnostics, cancellationToken);
+    }
+
+    /// <inheritdoc/>
+    public Task<SpeedTestResult> GetDownloadSpeedAsync(IServer server, IProgress<SpeedTestProgress>? progress, IProgress<RequestDiagnostic>? diagnostics, CancellationToken cancellationToken = default)
+    {
+        AssertNotFaulted(server, nameof(GetDownloadSpeedAsync));
+        return inner.GetDownloadSpeedAsync(server, progress, diagnostics, cancellationToken);
+    }
+
+    /// <inheritdoc/>
+    public Task<SpeedTestResult> GetUploadSpeedAsync(IServer server, IProgress<SpeedTestProgress>? progress, IProgress<RequestDiagnostic>? diagnostics, CancellationToken cancellationToken = default)
+    {
+        AssertNotFaulted(server, nameof(GetUploadSpeedAsync));
+        return inner.GetUploadSpeedAsync(server, progress, diagnostics, cancellationToken);
+    }
 }

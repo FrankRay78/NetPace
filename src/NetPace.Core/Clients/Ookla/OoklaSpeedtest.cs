@@ -18,20 +18,34 @@ public sealed class OoklaSpeedtest : ISpeedTestService
     private const string LatencyFileName = "latency.txt";
     private const string LatencyResponsePrefix = "test=test";
 
+    // Reasons a request was abandoned rather than failing on its own merits.
+    private const string ByteBudgetReached = "byte budget reached";
+    private const string ScreeningCeilingReached = "screening ceiling reached";
+    private const string CancelledByCaller = "cancelled by caller";
+
     private readonly HttpClient httpClient;
     private readonly OoklaSpeedtestSettings settings;
     private readonly IDelayProvider delayProvider;
+    private readonly TimeProvider timeProvider;
 
     /// <summary>
     /// Constructs a new instance of the <see cref="OoklaSpeedtest"/> class.
     /// </summary>
-    public OoklaSpeedtest(OoklaSpeedtestSettings? speedtestSettings = null, HttpClient? httpClientOverride = null, IDelayProvider? delayProviderOverride = null)
+    /// <param name="speedtestSettings">Per-request sizing, iteration and parallelism settings; the defaults are used when omitted.</param>
+    /// <param name="httpClientOverride">An HTTP client to use in place of the one this class would construct.</param>
+    /// <param name="delayProviderOverride">A delay provider to use in place of real waiting.</param>
+    /// <param name="timeProviderOverride">
+    /// The clock that stamps <see cref="RequestDiagnostic.StartedAt"/> on each reported request;
+    /// the system clock is used when omitted.
+    /// </param>
+    public OoklaSpeedtest(OoklaSpeedtestSettings? speedtestSettings = null, HttpClient? httpClientOverride = null, IDelayProvider? delayProviderOverride = null, TimeProvider? timeProviderOverride = null)
     {
         // Use default settings when none provided
         settings = speedtestSettings ?? new OoklaSpeedtestSettings();
 
         httpClient = httpClientOverride ?? CreateHttpClient(settings.UseProxy, settings.ProxyAddress, settings.ProxyCredential);
         delayProvider = delayProviderOverride ?? new DelayProvider();
+        timeProvider = timeProviderOverride ?? TimeProvider.System;
     }
 
     /// <inheritdoc/>
@@ -48,26 +62,38 @@ public sealed class OoklaSpeedtest : ISpeedTestService
     /// <inheritdoc/>
     public async Task<LatencyTestResult> GetServerLatencyAsync(string serverUrl, CancellationToken cancellationToken = default)
     {
-        return await GetServerLatencyAsync(serverUrl, new NullProgress<LatencyTestProgress>(), cancellationToken);
+        return await GetServerLatencyAsync(serverUrl, null, null, cancellationToken);
     }
 
     /// <inheritdoc/>
     public async Task<LatencyTestResult> GetServerLatencyAsync(string serverUrl, IProgress<LatencyTestProgress> progress, CancellationToken cancellationToken = default)
     {
+        return await GetServerLatencyAsync(serverUrl, progress, null, cancellationToken);
+    }
+
+    /// <inheritdoc/>
+    public async Task<LatencyTestResult> GetServerLatencyAsync(string serverUrl, IProgress<LatencyTestProgress>? progress, IProgress<RequestDiagnostic>? diagnostics, CancellationToken cancellationToken = default)
+    {
         ArgumentException.ThrowIfNullOrWhiteSpace(serverUrl);
 
         var server = new Server() { Sponsor = "(Unknown)", Url = serverUrl };
-        return await GetServerLatencyAsync(server, progress, cancellationToken);
+        return await GetServerLatencyAsync(server, progress, diagnostics, cancellationToken);
     }
 
     /// <inheritdoc/>
     public async Task<LatencyTestResult> GetServerLatencyAsync(IServer server, CancellationToken cancellationToken = default)
     {
-        return await GetServerLatencyAsync(server, new NullProgress<LatencyTestProgress>(), cancellationToken);
+        return await GetServerLatencyAsync(server, null, null, cancellationToken);
     }
 
     /// <inheritdoc/>
     public async Task<LatencyTestResult> GetServerLatencyAsync(IServer server, IProgress<LatencyTestProgress> progress, CancellationToken cancellationToken = default)
+    {
+        return await GetServerLatencyAsync(server, progress, null, cancellationToken);
+    }
+
+    /// <inheritdoc/>
+    public async Task<LatencyTestResult> GetServerLatencyAsync(IServer server, IProgress<LatencyTestProgress>? progress, IProgress<RequestDiagnostic>? diagnostics, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(server);
         ArgumentException.ThrowIfNullOrWhiteSpace(server.Url);
@@ -90,13 +116,46 @@ public sealed class OoklaSpeedtest : ISpeedTestService
                 await delayProvider.DelayAsync(intervalMilliseconds, cancellationToken).ConfigureAwait(false);
             }
 
-            stopwatch.Restart();
-            var testString = await httpClient.GetStringWithTimeoutAsync(latencyUrl, TimeSpan.FromMilliseconds(httpTimeoutMilliseconds), cancellationToken).ConfigureAwait(false);
-            stopwatch.Stop();
+            // Stamped before the request leaves, so a record describes when the request started
+            // rather than when the consumer happened to receive it.
+            var startedAt = timeProvider.GetLocalNow().DateTime;
+            var sequence = iteration + 1;
+
+            string testString;
+            try
+            {
+                stopwatch.Restart();
+                testString = await httpClient.GetStringWithTimeoutAsync(latencyUrl, TimeSpan.FromMilliseconds(httpTimeoutMilliseconds), cancellationToken).ConfigureAwait(false);
+                stopwatch.Stop();
+            }
+            catch (Exception e)
+            {
+                // The failure still surfaces to the caller - a latency measurement that cannot be
+                // taken is not a measurement. It is recorded first, so a diagnostic log names the
+                // cause of a run that ended here.
+                stopwatch.Stop();
+                ReportRequestFailure(diagnostics, startedAt, sequence, latencyUrl, stopwatch.ElapsedMilliseconds, e, cancellationToken);
+                throw;
+            }
 
             if (!testString.StartsWith(LatencyResponsePrefix))
             {
-                throw new InvalidOperationException("Server returned incorrect test string for latency.txt");
+                var wrongServer = new InvalidOperationException("Server returned incorrect test string for latency.txt");
+                ReportRequestFailure(diagnostics, startedAt, sequence, latencyUrl, stopwatch.ElapsedMilliseconds, wrongServer, cancellationToken);
+                throw wrongServer;
+            }
+
+            if (diagnostics is not null)
+            {
+                ReportProgress(diagnostics, new RequestDiagnostic
+                {
+                    StartedAt = startedAt,
+                    Sequence = sequence,
+                    Url = latencyUrl,
+                    Outcome = RequestOutcome.Succeeded,
+                    BytesProcessed = Encoding.UTF8.GetByteCount(testString),
+                    ElapsedMilliseconds = stopwatch.ElapsedMilliseconds
+                });
             }
 
             // Record this ping time
@@ -123,11 +182,17 @@ public sealed class OoklaSpeedtest : ISpeedTestService
     /// <inheritdoc/>
     public async Task<LatencyTestResult> GetFastestServerByLatencyAsync(IServer[] servers, CancellationToken cancellationToken = default)
     {
-        return await GetFastestServerByLatencyAsync(servers, new NullProgress<SpeedTestProgress>(), cancellationToken);
+        return await GetFastestServerByLatencyAsync(servers, null, null, cancellationToken);
     }
 
     /// <inheritdoc/>
     public async Task<LatencyTestResult> GetFastestServerByLatencyAsync(IServer[] servers, IProgress<SpeedTestProgress> progress, CancellationToken cancellationToken = default)
+    {
+        return await GetFastestServerByLatencyAsync(servers, progress, null, cancellationToken);
+    }
+
+    /// <inheritdoc/>
+    public async Task<LatencyTestResult> GetFastestServerByLatencyAsync(IServer[] servers, IProgress<SpeedTestProgress>? progress, IProgress<RequestDiagnostic>? diagnostics, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(servers);
         if (servers.Length == 0)
@@ -146,7 +211,7 @@ public sealed class OoklaSpeedtest : ISpeedTestService
 
         async Task ScreenAndRecordAsync(int index)
         {
-            var result = await ScreenServerAsync(servers[index], ceilingCts.Token).ConfigureAwait(false);
+            var result = await ScreenServerAsync(servers[index], diagnostics, callerToken: cancellationToken, ceilingToken: ceilingCts.Token).ConfigureAwait(false);
 
             // Recorded and reported under one lock, so a consumer callback is never entered
             // concurrently and the percentage it is handed matches the number screened at that
@@ -234,7 +299,7 @@ public sealed class OoklaSpeedtest : ISpeedTestService
     /// fastest request that completed, because screening has no warm-up and the first request
     /// carries connection setup the link itself is not responsible for.
     /// </remarks>
-    private async Task<LatencyTestResult?> ScreenServerAsync(IServer server, CancellationToken cancellationToken)
+    private async Task<LatencyTestResult?> ScreenServerAsync(IServer server, IProgress<RequestDiagnostic>? diagnostics, CancellationToken callerToken, CancellationToken ceilingToken)
     {
         // The server list comes from a remote feed, so an entry NetPace cannot request is ranked
         // out here rather than left to throw from the transport and fail the whole selection.
@@ -250,21 +315,51 @@ public sealed class OoklaSpeedtest : ISpeedTestService
 
         for (var request = 0; request < settings.ServerDiscovery.ScreeningRequestCount; request++)
         {
-            if (cancellationToken.IsCancellationRequested)
+            if (ceilingToken.IsCancellationRequested)
             {
                 break;
             }
 
+            var startedAt = timeProvider.GetLocalNow().DateTime;
+            var sequence = request + 1;
+
             try
             {
                 stopwatch.Restart();
-                var testString = await httpClient.GetStringAsync(latencyUrl, cancellationToken).ConfigureAwait(false);
+                var testString = await httpClient.GetStringAsync(latencyUrl, ceilingToken).ConfigureAwait(false);
                 stopwatch.Stop();
 
                 if (!testString.StartsWith(LatencyResponsePrefix))
                 {
                     // Something answered, but it is not a speed test server.
+                    if (diagnostics is not null)
+                    {
+                        ReportProgress(diagnostics, new RequestDiagnostic
+                        {
+                            StartedAt = startedAt,
+                            Sequence = sequence,
+                            Url = latencyUrl,
+                            Outcome = RequestOutcome.Failed,
+                            BytesProcessed = Encoding.UTF8.GetByteCount(testString),
+                            ElapsedMilliseconds = stopwatch.ElapsedMilliseconds,
+                            FailureReason = "not a speed test server"
+                        });
+                    }
+
                     return null;
+                }
+
+                if (diagnostics is not null)
+                {
+                    ReportProgress(diagnostics, new RequestDiagnostic
+                    {
+                        StartedAt = startedAt,
+                        Sequence = sequence,
+                        Url = latencyUrl,
+                        Outcome = RequestOutcome.Succeeded,
+                        BytesProcessed = Encoding.UTF8.GetByteCount(testString),
+                        ElapsedMilliseconds = stopwatch.ElapsedMilliseconds
+                    });
                 }
 
                 if (fastestMilliseconds is null || stopwatch.ElapsedMilliseconds < fastestMilliseconds)
@@ -274,6 +369,34 @@ public sealed class OoklaSpeedtest : ISpeedTestService
             }
             catch (Exception e) when (e is HttpRequestException or IOException or OperationCanceledException)
             {
+                // A candidate abandoned at the ceiling is distinguished from one that could not be
+                // reached: both rank out, but only one of them is a verdict on the server. The
+                // exception type alone cannot tell them apart, because the ceiling token is linked
+                // to the caller's and HttpClient.Timeout raises the same type again - so a Ctrl-C
+                // and a server that never answered would both read as "ceiling reached", each a
+                // statement about the wrong thing. Only the tokens say which actually happened.
+                stopwatch.Stop();
+                var cancelledByCaller = e is OperationCanceledException && callerToken.IsCancellationRequested;
+                var abandonedAtCeiling = e is OperationCanceledException && !cancelledByCaller && ceilingToken.IsCancellationRequested;
+                var rankedOut = !cancelledByCaller && !abandonedAtCeiling;
+
+                if (diagnostics is not null)
+                {
+                    ReportProgress(diagnostics, new RequestDiagnostic
+                    {
+                        StartedAt = startedAt,
+                        Sequence = sequence,
+                        Url = latencyUrl,
+                        Outcome = rankedOut ? RequestOutcome.Failed : RequestOutcome.Cancelled,
+                        BytesProcessed = 0,
+                        ElapsedMilliseconds = stopwatch.ElapsedMilliseconds,
+                        FailureReason = rankedOut ? DescribeFailure(e)
+                            : cancelledByCaller ? CancelledByCaller
+                            : ScreeningCeilingReached,
+                        FailureType = rankedOut ? e.GetType().Name : null
+                    });
+                }
+
                 // Unreachable, or abandoned at the ceiling: ranked out rather than raised, because
                 // finding that out is what screening is for. Whatever earlier requests achieved
                 // still counts, and the surrounding pass reports when no candidate answered at all.
@@ -292,7 +415,13 @@ public sealed class OoklaSpeedtest : ISpeedTestService
     /// <inheritdoc/>
     public async Task<SpeedTestResult> GetDownloadSpeedAsync(IServer server, CancellationToken cancellationToken = default)
     {
-        return await GetDownloadSpeedAsync(server, new NullProgress<SpeedTestProgress>(), cancellationToken);
+        return await GetDownloadSpeedAsync(server, null, null, cancellationToken);
+    }
+
+    /// <inheritdoc/>
+    public async Task<SpeedTestResult> GetDownloadSpeedAsync(IServer server, IProgress<SpeedTestProgress> progress, CancellationToken cancellationToken = default)
+    {
+        return await GetDownloadSpeedAsync(server, progress, null, cancellationToken);
     }
 
     /// <inheritdoc/>
@@ -305,7 +434,7 @@ public sealed class OoklaSpeedtest : ISpeedTestService
     /// cancelled rather than awaited and their bytes excluded. The actual bytes processed may
     /// still exceed the cap depending on parallelism and per-request size.
     /// </remarks>
-    public async Task<SpeedTestResult> GetDownloadSpeedAsync(IServer server, IProgress<SpeedTestProgress> progress, CancellationToken cancellationToken = default)
+    public async Task<SpeedTestResult> GetDownloadSpeedAsync(IServer server, IProgress<SpeedTestProgress>? progress, IProgress<RequestDiagnostic>? diagnostics, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(server);
         ArgumentException.ThrowIfNullOrWhiteSpace(server.Url);
@@ -343,7 +472,7 @@ public sealed class OoklaSpeedtest : ISpeedTestService
         var maxBytes = settings.DownloadTest.DownloadSizeMb == int.MaxValue
             ? long.MaxValue
             : (long)settings.DownloadTest.DownloadSizeMb * 1024L * 1024L;
-        var downloadResult = await GenericTestSpeedAsync(downloadUrls, DownloadAndMeasureAsync, progress, settings.DownloadTest.DownloadParallelTasks, maxBytes, cancellationToken);
+        var downloadResult = await GenericTestSpeedAsync(downloadUrls, DownloadAndMeasureAsync, url => url, progress, diagnostics, settings.DownloadTest.DownloadParallelTasks, maxBytes, sequenceOffset: 0, cancellationToken);
 
         return downloadResult;
     }
@@ -351,7 +480,13 @@ public sealed class OoklaSpeedtest : ISpeedTestService
     /// <inheritdoc/>
     public async Task<SpeedTestResult> GetUploadSpeedAsync(IServer server, CancellationToken cancellationToken = default)
     {
-        return await GetUploadSpeedAsync(server, new NullProgress<SpeedTestProgress>(), cancellationToken);
+        return await GetUploadSpeedAsync(server, null, null, cancellationToken);
+    }
+
+    /// <inheritdoc/>
+    public async Task<SpeedTestResult> GetUploadSpeedAsync(IServer server, IProgress<SpeedTestProgress> progress, CancellationToken cancellationToken = default)
+    {
+        return await GetUploadSpeedAsync(server, progress, null, cancellationToken);
     }
 
     /// <inheritdoc/>
@@ -364,7 +499,7 @@ public sealed class OoklaSpeedtest : ISpeedTestService
     /// cancelled rather than awaited and their bytes excluded. The actual bytes processed may
     /// still exceed the cap depending on parallelism and per-request size.
     /// </remarks>
-    public async Task<SpeedTestResult> GetUploadSpeedAsync(IServer server, IProgress<SpeedTestProgress> progress, CancellationToken cancellationToken = default)
+    public async Task<SpeedTestResult> GetUploadSpeedAsync(IServer server, IProgress<SpeedTestProgress>? progress, IProgress<RequestDiagnostic>? diagnostics, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(server);
         ArgumentException.ThrowIfNullOrWhiteSpace(server.Url);
@@ -377,7 +512,9 @@ public sealed class OoklaSpeedtest : ISpeedTestService
         // POST with a redirect. The streaming body cannot survive that redirect - the server responds
         // and closes the request stream while the body is still being written - so resolve the real
         // endpoint once, cheaply, and upload straight to it.
-        var uploadUrl = await ResolveUploadUrlAsync(server.Url, cancellationToken).ConfigureAwait(false);
+        // The probe is a request like any other, and takes the first sequence numbers of the upload
+        // test; the measured uploads are numbered after it.
+        var (uploadUrl, probeRequests) = await ResolveUploadUrlAsync(server.Url, diagnostics, cancellationToken).ConfigureAwait(false);
 
         // Upload content to a specified URL and return the size of the data in bytes.
         Func<HttpClient, int, CancellationToken, Task<int>> UploadAndMeasureAsync = async (client, length, cancellationToken) =>
@@ -395,7 +532,7 @@ public sealed class OoklaSpeedtest : ISpeedTestService
         var maxBytes = settings.UploadTest.UploadSizeMb == int.MaxValue
             ? long.MaxValue
             : (long)settings.UploadTest.UploadSizeMb * 1024L * 1024L;
-        var uploadResult = await GenericTestSpeedAsync(testDataLengths, UploadAndMeasureAsync, progress, settings.UploadTest.UploadParallelTasks, maxBytes, cancellationToken);
+        var uploadResult = await GenericTestSpeedAsync(testDataLengths, UploadAndMeasureAsync, _ => uploadUrl, progress, diagnostics, settings.UploadTest.UploadParallelTasks, maxBytes, sequenceOffset: probeRequests, cancellationToken);
 
         return uploadResult;
     }
@@ -407,9 +544,12 @@ public sealed class OoklaSpeedtest : ISpeedTestService
     private async Task<SpeedTestResult> GenericTestSpeedAsync<T>(
         IEnumerable<T> testData,
         Func<HttpClient, T, CancellationToken, Task<int>> doWork,
-        IProgress<SpeedTestProgress> progress,
+        Func<T, string> urlOf,
+        IProgress<SpeedTestProgress>? progress,
+        IProgress<RequestDiagnostic>? diagnostics,
         int parallelTasks,
         long maxBytes,
+        int sequenceOffset,
         CancellationToken cancellationToken)
     {
         object lockObject = new();
@@ -428,21 +568,51 @@ public sealed class OoklaSpeedtest : ISpeedTestService
         timer.Start();
 
         // Create and execute tasks to process the test data in parallel.
+        var sequenceIssued = sequenceOffset;
+
         var tasks = testData.Select(async data =>
         {
             var bytesReturned = 0;
             var requestFailed = false;
+
+            // A request still waiting its turn when the test ends was never sent, so it has nothing
+            // to report; everything below is only meaningful once it has started.
+            var requestStarted = false;
+            var sequence = 0;
+            var startedAt = default(DateTime);
+            var startTimestamp = 0L;
+            Exception? failure = null;
+
+            // Captured where the request actually ends rather than read in the counting block
+            // below: that block waits on a lock shared with every other finishing request, and
+            // runs this request's own progress callback on the way through. Timing it there would
+            // bill a request for the ones queued ahead of it, so bytes/duration per record would not
+            // reconcile with the measured throughput.
+            var elapsedMilliseconds = 0L;
 
             try
             {
                 // Limit concurrent executions by waiting for a permit from the semaphore.
                 await throttler.WaitAsync(cts.Token).ConfigureAwait(false);
 
+                sequence = Interlocked.Increment(ref sequenceIssued);
+                startedAt = timeProvider.GetLocalNow().DateTime;
+                startTimestamp = Stopwatch.GetTimestamp();
+
+                // Set last, so the flag never claims a start that the clock read above did not
+                // reach. Guarding on it while startTimestamp was still zero would time a request
+                // from the Stopwatch epoch and report the machine's uptime as its duration.
+                requestStarted = true;
+
                 // Perform the work and retrieve the processed byte count.
                 bytesReturned = await doWork(httpClient, data, cts.Token).ConfigureAwait(false);
+                elapsedMilliseconds = ElapsedMillisecondsSince(startTimestamp);
             }
             catch (Exception e)
             {
+                elapsedMilliseconds = requestStarted ? ElapsedMillisecondsSince(startTimestamp) : 0L;
+                failure = e;
+
                 // Genuine user cancellation (the caller's token) must propagate; it is not a
                 // per-request failure.
                 if (e is OperationCanceledException && cancellationToken.IsCancellationRequested)
@@ -483,7 +653,12 @@ public sealed class OoklaSpeedtest : ISpeedTestService
                 {
                     lock (lockObject)
                     {
-                        if (!cts.IsCancellationRequested)
+                        // Read under the same lock as the gate, and before the counting block that
+                        // may itself cancel: the request that trips the byte cap is counted, and
+                        // only the ones behind it are excluded. A record and the counts must agree.
+                        var requestExcluded = cts.IsCancellationRequested;
+
+                        if (!requestExcluded)
                         {
                             completedCount++;
 
@@ -535,6 +710,53 @@ public sealed class OoklaSpeedtest : ISpeedTestService
                                 });
                             }
                         }
+
+                        if (requestStarted && diagnostics is not null)
+                        {
+                            RequestOutcome outcome;
+                            string? failureReason = null;
+                            string? failureType = null;
+
+                            if (requestExcluded)
+                            {
+                                // Excluded from the counts, so the record reads Cancelled to agree
+                                // with them. But a request that genuinely failed before the cap
+                                // tripped still carries its cause: overwriting it with "byte budget
+                                // reached" would throw away the only evidence of a transport fault,
+                                // because of a race the request lost only after it had already
+                                // failed on its own merits.
+                                outcome = RequestOutcome.Cancelled;
+                                failureReason = requestFailed
+                                    ? DescribeFailure(failure!)
+                                    : cancellationToken.IsCancellationRequested ? CancelledByCaller : ByteBudgetReached;
+                                failureType = requestFailed ? failure!.GetType().Name : null;
+                            }
+                            else if (requestFailed)
+                            {
+                                outcome = RequestOutcome.Failed;
+                                failureReason = DescribeFailure(failure!);
+                                failureType = failure!.GetType().Name;
+                            }
+                            else
+                            {
+                                outcome = RequestOutcome.Succeeded;
+                            }
+
+                            if (diagnostics is not null)
+                            {
+                                ReportProgress(diagnostics, new RequestDiagnostic
+                                {
+                                    StartedAt = startedAt,
+                                    Sequence = sequence,
+                                    Url = urlOf(data),
+                                    Outcome = outcome,
+                                    BytesProcessed = bytesReturned,
+                                    ElapsedMilliseconds = elapsedMilliseconds,
+                                    FailureReason = failureReason,
+                                    FailureType = failureType
+                                });
+                            }
+                        }
                     }
                 }
                 finally
@@ -569,25 +791,57 @@ public sealed class OoklaSpeedtest : ISpeedTestService
     /// The probe carries no body: a redirect is decided by scheme and host rather than payload, so
     /// an empty POST draws the same answer with nothing to write and nothing to tear down mid-write.
     /// Sending no bytes also keeps the probe out of the measurement entirely. Whether the redirect is
-    /// followed by the underlying handler or reported back to us, the endpoint that actually accepted
-    /// the probe is the one returned. The probe never fails the test - if it cannot complete, the
-    /// original URL is used and any real fault surfaces through the upload requests themselves.
+    /// followed by the underlying handler or reported back to us, the endpoint that answered the probe
+    /// is the one returned - whether or not it answered with success. A rejection is recorded so a
+    /// triager can see it, not acted on. The probe never fails the test: if it cannot complete at
+    /// all, the original URL is used and any real fault surfaces through the uploads themselves.
     /// </remarks>
-    private async Task<string> ResolveUploadUrlAsync(string url, CancellationToken cancellationToken)
+    /// <returns>
+    /// The address to upload to, and how many requests the probe issued getting there - the
+    /// measured uploads are numbered after those, so every request of an upload test has a distinct
+    /// sequence number.
+    /// </returns>
+    private async Task<(string Url, int RequestsIssued)> ResolveUploadUrlAsync(string url, IProgress<RequestDiagnostic>? diagnostics, CancellationToken cancellationToken)
     {
         const int maximumHops = 5;
 
         var currentUrl = url;
+        var requestsIssued = 0;
 
-        try
+        for (var hop = 0; hop < maximumHops; hop++)
         {
-            for (var hop = 0; hop < maximumHops; hop++)
+            var probeUrl = currentUrl;
+            var startedAt = timeProvider.GetLocalNow().DateTime;
+            var startTimestamp = Stopwatch.GetTimestamp();
+            requestsIssued++;
+
+            try
             {
                 using var probeContent = new RandomStreamContent(0);
                 using var response = await httpClient.PostAsync(currentUrl, probeContent, cancellationToken).ConfigureAwait(false);
 
+                // PostAsync does not throw on a non-success status and the probe never calls
+                // EnsureSuccessStatusCode, so without this the one request that can quietly
+                // misdirect every upload that follows is the one record that always reads ok.
+                var redirected = IsRedirect(response.StatusCode);
+                var probeAnswered = response.IsSuccessStatusCode || redirected;
+
+                if (diagnostics is not null)
+                {
+                    ReportProgress(diagnostics, new RequestDiagnostic
+                    {
+                        StartedAt = startedAt,
+                        Sequence = requestsIssued,
+                        Url = probeUrl,
+                        Outcome = probeAnswered ? RequestOutcome.Succeeded : RequestOutcome.Failed,
+                        BytesProcessed = 0,
+                        ElapsedMilliseconds = ElapsedMillisecondsSince(startTimestamp),
+                        FailureReason = probeAnswered ? null : $"endpoint probe answered {(int)response.StatusCode}"
+                    });
+                }
+
                 // The handler did not follow the redirect for us - follow it explicitly.
-                if (IsRedirect(response.StatusCode) && response.Headers.Location is { } location)
+                if (redirected && response.Headers.Location is { } location)
                 {
                     currentUrl = new Uri(new Uri(currentUrl), location).ToString();
                     continue;
@@ -595,16 +849,23 @@ public sealed class OoklaSpeedtest : ISpeedTestService
 
                 // Otherwise the endpoint that answered is the one to upload to. When the handler
                 // followed redirects itself, that is the final hop rather than where we started.
-                return response.RequestMessage?.RequestUri?.ToString() ?? currentUrl;
+                return (response.RequestMessage?.RequestUri?.ToString() ?? currentUrl, requestsIssued);
+            }
+            catch (Exception e)
+            {
+                ReportRequestFailure(diagnostics, startedAt, requestsIssued, probeUrl, ElapsedMillisecondsSince(startTimestamp), e, cancellationToken);
+
+                if (cancellationToken.IsCancellationRequested)
+                {
+                    throw;
+                }
+
+                // Probing is best-effort; fall back to the configured URL.
+                return (url, requestsIssued);
             }
         }
-        catch (Exception) when (!cancellationToken.IsCancellationRequested)
-        {
-            // Probing is best-effort; fall back to the configured URL.
-            return url;
-        }
 
-        return currentUrl;
+        return (currentUrl, requestsIssued);
     }
 
     #region Static Functions
@@ -614,8 +875,13 @@ public sealed class OoklaSpeedtest : ISpeedTestService
     /// Progress is best-effort telemetry for the caller's UI; a callback that throws is the
     /// consumer's bug and MUST NOT fault the running speed test, so its exception is swallowed.
     /// </summary>
-    private static void ReportProgress<T>(IProgress<T> progress, T value)
+    private static void ReportProgress<T>(IProgress<T>? progress, T value)
     {
+        if (progress is null)
+        {
+            return;
+        }
+
         try
         {
             progress.Report(value);
@@ -627,6 +893,61 @@ public sealed class OoklaSpeedtest : ISpeedTestService
             // caller-supplied callback code — not a swallowed internal error.
         }
     }
+
+    /// <summary>
+    /// Reports a request that did not succeed, distinguishing one the caller cancelled from one
+    /// that genuinely failed.
+    /// </summary>
+    private static void ReportRequestFailure(IProgress<RequestDiagnostic>? diagnostics, DateTime startedAt, int sequence, string url, long elapsedMilliseconds, Exception failure, CancellationToken cancellationToken)
+    {
+        if (diagnostics is null)
+        {
+            return;
+        }
+
+        var cancelled = failure is OperationCanceledException && cancellationToken.IsCancellationRequested;
+
+        if (diagnostics is not null)
+        {
+            ReportProgress(diagnostics, new RequestDiagnostic
+            {
+                StartedAt = startedAt,
+                Sequence = sequence,
+                Url = url,
+                Outcome = cancelled ? RequestOutcome.Cancelled : RequestOutcome.Failed,
+                BytesProcessed = 0,
+                ElapsedMilliseconds = elapsedMilliseconds,
+                FailureReason = cancelled ? CancelledByCaller : DescribeFailure(failure),
+                FailureType = cancelled ? null : failure.GetType().Name
+            });
+        }
+    }
+
+    /// <summary>
+    /// The whole exception chain's messages, outermost first, joined with <c>" &lt;- "</c>.
+    /// </summary>
+    /// <remarks>
+    /// The outermost message alone is routinely useless - "The SSL connection could not be
+    /// established, see inner exception." names no cause at all - and the innermost alone loses the
+    /// context that makes it readable. #245 was diagnosed from exactly this chain.
+    /// </remarks>
+    private static string DescribeFailure(Exception failure)
+    {
+        var messages = new List<string>();
+
+        for (Exception? current = failure; current is not null; current = current.InnerException)
+        {
+            messages.Add(current.Message);
+        }
+
+        return string.Join(" <- ", messages);
+    }
+
+    /// <summary>
+    /// Milliseconds elapsed since a <see cref="Stopwatch.GetTimestamp"/> reading.
+    /// </summary>
+    private static long ElapsedMillisecondsSince(long startTimestamp) =>
+        (long)Stopwatch.GetElapsedTime(startTimestamp).TotalMilliseconds;
 
     private static HttpClient CreateHttpClient(bool useProxy, Uri? proxyAddress, NetworkCredential? proxyCredential)
     {

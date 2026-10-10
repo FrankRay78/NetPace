@@ -2,6 +2,7 @@ using System.CommandLine;
 
 using Microsoft.Extensions.DependencyInjection;
 using NetPace.Console.Commands;
+using NetPace.Console.Diagnostics;
 using NetPace.Core;
 using NetPace.Core.Clients.Ookla;
 using Spectre.Console;
@@ -21,7 +22,7 @@ public static class Program
     /// <remarks>
     /// Extracted here so the testing project can reuse the production configuration.
     /// </remarks>
-    internal static RootCommand CreateRootCommand(IServiceProvider serviceProvider)
+    internal static RootCommand CreateRootCommand(IServiceProvider serviceProvider, string[] args)
     {
         var command = new RootCommand(Description);
 
@@ -202,6 +203,12 @@ public static class Program
         };
         quietOption.Aliases.Add("-q");
 
+        var diagnosticsOption = new Option<bool>("--diagnostics")
+        {
+            Description = "Write per-request diagnostic detail about the run to the error stream.\nThe result is unchanged, so 'netpace --json --diagnostics > result.json 2> diagnostics.log' keeps the two apart.",
+            DefaultValueFactory = _ => false
+        };
+
         var failOnOption = new Option<FailOn>("--fail-on")
         {
             Description = "Exit with a non-zero code on a failed measurement. <None, Total, Partial>\nNone never affects the exit code; Total triggers when a test is all-failed;\nPartial triggers on any failed request. Fail-fast across --count and --loop.",
@@ -236,6 +243,7 @@ public static class Program
         command.Options.Add(fileModeOption);
         command.Options.Add(quietOption);
         command.Options.Add(failOnOption);
+        command.Options.Add(diagnosticsOption);
 
         // Set command action
         command.SetAction((Func<ParseResult, CancellationToken, Task<int>>)(async (parseResult, cancellationToken) =>
@@ -269,7 +277,8 @@ public static class Program
                     OutputFile = parseResult.GetValue(fileOption) ?? string.Empty,
                     FileModeValue = parseResult.GetValue(fileModeOption),
                     Quiet = parseResult.GetValue(quietOption),
-                    FailOn = parseResult.GetValue(failOnOption)
+                    FailOn = parseResult.GetValue(failOnOption),
+                    Diagnostics = parseResult.GetValue(diagnosticsOption)
                 };
 
                 // Validate settings
@@ -288,8 +297,27 @@ public static class Program
                 var clientInfoProvider = serviceProvider.GetRequiredService<IClientInfoProvider>();
                 var waiter = serviceProvider.GetRequiredService<IWaiter>();
 
+                // Switched off, nothing is recorded and nothing is written - so no call site
+                // downstream has to ask whether diagnostics are on.
+                IDiagnosticRecorder recorder = settings.Diagnostics
+                    ? new BufferingDiagnosticRecorder(
+                        serviceProvider.GetRequiredService<IDiagnosticClock>(),
+                        serviceProvider.GetRequiredService<DiagnosticOutput>().Writer)
+                    : NullDiagnosticRecorder.Instance;
+
+                // Recorded once per process, before the first test: what NetPace is, what it is
+                // running on, and how it was asked to run.
+                var environmentInfoProvider = serviceProvider.GetRequiredService<IEnvironmentInfoProvider>();
+                recorder.Record(
+                    "run.start",
+                    ("version", environmentInfoProvider.GetVersion()),
+                    ("runtime", environmentInfoProvider.GetRuntime()),
+                    ("os", environmentInfoProvider.GetOperatingSystem()),
+                    ("arch", environmentInfoProvider.GetArchitecture()));
+                recorder.Record("run.invocation", ("args", string.Join(' ', args)));
+
                 // Create and execute command
-                var command = new SpeedTestCommand(ansiConsole, speedTestService, clock, clientInfoProvider, waiter);
+                var command = new SpeedTestCommand(ansiConsole, speedTestService, clock, clientInfoProvider, recorder, waiter);
                 return await command.ExecuteAsync(settings, cancellationToken);
             }
             catch (Exception ex)
@@ -406,12 +434,18 @@ public static class Program
         // before it knows which ISpeedTestService is in play.
         services.AddSingleton<OoklaSpeedtestSettingsAccessor>();
 
+        // Diagnostics go to the error stream, never through the Spectre console: one record per
+        // line, whatever the terminal width, and whatever --quiet or --file were set to.
+        services.AddSingleton(new DiagnosticOutput(System.Console.Error));
+
         if (args != null && args.Contains("--test"))
         {
             // Executes NetPace against stub service implementations.
             services.AddSingleton<ISpeedTestService>(new SpeedTestStub(250));
             services.AddSingleton<IClock, ClockStub>();
             services.AddSingleton<IClientInfoProvider, ClientInfoProviderStub>();
+            services.AddSingleton<IEnvironmentInfoProvider, EnvironmentInfoProviderStub>();
+            services.AddSingleton<IDiagnosticClock, IncrementingDiagnosticClockStub>();
             services.AddSingleton<IWaiter, NoDelayStub>();
         }
         else
@@ -419,6 +453,8 @@ public static class Program
             services.AddSingleton<ISpeedTestService>(sp => new OoklaSpeedtest(sp.GetRequiredService<OoklaSpeedtestSettingsAccessor>().Settings));
             services.AddSingleton<IClock, Clock>();
             services.AddSingleton<IClientInfoProvider, ClientInfoProvider>();
+            services.AddSingleton<IEnvironmentInfoProvider, EnvironmentInfoProvider>();
+            services.AddSingleton<IDiagnosticClock, DiagnosticClock>();
             services.AddSingleton<IWaiter, Waiter>();
         }
 
@@ -453,7 +489,7 @@ public static class Program
     internal static async Task<int> RunAsync(IServiceProvider serviceProvider, string[] args, CancellationToken cancellationToken = default)
     {
         var ansiConsole = serviceProvider.GetRequiredService<IAnsiConsole>();
-        var rootCommand = CreateRootCommand(serviceProvider);
+        var rootCommand = CreateRootCommand(serviceProvider, args);
 
         // Check for version request before parsing
         if (args.Length > 0 && (args[0] is "-v" or "--version"))

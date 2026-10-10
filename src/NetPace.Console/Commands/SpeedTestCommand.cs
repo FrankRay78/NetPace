@@ -1,9 +1,11 @@
+using System.Globalization;
 using NetPace.Console.ConsoleWriters;
+using NetPace.Console.Diagnostics;
 using NetPace.Core;
 
 namespace NetPace.Console.Commands;
 
-public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService speedTestClient, IClock clock, IClientInfoProvider clientInfoProvider, IWaiter waiter)
+public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService speedTestClient, IClock clock, IClientInfoProvider clientInfoProvider, IDiagnosticRecorder recorder, IWaiter waiter)
 {
     /// <summary>
     /// Executes the speed test command using the provided settings.
@@ -15,6 +17,24 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
     /// produce a non-zero exit code.
     /// </remarks>
     public async Task<int> ExecuteAsync(SpeedTestCommandSettings settings, CancellationToken cancellationToken)
+    {
+        var exitCode = 1;
+
+        try
+        {
+            exitCode = await RunAsync(settings, cancellationToken);
+            return exitCode;
+        }
+        finally
+        {
+            // Written after the last per-iteration flush, and from a finally because a run that
+            // threw an operational fault is exactly when its diagnostics matter most.
+            recorder.Record("run.end", ("exit", exitCode.ToString(CultureInfo.InvariantCulture)));
+            recorder.Flush();
+        }
+    }
+
+    private async Task<int> RunAsync(SpeedTestCommandSettings settings, CancellationToken cancellationToken)
     {
         if (settings.Quiet || !string.IsNullOrWhiteSpace(settings.OutputFile))
         {
@@ -54,7 +74,7 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
                 {
                     try
                     {
-                        var outcome = await writer.PerformSpeedTestAsync(initialSpeedTest: firstLoop, console, clock, clientInfoProvider, speedTestClient, settings, cancellationToken);
+                        var outcome = await writer.PerformSpeedTestAsync(initialSpeedTest: firstLoop, console, clock, clientInfoProvider, recorder, speedTestClient, settings, cancellationToken);
                         if (FailOnTriggered(outcome, settings)) return 1;
                     }
                     catch (OperationCanceledException)
@@ -72,6 +92,10 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
 
                         if (FailOnRequested(settings)) return 1;
                     }
+
+                    // Flushed per iteration so a long run reports as it goes and the buffer does
+                    // not grow without bound.
+                    recorder.Flush();
 
                     firstLoop = false;
 
@@ -95,7 +119,7 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
                 {
                     try
                     {
-                        var outcome = await writer.PerformSpeedTestAsync(initialSpeedTest: (i == 0), console, clock, clientInfoProvider, speedTestClient, settings, cancellationToken);
+                        var outcome = await writer.PerformSpeedTestAsync(initialSpeedTest: (i == 0), console, clock, clientInfoProvider, recorder, speedTestClient, settings, cancellationToken);
                         if (FailOnTriggered(outcome, settings)) return 1;
                     }
                     catch (OperationCanceledException)
@@ -113,6 +137,10 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
 
                         if (FailOnRequested(settings)) return 1;
                     }
+
+                    // Flushed per iteration so a long run reports as it goes and the buffer does
+                    // not grow without bound.
+                    recorder.Flush();
 
                     if ((i + 1) < settings.Count)
                     {
@@ -134,7 +162,7 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
                 // Run once.
                 try
                 {
-                    var outcome = await writer.PerformSpeedTestAsync(initialSpeedTest: true, console, clock, clientInfoProvider, speedTestClient, settings, cancellationToken);
+                    var outcome = await writer.PerformSpeedTestAsync(initialSpeedTest: true, console, clock, clientInfoProvider, recorder, speedTestClient, settings, cancellationToken);
                     if (FailOnTriggered(outcome, settings)) return 1;
                 }
                 catch (OperationCanceledException)
