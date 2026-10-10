@@ -36,6 +36,16 @@ public interface ISpeedTestService
     public Task<LatencyTestResult> GetServerLatencyAsync(IServer server, IProgress<LatencyTestProgress> progress, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Measures the network latency (ping) to the specified server, reporting per-request detail.
+    /// </summary>
+    /// <param name="server">The server to measure latency against.</param>
+    /// <param name="progress">A progress reporter that receives latency test progress updates, or <see langword="null"/> for none.</param>
+    /// <param name="diagnostics">A reporter that receives one <see cref="RequestDiagnostic"/> per request, or <see langword="null"/> for none.</param>
+    /// <param name="cancellationToken">The token to allow the operation to be cancelled.</param>
+    /// <returns>The server and its latency in milliseconds.</returns>
+    public Task<LatencyTestResult> GetServerLatencyAsync(IServer server, IProgress<LatencyTestProgress>? progress, IProgress<RequestDiagnostic>? diagnostics, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Measures the network latency (ping) to the specified server.
     /// </summary>
     /// <param name="serverUrl">The server to measure latency against.</param>
@@ -51,6 +61,16 @@ public interface ISpeedTestService
     /// <param name="cancellationToken">The token to allow the operation to be cancelled.</param>
     /// <returns>The server and its latency in milliseconds.</returns>
     public Task<LatencyTestResult> GetServerLatencyAsync(string serverUrl, IProgress<LatencyTestProgress> progress, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Measures the network latency (ping) to the specified server, reporting per-request detail.
+    /// </summary>
+    /// <param name="serverUrl">The server URL to measure latency against.</param>
+    /// <param name="progress">A progress reporter that receives latency test progress updates, or <see langword="null"/> for none.</param>
+    /// <param name="diagnostics">A reporter that receives one <see cref="RequestDiagnostic"/> per request, or <see langword="null"/> for none.</param>
+    /// <param name="cancellationToken">The token to allow the operation to be cancelled.</param>
+    /// <returns>The server and its latency in milliseconds.</returns>
+    public Task<LatencyTestResult> GetServerLatencyAsync(string serverUrl, IProgress<LatencyTestProgress>? progress, IProgress<RequestDiagnostic>? diagnostics, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Screens every given server and returns the fastest one that could be reached.
@@ -90,6 +110,23 @@ public interface ISpeedTestService
     public Task<LatencyTestResult> GetFastestServerByLatencyAsync(IServer[] servers, IProgress<SpeedTestProgress> progress, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Screens every given server and returns the fastest one that could be reached, reporting
+    /// per-request detail for every screening request.
+    /// </summary>
+    /// <remarks>
+    /// Screening is a cheap ranking pass rather than a measurement - see
+    /// <see cref="GetFastestServerByLatencyAsync(IServer[], CancellationToken)"/>.
+    /// </remarks>
+    /// <param name="servers">An array of servers to screen.</param>
+    /// <param name="progress">A progress reporter that receives server selection progress updates, or <see langword="null"/> for none.</param>
+    /// <param name="diagnostics">A reporter that receives one <see cref="RequestDiagnostic"/> per screening request, or <see langword="null"/> for none.</param>
+    /// <param name="cancellationToken">The token to allow the operation to be cancelled.</param>
+    /// <returns>The reachable server with the lowest screening latency, and that latency in milliseconds.</returns>
+    /// <exception cref="Exception">Thrown when no given server could be reached.</exception>
+    /// <exception cref="ArgumentOutOfRangeException">Thrown when the provider is configured with a non-positive screening request count or screening ceiling.</exception>
+    public Task<LatencyTestResult> GetFastestServerByLatencyAsync(IServer[] servers, IProgress<SpeedTestProgress>? progress, IProgress<RequestDiagnostic>? diagnostics, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Measures the download speed of the specified server.
     /// </summary>
     /// <param name="server">The server to measure download speed from.</param>
@@ -107,6 +144,16 @@ public interface ISpeedTestService
     public Task<SpeedTestResult> GetDownloadSpeedAsync(IServer server, IProgress<SpeedTestProgress> progress, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Measures the download speed of the specified server, reporting per-request detail.
+    /// </summary>
+    /// <param name="server">The server to measure download speed from.</param>
+    /// <param name="progress">A progress reporter that receives download progress updates, or <see langword="null"/> for none.</param>
+    /// <param name="diagnostics">A reporter that receives one <see cref="RequestDiagnostic"/> per request, or <see langword="null"/> for none.</param>
+    /// <param name="cancellationToken">The token to allow the operation to be cancelled.</param>
+    /// <returns>The result including bytes processed and elapsed time in milliseconds.</returns>
+    public Task<SpeedTestResult> GetDownloadSpeedAsync(IServer server, IProgress<SpeedTestProgress>? progress, IProgress<RequestDiagnostic>? diagnostics, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Measures the upload speed of the specified server.
     /// </summary>
     /// <param name="server">The server to measure upload speed from.</param>
@@ -122,4 +169,14 @@ public interface ISpeedTestService
     /// <param name="cancellationToken">The token to allow the operation to be cancelled.</param>
     /// <returns>The result including bytes processed and elapsed time in milliseconds.</returns>
     public Task<SpeedTestResult> GetUploadSpeedAsync(IServer server, IProgress<SpeedTestProgress> progress, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Measures the upload speed of the specified server, reporting per-request detail.
+    /// </summary>
+    /// <param name="server">The server to measure upload speed from.</param>
+    /// <param name="progress">A progress reporter that receives upload progress updates, or <see langword="null"/> for none.</param>
+    /// <param name="diagnostics">A reporter that receives one <see cref="RequestDiagnostic"/> per request, or <see langword="null"/> for none.</param>
+    /// <param name="cancellationToken">The token to allow the operation to be cancelled.</param>
+    /// <returns>The result including bytes processed and elapsed time in milliseconds.</returns>
+    public Task<SpeedTestResult> GetUploadSpeedAsync(IServer server, IProgress<SpeedTestProgress>? progress, IProgress<RequestDiagnostic>? diagnostics, CancellationToken cancellationToken = default);
 }

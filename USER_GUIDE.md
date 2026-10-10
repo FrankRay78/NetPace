@@ -83,6 +83,8 @@ Three alternative formats are available instead:
 
 Every format composes with the result-shaping options — `--timestamp`, `--unit`, `--unit-scale`, `--unit-system`, and skipping individual tests with `--no-latency` / `--no-download` / `--no-upload`. `--quiet` suppresses the result entirely whichever format you chose, while `--file` writes it to disk.
 
+`--diagnostics` is not a fifth format — it adds a second stream alongside whichever format you picked, leaving the result untouched. See [Diagnosing a failure with `--diagnostics`](#diagnosing-a-failure-with---diagnostics).
+
 ---
 
 ## How a server is chosen
@@ -156,6 +158,46 @@ Timestamp,Latency,Download,DownloadSucceeded,DownloadFailed,Upload,UploadSucceed
 ```
 
 The counts are the whole signal — no output format adds a prose warning on top of them. `--quiet` suppresses them along with the rest of the output; use `--fail-on` to detect an all-failed measurement in that mode.
+
+### Diagnosing a failure with `--diagnostics`
+
+The counts tell you *that* requests failed. `--diagnostics` tells you *why*, and does it from one run — which is the whole point of the switch, because a bug report that needs a second run is a conversation rather than a report.
+
+Diagnostics go to the error stream, never to the result stream, so the two can be captured separately:
+
+```bash
+NetPace --json --diagnostics > result.json 2> diagnostics.log
+```
+
+The result is byte-for-byte what the same invocation produces without the switch, in every output format — so adding `--diagnostics` to a script that parses `--csv` or `--json` cannot break the parsing. Without the switch, nothing is written to the error stream at all. At a terminal with nothing redirected, the records appear after the result, leaving the live progress display intact.
+
+`--diagnostics` works alongside whichever output format you chose, and is unaffected by `--quiet`. It never writes to the `--file` target.
+
+Each line is one record, as `key=value` pairs (an excerpt — a real run also carries the `screening` and `latency` test blocks, and `server.selected` appears after them):
+
+```
+ts=1980-01-01T10:05:00.000 event=run.start version=0.25.0 runtime=".NET 10.0.0" os="Linux 6.8.0-137-generic" arch=x64
+ts=1980-01-01T10:05:00.000 event=run.invocation args="--json --diagnostics"
+ts=1980-01-01T10:05:05.000 event=server.selected sponsor="Foo Telecom" location="London, GB" url=http://speedtest.foo.example:8080/speedtest/upload.php selection=auto-latency latency_ms=12
+ts=1980-01-01T10:05:10.000 event=test.start test=upload
+ts=1980-01-01T10:05:11.412 event=request test=upload seq=1 url=http://speedtest.foo.example:8080/speedtest/upload.php status=failed bytes=0 duration_ms=1203 reason="The SSL connection could not be established, see inner exception. <- Authentication failed because the remote party sent a TLS alert: 'HandshakeFailure'." exception=HttpRequestException
+ts=1980-01-01T10:05:25.000 event=test.end test=upload requests=8 succeeded=0 failed=8 cancelled=0 bytes=0
+ts=1980-01-01T10:05:30.000 event=run.end exit=0
+```
+
+What the records cover:
+
+| Event | What it says |
+| --- | --- |
+| `run.start` | The NetPace version, the .NET runtime, the operating system and the architecture. |
+| `run.invocation` | How NetPace was invoked. |
+| `server.selected` | The server used, and `selection=` — `auto-latency`, `specified` or `first-in-list`. `latency_ms` is the screening figure that chose it, and is absent when latency played no part in choosing. |
+| `test.start` / `test.end` | Which tests ran — `screening`, `latency`, `download`, `upload` — and, on `test.end`, the total `requests`, how many `succeeded`, `failed` or were `cancelled`, and the `bytes` the successful ones moved. Those totals cover exactly the `request` lines above them, so the two always reconcile. |
+| `request` | One per request, with its sequence number, address, outcome, bytes, duration and — where it did not succeed — the `reason` and, if an exception was involved, its `exception` type. `status=` is `ok`, `failed` or `cancelled`. |
+
+Every line repeats enough to stand alone, so `grep status=failed diagnostics.log` is a complete triage pass. Nothing is summarised away: every measured request gets its own record, including the latency probes made while choosing a server. Two kinds of request are not recorded individually: the initial server-list fetch, whose failure surfaces as the run's error instead; and a screening request that finishes after the selection ceiling has already passed, which arrives too late for the `test.end` it would belong to and is dropped so that summary stays exact — so a candidate you expected to see may be absent rather than untried. One request appears that you did not ask for: the upload test resolves its endpoint with an empty probe POST first, which takes the opening `seq` numbers of that test and reads `bytes=0`, so `test.end requests=` counts one more than the uploads measured (more, if the server redirects several times). Record volume is driven by how many servers the feed offers — roughly three records per candidate screened — on top of the request counts your `--profile` sets, so expect a few hundred lines from a default run.
+
+Under `--count` or `--loop`, `run.start`, `run.invocation` and `run.end` appear once, and the test and request records repeat per iteration.
 
 ### Exit codes
 

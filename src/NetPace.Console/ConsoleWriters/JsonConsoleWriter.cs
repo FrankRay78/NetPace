@@ -1,14 +1,15 @@
 using System.Text.Json;
+using NetPace.Console.Diagnostics;
 using NetPace.Core;
 
 namespace NetPace.Console.ConsoleWriters;
 
 public sealed class JsonConsoleWriter : IConsoleWriter
 {
-    public async Task<SpeedTestOutcome> PerformSpeedTestAsync(bool initialSpeedTest, IAnsiConsole console, IClock clock, IClientInfoProvider clientInfoProvider, ISpeedTestService speedTestClient, SpeedTestCommandSettings settings, CancellationToken cancellationToken)
+    public async Task<SpeedTestOutcome> PerformSpeedTestAsync(bool initialSpeedTest, IAnsiConsole console, IClock clock, IClientInfoProvider clientInfoProvider, IDiagnosticRecorder recorder, ISpeedTestService speedTestClient, SpeedTestCommandSettings settings, CancellationToken cancellationToken)
     {
         // Get the server to use for speed testing.
-        var fastest = await ServerSelector.GetServerAsync(speedTestClient, settings, cancellationToken);
+        var fastest = await ServerSelector.GetServerAsync(speedTestClient, settings, recorder, cancellationToken);
 
 
         // A test that did not run is absent, never a zeroed result.
@@ -16,8 +17,16 @@ public sealed class JsonConsoleWriter : IConsoleWriter
         SpeedTestResult? uploadResult = null;
 
         // Perform speed test.
-        if (!settings.NoDownload) downloadResult = await speedTestClient.GetDownloadSpeedAsync(fastest.Server, cancellationToken);
-        if (!settings.NoUpload) uploadResult = await speedTestClient.GetUploadSpeedAsync(fastest.Server, cancellationToken);
+        if (!settings.NoDownload)
+        {
+            using var download = DiagnosticTestScope.For(recorder, DiagnosticTests.Download);
+            downloadResult = await speedTestClient.GetDownloadSpeedAsync(fastest.Server, null, download, cancellationToken);
+        }
+        if (!settings.NoUpload)
+        {
+            using var upload = DiagnosticTestScope.For(recorder, DiagnosticTests.Upload);
+            uploadResult = await speedTestClient.GetUploadSpeedAsync(fastest.Server, null, upload, cancellationToken);
+        }
 
 
         // Display speed test result.

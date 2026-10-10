@@ -157,4 +157,34 @@ public class VariableSpeedTester : ISpeedTestService
     {
         return inner.GetUploadSpeedAsync(server, progress, cancellationToken);
     }
+
+    /// <inheritdoc/>
+    public Task<LatencyTestResult> GetServerLatencyAsync(IServer server, IProgress<LatencyTestProgress>? progress, IProgress<RequestDiagnostic>? diagnostics, CancellationToken cancellationToken = default)
+    {
+        return inner.GetServerLatencyAsync(server, progress, diagnostics, cancellationToken);
+    }
+
+    /// <inheritdoc/>
+    public Task<LatencyTestResult> GetServerLatencyAsync(string serverUrl, IProgress<LatencyTestProgress>? progress, IProgress<RequestDiagnostic>? diagnostics, CancellationToken cancellationToken = default)
+    {
+        return inner.GetServerLatencyAsync(serverUrl, progress, diagnostics, cancellationToken);
+    }
+
+    /// <inheritdoc/>
+    public Task<LatencyTestResult> GetFastestServerByLatencyAsync(IServer[] servers, IProgress<SpeedTestProgress>? progress, IProgress<RequestDiagnostic>? diagnostics, CancellationToken cancellationToken = default)
+    {
+        return inner.GetFastestServerByLatencyAsync(servers, progress, diagnostics, cancellationToken);
+    }
+
+    /// <inheritdoc/>
+    public Task<SpeedTestResult> GetDownloadSpeedAsync(IServer server, IProgress<SpeedTestProgress>? progress, IProgress<RequestDiagnostic>? diagnostics, CancellationToken cancellationToken = default)
+    {
+        return inner.GetDownloadSpeedAsync(server, progress, diagnostics, cancellationToken);
+    }
+
+    /// <inheritdoc/>
+    public Task<SpeedTestResult> GetUploadSpeedAsync(IServer server, IProgress<SpeedTestProgress>? progress, IProgress<RequestDiagnostic>? diagnostics, CancellationToken cancellationToken = default)
+    {
+        return inner.GetUploadSpeedAsync(server, progress, diagnostics, cancellationToken);
+    }
 }

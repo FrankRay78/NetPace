@@ -1,11 +1,12 @@
 using NetPace.Console.ConsoleWriters;
+using NetPace.Console.Diagnostics;
 using NetPace.Core;
 
 namespace NetPace.Console.ConsoleWriters;
 
 public sealed class DefaultConsoleWriter : IConsoleWriter
 {
-    public async Task<SpeedTestOutcome> PerformSpeedTestAsync(bool initialSpeedTest, IAnsiConsole console, IClock clock, IClientInfoProvider clientInfoProvider, ISpeedTestService speedTestClient, SpeedTestCommandSettings settings, CancellationToken cancellationToken)
+    public async Task<SpeedTestOutcome> PerformSpeedTestAsync(bool initialSpeedTest, IAnsiConsole console, IClock clock, IClientInfoProvider clientInfoProvider, IDiagnosticRecorder recorder, ISpeedTestService speedTestClient, SpeedTestCommandSettings settings, CancellationToken cancellationToken)
     {
 
         // Get the server to use for speed testing.
@@ -22,14 +23,13 @@ public sealed class DefaultConsoleWriter : IConsoleWriter
 
                 try
                 {
-                    return await ServerSelector.GetServerAsync(speedTestClient, settings, cancellationToken);
+                    return await ServerSelector.GetServerAsync(speedTestClient, settings, recorder, cancellationToken);
                 }
                 finally
                 {
                     fastestServerProgress.StopTask();
                 }
             });
-
 
 
         // Display server latency.
@@ -79,12 +79,14 @@ public sealed class DefaultConsoleWriter : IConsoleWriter
                     if (!settings.NoDownload)
                     {
                         var downloadProgressReporter = new SyncProgress<SpeedTestProgress>(p => downloadProgress!.Value = p.PercentageComplete);
-                        downloadResult = await speedTestClient.GetDownloadSpeedAsync(fastest.Server, downloadProgressReporter, cancellationToken);
+                        using var download = DiagnosticTestScope.For(recorder, DiagnosticTests.Download);
+                        downloadResult = await speedTestClient.GetDownloadSpeedAsync(fastest.Server, downloadProgressReporter, download, cancellationToken);
                     }
                     if (!settings.NoUpload)
                     {
                         var uploadProgressReporter = new SyncProgress<SpeedTestProgress>(p => uploadProgress!.Value = p.PercentageComplete);
-                        uploadResult = await speedTestClient.GetUploadSpeedAsync(fastest.Server, uploadProgressReporter, cancellationToken);
+                        using var upload = DiagnosticTestScope.For(recorder, DiagnosticTests.Upload);
+                        uploadResult = await speedTestClient.GetUploadSpeedAsync(fastest.Server, uploadProgressReporter, upload, cancellationToken);
                     }
                 });
         }
