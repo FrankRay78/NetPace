@@ -72,6 +72,11 @@ Then, for each non-empty answer, check for **hedging** — text that means "I wa
 - `???`, `?` (when the answer is just a single `?`)
 - `help me`, `help`, `more options`, `more details`, `more detail`, `give me options`
 - `unclear`, `tbd`, `to be decided`
+- `don't understand`, `do not understand`, `what does this mean`
+
+An answer that says the author does not understand is a request for *meaning* rather than a decision — the author is telling you the question is unanswerable as asked, not that they cannot choose between its options. It stops the fold exactly as `not sure` does, and a re-run of `/reviewissue` re-frames that gap starting from what happens today.
+
+This list and the hedging dictionary in `/reviewissue` step 6 must stay identical. An answer that one command stops on and the other will not re-frame is a dead end: the author can neither get a better question nor get past the gate.
 
 If **any** answer is hedging, **stop** and report which gap numbers are still hedging. Tell the author to re-run `/reviewissue #N` to expand those questions, then come back. Do not modify the issue body.
 
@@ -156,7 +161,15 @@ Routing rules:
 - Strip the gap numbers from the review comment (1, 2, 3, …) when emitting confirmed decisions — bullets here are unordered.
 - **Backwards compatibility:** if the review comment has no `### Requirements gaps` / `### Technical gaps` sub-headings (i.e. it was authored before this convention), emit all decisions as a flat bullet list with no sub-headings (the pre-split format).
 
-Preserve everything above the section byte-for-byte. Do not "tidy" the original proposal.
+**Bring the body into line with any decision that overrules it.** Everything the confirmed decisions do not contradict is preserved byte-for-byte, and the rule against "tidying" the original proposal still holds — this is a correction of contradictions, not an edit pass.
+
+For each **Pattern B** (rider) and **Pattern C** (redirect, out-of-scope sub-case included) decision, read the body above the section for passages that state the behaviour that decision overruled — a Capability scenario, an acceptance criterion, an out-of-scope bullet, a technical note — and rewrite each one to state the decided behaviour instead. Where the decision put work out of scope, a passage promising that work is rewritten to drop the promise, or removed outright if the promise is all it carries. A **Pattern A** decision rewrites nothing: it accepted what the body already says.
+
+Leaving the overruled text in place is the failure this rule exists to prevent. The decision lands at the bottom of the body while the text it contradicts stays above it, and `/build` reads both as its specification.
+
+**Keep a list of every passage you rewrote**, each named by the heading or criterion it sits under, for the report (*Output to the user*). The author checks the rewrites off that list, so an unlisted rewrite is one nobody checks.
+
+Only the issue body is brought into line. An older *comment* that a decision contradicts stays exactly as posted.
 
 ### 5. Patch the issue body
 
@@ -221,6 +234,7 @@ Keep your chat response short:
 
 - confirm the issue updated (number + title)
 - state how many decisions were folded in (and the count by pattern: e.g. "8 accepted, 1 with rider, 1 redirected")
+- list each body passage you rewrote to agree with a redirected or ridered decision, naming the heading or criterion each sits under — or say plainly that none were rewritten. This is the author's only prompt to check text their own answers changed.
 - state whether the `ready` label was applied — and if it was not, say so explicitly, noting the decisions were saved regardless
 - state whether the review comment was deleted — and if it was not, say so explicitly, naming which precondition or call failed and telling the operator what to do about it ("the `ready` label did not land; re-run `/confirmissue #N` to complete it"). These paths are deliberately non-fatal, so the report is the only signal that the issue is in a half-finished state.
 - return the issue URL
