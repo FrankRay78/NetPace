@@ -10,6 +10,8 @@
 
 Change Intent Records capture the **why** behind non-obvious decisions made during development. They complement code comments (which explain "how") by documenting the reasoning, alternatives considered, and constraints that led to a particular implementation choice.
 
+A record is also the one place in the codebase where a GitHub issue number belongs. The only exception is a regression test or acceptance criterion naming the bug it guards against (Constitution §IX's *Regression exception*, worked in [`testing.md`](testing.md)). Everywhere else the reasoning stays as prose and the number goes, because an issue thread cited for its reasoning is standing in for a record that was never written — write the record and link that instead.
+
 **Decision table** — does this change need a CIR?
 
 | Question | → CIR | → No CIR |
