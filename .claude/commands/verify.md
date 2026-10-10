@@ -108,7 +108,7 @@ Report, in this order:
 
 - Whether formatting changed anything, and the commit if it did — step 1a's, and step 3's if its commit carried formatting alongside the fix.
 - The suite result(s).
-- Which reviewers ran, and the commit step 3 made, if the review led to one.
+- Which reviewers ran, and the commit step 3 made, if the review led to one. If HEAD had moved by step 3 because a reviewer committed itself, name each such commit by hash and say which reviewer made it: it is on the branch, but nothing in `/verify` judged it against step 2's rules.
 - Which review findings were fixed-and-committed, and which confirmed ones were not — each *Not fixed* finding and each Suggestion left unapplied, by name and severity. Mark as **unrated** any finding whose severity you set because its reviewer gave none on the scale, with one line on why it was or was not counted a defect. **This report is the only place an unfixed finding is recorded, and it ends there.** Do not raise an issue for one, write it to a file, or ask for it to go in the PR body: nothing carries Review A's findings to the pull request, so that Review B reads the branch untainted by them.
 - On the way to a `VERIFIED` verdict, add this **above the verdict line** — it is boilerplate this command mandates, and appending it below the verdict is the commonest way to lose the verdict: "Run `/raise-pr` to push the branch and open the PR — it derives `Closes #<N>` from this branch name and verifies it before use, then reports what it settled; check that line to confirm the link was made. The `@claude` Review B posts async on the raised PR, and `/capture-learnings` folds it in when you next review the batch."
 

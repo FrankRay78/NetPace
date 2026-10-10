@@ -324,9 +324,9 @@ ok "a failure verdict with no reason still stops, and says the reason is missing
 echo "A failure report that mentions the success verdict is not a success:"
 new_case
 reply 1 'READY branch=feature/270-x'
-reply 2 $'The branch is not VERIFIED — branch=feature/270-x stays unverified.\n\n## FAILED reason=last review round found a material problem'
+reply 2 $'The branch is not VERIFIED — branch=feature/270-x stays unverified.\n\n## FAILED reason=a confirmed Blocker could not be fixed'
 chain 270
-ok "a decorated failure outranks prose that names the success verdict" '[ "$RC" = 1 ] && [ "$(calls)" = 2 ] && closing | grep -qF "last review round found a material problem"'
+ok "a decorated failure outranks prose that names the success verdict" '[ "$RC" = 1 ] && [ "$(calls)" = 2 ] && closing | grep -qF "a confirmed Blocker could not be fixed"'
 
 # SCENARIO: A word that merely contains the success word is not a success verdict
 echo "A word that merely contains the success word is not a success verdict:"
@@ -390,9 +390,9 @@ ok "an unclosed fence above the verdict does not hide it" '[ "$RC" = 0 ] && [ "$
 echo "A failed stage never starts the next stage:"
 new_case
 reply 1 'READY branch=feature/270-x'
-reply 2 $'Round four: the branch is VERIFIED branch=feature/270-x in every respect but one.\nFAILED reason=last review round found a material problem'
+reply 2 $'The review: the branch is VERIFIED branch=feature/270-x in every respect but one.\nFAILED reason=a confirmed Blocker could not be fixed'
 chain 270
-ok "a failure verdict last is a failure however the report reads above it" '[ "$RC" = 1 ] && [ "$(calls)" = 2 ] && closing | grep -qxF "chain: FAILED at [2/3] verify — last review round found a material problem"'
+ok "a failure verdict last is a failure however the report reads above it" '[ "$RC" = 1 ] && [ "$(calls)" = 2 ] && closing | grep -qxF "chain: FAILED at [2/3] verify — a confirmed Blocker could not be fixed"'
 # The four reports confirmed to have passed a failed /verify through to a raised pull request. The
 # first three pair a failure line the old scan missed with success-shaped prose it matched; the
 # fourth wrote no failure line at all, and was caught only because the success word no longer
