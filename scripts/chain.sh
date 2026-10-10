@@ -36,11 +36,9 @@ CHAIN_MODEL="${CHAIN_MODEL:-claude-opus-5}"
 
 # Per-stage time limits in seconds, conservative until tuned from real runs.
 BUILD_LIMIT=${CHAIN_STAGE_TIMEOUT:-7200}
-# 7200s (2h), sized from a measured run rather than a per-round multiplier. On #328's branch the
-# unattended chain ran three full rounds, each with fixes and a suite re-run, in about 48 minutes,
-# and a follow-up round cost roughly a third of round one; verify.md's four rounds, the last of
-# which never fixes, should land near an hour. The limit is the stage's only stall detector, so
-# the headroom is deliberately about twice that projection and no more.
+# 7200s (2h), sized from a measured run. On #268's branch, about 2,400 added lines, /verify's
+# review and its fixes took about 40 minutes from start to commit. The limit is the stage's only
+# stall detector, so the headroom is deliberately about three times that and no more.
 VERIFY_LIMIT=${CHAIN_STAGE_TIMEOUT:-7200}
 RAISE_PR_LIMIT=${CHAIN_STAGE_TIMEOUT:-1800}
 
@@ -191,7 +189,7 @@ branch_state() {
 # fail <position> <name> <reason> — the branch state, the closing message, then stop. Nothing is
 # undone: the branch and working tree stay exactly as the failed stage left them, for diagnosis.
 # The state lines exist because a stage killed at its time limit leaves no report at all, and a
-# /verify stopped mid-loop can leave green, committed, unread fix commits behind — so the closing
+# stage that stops part-way can leave commits or uncommitted edits behind — so the closing
 # output has to say whether there is work on the branch before anyone continues it by hand.
 fail() {
   branch_state
