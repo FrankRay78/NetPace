@@ -11,9 +11,10 @@ namespace NetPace.Console.Diagnostics;
 /// <remarks>
 /// The scope is the <see cref="IProgress{T}"/> the provider reports requests to, so the test's name
 /// is attached here rather than being something <c>NetPace.Core</c> has to know. Its
-/// <c>test.end</c> counts are derived from the records it saw, so the summary cannot disagree with
-/// the records above it - and it can report a cancelled count, which the measured result does not
-/// carry.
+/// <c>test.end</c> counts are derived from the records it saw, so the summary cannot count a
+/// record that is not above it - its <c>bytes</c> total covers the successful ones, which is less
+/// than every record's bytes added up where a request moved data and was then excluded. It can also
+/// report a cancelled count, which the measured result does not carry.
 /// </remarks>
 internal sealed class DiagnosticTestScope : IProgress<RequestDiagnostic>, IDisposable
 {
@@ -50,8 +51,8 @@ internal sealed class DiagnosticTestScope : IProgress<RequestDiagnostic>, IDispo
     /// <remarks>
     /// Returning null rather than a scope over a disabled recorder is what lets the provider skip
     /// the work: <c>NetPace.Core</c> tests the reporter for null before building a record, so a
-    /// null scope means no <see cref="RequestDiagnostic"/>, no clock read, no URL evaluation and -
-    /// on a failure - no walk of the exception chain, per request. Paying that inside a measurement
+    /// null scope means no <see cref="RequestDiagnostic"/>, no URL evaluation and - on a failure -
+    /// no walk of the exception chain, per request. Paying that inside a measurement
     /// for a user who asked for no diagnostics is the perturbation this design avoids. A scope over
     /// a disabled recorder would also still take this type's lock and format every record before
     /// discarding it.

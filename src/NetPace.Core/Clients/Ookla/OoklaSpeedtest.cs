@@ -23,6 +23,10 @@ public sealed class OoklaSpeedtest : ISpeedTestService
     private const string ScreeningCeilingReached = "screening ceiling reached";
     private const string CancelledByCaller = "cancelled by caller";
 
+    // Reasons a request failed on its own merits with no exception behind it.
+    private const string NotASpeedTestServer = "not a speed test server";
+    private const string EndpointProbeAnswered = "endpoint probe answered";
+
     private readonly HttpClient httpClient;
     private readonly OoklaSpeedtestSettings settings;
     private readonly IDelayProvider delayProvider;
@@ -141,22 +145,11 @@ public sealed class OoklaSpeedtest : ISpeedTestService
             if (!testString.StartsWith(LatencyResponsePrefix))
             {
                 var wrongServer = new InvalidOperationException("Server returned incorrect test string for latency.txt");
-                ReportRequestFailure(diagnostics, startedAt, sequence, latencyUrl, stopwatch.ElapsedMilliseconds, wrongServer, cancellationToken);
+                ReportRequestFailure(diagnostics, startedAt, sequence, latencyUrl, stopwatch.ElapsedMilliseconds, wrongServer, cancellationToken, Encoding.UTF8.GetByteCount(testString));
                 throw wrongServer;
             }
 
-            if (diagnostics is not null)
-            {
-                ReportProgress(diagnostics, new RequestDiagnostic
-                {
-                    StartedAt = startedAt,
-                    Sequence = sequence,
-                    Url = latencyUrl,
-                    Outcome = RequestOutcome.Succeeded,
-                    BytesProcessed = Encoding.UTF8.GetByteCount(testString),
-                    ElapsedMilliseconds = stopwatch.ElapsedMilliseconds
-                });
-            }
+            ReportLatencyRequestSuccess(diagnostics, startedAt, sequence, latencyUrl, testString, stopwatch.ElapsedMilliseconds);
 
             // Record this ping time
             pings.Add(stopwatch.ElapsedMilliseconds);
@@ -206,12 +199,17 @@ public sealed class OoklaSpeedtest : ISpeedTestService
         var screeningLock = new object();
         var serversScreened = 0;
 
+        // One counter for the whole pass, not one per candidate: the consumer brackets the entire
+        // pass in a single diagnostic scope, so numbering each candidate from one would issue the
+        // same sequence to a request against every server.
+        var requestsIssued = 0;
+
         // One ceiling for the whole pass, not a budget per candidate - see ServerTimeoutMilliseconds.
         var ceilingCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
 
         async Task ScreenAndRecordAsync(int index)
         {
-            var result = await ScreenServerAsync(servers[index], diagnostics, callerToken: cancellationToken, ceilingToken: ceilingCts.Token).ConfigureAwait(false);
+            var result = await ScreenServerAsync(servers[index], diagnostics, () => Interlocked.Increment(ref requestsIssued), callerToken: cancellationToken, ceilingToken: ceilingCts.Token).ConfigureAwait(false);
 
             // Recorded and reported under one lock, so a consumer callback is never entered
             // concurrently and the percentage it is handed matches the number screened at that
@@ -299,7 +297,7 @@ public sealed class OoklaSpeedtest : ISpeedTestService
     /// fastest request that completed, because screening has no warm-up and the first request
     /// carries connection setup the link itself is not responsible for.
     /// </remarks>
-    private async Task<LatencyTestResult?> ScreenServerAsync(IServer server, IProgress<RequestDiagnostic>? diagnostics, CancellationToken callerToken, CancellationToken ceilingToken)
+    private async Task<LatencyTestResult?> ScreenServerAsync(IServer server, IProgress<RequestDiagnostic>? diagnostics, Func<int> nextSequence, CancellationToken callerToken, CancellationToken ceilingToken)
     {
         // The server list comes from a remote feed, so an entry NetPace cannot request is ranked
         // out here rather than left to throw from the transport and fail the whole selection.
@@ -321,7 +319,7 @@ public sealed class OoklaSpeedtest : ISpeedTestService
             }
 
             var startedAt = timeProvider.GetLocalNow().DateTime;
-            var sequence = request + 1;
+            var sequence = nextSequence();
 
             try
             {
@@ -342,25 +340,14 @@ public sealed class OoklaSpeedtest : ISpeedTestService
                             Outcome = RequestOutcome.Failed,
                             BytesProcessed = Encoding.UTF8.GetByteCount(testString),
                             ElapsedMilliseconds = stopwatch.ElapsedMilliseconds,
-                            FailureReason = "not a speed test server"
+                            FailureReason = NotASpeedTestServer
                         });
                     }
 
                     return null;
                 }
 
-                if (diagnostics is not null)
-                {
-                    ReportProgress(diagnostics, new RequestDiagnostic
-                    {
-                        StartedAt = startedAt,
-                        Sequence = sequence,
-                        Url = latencyUrl,
-                        Outcome = RequestOutcome.Succeeded,
-                        BytesProcessed = Encoding.UTF8.GetByteCount(testString),
-                        ElapsedMilliseconds = stopwatch.ElapsedMilliseconds
-                    });
-                }
+                ReportLatencyRequestSuccess(diagnostics, startedAt, sequence, latencyUrl, testString, stopwatch.ElapsedMilliseconds);
 
                 if (fastestMilliseconds is null || stopwatch.ElapsedMilliseconds < fastestMilliseconds)
                 {
@@ -382,6 +369,21 @@ public sealed class OoklaSpeedtest : ISpeedTestService
 
                 if (diagnostics is not null)
                 {
+                    string failureReason;
+
+                    if (rankedOut)
+                    {
+                        failureReason = DescribeFailure(e);
+                    }
+                    else if (cancelledByCaller)
+                    {
+                        failureReason = CancelledByCaller;
+                    }
+                    else
+                    {
+                        failureReason = ScreeningCeilingReached;
+                    }
+
                     ReportProgress(diagnostics, new RequestDiagnostic
                     {
                         StartedAt = startedAt,
@@ -390,9 +392,7 @@ public sealed class OoklaSpeedtest : ISpeedTestService
                         Outcome = rankedOut ? RequestOutcome.Failed : RequestOutcome.Cancelled,
                         BytesProcessed = 0,
                         ElapsedMilliseconds = stopwatch.ElapsedMilliseconds,
-                        FailureReason = rankedOut ? DescribeFailure(e)
-                            : cancelledByCaller ? CancelledByCaller
-                            : ScreeningCeilingReached,
+                        FailureReason = failureReason,
                         FailureType = rankedOut ? e.GetType().Name : null
                     });
                 }
@@ -726,10 +726,20 @@ public sealed class OoklaSpeedtest : ISpeedTestService
                                 // because of a race the request lost only after it had already
                                 // failed on its own merits.
                                 outcome = RequestOutcome.Cancelled;
-                                failureReason = requestFailed
-                                    ? DescribeFailure(failure!)
-                                    : cancellationToken.IsCancellationRequested ? CancelledByCaller : ByteBudgetReached;
-                                failureType = requestFailed ? failure!.GetType().Name : null;
+
+                                if (requestFailed)
+                                {
+                                    failureReason = DescribeFailure(failure!);
+                                    failureType = failure!.GetType().Name;
+                                }
+                                else if (cancellationToken.IsCancellationRequested)
+                                {
+                                    failureReason = CancelledByCaller;
+                                }
+                                else
+                                {
+                                    failureReason = ByteBudgetReached;
+                                }
                             }
                             else if (requestFailed)
                             {
@@ -782,7 +792,7 @@ public sealed class OoklaSpeedtest : ISpeedTestService
 
     /// <summary>
     /// Resolves the address the server actually wants uploads sent to, following any redirects
-    /// with a small probe body before the measured uploads begin.
+    /// with an empty probe POST before the measured uploads begin.
     /// </summary>
     /// <remarks>
     /// The probe carries no body: a redirect is decided by scheme and host rather than payload, so
@@ -790,8 +800,9 @@ public sealed class OoklaSpeedtest : ISpeedTestService
     /// Sending no bytes also keeps the probe out of the measurement entirely. Whether the redirect is
     /// followed by the underlying handler or reported back to us, the endpoint that answered the probe
     /// is the one returned - whether or not it answered with success. A rejection is recorded so a
-    /// triager can see it, not acted on. The probe never fails the test: if it cannot complete at
-    /// all, the original URL is used and any real fault surfaces through the uploads themselves.
+    /// triager can see it, not acted on. The probe never fails the test, other than on caller
+    /// cancellation, which propagates: if it cannot complete at all, the original URL is used and
+    /// any real fault surfaces through the uploads themselves.
     /// </remarks>
     /// <returns>
     /// The address to upload to, and how many requests the probe issued getting there - the
@@ -833,22 +844,29 @@ public sealed class OoklaSpeedtest : ISpeedTestService
                         Outcome = probeAnswered ? RequestOutcome.Succeeded : RequestOutcome.Failed,
                         BytesProcessed = 0,
                         ElapsedMilliseconds = ElapsedMillisecondsSince(startTimestamp),
-                        FailureReason = probeAnswered ? null : $"endpoint probe answered {(int)response.StatusCode}"
+                        FailureReason = probeAnswered ? null : $"{EndpointProbeAnswered} {(int)response.StatusCode}"
                     });
                 }
 
-                // The handler did not follow the redirect for us - follow it explicitly.
+                // The handler did not follow the redirect for us - follow it explicitly. A
+                // Location that will not compose into an address is not a transport failure, so it
+                // ends the hops here rather than being recorded as a failed request.
                 if (redirected && response.Headers.Location is { } location)
                 {
-                    currentUrl = new Uri(new Uri(currentUrl), location).ToString();
-                    continue;
+                    if (Uri.TryCreate(new Uri(currentUrl), location, out var redirectTarget))
+                    {
+                        currentUrl = redirectTarget.ToString();
+                        continue;
+                    }
+
+                    return (currentUrl, requestsIssued);
                 }
 
                 // Otherwise the endpoint that answered is the one to upload to. When the handler
                 // followed redirects itself, that is the final hop rather than where we started.
                 return (response.RequestMessage?.RequestUri?.ToString() ?? currentUrl, requestsIssued);
             }
-            catch (Exception e)
+            catch (Exception e) when (e is HttpRequestException or IOException or OperationCanceledException)
             {
                 ReportRequestFailure(diagnostics, startedAt, requestsIssued, probeUrl, ElapsedMillisecondsSince(startTimestamp), e, cancellationToken);
 
@@ -892,10 +910,37 @@ public sealed class OoklaSpeedtest : ISpeedTestService
     }
 
     /// <summary>
+    /// Reports a <c>latency.txt</c> request that answered correctly, whether it was taking the
+    /// measurement or screening a candidate.
+    /// </summary>
+    /// <remarks>
+    /// The response is passed rather than its byte count so that nothing at all is computed for a
+    /// caller that asked for no diagnostics, which is why the guard lives in here rather than at
+    /// the call sites.
+    /// </remarks>
+    private static void ReportLatencyRequestSuccess(IProgress<RequestDiagnostic>? diagnostics, DateTime startedAt, int sequence, string url, string response, long elapsedMilliseconds)
+    {
+        if (diagnostics is null)
+        {
+            return;
+        }
+
+        ReportProgress(diagnostics, new RequestDiagnostic
+        {
+            StartedAt = startedAt,
+            Sequence = sequence,
+            Url = url,
+            Outcome = RequestOutcome.Succeeded,
+            BytesProcessed = Encoding.UTF8.GetByteCount(response),
+            ElapsedMilliseconds = elapsedMilliseconds
+        });
+    }
+
+    /// <summary>
     /// Reports a request that did not succeed, distinguishing one the caller cancelled from one
     /// that genuinely failed.
     /// </summary>
-    private static void ReportRequestFailure(IProgress<RequestDiagnostic>? diagnostics, DateTime startedAt, int sequence, string url, long elapsedMilliseconds, Exception failure, CancellationToken cancellationToken)
+    private static void ReportRequestFailure(IProgress<RequestDiagnostic>? diagnostics, DateTime startedAt, int sequence, string url, long elapsedMilliseconds, Exception failure, CancellationToken cancellationToken, long bytesProcessed = 0)
     {
         if (diagnostics is null)
         {
@@ -910,7 +955,7 @@ public sealed class OoklaSpeedtest : ISpeedTestService
             Sequence = sequence,
             Url = url,
             Outcome = cancelled ? RequestOutcome.Cancelled : RequestOutcome.Failed,
-            BytesProcessed = 0,
+            BytesProcessed = bytesProcessed,
             ElapsedMilliseconds = elapsedMilliseconds,
             FailureReason = cancelled ? CancelledByCaller : DescribeFailure(failure),
             FailureType = cancelled ? null : failure.GetType().Name

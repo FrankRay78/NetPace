@@ -35,6 +35,12 @@ public sealed class DiagnosticSpeedTester : ISpeedTestService
     /// </summary>
     public bool FailEveryUpload { get; init; }
 
+    /// <summary>
+    /// Raised instead of choosing a server, standing in for an operational fault - NetPace's own
+    /// health rather than a network condition - which propagates out of the command.
+    /// </summary>
+    public Exception? SelectionFault { get; init; }
+
     /// <inheritdoc />
     public Task<IServer[]> GetServersAsync(CancellationToken cancellationToken = default) =>
         Task.FromResult<IServer[]>([defaultServer]);
@@ -81,6 +87,11 @@ public sealed class DiagnosticSpeedTester : ISpeedTestService
     /// <inheritdoc />
     public Task<LatencyTestResult> GetFastestServerByLatencyAsync(IServer[] servers, IProgress<SpeedTestProgress>? progress, IProgress<RequestDiagnostic>? diagnostics, CancellationToken cancellationToken = default)
     {
+        if (SelectionFault is not null)
+        {
+            throw SelectionFault;
+        }
+
         Report(diagnostics, sequence: 1, LatencyUrl, RequestOutcome.Succeeded, bytes: 9, durationMilliseconds: 31);
 
         return Task.FromResult(new LatencyTestResult { Server = servers[0], LatencyMilliseconds = 31 });

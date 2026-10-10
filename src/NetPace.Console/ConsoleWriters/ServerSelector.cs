@@ -1,3 +1,4 @@
+using System.Globalization;
 using NetPace.Console.Diagnostics;
 using NetPace.Core;
 
@@ -9,14 +10,36 @@ namespace NetPace.Console.ConsoleWriters;
 internal static class ServerSelector
 {
     /// <summary>
-    /// Gets the server to use for speed testing based on settings, and how it was chosen.
+    /// Gets the server to use for speed testing based on settings, recording the chosen server and
+    /// the route that chose it.
     /// </summary>
-    public static async Task<ServerSelection> GetServerAsync(ISpeedTestService speedTestClient, SpeedTestCommandSettings settings, IDiagnosticRecorder recorder, CancellationToken cancellationToken = default)
+    public static async Task<LatencyTestResult> GetServerAsync(ISpeedTestService speedTestClient, SpeedTestCommandSettings settings, IDiagnosticRecorder recorder, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(speedTestClient);
         ArgumentNullException.ThrowIfNull(settings);
         ArgumentNullException.ThrowIfNull(recorder);
 
+        // Recorded here rather than in each of the four writers: they all want the same record, and
+        // none of them needs the route for anything else. The selection's own test scopes have
+        // closed by the time the choice is known, so this record lands below them.
+        var selection = await SelectServerAsync(speedTestClient, settings, recorder, cancellationToken);
+
+        // latency_ms is the screening figure, because that is what the choice was based on, and is
+        // absent where latency played no part in choosing - under --no-latency, or when the user
+        // named the server. The measured figure appears in the latency test's own records.
+        recorder.Record(
+            "server.selected",
+            ("sponsor", selection.Result.Server.Sponsor),
+            ("location", selection.Result.Server.Location),
+            ("url", selection.Result.Server.Url),
+            ("selection", selection.Route),
+            ("latency_ms", selection.ScreeningLatencyMilliseconds?.ToString(CultureInfo.InvariantCulture)));
+
+        return selection.Result;
+    }
+
+    private static async Task<ServerSelection> SelectServerAsync(ISpeedTestService speedTestClient, SpeedTestCommandSettings settings, IDiagnosticRecorder recorder, CancellationToken cancellationToken)
+    {
         if (settings.NoLatency)
         {
             if (string.IsNullOrEmpty(settings.ServerUrl))

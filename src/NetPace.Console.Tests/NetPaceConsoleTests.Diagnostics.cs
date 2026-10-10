@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using NetPace.Console.Diagnostics;
 
 namespace NetPace.Console.Tests;
 
@@ -244,6 +245,85 @@ public sealed partial class NetPaceConsoleTests
             Assert.NotEmpty(lines);
             Assert.All(lines, line => Assert.StartsWith("ts=", line, StringComparison.Ordinal));
             Assert.All(lines, line => Assert.Contains(" event=", line, StringComparison.Ordinal));
+        }
+
+        [Fact]
+        public async Task Under_Loop_TheRunLevelRecordsAppearOnceAndTheTestsPerIteration()
+        {
+            // Given a loop that cancels itself after two waits. --loop has its own flush site,
+            // separate from the one --count uses.
+            using var cancellation = new CancellationTokenSource();
+            var services = new ServiceCollection();
+            services.AddSingleton<ISpeedTestService>(new DiagnosticSpeedTester());
+            services.AddSingleton<IClock, ClockStub>();
+            services.AddSingleton<IWaiter>(new SelfCancellingWaiter(2, cancellation));
+            var host = new CommandLineTestHost(services);
+
+            // When it runs with diagnostics.
+            var result = await host.RunAsync(["--minimal", "--loop", "--diagnostics"], cancellation.Token);
+
+            // Then the run is described once however many iterations it made, and each iteration
+            // contributes its own test records.
+            Assert.Equal(1, CountLines(result.DiagnosticOutput, "event=run.start"));
+            Assert.Equal(1, CountLines(result.DiagnosticOutput, "event=run.invocation"));
+            Assert.Equal(1, CountLines(result.DiagnosticOutput, "event=run.end"));
+            Assert.Equal(2, CountLines(result.DiagnosticOutput, "event=test.start test=download"));
+        }
+
+        [Fact]
+        public async Task A_RunThatFailsOutright_StillWritesItsDiagnostics()
+        {
+            // Given a run that fails with an operational fault - NetPace's own health rather than a
+            // network condition - so it propagates out of the command instead of being reported as
+            // a measurement outcome.
+            var services = new ServiceCollection();
+            services.AddSingleton<ISpeedTestService>(new DiagnosticSpeedTester
+            {
+                SelectionFault = new IOException("the device is not ready")
+            });
+            services.AddSingleton<IClock, ClockStub>();
+            services.AddSingleton<IWaiter, NoDelayStub>();
+
+            // When it runs with diagnostics.
+            var result = await new CommandLineTestHost(services).RunAsync(["--minimal", "--diagnostics"]);
+
+            // Then the records written before the fault still reach the stream, and run.end reports
+            // the code the process exited with - a run that failed is when its diagnostics matter
+            // most, so losing them to the fault would defeat the switch.
+            Assert.Equal(1, result.ExitCode);
+            Assert.Contains("event=run.start", result.DiagnosticOutput, StringComparison.Ordinal);
+            Assert.Contains("event=run.end exit=1", result.DiagnosticOutput, StringComparison.Ordinal);
+        }
+
+        [Fact]
+        public async Task A_DiagnosticStreamThatCannotBeWritten_DoesNotChangeTheRunsOutcome()
+        {
+            // Given a diagnostic stream that rejects every write, and a measurement that otherwise
+            // succeeds.
+            var services = new ServiceCollection();
+            services.AddSingleton(new DiagnosticOutput(new UnwritableWriter()));
+            services.AddSingleton<ISpeedTestService>(new DiagnosticSpeedTester());
+            services.AddSingleton<IClock, ClockStub>();
+            services.AddSingleton<IWaiter, NoDelayStub>();
+
+            // When the run flushes its diagnostics.
+            var result = await new CommandLineTestHost(services).RunAsync(["--minimal", "--diagnostics"]);
+
+            // Then the measurement still reports its result and exits 0: diagnostics are a second
+            // stream, so one that cannot be written does not decide the run's exit code. Before
+            // this was guarded, the write failure escaped and the run exited 1.
+            Assert.Equal(0, result.ExitCode);
+            Assert.Contains("Latency:", result.Output, StringComparison.Ordinal);
+        }
+
+        /// <summary>
+        /// A diagnostic stream that rejects every write, standing in for a full disk or a closed
+        /// descriptor.
+        /// </summary>
+        private sealed class UnwritableWriter : StringWriter
+        {
+            public override void WriteLine(string? value) =>
+                throw new IOException("There is not enough space on the disk.");
         }
 
         private static int CountLines(string text, string value) =>

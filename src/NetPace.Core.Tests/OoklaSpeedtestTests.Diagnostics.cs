@@ -497,6 +497,193 @@ public sealed partial class OoklaSpeedtestTests
         diagnostics.ShouldAllBe(d => d.FailureReason == "screening ceiling reached");
     }
 
+    [Fact]
+    public async Task GetFastestServerByLatencyAsync_WhenACandidateIsNotASpeedTestServer_RecordsWhatAnsweredInstead()
+    {
+        // Given a candidate that answers, but with a body no speed test server would send.
+        const string wrongBody = "<html>hello</html>";
+        using var mockHttp = new MockHttpMessageHandler();
+        mockHttp.When("*").Respond("text/plain", wrongBody);
+
+        var settings = new OoklaSpeedtestSettings
+        {
+            ServerDiscovery = new()
+            {
+                ScreeningRequestCount = 2,
+                ServerTimeoutMilliseconds = 30000
+            }
+        };
+        var speedtest = new OoklaSpeedtest(settings, mockHttp.ToHttpClient());
+        IServer[] servers = [new Server { Url = "http://one.example.com/", Sponsor = "One", Location = "One" }];
+
+        var diagnostics = new List<RequestDiagnostic>();
+
+        // When the candidate is screened. It ranks out, and with no other candidate the selection
+        // has nothing to return.
+        await Should.ThrowAsync<Exception>(
+            () => speedtest.GetFastestServerByLatencyAsync(servers, null, Collect(diagnostics)));
+
+        // Then the log separates "something is listening, but it is not a speed test server" from
+        // "nothing answered" - the question --diagnostics exists to settle. The candidate ranks out
+        // on the first wrong answer, so it is asked once rather than twice.
+        var record = diagnostics.ShouldHaveSingleItem();
+        record.Outcome.ShouldBe(RequestOutcome.Failed);
+        record.FailureReason.ShouldBe("not a speed test server");
+        record.FailureType.ShouldBeNull();
+        record.BytesProcessed.ShouldBe(wrongBody.Length);
+    }
+
+    [Fact]
+    public async Task GetServerLatencyAsync_WhenTheServerIsNotASpeedTestServer_RecordsTheRejectionBeforeSurfacingIt()
+    {
+        // Given a server that answers the latency probe with the wrong body.
+        const string wrongBody = "<html>hello</html>";
+        using var mockHttp = new MockHttpMessageHandler();
+        mockHttp.When("*").Respond("text/plain", wrongBody);
+
+        var speedtest = new OoklaSpeedtest(new OoklaSpeedtestSettings(), mockHttp.ToHttpClient());
+        var server = new Server { Url = TestServerUrl, Sponsor = "Test", Location = "Test" };
+
+        var diagnostics = new List<RequestDiagnostic>();
+
+        // When latency is measured, the rejection still surfaces to the caller.
+        await Should.ThrowAsync<InvalidOperationException>(
+            () => speedtest.GetServerLatencyAsync(server, null, Collect(diagnostics)));
+
+        // Then the request that caused it was recorded first, naming the rejection and the bytes
+        // that did arrive - reporting zero here would read as "nothing came back".
+        var record = diagnostics.ShouldHaveSingleItem();
+        record.Outcome.ShouldBe(RequestOutcome.Failed);
+        record.FailureType.ShouldBe("InvalidOperationException");
+        record.FailureReason.ShouldBe("Server returned incorrect test string for latency.txt");
+        record.BytesProcessed.ShouldBe(wrongBody.Length);
+    }
+
+    [Fact]
+    public async Task GetFastestServerByLatencyAsync_WithDiagnostics_NumbersEveryScreeningRequestDistinctly()
+    {
+        // Given two candidates, both answering, screened under one diagnostic scope.
+        using var mockHttp = new MockHttpMessageHandler();
+        mockHttp.When("*").Respond("text/plain", "test=test");
+
+        var settings = new OoklaSpeedtestSettings
+        {
+            ServerDiscovery = new()
+            {
+                ScreeningRequestCount = 2,
+                ServerTimeoutMilliseconds = 30000
+            }
+        };
+        var speedtest = new OoklaSpeedtest(settings, mockHttp.ToHttpClient());
+        IServer[] servers =
+        [
+            new Server { Url = "http://one.example.com/", Sponsor = "One", Location = "One" },
+            new Server { Url = "http://two.example.com/", Sponsor = "Two", Location = "Two" }
+        ];
+
+        var diagnostics = new List<RequestDiagnostic>();
+
+        // When the candidates are screened.
+        await speedtest.GetFastestServerByLatencyAsync(servers, null, Collect(diagnostics));
+
+        // Then no two requests of the pass share a sequence number. Numbering each candidate from
+        // one would give four records the sequences 1, 1, 2, 2, leaving the url the only thing
+        // telling them apart - and two feed entries can share a url.
+        diagnostics.Count.ShouldBe(4);
+        diagnostics.Select(d => d.Sequence).OrderBy(sequence => sequence).ShouldBe([1, 2, 3, 4]);
+    }
+
+    [Fact]
+    public async Task GetUploadSpeedAsync_WhenTheEndpointRedirectsTwice_NumbersEveryProbeHopAndUpload()
+    {
+        // Given a server that redirects the upload endpoint twice before accepting.
+        const string firstUrl = "http://example.com/speedtest/upload.php";
+        const string secondUrl = "http://second.example.com/speedtest/upload.php";
+        const string finalUrl = "http://final.example.com/speedtest/upload.php";
+
+        using var mockHttp = new MockHttpMessageHandler();
+        mockHttp.When(HttpMethod.Post, firstUrl).Respond(_ => new HttpResponseMessage(HttpStatusCode.TemporaryRedirect)
+        {
+            Headers = { Location = new Uri(secondUrl) }
+        });
+        mockHttp.When(HttpMethod.Post, secondUrl).Respond(_ => new HttpResponseMessage(HttpStatusCode.TemporaryRedirect)
+        {
+            Headers = { Location = new Uri(finalUrl) }
+        });
+        mockHttp.When(HttpMethod.Post, finalUrl).Respond(_ => new HttpResponseMessage(HttpStatusCode.OK));
+
+        var settings = new OoklaSpeedtestSettings
+        {
+            UploadTest = new()
+            {
+                UploadIncrements = 1,
+                UploadSizeIterations = 2,
+                UploadParallelTasks = 1
+            }
+        };
+        var speedtest = new OoklaSpeedtest(settings, mockHttp.ToHttpClient());
+        var server = new Server { Url = firstUrl, Sponsor = "Test", Location = "Test" };
+
+        var diagnostics = new List<RequestDiagnostic>();
+
+        // When the upload test runs.
+        await speedtest.GetUploadSpeedAsync(server, null, Collect(diagnostics));
+
+        // Then every hop of the probe is recorded and the measured uploads are numbered after all
+        // of them, so no two requests of the test share a sequence number. A hop count that did not
+        // reach the uploads would give the first upload a sequence a probe already used.
+        diagnostics.Count.ShouldBe(5);
+        diagnostics.Select(d => d.Sequence).OrderBy(sequence => sequence).ShouldBe([1, 2, 3, 4, 5]);
+        diagnostics.Count(d => d.Url == firstUrl).ShouldBe(1);
+        diagnostics.Count(d => d.Url == secondUrl).ShouldBe(1);
+        diagnostics.Count(d => d.Url == finalUrl).ShouldBe(3);
+    }
+
+    [Fact]
+    public async Task GetDownloadSpeedAsync_WhenTheCallerCancels_DoesNotBlameTheByteBudget()
+    {
+        // Given a caller who cancels mid-download, and no byte budget in play at all.
+        using var cancellation = new CancellationTokenSource();
+
+        using var mockHttp = new MockHttpMessageHandler();
+        mockHttp.When("*").Respond(async () =>
+        {
+            cancellation.Cancel();
+            await Task.Delay(50, CancellationToken.None);
+            cancellation.Token.ThrowIfCancellationRequested();
+
+            return new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new ByteArrayContent(new byte[2048])
+            };
+        });
+
+        var settings = new OoklaSpeedtestSettings
+        {
+            DownloadTest = new()
+            {
+                DownloadSizes = [100],
+                DownloadSizeIterations = 1,
+                DownloadParallelTasks = 1
+            }
+        };
+        var speedtest = new OoklaSpeedtest(settings, mockHttp.ToHttpClient());
+        var server = new Server { Url = TestServerUrl, Sponsor = "Test", Location = "Test" };
+
+        var diagnostics = new List<RequestDiagnostic>();
+
+        // When the download is cancelled by the caller.
+        await Should.ThrowAsync<OperationCanceledException>(
+            () => speedtest.GetDownloadSpeedAsync(server, null, Collect(diagnostics), cancellation.Token));
+
+        // Then the record blames the caller by name. Asserting only that it does not say "budget"
+        // would pass on an empty list, and the two reasons share the Cancelled outcome, so the
+        // outcome alone cannot tell a Ctrl-C from a measurement that hit its cap.
+        var record = diagnostics.ShouldHaveSingleItem();
+        record.Outcome.ShouldBe(RequestOutcome.Cancelled);
+        record.FailureReason.ShouldBe("cancelled by caller");
+    }
+
     private static IProgress<RequestDiagnostic> Collect(List<RequestDiagnostic> sink)
     {
         return new SynchronousProgress<RequestDiagnostic>(diagnostic =>

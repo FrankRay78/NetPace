@@ -9,9 +9,7 @@ public sealed class JsonConsoleWriter : IConsoleWriter
     public async Task<SpeedTestOutcome> PerformSpeedTestAsync(bool initialSpeedTest, IAnsiConsole console, IClock clock, IClientInfoProvider clientInfoProvider, IDiagnosticRecorder recorder, ISpeedTestService speedTestClient, SpeedTestCommandSettings settings, CancellationToken cancellationToken)
     {
         // Get the server to use for speed testing.
-        var selection = await ServerSelector.GetServerAsync(speedTestClient, settings, recorder, cancellationToken);
-        var fastest = selection.Result;
-        recorder.RecordServerSelected(selection);
+        var fastest = await ServerSelector.GetServerAsync(speedTestClient, settings, recorder, cancellationToken);
 
 
         // A test that did not run is absent, never a zeroed result.

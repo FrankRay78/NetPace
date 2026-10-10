@@ -36,6 +36,7 @@ public sealed class DiagnosticRecordTests
     [InlineData("Foo Telecom", "\"Foo Telecom\"")]
     [InlineData("a=b", "\"a=b\"")]
     [InlineData("say \"hi\"", "\"say \\\"hi\\\"\"")]
+    [InlineData("a\tb", "\"a\\tb\"")]
     [InlineData("plain", "plain")]
     public void Format_QuotesAValueOnlyWhenItNeedsIt(string value, string expected)
     {
@@ -43,7 +44,8 @@ public sealed class DiagnosticRecordTests
         // When the record is formatted.
         var record = DiagnosticRecord.Format(Timestamp, "server.selected", ("sponsor", value));
 
-        // Then it is bare unless it carries a space, an equals sign or a quote.
+        // Then it is bare unless it carries a space, an equals sign, a quote or a tab - whitespace
+        // a reader splitting fields would otherwise take for a separator.
         Assert.Equal($"ts=1980-01-01T10:05:00.000 event=server.selected sponsor={expected}", record);
     }
 
