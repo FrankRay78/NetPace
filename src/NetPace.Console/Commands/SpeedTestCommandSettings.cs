@@ -134,6 +134,11 @@ public sealed class SpeedTestCommandSettings
     /// Whether a measurement outcome causes a non-zero exit code (opt-in; default <see cref="FailOn.None"/>).
     /// </summary>
     public required FailOn FailOn { get; init; }
+
+    /// <summary>
+    /// Write per-request diagnostic detail about the run to the error stream.
+    /// </summary>
+    public required bool Diagnostics { get; init; }
 }
 
 public static class SpeedTestCommandSettingsExtensions

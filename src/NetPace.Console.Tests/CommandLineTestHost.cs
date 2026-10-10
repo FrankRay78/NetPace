@@ -1,6 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using NetPace.Console;
+using NetPace.Console.Diagnostics;
 using Spectre.Console;
 using Spectre.Console.Testing;
 
@@ -34,8 +35,18 @@ public sealed class CommandLineTestHost
         using var testConsole = new TestConsole().Width(int.MaxValue);
         serviceCollection.TryAddSingleton<IAnsiConsole>(testConsole);
 
+        // The diagnostic stream is captured separately from the result stream, so a test can assert
+        // that each carries only its own content.
+        using var diagnosticWriter = new StringWriter();
+        serviceCollection.TryAddSingleton(new DiagnosticOutput(diagnosticWriter));
+
         // Default IClientInfoProvider stub unless a test already registered one
         serviceCollection.TryAddSingleton<IClientInfoProvider, ClientInfoProviderStub>();
+
+        // Fixed stand-in values for the version, runtime and OS, and a counting clock for record
+        // timestamps: all four differ between machines, which would make a snapshot machine-specific.
+        serviceCollection.TryAddSingleton<IEnvironmentInfoProvider, EnvironmentInfoProviderStub>();
+        serviceCollection.TryAddSingleton<IDiagnosticClock, IncrementingDiagnosticClockStub>();
 
         // Default OoklaSpeedtestSettingsAccessor (matches production DI). Tests that want to
         // inspect the bound settings register their own instance before calling RunAsync.
@@ -48,6 +59,7 @@ public sealed class CommandLineTestHost
         {
             ExitCode = exitCode,
             Output = testConsole.Output,
+            DiagnosticOutput = diagnosticWriter.ToString(),
         };
     }
 }
@@ -66,4 +78,9 @@ public sealed record TestResult
     /// Gets the output written to stdout.
     /// </summary>
     public required string Output { get; init; }
+
+    /// <summary>
+    /// Gets what was written to the diagnostic stream — empty unless <c>--diagnostics</c> was passed.
+    /// </summary>
+    public required string DiagnosticOutput { get; init; }
 }
