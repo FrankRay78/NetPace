@@ -135,6 +135,8 @@ OPTIONS:
         --fail-on             None                   Exit with a non-zero code on a failed measurement. <None, Total, Partial>
                                                      None never affects the exit code; Total triggers when a test is all-failed;
                                                      Partial triggers on any failed request. Fail-fast across --count and --loop.
+        --diagnostics                                Write per-request diagnostic detail about the run to the error stream.
+                                                     The result is unchanged, so 'netpace --json --diagnostics > result.json 2> diagnostics.log' keeps the two apart.
 
 COMMANDS:
     servers    Show the nearest speed test servers.
