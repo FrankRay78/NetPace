@@ -26,7 +26,7 @@ Sits **between** `/reviewissue` and `/build`.
 
 1. Reads the answered review comment.
 2. Pairs each gap's `**Recommendation:**` with the author's `> _Answer:_` to produce a **one-line decision** per gap.
-3. Appends (or rewrites, if already present) a `## Confirmed decisions` section at the end of the issue body.
+3. Appends (or rewrites, if already present) a `## Confirmed decisions` section at the end of the issue body, and brings any passage those decisions contradict into line with them (Workflow step 4).
 4. Applies the `ready` label, marking the issue fully defined without anyone having to open it.
 5. Deletes the review comment, now that everything worth keeping from it is on the issue body.
 
@@ -34,7 +34,7 @@ The review comment is working material, not a record — the confirmed-decision 
 
 **The `ready` label is the done-marker.** It is what tells `/reviewissue` and the `reviewissue.yml` workflow that this issue has been through the gate, so neither posts a second review over settled decisions. That is why step 7 deletes the comment only once step 6's label is on the issue: the new marker must be in place before the old one is removed.
 
-The author also owns the issue body, so post-pending decisions to it is not an overstep. This is the moment the "do not modify the issue body" rule from `/reviewissue` lifts.
+The author also owns the issue body, so post-pending decisions to it is not an overstep — nor is correcting the passages those decisions overrule, which is the author's own answer applied to the author's own text. This is the moment the "do not modify the issue body" rule from `/reviewissue` lifts.
 
 ---
 
@@ -72,6 +72,11 @@ Then, for each non-empty answer, check for **hedging** — text that means "I wa
 - `???`, `?` (when the answer is just a single `?`)
 - `help me`, `help`, `more options`, `more details`, `more detail`, `give me options`
 - `unclear`, `tbd`, `to be decided`
+- `don't understand`, `do not understand`, `what does this mean` (these three only when the answer carries no decision of its own)
+
+An answer that says the author does not understand is a request for *meaning* rather than a decision — the author is telling you the question is unanswerable as asked, not that they cannot choose between its options. It stops the fold exactly as `not sure` does, and a re-run of `/reviewissue` re-frames that gap starting from what happens today. An answer that also states a concrete decision, or that begins `out of scope`, is not hedging however it is worded: `/reviewissue` step 6 classifies those as Substantive and Out of scope before it tests for hedging, and this gate must agree with it.
+
+This list and the hedging dictionary in `/reviewissue` step 6 (*Refine an existing review comment*) must stay identical. The shorter list in that command's author-facing instruction block is illustrative prose, not the dictionary, and is no part of the identity. An answer that one command stops on and the other will not re-frame is a dead end: the author can neither get a better question nor get past the gate.
 
 If **any** answer is hedging, **stop** and report which gap numbers are still hedging. Tell the author to re-run `/reviewissue #N` to expand those questions, then come back. Do not modify the issue body.
 
@@ -156,7 +161,15 @@ Routing rules:
 - Strip the gap numbers from the review comment (1, 2, 3, …) when emitting confirmed decisions — bullets here are unordered.
 - **Backwards compatibility:** if the review comment has no `### Requirements gaps` / `### Technical gaps` sub-headings (i.e. it was authored before this convention), emit all decisions as a flat bullet list with no sub-headings (the pre-split format).
 
-Preserve everything above the section byte-for-byte. Do not "tidy" the original proposal.
+**Bring the body into line with any decision that overrules it.** Everything the confirmed decisions do not contradict is preserved byte-for-byte, and the rule against "tidying" the original proposal still holds — this is a correction of contradictions, not an edit pass.
+
+For each **Pattern B** (rider) and **Pattern C** (redirect, out-of-scope sub-case included) decision, read the rest of the body for passages that state the behaviour that decision overruled — a Capability scenario, an acceptance criterion, an out-of-scope bullet, a technical note — and rewrite each one to state the decided behaviour instead. Where the decision put work out of scope, a passage promising that work is rewritten to drop the promise, or removed outright if the promise is all it carries. Rewrite the prose under a `**Scenario: …**` label, never the label text: Constitution §VIII matches it exactly against committed `// SCENARIO:` markers, so re-wording it breaks the required `traceability` check — where a decision genuinely changes the scenario, name the label change in the report so the marker can be updated. A **Pattern A** decision rewrites nothing: it accepted what the body already says.
+
+Leaving the overruled text in place is the failure this rule exists to prevent. The decision lands at the bottom of the body while the text it contradicts stays above it, and `/build` reads both as its specification.
+
+**Keep a list of every passage you rewrote**, each named by the heading or criterion it sits under, for the report (*Output to the user*). The author checks the rewrites off that list, so an unlisted rewrite is one nobody checks. **Stop on a contradiction you cannot resolve.** Where a decision contradicts a passage but does not determine what should replace it, do not guess at the author's specification, and do not patch around it: **stop** before step 5 and report each such passage, named by its heading or criterion, beside the decision that contradicts it. Tell the author to either edit that passage by hand or sharpen the answer until it determines the replacement, then re-run. Do not modify the issue body. A stop here leaves the issue unlabelled, so an issue that still contradicts itself can never come out `ready`.
+
+Only the issue body is brought into line. An older *comment* that a decision contradicts stays exactly as posted.
 
 ### 5. Patch the issue body
 
@@ -188,7 +201,7 @@ gh issue edit <number> --repo <owner/repo> --add-label ready
 - **Idempotent.** Adding a label an issue already carries is a no-op on GitHub's side, so re-running this command on an already-`ready` issue leaves it `ready` and reports no error.
 - **Never fatal.** If the label cannot be applied, do **not** fail the command — the decisions are already saved. Continue to the report and say there that the label did not land.
 
-Ordering matters three ways: the body patch runs first so a label failure can never leave the decisions unsaved; this step sits downstream of step 2's hard-stops so an issue with an unanswered or hedging gap can never come out labelled `ready`; and step 7's deletion sits downstream of *this* step, so the review is never removed before the label that replaces it as the done-marker is on the issue.
+Ordering matters three ways: the body patch runs first so a label failure can never leave the decisions unsaved; this step sits downstream of step 2's hard-stops and step 4's, so an issue with an unanswered or hedging gap, or a contradiction nobody resolved, can never come out labelled `ready`; and step 7's deletion sits downstream of *this* step, so the review is never removed before the label that replaces it as the done-marker is on the issue.
 
 ### 7. Delete the review comment
 
@@ -209,7 +222,7 @@ gh api --method DELETE repos/<owner>/<repo>/issues/comments/<comment-id>
 
 - **Why the label gates this.** `ready` is the done-marker; removing the review without it would leave the issue looking never-reviewed to `/reviewissue` and to the workflow guard, which is the one state this whole design exists to prevent — reached through the one door that cannot be reopened.
 - **Never fatal.** If the deletion itself fails, do **not** fail the command — the decisions are saved and the issue is labelled. Continue to the report and say there that the review is still on the issue, and that re-running `/confirmissue #N` will retry it.
-- **Irreversible and silent.** GitHub sends no notification for a deleted comment and offers no undo. That is why every hard-stop in this command (steps 1, 2 and 5) sits upstream of it, and why a step-6 label failure — which does not stop the run — is caught by the read-back above instead. All four paths leave the review exactly where it was, answerable and re-runnable.
+- **Irreversible and silent.** GitHub sends no notification for a deleted comment and offers no undo. That is why every hard-stop in this command (steps 1, 2, 4 and 5) sits upstream of it, and why a step-6 label failure — which does not stop the run — is caught by the read-back above instead. All five paths leave the review exactly where it was, answerable and re-runnable.
 
 **Putting a confirmed issue back into review.** If the scope moves and the decisions no longer hold, remove the `ready` label (`gh issue edit <number> --repo <owner/repo> --remove-label ready`) and request a review again. With the marker gone and no review comment on the thread, `/reviewissue` and the workflow both treat it as a first run and post a fresh review. No one has to hand-edit the issue body to make that happen.
 
@@ -221,11 +234,12 @@ Keep your chat response short:
 
 - confirm the issue updated (number + title)
 - state how many decisions were folded in (and the count by pattern: e.g. "8 accepted, 1 with rider, 1 redirected")
+- list each body passage you rewrote to agree with a redirected or ridered decision, naming the heading or criterion each sits under — or say plainly that none were rewritten. This is the only prompt to check text the author's own answers changed, and on the unattended `confirmissue.yml` path it reaches the run summary rather than the author, who sees only an edited body.
 - state whether the `ready` label was applied — and if it was not, say so explicitly, noting the decisions were saved regardless
 - state whether the review comment was deleted — and if it was not, say so explicitly, naming which precondition or call failed and telling the operator what to do about it ("the `ready` label did not land; re-run `/confirmissue #N` to complete it"). These paths are deliberately non-fatal, so the report is the only signal that the issue is in a half-finished state.
 - return the issue URL
 
-If you stopped at step 1, 2 or 5, report which precondition failed and what to fix. An issue that is already confirmed is not a failure — report it as already confirmed, with the decision count.
+If you stopped at step 1, 2, 4 or 5, report which precondition failed and what to fix. An issue that is already confirmed is not a failure — report it as already confirmed, with the decision count.
 
 Do **not** restate the decisions list in chat — it lives on the issue.
 

@@ -16,4 +16,5 @@
 - [Decompose quantified claims — no flattering multipliers](feedback_plain_language_decisions.md) — name what an estimate is made of instead of a headline multiplier
 - [Be decisive when the evidence has already earned it](feedback_decisiveness_over_hedging.md) — state the verdict the gates already support; build within a decision already made rather than re-litigating it
 - [OoklaSpeedtest latency-margin test is flaky under load](project_flaky_latency_margin_test.md) — wall-clock ±25% assertion; distinct from the ProfileXmlDocTests FileShare flake
+- [Present several decisions one per turn](feedback_one_decision_per_turn.md) — one decision per message, explained from what happens today; write the answers up together at the end
 - [When the guard outgrows the fix, surface it as a decision](feedback_guard_outgrows_the_fix.md) — verification scaffolding bigger than the change means the wrong mechanism; ask before building
