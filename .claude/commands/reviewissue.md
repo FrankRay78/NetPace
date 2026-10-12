@@ -22,14 +22,14 @@ You **MUST** resolve this before proceeding. If empty, ask the user which issue 
 
 This command is a **pre-build gate**. It sits *before* `/build`.
 
-Its job is to read an unrefined GitHub issue, cross-reference it against the current codebase (architecture, existing services, test data, docs), and surface everything that would otherwise block or distort the build:
+Its job is to read an unrefined GitHub issue, cross-reference it against the current codebase (architecture, existing modules, test data, docs), and surface everything that would otherwise block or distort the build:
 
 - ambiguities in scope
 - undefined semantics (matching rules, thresholds, field lists)
 - integration points with existing components
 - failure modes not covered
 - inconsistencies between the issue text and reality on disk
-- missing non-functional requirements (auth, rate limits, data seeding)
+- missing non-functional requirements (auth, rate limits, performance)
 
 The output is a **single GitHub comment** posted on the issue, structured so the issue author can record answers inline beneath each question.
 
@@ -93,6 +93,8 @@ Do **not** additionally ask whether the author would contest your recommendation
 
 Numbers are assigned once, when the comment is first composed. A refine run never reorders and never renumbers — see step 6.
 
+Also consider each check in *Project-specific checks* at the end of this file, raising it under whichever group fits: Requirements where it concerns what a user sees, Technical otherwise.
+
 **Requirements gaps** — probe these before any technical question. Consider each category below and raise a gap only where the issue leaves it open:
 
 - **User & persona** — who uses this, in what context. The issue may name a feature without naming the person.
@@ -110,7 +112,6 @@ Numbers are assigned once, when the comment is first composed. A refine run neve
 - **Data shape** — source of truth, storage choice (match existing patterns unless there is a reason not to).
 - **Thresholds & numeric criteria** — confirm exact values, whether they reuse existing constants, what happens at boundaries.
 - **Tech failure modes** — unreachable dependencies, rate limits, retry policy, fail-open vs fail-closed at the system level.
-- **Project-specific checks** — the checks listed in *Project-specific checks* at the end of this file. Raise each one under whichever group fits it: Requirements where it concerns what a user sees, Technical otherwise.
 
 Where the project runs as deployed services, also consider:
 
@@ -205,7 +206,7 @@ Before building this, the following points need answers. The table lists every g
 
 **Recommendation quality bar:** the recommendation must be a concrete, actionable default (a value, a library, a field name, an HTTP status, an "in/out of scope" call) — not a meta-suggestion like "consider X". If you genuinely have no view, say so explicitly and list the options with their trade-offs; don't fake confidence. The *Reason* cites the evidence that led you there (existing convention in the codebase, framework behaviour, a stated project constraint, etc.), not a restatement of the recommendation.
 
-**Every Reason survives being checked.** A Reason either cites something checkable — a file or line, command output, the issue's own text — or says plainly that it is your judgement (`Reason: my judgement — <why>.`), so the author can tell an evidenced recommendation from an opinion. Before posting, check every factual claim in every Reason against the thing it names: re-open the file, re-run the search, re-read the issue text, rather than trusting what you remember reading. A claim about how the repository or harness behaves — "X is the standing default", "every sibling does Y" — is a factual claim even though it names no source: search the repository for where that behaviour would be set or shown, and finding nothing means the claim fails. A claim that fails is dropped, and the Reason rewritten as your judgement without it — a `my judgement` label never carries a claim already found false. A claim this run's tools cannot check (in the automated workflow, anything outside the checkout and the issue snapshot, such as another issue's text) may stay, but only inside a judgement Reason. Either way the Recommendation stays, and a failed check never blocks posting. On a refine run's edit (step 6) the check covers only the re-framed gap's Reason; every other gap passes through as posted. The check establishes only that the evidence is true — whether the recommendation is a good default stays the author's call when answering.
+**Every Reason survives being checked.** A Reason either cites something checkable — a file or line, command output, the issue's own text — or says plainly that it is your judgement (`Reason: my judgement — <why>.`), so the author can tell an evidenced recommendation from an opinion. Before posting, check every factual claim in every Reason against the thing it names: re-open the file, re-run the search, re-read the issue text, rather than trusting what you remember reading. A claim about how the repository or harness behaves — "X is the standing default", "every sibling does Y" — is a factual claim even though it names no source: search the repository for where that behaviour would be set or shown, and finding nothing means the claim fails. A claim that fails is dropped, and the Reason rewritten as your judgement without it — a `my judgement` label never carries a claim already found false. A claim this run's tools cannot check (on an unattended run that sees only the checkout and the issue, another issue's text) may stay, but only inside a judgement Reason. Either way the Recommendation stays, and a failed check never blocks posting. On a refine run's edit (step 6) the check covers only the re-framed gap's Reason; every other gap passes through as posted. The check establishes only that the evidence is true — whether the recommendation is a good default stays the author's call when answering.
 
 **Link rules** — the comment is rendered on `https://github.com/<owner>/<repo>/issues/<N>`, so GitHub resolves relative paths against the *issue URL*, not the repo root (`[foo](src/Foo.cs)` becomes `…/issues/src/Foo.cs` — broken). Every link to a file, directory, or line range **must** be an absolute GitHub URL:
 
@@ -251,7 +252,7 @@ Re-framing rules (hedging case only):
 
 - **Preserve the gap number.** Q3 stays Q3 — never renumber.
 - **Preserve the author's answer text** verbatim under the `> _Answer:_` line so they can see what they wrote last time.
-- **Expand the question body** with 2–4 concrete options laid out as a sub-list, each with a one-line trade-off. Add a worked example or a pointer to a comparable existing pattern in the codebase (read the codebase again if needed — surface defaults they may not have known existed: existing constants, sibling service patterns, port allocations, etc.).
+- **Expand the question body** with 2–4 concrete options laid out as a sub-list, each with a one-line trade-off. Add a worked example or a pointer to a comparable existing pattern in the codebase (read the codebase again if needed — surface defaults they may not have known existed: existing constants, sibling patterns, shared helpers, etc.).
 - **An answer that says they do not understand** (`don't understand`, `do not understand`, `what does this mean`) is asking what the question means, not which option to pick, so options alone re-frame nothing. For that answer only, open the re-framed body with a plain account of what the project does today in the area the gap concerns, then what the choice means, then the options — both opening sentences carrying no backticked identifier, which is the predicate the refine-run check applies. Every other hedge keeps the ordering above.
 - **Revise the `> _**Recommendation:**_` line** if the new framing changes your call. Keep the `Reason:` either tied to checkable evidence or marked as your judgement (see *Every Reason survives being checked*).
 - **After ~2 hedging iterations on the same question** with no commitment, add a final option *"This may be out of scope for the current issue — answer `out of scope: <reason>` to drop it"* and call it out in the recommendation. Do not edit the gap out yourself — leave that to the author + `/confirmissue`.

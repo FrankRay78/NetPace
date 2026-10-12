@@ -93,13 +93,13 @@ Classify the answer into one of three patterns and write a single bullet accordi
 ```
 - **<short title>:** <recommendation, lightly rephrased as a decision>.
 ```
-Example — answer "Agreed" → `- **Retry limit:** Retry a failed request at most 3 times.`
+Example — answer "Agreed" → `- **retry limit:** Retry a failed request at most 3 times.`
 
 **Pattern B — Accepted with rider** (answer agrees but adds a constraint, scope tweak, or extra detail):
 ```
 - **<short title>:** <recommendation as a decision>. <rider folded in>.
 ```
-Example — answer "Agreed, also log each retry" → `- **Retry limit:** Retry a failed request at most 3 times; log each retry.`
+Example — answer "Agreed, also log each retry" → `- **retry limit:** Retry a failed request at most 3 times; log each retry.`
 
 **Pattern C — Redirected** (answer rejects the recommendation and proposes an alternative, or marks the gap as out of scope):
 
@@ -112,9 +112,9 @@ If the author *did not* give a reason, drop the dash and the reason — never em
 - **<short title>:** <author's chosen alternative as a decision>. (Author redirected from "<recommendation summary>".)
 ```
 
-Example — answer "No, use exponential backoff — fixed delays hammer a struggling server" → `- **Retry delay:** Use exponential backoff between retries. (Author redirected from a fixed 1-second delay to avoid hammering a struggling server.)`
+Example — answer "No, use exponential backoff — fixed delays hammer a struggling server" → `- **retry delay:** Use exponential backoff between retries. (Author redirected from "fixed 1-second delay" — fixed delays hammer a struggling server.)`
 
-Example — answer "No, use exponential backoff" (no reason) → `- **Retry delay:** Use exponential backoff between retries. (Author redirected from a fixed 1-second delay.)`
+Example — answer "No, use exponential backoff" (no reason) → `- **retry delay:** Use exponential backoff between retries. (Author redirected from "fixed 1-second delay".)`
 
 **Out-of-scope sub-case.** If the answer starts with `out of scope` (or `not for this issue`, `out of scope: <reason>`, etc.), phrase the bullet as a scope decision rather than inventing an alternative:
 ```
@@ -163,7 +163,7 @@ Routing rules:
 
 **Bring the body into line with any decision that overrules it.** Everything the confirmed decisions do not contradict is preserved byte-for-byte, and the rule against "tidying" the original proposal still holds — this is a correction of contradictions, not an edit pass.
 
-For each **Pattern B** (rider) and **Pattern C** (redirect, out-of-scope sub-case included) decision, read the rest of the body for passages that state the behaviour that decision overruled — a Capability scenario, an acceptance criterion, an out-of-scope bullet, a technical note — and rewrite each one to state the decided behaviour instead. Where the decision put work out of scope, a passage promising that work is rewritten to drop the promise, or removed outright if the promise is all it carries. Rewrite the prose under a `**Scenario: …**` label, never the label text: tooling may match a label exactly against markers in the tests, so re-wording it breaks that link — where a decision genuinely changes the scenario, name the label change in the report so the marker can be updated. A **Pattern A** decision rewrites nothing: it accepted what the body already says.
+For each **Pattern B** (rider) and **Pattern C** (redirect, out-of-scope sub-case included) decision, read the rest of the body for passages that state the behaviour that decision overruled — a Capability scenario, an acceptance criterion, an out-of-scope bullet, a technical note — and rewrite each one to state the decided behaviour instead. Where the decision put work out of scope, a passage promising that work is rewritten to drop the promise, or removed outright if the promise is all it carries. Rewrite the prose under a `**Scenario: …**` label, never the label text: tooling may match a label exactly against markers in the tests, so re-wording it can break that link — where a decision genuinely changes the scenario, name the label change in the report so the marker can be updated. A **Pattern A** decision rewrites nothing: it accepted what the body already says.
 
 Leaving the overruled text in place is the failure this rule exists to prevent. The decision lands at the bottom of the body while the text it contradicts stays above it, and `/build` reads both as its specification.
 
