@@ -18,7 +18,6 @@
     <Description>Network speed tester including server discovery, latency measurement, download and upload speed testing.</Description>
     <Authors>Frank Ray</Authors>
     <Copyright>Frank Ray</Copyright>
-    <Company>Better Software UK</Company>
     <PackageTags>speedtest;internet-speed-checker;internet-speed;network-speed;internet-speed-test;network-speed-meter;network-speed-test;library;dotnet;dotnet-library</PackageTags>
     <PackageIcon>logo.png</PackageIcon>
 
