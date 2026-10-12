@@ -66,7 +66,7 @@ Before drafting gaps, read enough of the codebase to make the review *specific* 
 - Test data, fixtures, and seed scripts referenced (directly or by implication) in the issue
 - Deployment/docker config if the issue touches runtime shape
 
-If the issue names a path (e.g. `src/GovernmentIdentityService/`), check whether that path already exists and what conventions its siblings follow.
+If the issue names a path (e.g. `src/Billing/`), check whether that path already exists and what conventions its siblings follow.
 
 ### 3. Identify gaps
 
@@ -74,7 +74,7 @@ Group findings into two gap sections — **Requirements gaps** and **Technical g
 
 Each gap (in either group) must:
 
-- **open in plain words.** The first sentence of the framing says what the choice means for someone using or building on NetPace, and carries no backticked identifier. The first sentence of the **Recommendation:** does the same. Identifiers follow as the evidence, and the gap's title stays free to name one. An author who cannot tell what a gap asks answers "I don't understand", which stops `/confirmissue` and costs a whole round trip.
+- **open in plain words.** The first sentence of the framing says what the choice means for someone using or building on the project, and carries no backticked identifier. The first sentence of the **Recommendation:** does the same. Identifiers follow as the evidence, and the gap's title stays free to name one. An author who cannot tell what a gap asks answers "I don't understand", which stops `/confirmissue` and costs a whole round trip.
 - be answerable with a short written response (not "go figure it out")
 - cite concrete evidence from the issue or codebase where relevant
 - end with a **Recommendation:** line — your best call with a one-sentence *Reason*. This is mandatory, not optional. The author should be able to read the recommendation and either accept it (record a short affirmative answer) or redirect it (record their chosen alternative). A gap without a recommendation forces the author to originate the answer from scratch, which is exactly the work this command is meant to front-load.
@@ -105,27 +105,31 @@ Numbers are assigned once, when the comment is first composed. A refine run neve
 
 **Technical gaps** — surface gaps suggested by Step 2 (codebase grounding) plus any tech shape the issue itself already commits to. Let the author set the depth: they may want extensive tech review or none. Same test as above — consider each category, raise a gap only where something is genuinely unsettled.
 
-- **Where it lives** — existing endpoint/service/flow extended vs. new; who calls whom; which org(s) are involved.
+- **Where it lives** — existing module/command/flow extended vs. new; who calls whom.
 - **Integration** — interface contracts with existing components, event/data flow, ordering.
-- **Data shape** — seeding strategy, source of truth, storage choice (match existing patterns unless there is a reason not to).
+- **Data shape** — source of truth, storage choice (match existing patterns unless there is a reason not to).
 - **Thresholds & numeric criteria** — confirm exact values, whether they reuse existing constants, what happens at boundaries.
+- **Tech failure modes** — unreachable dependencies, rate limits, retry policy, fail-open vs fail-closed at the system level.
+- **Project-specific checks** — the checks listed in *Project-specific checks* at the end of this file. Raise each one under whichever group fits it: Requirements where it concerns what a user sees, Technical otherwise.
+
+Where the project runs as deployed services, also consider:
+
 - **Security boundary** — how access is enforced between services; auth mechanism (current codebase may have none).
 - **Operational** — ports, migrations, docker compose entries, deploy scripts.
-- **Tech failure modes** — unreachable dependencies, rate limits, retry policy, fail-open vs fail-closed at the system level.
+- **Data seeding** — how the new data is seeded in each environment.
 
 **Commentary** — remarks that inform the author reading this review and require no answer. That is the only kind of content the section carries. No downstream command parses it: `/confirmissue` folds only the numbered gaps into the issue body, and deletes this comment — commentary included — once it has. Write it for the person who reads the review, not for someone arriving at the issue afterwards.
 
 **Commentary or gap?** The line is the *source* of the constraint, not its force. A fact already true of the codebase is commentary, however binding it turns out to be in practice. A choice only the author can make, or an obligation this issue would newly impose, is never commentary — record it as a numbered gap. A convention that already governs this area stays commentary even when this issue is the first work to trigger it; only an obligation with no prior basis in the codebase is a gap.
 
-**The bar a bullet must clear.** Commentary carries only what that reader would otherwise miss or get wrong. A bullet that restates a rule they already hold — the constitution, `CLAUDE.md`, a guide either one links — or whose content amounts to "nothing to do here", does not appear at all. A short section is the normal outcome.
+**The bar a bullet must clear.** Commentary carries only what that reader would otherwise miss or get wrong. A bullet that restates a rule they already hold — `CLAUDE.md`, or a constitution or guide it links — or whose content amounts to "nothing to do here", does not appear at all. A short section is the normal outcome.
 
 Write what survives as bullets, not questions:
 
 - Local conventions that no gate enforces and no project guide states (e.g. a frontmatter key every sibling file sets that nothing checks)
-- Port allocation suggestions based on existing assignments
 - Reuse opportunities (existing classes/modules the new work can share)
-- Docker / compose files that will need entries
 - Documentation files that cover this area, listed by path
+- Where the project runs as deployed services: port allocation suggestions based on existing assignments, and docker / compose files that will need entries
 
 ### 4. Draft the comment
 
@@ -199,7 +203,7 @@ Before building this, the following points need answers. The table lists every g
 
 **Check the draft before posting.** Composing to a bound is not the same as meeting one — count, do not estimate. Before step 5 posts, verify against the draft: one table row per gap, its title matching the gap verbatim and its type matching the group heading the gap sits under; no unescaped `|` anywhere in the table's content, inside inline code included, so every row renders as exactly three columns; every gap carrying a recommendation with its one-sentence reason, and an answer slot; the first sentence of every gap's framing and of every recommendation free of backticked identifiers, read rather than assumed; every factual claim in every Reason checked against what it names, a claim found false dropped, and a claim that cannot be checked kept only inside a judgement Reason (see *Every Reason survives being checked* below); every gap within the bound, counted rather than judged; and no line above the first group heading matching either `**N. <title>**` or `> _Answer:_`. Fix what fails and re-check. This applies again to a refine run's edit (step 6), minus the bound, with the pipe check limited to the row it changed and the plain-words and Reason checks limited to the gap it re-framed — every other row and gap passes through as posted.
 
-**Recommendation quality bar:** the recommendation must be a concrete, actionable default (a value, a library, a field name, an HTTP status, an "in/out of scope" call) — not a meta-suggestion like "consider X". If you genuinely have no view, say so explicitly and list the options with their trade-offs; don't fake confidence. The *Reason* cites the evidence that led you there (existing convention in the codebase, Fabric/framework behaviour, POC posture, etc.), not a restatement of the recommendation.
+**Recommendation quality bar:** the recommendation must be a concrete, actionable default (a value, a library, a field name, an HTTP status, an "in/out of scope" call) — not a meta-suggestion like "consider X". If you genuinely have no view, say so explicitly and list the options with their trade-offs; don't fake confidence. The *Reason* cites the evidence that led you there (existing convention in the codebase, framework behaviour, a stated project constraint, etc.), not a restatement of the recommendation.
 
 **Every Reason survives being checked.** A Reason either cites something checkable — a file or line, command output, the issue's own text — or says plainly that it is your judgement (`Reason: my judgement — <why>.`), so the author can tell an evidenced recommendation from an opinion. Before posting, check every factual claim in every Reason against the thing it names: re-open the file, re-run the search, re-read the issue text, rather than trusting what you remember reading. A claim about how the repository or harness behaves — "X is the standing default", "every sibling does Y" — is a factual claim even though it names no source: search the repository for where that behaviour would be set or shown, and finding nothing means the claim fails. A claim that fails is dropped, and the Reason rewritten as your judgement without it — a `my judgement` label never carries a claim already found false. A claim this run's tools cannot check (in the automated workflow, anything outside the checkout and the issue snapshot, such as another issue's text) may stay, but only inside a judgement Reason. Either way the Recommendation stays, and a failed check never blocks posting. On a refine run's edit (step 6) the check covers only the re-framed gap's Reason; every other gap passes through as posted. The check establishes only that the evidence is true — whether the recommendation is a good default stays the author's call when answering.
 
@@ -209,7 +213,7 @@ Before building this, the following points need answers. The table lists every g
 - File with line: append `#L<line>` or `#L<start>-L<end>`
 - Directory: `https://github.com/<owner>/<repo>/tree/<default-branch>/<path>`
 
-Resolve `<owner>/<repo>` from the issue (already known from step 1) and `<default-branch>` via `gh repo view <owner>/<repo> --json defaultBranchRef --jq .defaultBranchRef.name` once at the start of step 4 — reuse the result for every link in the body. The link *text* can stay short (e.g. `[Program.cs:232-233](https://github.com/owner/repo/blob/main/src/NetPace.Console/Program.cs#L232-L233)`) so readability is unaffected.
+Resolve `<owner>/<repo>` from the issue (already known from step 1) and `<default-branch>` via `gh repo view <owner>/<repo> --json defaultBranchRef --jq .defaultBranchRef.name` once at the start of step 4 — reuse the result for every link in the body. The link *text* can stay short (e.g. `[Program.cs:232-233](https://github.com/owner/repo/blob/main/src/App/Program.cs#L232-L233)`) so readability is unaffected.
 
 This rule applies equally to refine-run edits in step 6 — any new links added during re-framing must use the same absolute form.
 
@@ -248,7 +252,7 @@ Re-framing rules (hedging case only):
 - **Preserve the gap number.** Q3 stays Q3 — never renumber.
 - **Preserve the author's answer text** verbatim under the `> _Answer:_` line so they can see what they wrote last time.
 - **Expand the question body** with 2–4 concrete options laid out as a sub-list, each with a one-line trade-off. Add a worked example or a pointer to a comparable existing pattern in the codebase (read the codebase again if needed — surface defaults they may not have known existed: existing constants, sibling service patterns, port allocations, etc.).
-- **An answer that says they do not understand** (`don't understand`, `do not understand`, `what does this mean`) is asking what the question means, not which option to pick, so options alone re-frame nothing. For that answer only, open the re-framed body with a plain account of what NetPace does today in the area the gap concerns, then what the choice means, then the options — both opening sentences carrying no backticked identifier, which is the predicate the refine-run check applies. Every other hedge keeps the ordering above.
+- **An answer that says they do not understand** (`don't understand`, `do not understand`, `what does this mean`) is asking what the question means, not which option to pick, so options alone re-frame nothing. For that answer only, open the re-framed body with a plain account of what the project does today in the area the gap concerns, then what the choice means, then the options — both opening sentences carrying no backticked identifier, which is the predicate the refine-run check applies. Every other hedge keeps the ordering above.
 - **Revise the `> _**Recommendation:**_` line** if the new framing changes your call. Keep the `Reason:` either tied to checkable evidence or marked as your judgement (see *Every Reason survives being checked*).
 - **After ~2 hedging iterations on the same question** with no commitment, add a final option *"This may be out of scope for the current issue — answer `out of scope: <reason>` to drop it"* and call it out in the recommendation. Do not edit the gap out yourself — leave that to the author + `/confirmissue`.
 - **Keep the gap's table row in step with the re-framing.** If the new framing changes that gap's title, update its row's title cell to match — and nothing else in the table. Never add, remove, reorder or renumber rows: the table mirrors the posted gap order, fixed when the comment was first composed.
@@ -304,3 +308,16 @@ Do **not** restate the full review in chat — it lives on the issue.
 - The issue is already well-specified and needs no clarification.
 - The user wants implementation, not issue refinement — that is `/build`.
 - There is no GitHub issue yet — use `/draftissue` to raise one first.
+
+---
+
+## Project-specific checks
+
+The only section that changes from one repository to another. Consider each check in step 3 alongside the generic categories, under the same test: raise a gap only where the issue leaves the point open.
+
+- **Library first** — does the feature start in `NetPace.Core`, and does it change `ISpeedTestService`?
+- **Output modes** — does it look the same across default, minimal, CSV and JSON output, and does it respect `--unit-scale`?
+- **CLI docs** — if it touches a CLI option, is updating the README `--help` snapshot and USER_GUIDE.md in scope?
+- **Acceptance criteria** — do they describe outcomes rather than mechanism (constitution §IX), and are the `**Scenario:**` labels right (§VIII)?
+- **AOT trimming** — is it safe for trimmed builds, with no runtime reflection?
+- **Server selection and measurement** — if it touches either, does `docs/architecture/server-screening-and-measurement.md` apply?
