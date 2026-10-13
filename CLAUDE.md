@@ -34,7 +34,7 @@ Providers implement `ISpeedTestService` (`src/NetPace.Core/ISpeedTestService.cs`
 
 `--help` (and `-h`, `-?`) is intercepted manually in `Program.RunAsync` before `System.CommandLine` parses arguments. This keeps help rendering under full control of `CustomHelpProvider`.
 
-**Intentional constraint**: help is only recognised at position 0 (root help) or as the second token after a subcommand name (e.g. `netpace servers --help`). Flags placed before `--help` (e.g. `netpace --csv --help`) are silently ignored. Deliberate trade-off to keep the help-interception logic simple.
+**Intentional constraint**: help is only recognised at position 0 (root help) or as the second token after a subcommand name (e.g. `NetPace servers --help`). Flags placed before `--help` (e.g. `NetPace --csv --help`) are silently ignored. Deliberate trade-off to keep the help-interception logic simple.
 
 Do not add tests for the `--flag --help` pattern — it is not expected to work.
 
