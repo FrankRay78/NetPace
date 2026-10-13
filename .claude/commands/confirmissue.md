@@ -30,9 +30,9 @@ Sits **between** `/reviewissue` and `/build`.
 4. Applies the `ready` label, marking the issue fully defined without anyone having to open it.
 5. Deletes the review comment, now that everything worth keeping from it is on the issue body.
 
-The review comment is working material, not a record — the confirmed-decision bullets carry each gap's title, its resolved outcome, and `(Author redirected from "…")` where the author overruled the recommendation, which is the causality anyone needs afterwards. Rationale: CIR [`2026-09-11-confirmed-decisions-replace-the-review`](../../docs/change-intent-records/2026-09-11-confirmed-decisions-replace-the-review.md).
+The review comment is working material, not a record — the confirmed-decision bullets carry each gap's title, its resolved outcome, and `(Author redirected from "…")` where the author overruled the recommendation, which is the causality anyone needs afterwards.
 
-**The `ready` label is the done-marker.** It is what tells `/reviewissue` and the `reviewissue.yml` workflow that this issue has been through the gate, so neither posts a second review over settled decisions. That is why step 7 deletes the comment only once step 6's label is on the issue: the new marker must be in place before the old one is removed.
+**The `ready` label is the done-marker.** It is what tells `/reviewissue`, and any automation that runs it, that this issue has been through the gate, so neither posts a second review over settled decisions. That is why step 7 deletes the comment only once step 6's label is on the issue: the new marker must be in place before the old one is removed.
 
 The author also owns the issue body, so post-pending decisions to it is not an overstep — nor is correcting the passages those decisions overrule, which is the author's own answer applied to the author's own text. This is the moment the "do not modify the issue body" rule from `/reviewissue` lifts.
 
@@ -93,13 +93,13 @@ Classify the answer into one of three patterns and write a single bullet accordi
 ```
 - **<short title>:** <recommendation, lightly rephrased as a decision>.
 ```
-Example — answer "Agreed" → `- **eventId generation:** Use \`ctx.GetStub().GetTxID()\` directly as \`eventId\`.`
+Example — answer "Agreed" → `- **retry limit:** Retry a failed request at most 3 times.`
 
 **Pattern B — Accepted with rider** (answer agrees but adds a constraint, scope tweak, or extra detail):
 ```
 - **<short title>:** <recommendation as a decision>. <rider folded in>.
 ```
-Example — answer "Agreed, also surface in GET response" → `- **submittingOrg field:** Server-set from \`OrgConfig.Name\`; surfaced in GET response.`
+Example — answer "Agreed, also log each retry" → `- **retry limit:** Retry a failed request at most 3 times; log each retry.`
 
 **Pattern C — Redirected** (answer rejects the recommendation and proposes an alternative, or marks the gap as out of scope):
 
@@ -112,9 +112,9 @@ If the author *did not* give a reason, drop the dash and the reason — never em
 - **<short title>:** <author's chosen alternative as a decision>. (Author redirected from "<recommendation summary>".)
 ```
 
-Example — answer "No, use sha256(txID + bid) — don't leak Fabric internals" → `- **eventId generation:** Use \`sha256(txID + bid)\` as \`eventId\`. (Author redirected from raw txID to avoid leaking Fabric internals.)`
+Example — answer "No, use exponential backoff — fixed delays hammer a struggling server" → `- **retry delay:** Use exponential backoff between retries. (Author redirected from "fixed 1-second delay" — fixed delays hammer a struggling server.)`
 
-Example — answer "No, use sha256" (no reason) → `- **eventId generation:** Use \`sha256\` as \`eventId\`. (Author redirected from raw txID.)`
+Example — answer "No, use exponential backoff" (no reason) → `- **retry delay:** Use exponential backoff between retries. (Author redirected from "fixed 1-second delay".)`
 
 **Out-of-scope sub-case.** If the answer starts with `out of scope` (or `not for this issue`, `out of scope: <reason>`, etc.), phrase the bullet as a scope decision rather than inventing an alternative:
 ```
@@ -122,7 +122,7 @@ Example — answer "No, use sha256" (no reason) → `- **eventId generation:** U
 ```
 Example — answer "out of scope: caching belongs in a separate ticket" → `- **payload caching:** Out of scope for this issue: caching belongs in a separate ticket. (Author redirected from "add LRU cache".)`
 
-Bullet titles should be a short phrase derived from the gap title — drop "will break", "needs", "vs", question-like fragments. Examples: "Non-deterministic eventId will break endorsement" → `eventId generation`; "Payload size limits" → `data cap`; "Scope — is Portal integration in or out?" → `Portal scope`.
+Bullet titles should be a short phrase derived from the gap title — drop "will break", "needs", "vs", question-like fragments. Examples: "Unbounded retries will mask a dead server" → `retry limit`; "Payload size limits" → `data cap`; "Scope — is the web dashboard in or out?" → `dashboard scope`.
 
 Keep bullets to one line where possible. Two lines if the rider genuinely needs it. Never paragraphs — the spec author will read this as a checklist.
 
@@ -163,7 +163,7 @@ Routing rules:
 
 **Bring the body into line with any decision that overrules it.** Everything the confirmed decisions do not contradict is preserved byte-for-byte, and the rule against "tidying" the original proposal still holds — this is a correction of contradictions, not an edit pass.
 
-For each **Pattern B** (rider) and **Pattern C** (redirect, out-of-scope sub-case included) decision, read the rest of the body for passages that state the behaviour that decision overruled — a Capability scenario, an acceptance criterion, an out-of-scope bullet, a technical note — and rewrite each one to state the decided behaviour instead. Where the decision put work out of scope, a passage promising that work is rewritten to drop the promise, or removed outright if the promise is all it carries. Rewrite the prose under a `**Scenario: …**` label, never the label text: Constitution §VIII matches it exactly against committed `// SCENARIO:` markers, so re-wording it breaks the required `traceability` check — where a decision genuinely changes the scenario, name the label change in the report so the marker can be updated. A **Pattern A** decision rewrites nothing: it accepted what the body already says.
+For each **Pattern B** (rider) and **Pattern C** (redirect, out-of-scope sub-case included) decision, read the rest of the body for passages that state the behaviour that decision overruled — a Capability scenario, an acceptance criterion, an out-of-scope bullet, a technical note — and rewrite each one to state the decided behaviour instead. Where the decision put work out of scope, a passage promising that work is rewritten to drop the promise, or removed outright if the promise is all it carries. Rewrite the prose under a `**Scenario: …**` label, never the label text: tooling may match a label exactly against markers in the tests, so re-wording it can break that link — where a decision genuinely changes the scenario, name the label change in the report so the marker can be updated. A **Pattern A** decision rewrites nothing: it accepted what the body already says.
 
 Leaving the overruled text in place is the failure this rule exists to prevent. The decision lands at the bottom of the body while the text it contradicts stays above it, and `/build` reads both as its specification.
 
@@ -220,11 +220,11 @@ With both confirmed, delete the review using the **numeric** comment id resolved
 gh api --method DELETE repos/<owner>/<repo>/issues/comments/<comment-id>
 ```
 
-- **Why the label gates this.** `ready` is the done-marker; removing the review without it would leave the issue looking never-reviewed to `/reviewissue` and to the workflow guard, which is the one state this whole design exists to prevent — reached through the one door that cannot be reopened.
+- **Why the label gates this.** `ready` is the done-marker; removing the review without it would leave the issue looking never-reviewed to `/reviewissue` and to any automation that runs it, which is the one state this whole design exists to prevent — reached through the one door that cannot be reopened.
 - **Never fatal.** If the deletion itself fails, do **not** fail the command — the decisions are saved and the issue is labelled. Continue to the report and say there that the review is still on the issue, and that re-running `/confirmissue #N` will retry it.
 - **Irreversible and silent.** GitHub sends no notification for a deleted comment and offers no undo. That is why every hard-stop in this command (steps 1, 2, 4 and 5) sits upstream of it, and why a step-6 label failure — which does not stop the run — is caught by the read-back above instead. All five paths leave the review exactly where it was, answerable and re-runnable.
 
-**Putting a confirmed issue back into review.** If the scope moves and the decisions no longer hold, remove the `ready` label (`gh issue edit <number> --repo <owner/repo> --remove-label ready`) and request a review again. With the marker gone and no review comment on the thread, `/reviewissue` and the workflow both treat it as a first run and post a fresh review. No one has to hand-edit the issue body to make that happen.
+**Putting a confirmed issue back into review.** If the scope moves and the decisions no longer hold, remove the `ready` label (`gh issue edit <number> --repo <owner/repo> --remove-label ready`) and request a review again. With the marker gone and no review comment on the thread, `/reviewissue` (and any automation that runs it) treats it as a first run and posts a fresh review. No one has to hand-edit the issue body to make that happen.
 
 ---
 
@@ -234,7 +234,7 @@ Keep your chat response short:
 
 - confirm the issue updated (number + title)
 - state how many decisions were folded in (and the count by pattern: e.g. "8 accepted, 1 with rider, 1 redirected")
-- list each body passage you rewrote to agree with a redirected or ridered decision, naming the heading or criterion each sits under — or say plainly that none were rewritten. This is the only prompt to check text the author's own answers changed, and on the unattended `confirmissue.yml` path it reaches the run summary rather than the author, who sees only an edited body.
+- list each body passage you rewrote to agree with a redirected or ridered decision, naming the heading or criterion each sits under — or say plainly that none were rewritten. This is the only prompt to check text the author's own answers changed, and on an unattended automated run it reaches the run summary rather than the author, who sees only an edited body.
 - state whether the `ready` label was applied — and if it was not, say so explicitly, noting the decisions were saved regardless
 - state whether the review comment was deleted — and if it was not, say so explicitly, naming which precondition or call failed and telling the operator what to do about it ("the `ready` label did not land; re-run `/confirmissue #N` to complete it"). These paths are deliberately non-fatal, so the report is the only signal that the issue is in a half-finished state.
 - return the issue URL
