@@ -34,7 +34,7 @@
 
 - **File-scoped namespaces**: `namespace NetPace.Core.Clients.Ookla;`
 - **Place using directives OUTSIDE** the namespace declaration
-- **One class per file**; filename matches class name
+- **One class per file**; filename matches class name. One exception, a test seam: an interface, its production implementation and its stub may share the interface's file (e.g. `IClock.cs` holds `IClock`, `Clock` and `ClockStub`), because the interface exists only so the stub can stand in for the real class, and the three read as one unit.
 
 ## Collections
 
