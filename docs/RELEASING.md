@@ -104,7 +104,7 @@ The GitHub Release / binary-attachment flow via `release-binaries.yml` is unaffe
 
 ## Source-build version
 
-`src/Directory.Build.props` pins all four version properties — `Version`, `FileVersion`, `AssemblyVersion`, `InformationalVersion` — to `0.0.0`, so `netpace --version` from a local `dotnet build` or `dotnet run` reports `0.0.0`.
+`src/Directory.Build.props` pins all four version properties — `Version`, `FileVersion`, `AssemblyVersion`, `InformationalVersion` — to `0.0.0`, so `NetPace --version` from a local `dotnet build` or `dotnet run` reports `0.0.0`.
 
 **Why**: `0.0.0` is below every release tag and matches none of them, so a build from source cannot be mistaken for a release.
 

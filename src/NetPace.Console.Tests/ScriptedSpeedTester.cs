@@ -67,4 +67,19 @@ public sealed class ScriptedSpeedTester : ISpeedTestService
 
     public Task<SpeedTestResult> GetUploadSpeedAsync(IServer server, IProgress<SpeedTestProgress> progress, CancellationToken cancellationToken = default) =>
         Task.FromResult(UploadFactory(uploadCall++));
+
+    public Task<LatencyTestResult> GetServerLatencyAsync(IServer server, IProgress<LatencyTestProgress>? progress, IProgress<RequestDiagnostic>? diagnostics, CancellationToken cancellationToken = default) =>
+        GetServerLatencyAsync(server, cancellationToken);
+
+    public Task<LatencyTestResult> GetServerLatencyAsync(string serverUrl, IProgress<LatencyTestProgress>? progress, IProgress<RequestDiagnostic>? diagnostics, CancellationToken cancellationToken = default) =>
+        GetServerLatencyAsync(serverUrl, cancellationToken);
+
+    public Task<LatencyTestResult> GetFastestServerByLatencyAsync(IServer[] servers, IProgress<SpeedTestProgress>? progress, IProgress<RequestDiagnostic>? diagnostics, CancellationToken cancellationToken = default) =>
+        GetFastestServerByLatencyAsync(servers, cancellationToken);
+
+    public Task<SpeedTestResult> GetDownloadSpeedAsync(IServer server, IProgress<SpeedTestProgress>? progress, IProgress<RequestDiagnostic>? diagnostics, CancellationToken cancellationToken = default) =>
+        Task.FromResult(DownloadFactory(downloadCall++));
+
+    public Task<SpeedTestResult> GetUploadSpeedAsync(IServer server, IProgress<SpeedTestProgress>? progress, IProgress<RequestDiagnostic>? diagnostics, CancellationToken cancellationToken = default) =>
+        Task.FromResult(UploadFactory(uploadCall++));
 }

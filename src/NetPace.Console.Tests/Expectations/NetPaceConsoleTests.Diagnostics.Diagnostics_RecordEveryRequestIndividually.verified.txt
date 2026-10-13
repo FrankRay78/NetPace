@@ -1,0 +1,19 @@
+﻿ts=1980-01-01T10:05:00.000 event=run.start version=0.0.0 runtime=".NET 10.0.0" os="Test OS 1.0" arch=x64
+ts=1980-01-01T10:05:05.000 event=run.invocation args="--minimal --diagnostics"
+ts=1980-01-01T10:05:10.000 event=test.start test=screening
+ts=1980-01-01T11:00:00.000 event=request test=screening seq=1 url=http://ffm.wsqm.telekom-dienste.de:8080/speedtest/latency.txt status=ok bytes=9 duration_ms=31
+ts=1980-01-01T10:05:15.000 event=test.end test=screening requests=1 succeeded=1 failed=0 cancelled=0 bytes=9
+ts=1980-01-01T10:05:20.000 event=test.start test=latency
+ts=1980-01-01T11:00:01.000 event=request test=latency seq=1 url=http://ffm.wsqm.telekom-dienste.de:8080/speedtest/latency.txt status=ok bytes=9 duration_ms=24
+ts=1980-01-01T11:00:02.000 event=request test=latency seq=2 url=http://ffm.wsqm.telekom-dienste.de:8080/speedtest/latency.txt status=ok bytes=9 duration_ms=24
+ts=1980-01-01T10:05:25.000 event=test.end test=latency requests=2 succeeded=2 failed=0 cancelled=0 bytes=18
+ts=1980-01-01T10:05:30.000 event=server.selected sponsor="Deutsche Telekom" location=Frankfurt url=http://ffm.wsqm.telekom-dienste.de:8080/speedtest/upload.php selection=auto-latency latency_ms=31
+ts=1980-01-01T10:05:35.000 event=test.start test=download
+ts=1980-01-01T11:00:03.000 event=request test=download seq=1 url="http://ffm.wsqm.telekom-dienste.de:8080/speedtest/random1500x1500.jpg?r=1" status=ok bytes=500 duration_ms=250
+ts=1980-01-01T11:00:04.000 event=request test=download seq=2 url="http://ffm.wsqm.telekom-dienste.de:8080/speedtest/random1500x1500.jpg?r=2" status=ok bytes=500 duration_ms=250
+ts=1980-01-01T10:05:40.000 event=test.end test=download requests=2 succeeded=2 failed=0 cancelled=0 bytes=1000
+ts=1980-01-01T10:05:45.000 event=test.start test=upload
+ts=1980-01-01T11:00:05.000 event=request test=upload seq=1 url=http://ffm.wsqm.telekom-dienste.de:8080/speedtest/upload.php status=ok bytes=3500 duration_ms=1500
+ts=1980-01-01T11:00:06.000 event=request test=upload seq=2 url=http://ffm.wsqm.telekom-dienste.de:8080/speedtest/upload.php status=ok bytes=3500 duration_ms=1500
+ts=1980-01-01T10:05:50.000 event=test.end test=upload requests=2 succeeded=2 failed=0 cancelled=0 bytes=7000
+ts=1980-01-01T10:05:55.000 event=run.end exit=0

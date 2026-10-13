@@ -5,6 +5,9 @@ namespace NetPace.Core.Clients.Testing;
 /// <summary>
 /// A stub implementation of <see cref="ISpeedTestService"/> for testing purposes.
 /// </summary>
+/// <remarks>
+/// The diagnostics overloads report nothing: the stub fabricates aggregate results rather than issuing requests, so there are no per-request diagnostics to report.
+/// </remarks>
 public sealed class SpeedTestStub : ISpeedTestService
 {
     private readonly IServer[] stubServers = new IServer[]
@@ -173,5 +176,35 @@ public sealed class SpeedTestStub : ISpeedTestService
         var serverID = GetServerID(server.Url);
 
         return Task.FromResult(new SpeedTestResult() { BytesProcessed = 7000, ElapsedMilliseconds = 3000 * serverID, RequestsSucceeded = 32, RequestsFailed = 0 });
+    }
+
+    /// <inheritdoc/>
+    public Task<LatencyTestResult> GetServerLatencyAsync(IServer server, IProgress<LatencyTestProgress>? progress, IProgress<RequestDiagnostic>? diagnostics, CancellationToken cancellationToken = default)
+    {
+        return GetServerLatencyAsync(server, progress ?? new NullProgress<LatencyTestProgress>(), cancellationToken);
+    }
+
+    /// <inheritdoc/>
+    public Task<LatencyTestResult> GetServerLatencyAsync(string serverUrl, IProgress<LatencyTestProgress>? progress, IProgress<RequestDiagnostic>? diagnostics, CancellationToken cancellationToken = default)
+    {
+        return GetServerLatencyAsync(serverUrl, progress ?? new NullProgress<LatencyTestProgress>(), cancellationToken);
+    }
+
+    /// <inheritdoc/>
+    public Task<LatencyTestResult> GetFastestServerByLatencyAsync(IServer[] servers, IProgress<SpeedTestProgress>? progress, IProgress<RequestDiagnostic>? diagnostics, CancellationToken cancellationToken = default)
+    {
+        return GetFastestServerByLatencyAsync(servers, progress ?? new NullProgress<SpeedTestProgress>(), cancellationToken);
+    }
+
+    /// <inheritdoc/>
+    public Task<SpeedTestResult> GetDownloadSpeedAsync(IServer server, IProgress<SpeedTestProgress>? progress, IProgress<RequestDiagnostic>? diagnostics, CancellationToken cancellationToken = default)
+    {
+        return GetDownloadSpeedAsync(server, progress ?? new NullProgress<SpeedTestProgress>(), cancellationToken);
+    }
+
+    /// <inheritdoc/>
+    public Task<SpeedTestResult> GetUploadSpeedAsync(IServer server, IProgress<SpeedTestProgress>? progress, IProgress<RequestDiagnostic>? diagnostics, CancellationToken cancellationToken = default)
+    {
+        return GetUploadSpeedAsync(server, progress ?? new NullProgress<SpeedTestProgress>(), cancellationToken);
     }
 }
