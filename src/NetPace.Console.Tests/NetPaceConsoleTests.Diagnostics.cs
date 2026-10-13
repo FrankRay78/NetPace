@@ -72,22 +72,20 @@ public sealed partial class NetPaceConsoleTests
         }
 
         [Theory]
-        [MemberData(nameof(OutputFormats))]
+        [InlineData("--minimal")]
+        [InlineData("--csv")]
+        [InlineData("--json")]
         public async Task Every_OutputFormat_ProducesTheSameDiagnostics(string outputFormat)
         {
             // Given the compact, CSV and JSON formats pass no progress reporter at all, diagnostics
             // must not ride on one.
-            // When each runs with --diagnostics.
-            var result = await HostWith().RunAsync(Invocation(outputFormat, "--diagnostics"));
+            // When each runs with --diagnostics, alongside the default format.
+            var expected = await HostWith().RunAsync(["--diagnostics"]);
+            var actual = await HostWith().RunAsync([outputFormat, "--diagnostics"]);
 
-            // Then every format produces the whole record set.
-            Assert.Contains("event=run.start", result.DiagnosticOutput, StringComparison.Ordinal);
-            Assert.Contains("event=run.invocation", result.DiagnosticOutput, StringComparison.Ordinal);
-            Assert.Contains("event=server.selected", result.DiagnosticOutput, StringComparison.Ordinal);
-            Assert.Contains("event=test.start test=download", result.DiagnosticOutput, StringComparison.Ordinal);
-            Assert.Contains("event=test.start test=upload", result.DiagnosticOutput, StringComparison.Ordinal);
-            Assert.Contains("event=request test=download", result.DiagnosticOutput, StringComparison.Ordinal);
-            Assert.Contains("event=run.end", result.DiagnosticOutput, StringComparison.Ordinal);
+            // Then the format produces the default format's record set, line for line. Only the
+            // record of the arguments differs, because the arguments do.
+            Assert.Equal(WithoutInvocation(expected.DiagnosticOutput), WithoutInvocation(actual.DiagnosticOutput));
         }
 
         [Fact]
@@ -325,6 +323,11 @@ public sealed partial class NetPaceConsoleTests
             public override void WriteLine(string? value) =>
                 throw new IOException("There is not enough space on the disk.");
         }
+
+        private static string[] WithoutInvocation(string diagnosticOutput) =>
+            diagnosticOutput.Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries)
+                .Where(line => !line.Contains(" event=run.invocation ", StringComparison.Ordinal))
+                .ToArray();
 
         private static int CountLines(string text, string value) =>
             text.Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries)

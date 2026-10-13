@@ -257,12 +257,10 @@ public sealed partial class OoklaSpeedtestTests
     public async Task GetDownloadSpeedAsync_WhenTheByteBudgetCutsRequestsOff_RecordsThemAsCancelled()
     {
         // Given a byte budget one request's payload is enough to exhaust, and more requests queued
-        // behind it than the budget allows. Only the first request answers immediately; the rest
-        // are held long enough to still be in flight when it trips the cap, and every request gets
-        // its own permit so none is queued. Both matter: with all eight answering at once they can
-        // clear the counting block before the cap fires and nothing is cancelled, and with a queue
-        // a freed permit lets a waiter start before the cancellation reaches it, so the cancelled
-        // count moves. The test lost both races intermittently under full-suite load.
+        // behind it than the budget allows. Only the first request answers; the rest never do, so
+        // they are still in flight when it trips the cap and only the cap's cancellation ends them.
+        // Every request gets its own permit so none is queued: with a queue, a freed permit lets a
+        // waiter start before the cancellation reaches it, and the cancelled count moves.
         var served = 0;
         using var mockHttp = new MockHttpMessageHandler();
         mockHttp.When("*").Respond(async () =>
@@ -275,7 +273,7 @@ public sealed partial class OoklaSpeedtestTests
 
             if (Interlocked.Increment(ref served) > 1)
             {
-                await Task.Delay(250, CancellationToken.None);
+                return await new TaskCompletionSource<HttpResponseMessage>().Task;
             }
 
             return new HttpResponseMessage(HttpStatusCode.OK)
@@ -300,7 +298,7 @@ public sealed partial class OoklaSpeedtestTests
         var diagnostics = new List<RequestDiagnostic>();
 
         // When the download test runs under the budget.
-        var result = await speedtest.GetDownloadSpeedAsync(server, null, Collect(diagnostics));
+        var result = await speedtest.GetDownloadSpeedAsync(server, null, Collect(diagnostics)).WaitAsync(HangGuard);
 
         // Then the records still agree with the counts the result reports, and a request excluded by
         // the budget is accounted for as cancelled rather than silently dropped or counted a failure.
@@ -343,10 +341,6 @@ public sealed partial class OoklaSpeedtestTests
         result.BytesProcessed.ShouldBe(1024);
     }
 
-    /// <summary>
-    /// Collects reported diagnostics inline, on the reporting thread, under a lock: the download and
-    /// upload paths report from parallel requests, so an unsynchronised list would tear.
-    /// </summary>
     [Fact]
     public async Task GetFastestServerByLatencyAsync_WhenACandidateIsUnreachable_RecordsItAsFailedWithTheCause()
     {
@@ -490,11 +484,12 @@ public sealed partial class OoklaSpeedtestTests
         // When the ceiling expires before the candidate answers.
         await Should.ThrowAsync<Exception>(() => speedtest.GetFastestServerByLatencyAsync(servers, null, Collect(diagnostics)));
 
-        // Then a record attributing it to the ceiling is what the other half of the classification
-        // produces. Nothing else asserts this branch, so without it a regression here ships green
-        // while the test for the caller branch stays happy.
-        diagnostics.ShouldAllBe(d => d.Outcome == RequestOutcome.Cancelled);
-        diagnostics.ShouldAllBe(d => d.FailureReason == "screening ceiling reached");
+        // Then the record blames the ceiling by name. Nothing else asserts this branch, so without it
+        // a regression here ships green while the test for the caller branch stays happy - and
+        // asserting over every record would pass on an empty list.
+        var record = diagnostics.ShouldHaveSingleItem();
+        record.Outcome.ShouldBe(RequestOutcome.Cancelled);
+        record.FailureReason.ShouldBe("screening ceiling reached");
     }
 
     [Fact]
@@ -684,6 +679,10 @@ public sealed partial class OoklaSpeedtestTests
         record.FailureReason.ShouldBe("cancelled by caller");
     }
 
+    /// <summary>
+    /// Collects reported diagnostics inline, on the reporting thread, under a lock: the download and
+    /// upload paths report from parallel requests, so an unsynchronised list would tear.
+    /// </summary>
     private static IProgress<RequestDiagnostic> Collect(List<RequestDiagnostic> sink)
     {
         return new SynchronousProgress<RequestDiagnostic>(diagnostic =>

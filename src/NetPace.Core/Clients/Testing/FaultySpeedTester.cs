@@ -89,21 +89,9 @@ public class FaultySpeedTester : ISpeedTestService
     }
 
     /// <inheritdoc/>
-    /// <remarks>
-    /// Screening is itself a latency probe, so a server this tester cannot ping drops out of
-    /// selection rather than being ranked, and a selection left with nothing reports that no
-    /// servers are available.
-    /// </remarks>
     public Task<LatencyTestResult> GetFastestServerByLatencyAsync(IServer[] servers, IProgress<SpeedTestProgress> progress, CancellationToken cancellationToken = default)
     {
-        var reachable = servers.Where(CanBeScreened).ToArray();
-
-        if (reachable.Length == 0)
-        {
-            throw new Exception("No servers available");
-        }
-
-        return inner.GetFastestServerByLatencyAsync(reachable, progress, cancellationToken);
+        return GetFastestServerByLatencyAsync(servers, progress, null, cancellationToken);
     }
 
     /// <inheritdoc/>
