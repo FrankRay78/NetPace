@@ -205,7 +205,7 @@ public static class Program
 
         var diagnosticsOption = new Option<bool>("--diagnostics")
         {
-            Description = "Write per-request diagnostic detail about the run to the error stream.\nThe result is unchanged, so 'netpace --json --diagnostics > result.json 2> diagnostics.log' keeps the two apart.",
+            Description = "Write per-request diagnostic detail about the run to the error stream.\nThe result is unchanged, so 'NetPace --json --diagnostics > result.json 2> diagnostics.log' keeps the two apart.",
             DefaultValueFactory = _ => false
         };
 
