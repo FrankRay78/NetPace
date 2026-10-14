@@ -65,7 +65,7 @@ An old issue often mixes requirements with technical design. Sort its content be
 - **Requirements** — user, job, observable behaviour, scope edges, outcome-level acceptance criteria. These shape the body.
 - **Technical** — file paths, library picks, integration shape, exact UI copy, timing values, project-housekeeping criteria ("project X exists"). Carry only what is material into Source notes, as pointers; drop the rest.
 
-Show the user the split as two short lists referencing the original headings, and let them move items between the two before you continue.
+Show the user the split as two short lists referencing the original headings, and let them move items between the two before you continue. This checks how the old issue was read, not the draft: the issue is still raised without a draft-approval pause.
 
 ### 4. Ask only what the source leaves open
 
@@ -105,11 +105,11 @@ The line between outcome and mechanism is **who touches it**. Anything users, th
 | "Settings are written to a SQLite table" | "A changed setting is still in effect after a restart" |
 | "Entries are sorted with a stable sort on the name field" | "Entries appear in alphabetical order" |
 
-| Contract — fine to name exactly |
-|---|
-| "`--format json` reports the duration as a number of seconds, not a string" |
-| "The command exits non-zero when any check fails" |
-| "A config file may list servers under a `servers` key" |
+Contracts a criterion may name exactly:
+
+- "`--format json` reports the duration as a number of seconds, not a string"
+- "The command exits non-zero when any check fails"
+- "A config file may list servers under a `servers` key"
 
 Project housekeeping — a project exists, a solution file is updated, scaffolding is in place — is not an acceptance criterion. Leave it out; the builder does it on the way.
 
