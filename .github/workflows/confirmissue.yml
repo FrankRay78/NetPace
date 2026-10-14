@@ -56,11 +56,18 @@ jobs:
         with:
           fetch-depth: 0
 
-      # A workflow step, not a prompt instruction: a model can skip an instruction. Narrower than
+      # A workflow step, not a prompt instruction: a model can skip an instruction. `confirm` fits
+      # exactly one issue state — a review posted and answered — so the two states it does not fit
+      # are wrong-state triggers: the label is cleared, nothing else on the issue changes, and the
+      # run finishes green. Narrower than
       # the command's own "already confirmed" stop, which fires on the decisions section *or* the
       # label; this reads the label only. What it buys is not a green run — a genuinely confirmed
       # issue passes all five post-conditions below without it — but a skipped twenty-minute agent
       # turn, and untrusted issue content kept away from an `issues: write` token.
+      # The second wrong state is an issue with no review at all. Left to the agent, the command's
+      # own "no review comment to confirm" stop fires, the post-condition below finds no decisions
+      # on the body and turns the run red — a failure notification for a mislabelled issue that
+      # nothing is wrong with. Caught here instead, it costs no agent turn and reads as what it is.
       # The two reads are live rather than snapshotted because a local /confirmissue is a
       # second writer to the same state.
       # `ready` with a surviving review comment is not a confirmed issue, it is a half-confirmed
@@ -91,7 +98,17 @@ jobs:
             fi
             echo "::notice::#$ISSUE_NUMBER is already confirmed (ready) — clearing the label and skipping."
             echo "already_confirmed=true" >> "$GITHUB_OUTPUT"
+            echo "skip_reason=is already confirmed (\`ready\`)" >> "$GITHUB_OUTPUT"
             gh issue edit "$ISSUE_NUMBER" --repo "$GITHUB_REPOSITORY" --remove-label confirm
+          else
+            gh api --paginate "repos/$GITHUB_REPOSITORY/issues/$ISSUE_NUMBER/comments" \
+              --jq '.[].body' > .claude/scratch/issue-comments-guard.txt
+            if ! grep -qF '<!-- speckit:review -->' .claude/scratch/issue-comments-guard.txt; then
+              echo "::notice::#$ISSUE_NUMBER carries no review comment to confirm — clearing the label and skipping."
+              echo "already_confirmed=true" >> "$GITHUB_OUTPUT"
+              echo "skip_reason=carries no review comment to confirm" >> "$GITHUB_OUTPUT"
+              gh issue edit "$ISSUE_NUMBER" --repo "$GITHUB_REPOSITORY" --remove-label confirm
+            fi
           fi
 
       # No issue snapshot step, unlike reviewissue.yml. That workflow snapshots for two
@@ -137,6 +154,7 @@ jobs:
         if: always()
         env:
           ALREADY_CONFIRMED: ${{ steps.guard.outputs.already_confirmed }}
+          SKIP_REASON: ${{ steps.guard.outputs.skip_reason }}
         run: |
           if [ -f "$REPORT_FILE" ]; then
             {
@@ -145,7 +163,7 @@ jobs:
               cat "$REPORT_FILE"
             } >> "$GITHUB_STEP_SUMMARY"
           elif [ "$ALREADY_CONFIRMED" = "true" ]; then
-            echo "#$ISSUE_NUMBER is already confirmed (\`ready\`) — the \`confirm\` label was cleared and nothing else changed." >> "$GITHUB_STEP_SUMMARY"
+            echo "#$ISSUE_NUMBER $SKIP_REASON — the \`confirm\` label was cleared and nothing else changed." >> "$GITHUB_STEP_SUMMARY"
           else
             echo "::warning::#$ISSUE_NUMBER produced no confirmation report — whatever the run did or did not fold in is unreported."
             echo "No confirmation report was written, so this summary cannot say what the run did. Read the step logs and the issue itself." >> "$GITHUB_STEP_SUMMARY"
