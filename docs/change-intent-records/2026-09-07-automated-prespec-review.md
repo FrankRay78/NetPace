@@ -22,7 +22,7 @@
 - Then: behaviour is exactly as it was before this change.
 
 **Constraints:**
-- The review logic must stay single-sourced in [`.claude/commands/reviewissue.md`](../../.claude/commands/reviewissue.md). A workflow that restates it forks the analysis and the two copies drift. The already-reviewed guard is the one deliberate exception: it *overrides* that file's step 1, which would refine an existing review rather than stop.
+- The review logic must stay single-sourced in [`.claude/commands/reviewissue.md`](../../.claude/commands/reviewissue.md). A workflow that restates it forks the analysis and the two copies drift. The already-reviewed guard is the one deliberate exception: it *overrides* that file's step 1, which would refine an existing review rather than stop. *(Superseded: the refine path is no longer overridden away — the `refine` label reaches it. See [`2026-10-14-one-label-per-issue-state`](2026-10-14-one-label-per-issue-state.md).)*
 - The repository is public, so the trigger must gate on the account that *applied* the label, not the account that raised the issue.
 - On the `issues` path, a run uses the default branch's copy of the workflow and of every file it reads, so a change to the review command takes effect on merge, not on branch — and no event can trigger a *new* workflow file from a feature branch at all. A `workflow_dispatch` run uses the ref it is dispatched against, which is what makes it useful for iterating on the prompt.
 - `/confirmissue` locates the review by the `<!-- speckit:review -->` sentinel and takes the most recent marker comment ([`confirmissue.md`](../../.claude/commands/confirmissue.md), step 1). A second automated review would therefore orphan answers already written against the first.

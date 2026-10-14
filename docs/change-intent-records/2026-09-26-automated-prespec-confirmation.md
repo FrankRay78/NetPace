@@ -10,7 +10,7 @@
 - Then: the issue body gains a `## Confirmed decisions` section, the issue is labelled `ready` and no longer `needs answers`, the review comment is gone, and the `confirm` label is cleared.
 - Given: an issue whose review has an unanswered or hedging gap, or which has no review at all
 - When: the `confirm` label is applied
-- Then: the issue body, its labels and its review comment are exactly as they were; the `confirm` label stays on; the run is red and its summary names the gaps that need attention. No comment is posted on the issue.
+- Then: the issue body, its labels and its review comment are exactly as they were; the `confirm` label stays on; the run is red and its summary names the gaps that need attention. No comment is posted on the issue. *(Superseded in part: an issue with no review at all is now a wrong-state trigger — the agent does not run, `confirm` is cleared and the run is green. See [`2026-10-14-one-label-per-issue-state`](2026-10-14-one-label-per-issue-state.md). The unanswered-or-hedging half stands.)*
 - Given: an issue that already carries `ready`, with no review comment left on the thread
 - When: the `confirm` label is applied
 - Then: the agent does not run, nothing about the issue changes except that `confirm` is cleared, and the run is green.

@@ -32,7 +32,7 @@ jobs:
     if: >-
       github.event_name == 'workflow_dispatch' ||
       ((github.event.label.name == 'review' || github.event.label.name == 'refine') &&
-       github.event.sender.login == 'FrankRay78')
+      github.event.sender.login == 'FrankRay78')
     runs-on: ubuntu-latest
     timeout-minutes: 30
     # Serialise per issue. The guard reads the comment list at the start of a run that

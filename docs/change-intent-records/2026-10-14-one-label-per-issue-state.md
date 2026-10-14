@@ -2,6 +2,8 @@
 
 **Intent:** Let the maintainer get a hard review question re-framed from the GitHub issue page, without a local session, and give each pipeline label one predictable job.
 
+**Supersedes:** [`2026-09-26-automated-prespec-confirmation`](2026-09-26-automated-prespec-confirmation.md) — the "or which has no review at all" half of its unanswered-gap clause. That case now clears `confirm` and finishes green rather than running the agent and ending red; the unanswered-and-hedging half is unchanged. Also the *already-reviewed guard is the one deliberate exception* constraint of [`2026-09-07-automated-prespec-review`](2026-09-07-automated-prespec-review.md): step 1's refine path is no longer overridden away, it is reached by the `refine` label instead.
+
 **Behaviour:** Specified in issue #375 — `review` posts the first analysis, `refine` re-frames the answers that asked for help, `confirm` folds the answers in; a label applied in any other state clears itself and changes nothing. Summarised in [`docs/agentic-workflow-NetPace.md`](../agentic-workflow-NetPace.md).
 
 **Constraints:**
