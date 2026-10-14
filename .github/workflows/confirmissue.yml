@@ -56,18 +56,21 @@ jobs:
         with:
           fetch-depth: 0
 
-      # A workflow step, not a prompt instruction: a model can skip an instruction. `confirm` fits
-      # exactly one issue state — a review posted and answered — so the two states it does not fit
-      # are wrong-state triggers: the label is cleared, nothing else on the issue changes, and the
-      # run finishes green. Narrower than
+      # A workflow step, not a prompt instruction: a model can skip an instruction. Narrower than
       # the command's own "already confirmed" stop, which fires on the decisions section *or* the
       # label; this reads the label only. What it buys is not a green run — a genuinely confirmed
       # issue passes all five post-conditions below without it — but a skipped twenty-minute agent
       # turn, and untrusted issue content kept away from an `issues: write` token.
-      # The second wrong state is an issue with no review at all. Left to the agent, the command's
-      # own "no review comment to confirm" stop fires, the post-condition below finds no decisions
-      # on the body and turns the run red — a failure notification for a mislabelled issue that
-      # nothing is wrong with. Caught here instead, it costs no agent turn and reads as what it is.
+      # `confirm` fits exactly one issue state: a review posted and answered. Two of the states it
+      # does not fit are cheap wrong-state triggers, handled here — the label is cleared, nothing
+      # else on the issue changes, and the run finishes green. They are an issue already confirmed,
+      # and an issue with no review at all. The other two are not: `ready` with a surviving review
+      # comment is red below, and a review whose answers still hedge is red from the command's own
+      # stop and the post-conditions. So a mislabelled `confirm` is not always a free no-op.
+      # On the no-review state: left to the agent, the command's own "no review comment to confirm"
+      # stop fires, the post-condition below finds no decisions on the body and turns the run red —
+      # a failure notification for a mislabelled issue that nothing is wrong with. Caught here
+      # instead, it costs no agent turn and reads as what it is.
       # The two reads are live rather than snapshotted because a local /confirmissue is a
       # second writer to the same state.
       # `ready` with a surviving review comment is not a confirmed issue, it is a half-confirmed
@@ -81,7 +84,7 @@ jobs:
       # gone, confirmed or skipped. The output is recorded before the label is cleared, so a failed
       # `gh issue edit` leaves the label on — the signal this file reserves for "did not complete".
       # `mkdir` covers this step's sentinel read and the post-condition's writes below.
-      - name: Skip issues that are already confirmed
+      - name: Skip a label applied in the wrong state
         id: guard
         env:
           GH_TOKEN: ${{ github.token }}
@@ -89,23 +92,21 @@ jobs:
           mkdir -p .claude/scratch
           ready=$(gh issue view "$ISSUE_NUMBER" --repo "$GITHUB_REPOSITORY" --json labels \
             --jq '[.labels[].name] | index("ready") != null')
+          gh api --paginate "repos/$GITHUB_REPOSITORY/issues/$ISSUE_NUMBER/comments" \
+            --jq '.[].body' > .claude/scratch/issue-comments-guard.txt
           if [ "$ready" = "true" ]; then
-            gh api --paginate "repos/$GITHUB_REPOSITORY/issues/$ISSUE_NUMBER/comments" \
-              --jq '.[].body' > .claude/scratch/issue-comments-guard.txt
             if grep -qF '<!-- speckit:review -->' .claude/scratch/issue-comments-guard.txt; then
               echo "::error::#$ISSUE_NUMBER is labelled 'ready' but still carries a <!-- speckit:review --> comment — a previous confirmation saved its decisions and applied the label but could not delete the review. Delete that comment by hand, then re-apply 'confirm' if anything still needs folding in."
               exit 1
             fi
             echo "::notice::#$ISSUE_NUMBER is already confirmed (ready) — clearing the label and skipping."
-            echo "already_confirmed=true" >> "$GITHUB_OUTPUT"
+            echo "wrong_state=true" >> "$GITHUB_OUTPUT"
             echo "skip_reason=is already confirmed (\`ready\`)" >> "$GITHUB_OUTPUT"
             gh issue edit "$ISSUE_NUMBER" --repo "$GITHUB_REPOSITORY" --remove-label confirm
           else
-            gh api --paginate "repos/$GITHUB_REPOSITORY/issues/$ISSUE_NUMBER/comments" \
-              --jq '.[].body' > .claude/scratch/issue-comments-guard.txt
             if ! grep -qF '<!-- speckit:review -->' .claude/scratch/issue-comments-guard.txt; then
               echo "::notice::#$ISSUE_NUMBER carries no review comment to confirm — clearing the label and skipping."
-              echo "already_confirmed=true" >> "$GITHUB_OUTPUT"
+              echo "wrong_state=true" >> "$GITHUB_OUTPUT"
               echo "skip_reason=carries no review comment to confirm" >> "$GITHUB_OUTPUT"
               gh issue edit "$ISSUE_NUMBER" --repo "$GITHUB_REPOSITORY" --remove-label confirm
             fi
@@ -127,7 +128,7 @@ jobs:
       # --setting-sources project keeps local user hooks and plugins out of the result. See CIR
       # decision 12 for the two refusals this found.
       - name: Fold the answered review into the issue body
-        if: steps.guard.outputs.already_confirmed != 'true'
+        if: steps.guard.outputs.wrong_state != 'true'
         uses: anthropics/claude-code-action@v1
         env:
           GH_TOKEN: ${{ github.token }}
@@ -153,7 +154,7 @@ jobs:
       - name: Publish the confirmation report to the run summary
         if: always()
         env:
-          ALREADY_CONFIRMED: ${{ steps.guard.outputs.already_confirmed }}
+          WRONG_STATE: ${{ steps.guard.outputs.wrong_state }}
           SKIP_REASON: ${{ steps.guard.outputs.skip_reason }}
         run: |
           if [ -f "$REPORT_FILE" ]; then
@@ -162,7 +163,7 @@ jobs:
               echo
               cat "$REPORT_FILE"
             } >> "$GITHUB_STEP_SUMMARY"
-          elif [ "$ALREADY_CONFIRMED" = "true" ]; then
+          elif [ "$WRONG_STATE" = "true" ]; then
             echo "#$ISSUE_NUMBER $SKIP_REASON — the \`confirm\` label was cleared and nothing else changed." >> "$GITHUB_STEP_SUMMARY"
           else
             echo "::warning::#$ISSUE_NUMBER produced no confirmation report — whatever the run did or did not fold in is unreported."
@@ -178,7 +179,7 @@ jobs:
       # rather than the first. The `confirm` label is removed only once they all hold, which is
       # what leaves a still-labelled issue as the visible "did not complete" signal.
       - name: Verify the issue is fully confirmed, then clear the label
-        if: steps.guard.outputs.already_confirmed != 'true'
+        if: steps.guard.outputs.wrong_state != 'true'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |

@@ -2,7 +2,7 @@
 
 **Intent:** Take the one step in the issue gate whose cost is the *wait* — `/reviewissue`, which carries the codebase-grounding pass — off the developer machine, so an issue raised away from the desk has its gap analysis waiting rather than requested. Answering the questions and running `/confirmissue` are quick by comparison and stay local.
 
-**Superseded in part:** the done-marker described below is no longer current. [`2026-09-11-confirmed-decisions-replace-the-review`](2026-09-11-confirmed-decisions-replace-the-review.md) moves it to the `ready` label, because `/confirmissue` now deletes the review comment once it has folded the answers into the issue body. Decision 4 and the two affected behaviour clauses below are annotated accordingly; everything else in this record stands.
+**Superseded in part:** the done-marker described below is no longer current. [`2026-09-11-confirmed-decisions-replace-the-review`](2026-09-11-confirmed-decisions-replace-the-review.md) moves it to the `ready` label, because `/confirmissue` now deletes the review comment once it has folded the answers into the issue body. Decision 4 and the two affected behaviour clauses below are annotated accordingly. The single-sourcing constraint below carries a separate annotation, from [`2026-10-14-one-label-per-issue-state`](2026-10-14-one-label-per-issue-state.md); everything else in this record stands.
 
 **Behaviour:**
 - Given: an issue in this repository, and the `FrankRay78` account
@@ -22,7 +22,7 @@
 - Then: behaviour is exactly as it was before this change.
 
 **Constraints:**
-- The review logic must stay single-sourced in [`.claude/commands/reviewissue.md`](../../.claude/commands/reviewissue.md). A workflow that restates it forks the analysis and the two copies drift. The already-reviewed guard is the one deliberate exception: it *overrides* that file's step 1, which would refine an existing review rather than stop. *(Superseded: the refine path is no longer overridden away — the `refine` label reaches it. See [`2026-10-14-one-label-per-issue-state`](2026-10-14-one-label-per-issue-state.md).)*
+- The review logic must stay single-sourced in [`.claude/commands/reviewissue.md`](../../.claude/commands/reviewissue.md). A workflow that restates it forks the analysis and the two copies drift. The already-reviewed guard is the one deliberate exception: it *overrides* that file's step 1, which would refine an existing review rather than stop. *(Superseded in part: the override now applies only to a `review`-labelled run; step 1's refine path is reached by the `refine` label instead. See [`2026-10-14-one-label-per-issue-state`](2026-10-14-one-label-per-issue-state.md).)*
 - The repository is public, so the trigger must gate on the account that *applied* the label, not the account that raised the issue.
 - On the `issues` path, a run uses the default branch's copy of the workflow and of every file it reads, so a change to the review command takes effect on merge, not on branch — and no event can trigger a *new* workflow file from a feature branch at all. A `workflow_dispatch` run uses the ref it is dispatched against, which is what makes it useful for iterating on the prompt.
 - `/confirmissue` locates the review by the `<!-- speckit:review -->` sentinel and takes the most recent marker comment ([`confirmissue.md`](../../.claude/commands/confirmissue.md), step 1). A second automated review would therefore orphan answers already written against the first.
