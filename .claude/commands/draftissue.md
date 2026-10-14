@@ -83,7 +83,7 @@ These are things to consider, not questions to fill. A category the source settl
 
 Do not ask about where code lives, integration, data shape, libraries, field names or architecture. Those are `/reviewissue`'s gaps and `/build`'s calls.
 
-**Explore before you ask.** Some decisions are a pick between options the user already understands. Others need research first — how comparable tools behave, what the project's own rules imply, what each option costs the user and what it unlocks. Do that work before raising the decision. Find the decision underneath, too: asking whether a new value replaces an old one, before settling what the new value is, gets a question nobody can answer yet.
+**Explore before you ask.** Some decisions are a pick between options the user already understands. Others need research first — how comparable tools behave, what the project's own rules imply, what each option costs the user and what it unlocks. Do that work before raising the decision, to the depth the decision needs: read inline where a few lookups will settle it, and hand the research to a sub-agent only when it spans more sources than that. Find the decision underneath, too: asking whether a new value replaces an old one, before settling what the new value is, gets a question nobody can answer yet.
 
 **Discuss, then confirm.** Raise a decision that needs judgement as a short written assessment, in plain words — what happens today, the realistic options, what each costs and unlocks, and your recommendation as an outcome or a scope call — and let the user reply in their own words. Use a multiple-choice prompt only to confirm a decision whose options are already clear to the user.
 
