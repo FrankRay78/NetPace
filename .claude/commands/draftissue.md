@@ -13,7 +13,7 @@ $ARGUMENTS
 `$ARGUMENTS` names the source of the issue. It is one of:
 
 - **A free-text idea** — a sentence, a paragraph or rough bullets describing what the user wants.
-- **An existing issue** — `#N`, a bare number, or an issue URL. This is a **migration**: the old issue is the raw material, and Step 6 offers to close it once the new one exists.
+- **An existing issue** — `#N`, a bare number, or an issue URL. This is a **migration**: the old issue is the raw material, and Step 5 offers to close it once the new one exists.
 - **A document** — a URL or a repository path, optionally narrowed to one part of it ("the 'Offline mode' section of docs/ideas.md").
 - **A backlog item** — `backlog <number>` or `item <number>`. Look in *Project-specific* at the end of this file for the backlog it refers to. If that section lists none, ask the user where the backlog is; do not guess.
 
@@ -44,7 +44,7 @@ It raises the issue without a draft-approval pause. `/reviewissue` and `/confirm
 ### 1. Read the source
 
 - **Free text** — the argument is the whole source.
-- **Existing issue** — `gh issue view <N> --json title,body,comments`. Use the body, any comment marked `<!-- speckit:review -->`, and any `## Confirmed decisions` section as raw material. Tell the user which issues were ingested.
+- **Existing issue** — `gh issue view <N> --json title,body,comments`. Use the body, any comment marked `<!-- speckit:review -->`, and any `## Confirmed decisions` section as raw material. An old issue often mixes requirements with technical design: draft from the requirements, and treat its technical content like any source's hints. Tell the user which issues were ingested.
 - **Document** — read it: `gh` or `git` for a GitHub-hosted page (a wiki is a git repository), the file itself for a path, a fetch otherwise. Narrow to the part the argument names.
 - **Backlog item** — read the item as *Project-specific* describes, together with whatever the backlog says about it elsewhere: the items it depends on, notes or open questions that name it, and anything listed as rejected or already done next to it.
 
@@ -58,16 +58,7 @@ Sources age: a backlog row or an old issue may describe behaviour that has since
 - If a claim is stale, write the issue from what is true now, and say in the final report which claim you corrected.
 - If the source says the work depends on something not yet built, say so in Source notes. Do not stop: whether to build it first is the author's call at review.
 
-### 3. Sort migration content (existing-issue sources only)
-
-An old issue often mixes requirements with technical design. Sort its content before drafting:
-
-- **Requirements** — user, job, observable behaviour, scope edges, outcome-level acceptance criteria. These shape the body.
-- **Technical** — file paths, library picks, integration shape, exact UI copy, timing values, project-housekeeping criteria ("project X exists"). Carry only what is material into Source notes, as pointers; drop the rest.
-
-Show the user the split as two short lists referencing the original headings, and let them move items between the two before you continue. This checks how the old issue was read, not the draft: the issue is still raised without a draft-approval pause.
-
-### 4. Ask only what the source leaves open
+### 3. Ask only what the source leaves open
 
 Find the **requirements** decisions the source does not settle — the points where a builder would otherwise have to invent the answer, and the answer changes what the user gets. Consider:
 
@@ -89,7 +80,7 @@ Do not ask about where code lives, integration, data shape, libraries, field nam
 
 **When the user asks for help, stop offering options.** An answer that asks for advice, explanation or more thought ("please advise", "I need help", "we need to think about this") is a request for discussion. Reply in prose with the research and reasoning asked for, end with your recommendation, and wait for their answer — never another set of options. Where the user hands the choice back ("you decide"), take your recommendation.
 
-### 5. Draft the body
+### 4. Draft the body
 
 Write the body to a git-ignored scratch file with the native `Write` tool; the file is the issue body verbatim. Write repository links as paths relative to the repository root, which is how GitHub resolves links in an issue. Put no H1 in the body; the title goes on the `--title` flag.
 
@@ -153,7 +144,7 @@ Pointers to technical hints from the source that a reviewer or builder would oth
 
 Apply any drafting conventions *Project-specific* lists.
 
-### 6. Raise the issue
+### 5. Raise the issue
 
 Choose a short title naming the capability. Create the issue and delete the scratch file in one step:
 
@@ -171,7 +162,7 @@ gh issue close <N> --comment "Superseded by #<M>"
 
 The command never edits any other source: not a document, not a backlog.
 
-### 7. Stop
+### 6. Stop
 
 Do not start implementation. The next step is `/reviewissue` against the new issue, which the user runs.
 
@@ -208,7 +199,7 @@ The only section that changes from one repository to another.
 - **Research** — a row's Origin column names a section of [Background research](https://github.com/FrankRay78/NetPace/wiki/Background-research) (`Background-research.md` in the same repository). Read that section for the evidence behind the row.
 - **Linking** — Related links the backlog page and names the item number; the page has no per-row anchors.
 
-### Concerns to consider in Step 4
+### Concerns to consider in Step 3
 
 - **Library consumers** — `NetPace.Core` is published to NuGet. Where the feature has a library side, its consumers are users too: say whether the capability is offered to them, not only to the CLI.
 - **Output modes** — a result shown to the user must appear consistently in the default, minimal, CSV and JSON output, and respect `--unit-scale`. Say which modes are in scope.
