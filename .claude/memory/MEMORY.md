@@ -18,3 +18,4 @@
 - [OoklaSpeedtest latency-margin test is flaky under load](project_flaky_latency_margin_test.md) — wall-clock ±25% assertion; distinct from the ProfileXmlDocTests FileShare flake
 - [Present several decisions one per turn](feedback_one_decision_per_turn.md) — one decision per message, explained from what happens today; write the answers up together at the end
 - [When the guard outgrows the fix, surface it as a decision](feedback_guard_outgrows_the_fix.md) — verification scaffolding bigger than the change means the wrong mechanism; ask before building
+- [Discuss a judgement call before offering a menu](feedback_discuss_before_menu.md) — research and discuss in prose first; "please advise" means stop the multiple-choice prompts

@@ -39,7 +39,7 @@ A useful frame is the **five duties of a harness** (OpenAI): **constrain** what 
 Every feature goes through the same four stages: the issue stage on the main branch, then build, verify and raise.
 
 ### The issue stage (on the main branch)
-1. `/draftissue` ← optional; turn an unstructured brief into a well-formed issue
+1. `/draftissue` ← optional; turn an idea, a document or a backlog item into a needs-first issue and raise it
 2. `/reviewissue` ← pre-build gate; posts gaps + recommendations as an issue comment
 3. `/confirmissue` ← fold the answered review into a `## Confirmed decisions` section and label the issue `ready`
 
