@@ -1,5 +1,19 @@
 <!--
 Sync Impact Report:
+Version: 2.2.3 → 2.3.0
+Bump rationale: MINOR — Principle IX gains an **Interface contracts are outcomes** rule: a detail users, their scripts or other programs work with directly (an option name, a machine-readable output field, an exit code, a file format, a public library member, a route clients call) is outcome, and an AC may name it exactly. The mechanism list now applies to such a detail only where it is internal. The housekeeping bullet no longer sends housekeeping to the issue's technical notes, a section the issue template no longer has. Expanded guidance rather than a redefinition: the independence test is unchanged and already classed a depended-on interface as outcome. For review: the rule narrows what the mechanism list bans, which could read as MAJOR.
+Modified Principles: IX — Behavioural Specification (mechanism bullet, new interface-contract rule, housekeeping bullet, Rationale)
+Modified Sections: N/A
+Added Sections: N/A
+Removed Sections: N/A
+Maintainer approval for the MINOR amendment: recorded in docs/change-intent-records/2026-10-14-draftissue-states-the-need.md.
+Downstream documents reviewed (per Amendment Process clause 4):
+  ✅ .claude/commands/draftissue.md — rewritten by the same change: its AC guidance draws the outcome/mechanism line at who touches a detail, with contract examples, and its template no longer has a Technical notes section.
+  ✅ docs/conventions/testing.md — updated: the note on its copy of the §IX list now says a contract the AC names is asserted exactly and is not mechanism.
+  ✅ .claude/commands/reviewissue.md — updated: its acceptance-criteria category no longer sends housekeeping items to the issue's Technical notes. Its Project-specific §IX check is unchanged.
+  ✅ CLAUDE.md — reviewed, unchanged: it cites §IX only through the constitution.
+
+--- superseded, retained for history ---
 Version: 2.2.2 → 2.2.3
 Bump rationale: PATCH — wording only, and only inside a retained Sync Impact Report. The 2.1.0 entry's *Added Sections* line still described §VIII's Enforcement paragraph as recording that the `traceability` job is not yet a required check. That was true when written and was corrected in the principle itself at 2.2.2, but the retained entry asserted it unqualified, so a reader skimming the history could take it for the current state. It now carries the same supersession note the 2.0.0 entry already carries. No principle, rule or section of this document changes.
 Modified Principles: N/A
@@ -278,12 +292,13 @@ Acceptance criteria and tests MUST describe outcomes an outside observer can ver
 
 **Critical Rules:**
 
-- ACs MUST be phrased as user-observable outcomes. Mechanism details MUST NOT appear in ACs, including: CSS classes, DOM IDs or element types, animation specifics, font names/weights/colours, and pixel measurements; HTTP methods, endpoint paths, and status codes; response/payload schemas (JSON keys, field names); database tables, collections, columns, or indexes; algorithm or protocol choices (hash functions, signature schemes, encryption modes); framework or library picks; storage technology; specific URLs or ports; timing values (Ns / Nms) and polling cadences; exact error message strings; and log line formats or log levels.
+- ACs MUST be phrased as user-observable outcomes. Mechanism details MUST NOT appear in ACs. Unless it is an interface contract (next rule), mechanism includes: CSS classes, DOM IDs or element types, animation specifics, font names/weights/colours, and pixel measurements; HTTP methods, endpoint paths, and status codes; response/payload schemas (JSON keys, field names); database tables, collections, columns, or indexes; algorithm or protocol choices (hash functions, signature schemes, encryption modes); framework or library picks; storage technology; specific URLs or ports; timing values (Ns / Nms) and polling cadences; exact error message strings; and log line formats or log levels.
+- **Interface contracts are outcomes**: a detail that users, their scripts or other programs work with directly — a command, option or flag name; a config key; a field in machine-readable output; an exit code; a file format users write; a public library member; a route that clients call — is part of the outcome, and an AC MAY name it exactly. The test is who touches it: if changing it would break a user, a script or a consumer, it is a contract. The exact wording of a message meant for a person to read stays mechanism.
 - Tests MUST verify the AC as written, not the chosen implementation. A test that would fail under a different reasonable implementation of the same AC is testing mechanism, not outcome.
-- Project housekeeping (project exists, sln updated, scaffolding created) is not an acceptance criterion — it is a step on the way to one, and belongs in the issue's technical notes.
+- Project housekeeping (project exists, sln updated, scaffolding created) is not an acceptance criterion — it is a step on the way to one, and is left out of the criteria.
 - **Regression exception**: an AC or test that pins a specific mechanism is permitted only when it exists to prevent a named, previously-fixed bug. Reference the bug in the AC text, scenario name, or a one-line comment in the test so future readers understand why the coupling exists.
 
-**Rationale**: Mechanism-coupled ACs invite brittle, implementation-mirroring tests that lock the codebase to its current shape and make refactors expensive. Outcome-level ACs preserve the implementer's freedom to choose the simplest mechanism, keep the test suite meaningful through refactors, and give a reviewer an enforceable rule rather than style guidance.
+**Rationale**: Mechanism-coupled ACs invite brittle, implementation-mirroring tests that lock the codebase to its current shape and make refactors expensive. Outcome-level ACs preserve the implementer's freedom to choose the simplest mechanism, keep the test suite meaningful through refactors, and give a reviewer an enforceable rule rather than style guidance. The interface-contract rule exists because the mechanism list was written for a web application and read literally on a CLI and library: it banned naming the JSON field, option or exit code that scripts depend on, which is the very outcome such an AC must promise — a different implementation that renamed it would break its users, so the independence test already treats it as outcome.
 
 **Downstream references**: detailed avoid/prefer guidance lives in `.claude/commands/draftissue.md` (AC drafting) and `docs/conventions/testing.md` (test authoring). Update those in lockstep with any change to this principle.
 
@@ -389,4 +404,4 @@ This constitution supersedes all other development practices and guides. All dev
 - Complexity MUST be justified against simplicity principles
 - For runtime development guidance, refer to `CLAUDE.md`
 
-**Version**: 2.2.3 | **Ratified**: 2026-04-10 | **Last Amended**: 2026-10-10
+**Version**: 2.3.0 | **Ratified**: 2026-04-10 | **Last Amended**: 2026-10-14
