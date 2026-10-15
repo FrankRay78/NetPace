@@ -19,6 +19,10 @@ public sealed partial class NetPaceConsoleTests
         private const string LongLocation = "Frankfurt am Main, Hessen, Bundesrepublik Deutschland, Western Europe, EMEA Region";
         private const string LongUrl = "http://ffm.wsqm.telekom-dienste.de:8080/speedtest/upload-and-download-endpoint.php";
 
+        // A failure message that runs past 80 columns on its own, as a real host-resolution or
+        // socket message does once the host name is in it.
+        private const string LongErrorMessage = "No such host is known (ffm.wsqm.telekom-dienste.de:8080). The server could not be resolved.";
+
         // SCENARIO: Piped JSON output parses as JSON
         [Fact]
         public async Task Should_Write_Json_As_One_Parseable_Line_When_Stdout_Is_Redirected()
@@ -124,6 +128,24 @@ public sealed partial class NetPaceConsoleTests
             // Then
             Assert.Single(Lines(output));
             await Verify(output);
+        }
+
+        [Fact]
+        public async Task Should_Write_An_Error_Raised_During_The_Run_On_One_Line()
+        {
+            // Given stdout is redirected, and discovery fails with a message longer than that width.
+            // A network condition is data rather than a fault, so the run reports it and still exits 0.
+            var service = new SpeedTestMock
+            {
+                GetServersAsyncFunc = _ => throw new HttpRequestException(LongErrorMessage),
+            };
+
+            // When
+            var output = await RunAtWidthAsync(CommandLineTestHost.RedirectedWidth, ["--csv"], service);
+
+            // Then the error shares the records' stream and is unbroken on it, so a reader taking the
+            // output a line at a time still sees the whole message.
+            Assert.Contains($"Error: {LongErrorMessage}", Lines(output));
         }
 
         // SCENARIO: Machine-readable output is unbroken in a narrow terminal
