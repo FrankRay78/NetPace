@@ -82,25 +82,38 @@ public sealed partial class NetPaceConsoleTests
             await Verify(output);
         }
 
-        [InlineData("--count", "3")]
-        [InlineData("--loop", null)]
-        [Theory]
-        public async Task Should_Write_Csv_One_Record_Per_Line_For_Every_Result_When_Stdout_Is_Redirected(string repeatSwitch, string? repeatValue)
+        [Fact]
+        public async Task Should_Write_Csv_One_Record_Per_Line_For_Every_Result_Under_Count()
         {
-            // Given stdout is redirected, and a run that reports three results
-            using var cancellationTokenSource = new CancellationTokenSource();
-            var waiter = repeatValue is null ? new SelfCancellingWaiter(3, cancellationTokenSource) : (IWaiter)new NoDelayStub();
-            string[] args = repeatValue is null ? ["--csv", repeatSwitch] : ["--csv", repeatSwitch, repeatValue];
+            // Given stdout is redirected, and a run asked for three results
 
             // When
-            var output = await RunAtWidthAsync(CommandLineTestHost.RedirectedWidth, args, waiter: waiter, cancellationToken: cancellationTokenSource.Token);
+            var output = await RunAtWidthAsync(CommandLineTestHost.RedirectedWidth, ["--csv", "--count", "3"]);
+
+            // Then the header still stands alone, and each of the three results is its own line
+            var lines = Lines(output);
+            Assert.Equal(4, lines.Length);
+            AssertEveryLineMatchesTheHeaderFieldCount(lines);
+
+            await Verify(output);
+        }
+
+        [Fact]
+        public async Task Should_Write_Csv_One_Record_Per_Line_For_Every_Result_Under_Loop()
+        {
+            // Given stdout is redirected, and a loop cancelled after three results
+            using var cancellationTokenSource = new CancellationTokenSource();
+            var waiter = new SelfCancellingWaiter(3, cancellationTokenSource);
+
+            // When
+            var output = await RunAtWidthAsync(CommandLineTestHost.RedirectedWidth, ["--csv", "--loop"], waiter: waiter, cancellationToken: cancellationTokenSource.Token);
 
             // Then
             var lines = Lines(output);
             Assert.Equal(4, lines.Length);
             AssertEveryLineMatchesTheHeaderFieldCount(lines);
 
-            await Verify(output).UseParameters(repeatSwitch);
+            await Verify(output);
         }
 
         [Fact]
@@ -126,17 +139,14 @@ public sealed partial class NetPaceConsoleTests
         public async Task Should_Write_Machine_Readable_Output_Unbroken_In_A_Narrow_Terminal(string formatSwitch)
         {
             // Given an interactive terminal narrower than the output line
-            ISpeedTestService Service() => new ScriptedSpeedTester
-            {
-                Server = new Server { Location = LongLocation, Sponsor = LongSponsor, Url = LongUrl }
-            };
+            var server = new Server { Location = LongLocation, Sponsor = LongSponsor, Url = LongUrl };
 
             // When
-            var narrow = await RunAtWidthAsync(CommandLineTestHost.NarrowTerminalWidth, [formatSwitch], Service());
+            var narrow = await RunAtWidthAsync(CommandLineTestHost.NarrowTerminalWidth, [formatSwitch], new ScriptedSpeedTester { Server = server });
 
             // Then nothing the window's width did shows in the output: it is what the same run writes
             // with no width limit at all, break for break.
-            var unlimited = await RunAtWidthAsync(CommandLineTestHost.UnlimitedWidth, [formatSwitch], Service());
+            var unlimited = await RunAtWidthAsync(CommandLineTestHost.UnlimitedWidth, [formatSwitch], new ScriptedSpeedTester { Server = server });
             Assert.Equal(unlimited, narrow);
 
             await Verify(narrow).UseParameters(formatSwitch);
