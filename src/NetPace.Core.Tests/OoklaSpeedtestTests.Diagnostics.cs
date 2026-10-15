@@ -261,27 +261,6 @@ public sealed partial class OoklaSpeedtestTests
         // they are still in flight when it trips the cap and only the cap's cancellation ends them.
         // Every request gets its own permit so none is queued: with a queue, a freed permit lets a
         // waiter start before the cancellation reaches it, and the cancelled count moves.
-        var served = 0;
-        using var mockHttp = new MockHttpMessageHandler();
-        mockHttp.When("*").Respond(async () =>
-        {
-            // Yields before anything else, so no request can complete during the enumeration that
-            // starts them. If the first one did, the rest would throw from the semaphore with the
-            // token already cancelled, never start, and report nothing - and the total below would
-            // see 1 record instead of 8.
-            await Task.Yield();
-
-            if (Interlocked.Increment(ref served) > 1)
-            {
-                return await new TaskCompletionSource<HttpResponseMessage>().Task;
-            }
-
-            return new HttpResponseMessage(HttpStatusCode.OK)
-            {
-                Content = new ByteArrayContent(new byte[1024 * 1024])
-            };
-        });
-
         var settings = new OoklaSpeedtestSettings
         {
             DownloadTest = new()
@@ -292,6 +271,54 @@ public sealed partial class OoklaSpeedtestTests
                 DownloadSizeMb = 1
             }
         };
+
+        // Derived from the settings rather than restated, so raising the iteration count moves the
+        // barrier below with it. It still assumes one request per size per iteration, which is what
+        // the download path issues today.
+        var expectedRequests = settings.DownloadTest.DownloadSizes.Length * settings.DownloadTest.DownloadSizeIterations;
+
+        // The barrier's other premise, stated in the Given above: it waits for every request at
+        // once, so a parallelism ceiling that queued any of them would leave it waiting for an
+        // arrival that cannot happen. Asserted rather than assumed, so lowering the ceiling fails
+        // here by name instead of deadlocking into the HangGuard timeout below.
+        settings.DownloadTest.DownloadParallelTasks.ShouldBeGreaterThanOrEqualTo(expectedRequests);
+
+        // The answering request is held at a barrier until every request has reached the handler, so
+        // the answer that trips the cap cannot land while the remaining requests are still being
+        // started. One cut off before it starts is correctly reported as nothing at all, so without
+        // the barrier the totals below see fewer records than requests.
+        // GH#379 - `await Task.Yield()` here did not hold that order: it guarantees exactly one
+        // reschedule, which orders nothing against the other requests, so under load the first
+        // request answered mid-enumeration.
+        var arrived = 0;
+
+        // RunContinuationsAsynchronously so releasing the barrier does not run the first request's
+        // completion - and with it the cap's cancellation - inline on the last request's stack,
+        // while that request is still inside the handler.
+        var allArrived = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        using var mockHttp = new MockHttpMessageHandler();
+        mockHttp.When("*").Respond(async () =>
+        {
+            var arrivalOrder = Interlocked.Increment(ref arrived);
+
+            if (arrivalOrder == expectedRequests)
+            {
+                allArrived.SetResult();
+            }
+
+            if (arrivalOrder > 1)
+            {
+                return await new TaskCompletionSource<HttpResponseMessage>().Task;
+            }
+
+            await allArrived.Task;
+
+            return new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new ByteArrayContent(new byte[1024 * 1024])
+            };
+        });
+
         var speedtest = new OoklaSpeedtest(settings, mockHttp.ToHttpClient());
         var server = new Server { Url = TestServerUrl, Sponsor = "Test", Location = "Test" };
 
@@ -302,6 +329,8 @@ public sealed partial class OoklaSpeedtestTests
 
         // Then the records still agree with the counts the result reports, and a request excluded by
         // the budget is accounted for as cancelled rather than silently dropped or counted a failure.
+        // The counts below stay literal deliberately: expressed against expectedRequests they would
+        // move with a wrong derivation and pass against it.
         diagnostics.Count(d => d.Outcome == RequestOutcome.Succeeded).ShouldBe(result.RequestsSucceeded);
         diagnostics.Count(d => d.Outcome == RequestOutcome.Failed).ShouldBe(result.RequestsFailed);
         diagnostics.Count.ShouldBe(8);
