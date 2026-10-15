@@ -261,27 +261,6 @@ public sealed partial class OoklaSpeedtestTests
         // they are still in flight when it trips the cap and only the cap's cancellation ends them.
         // Every request gets its own permit so none is queued: with a queue, a freed permit lets a
         // waiter start before the cancellation reaches it, and the cancelled count moves.
-        var served = 0;
-        using var mockHttp = new MockHttpMessageHandler();
-        mockHttp.When("*").Respond(async () =>
-        {
-            // Yields before anything else, so no request can complete during the enumeration that
-            // starts them. If the first one did, the rest would throw from the semaphore with the
-            // token already cancelled, never start, and report nothing - and the total below would
-            // see 1 record instead of 8.
-            await Task.Yield();
-
-            if (Interlocked.Increment(ref served) > 1)
-            {
-                return await new TaskCompletionSource<HttpResponseMessage>().Task;
-            }
-
-            return new HttpResponseMessage(HttpStatusCode.OK)
-            {
-                Content = new ByteArrayContent(new byte[1024 * 1024])
-            };
-        });
-
         var settings = new OoklaSpeedtestSettings
         {
             DownloadTest = new()
@@ -292,6 +271,42 @@ public sealed partial class OoklaSpeedtestTests
                 DownloadSizeMb = 1
             }
         };
+
+        // Read from the settings rather than restated, so the barrier below cannot ask for a
+        // different number of requests than the test actually makes.
+        var expectedRequests = settings.DownloadTest.DownloadSizes.Length * settings.DownloadTest.DownloadSizeIterations;
+
+        // The answering request is held at a barrier until every request has reached the handler, so
+        // the answer that trips the cap cannot land while the remaining requests are still being
+        // started. One cut off before it starts is correctly reported as nothing at all, so without
+        // the barrier the totals below see fewer records than requests.
+        // GH#379 - `await Task.Yield()` here did not hold that order: it queues the continuation to
+        // the thread pool, which under load answered the first request mid-enumeration.
+        var arrived = 0;
+        var allArrived = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        using var mockHttp = new MockHttpMessageHandler();
+        mockHttp.When("*").Respond(async () =>
+        {
+            var order = Interlocked.Increment(ref arrived);
+
+            if (order == expectedRequests)
+            {
+                allArrived.SetResult();
+            }
+
+            if (order > 1)
+            {
+                return await new TaskCompletionSource<HttpResponseMessage>().Task;
+            }
+
+            await allArrived.Task;
+
+            return new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new ByteArrayContent(new byte[1024 * 1024])
+            };
+        });
+
         var speedtest = new OoklaSpeedtest(settings, mockHttp.ToHttpClient());
         var server = new Server { Url = TestServerUrl, Sponsor = "Test", Location = "Test" };
 
