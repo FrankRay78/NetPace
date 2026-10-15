@@ -28,6 +28,23 @@ public static class SpeedTestExtensions
     }
 
     /// <summary>
+    /// Calculates the speed in bits per second, rounded to the nearest whole bit.
+    /// </summary>
+    /// <remarks>
+    /// The figure does not depend on <see cref="SpeedUnit"/>, <see cref="SpeedUnitSystem"/> or
+    /// <see cref="SpeedScale"/>: those shape how a speed is displayed, and this is the measurement
+    /// itself in a fixed unit, so a machine-readable consumer reads the same number for the same
+    /// measurement whatever a caller's display preferences are. A test that moved no bytes, or in
+    /// which no time elapsed, reports zero.
+    /// </remarks>
+    public static long GetBitsPerSecond(this SpeedTestResult result)
+    {
+        ArgumentNullException.ThrowIfNull(result);
+
+        return (long)Math.Round(CalculateBitsPerSecond(result.BytesProcessed, result.ElapsedMilliseconds), MidpointRounding.AwayFromZero);
+    }
+
+    /// <summary>
     /// Calculates and formats the speed string.
     /// </summary>
     public static (string speed, string unit) GetSpeedStringParts(this SpeedTestResult result, SpeedUnit unit, SpeedUnitSystem unitSystem)
@@ -89,6 +106,9 @@ public static class SpeedTestExtensions
 
     #region Private Methods
 
+    private const double BitsPerByte = 8.0;
+    private const double MillisecondsPerSecond = 1000.0;
+
     private static readonly string[] SI_BitUnits = { "bps", "Kbps", "Mbps", "Gbps", "Tbps", "Pbps" };
     private static readonly string[] SI_ByteUnits = { "Bps", "KBps", "MBps", "GBps", "TBps", "PBps" };
 
@@ -121,9 +141,8 @@ public static class SpeedTestExtensions
             return ("0", baseUnit);
         }
 
-        var speed = isBits
-            ? bytesProcessed * 8.0 / ((double)elapsedMilliseconds / 1000)
-            : bytesProcessed / ((double)elapsedMilliseconds / 1000);
+        var bitsPerSecond = CalculateBitsPerSecond(bytesProcessed, elapsedMilliseconds);
+        var speed = isBits ? bitsPerSecond : bitsPerSecond / BitsPerByte;
 
         (string speed, string unit) formattedResult;
 
@@ -137,6 +156,21 @@ public static class SpeedTestExtensions
         }
 
         return formattedResult;
+    }
+
+    /// <summary>
+    /// The unrounded speed in bits per second, shared by the formatting methods and
+    /// <see cref="GetBitsPerSecond(SpeedTestResult)"/> so the two can never disagree.
+    /// </summary>
+    private static double CalculateBitsPerSecond(long bytesProcessed, long elapsedMilliseconds)
+    {
+        // Handle division by zero: no time elapsed means no speed measured
+        if (elapsedMilliseconds == 0)
+        {
+            return 0;
+        }
+
+        return bytesProcessed * BitsPerByte / (elapsedMilliseconds / MillisecondsPerSecond);
     }
 
     private static (string speed, string unit) FormatSpeed_AutoScale(double speed, bool isBits, SpeedUnitSystem unitSystem, double divisor)
