@@ -49,7 +49,7 @@ The AOT binary is named `netpace` (same as all other variants). On Windows the b
 
 ## Archive-contents contract
 
-Every release archive contains **exactly one entry** — the executable.
+Every release archive contains **exactly one entry** — the executable, named `netpace.exe` on Windows and `netpace` elsewhere.
 
 The "Create archive" workflow step uses a **whitelist** approach: it archives the binary by name (`netpace.exe` on Windows, `netpace` elsewhere) rather than zipping/tarring the entire publish directory. All variants are designed to produce a single binary — `-p:PublishSingleFile=true` for non-AOT, native AOT for the AOT variants — but the publish directory also contains toolchain by-products that must not ship to end users:
 
@@ -59,7 +59,7 @@ The "Create archive" workflow step uses a **whitelist** approach: it archives th
 
 Archiving by name keeps the release contract immune to whatever the next toolchain version decides to emit alongside the binary — no per-extension scrub logic to maintain.
 
-A "Verify archive contents" step asserts the one-entry invariant on every archive before upload as a safety net (it also catches a silent build failure that produced no binary); non-zero exit aborts the release.
+A "Verify archive contents" step asserts both invariants on every archive before upload as a safety net — exactly one entry, carrying the expected name — by comparing the archive listing against that name; non-zero exit aborts the release. It also catches a silent build failure that produced no binary. Asserting the name, not just the count, is what gates the lowercase command name on the case-insensitive Windows runners, where the archiver resolves a differently-cased binary and would otherwise ship it under that name.
 
 `<DebugType>embedded</DebugType>` in both `NetPace.Console.csproj` and `NetPace.Core.csproj` is still set as belt-and-braces — it embeds portable PDBs inside the assembly so the publish directory has no managed `.pdb` side files even for local `dotnet publish` invocations.
 

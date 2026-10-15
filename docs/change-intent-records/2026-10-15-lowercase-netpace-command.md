@@ -12,8 +12,8 @@
 **Decisions:**
 
 - Renamed the console `AssemblyName` to `netpace` rather than keeping the assembly `NetPace` and renaming only inside the "Create archive" step. Renaming at the archive step would leave the local `dotnet publish` output and the release archive disagreeing about the program's name, so the thing a maintainer runs locally would not be the thing users get.
-- Kept the figlet banner as `NetPace`. It identifies the product, not the command; the usage line immediately below it is what tells a user what to type.
-- Did not ship a transitional `NetPace` alias alongside `netpace`. Two names for one command doubles what the docs must explain, and the pre-1.0 notice already warns users that any release may change the CLI. Linux users with scripts or cron jobs calling `NetPace` must update them.
-- Left the project file names (`NetPace.Console.csproj`) and the default root namespace alone. Only the produced program's name is user-facing; renaming the projects would churn the solution for no user-visible gain.
+- Kept the figlet banner as `NetPace`. It identifies the product, not the command; the usage line below it is what tells a user what to type.
+- Did not ship a transitional `NetPace` alias alongside `netpace`. Two names for one command doubles what the docs must explain. Linux users with scripts or cron jobs calling `NetPace` must update them.
+- Left the project file names (`NetPace.Console.csproj`) and the default root namespace alone. Only the produced program's name is user-facing; renaming the projects would churn the solution for no user-visible gain. The root namespace is load-bearing: the figlet resource is looked up as `NetPace.Console.slant.flf`, so renaming it to match the assembly would break the banner.
 
 **Date:** 2026-10-15

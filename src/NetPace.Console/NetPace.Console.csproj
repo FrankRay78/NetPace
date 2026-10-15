@@ -6,6 +6,11 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <AssemblyName>netpace</AssemblyName>
+    <!-- Pinned because all three otherwise default to AssemblyName, which would put the lowercase
+         command name in the Windows version resource where users read the product name. -->
+    <AssemblyTitle>NetPace</AssemblyTitle>
+    <Product>NetPace</Product>
+    <Company>NetPace</Company>
     <IsAotCompatible>true</IsAotCompatible>
     <!-- Embed portable PDBs inside the assembly so non-AOT release archives ship no side .pdb files. -->
     <DebugType>embedded</DebugType>

@@ -94,13 +94,14 @@ public sealed partial class NetPaceConsoleTests
             await Verify(result.Output);
         }
 
-        // SCENARIO: Help shows the lowercase command name
         [InlineData("-h")]
         [InlineData("--help")]
         [InlineData("-?")]
         [Theory]
         public async Task Should_Display_Help(string help)
         {
+            // SCENARIO: Help shows the lowercase command name
+
             // Given
             var services = new ServiceCollection();
             services.AddSingleton<ISpeedTestService, SpeedTestStub>();

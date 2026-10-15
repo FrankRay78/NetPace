@@ -161,12 +161,18 @@ jobs:
           fi
           echo "Archive contents:"
           echo "$listing"
-          # Every release archive contains exactly one entry — the executable.
-          # The Create archive step archives the binary by name, so this verifies the whitelist held and that
-          # the executable was actually present in the publish dir (catches a silent build failure that produced no binary).
-          entries=$(echo "$listing" | grep -vE '/$' | grep -c . || true)
-          if [ "$entries" -ne 1 ]; then
-            echo "FAIL: archive ${archive_stem} must contain exactly 1 entry, found $entries"
+          # Every release archive contains exactly one entry — the executable, under the name users type.
+          # Comparing the listing against the expected name asserts both invariants at once: the whitelist held and the
+          # executable was present in the publish dir (catching a silent build failure that produced no binary), and the
+          # entry carries the lowercase name. The name half matters on the case-insensitive Windows runners, where the
+          # archiver resolves a differently-cased binary and would otherwise ship it under that name.
+          if [[ "${{ matrix.runtime }}" == win-* ]]; then
+            expected="netpace.exe"
+          else
+            expected="netpace"
+          fi
+          if [ "$listing" != "$expected" ]; then
+            echo "FAIL: archive ${archive_stem} must contain exactly one entry named '${expected}', found: ${listing}"
             exit 1
           fi
 

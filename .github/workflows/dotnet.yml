@@ -23,6 +23,21 @@ jobs:
     - name: Build
       run: dotnet build src --no-restore
 
+    - name: Fail if the console program is not named netpace
+      # The command users type is the console project's AssemblyName, and until this step the only thing that
+      # read the produced program's name was release-binaries.yml — which is tag-triggered, so a regression to
+      # AssemblyName shipped a green pull request and failed during a release, after the tag existed. Gating it
+      # here makes the invariant repeatable on every pull request (Constitution I, configuration/tooling).
+      run: |
+        set -euo pipefail
+        apphost="src/NetPace.Console/bin/Debug/net10.0/netpace"
+        if [ ! -f "$apphost" ]; then
+          echo "FAIL: expected the console program at ${apphost}; found:"
+          ls -1 src/NetPace.Console/bin/Debug/net10.0/
+          exit 1
+        fi
+        echo "Console program is named netpace."
+
     - name: Fail if formatting would change anything
       run: dotnet format ./src/NetPace.sln --verify-no-changes
 
