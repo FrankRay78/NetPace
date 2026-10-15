@@ -144,11 +144,31 @@ public sealed class SpeedTestCommandSettings
 public static class SpeedTestCommandSettingsExtensions
 {
     /// <summary>
+    /// An arbitrary instant used only to try a datetime format string out. Whether a format string
+    /// is usable does not depend on the value being formatted, so a fixed one keeps the check
+    /// deterministic and independent of the clock.
+    /// </summary>
+    private static readonly DateTime FormatProbeInstant = new DateTime(1980, 1, 1, 10, 5, 0);
+
+    /// <summary>
     /// Validate SpeedTestCommandSettings.
     /// </summary>
     /// <returns>Throws an exception if validation fails.</returns>
     public static void Validate(this SpeedTestCommandSettings settings)
     {
+        // Checked whether or not this run would print a timestamp: a mistyped format is a mistake
+        // either way, and deferring the check to the first run that uses it meant a full
+        // measurement was spent before the user heard about it. Formatting is the only way to know
+        // a .NET format string is usable, so the check is an attempt rather than a pattern match.
+        try
+        {
+            _ = FormatProbeInstant.ToString(settings.DateTimeFormat);
+        }
+        catch (FormatException)
+        {
+            throw new ArgumentException($"The --datetimeformat value '{settings.DateTimeFormat}' is not a usable date and time format string.");
+        }
+
         // Exactly one output format may be selected. --json-pretty shapes the JSON format rather
         // than selecting a second one, so it counts as JSON and stays usable alongside --json.
         // Checked here rather than as a parse validator: a command-level parse error discards every
