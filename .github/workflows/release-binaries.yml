@@ -134,7 +134,7 @@ jobs:
       # shell: bash forces Git Bash on the Windows runners so the same script (zip vs tar) runs uniformly across all matrix entries.
       # Whitelist approach: archive the executable by name rather than the entire publish directory. All variants
       # (PublishSingleFile and Native AOT) produce a single binary by design; the publish dir may also contain
-      # toolchain by-products (NetPace.Core.xml, NetPace.pdb on Windows AOT, NetPace.dbg on Linux AOT) that
+      # toolchain by-products (NetPace.Core.xml, netpace.pdb on Windows AOT, netpace.dbg on Linux AOT) that
       # must never ship to end users. Archiving by name keeps the release contract immune to whatever the
       # next toolchain version decides to emit alongside the binary.
       - name: Create archive
@@ -144,9 +144,9 @@ jobs:
           cd ./publish/${{ matrix.runtime }}-${{ matrix.deployment }}
           archive_stem="../../netpace-${{ steps.get_version.outputs.version }}-${{ matrix.runtime }}${{ steps.deployment_flags.outputs.suffix }}"
           if [[ "${{ matrix.runtime }}" == win-* ]]; then
-            7z a "${archive_stem}.zip" NetPace.exe
+            7z a "${archive_stem}.zip" netpace.exe
           else
-            tar -czf "${archive_stem}.tar.gz" NetPace
+            tar -czf "${archive_stem}.tar.gz" netpace
           fi
 
       - name: Verify archive contents
@@ -181,14 +181,14 @@ jobs:
             archive="netpace-${{ steps.get_version.outputs.version }}-${{ matrix.runtime }}-aot.zip"
             unzip -q "$archive" -d "$smoke_dir"
             cd "$smoke_dir"
-            ./NetPace.exe --version
-            ./NetPace.exe --help
+            ./netpace.exe --version
+            ./netpace.exe --help
           else
             archive="netpace-${{ steps.get_version.outputs.version }}-${{ matrix.runtime }}-aot.tar.gz"
             tar -xzf "$archive" -C "$smoke_dir"
             cd "$smoke_dir"
-            ./NetPace --version
-            ./NetPace --help
+            ./netpace --version
+            ./netpace --help
           fi
 
       - name: Upload artifacts

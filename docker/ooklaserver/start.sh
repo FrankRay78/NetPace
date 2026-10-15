@@ -11,7 +11,7 @@ for _ in $(seq 1 30); do
     echo
     echo "OoklaServer is ready."
     echo "Point NetPace at it with:"
-    echo "  NetPace --server http://localhost:18080/speedtest/upload.php"
+    echo "  netpace --server http://localhost:18080/speedtest/upload.php"
     exit 0
   fi
   sleep 1

@@ -41,21 +41,21 @@ Native AOT cannot be cross-compiled across operating systems — `dotnet publish
 Each AOT matrix entry runs two local-only commands against the freshly extracted archive on its native runner. Both MUST exit `0` for the matrix job to succeed; non-zero exit aborts the release.
 
 ```bash
-./NetPace --version
-./NetPace --help
+./netpace --version
+./netpace --help
 ```
 
-The AOT binary is named `NetPace` (same as all other variants). On Windows the binary is `NetPace.exe`; on Linux/macOS it is `NetPace`.
+The AOT binary is named `netpace` (same as all other variants). On Windows the binary is `netpace.exe`; on Linux/macOS it is `netpace`.
 
 ## Archive-contents contract
 
 Every release archive contains **exactly one entry** — the executable.
 
-The "Create archive" workflow step uses a **whitelist** approach: it archives the binary by name (`NetPace.exe` on Windows, `NetPace` elsewhere) rather than zipping/tarring the entire publish directory. All variants are designed to produce a single binary — `-p:PublishSingleFile=true` for non-AOT, native AOT for the AOT variants — but the publish directory also contains toolchain by-products that must not ship to end users:
+The "Create archive" workflow step uses a **whitelist** approach: it archives the binary by name (`netpace.exe` on Windows, `netpace` elsewhere) rather than zipping/tarring the entire publish directory. All variants are designed to produce a single binary — `-p:PublishSingleFile=true` for non-AOT, native AOT for the AOT variants — but the publish directory also contains toolchain by-products that must not ship to end users:
 
 - `NetPace.Core.xml` — emitted because `NetPace.Core.csproj` sets `<GenerateDocumentationFile>true</GenerateDocumentationFile>` for NuGet consumers.
-- `NetPace.pdb` — emitted by the Windows linker for AOT builds regardless of `<DebugType>`.
-- `NetPace.dbg` — emitted by the Linux AOT toolchain when `StripSymbols` is on (the default for Release).
+- `netpace.pdb` — emitted by the Windows linker for AOT builds regardless of `<DebugType>`.
+- `netpace.dbg` — emitted by the Linux AOT toolchain when `StripSymbols` is on (the default for Release).
 
 Archiving by name keeps the release contract immune to whatever the next toolchain version decides to emit alongside the binary — no per-extension scrub logic to maintain.
 
@@ -104,7 +104,7 @@ The GitHub Release / binary-attachment flow via `release-binaries.yml` is unaffe
 
 ## Source-build version
 
-`src/Directory.Build.props` pins all four version properties — `Version`, `FileVersion`, `AssemblyVersion`, `InformationalVersion` — to `0.0.0`, so `NetPace --version` from a local `dotnet build` or `dotnet run` reports `0.0.0`.
+`src/Directory.Build.props` pins all four version properties — `Version`, `FileVersion`, `AssemblyVersion`, `InformationalVersion` — to `0.0.0`, so `netpace --version` from a local `dotnet build` or `dotnet run` reports `0.0.0`.
 
 **Why**: `0.0.0` is below every release tag and matches none of them, so a build from source cannot be mistaken for a release.
 
