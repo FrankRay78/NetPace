@@ -60,11 +60,11 @@ internal static class CustomHelpProvider
         console.MarkupLine("[bold yellow]USAGE:[/]");
         if (command is RootCommand)
         {
-            console.MarkupLine("    NetPace [grey][[OPTIONS]][/] [cyan][[COMMAND]][/]");
+            console.MarkupLine("    netpace [grey][[OPTIONS]][/] [cyan][[COMMAND]][/]");
         }
         else
         {
-            console.MarkupLine($"    NetPace {command.Name} [grey][[OPTIONS]][/]");
+            console.MarkupLine($"    netpace {command.Name} [grey][[OPTIONS]][/]");
         }
         console.WriteLine();
     }

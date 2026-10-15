@@ -4,4 +4,4 @@ http://test1.com
 
 Latency: 100 ms
 
-Try 'NetPace --help' for more information.
+Try 'netpace --help' for more information.

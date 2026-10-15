@@ -94,6 +94,7 @@ public sealed partial class NetPaceConsoleTests
             await Verify(result.Output);
         }
 
+        // SCENARIO: Help shows the lowercase command name
         [InlineData("-h")]
         [InlineData("--help")]
         [InlineData("-?")]
