@@ -45,13 +45,9 @@ public sealed partial class NetPaceConsoleTests
         public async Task Should_Write_Json_Pretty_Without_Splitting_Long_Values_When_Stdout_Is_Redirected()
         {
             // Given stdout is redirected, and a server whose name and URL each pass 80 columns
-            var service = new ScriptedSpeedTester
-            {
-                Server = new Server { Location = LongLocation, Sponsor = LongSponsor, Url = LongUrl }
-            };
 
             // When
-            var output = await RunAtWidthAsync(CommandLineTestHost.RedirectedWidth, ["--json-pretty"], service);
+            var output = await RunAtWidthAsync(CommandLineTestHost.RedirectedWidth, ["--json-pretty"], LongNamedServerTester());
 
             // Then the indentation --json-pretty asks for is the only thing breaking lines, and every
             // value survives whole.
@@ -138,44 +134,78 @@ public sealed partial class NetPaceConsoleTests
         [Theory]
         public async Task Should_Write_Machine_Readable_Output_Unbroken_In_A_Narrow_Terminal(string formatSwitch)
         {
-            // Given an interactive terminal narrower than the output line
-            var server = new Server { Location = LongLocation, Sponsor = LongSponsor, Url = LongUrl };
+            // Given a terminal window narrower than the output line, reporting a server whose name
+            // and URL each pass 80 columns
 
             // When
-            var narrow = await RunAtWidthAsync(CommandLineTestHost.NarrowTerminalWidth, [formatSwitch], new ScriptedSpeedTester { Server = server });
+            var narrow = await RunAtWidthAsync(CommandLineTestHost.NarrowTerminalWidth, [formatSwitch], LongNamedServerTester());
 
             // Then nothing the window's width did shows in the output: it is what the same run writes
             // with no width limit at all, break for break.
-            var unlimited = await RunAtWidthAsync(CommandLineTestHost.UnlimitedWidth, [formatSwitch], new ScriptedSpeedTester { Server = server });
+            var unlimited = await RunAtWidthAsync(CommandLineTestHost.UnlimitedWidth, [formatSwitch], LongNamedServerTester());
             Assert.Equal(unlimited, narrow);
 
             await Verify(narrow).UseParameters(formatSwitch);
         }
 
         [Fact]
-        public async Task Should_Leave_File_Output_Unchanged_When_Stdout_Is_Redirected()
+        public async Task Should_Wrap_Default_Output_In_A_Narrow_Terminal()
         {
-            // Given stdout is redirected, and a --file target
-            var testFile = Path.Join(Path.GetTempPath(), $"netpace-test-{Guid.NewGuid()}.txt");
+            // Given a terminal window narrower than the default format's result line
+
+            // When
+            var narrow = await RunAtWidthAsync(CommandLineTestHost.NarrowTerminalWidth, []);
+
+            // Then the width did reach it: human-readable output goes on wrapping to fit the screen,
+            // which is the half of the choice the machine-readable tests above cannot show.
+            var unlimited = await RunAtWidthAsync(CommandLineTestHost.UnlimitedWidth, []);
+            Assert.NotEqual(unlimited, narrow);
+
+            await Verify(narrow);
+        }
+
+        [Fact]
+        public async Task Should_Leave_File_Output_Unwrapped_In_A_Narrow_Terminal()
+        {
+            // Given a --file target and a terminal narrow enough to wrap what reaches the screen. The
+            // default format is the only one that leaves the console's width in place, so it is the
+            // only configuration in which the file leg's independence can be observed at all.
+            var narrowFile = Path.Join(Path.GetTempPath(), $"netpace-test-{Guid.NewGuid()}.txt");
+            var unlimitedFile = Path.Join(Path.GetTempPath(), $"netpace-test-{Guid.NewGuid()}.txt");
 
             try
             {
-                // When
-                await RunAtWidthAsync(CommandLineTestHost.RedirectedWidth, ["--csv", "--file", testFile]);
+                // When the same run is made at a narrow width and with no width limit at all
+                var narrowOutput = await RunAtWidthAsync(CommandLineTestHost.NarrowTerminalWidth, ["--file", narrowFile]);
+                var unlimitedOutput = await RunAtWidthAsync(CommandLineTestHost.UnlimitedWidth, ["--file", unlimitedFile]);
 
-                // Then the file holds what it has always held - it never went through the console the
-                // terminal's width applies to.
-                var fileContent = await System.IO.File.ReadAllTextAsync(testFile);
-                await Verify(fileContent);
+                // Then the console leg wrapped, which is what leaves the file leg with something to
+                // prove, and the file came out byte-identical either way: it never went through the
+                // console the terminal's width applies to.
+                Assert.NotEqual(unlimitedOutput, narrowOutput);
+
+                var narrowContent = await System.IO.File.ReadAllTextAsync(narrowFile);
+                Assert.Equal(await System.IO.File.ReadAllTextAsync(unlimitedFile), narrowContent);
+
+                await Verify(narrowContent);
             }
             finally
             {
-                if (System.IO.File.Exists(testFile))
+                foreach (var file in new[] { narrowFile, unlimitedFile })
                 {
-                    System.IO.File.Delete(testFile);
+                    if (System.IO.File.Exists(file))
+                    {
+                        System.IO.File.Delete(file);
+                    }
                 }
             }
         }
+
+        /// <summary>
+        /// A tester reporting the long-named server above. Fresh per run, like the host.
+        /// </summary>
+        private static ScriptedSpeedTester LongNamedServerTester() =>
+            new() { Server = new Server { Location = LongLocation, Sponsor = LongSponsor, Url = LongUrl } };
 
         /// <summary>
         /// Runs NetPace at the given console width and returns what it wrote to stdout. A fresh host
@@ -195,8 +225,10 @@ public sealed partial class NetPaceConsoleTests
         }
 
         /// <summary>
-        /// The lines of output, which for a machine-readable format means its records: none of the four
-        /// writes a blank line, so a break that produced one came from the console.
+        /// The lines of output, which for a machine-readable format means its records. Empty entries are
+        /// dropped so that the trailing newline every writer emits is not counted as a record; none of
+        /// the three machine-readable formats writes a blank line of its own, and the snapshots are what
+        /// catch a stray one.
         /// </summary>
         private static string[] Lines(string output) =>
             output.Replace("\r\n", "\n").Split('\n', StringSplitOptions.RemoveEmptyEntries);

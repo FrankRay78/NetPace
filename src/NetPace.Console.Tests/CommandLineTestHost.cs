@@ -13,12 +13,14 @@ namespace NetPace.Console.Tests;
 public sealed class CommandLineTestHost
 {
     /// <summary>
-    /// The width Spectre.Console reports when stdout is a pipe or a redirect rather than a terminal.
+    /// Spectre.Console's default buffer width - what it falls back to when stdout is not a terminal,
+    /// so the width a piped or redirected run sees.
     /// </summary>
     public const int RedirectedWidth = 80;
 
     /// <summary>
-    /// A terminal window narrower than a machine-readable result line.
+    /// A width narrower than a machine-readable result line, standing in for a small terminal
+    /// window. The host sets a width and nothing else, so no test here is interactive.
     /// </summary>
     public const int NarrowTerminalWidth = 40;
 
@@ -53,7 +55,6 @@ public sealed class CommandLineTestHost
     /// <returns>A test result containing the exit code and output.</returns>
     public async Task<TestResult> RunAsync(string[] args, CancellationToken cancellationToken = default)
     {
-        // Register AnsiConsole at the width this host was built for.
         using var testConsole = new TestConsole().Width(consoleWidth);
         serviceCollection.TryAddSingleton<IAnsiConsole>(testConsole);
 

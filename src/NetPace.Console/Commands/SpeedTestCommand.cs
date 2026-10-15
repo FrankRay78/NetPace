@@ -52,9 +52,11 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
             // the output, landing inside JSON string values and CSV header names. A record another
             // program reads carries only the breaks its own format defines, so the limit comes off for
             // these writers while the default human-readable output goes on wrapping to fit the
-            // screen. Taken before the composite is built, so it covers the terminal leg and every
-            // error line written to the same console along the way. --file output has never wrapped:
-            // FileConsole reports no width limit of its own.
+            // screen. CompositeAnsiConsole delegates Profile to its primary, so the terminal leg
+            // shares this profile object and the lift reaches it wherever the composite is built.
+            // It covers the error lines this command writes once it is running; a parse or
+            // validation error reported before the command exists is written at the unlifted width.
+            // --file output has never wrapped: FileConsole reports no width limit of its own.
             console.Profile.Width = int.MaxValue;
         }
 
