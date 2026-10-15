@@ -35,6 +35,19 @@ public sealed partial class NetPaceConsoleTests
             return (services, measurementCalls);
         }
 
+        /// <summary>
+        /// A speed tester that measures normally, against a clock fixed at 1980-01-01 10:05:00.
+        /// </summary>
+        private static IServiceCollection ServicesThatMeasure()
+        {
+            var services = new ServiceCollection();
+            services.AddSingleton<ISpeedTestService, SpeedTestStub>();
+            services.AddSingleton<IClock, ClockStub>();
+            services.AddSingleton<IWaiter, NoDelayStub>();
+
+            return services;
+        }
+
         private static CommandLineTestHost HostWith(IServiceCollection services)
         {
             return new CommandLineTestHost(services);
@@ -114,12 +127,8 @@ public sealed partial class NetPaceConsoleTests
         {
             // SCENARIO: Valid custom datetime format is still accepted
 
-            // Given a clock fixed at 1980-01-01 10:05:00.
-            var services = new ServiceCollection();
-            services.AddSingleton<ISpeedTestService, SpeedTestStub>();
-            services.AddSingleton<IClock, ClockStub>();
-            services.AddSingleton<IWaiter, NoDelayStub>();
-            var host = HostWith(services);
+            // Given
+            var host = HostWith(ServicesThatMeasure());
 
             // When
             var result = await host.RunAsync(["--minimal", "-t", "--datetimeformat", "yyyyMMdd_HHmm"]);
@@ -133,11 +142,7 @@ public sealed partial class NetPaceConsoleTests
         public async Task DefaultDateTimeFormat_RunsTheTestAndRendersTheTimestamp()
         {
             // Given
-            var services = new ServiceCollection();
-            services.AddSingleton<ISpeedTestService, SpeedTestStub>();
-            services.AddSingleton<IClock, ClockStub>();
-            services.AddSingleton<IWaiter, NoDelayStub>();
-            var host = HostWith(services);
+            var host = HostWith(ServicesThatMeasure());
 
             // When no format is given at all.
             var result = await host.RunAsync(["--minimal", "-t"]);
