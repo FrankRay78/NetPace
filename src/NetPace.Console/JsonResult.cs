@@ -37,8 +37,8 @@ public sealed record JsonResult
 
     /// <summary>
     /// Gets the measured latency to the server in milliseconds, or <see langword="null"/> when the
-    /// latency test was not run. Unlike <see cref="Latency"/>, this is a number in a fixed unit,
-    /// so a script reads the same value whatever the unit options say.
+    /// latency test was not run. Unlike <see cref="Latency"/>, which carries its unit in the
+    /// string, this is a bare number a script can read without parsing.
     /// </summary>
     public long? LatencyMilliseconds { get; init; }
 
@@ -52,7 +52,9 @@ public sealed record JsonResult
     /// <summary>
     /// Gets the measured download speed in bits per second, or <see langword="null"/> when the
     /// download test was not run. Unlike <see cref="DownloadSpeed"/>, this is a number in a fixed
-    /// unit, so a script reads the same value whatever the unit options say.
+    /// unit, so a script reads the same value whatever the unit options say. An all-failed test
+    /// reports <c>0</c>, not <see langword="null"/>; the counts distinguish it from a genuine
+    /// zero-throughput measurement.
     /// </summary>
     public long? DownloadSpeedBitsPerSecond { get; init; }
 
@@ -78,7 +80,9 @@ public sealed record JsonResult
     /// <summary>
     /// Gets the measured upload speed in bits per second, or <see langword="null"/> when the upload
     /// test was not run. Unlike <see cref="UploadSpeed"/>, this is a number in a fixed unit, so a
-    /// script reads the same value whatever the unit options say.
+    /// script reads the same value whatever the unit options say. An all-failed test reports
+    /// <c>0</c>, not <see langword="null"/>; the counts distinguish it from a genuine
+    /// zero-throughput measurement.
     /// </summary>
     public long? UploadSpeedBitsPerSecond { get; init; }
 

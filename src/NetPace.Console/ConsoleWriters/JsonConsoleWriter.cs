@@ -30,7 +30,8 @@ public sealed class JsonConsoleWriter : IConsoleWriter
 
 
         // Display speed test result.
-        var latencyFormatted = !settings.NoLatency ? $"{fastest.LatencyMilliseconds} ms" : null;
+        long? latencyMilliseconds = !settings.NoLatency ? fastest.LatencyMilliseconds : null;
+        var latencyFormatted = latencyMilliseconds is not null ? $"{latencyMilliseconds} ms" : null;
         var downloadFormatted = downloadResult?.GetSpeedString(settings.SpeedUnit, settings.SpeedUnitSystem, settings.SpeedScale);
         var uploadFormatted = uploadResult?.GetSpeedString(settings.SpeedUnit, settings.SpeedUnitSystem, settings.SpeedScale);
 
@@ -41,7 +42,7 @@ public sealed class JsonConsoleWriter : IConsoleWriter
             ServerUrl = fastest.Server.Url,
             Timestamp = clock.Now.ToString(settings.DateTimeFormat),
             Latency = latencyFormatted,
-            LatencyMilliseconds = !settings.NoLatency ? fastest.LatencyMilliseconds : null,
+            LatencyMilliseconds = latencyMilliseconds,
             DownloadSpeed = downloadFormatted,
             DownloadSpeedBitsPerSecond = downloadResult?.GetBitsPerSecond(),
             DownloadSucceeded = downloadResult?.RequestsSucceeded,

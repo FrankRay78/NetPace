@@ -28,7 +28,7 @@ public static class SpeedTestExtensions
     }
 
     /// <summary>
-    /// Calculates the speed in bits per second, rounded to the nearest whole bit.
+    /// Calculates the speed in bits per second, rounded to the nearest whole number.
     /// </summary>
     /// <remarks>
     /// The figure does not depend on <see cref="SpeedUnit"/>, <see cref="SpeedUnitSystem"/> or
@@ -41,7 +41,9 @@ public static class SpeedTestExtensions
     {
         ArgumentNullException.ThrowIfNull(result);
 
-        return (long)Math.Round(CalculateBitsPerSecond(result.BytesProcessed, result.ElapsedMilliseconds), MidpointRounding.AwayFromZero);
+        var bitsPerSecond = CalculateBitsPerSecond(result.BytesProcessed, result.ElapsedMilliseconds);
+
+        return (long)Math.Round(bitsPerSecond, MidpointRounding.AwayFromZero);
     }
 
     /// <summary>
@@ -134,7 +136,7 @@ public static class SpeedTestExtensions
         var isBits = unit == SpeedUnit.BitsPerSecond;
         double divisor = unitSystem == SpeedUnitSystem.IEC ? 1024 : 1000;
 
-        // Handle division by zero: no time elapsed means no speed measured
+        // No time elapsed means no speed measured, reported at the base unit without scaling.
         if (elapsedMilliseconds == 0)
         {
             var baseUnit = isBits ? "bps" : "Bps";
@@ -158,10 +160,8 @@ public static class SpeedTestExtensions
         return formattedResult;
     }
 
-    /// <summary>
-    /// The unrounded speed in bits per second, shared by the formatting methods and
-    /// <see cref="GetBitsPerSecond(SpeedTestResult)"/> so the two can never disagree.
-    /// </summary>
+    // The unrounded figure. FormatSpeedParts and GetBitsPerSecond both derive from it, so the
+    // formatted and numeric values can never drift apart.
     private static double CalculateBitsPerSecond(long bytesProcessed, long elapsedMilliseconds)
     {
         // Handle division by zero: no time elapsed means no speed measured

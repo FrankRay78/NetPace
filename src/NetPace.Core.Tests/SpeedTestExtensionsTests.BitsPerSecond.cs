@@ -10,10 +10,10 @@ public sealed partial class SpeedTestExtensionsTests
         [InlineData(125000, 1000, 1000000L)]
         [InlineData(1000, 8000, 1000L)]
         [InlineData(500, 2000, 2000L)]
+        [InlineData(3, 1000, 24L)]
         // A slow link measured in the Kbps range keeps its precision as a whole bit count.
         [InlineData(7000, 3000, 18667L)]
-        [InlineData(3, 1000, 24L)]
-        // Rounding is to the nearest bit, halves away from zero.
+        // Rounding is to the nearest whole bit per second, halves away from zero.
         [InlineData(1, 16000, 1L)]
         [InlineData(1, 32000, 0L)]
         [Theory]
@@ -55,19 +55,22 @@ public sealed partial class SpeedTestExtensionsTests
             Assert.Equal(0L, bitsPerSecond);
         }
 
-        [InlineData(SpeedUnit.BitsPerSecond, SpeedUnitSystem.SI, SpeedScale.Auto)]
-        [InlineData(SpeedUnit.BytesPerSecond, SpeedUnitSystem.IEC, SpeedScale.Mega)]
-        [InlineData(SpeedUnit.BytesPerSecond, SpeedUnitSystem.SI, SpeedScale.Base)]
+        [InlineData(SpeedUnit.BitsPerSecond, SpeedUnitSystem.SI, SpeedScale.Auto, "18.67 Kbps")]
+        [InlineData(SpeedUnit.BytesPerSecond, SpeedUnitSystem.IEC, SpeedScale.Mega, "0 MiBps")]
+        [InlineData(SpeedUnit.BytesPerSecond, SpeedUnitSystem.SI, SpeedScale.Base, "2333.33 Bps")]
         [Theory]
-        public void GetBitsPerSecond_WhateverTheFormattingOptions_IsUnchanged(SpeedUnit unit, SpeedUnitSystem unitSystem, SpeedScale scale)
+        public void GetBitsPerSecond_WhateverTheFormattingOptions_IsUnchanged(SpeedUnit unit, SpeedUnitSystem unitSystem, SpeedScale scale, string expectedFormatted)
         {
             // Given
             var result = new SpeedTestResult { BytesProcessed = 7000, ElapsedMilliseconds = 3000, RequestsSucceeded = 32, RequestsFailed = 0 };
 
-            // When the same result is formatted under these options
-            _ = result.GetSpeedString(unit, unitSystem, scale);
+            // When the same measurement is formatted under these options
+            var formatted = result.GetSpeedString(unit, unitSystem, scale);
 
-            // Then the bits-per-second figure does not depend on them.
+            // Then the options shape the formatted value
+            Assert.Equal(expectedFormatted, formatted);
+
+            // And the bits-per-second figure does not depend on them.
             Assert.Equal(18667L, result.GetBitsPerSecond());
         }
 

@@ -94,8 +94,8 @@ JSON reports each measured speed and latency twice: once formatted for a person 
 | Field | What it holds |
 | --- | --- |
 | `LatencyMilliseconds` | Latency as a whole number of milliseconds. |
-| `DownloadSpeedBitsPerSecond` | Download speed as a whole number of bits per second, rounded to the nearest bit. |
-| `UploadSpeedBitsPerSecond` | Upload speed as a whole number of bits per second, rounded to the nearest bit. |
+| `DownloadSpeedBitsPerSecond` | Download speed in bits per second, rounded to the nearest whole number. |
+| `UploadSpeedBitsPerSecond` | Upload speed in bits per second, rounded to the nearest whole number. |
 
 ```bash
 NetPace --json-pretty
@@ -121,11 +121,13 @@ NetPace --json-pretty
 }
 ```
 
-**`--unit`, `--unit-scale` and `--unit-system` do not change the numbers.** Those options shape the formatted values only — `"DownloadSpeed"`, `"UploadSpeed"` and `"Latency"`. That is the point of the numeric fields: under the default automatic scale the formatted unit can differ from one run to the next, so a script comparing runs, writing to a database or checking a threshold reads the numbers and never has to strip a unit or convert between scales.
+**`--unit`, `--unit-scale` and `--unit-system` do not change the numbers.** Those options shape the formatted speeds only — `"DownloadSpeed"` and `"UploadSpeed"`. That is the point of the numeric fields: under the default automatic scale the formatted unit can differ from one run to the next, so a script comparing runs, writing to a database or checking a threshold reads the numbers and never has to strip a unit or convert between scales.
+
+`"Latency"` is always milliseconds, so `LatencyMilliseconds` saves a script stripping `" ms"` rather than fixing a unit that shifts.
 
 The formatted values are still there and still follow the unit options, so a shell one-liner can keep passing one straight into a notification.
 
-A test you skipped with `--no-latency`, `--no-download` or `--no-upload` omits both of its forms. A test that ran but failed entirely reports `0` in both, with its request counts beside them — see [Detecting failed measurements](#detecting-failed-measurements).
+A test you skipped with `--no-latency`, `--no-download` or `--no-upload` omits both of its forms. A download or upload test that ran but failed entirely reports `0` in both, with its request counts beside them — see [Detecting failed measurements](#detecting-failed-measurements). A latency measurement that fails ends the run instead, so it reports neither.
 
 ---
 

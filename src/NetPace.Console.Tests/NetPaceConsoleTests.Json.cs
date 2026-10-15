@@ -353,9 +353,10 @@ public sealed partial class NetPaceConsoleTests
             Assert.Equal(before.GetProperty("DownloadSpeedBitsPerSecond").GetInt64(), after.GetProperty("DownloadSpeedBitsPerSecond").GetInt64());
             Assert.Equal(before.GetProperty("UploadSpeedBitsPerSecond").GetInt64(), after.GetProperty("UploadSpeedBitsPerSecond").GetInt64());
 
-            // And only the formatted speeds differ.
+            // And only the formatted speeds differ — no unit option shapes the formatted latency.
             Assert.NotEqual(before.GetProperty("DownloadSpeed").GetString(), after.GetProperty("DownloadSpeed").GetString());
             Assert.NotEqual(before.GetProperty("UploadSpeed").GetString(), after.GetProperty("UploadSpeed").GetString());
+            Assert.Equal(before.GetProperty("Latency").GetString(), after.GetProperty("Latency").GetString());
 
             // Both results in full, so the formatted values the switches do shape are reviewable.
             await Verify(defaultUnits.Output + switchedUnits.Output);
