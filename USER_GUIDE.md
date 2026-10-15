@@ -87,6 +87,46 @@ Two further options decide whether and where the result appears, and both work w
 
 `--diagnostics` is not a fifth format — it adds a second stream alongside whichever format you picked, leaving the result untouched. See [Diagnosing a failure with `--diagnostics`](#diagnosing-a-failure-with---diagnostics).
 
+### Numeric values in JSON
+
+JSON reports each measured speed and latency twice: once formatted for a person to read, and once as a plain number in a fixed unit. The field name says which unit, so a saved result explains itself without reference to the command that produced it.
+
+| Field | What it holds |
+| --- | --- |
+| `LatencyMilliseconds` | Latency as a whole number of milliseconds. |
+| `DownloadSpeedBitsPerSecond` | Download speed as a whole number of bits per second, rounded to the nearest bit. |
+| `UploadSpeedBitsPerSecond` | Upload speed as a whole number of bits per second, rounded to the nearest bit. |
+
+```bash
+NetPace --json-pretty
+```
+```json
+{
+  "ServerLocation": "London",
+  "ServerSponsor": "Foo Telecom",
+  "ServerUrl": "http://speedtest.foo.example:8080/speedtest/upload.php",
+  "Timestamp": "1980-01-01 10:05:00",
+  "Latency": "12 ms",
+  "LatencyMilliseconds": 12,
+  "DownloadSpeed": "512.6 Mbps",
+  "DownloadSpeedBitsPerSecond": 512600000,
+  "DownloadSucceeded": 150,
+  "DownloadFailed": 0,
+  "UploadSpeed": "48.2 Mbps",
+  "UploadSpeedBitsPerSecond": 48200000,
+  "UploadSucceeded": 32,
+  "UploadFailed": 0,
+  "IPAddress": "192.168.1.1",
+  "Hostname": "test-host"
+}
+```
+
+**`--unit`, `--unit-scale` and `--unit-system` do not change the numbers.** Those options shape the formatted values only — `"DownloadSpeed"`, `"UploadSpeed"` and `"Latency"`. That is the point of the numeric fields: under the default automatic scale the formatted unit can differ from one run to the next, so a script comparing runs, writing to a database or checking a threshold reads the numbers and never has to strip a unit or convert between scales.
+
+The formatted values are still there and still follow the unit options, so a shell one-liner can keep passing one straight into a notification.
+
+A test you skipped with `--no-latency`, `--no-download` or `--no-upload` omits both of its forms. A test that ran but failed entirely reports `0` in both, with its request counts beside them — see [Detecting failed measurements](#detecting-failed-measurements).
+
 ---
 
 ## How a server is chosen
@@ -156,7 +196,7 @@ Timestamp,Latency,Download,DownloadSucceeded,DownloadFailed,Upload,UploadSucceed
 
 **JSON** — each test that ran gains integer `…Succeeded` / `…Failed` fields alongside its speed. The schema keeps one shape: a total failure reports `0 bps` with the counts beside it, exactly as normal and CSV output do. Only a test you skipped (`--no-download`, `--no-upload`) omits its fields entirely:
 ```json
-{ "UploadSpeed": "0 bps", "UploadSucceeded": 0, "UploadFailed": 32, … }
+{ "UploadSpeed": "0 bps", "UploadSpeedBitsPerSecond": 0, "UploadSucceeded": 0, "UploadFailed": 32, … }
 ```
 
 The counts are the whole signal — no output format adds a prose warning on top of them. `--quiet` suppresses them along with the rest of the output; use `--fail-on` to detect an all-failed measurement in that mode.
