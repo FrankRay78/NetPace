@@ -272,29 +272,41 @@ public sealed partial class OoklaSpeedtestTests
             }
         };
 
-        // Read from the settings rather than restated, so the barrier below cannot ask for a
-        // different number of requests than the test actually makes.
+        // Derived from the settings rather than restated, so raising the iteration count moves the
+        // barrier below with it. It still assumes one request per size per iteration, which is what
+        // the download path issues today.
         var expectedRequests = settings.DownloadTest.DownloadSizes.Length * settings.DownloadTest.DownloadSizeIterations;
+
+        // The barrier's other premise, stated in the Given above: it waits for every request at
+        // once, so a parallelism ceiling that queued any of them would leave it waiting for an
+        // arrival that cannot happen. Asserted rather than assumed, so lowering the ceiling fails
+        // here by name instead of deadlocking into the HangGuard timeout below.
+        settings.DownloadTest.DownloadParallelTasks.ShouldBeGreaterThanOrEqualTo(expectedRequests);
 
         // The answering request is held at a barrier until every request has reached the handler, so
         // the answer that trips the cap cannot land while the remaining requests are still being
         // started. One cut off before it starts is correctly reported as nothing at all, so without
         // the barrier the totals below see fewer records than requests.
-        // GH#379 - `await Task.Yield()` here did not hold that order: it queues the continuation to
-        // the thread pool, which under load answered the first request mid-enumeration.
+        // GH#379 - `await Task.Yield()` here did not hold that order: it guarantees exactly one
+        // reschedule, which orders nothing against the other requests, so under load the first
+        // request answered mid-enumeration.
         var arrived = 0;
+
+        // RunContinuationsAsynchronously so releasing the barrier does not run the first request's
+        // completion - and with it the cap's cancellation - inline on the last request's stack,
+        // while that request is still inside the handler.
         var allArrived = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         using var mockHttp = new MockHttpMessageHandler();
         mockHttp.When("*").Respond(async () =>
         {
-            var order = Interlocked.Increment(ref arrived);
+            var arrivalOrder = Interlocked.Increment(ref arrived);
 
-            if (order == expectedRequests)
+            if (arrivalOrder == expectedRequests)
             {
                 allArrived.SetResult();
             }
 
-            if (order > 1)
+            if (arrivalOrder > 1)
             {
                 return await new TaskCompletionSource<HttpResponseMessage>().Task;
             }
@@ -317,6 +329,8 @@ public sealed partial class OoklaSpeedtestTests
 
         // Then the records still agree with the counts the result reports, and a request excluded by
         // the budget is accounted for as cancelled rather than silently dropped or counted a failure.
+        // The counts below stay literal deliberately: expressed against expectedRequests they would
+        // move with a wrong derivation and pass against it.
         diagnostics.Count(d => d.Outcome == RequestOutcome.Succeeded).ShouldBe(result.RequestsSucceeded);
         diagnostics.Count(d => d.Outcome == RequestOutcome.Failed).ShouldBe(result.RequestsFailed);
         diagnostics.Count.ShouldBe(8);
