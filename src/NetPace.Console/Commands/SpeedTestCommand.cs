@@ -37,6 +37,27 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
 
     private async Task<int> RunAsync(SpeedTestCommandSettings settings, CancellationToken cancellationToken)
     {
+        IConsoleWriter writer = settings switch
+        {
+            { CSV: true } => new CSVConsoleWriter(),
+            { Json: true } or { JsonPretty: true } => new JsonConsoleWriter(),
+            { Minimal: true } => new MinimalConsoleWriter(),
+            _ => new DefaultConsoleWriter()
+        };
+
+        if (writer.MachineReadable)
+        {
+            // Spectre wraps what it writes to the console's width - 80 when stdout is a pipe or a
+            // redirect, the window width in a narrow terminal - and those breaks are real newlines in
+            // the output, landing inside JSON string values and CSV header names. A record another
+            // program reads carries only the breaks its own format defines, so the limit comes off for
+            // these writers while the default human-readable output goes on wrapping to fit the
+            // screen. Taken before the composite is built, so it covers the terminal leg and every
+            // error line written to the same console along the way. --file output has never wrapped:
+            // FileConsole reports no width limit of its own.
+            console.Profile.Width = int.MaxValue;
+        }
+
         if (settings.Quiet || !string.IsNullOrWhiteSpace(settings.OutputFile))
         {
             var consoles = new List<IAnsiConsole>();
@@ -59,14 +80,6 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
 
         try
         {
-            IConsoleWriter writer = settings switch
-            {
-                { CSV: true } => new CSVConsoleWriter(),
-                { Json: true } or { JsonPretty: true } => new JsonConsoleWriter(),
-                { Minimal: true } => new MinimalConsoleWriter(),
-                _ => new DefaultConsoleWriter()
-            };
-
             if (settings.Loop)
             {
                 // Run continuously.

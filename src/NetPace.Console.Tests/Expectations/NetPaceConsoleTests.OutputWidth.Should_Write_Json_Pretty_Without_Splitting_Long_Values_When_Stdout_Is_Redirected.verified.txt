@@ -1,0 +1,15 @@
+﻿{
+  "ServerLocation": "Frankfurt am Main, Hessen, Bundesrepublik Deutschland, Western Europe, EMEA Region",
+  "ServerSponsor": "Deutsche Telekom Technik Gesellschaft mit beschrankter Haftung, Frankfurt am Main",
+  "ServerUrl": "http://ffm.wsqm.telekom-dienste.de:8080/speedtest/upload-and-download-endpoint.php",
+  "Timestamp": "1980-01-01 10:05:00",
+  "Latency": "24 ms",
+  "DownloadSpeed": "8 Kbps",
+  "DownloadSucceeded": 150,
+  "DownloadFailed": 0,
+  "UploadSpeed": "8 Kbps",
+  "UploadSucceeded": 32,
+  "UploadFailed": 0,
+  "IPAddress": "192.168.1.1",
+  "Hostname": "test-host"
+}
