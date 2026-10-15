@@ -239,7 +239,9 @@ gh issue edit <number> --repo <owner/repo> --add-label "needs answers"
 
 When step 1 detects an existing comment with `<!-- speckit:review -->`, **do not post a new comment** and **do not re-do gap analysis**. The downstream `/confirmissue` command depends on every numbered gap (with its `**Recommendation:**` and `> _Answer:_` lines) staying in the comment until it folds them into the issue body. So this step is intentionally narrow: its only job is to expand questions where the author asked for help.
 
-Fetch the comment body verbatim (e.g. `gh api repos/<owner>/<repo>/issues/comments/<id>` or via the comments JSON from step 1) and walk each numbered gap. For each:
+Fetch the comment body verbatim (e.g. `gh api repos/<owner>/<repo>/issues/comments/<id>` or via the comments JSON from step 1), **and the comments posted after it**. An answer slot is one line in a quote block, so an author with more to say than fits writes it underneath as its own comment and points the answer at it — "see my comment below", "as per my next comment", a link to it, or just "see below". Where an answer points that way, read what it points at and treat it as part of that answer: it may settle the question outright, in which case the gap is Substantive and is left alone, or it may narrow what the author is asking for, in which case it is what the re-framing must respond to. A later comment that no answer points at is not part of any answer — it is ordinary discussion, and step 1's rule about it (do not raise a gap something already resolves) belongs to a first run, not here.
+
+Then walk each numbered gap. For each:
 
 | Answer state | Heuristic | Action |
 |---|---|---|
