@@ -144,9 +144,11 @@ public sealed class SpeedTestCommandSettings
 public static class SpeedTestCommandSettingsExtensions
 {
     /// <summary>
-    /// An arbitrary instant used only to try a datetime format string out. Whether a format string
-    /// is usable does not depend on the value being formatted, so a fixed one keeps the check
-    /// deterministic and independent of the clock.
+    /// A fixed instant used only to try a datetime format string out: fixed so the check cannot
+    /// depend on the clock, and modern so it falls inside every culture's calendar range — which is
+    /// why <see cref="FormatException"/> is the only exception the probe has to catch. It formats
+    /// through the same current culture the writers do, so the check cannot accept a value that
+    /// then fails at output time.
     /// </summary>
     private static readonly DateTime FormatProbeInstant = new DateTime(1980, 1, 1, 10, 5, 0);
 
@@ -156,19 +158,6 @@ public static class SpeedTestCommandSettingsExtensions
     /// <returns>Throws an exception if validation fails.</returns>
     public static void Validate(this SpeedTestCommandSettings settings)
     {
-        // Checked whether or not this run would print a timestamp: a mistyped format is a mistake
-        // either way, and deferring the check to the first run that uses it meant a full
-        // measurement was spent before the user heard about it. Formatting is the only way to know
-        // a .NET format string is usable, so the check is an attempt rather than a pattern match.
-        try
-        {
-            _ = FormatProbeInstant.ToString(settings.DateTimeFormat);
-        }
-        catch (FormatException)
-        {
-            throw new ArgumentException($"The --datetimeformat value '{settings.DateTimeFormat}' is not a usable date and time format string.");
-        }
-
         // Exactly one output format may be selected. --json-pretty shapes the JSON format rather
         // than selecting a second one, so it counts as JSON and stays usable alongside --json.
         // Checked here rather than as a parse validator: a command-level parse error discards every
@@ -194,6 +183,26 @@ public static class SpeedTestCommandSettingsExtensions
         if (settings.NoLatency && settings.NoDownload && settings.NoUpload)
         {
             throw new ArgumentException("No tests selected. At least one of --no-latency, --no-download, or --no-upload must be omitted.");
+        }
+
+        // The format is checked whether or not this run would print a timestamp: a mistyped format
+        // is a mistake either way, and deferring the check to the first run that uses it meant a
+        // full measurement was spent before the user heard about it. Checked last so it does not
+        // mask the more structural errors above.
+        if (string.IsNullOrWhiteSpace(settings.DateTimeFormat))
+        {
+            throw new ArgumentException("The --datetimeformat value is blank. Pass a format such as \"yyyy-MM-dd HH:mm:ss\", or omit the option for the default.");
+        }
+
+        // Formatting is the only way to know a .NET format string is usable, so the check is an
+        // attempt rather than a pattern match.
+        try
+        {
+            _ = FormatProbeInstant.ToString(settings.DateTimeFormat);
+        }
+        catch (FormatException)
+        {
+            throw new ArgumentException($"The --datetimeformat value '{settings.DateTimeFormat}' is not a usable date and time format string. Pass a format such as \"yyyy-MM-dd HH:mm:ss\", or omit the option for the default.");
         }
     }
 }

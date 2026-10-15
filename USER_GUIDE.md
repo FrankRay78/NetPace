@@ -60,7 +60,7 @@ Add a timestamp in custom date format:
 NetPace --timestamp --datetimeformat "dd/MM/yyyy HH:mm"
 ```
 
-A `--datetimeformat` value that cannot format a date — a typo like `Q`, say — is rejected as a usage error before any measurement runs: NetPace names the option, reports the value, and exits non-zero (see [Exit codes](#exit-codes)). The check applies whether or not the run would have printed a timestamp, so a bad value cannot sit unnoticed until you add `--timestamp` or switch to CSV or JSON.
+A `--datetimeformat` value that cannot format a date, or that is blank, is rejected as a usage error before any measurement runs: NetPace names the option, reports the value, and exits non-zero (see [Exit codes](#exit-codes)). The check applies whether or not the run would have printed a timestamp, so a bad value cannot sit unnoticed until you add `--timestamp` or switch to CSV or JSON.
 
 Limit download to 50 MiB and upload to 20 MiB (for low bandwidth connections):  
 ```bash

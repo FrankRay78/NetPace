@@ -2,7 +2,7 @@ namespace NetPace.Console.Tests;
 
 /// <summary>
 /// CLI behaviour for <c>--datetimeformat</c>: a value that cannot format a date is a usage error,
-/// reported before any measurement is attempted and in every output mode, while valid formats —
+/// reported before any measurement is attempted and in every output format, while valid formats —
 /// including the default — run and render the timestamp as before.
 /// </summary>
 public sealed partial class NetPaceConsoleTests
@@ -10,11 +10,24 @@ public sealed partial class NetPaceConsoleTests
     public sealed class DateTimeFormat
     {
         /// <summary>
-        /// A speed tester that records every measurement it is asked for, so a test can assert it
-        /// was asked for none. Server discovery is the first thing any run needs, and the
-        /// unconfigured delegates beyond it throw, so a run that gets that far cannot pass quietly.
+        /// Hosts the CLI against the given speed tester, a clock fixed at 1980-01-01 10:05:00, and
+        /// no inter-test delay.
         /// </summary>
-        private static (IServiceCollection services, List<string> measurementCalls) ServicesRecordingMeasurements()
+        private static CommandLineTestHost HostWith(ISpeedTestService speedTester)
+        {
+            var services = new ServiceCollection();
+            services.AddSingleton(speedTester);
+            services.AddSingleton<IClock, ClockStub>();
+            services.AddSingleton<IWaiter, NoDelayStub>();
+            return new CommandLineTestHost(services);
+        }
+
+        /// <summary>
+        /// A host whose speed tester records the one call a run makes before measuring — server
+        /// discovery — so a test can assert the run never got that far. Every measurement delegate
+        /// is left unconfigured and throws, so a run that proceeds cannot pass quietly.
+        /// </summary>
+        private static (CommandLineTestHost host, List<string> measurementCalls) HostRecordingMeasurements()
         {
             var measurementCalls = new List<string>();
 
@@ -27,30 +40,7 @@ public sealed partial class NetPaceConsoleTests
                 }
             };
 
-            var services = new ServiceCollection();
-            services.AddSingleton<ISpeedTestService>(speedTester);
-            services.AddSingleton<IClock, ClockStub>();
-            services.AddSingleton<IWaiter, NoDelayStub>();
-
-            return (services, measurementCalls);
-        }
-
-        /// <summary>
-        /// A speed tester that measures normally, against a clock fixed at 1980-01-01 10:05:00.
-        /// </summary>
-        private static IServiceCollection ServicesThatMeasure()
-        {
-            var services = new ServiceCollection();
-            services.AddSingleton<ISpeedTestService, SpeedTestStub>();
-            services.AddSingleton<IClock, ClockStub>();
-            services.AddSingleton<IWaiter, NoDelayStub>();
-
-            return services;
-        }
-
-        private static CommandLineTestHost HostWith(IServiceCollection services)
-        {
-            return new CommandLineTestHost(services);
+            return (HostWith(speedTester), measurementCalls);
         }
 
         private static string[] ArgsFrom(string commandLine)
@@ -69,8 +59,7 @@ public sealed partial class NetPaceConsoleTests
             // SCENARIO: Invalid datetime format is rejected before testing
 
             // Given
-            var (services, measurementCalls) = ServicesRecordingMeasurements();
-            var host = HostWith(services);
+            var (host, measurementCalls) = HostRecordingMeasurements();
 
             // When a format that cannot format a date is passed to a run that would print a timestamp.
             var result = await host.RunAsync([.. ArgsFrom(commandLine), "--datetimeformat", "Q"]);
@@ -90,8 +79,7 @@ public sealed partial class NetPaceConsoleTests
             // SCENARIO: Invalid datetime format is rejected even when no timestamp is shown
 
             // Given
-            var (services, measurementCalls) = ServicesRecordingMeasurements();
-            var host = HostWith(services);
+            var (host, measurementCalls) = HostRecordingMeasurements();
 
             // When the run would never have used the format, because no timestamp was asked for.
             var result = await host.RunAsync([.. ArgsFrom(commandLine), "--datetimeformat", "Q"]);
@@ -104,14 +92,18 @@ public sealed partial class NetPaceConsoleTests
         }
 
         [Theory]
+        [InlineData("")]
+        [InlineData(" ")]
         [InlineData("%")]
-        [InlineData("Q")]
         [InlineData("yyyy-MM-dd \\")]
         public async Task InvalidDateTimeFormat_WhateverTheValue_IsRejectedWithoutMeasuring(string format)
         {
+            // The theories above vary the output mode around one bad value; this one varies the
+            // value, so a format spoiled only by a stray escape is rejected as squarely as a
+            // single unusable letter.
+
             // Given
-            var (services, measurementCalls) = ServicesRecordingMeasurements();
-            var host = HostWith(services);
+            var (host, measurementCalls) = HostRecordingMeasurements();
 
             // When
             var result = await host.RunAsync(["--minimal", "-t", "--datetimeformat", format]);
@@ -128,7 +120,7 @@ public sealed partial class NetPaceConsoleTests
             // SCENARIO: Valid custom datetime format is still accepted
 
             // Given
-            var host = HostWith(ServicesThatMeasure());
+            var host = HostWith(new SpeedTestStub());
 
             // When
             var result = await host.RunAsync(["--minimal", "-t", "--datetimeformat", "yyyyMMdd_HHmm"]);
@@ -142,7 +134,7 @@ public sealed partial class NetPaceConsoleTests
         public async Task DefaultDateTimeFormat_RunsTheTestAndRendersTheTimestamp()
         {
             // Given
-            var host = HostWith(ServicesThatMeasure());
+            var host = HostWith(new SpeedTestStub());
 
             // When no format is given at all.
             var result = await host.RunAsync(["--minimal", "-t"]);
