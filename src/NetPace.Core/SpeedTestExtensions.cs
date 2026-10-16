@@ -28,6 +28,25 @@ public static class SpeedTestExtensions
     }
 
     /// <summary>
+    /// Calculates the speed in bits per second, rounded to the nearest whole number.
+    /// </summary>
+    /// <remarks>
+    /// The figure does not depend on <see cref="SpeedUnit"/>, <see cref="SpeedUnitSystem"/> or
+    /// <see cref="SpeedScale"/>: those shape how a speed is displayed, and this is the measurement
+    /// itself in a fixed unit, so a machine-readable consumer reads the same number for the same
+    /// measurement whatever a caller's display preferences are. A test that moved no bytes, or in
+    /// which no time elapsed, reports zero.
+    /// </remarks>
+    public static long GetBitsPerSecond(this SpeedTestResult result)
+    {
+        ArgumentNullException.ThrowIfNull(result);
+
+        var bitsPerSecond = CalculateBitsPerSecond(result.BytesProcessed, result.ElapsedMilliseconds);
+
+        return (long)Math.Round(bitsPerSecond, MidpointRounding.AwayFromZero);
+    }
+
+    /// <summary>
     /// Calculates and formats the speed string.
     /// </summary>
     public static (string speed, string unit) GetSpeedStringParts(this SpeedTestResult result, SpeedUnit unit, SpeedUnitSystem unitSystem)
@@ -89,6 +108,9 @@ public static class SpeedTestExtensions
 
     #region Private Methods
 
+    private const double BitsPerByte = 8.0;
+    private const double MillisecondsPerSecond = 1000.0;
+
     private static readonly string[] SI_BitUnits = { "bps", "Kbps", "Mbps", "Gbps", "Tbps", "Pbps" };
     private static readonly string[] SI_ByteUnits = { "Bps", "KBps", "MBps", "GBps", "TBps", "PBps" };
 
@@ -114,16 +136,15 @@ public static class SpeedTestExtensions
         var isBits = unit == SpeedUnit.BitsPerSecond;
         double divisor = unitSystem == SpeedUnitSystem.IEC ? 1024 : 1000;
 
-        // Handle division by zero: no time elapsed means no speed measured
+        // No time elapsed means no speed measured, reported at the base unit without scaling.
         if (elapsedMilliseconds == 0)
         {
             var baseUnit = isBits ? "bps" : "Bps";
             return ("0", baseUnit);
         }
 
-        var speed = isBits
-            ? bytesProcessed * 8.0 / ((double)elapsedMilliseconds / 1000)
-            : bytesProcessed / ((double)elapsedMilliseconds / 1000);
+        var bitsPerSecond = CalculateBitsPerSecond(bytesProcessed, elapsedMilliseconds);
+        var speed = isBits ? bitsPerSecond : bitsPerSecond / BitsPerByte;
 
         (string speed, string unit) formattedResult;
 
@@ -137,6 +158,19 @@ public static class SpeedTestExtensions
         }
 
         return formattedResult;
+    }
+
+    // The unrounded figure. FormatSpeedParts and GetBitsPerSecond both derive from it, so the
+    // formatted and numeric values can never drift apart.
+    private static double CalculateBitsPerSecond(long bytesProcessed, long elapsedMilliseconds)
+    {
+        // Handle division by zero: no time elapsed means no speed measured
+        if (elapsedMilliseconds == 0)
+        {
+            return 0;
+        }
+
+        return bytesProcessed * BitsPerByte / (elapsedMilliseconds / MillisecondsPerSecond);
     }
 
     private static (string speed, string unit) FormatSpeed_AutoScale(double speed, bool isBits, SpeedUnitSystem unitSystem, double divisor)
