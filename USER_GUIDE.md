@@ -10,9 +10,9 @@ Write test results to a file, while also displaying them in the console:
 netpace --file results.txt
 ```
 
-Produce CSV output with test results in megabits, suitable for parsing:
+Produce CSV output, with every speed and latency a plain number, suitable for parsing:
 ```bash
-netpace --csv --csv-header-units --unit-scale Mega
+netpace --csv
 ```
 
 Report the result as a single compact line:
@@ -78,18 +78,52 @@ Three alternative formats are available instead:
 | Switch | Output |
 | --- | --- |
 | `--minimal` | The result as a single compact line. No live progress display. |
-| `--csv` | A single CSV row, always including a timestamp. `--csv-header-units` and `--csv-delimiter` shape it. |
+| `--csv` | A single CSV row, always including a timestamp. `--csv-delimiter` chooses the separator. |
 | `--json` | A JSON object. `--json-pretty` selects the same format and indents it for reading. |
 
 `--minimal`, `--csv` and `--json` are peers, and exactly one format may be selected. Passing two together is an error naming the conflict, so a stray or mistyped flag in a script fails loudly instead of quietly producing the wrong format. `--json-pretty` counts as selecting JSON, so `--json --json-pretty` is the one combination allowed — they are the same format, indented — while `--csv --json-pretty` and `--json-pretty --minimal` are conflicts like any other pair.
 
 `--minimal`, `--csv` and `--json` are written for a program to read, so they carry no line breaks beyond the ones their own format defines — one CSV record per line, and the indentation `--json-pretty` asks for. That holds however narrow the destination is: a pipe, a redirect, or a terminal window narrower than the line. Only the default terminal output wraps to fit the screen.
 
-Every format composes with the result-shaping options — `--timestamp`, `--unit`, `--unit-scale`, `--unit-system`, and skipping individual tests with `--no-latency` / `--no-download` / `--no-upload`.
+Every format composes with the result-shaping options — `--timestamp`, `--unit`, `--unit-scale`, `--unit-system`, and skipping individual tests with `--no-latency` / `--no-download` / `--no-upload`. The one exception is CSV, which reports its measurements as plain numbers in fixed units and so is unaffected by `--unit`, `--unit-scale` and `--unit-system` — see [Numeric values in CSV](#numeric-values-in-csv).
 
 Two further options decide whether and where the result appears, and both work with any format: `--quiet` suppresses the result entirely, and `--file` writes it to disk.
 
 `--diagnostics` is not a fifth format — it adds a second stream alongside whichever format you picked, leaving the result untouched. See [Diagnosing a failure with `--diagnostics`](#diagnosing-a-failure-with---diagnostics).
+
+### Numeric values in CSV
+
+CSV is read by spreadsheets, importers and logs, so every measurement is a plain number in a fixed unit, and the column name says which unit. Nothing in a cell has to be stripped or converted before it can be summed, charted or compared.
+
+| Column | What it holds |
+| --- | --- |
+| `LatencyMilliseconds` | Latency as a whole number of milliseconds. |
+| `DownloadSpeedBitsPerSecond` | Download speed in bits per second, rounded to the nearest whole number. |
+| `UploadSpeedBitsPerSecond` | Upload speed in bits per second, rounded to the nearest whole number. |
+
+```bash
+netpace --csv
+```
+```
+Timestamp,LatencyMilliseconds,DownloadSpeedBitsPerSecond,DownloadSucceeded,DownloadFailed,UploadSpeedBitsPerSecond,UploadSucceeded,UploadFailed,IPAddress,Hostname
+1980-01-01 10:05:00,12,512600000,150,0,48200000,32,0,192.168.1.1,test-host
+```
+
+**`--unit`, `--unit-scale` and `--unit-system` do not change CSV output at all.** They still shape the default, minimal and JSON output. That is what makes a CSV log safe to append to: under the default automatic scale a formatted speed can be `Kbps` on one run and `Mbps` on the next, so a file collecting rows over weeks would mix units in one column. The numbers never shift, so `--csv` works with `--count` and `--loop` whatever the unit options say, and the numbers match [the numeric fields in JSON](#numeric-values-in-json) for the same run.
+
+The header is the same ten columns in the same order on every run, whichever tests ran. A test you skipped with `--no-latency`, `--no-download` or `--no-upload` leaves its cells empty rather than dropping its columns, so a script reading by position is not moved along by a skipped test:
+
+```bash
+netpace --csv --no-upload
+```
+```
+Timestamp,LatencyMilliseconds,DownloadSpeedBitsPerSecond,DownloadSucceeded,DownloadFailed,UploadSpeedBitsPerSecond,UploadSucceeded,UploadFailed,IPAddress,Hostname
+1980-01-01 10:05:00,12,512600000,150,0,,,,192.168.1.1,test-host
+```
+
+A download or upload test that ran but failed entirely reports `0`, with its request counts beside it — see [Detecting failed measurements](#detecting-failed-measurements).
+
+`--csv-delimiter` chooses the separator, for a locale or a tool that wants something other than a comma.
 
 ### Numeric values in JSON
 
@@ -186,7 +220,7 @@ netpace --profile large --downloadsize 200
 
 ## Detecting failed measurements
 
-A speed test runs many small requests in parallel and reports the aggregate throughput. If some of those requests fail (a dropped connection, a TLS error, a timeout, or a server that rejects the transfer), NetPace does **not** silently treat them as zero-speed data — it counts them, so you can tell a genuinely slow link from a server that isn't transferring at all. When *every* request in a test fails, the speed reads `0 bps`, and the counts tell you it was a total failure rather than a 0 bps link.
+A speed test runs many small requests in parallel and reports the aggregate throughput. If some of those requests fail (a dropped connection, a TLS error, a timeout, or a server that rejects the transfer), NetPace does **not** silently treat them as zero-speed data — it counts them, so you can tell a genuinely slow link from a server that isn't transferring at all. When *every* request in a test fails, the speed reads zero, and the counts tell you it was a total failure rather than a 0 bps link.
 
 Every output format carries the counts:
 
@@ -195,12 +229,13 @@ Every output format carries the counts:
 Latency: 24 ms, Download: 512.6 Mbps, Upload: 0 bps (32 of 32 requests failed)
 ```
 
-**CSV** — a `Succeeded` and `Failed` column sits next to each speed column:
+**CSV** — a `Succeeded` and `Failed` column sits next to each speed column, and a total failure reports a speed of `0` beside the counts that say so:
 ```
-Timestamp,Latency,Download,DownloadSucceeded,DownloadFailed,Upload,UploadSucceeded,UploadFailed,IPAddress,Hostname
+Timestamp,LatencyMilliseconds,DownloadSpeedBitsPerSecond,DownloadSucceeded,DownloadFailed,UploadSpeedBitsPerSecond,UploadSucceeded,UploadFailed,IPAddress,Hostname
+1980-01-01 10:05:00,24,512600000,150,0,0,0,32,192.168.1.1,test-host
 ```
 
-**JSON** — each test that ran gains integer `…Succeeded` / `…Failed` fields alongside its speed. The schema keeps one shape: a total failure reports `0 bps` with the counts beside it, exactly as normal and CSV output do. Only a test you skipped (`--no-download`, `--no-upload`) omits its fields entirely:
+**JSON** — each test that ran gains integer `…Succeeded` / `…Failed` fields alongside its speed. The schema keeps one shape: a total failure reports `0 bps` with the counts beside it, exactly as the other formats do. Only a test you skipped (`--no-download`, `--no-upload`) omits its fields entirely:
 ```json
 { "UploadSpeed": "0 bps", "UploadSpeedBitsPerSecond": 0, "UploadSucceeded": 0, "UploadFailed": 32, … }
 ```

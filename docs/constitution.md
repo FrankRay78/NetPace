@@ -1,5 +1,18 @@
 <!--
 Sync Impact Report:
+Version: 2.3.0 → 2.4.0
+Bump rationale: MINOR — Performance & Scale → Units and Formatting gains a rule for CSV. The "consistent formatting across all output modes" bullet listed CSV among the modes the unit options shape, which CSV no longer is: it carries plain numbers in fixed units that `--unit`, `--unit-scale` and `--unit-system` do not touch, and those numbers must agree with JSON's numeric fields. The consistency bullet now names the modes that do format a speed for a person to read. Expanded guidance rather than a redefinition: consistency across the formatting modes is unchanged, and the new bullet states a constraint that did not previously exist. For review: the consistency bullet drops a mode, which could read as MAJOR.
+Modified Principles: N/A
+Modified Sections: Performance & Scale → Units and Formatting (consistency bullet narrowed to the formatting modes; new CSV bullet)
+Added Sections: N/A
+Removed Sections: N/A
+Downstream documents reviewed (per Amendment Process clause 4):
+  ✅ CLAUDE.md (Units and Formatting) — updated: it carried the same output-modes list, and now states that CSV is not formatted output and names the fixed-unit columns.
+  ✅ README.md, USER_GUIDE.md — updated by the same change: the `--help` snapshot loses `--csv-header-units`, and the guide gains a *Numeric values in CSV* section stating the columns, their units and that the unit options do not reach CSV.
+  ✅ docs/conventions/testing.md — reviewed, unchanged: it governs assertion style and test integrity, and says nothing about units or output formats.
+  ✅ .claude/commands/{draftissue,reviewissue,confirmissue}.md — reviewed, unchanged: none carries a units or output-format rule.
+
+--- superseded, retained for history ---
 Version: 2.2.3 → 2.3.0
 Bump rationale: MINOR — Principle IX gains an **Interface contracts are outcomes** rule: a detail users, their scripts or other programs work with directly (an option name, a machine-readable output field, an exit code, a file format, a public library member, a route clients call) is outcome, and an AC may name it exactly. The mechanism list now applies to such a detail only where it is internal. The housekeeping bullet no longer sends housekeeping to the issue's technical notes, a section the issue template no longer has. Expanded guidance rather than a redefinition: the independence test is unchanged and already classed a depended-on interface as outcome. For review: the rule narrows what the mechanism list bans, which could read as MAJOR.
 Modified Principles: IX — Behavioural Specification (mechanism bullet, new interface-contract rule, housekeeping bullet, Rationale)
@@ -380,7 +393,8 @@ Before committing, verify:
 - Support SI (1000-based) and IEC (1024-based) unit systems
 - Support BitsPerSecond and BytesPerSecond
 - Auto-scale by default (Mbps, Gbps) with user override
-- Consistent formatting across all output modes (default, minimal, CSV, JSON)
+- Consistent formatting across every output mode that formats a speed for a person to read (default, minimal, JSON)
+- CSV holds unformatted numbers in fixed units, so the unit options do not shape it. The numbers it reports MUST agree with the numeric fields in JSON for the same measurement
 
 ## Governance
 
@@ -404,4 +418,4 @@ This constitution supersedes all other development practices and guides. All dev
 - Complexity MUST be justified against simplicity principles
 - For runtime development guidance, refer to `CLAUDE.md`
 
-**Version**: 2.3.0 | **Ratified**: 2026-04-10 | **Last Amended**: 2026-10-14
+**Version**: 2.4.0 | **Ratified**: 2026-04-10 | **Last Amended**: 2026-10-16
