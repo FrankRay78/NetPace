@@ -34,7 +34,7 @@ OoklaServer is Ookla's official speed-test daemon. It exposes the HTTP-Legacy en
 When ready, the script prints the exact NetPace command:
 
 ```bash
-NetPace --server http://localhost:18080/speedtest/upload.php
+netpace --server http://localhost:18080/speedtest/upload.php
 ```
 
 To stop:
@@ -89,7 +89,7 @@ To let other machines on the LAN test against the container:
 2. Clients point at the host's LAN IP, e.g.
 
    ```bash
-   NetPace --server http://192.168.1.50:18080/speedtest/upload.php
+   netpace --server http://192.168.1.50:18080/speedtest/upload.php
    ```
 
 Throughput is bounded by host NIC, Docker's networking layer, and container CPU.
@@ -109,7 +109,7 @@ The container listens on 8080 internally and publishes on host port 18080 by def
 Then point NetPace at the new port:
 
 ```bash
-NetPace --server http://localhost:28080/speedtest/upload.php
+netpace --server http://localhost:28080/speedtest/upload.php
 ```
 
 Update `start.sh` (the polling URL) to match if you want the readiness check to continue working.

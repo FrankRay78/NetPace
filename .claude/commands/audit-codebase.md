@@ -44,7 +44,7 @@ Read `CLAUDE.md` and `docs/constitution.md` for project context before proceedin
    | Unused internal and private symbols | `dotnet tool exec -y roslynator.dotnet.cli@1.0.1 -- find-symbol src/NetPace.sln --unused --visibility internal private` | lens 5 |
    | Copy-paste clones | `npx --yes jscpd@5.4.1 --format csharp --min-lines 8 --ignore "**/bin/**,**/obj/**" --reporters json --output .claude/scratch/audit/jscpd --silent src` | lens 5 |
 
-   A red build or a failing test is not a reason to stop, but it is the first item in the issue: say plainly which, with the output. The test projects reference no coverage collector, so `dotnet test --collect:"XPlat Code Coverage"` runs the suite and collects nothing; the wrapper above is what produces the report. It covers every loaded assembly, third-party ones included, so tell lens 2 to read only the `NetPace.Core` and `NetPace` packages in it.
+   A red build or a failing test is not a reason to stop, but it is the first item in the issue: say plainly which, with the output. The test projects reference no coverage collector, so `dotnet test --collect:"XPlat Code Coverage"` runs the suite and collects nothing; the wrapper above is what produces the report. It covers every loaded assembly, third-party ones included, so tell lens 2 to read only the `NetPace.Core` and `netpace` packages in it.
 
    Run `git status --porcelain` again once the tools have finished. It should print nothing. If a tracked file changed, or an untracked file appeared outside the ignored paths, a tool wrote where it should not have. Do not revert or delete it: stop, and report the file and the tool to the invoker, who decides what to do with it.
 

@@ -2,69 +2,69 @@
 
 Run a simple speed test using the nearest available server:  
 ```bash
-NetPace
+netpace
 ```
 
 Write test results to a file, while also displaying them in the console:
 ```bash
-NetPace --file results.txt
+netpace --file results.txt
 ```
 
 Produce CSV output with test results in megabits, suitable for parsing:
 ```bash
-NetPace --csv --csv-header-units --unit-scale Mega
+netpace --csv --csv-header-units --unit-scale Mega
 ```
 
 Report the result as a single compact line:
 ```bash
-NetPace --minimal
+netpace --minimal
 ```
 
 Run download test only:  
 ```bash
-NetPace --no-upload
+netpace --no-upload
 ```
 
 Run upload test only:  
 ```bash
-NetPace --no-download
+netpace --no-download
 ```
 
 Run speed tests continuously, with a 15 minute delay between each:
 ```bash
-NetPace --loop --delay 00:15:00
+netpace --loop --delay 00:15:00
 ```
 
 Run 3 tests in a row, with 30 seconds delay between each:  
 ```bash
-NetPace --count 3 --delay 00:00:30
+netpace --count 3 --delay 00:00:30
 ```
 
 List the nearest speed test servers:  
 ```bash
-NetPace servers
+netpace servers
 ```
 
 Use a specific server URL for testing:  
 ```bash
-NetPace --server https://speedtest.example.com/
+netpace --server https://speedtest.example.com/
 ```
 
 Show speeds in bytes/sec, using IEC units (KiB, MiB, GiB):  
 ```bash
-NetPace --unit BytesPerSecond --unit-system IEC
+netpace --unit BytesPerSecond --unit-system IEC
 ```
 
 Add a timestamp in custom date format:  
 ```bash
-NetPace --timestamp --datetimeformat "dd/MM/yyyy HH:mm"
+netpace --timestamp --datetimeformat "dd/MM/yyyy HH:mm"
 ```
 
 A `--datetimeformat` value that cannot format a date, or that is blank, is rejected as a usage error before any measurement runs: NetPace names the option, reports the value, and exits non-zero (see [Exit codes](#exit-codes)). The check applies whether or not the run would have printed a timestamp, so a bad value cannot sit unnoticed until you add `--timestamp` or switch to CSV or JSON.
 
 Limit download to 50 MiB and upload to 20 MiB (for low bandwidth connections):  
 ```bash
-NetPace --downloadsize 50 --uploadsize 20
+netpace --downloadsize 50 --uploadsize 20
 ```
 
 ---
@@ -105,7 +105,7 @@ If nothing answered during screening, the run reports `Error: No servers availab
 
 The cap on screening exists to stop a single pathological server stalling a run: before it was introduced, a server taking 20–60 seconds to answer each request could hold up a test for minutes. If you want a particular server regardless, `--server <url>` skips selection entirely.
 
-`NetPace servers -l` lists each discovered server with its screening latency, so what you see there is what auto-selection would rank. A server shown with `-` could not be reached, and a run would not have used it either. Rows stay in their listed order rather than being re-sorted by latency.
+`netpace servers -l` lists each discovered server with its screening latency, so what you see there is what auto-selection would rank. A server shown with `-` could not be reached, and a run would not have used it either. Rows stay in their listed order rather than being re-sorted by latency.
 
 ## Choosing a profile
 
@@ -129,7 +129,7 @@ Decision guide:
 You can still pin a hard cap on top of a profile — the profile sets per-request shape, `--downloadsize` / `--uploadsize` override only the total cap:
 
 ```bash
-NetPace --profile large --downloadsize 200
+netpace --profile large --downloadsize 200
 ```
 
 > [!WARNING]\
@@ -172,7 +172,7 @@ The counts tell you *that* requests failed. `--diagnostics` tells you *why*, and
 Diagnostics go to the error stream, never to the result stream, so the two can be captured separately:
 
 ```bash
-NetPace --json --diagnostics > result.json 2> diagnostics.log
+netpace --json --diagnostics > result.json 2> diagnostics.log
 ```
 
 The result is byte-for-byte what the same invocation produces without the switch, in every output format — so adding `--diagnostics` to a script that parses `--csv` or `--json` cannot break the parsing. Without the switch, nothing is written to the error stream at all. At a terminal with nothing redirected, the records appear after the result, leaving the live progress display intact.
@@ -223,14 +223,14 @@ A measurement that never ran at all — the network was down, or no server could
 
 ```bash
 # Treat a totally-failed test as a failure
-NetPace --fail-on Total
+netpace --fail-on Total
 ```
 
 ---
 
 For more options and details, run:  
 ```bash
-NetPace --help
+netpace --help
 ```
 
 To report problems or suggest features, visit [GitHub Issues](https://github.com/FrankRay78/NetPace/issues).

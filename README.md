@@ -69,21 +69,21 @@ Developed with Microsoft .NET 10.0 on Windows 10 using Visual Studio 2022 Commun
 For most users, running a simple speed test is as easy as:
 
 ```bash
-NetPace
+netpace
 ```
 
 On a metered or IoT connection? Use the Tiny profile (≤ 1 MiB total per run):
 
 ```bash
-NetPace --profile tiny
+netpace --profile tiny
 ```
 
 For common scenarios and advanced usage (such as scripting, restricting payload size, choosing a traffic profile, or customising output), see the [User Guide](https://github.com/FrankRay78/NetPace/blob/main/USER_GUIDE.md).
 
-`NetPace --help` will display detailed usage instructions.
+`netpace --help` will display detailed usage instructions.
 
 ```txt
-C:\>NetPace.exe --help
+C:\>netpace.exe --help
 
     _   __         __     ____
    / | / /  ___   / /_   / __ \  ____ _  _____  ___
@@ -96,7 +96,7 @@ DESCRIPTION:
 Network speed tester including server discovery, latency measurement, download and upload speed testing.
 
 USAGE:
-    NetPace [OPTIONS] [COMMAND]
+    netpace [OPTIONS] [COMMAND]
 
 OPTIONS:
                               DEFAULT
@@ -118,7 +118,7 @@ OPTIONS:
         --no-download                                Do not perform download test.
         --no-upload                                  Do not perform upload test.
         --server                                     The url of a specific speed test sever.
-                                                     'NetPace servers -l' will return your nearest servers.
+                                                     'netpace servers -l' will return your nearest servers.
     -t, --timestamp                                  Include a timestamp in the output.
         --datetimeformat      yyyy-MM-dd HH:mm:ss    The datetime format string, as defined by Microsoft.Net.
         --profile             Medium                 Profile bundle of payload settings (Tiny | Small | Medium | Large | Mega).
@@ -136,7 +136,7 @@ OPTIONS:
                                                      None never affects the exit code; Total triggers when a test is all-failed;
                                                      Partial triggers on any failed request. Fail-fast across --count and --loop.
         --diagnostics                                Write per-request diagnostic detail about the run to the error stream.
-                                                     The result is unchanged, so 'NetPace --json --diagnostics > result.json 2> diagnostics.log' keeps the two apart.
+                                                     The result is unchanged, so 'netpace --json --diagnostics > result.json 2> diagnostics.log' keeps the two apart.
 
 COMMANDS:
     servers    Show the nearest speed test servers.
