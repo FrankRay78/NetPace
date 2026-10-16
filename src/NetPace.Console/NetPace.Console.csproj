@@ -19,8 +19,39 @@
     <AllowedReferenceRelatedFileExtensions>.pdb</AllowedReferenceRelatedFileExtensions>
   </PropertyGroup>
 
+  <!-- .NET tool package. `dotnet tool install -g NetPace` is the one-line install for anyone with the
+       .NET 10 SDK; docs/RELEASING.md records which package each release pushes and where it is built. -->
+  <PropertyGroup Label="Tool package">
+    <IsPackable>true</IsPackable>
+    <PackAsTool>true</PackAsTool>
+    <PackageId>NetPace</PackageId>
+    <ToolCommandName>netpace</ToolCommandName>
+    <!-- One RID-specific tool package per platform NetPace covers, plus a wrapper package that points
+         the installer at the right one. Declared as RuntimeIdentifiers rather than
+         ToolPackageRuntimeIdentifiers because restore reads this property: the per-RID packs need
+         RID-specific assets, and ToolPackageRuntimeIdentifiers alone leaves restore RID-agnostic. -->
+    <RuntimeIdentifiers>win-x64;win-arm64;linux-x64;linux-arm64;osx-x64;osx-arm64</RuntimeIdentifiers>
+    <Title>NetPace</Title>
+    <Description>Cross-platform network speed testing CLI. Measures latency, download and upload speed against Ookla Speedtest servers, with human-readable, CSV and JSON output.</Description>
+    <Authors>Frank Ray</Authors>
+    <Copyright>Frank Ray</Copyright>
+    <PackageTags>speedtest;internet-speed-test;network-speed-test;cli;dotnet-tool;console</PackageTags>
+    <PackageIcon>logo.png</PackageIcon>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <RepositoryUrl>https://github.com/FrankRay78/NetPace</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageProjectUrl>https://github.com/FrankRay78/NetPace</PackageProjectUrl>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageReleaseNotes>https://github.com/FrankRay78/NetPace/releases</PackageReleaseNotes>
+  </PropertyGroup>
+
   <PropertyGroup Condition="'$(PublishAot)' == 'true'">
     <WarningsAsErrors>IL2026;IL2090;IL3050;IL3056</WarningsAsErrors>
+    <!-- The AOT toolchain writes a native symbol file beside the binary (netpace.dbg on Linux,
+         netpace.pdb on Windows) and copies it into the publish directory after Publish has run, where
+         no publish-output filter can reach it. It is roughly twice the size of the binary and ships to
+         nobody, so it would otherwise double every RID-specific tool package. -->
+    <CopyOutputSymbolsToPublishDirectory>false</CopyOutputSymbolsToPublishDirectory>
   </PropertyGroup>
 
   <ItemGroup>
@@ -37,6 +68,12 @@
   <ItemGroup>
     <EmbeddedResource Include="slant.flf" />
 	<InternalsVisibleTo Include="NetPace.Console.Tests" />
+  </ItemGroup>
+
+  <!-- The tool package's nuget.org page and icon. Packed as README.md so nuget.org renders it. -->
+  <ItemGroup>
+    <None Include="$(MSBuildThisFileDirectory)..\..\resources\nuget\README.tool.md" Pack="true" PackagePath="README.md" Visible="false" />
+    <None Include="$(MSBuildThisFileDirectory)..\..\resources\nuget\logo.png" Pack="true" PackagePath="" Visible="false" />
   </ItemGroup>
 
   <!-- Remove XML documentation files from publish output: PublishSingleFile bundles DLLs but not XML files,

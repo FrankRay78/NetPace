@@ -69,6 +69,37 @@ netpace --downloadsize 50 --uploadsize 20
 
 ---
 
+## Installing NetPace
+
+With the [.NET 10 SDK](https://dotnet.microsoft.com/en-us/download/dotnet/10.0) installed, NetPace installs as a .NET tool in one line, and the `netpace` command is on your path afterwards:
+
+```bash
+dotnet tool install -g NetPace
+```
+
+Move to the latest release at any time:
+
+```bash
+dotnet tool update -g NetPace
+```
+
+Or run NetPace once without installing it — `dnx` fetches the package, runs it, and leaves nothing installed:
+
+```bash
+dnx NetPace
+dnx NetPace -- --json
+```
+
+Pin a known version in a build or CI job with `dotnet tool install -g NetPace --version 0.26.0`.
+
+The installed command behaves exactly like the release binary of the same version, and `netpace --version` reports the release it was published with.
+
+**Which platforms the tool package covers.** Windows and Linux, on x64 and ARM64, get the Native AOT binary — the same bare-metal build as the `-aot` release download, so it starts without a .NET runtime. macOS, on Intel and Apple silicon, gets a build that runs on the .NET runtime the SDK already provides, because NetPace has no macOS Native AOT build yet. Anything outside those six — Alpine-style Linux among them — is not covered by the tool package; [download](https://github.com/FrankRay78/NetPace/releases) a standalone binary instead.
+
+Without the .NET SDK, the [releases page](https://github.com/FrankRay78/NetPace/releases) carries binaries for every supported platform: unzip and run.
+
+---
+
 ## Choosing an output format
 
 With no format switch, NetPace renders the rich terminal output: a live progress display while each test runs, then the result. That is the right default at a terminal, and it is what you get if you pass nothing.

@@ -197,6 +197,33 @@ jobs:
             ./netpace --help
           fi
 
+      # The RID-specific tool package carries this RID's Native AOT binary, so it is packed here rather
+      # than in the publishing job: Native AOT cannot be cross-compiled across operating systems or
+      # architectures, and this is the only runner that matches the RID. The publishing job adds the
+      # wrapper package and the two macOS packages and pushes the set — docs/RELEASING.md, .NET tool package.
+      - name: Pack RID-specific .NET tool package (AOT only)
+        if: matrix.deployment == 'aot'
+        run: |
+          set -euo pipefail
+          dotnet pack src/NetPace.Console/NetPace.Console.csproj \
+            --configuration Release \
+            --runtime ${{ matrix.runtime }} \
+            -p:PublishAot=true \
+            -p:InvariantGlobalization=true \
+            -p:PackageVersion=${{ steps.get_version.outputs.version }} \
+            -p:Version=${{ steps.get_version.outputs.version }} \
+            -p:AssemblyVersion=${{ steps.get_version.outputs.version }} \
+            -p:FileVersion=${{ steps.get_version.outputs.version }} \
+            -p:InformationalVersion=${{ steps.get_version.outputs.version }} \
+            --output ./tool-package
+
+      - name: Upload RID-specific tool package (AOT only)
+        if: matrix.deployment == 'aot'
+        uses: actions/upload-artifact@v4
+        with:
+          name: tool-package-${{ matrix.runtime }}
+          path: ./tool-package/*.nupkg
+
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -204,6 +231,115 @@ jobs:
           path: |
             *.zip
             *.tar.gz
+
+  # Every tag publishes the tool package, whether or not NetPace.Core changed: the conditional skip in
+  # publish-nuget.yml is about the library's SemVer meaning and must not reach the CLI, whose users
+  # install by version. Needing build-cross-platform means a failed or missing native build fails the
+  # release before anything is pushed; the check below says which RID is missing.
+  publish-tool-package:
+    needs: build-cross-platform
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Extract version from tag
+        id: get_version
+        run: echo "version=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+
+      - name: Download RID-specific tool packages
+        uses: actions/download-artifact@v4
+        with:
+          pattern: tool-package-*
+          merge-multiple: true
+          path: ./tool-feed
+
+      - name: Verify a Native AOT package arrived for every native RID
+        env:
+          VERSION: ${{ steps.get_version.outputs.version }}
+        run: |
+          set -euo pipefail
+          missing=false
+          for runtime in win-x64 win-arm64 linux-x64 linux-arm64; do
+            package="./tool-feed/NetPace.$runtime.$VERSION.nupkg"
+            if [ ! -f "$package" ]; then
+              echo "FAIL: no tool package for $runtime — its native build did not produce one."
+              missing=true
+            else
+              echo "$runtime: $(stat -c%s "$package") bytes"
+            fi
+          done
+          if [ "$missing" = "true" ]; then exit 1; fi
+
+      - name: Restore dependencies
+        run: dotnet restore src
+
+      # macOS has no Native AOT build (out of scope), so its two RIDs ship framework-dependent packages
+      # and run on the .NET runtime the SDK already provides. Both cross-pack fine from this runner.
+      - name: Pack macOS tool packages
+        env:
+          VERSION: ${{ steps.get_version.outputs.version }}
+        run: |
+          set -euo pipefail
+          for runtime in osx-x64 osx-arm64; do
+            dotnet pack src/NetPace.Console/NetPace.Console.csproj \
+              --configuration Release \
+              --runtime "$runtime" \
+              -p:PackageVersion="$VERSION" \
+              -p:Version="$VERSION" \
+              -p:AssemblyVersion="$VERSION" \
+              -p:FileVersion="$VERSION" \
+              -p:InformationalVersion="$VERSION" \
+              --output ./tool-feed
+          done
+
+      # The wrapper package is what users name: it carries no binary, only the list of RID packages the
+      # installer picks from. CreateRidSpecificToolPackages=false stops this pack rebuilding the six
+      # RID packages framework-dependent and overwriting the Native AOT ones above.
+      - name: Pack wrapper tool package
+        env:
+          VERSION: ${{ steps.get_version.outputs.version }}
+        run: |
+          set -euo pipefail
+          dotnet pack src/NetPace.Console/NetPace.Console.csproj \
+            --configuration Release \
+            -p:CreateRidSpecificToolPackages=false \
+            -p:PackageVersion="$VERSION" \
+            -p:Version="$VERSION" \
+            -p:AssemblyVersion="$VERSION" \
+            -p:FileVersion="$VERSION" \
+            -p:InformationalVersion="$VERSION" \
+            --output ./tool-feed
+
+      # Installing from the packed feed and asking the command its version is the one check that spans
+      # every part of the set: the wrapper resolves a RID package, the RID package carries a runnable
+      # binary, and the binary reports the tag rather than the 0.0.0 source-build placeholder (#341 was
+      # that drift, unnoticed, in the library package). Nothing is pushed if it fails.
+      - name: Verify the installed tool reports the tag
+        env:
+          VERSION: ${{ steps.get_version.outputs.version }}
+        run: |
+          set -euo pipefail
+          dotnet tool install NetPace --version "$VERSION" --source ./tool-feed --tool-path ./tool-check
+          reported=$(./tool-check/netpace --version)
+          echo "netpace --version reported: $reported"
+          if [ "$reported" != "$VERSION" ]; then
+            echo "FAIL: the installed tool reports '$reported', not the tag '$VERSION'."
+            exit 1
+          fi
+
+      - name: Publish to NuGet
+        run: |
+          dotnet nuget push ./tool-feed/*.nupkg \
+            --api-key ${{ secrets.NUGET_API_KEY }} \
+            --source https://api.nuget.org/v3/index.json \
+            --skip-duplicate
 
   attach-to-release:
     needs: build-cross-platform
@@ -216,9 +352,12 @@ jobs:
         id: get_version
         run: echo "version=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
 
-      - name: Download all artifacts
+      # Archives only: the tool packages ride the same workflow but are pushed to NuGet, not attached
+      # to the release, and `files: ./artifacts/**/*` below would otherwise attach every .nupkg too.
+      - name: Download all archive artifacts
         uses: actions/download-artifact@v4
         with:
+          pattern: netpace-*
           path: ./artifacts
 
       - name: Verify framework-dependent and AOT binaries are smaller than standalone

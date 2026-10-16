@@ -4,9 +4,11 @@ name: Shell Tests
 # rather than listed, so a new matrix is gated the moment it is committed, wherever it lives —
 # a per-file list is exactly how the three hook matrices came to be ungated in the first place.
 #
-# Deliberately its own workflow rather than a step in dotnet.yml: the matrices need only bash, jq,
-# git, gh and timeout on a non-root runner, all true of ubuntu-latest, so they run in parallel with
-# the .NET build and still report when it is red.
+# Deliberately its own workflow rather than a step in dotnet.yml: the matrices run against the
+# scripts and packaging of this repository rather than its compiled output, so they run in parallel
+# with the .NET build and still report when it is red. Most need only bash, jq, git, gh and timeout
+# on a non-root runner; tool-package.tests.sh drives the real `dotnet pack` and `dotnet tool install`,
+# so the SDK is set up for every matrix rather than conditioned on which one is running.
 
 on:
   pull_request:
@@ -59,6 +61,12 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
+
+    # global.json pins .NET 10, which the runner image does not carry.
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: 10.0.x
 
     - name: Run ${{ matrix.script }}
       # The script name comes from repository content, so it is passed through the environment and

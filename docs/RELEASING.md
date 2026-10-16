@@ -1,6 +1,6 @@
 # Releasing NetPace
 
-This document describes the release pipeline that builds and attaches downloadable artifacts to a GitHub Release when a semver tag is pushed.
+This document describes the release pipeline that runs when a semver tag is pushed: it builds and attaches downloadable artifacts to a GitHub Release, publishes the `NetPace` .NET tool package to NuGet, and publishes the `NetPace.Core` library package when the library changed.
 
 ## Release matrix
 
@@ -53,9 +53,8 @@ Every release archive contains **exactly one entry** — the executable, named `
 
 The "Create archive" workflow step uses a **whitelist** approach: it archives the binary by name (`netpace.exe` on Windows, `netpace` elsewhere) rather than zipping/tarring the entire publish directory. All variants are designed to produce a single binary — `-p:PublishSingleFile=true` for non-AOT, native AOT for the AOT variants — but the publish directory also contains toolchain by-products that must not ship to end users:
 
-- `NetPace.Core.xml` — emitted because `NetPace.Core.csproj` sets `<GenerateDocumentationFile>true</GenerateDocumentationFile>` for NuGet consumers.
-- `netpace.pdb` — emitted by the Windows linker for AOT builds regardless of `<DebugType>`.
-- `netpace.dbg` — emitted by the Linux AOT toolchain when `StripSymbols` is on (the default for Release).
+- `NetPace.Core.xml` — emitted because `NetPace.Core.csproj` sets `<GenerateDocumentationFile>true</GenerateDocumentationFile>` for NuGet consumers. Removed from publish output by the `ExcludeDocXmlFromPublish` target in `NetPace.Console.csproj`, which the whitelist then makes moot for archives.
+- `netpace.dbg` (Linux) / `netpace.pdb` (Windows) — the native symbol file the AOT toolchain emits beside the binary. `NetPace.Console.csproj` sets `<CopyOutputSymbolsToPublishDirectory>false</CopyOutputSymbolsToPublishDirectory>` for AOT publishes, so it no longer reaches the publish directory at all. That matters beyond the archives: the AOT publish directory is also what the RID-specific tool package is packed from, and no whitelist filters that — the symbol file is roughly twice the size of the binary, and it would otherwise triple every native tool package. The AOT targets copy it in *after* `Publish` has run, so a publish-output filter cannot reach it; suppressing the copy is the only lever.
 
 Archiving by name keeps the release contract immune to whatever the next toolchain version decides to emit alongside the binary — no per-extension scrub logic to maintain.
 
@@ -102,6 +101,34 @@ The `IsAotCompatible=true` property on `NetPace.Core.csproj` causes `dotnet pack
 
 The GitHub Release / binary-attachment flow via `release-binaries.yml` is unaffected and ships every tag.
 
+## .NET tool package
+
+Every tag publishes the `NetPace` .NET tool package to NuGet, so `dotnet tool install -g NetPace` installs that release and `dotnet tool update -g NetPace` moves to it. The package set is seven packages per tag, all at the tag's version:
+
+| Package | Contents | Packed by |
+|---------|----------|-----------|
+| `NetPace` | No binary — the wrapper package, carrying the command name and the list of RID packages the installer picks from | `publish-tool-package` job (`release-binaries.yml`) |
+| `NetPace.win-x64` | Native AOT binary | `build-cross-platform` matrix, `win-x64-aot` entry |
+| `NetPace.win-arm64` | Native AOT binary | `build-cross-platform` matrix, `win-arm64-aot` entry |
+| `NetPace.linux-x64` | Native AOT binary | `build-cross-platform` matrix, `linux-x64-aot` entry |
+| `NetPace.linux-arm64` | Native AOT binary | `build-cross-platform` matrix, `linux-arm64-aot` entry |
+| `NetPace.osx-x64` | Framework-dependent build | `publish-tool-package` job |
+| `NetPace.osx-arm64` | Framework-dependent build | `publish-tool-package` job |
+
+**Why the packing is split.** A RID-specific tool package carrying a Native AOT binary can only be built on a runner matching that RID — the same constraint as the AOT archives (*Runner per RID*). So each AOT matrix entry packs its own RID package on its native runner and uploads it as a `tool-package-<rid>` artifact. The `publish-tool-package` job then adds the two macOS packages (framework-dependent, so they cross-pack from `ubuntu-latest`) and the wrapper, and pushes the set.
+
+**Platform coverage.** The wrapper lists exactly those six RIDs, and the installer resolves the one matching the user's machine. A platform outside the list — Alpine-style Linux, for instance — cannot install the tool package at all: the wrapper carries no RID-agnostic fallback implementation, because packing one would mean a seventh, framework-dependent copy of NetPace in the package the installer reaches for *first*, on every platform. Those users download a release archive instead (USER_GUIDE.md says so).
+
+**Release gates.** Three, all before `dotnet nuget push`:
+
+1. `publish-tool-package` needs `build-cross-platform`, so a failed native build stops the push.
+2. A missing-package check names any of the four native RIDs whose package did not arrive, rather than silently pushing a wrapper that points at a package nobody published.
+3. The packed set is installed from a local feed and asked its version: `dotnet tool install NetPace --source ./tool-feed --tool-path ./tool-check` then `./tool-check/netpace --version`, which must equal the tag. One check spanning the whole set — the wrapper resolves a RID package, that package carries a runnable binary, and the binary reports the tag rather than the `0.0.0` source-build placeholder (see *Source-build version*).
+
+**No conditional skip.** The tool package publishes on every tag, unlike `NetPace.Core` (*Conditional NuGet publish*). The library's skip protects SemVer meaning for consumers who compile against it; a CLI user installing by version needs the release they asked for to exist. This is also why the tool package is published by `release-binaries.yml` rather than `publish-nuget.yml` — it ships with the binaries, on the same trigger and the same gates, not with the library.
+
+**Local verification.** `scripts/tool-package.tests.sh` packs the console project, installs the result from a sandbox feed, and runs it — including `dnx`, the install-nothing path. It packs the framework-dependent form, because one machine cannot produce the four native binaries; the AOT pack is gated by the release workflow alone. The matrix runs on every pull request via `shell-tests.yml`.
+
 ## Source-build version
 
 `src/Directory.Build.props` pins all four version properties — `Version`, `FileVersion`, `AssemblyVersion`, `InformationalVersion` — to `0.0.0`, so `netpace --version` from a local `dotnet build` or `dotnet run` reports `0.0.0`.
@@ -117,7 +144,7 @@ The GitHub Release / binary-attachment flow via `release-binaries.yml` is unaffe
 The .NET SDK version is encoded in two places, both targeting **.NET 10 (LTS)**:
 
 - **`global.json`** (repo root) pins `"version": "10.0.0"` with `"rollForward": "latestFeature"`, so local and CI builds resolve to the latest installed 10.0.x feature band — reproducible without hard-pinning a patch that may not be on every runner.
-- **Each workflow** (`dotnet.yml`, `codeql.yml`, `publish-nuget.yml`, `release-binaries.yml`) sets `dotnet-version: 10.0.x` on `actions/setup-dotnet`, which installs a 10.0 SDK that `global.json` then honours.
+- **Each workflow** (`dotnet.yml`, `codeql.yml`, `publish-nuget.yml`, `release-binaries.yml`, `shell-tests.yml`) sets `dotnet-version: 10.0.x` on `actions/setup-dotnet`, which installs a 10.0 SDK that `global.json` then honours.
 
 When bumping the SDK major, update both places in lockstep.
 
