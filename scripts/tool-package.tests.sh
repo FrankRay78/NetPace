@@ -73,6 +73,9 @@ if [ "$RC" != 0 ]; then
 fi
 
 echo "A package exists for every platform the tool covers:"
+# Every case below reads the feed and the wrapper's own settings file, not the pack output, so the
+# pack's log is cleared first rather than being reported against a failure it had nothing to do with.
+OUTPUT=""; RC=0
 ok "the wrapper package carries the user-facing id" '[ -f "$FEED/$PACKAGE.$VERSION.nupkg" ]'
 SETTINGS="$(python3 -I -c "
 import sys, zipfile
