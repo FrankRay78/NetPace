@@ -11,19 +11,25 @@ public sealed partial class SpeedTestExtensionsTests
     public sealed class Culture
     {
         /// <summary>
-        /// 7000 bytes in 3 seconds is 18667 bits per second, which renders as the fractional
+        /// 7000 bytes in 3 seconds is 18666.67 bits per second, which renders as the fractional
         /// "18.67 Kbps" — a value whose decimal separator a comma-decimal culture would change.
         /// </summary>
         private static SpeedTestResult FractionalSpeed() =>
             new() { BytesProcessed = 7000, ElapsedMilliseconds = 3000, RequestsSucceeded = 1, RequestsFailed = 0 };
 
-        private static void UnderCulture(string name, Action action)
+        /// <summary>
+        /// Runs <paramref name="format"/> on a thread set to the named culture and hands back what
+        /// it produced, restoring the original culture first. Only the formatting runs under the
+        /// swapped culture: the assertions are left to the caller, so a failure is reported under
+        /// the culture the test runner started in.
+        /// </summary>
+        private static T UnderCulture<T>(string name, Func<T> format)
         {
             var originalCulture = CultureInfo.CurrentCulture;
             try
             {
                 CultureInfo.CurrentCulture = new CultureInfo(name);
-                action();
+                return format();
             }
             finally
             {
@@ -42,13 +48,10 @@ public sealed partial class SpeedTestExtensionsTests
             var result = FractionalSpeed();
 
             // When it is formatted on a thread whose culture is not English.
-            UnderCulture(culture, () =>
-            {
-                var formatted = result.GetSpeedString(SpeedUnit.BitsPerSecond, SpeedUnitSystem.SI);
+            var formatted = UnderCulture(culture, () => result.GetSpeedString(SpeedUnit.BitsPerSecond, SpeedUnitSystem.SI));
 
-                // Then the text reads the same as it does under an English culture.
-                Assert.Equal("18.67 Kbps", formatted);
-            });
+            // Then the text reads the same as it does under an English culture.
+            Assert.Equal("18.67 Kbps", formatted);
         }
 
         [Theory]
@@ -60,14 +63,11 @@ public sealed partial class SpeedTestExtensionsTests
             var result = FractionalSpeed();
 
             // When
-            UnderCulture(culture, () =>
-            {
-                var (speed, unit) = result.GetSpeedStringParts(SpeedUnit.BitsPerSecond, SpeedUnitSystem.SI);
+            var (speed, unit) = UnderCulture(culture, () => result.GetSpeedStringParts(SpeedUnit.BitsPerSecond, SpeedUnitSystem.SI));
 
-                // Then
-                Assert.Equal("18.67", speed);
-                Assert.Equal("Kbps", unit);
-            });
+            // Then
+            Assert.Equal("18.67", speed);
+            Assert.Equal("Kbps", unit);
         }
 
         [Theory]
@@ -79,13 +79,10 @@ public sealed partial class SpeedTestExtensionsTests
             var result = FractionalSpeed();
 
             // When
-            UnderCulture(culture, () =>
-            {
-                var formatted = result.GetSpeedString(SpeedUnit.BitsPerSecond, SpeedUnitSystem.SI, SpeedScale.Kilo);
+            var formatted = UnderCulture(culture, () => result.GetSpeedString(SpeedUnit.BitsPerSecond, SpeedUnitSystem.SI, SpeedScale.Kilo));
 
-                // Then
-                Assert.Equal("18.67 Kbps", formatted);
-            });
+            // Then
+            Assert.Equal("18.67 Kbps", formatted);
         }
 
         [Theory]
@@ -97,13 +94,10 @@ public sealed partial class SpeedTestExtensionsTests
             var progress = new SpeedTestProgress { BytesProcessed = 7000, ElapsedMilliseconds = 3000 };
 
             // When
-            UnderCulture(culture, () =>
-            {
-                var formatted = progress.GetSpeedString(SpeedUnit.BitsPerSecond, SpeedUnitSystem.SI);
+            var formatted = UnderCulture(culture, () => progress.GetSpeedString(SpeedUnit.BitsPerSecond, SpeedUnitSystem.SI));
 
-                // Then
-                Assert.Equal("18.67 Kbps", formatted);
-            });
+            // Then
+            Assert.Equal("18.67 Kbps", formatted);
         }
     }
 }

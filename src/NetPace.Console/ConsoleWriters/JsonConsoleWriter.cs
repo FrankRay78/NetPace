@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.Json;
 using NetPace.Console.Diagnostics;
 using NetPace.Core;
@@ -34,7 +35,7 @@ public sealed class JsonConsoleWriter : IConsoleWriter
 
         // Display speed test result.
         long? latencyMilliseconds = !settings.NoLatency ? fastest.LatencyMilliseconds : null;
-        var latencyFormatted = latencyMilliseconds is not null ? $"{latencyMilliseconds} ms" : null;
+        var latencyFormatted = latencyMilliseconds is not null ? $"{latencyMilliseconds.Value.ToString(CultureInfo.InvariantCulture)} ms" : null;
         var downloadFormatted = downloadResult?.GetSpeedString(settings.SpeedUnit, settings.SpeedUnitSystem, settings.SpeedScale);
         var uploadFormatted = uploadResult?.GetSpeedString(settings.SpeedUnit, settings.SpeedUnitSystem, settings.SpeedScale);
 

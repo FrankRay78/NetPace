@@ -2,6 +2,7 @@ using System.CommandLine;
 
 using Microsoft.Extensions.DependencyInjection;
 using NetPace.Console.Commands;
+using NetPace.Console.ConsoleWriters;
 using NetPace.Console.Diagnostics;
 using NetPace.Core;
 using NetPace.Core.Clients.Ookla;
@@ -68,6 +69,10 @@ public static class Program
             if (value != null && value.Length != 1)
             {
                 result.AddError("--csv-delimiter must be a single character.");
+            }
+            else if (value != null && Timestamps.MachineReadableCharacters.Contains(value, StringComparison.Ordinal))
+            {
+                result.AddError($"--csv-delimiter cannot be '{value}'. The CSV timestamp contains that character, so it would split the timestamp across two fields. Use a delimiter such as ',' or ';'.");
             }
         });
 

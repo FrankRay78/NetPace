@@ -2,8 +2,7 @@ namespace NetPace.Console.Tests;
 
 /// <summary>
 /// The <c>--datetimeformat</c> switch is gone. Each output mode now has one fixed timestamp format,
-/// so a script reading CSV or JSON no longer has to know which format a run chose, and a value that
-/// contained the CSV delimiter can no longer split the timestamp across two fields.
+/// so a script reading CSV or JSON no longer has to know which format a run chose.
 /// </summary>
 public sealed partial class NetPaceConsoleTests
 {
@@ -11,18 +10,18 @@ public sealed partial class NetPaceConsoleTests
     {
         /// <summary>
         /// A host whose speed tester records the one call a run makes before measuring — server
-        /// discovery — so a test can assert the run never got that far. Every measurement delegate
-        /// is left unconfigured and throws, so a run that proceeds cannot pass quietly.
+        /// discovery — so a test can assert the run never got that far. Every later delegate is left
+        /// unconfigured and throws, so a run that got past discovery could not pass quietly either.
         /// </summary>
-        private static (CommandLineTestHost host, List<string> measurementCalls) HostRecordingMeasurements()
+        private static (CommandLineTestHost host, List<string> serviceCalls) HostRecordingMeasurements()
         {
-            var measurementCalls = new List<string>();
+            var serviceCalls = new List<string>();
 
             var speedTester = new SpeedTestMock
             {
                 GetServersAsyncFunc = _ =>
                 {
-                    measurementCalls.Add(nameof(ISpeedTestService.GetServersAsync));
+                    serviceCalls.Add(nameof(ISpeedTestService.GetServersAsync));
                     return Task.FromResult<IServer[]>([]);
                 }
             };
@@ -32,7 +31,7 @@ public sealed partial class NetPaceConsoleTests
             services.AddSingleton<IClock, ClockStub>();
             services.AddSingleton<IWaiter, NoDelayStub>();
 
-            return (new CommandLineTestHost(services), measurementCalls);
+            return (new CommandLineTestHost(services), serviceCalls);
         }
 
         [Theory]
@@ -45,28 +44,31 @@ public sealed partial class NetPaceConsoleTests
             // SCENARIO: Datetimeformat option is no longer accepted
 
             // Given
-            var (host, measurementCalls) = HostRecordingMeasurements();
+            var (host, serviceCalls) = HostRecordingMeasurements();
 
             // When the retired option is passed, with a value that used to be accepted or not.
             var result = await host.RunAsync(["--minimal", "-t", "--datetimeformat", format]);
 
-            // Then nothing was measured and the exit code reports the usage error.
-            Assert.Empty(measurementCalls);
+            // Then nothing was even discovered, the exit code reports the usage error, and the
+            // message names the option so the user is not left with a bare failure.
+            Assert.Empty(serviceCalls);
             Assert.NotEqual(0, result.ExitCode);
+            Assert.Contains("--datetimeformat", result.Output);
         }
 
         [Fact]
         public async Task DateTimeFormatOption_WithNoValue_IsRejectedWithoutMeasuring()
         {
             // Given
-            var (host, measurementCalls) = HostRecordingMeasurements();
+            var (host, serviceCalls) = HostRecordingMeasurements();
 
             // When the option is passed bare, which a parse error must also catch.
             var result = await host.RunAsync(["--minimal", "-t", "--datetimeformat"]);
 
             // Then
-            Assert.Empty(measurementCalls);
+            Assert.Empty(serviceCalls);
             Assert.NotEqual(0, result.ExitCode);
+            Assert.Contains("--datetimeformat", result.Output);
         }
 
         [Fact]

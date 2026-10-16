@@ -5,6 +5,12 @@ namespace NetPace.Core;
 /// <summary>
 /// Extension methods for <see cref="SpeedTestResult"/> and <see cref="SpeedTestProgress"/>.
 /// </summary>
+/// <remarks>
+/// Every speed string these methods return is formatted through the invariant culture: <c>.</c> as
+/// the decimal separator, at most two decimal places, and no digit grouping. A consumer therefore
+/// reads the same text whatever culture the calling thread carries, so a formatted speed is safe to
+/// log, compare and parse across machines.
+/// </remarks>
 public static class SpeedTestExtensions
 {
     /// <summary>

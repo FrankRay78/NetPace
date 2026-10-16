@@ -68,7 +68,8 @@ public sealed class SpeedTestCommandSettings
     public required string ServerUrl { get; init; }
 
     /// <summary>
-    /// Include a timestamp in the output.
+    /// Include a timestamp in the output. Governs the default and minimal output only: CSV and JSON
+    /// always carry the timestamp, because a machine-readable row is of little use without one.
     /// </summary>
     public required bool IncludeTimestamp { get; init; }
 

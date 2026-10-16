@@ -27,7 +27,8 @@ public sealed record JsonResult
     /// <summary>
     /// Gets the instant the speed test was performed, as local time carrying its offset from UTC.
     /// Serialized in ISO 8601 form, so a consumer reads one unambiguous instant whatever zone the
-    /// machine that wrote it was in.
+    /// machine that wrote it was in. Always a whole number of seconds, so the JSON and CSV forms of
+    /// one run agree.
     /// </summary>
     public required DateTimeOffset Timestamp { get; init; }
 

@@ -144,6 +144,8 @@ The timestamp has one fixed format per output mode. There is no option to change
 
 The offset is what makes the machine-readable timestamp one unambiguous instant, so results logged from machines in different time zones — or from one machine either side of a clock change — sort and compare directly, and any date parser reads them without being told the format. Where the local offset is zero, that is written `+00:00`. Terminal output leaves the offset out: you already know the zone you are sitting in.
 
+Because that timestamp is a CSV field like any other, `--csv-delimiter` refuses a character the timestamp itself contains — a digit, `-`, `T`, `:` or `+`. Such a delimiter would split the timestamp across two fields and leave the row with one more field than its header, so NetPace reports the clash and exits rather than writing a row no CSV reader can line up. `,`, `;` and tab are all unaffected.
+
 **NetPace output does not follow the machine's regional settings.** Every value reads the same way on every machine: speeds use `.` as the decimal separator with no digit grouping, and timestamps use the Gregorian calendar with ASCII digits. A result logged on a machine set to German, Thai or any other locale is byte-for-byte comparable with one logged next to it, and a comma-delimited CSV row can never gain a field from a decimal comma. `NetPace.Core` formats speeds the same way, so a library consumer reads the same text whatever culture its thread carries.
 
 ---

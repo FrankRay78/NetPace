@@ -37,7 +37,8 @@ public sealed class CSVConsoleWriter : IConsoleWriter
         var (downloadSpeed, downloadUnit) = FormatSpeedColumn(downloadResult, settings);
         var (uploadSpeed, uploadUnit) = FormatSpeedColumn(uploadResult, settings);
 
-        var latencyValue = settings.CSVHeaderUnits ? $"{fastest.LatencyMilliseconds}" : $"{fastest.LatencyMilliseconds} ms";
+        var latencyMs = fastest.LatencyMilliseconds.ToString(CultureInfo.InvariantCulture);
+        var latencyValue = settings.CSVHeaderUnits ? latencyMs : $"{latencyMs} ms";
 
         // Header row, emitted on the first iteration only. Each speed label takes its unit from
         // the same formatting call that produced the cell below it, so the header cannot disagree
@@ -66,14 +67,14 @@ public sealed class CSVConsoleWriter : IConsoleWriter
         // Data row.
         console.WriteLine(string.Join(settings.CSVDelimiter, new[]
         {
-            clock.Now.ToWholeSecond().ToString(Timestamps.MachineReadable, CultureInfo.InvariantCulture),
+            clock.Now.ToMachineReadable(),
             !settings.NoLatency ? latencyValue : null,
             downloadSpeed,
-            downloadResult?.RequestsSucceeded.ToString(),
-            downloadResult?.RequestsFailed.ToString(),
+            downloadResult?.RequestsSucceeded.ToString(CultureInfo.InvariantCulture),
+            downloadResult?.RequestsFailed.ToString(CultureInfo.InvariantCulture),
             uploadSpeed,
-            uploadResult?.RequestsSucceeded.ToString(),
-            uploadResult?.RequestsFailed.ToString(),
+            uploadResult?.RequestsSucceeded.ToString(CultureInfo.InvariantCulture),
+            uploadResult?.RequestsFailed.ToString(CultureInfo.InvariantCulture),
             clientInfoProvider.GetIPAddress(),
             clientInfoProvider.GetHostname()
         }.Where(s => s is not null)));
