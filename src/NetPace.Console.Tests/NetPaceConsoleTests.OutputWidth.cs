@@ -39,7 +39,7 @@ public sealed partial class NetPaceConsoleTests
 
             using var parsed = JsonDocument.Parse(lines[0]);
             Assert.Equal("Test Sponsor 1", parsed.RootElement.GetProperty("ServerSponsor").GetString());
-            Assert.Equal("8 Kbps", parsed.RootElement.GetProperty("DownloadSpeed").GetString());
+            Assert.Equal(8000, parsed.RootElement.GetProperty("DownloadSpeedBitsPerSecond").GetInt64());
 
             Assert.Equal(await RunAtWidthAsync(CommandLineTestHost.UnlimitedWidth, ["--json"]), output);
             await Verify(output);

@@ -99,9 +99,10 @@ public sealed partial class NetPaceConsoleTests
         [InlineData("--json-pretty", "Kilo")]
         [InlineData("--json-pretty", "Mega")]
         [Theory]
-        public async Task Should_Perform_Speed_Test_With_Json_Multiple_Times_With_Fixed_Scale(string jsonSwitch, string scale)
+        public async Task Should_Perform_Speed_Test_With_Json_Multiple_Times_Under_Every_Unit_Scale(string jsonSwitch, string scale)
         {
-            // Given
+            // Given a tester whose speed changes between runs, so an automatic scale would have
+            // reported different units from one result to the next.
             var services = new ServiceCollection();
             services.AddSingleton<ISpeedTestService, VariableSpeedTester>();
             services.AddSingleton<IClock, IncrementingClockStub>();
@@ -308,7 +309,7 @@ public sealed partial class NetPaceConsoleTests
         [Theory]
         public async Task Should_Report_Speed_And_Latency_As_Json_Numbers(string jsonSwitch)
         {
-            // SCENARIO: JSON reports speed and latency as numbers in fixed units
+            // SCENARIO: JSON reports speed and latency only as numbers
 
             // Given a stub that measures 100 ms of latency, 1000 bytes downloaded in 1000 ms
             // (8,000 bits per second) and 7000 bytes uploaded in 3000 ms (18,666.67, rounded).
@@ -317,7 +318,7 @@ public sealed partial class NetPaceConsoleTests
             // When
             var result = await host.RunAsync([jsonSwitch]);
 
-            // Then the measurements appear as numbers in fixed units.
+            // Then each measurement appears once, as a number in a fixed unit.
             Assert.Equal(0, result.ExitCode);
             var json = ParseJsonResult(result.Output);
             Assert.Equal(JsonValueKind.Number, json.GetProperty("LatencyMilliseconds").ValueKind);
@@ -327,39 +328,32 @@ public sealed partial class NetPaceConsoleTests
             Assert.Equal(8000, json.GetProperty("DownloadSpeedBitsPerSecond").GetInt64());
             Assert.Equal(18667, json.GetProperty("UploadSpeedBitsPerSecond").GetInt64());
 
-            // And the formatted values are there alongside them, unchanged.
-            Assert.Equal("100 ms", json.GetProperty("Latency").GetString());
-            Assert.Equal("8 Kbps", json.GetProperty("DownloadSpeed").GetString());
-            Assert.Equal("18.67 Kbps", json.GetProperty("UploadSpeed").GetString());
+            // And the fields that held a formatted speed or latency are no longer written.
+            Assert.False(json.TryGetProperty("Latency", out _));
+            Assert.False(json.TryGetProperty("DownloadSpeed", out _));
+            Assert.False(json.TryGetProperty("UploadSpeed", out _));
+
+            // And the whole result, so the full user-visible contract is reviewable.
+            await Verify(result.Output).UseParameters(jsonSwitch);
         }
 
-        [Fact]
-        public async Task Should_Report_The_Same_Json_Numbers_Whatever_The_Unit_Switches_Say()
+        [InlineData("--json")]
+        [InlineData("--json-pretty")]
+        [Theory]
+        public async Task Should_Report_The_Same_Json_Whatever_The_Unit_Switches_Say(string jsonSwitch)
         {
-            // SCENARIO: Unit switches change only the formatted values in JSON
+            // SCENARIO: Unit switches do not change JSON output
 
             // Given the same speed test run twice, once with the default units and once with every
             // unit switch set to something else.
-            var defaultUnits = await GetCommandLineTestHost(StubServices()).RunAsync(["--json"]);
+            var defaultUnits = await GetCommandLineTestHost(StubServices()).RunAsync([jsonSwitch]);
             var switchedUnits = await GetCommandLineTestHost(StubServices()).RunAsync(
-                ["--json", "--unit", "BytesPerSecond", "--unit-scale", "Mega", "--unit-system", "IEC"]);
+                [jsonSwitch, "--unit", "BytesPerSecond", "--unit-scale", "Mega", "--unit-system", "IEC"]);
 
-            // Then the numbers are identical in both.
+            // Then neither run reports an error, and the two outputs are the same.
             Assert.Equal(0, defaultUnits.ExitCode);
             Assert.Equal(0, switchedUnits.ExitCode);
-            var before = ParseJsonResult(defaultUnits.Output);
-            var after = ParseJsonResult(switchedUnits.Output);
-            Assert.Equal(before.GetProperty("LatencyMilliseconds").GetInt64(), after.GetProperty("LatencyMilliseconds").GetInt64());
-            Assert.Equal(before.GetProperty("DownloadSpeedBitsPerSecond").GetInt64(), after.GetProperty("DownloadSpeedBitsPerSecond").GetInt64());
-            Assert.Equal(before.GetProperty("UploadSpeedBitsPerSecond").GetInt64(), after.GetProperty("UploadSpeedBitsPerSecond").GetInt64());
-
-            // And only the formatted speeds differ — no unit option shapes the formatted latency.
-            Assert.NotEqual(before.GetProperty("DownloadSpeed").GetString(), after.GetProperty("DownloadSpeed").GetString());
-            Assert.NotEqual(before.GetProperty("UploadSpeed").GetString(), after.GetProperty("UploadSpeed").GetString());
-            Assert.Equal(before.GetProperty("Latency").GetString(), after.GetProperty("Latency").GetString());
-
-            // Both results in full, so the formatted values the switches do shape are reviewable.
-            await Verify(defaultUnits.Output + switchedUnits.Output);
+            Assert.Equal(defaultUnits.Output, switchedUnits.Output);
         }
 
         private static ServiceCollection StubServices()
