@@ -1,0 +1,156 @@
+name: Submit winget Package
+
+# Submits an updated winget manifest to microsoft/winget-pkgs for each released version, so a
+# Windows user's `winget upgrade` reaches the current release (docs/RELEASING.md, *winget package*).
+#
+# Deliberately its own workflow rather than a job in release-binaries.yml: submitting to someone
+# else's repository under the maintainer's own credentials is a different function from building
+# binaries, and it must not be able to fail a release that built and published correctly.
+#
+# Triggered by release-binaries.yml finishing rather than by the tag push that starts it, because
+# the submission reads the archives off the published release and they do not exist until that
+# workflow has attached them. `release: published` is no good either — the GitHub Release is
+# created first and the archives arrive afterwards, so it fires before there is anything to read.
+
+on:
+  workflow_run:
+    workflows: ["Build and Release Cross-Platform Binaries"]
+    types: [completed]
+  # Manual retry for a submission the winget moderators rejected, or one that failed after the
+  # release itself was fine. Registered from the default branch only, as all workflow_dispatch is.
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Released version to submit, e.g. 0.9.0 (no "v" prefix)'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+env:
+  # The winget package identifier is what users type, so it is a contract: publisher-dot-name per
+  # winget convention, with the `netpace` moniker making `winget install netpace` resolve.
+  WINGET_IDENTIFIER: FrankRay78.NetPace
+
+jobs:
+  submit:
+    name: Submit to winget-pkgs
+    # wingetcreate is a Windows executable, and it hashes each archive it is given, so the job
+    # needs a Windows host regardless of where the manifest ends up.
+    runs-on: windows-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      # A failed submission raises an issue (see the final step), because a workflow_run-triggered
+      # failure sends the maintainer no email — a red run nobody is told about is the silent pass
+      # this workflow exists to avoid.
+      issues: write
+
+    # A run of release-binaries.yml that did not succeed has no complete set of archives to submit,
+    # and anything other than a tag push is not a release at all.
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push')
+
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # On a workflow_run the tag that triggered release-binaries.yml arrives as head_branch;
+      # GitHub populates it with the short ref, which for a tag push is the tag name.
+      - name: Resolve version
+        id: version
+        env:
+          DISPATCH_VERSION: ${{ inputs.version }}
+          TRIGGERING_REF: ${{ github.event.workflow_run.head_branch }}
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            version="$DISPATCH_VERSION"
+          else
+            version="$TRIGGERING_REF"
+          fi
+          if [ -z "$version" ]; then
+            echo "::error::Could not determine the released version to submit."
+            exit 1
+          fi
+          echo "Submitting version: $version"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      # Fails before anything is downloaded or submitted: a missing secret is one-off setup that
+      # was never done (docs/RELEASING.md, *One-off setup*), and skipping on it would report a
+      # release as published to winget when nothing was sent.
+      - name: Verify submission token is configured
+        env:
+          WINGET_CREATE_GITHUB_TOKEN: ${{ secrets.WINGET_PKGS_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -z "${WINGET_CREATE_GITHUB_TOKEN:-}" ]; then
+            echo "::error::Secret WINGET_PKGS_TOKEN is not set — see docs/RELEASING.md, One-off setup."
+            exit 1
+          fi
+
+      # Reads every installer URL off the published release and refuses to emit a partial list,
+      # so a release missing a Windows AOT archive stops here rather than producing a manifest
+      # whose download URL 404s. Covered by scripts/winget-release-assets.tests.sh.
+      - name: Resolve installer URLs from the release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          set -euo pipefail
+          bash scripts/winget-release-assets.sh "$VERSION" > winget-urls.txt
+          echo "Installers to submit:"
+          cat winget-urls.txt
+
+      # The standalone exe, taken at latest rather than pinned: wingetcreate tracks the manifest
+      # schema the community repository currently accepts, and a pinned older build starts being
+      # rejected the next time that schema moves.
+      - name: Download wingetcreate
+        run: |
+          set -euo pipefail
+          curl -sSLf -o wingetcreate.exe https://aka.ms/wingetcreate/latest
+          ./wingetcreate.exe info
+
+      # Updates the existing manifest's version, URLs and hashes and opens the pull request against
+      # microsoft/winget-pkgs. The manifest itself is authored by hand once, before the first
+      # automated release (docs/RELEASING.md, *One-off setup*); this only ever moves it forward.
+      # Each URL carries its architecture explicitly, so the submission never depends on
+      # wingetcreate inferring x64 from arm64 by pattern-matching the archive name.
+      - name: Submit updated manifest
+        env:
+          WINGET_CREATE_GITHUB_TOKEN: ${{ secrets.WINGET_PKGS_TOKEN }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          set -euo pipefail
+          mapfile -t urls < winget-urls.txt
+          ./wingetcreate.exe update "$WINGET_IDENTIFIER" \
+            --version "$VERSION" \
+            --urls "${urls[@]}" \
+            --submit
+
+      # AC: a failed submission must be something the maintainer sees. A workflow_run failure
+      # notifies nobody, so the failure is written where it will be read.
+      - name: Report a failed submission
+        if: failure()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          VERSION: ${{ steps.version.outputs.version }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          version="${VERSION:-unknown version}"
+          printf '%s\n\n%s\n\n%s\n' \
+            "The winget submission for \`$version\` did not complete, so \`winget upgrade\` will not reach this release." \
+            "Run: $RUN_URL" \
+            "See docs/RELEASING.md, *If a submission fails or is rejected*." > issue-body.md
+          gh issue create \
+            --title "winget submission failed for $version" \
+            --body-file issue-body.md
