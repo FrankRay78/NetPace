@@ -1,3 +1,4 @@
+using System.Globalization;
 using NetPace.Console.Diagnostics;
 using NetPace.Core;
 
@@ -65,7 +66,7 @@ public sealed class CSVConsoleWriter : IConsoleWriter
         // Data row.
         console.WriteLine(string.Join(settings.CSVDelimiter, new[]
         {
-            clock.Now.ToString(settings.DateTimeFormat),
+            clock.Now.ToWholeSecond().ToString(Timestamps.MachineReadable, CultureInfo.InvariantCulture),
             !settings.NoLatency ? latencyValue : null,
             downloadSpeed,
             downloadResult?.RequestsSucceeded.ToString(),

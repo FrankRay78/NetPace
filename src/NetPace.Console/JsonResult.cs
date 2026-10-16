@@ -25,9 +25,11 @@ public sealed record JsonResult
     // Speed test result
 
     /// <summary>
-    /// Gets the timestamp when the speed test was performed.
+    /// Gets the instant the speed test was performed, as local time carrying its offset from UTC.
+    /// Serialized in ISO 8601 form, so a consumer reads one unambiguous instant whatever zone the
+    /// machine that wrote it was in.
     /// </summary>
-    public required string Timestamp { get; init; }
+    public required DateTimeOffset Timestamp { get; init; }
 
     /// <summary>
     /// Gets the measured latency to the server, or <see langword="null"/> when the latency test was

@@ -126,12 +126,6 @@ public static class Program
         };
         timestampOption.Aliases.Add("-t");
 
-        var datetimeFormatOption = new Option<string>("--datetimeformat")
-        {
-            Description = "The datetime format string, as defined by Microsoft.Net.",
-            DefaultValueFactory = _ => "yyyy-MM-dd HH:mm:ss"
-        };
-
         var profileOption = new Option<Profile>("--profile")
         {
             Description = "Profile bundle of payload settings (Tiny | Small | Medium | Large | Mega).",
@@ -231,7 +225,6 @@ public static class Program
         command.Options.Add(noUploadOption);
         command.Options.Add(serverOption);
         command.Options.Add(timestampOption);
-        command.Options.Add(datetimeFormatOption);
         command.Options.Add(profileOption);
         command.Options.Add(downloadSizeOption);
         command.Options.Add(uploadSizeOption);
@@ -267,7 +260,6 @@ public static class Program
                     NoUpload = parseResult.GetValue(noUploadOption),
                     ServerUrl = parseResult.GetValue(serverOption) ?? string.Empty,
                     IncludeTimestamp = parseResult.GetValue(timestampOption),
-                    DateTimeFormat = parseResult.GetValue(datetimeFormatOption)!,
                     Profile = parseResult.GetValue(profileOption),
                     DownloadSizeMb = parseResult.GetValue(downloadSizeOption),
                     UploadSizeMb = parseResult.GetValue(uploadSizeOption),

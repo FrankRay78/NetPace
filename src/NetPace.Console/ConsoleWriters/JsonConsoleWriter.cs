@@ -43,7 +43,7 @@ public sealed class JsonConsoleWriter : IConsoleWriter
             ServerLocation = fastest.Server.Location,
             ServerSponsor = fastest.Server.Sponsor,
             ServerUrl = fastest.Server.Url,
-            Timestamp = clock.Now.ToString(settings.DateTimeFormat),
+            Timestamp = clock.Now.ToWholeSecond(),
             Latency = latencyFormatted,
             LatencyMilliseconds = latencyMilliseconds,
             DownloadSpeed = downloadFormatted,
