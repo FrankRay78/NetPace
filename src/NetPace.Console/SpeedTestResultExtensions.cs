@@ -1,3 +1,4 @@
+using System.Globalization;
 using NetPace.Core;
 
 namespace NetPace.Console;
@@ -26,6 +27,6 @@ internal static class SpeedTestResultExtensions
     /// </summary>
     public static string GetFailureAnnotation(this SpeedTestResult result) =>
         result.RequestsFailed > 0
-            ? $" ({result.RequestsFailed} of {result.RequestsSucceeded + result.RequestsFailed} requests failed)"
+            ? $" ({result.RequestsFailed.ToString(CultureInfo.InvariantCulture)} of {(result.RequestsSucceeded + result.RequestsFailed).ToString(CultureInfo.InvariantCulture)} requests failed)"
             : string.Empty;
 }

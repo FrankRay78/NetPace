@@ -1,3 +1,4 @@
+using System.Globalization;
 using NetPace.Console.ConsoleWriters;
 using NetPace.Console.Diagnostics;
 using NetPace.Core;
@@ -105,8 +106,8 @@ public sealed class DefaultConsoleWriter : IConsoleWriter
         // Display speed test result.
         console.WriteLine(string.Join(", ", new[]
         {
-            settings.IncludeTimestamp ? clock.Now.ToString(settings.DateTimeFormat) : null,
-            !settings.NoLatency ? $"Latency: {fastest.LatencyMilliseconds} ms" : null,
+            settings.IncludeTimestamp ? clock.Now.ToHumanReadable() : null,
+            !settings.NoLatency ? $"Latency: {fastest.LatencyMilliseconds.ToString(CultureInfo.InvariantCulture)} ms" : null,
             downloadResult is not null ? $"Download: {downloadResult.GetSpeedString(settings.SpeedUnit, settings.SpeedUnitSystem, settings.SpeedScale)}{downloadResult.GetFailureAnnotation()}" : null,
             uploadResult is not null ? $"Upload: {uploadResult.GetSpeedString(settings.SpeedUnit, settings.SpeedUnitSystem, settings.SpeedScale)}{uploadResult.GetFailureAnnotation()}" : null
         }.Where(s => !string.IsNullOrEmpty(s))));

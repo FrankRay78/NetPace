@@ -55,12 +55,12 @@ Show speeds in bytes/sec, using IEC units (KiB, MiB, GiB):
 netpace --unit BytesPerSecond --unit-system IEC
 ```
 
-Add a timestamp in custom date format:  
+Add a timestamp to the result:  
 ```bash
-netpace --timestamp --datetimeformat "dd/MM/yyyy HH:mm"
+netpace --timestamp
 ```
 
-A `--datetimeformat` value that cannot format a date, or that is blank, is rejected as a usage error before any measurement runs: NetPace names the option, reports the value, and exits non-zero (see [Exit codes](#exit-codes)). The check applies whether or not the run would have printed a timestamp, so a bad value cannot sit unnoticed until you add `--timestamp` or switch to CSV or JSON.
+The timestamp has one fixed format per output mode, with no option to change it — see [Timestamps and regional settings](#timestamps-and-regional-settings).
 
 Limit download to 50 MiB and upload to 20 MiB (for low bandwidth connections):  
 ```bash
@@ -106,7 +106,7 @@ netpace --csv
 ```
 ```
 Timestamp,LatencyMilliseconds,DownloadSpeedBitsPerSecond,DownloadSucceeded,DownloadFailed,UploadSpeedBitsPerSecond,UploadSucceeded,UploadFailed,IPAddress,Hostname
-1980-01-01 10:05:00,12,512600000,150,0,48200000,32,0,192.168.1.1,test-host
+1980-01-01T10:05:00+01:00,12,512600000,150,0,48200000,32,0,192.168.1.1,test-host
 ```
 
 **`--unit`, `--unit-scale` and `--unit-system` do not change CSV output at all.** They still shape the default, minimal and JSON output. That is what makes a CSV log safe to append to: under the default automatic scale a formatted speed can be `Kbps` on one run and `Mbps` on the next, so a file collecting rows over weeks would mix units in one column. The numbers never shift, so `--csv` works with `--count` and `--loop` whatever the unit options say, and the numbers match [the numeric fields in JSON](#numeric-values-in-json) for the same run.
@@ -118,7 +118,7 @@ netpace --csv --no-upload
 ```
 ```
 Timestamp,LatencyMilliseconds,DownloadSpeedBitsPerSecond,DownloadSucceeded,DownloadFailed,UploadSpeedBitsPerSecond,UploadSucceeded,UploadFailed,IPAddress,Hostname
-1980-01-01 10:05:00,12,512600000,150,0,,,,192.168.1.1,test-host
+1980-01-01T10:05:00+01:00,12,512600000,150,0,,,,192.168.1.1,test-host
 ```
 
 A download or upload test that ran but failed entirely reports `0`, with its request counts beside it — see [Detecting failed measurements](#detecting-failed-measurements).
@@ -143,7 +143,7 @@ NetPace --json-pretty
   "ServerLocation": "London",
   "ServerSponsor": "Foo Telecom",
   "ServerUrl": "http://speedtest.foo.example:8080/speedtest/upload.php",
-  "Timestamp": "1980-01-01 10:05:00",
+  "Timestamp": "1980-01-01T10:05:00+01:00",
   "Latency": "12 ms",
   "LatencyMilliseconds": 12,
   "DownloadSpeed": "512.6 Mbps",
@@ -166,6 +166,21 @@ NetPace --json-pretty
 The formatted values are still there and still follow the unit options, so a shell one-liner can keep passing one straight into a notification.
 
 A test you skipped with `--no-latency`, `--no-download` or `--no-upload` omits both of its forms. A download or upload test that ran but failed entirely reports `0` in both, with its request counts beside them — see [Detecting failed measurements](#detecting-failed-measurements). A latency measurement that fails ends the run instead, so it reports neither.
+
+### Timestamps and regional settings
+
+The timestamp has one fixed format per output mode. There is no option to change it, so a script reading CSV or JSON never has to know which format a given run chose.
+
+| Output | Timestamp | Example |
+| --- | --- | --- |
+| Default, `--minimal` (with `--timestamp`) | Local time, `yyyy-MM-dd HH:mm:ss` | `2026-10-16 08:21:17` |
+| `--csv`, `--json` (always present) | ISO 8601 local time to the second with its offset from UTC | `2026-10-16T08:21:17+01:00` |
+
+The offset is what makes the machine-readable timestamp one unambiguous instant, so results logged from machines in different time zones — or from one machine either side of a clock change — sort and compare directly, and any date parser reads them without being told the format. Where the local offset is zero, that is written `+00:00`. Terminal output leaves the offset out: you already know the zone you are sitting in.
+
+Because that timestamp is a CSV field like any other, `--csv-delimiter` refuses a character the timestamp itself contains — a digit, `-`, `T`, `:` or `+`. Such a delimiter would split the timestamp across two fields and leave the row with one more field than its header, so NetPace reports the clash and exits rather than writing a row no CSV reader can line up. `,`, `;` and tab are all unaffected.
+
+**NetPace output does not follow the machine's regional settings.** Every value reads the same way on every machine: speeds use `.` as the decimal separator with no digit grouping, and timestamps use the Gregorian calendar with ASCII digits. A result logged on a machine set to German, Thai or any other locale is byte-for-byte comparable with one logged next to it, and a comma-delimited CSV row can never gain a field from a decimal comma. `NetPace.Core` formats speeds the same way, so a library consumer reads the same text whatever culture its thread carries.
 
 ---
 
@@ -232,7 +247,7 @@ Latency: 24 ms, Download: 512.6 Mbps, Upload: 0 bps (32 of 32 requests failed)
 **CSV** — a `Succeeded` and `Failed` column sits next to each speed column, and a total failure reports a speed of `0` beside the counts that say so:
 ```
 Timestamp,LatencyMilliseconds,DownloadSpeedBitsPerSecond,DownloadSucceeded,DownloadFailed,UploadSpeedBitsPerSecond,UploadSucceeded,UploadFailed,IPAddress,Hostname
-1980-01-01 10:05:00,24,512600000,150,0,0,0,32,192.168.1.1,test-host
+1980-01-01T10:05:00+01:00,24,512600000,150,0,0,0,32,192.168.1.1,test-host
 ```
 
 **JSON** — each test that ran gains integer `…Succeeded` / `…Failed` fields alongside its speed. The schema keeps one shape: a total failure reports `0 bps` with the counts beside it, exactly as the other formats do. Only a test you skipped (`--no-download`, `--no-upload`) omits its fields entirely:

@@ -55,7 +55,7 @@ public sealed class CSVConsoleWriter : IConsoleWriter
         // A test that did not run leaves its cells empty; one that ran and failed entirely reports
         // a speed of 0 beside the request counts that say so.
         console.WriteLine(string.Join(settings.CSVDelimiter,
-            clock.Now.ToString(settings.DateTimeFormat),
+            clock.Now.ToMachineReadable(),
             !settings.NoLatency ? fastest.LatencyMilliseconds.ToString(CultureInfo.InvariantCulture) : string.Empty,
             downloadResult?.GetBitsPerSecond().ToString(CultureInfo.InvariantCulture) ?? string.Empty,
             downloadResult?.RequestsSucceeded.ToString(CultureInfo.InvariantCulture) ?? string.Empty,

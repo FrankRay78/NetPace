@@ -261,6 +261,27 @@ public sealed partial class NetPaceConsoleTests
             await Verify(result.Output);
         }
 
+        [Theory]
+        [InlineData("+")]
+        [InlineData("-")]
+        [InlineData(":")]
+        [InlineData("T")]
+        [InlineData("0")]
+        public async Task Should_Reject_A_CSV_Delimiter_That_Occurs_In_The_Timestamp(string delimiter)
+        {
+            // Given
+            var host = GetCommandLineTestHost(StubServices());
+
+            // When a delimiter is chosen that the fixed timestamp itself contains.
+            var result = await host.RunAsync(["--csv", "--csv-delimiter", delimiter]);
+
+            // Then the run is refused up front, naming the option, rather than writing a row whose
+            // timestamp is split across two fields.
+            Assert.NotEqual(0, result.ExitCode);
+            Assert.Contains("--csv-delimiter", result.Output);
+            Assert.DoesNotContain("Hostname", result.Output);
+        }
+
         [Fact]
         public async Task Should_Report_Speed_And_Latency_As_Csv_Numbers()
         {
