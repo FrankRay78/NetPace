@@ -60,6 +60,8 @@ Add a timestamp in custom date format:
 NetPace --timestamp --datetimeformat "dd/MM/yyyy HH:mm"
 ```
 
+A `--datetimeformat` value that cannot format a date, or that is blank, is rejected as a usage error before any measurement runs: NetPace names the option, reports the value, and exits non-zero (see [Exit codes](#exit-codes)). The check applies whether or not the run would have printed a timestamp, so a bad value cannot sit unnoticed until you add `--timestamp` or switch to CSV or JSON.
+
 Limit download to 50 MiB and upload to 20 MiB (for low bandwidth connections):  
 ```bash
 NetPace --downloadsize 50 --uploadsize 20
@@ -205,7 +207,7 @@ Under `--count` or `--loop`, `run.start`, `run.invocation` and `run.end` appear 
 
 ### Exit codes
 
-The exit code reports only whether **NetPace itself** functioned. Network conditions like a total outage, 100% request failure, or no servers found are *data*, not errors, and NetPace will exit `0`. Only an operational failure (for example, being unable to write the `--file` output) exits non-zero. So a `0 bps` measurement still exits `0` by default: inspect the counts (or use `--fail-on`) to detect it.
+The exit code reports only whether **NetPace itself** functioned. Network conditions like a total outage, 100% request failure, or no servers found are *data*, not errors, and NetPace will exit `0`. Only an operational failure (for example, being unable to write the `--file` output) or a usage error (an unusable option value, or two output formats at once) exits non-zero. So a `0 bps` measurement still exits `0` by default: inspect the counts (or use `--fail-on`) to detect it.
 
 If you want a failed measurement to fail the process, opt in with `--fail-on`:
 
