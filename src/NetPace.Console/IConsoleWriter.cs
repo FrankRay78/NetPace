@@ -9,6 +9,14 @@ namespace NetPace.Console;
 public interface IConsoleWriter
 {
     /// <summary>
+    /// Whether this writer's output is a record another program reads, rather than prose for a
+    /// person. Machine-readable output must reach its destination exactly as the format composed
+    /// it, so the run lifts the console's width limit for these writers and leaves human-readable
+    /// output free to wrap to the screen.
+    /// </summary>
+    bool MachineReadable { get; }
+
+    /// <summary>
     /// Performs a speed test and writes the result to the console.
     /// </summary>
     /// <param name="initialSpeedTest">

@@ -12,15 +12,39 @@ namespace NetPace.Console.Tests;
 /// </summary>
 public sealed class CommandLineTestHost
 {
+    /// <summary>
+    /// Spectre.Console's default buffer width - what it falls back to when stdout is not a terminal,
+    /// so the width a piped or redirected run sees.
+    /// </summary>
+    public const int RedirectedWidth = 80;
+
+    /// <summary>
+    /// A width narrower than a machine-readable result line, standing in for a small terminal
+    /// window. The host sets a width and nothing else, so no test here is interactive.
+    /// </summary>
+    public const int NarrowTerminalWidth = 40;
+
+    /// <summary>
+    /// No width limit at all, so nothing the run writes can be wrapped by the console.
+    /// </summary>
+    public const int UnlimitedWidth = int.MaxValue;
+
     private readonly IServiceCollection serviceCollection;
+    private readonly int consoleWidth;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="CommandLineTestHost"/> class.
     /// </summary>
     /// <param name="services">The service collection to use for dependency injection.</param>
-    public CommandLineTestHost(IServiceCollection? services)
+    /// <param name="consoleWidth">
+    /// The console width the run sees. Defaults to <see cref="UnlimitedWidth"/>, which keeps output
+    /// unwrapped whatever the production code does; a test that cares how a narrow destination is
+    /// handled passes <see cref="RedirectedWidth"/> or <see cref="NarrowTerminalWidth"/> instead.
+    /// </param>
+    public CommandLineTestHost(IServiceCollection? services, int consoleWidth = UnlimitedWidth)
     {
         serviceCollection = services ?? new ServiceCollection();
+        this.consoleWidth = consoleWidth;
     }
 
     /// <summary>
@@ -31,8 +55,7 @@ public sealed class CommandLineTestHost
     /// <returns>A test result containing the exit code and output.</returns>
     public async Task<TestResult> RunAsync(string[] args, CancellationToken cancellationToken = default)
     {
-        // Register AnsiConsole with maximum width to prevent text wrapping
-        using var testConsole = new TestConsole().Width(int.MaxValue);
+        using var testConsole = new TestConsole().Width(consoleWidth);
         serviceCollection.TryAddSingleton<IAnsiConsole>(testConsole);
 
         // The diagnostic stream is captured separately from the result stream, so a test can assert
