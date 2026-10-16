@@ -33,11 +33,6 @@ public sealed class SpeedTestCommandSettings
     public required char CSVDelimiter { get; init; }
 
     /// <summary>
-    /// Display speed test units (eg. Mbps) in the CSV header row, not the data rows.
-    /// </summary>
-    public required bool CSVHeaderUnits { get; init; }
-
-    /// <summary>
     /// Display output in Json format.
     /// </summary>
     public required bool Json { get; init; }
@@ -173,11 +168,6 @@ public static class SpeedTestCommandSettingsExtensions
             if (settings.Minimal) switches.Add("--minimal");
 
             throw new ArgumentException($"Only one output format may be specified: {string.Join(", ", switches)}.");
-        }
-
-        if (settings.CSV && settings.CSVHeaderUnits && settings.SpeedScale == SpeedScale.Auto && (settings.Loop || settings.Count > 1))
-        {
-            throw new ArgumentException("The --unit-scale option must not be <Auto> for multiple speed tests (eg. --loop or --count).");
         }
 
         if (settings.NoLatency && settings.NoDownload && settings.NoUpload)

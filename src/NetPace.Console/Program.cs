@@ -71,12 +71,6 @@ public static class Program
             }
         });
 
-        var csvHeaderUnitsOption = new Option<bool>("--csv-header-units")
-        {
-            Description = "Display speed test units (eg. Mbps) in the CSV header row, not the data rows.\n--unit-scale must not be <Auto> for multiple speed tests (eg. --loop or --count).",
-            DefaultValueFactory = _ => false
-        };
-
         var jsonOption = new Option<bool>("--json")
         {
             Description = "Display output in Json format.",
@@ -222,7 +216,6 @@ public static class Program
         command.Options.Add(delayOption);
         command.Options.Add(csvOption);
         command.Options.Add(csvDelimiterOption);
-        command.Options.Add(csvHeaderUnitsOption);
         command.Options.Add(jsonOption);
         command.Options.Add(jsonPrettyOption);
         command.Options.Add(minimalOption);
@@ -258,7 +251,6 @@ public static class Program
                     Delay = parseResult.GetValue(delayOption),
                     CSV = parseResult.GetValue(csvOption),
                     CSVDelimiter = (parseResult.GetValue(csvDelimiterOption) ?? ",")[0],
-                    CSVHeaderUnits = parseResult.GetValue(csvHeaderUnitsOption),
                     Json = parseResult.GetValue(jsonOption),
                     JsonPretty = parseResult.GetValue(jsonPrettyOption),
                     Minimal = parseResult.GetValue(minimalOption),

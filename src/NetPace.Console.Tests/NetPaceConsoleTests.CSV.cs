@@ -1,3 +1,5 @@
+using System.Text.Json;
+
 namespace NetPace.Console.Tests;
 
 public sealed partial class NetPaceConsoleTests
@@ -84,49 +86,14 @@ public sealed partial class NetPaceConsoleTests
             await Verify(result.Output).UseParameters(count, delay);
         }
 
-        [Fact]
-        public async Task Should_Perform_Speed_Test_With_CSV_With_Scale_In_Header()
-        {
-            // Given
-            var services = new ServiceCollection();
-            services.AddSingleton<ISpeedTestService, VariableSpeedTester>();
-            services.AddSingleton<IClock, IncrementingClockStub>();
-            services.AddSingleton<IWaiter, NoDelayStub>();
-            var host = GetCommandLineTestHost(services);
-
-            // When
-            var result = await host.RunAsync(["--csv", "--csv-header-units"]);
-
-            // Then
-            Assert.Equal(0, result.ExitCode);
-            await Verify(result.Output);
-        }
-
-        [Fact]
-        public async Task Should_Perform_Speed_Test_With_CSV_Multiple_Times_With_Fixed_Scale()
-        {
-            // Given
-            var services = new ServiceCollection();
-            services.AddSingleton<ISpeedTestService, VariableSpeedTester>();
-            services.AddSingleton<IClock, IncrementingClockStub>();
-            services.AddSingleton<IWaiter, NoDelayStub>();
-            var host = GetCommandLineTestHost(services);
-
-            // When
-            var result = await host.RunAsync(["--csv", "--count", "3", "--unit-scale", "Mega"]);
-
-            // Then
-            Assert.Equal(0, result.ExitCode);
-            await Verify(result.Output);
-        }
-
+        [InlineData("Auto")]
         [InlineData("Base")]
-        [InlineData("Kilo")]
         [InlineData("Mega")]
         [Theory]
-        public async Task Should_Perform_Speed_Test_With_CSV_Multiple_Times_With_Fixed_Scale_In_Header(string scale)
+        public async Task Should_Perform_Speed_Test_With_CSV_Multiple_Times_Under_Every_Unit_Scale(string scale)
         {
-            // Given
+            // Given a tester whose speed changes between runs, so an automatic scale would have
+            // reported different units from one row to the next.
             var services = new ServiceCollection();
             services.AddSingleton<ISpeedTestService, VariableSpeedTester>();
             services.AddSingleton<IClock, IncrementingClockStub>();
@@ -134,29 +101,11 @@ public sealed partial class NetPaceConsoleTests
             var host = GetCommandLineTestHost(services);
 
             // When
-            var result = await host.RunAsync(["--csv", "--csv-header-units", "--count", "3", "--unit-scale", $"{scale}"]);
+            var result = await host.RunAsync(["--csv", "--count", "3", "--unit-scale", $"{scale}"]);
 
-            // Then
+            // Then the run is accepted and every row carries bare numbers in the same fixed units.
             Assert.Equal(0, result.ExitCode);
             await Verify(result.Output).UseParameters(scale);
-        }
-
-        [Fact]
-        public async Task Should_Return_Validation_Error_For_Speed_Test_With_CSV_Multiple_Times_When_Unit_Scale_Option_Is_Auto()
-        {
-            // Given
-            var services = new ServiceCollection();
-            services.AddSingleton<ISpeedTestService, VariableSpeedTester>();
-            services.AddSingleton<IClock, IncrementingClockStub>();
-            services.AddSingleton<IWaiter, NoDelayStub>();
-            var host = GetCommandLineTestHost(services);
-
-            // When
-            var result = await host.RunAsync(["--csv", "--csv-header-units", "--count", "3", "--unit-scale", "Auto"]);
-
-            // Then the validation error is reported on the console.
-            Assert.Equal(1, result.ExitCode);
-            await Verify(result.Output);
         }
 
         [Fact]
@@ -228,60 +177,6 @@ public sealed partial class NetPaceConsoleTests
 
             // When
             var result = await host.RunAsync(["--csv", "--no-latency"]);
-
-            // Then
-            Assert.Equal(0, result.ExitCode);
-            await Verify(result.Output);
-        }
-
-        [Fact]
-        public async Task Should_Perform_Speed_Test_With_CSV_Header_Units_No_Latency()
-        {
-            // Given
-            var services = new ServiceCollection();
-            services.AddSingleton<ISpeedTestService, SpeedTestStub>();
-            services.AddSingleton<IClock, ClockStub>();
-            services.AddSingleton<IWaiter, NoDelayStub>();
-            var host = GetCommandLineTestHost(services);
-
-            // When
-            var result = await host.RunAsync(["--csv", "--csv-header-units", "--no-latency"]);
-
-            // Then
-            Assert.Equal(0, result.ExitCode);
-            await Verify(result.Output);
-        }
-
-        [Fact]
-        public async Task Should_Perform_Speed_Test_With_CSV_Header_Units_No_Download()
-        {
-            // Given
-            var services = new ServiceCollection();
-            services.AddSingleton<ISpeedTestService, SpeedTestStub>();
-            services.AddSingleton<IClock, ClockStub>();
-            services.AddSingleton<IWaiter, NoDelayStub>();
-            var host = GetCommandLineTestHost(services);
-
-            // When
-            var result = await host.RunAsync(["--csv", "--csv-header-units", "--no-download"]);
-
-            // Then
-            Assert.Equal(0, result.ExitCode);
-            await Verify(result.Output);
-        }
-
-        [Fact]
-        public async Task Should_Perform_Speed_Test_With_CSV_Header_Units_No_Upload()
-        {
-            // Given
-            var services = new ServiceCollection();
-            services.AddSingleton<ISpeedTestService, SpeedTestStub>();
-            services.AddSingleton<IClock, ClockStub>();
-            services.AddSingleton<IWaiter, NoDelayStub>();
-            var host = GetCommandLineTestHost(services);
-
-            // When
-            var result = await host.RunAsync(["--csv", "--csv-header-units", "--no-upload"]);
 
             // Then
             Assert.Equal(0, result.ExitCode);
@@ -371,6 +266,125 @@ public sealed partial class NetPaceConsoleTests
             // Then
             Assert.Equal(0, result.ExitCode);
             await Verify(result.Output);
+        }
+
+        [Fact]
+        public async Task Should_Report_Speed_And_Latency_As_Csv_Numbers()
+        {
+            // SCENARIO: CSV reports speed and latency as numbers in fixed units
+
+            // Given a stub that measures 100 ms of latency, 1000 bytes downloaded in 1000 ms
+            // (8,000 bits per second) and 7000 bytes uploaded in 3000 ms (18,666.67, rounded).
+            var host = GetCommandLineTestHost(StubServices());
+
+            // When
+            var result = await host.RunAsync(["--csv"]);
+
+            // Then the columns are named for their fixed units, and the cells hold bare numbers.
+            Assert.Equal(0, result.ExitCode);
+            var lines = CsvLines(result.Output);
+            Assert.Equal(NumericCsvHeader, lines[0]);
+            Assert.Equal("100", Cell(lines, "LatencyMilliseconds"));
+            Assert.Equal("8000", Cell(lines, "DownloadSpeedBitsPerSecond"));
+            Assert.Equal("18667", Cell(lines, "UploadSpeedBitsPerSecond"));
+
+            // And the whole row, so the full user-visible contract is reviewable.
+            await Verify(result.Output);
+        }
+
+        [Fact]
+        public async Task Should_Report_The_Same_Csv_Numbers_As_Json_For_The_Same_Run()
+        {
+            // Given the same speed test reported in both machine-readable formats.
+            var csv = await GetCommandLineTestHost(StubServices()).RunAsync(["--csv"]);
+            var json = await GetCommandLineTestHost(StubServices()).RunAsync(["--json"]);
+
+            // Then every numeric measurement agrees between the two.
+            Assert.Equal(0, csv.ExitCode);
+            Assert.Equal(0, json.ExitCode);
+            var lines = CsvLines(csv.Output);
+            using var document = JsonDocument.Parse(json.Output);
+            var fields = document.RootElement;
+            foreach (var column in new[] { "LatencyMilliseconds", "DownloadSpeedBitsPerSecond", "UploadSpeedBitsPerSecond" })
+            {
+                Assert.Equal(fields.GetProperty(column).GetInt64().ToString(), Cell(lines, column));
+            }
+        }
+
+        [Fact]
+        public async Task Should_Report_The_Same_Csv_Whatever_The_Unit_Switches_Say()
+        {
+            // SCENARIO: Unit switches do not change CSV output
+
+            // Given the same speed test run twice, once with the default units and once with every
+            // unit switch set to something else.
+            var defaultUnits = await GetCommandLineTestHost(StubServices()).RunAsync(["--csv"]);
+            var switchedUnits = await GetCommandLineTestHost(StubServices()).RunAsync(
+                ["--csv", "--unit", "BytesPerSecond", "--unit-scale", "Mega", "--unit-system", "IEC"]);
+
+            // Then the two outputs are the same.
+            Assert.Equal(0, defaultUnits.ExitCode);
+            Assert.Equal(0, switchedUnits.ExitCode);
+            Assert.Equal(defaultUnits.Output, switchedUnits.Output);
+        }
+
+        [Fact]
+        public async Task Should_Keep_Csv_Columns_Fixed_When_A_Test_Is_Skipped()
+        {
+            // SCENARIO: CSV columns stay fixed when a test is skipped
+
+            // Given a full run and a run that skips the upload test.
+            var full = await GetCommandLineTestHost(StubServices()).RunAsync(["--csv"]);
+            var skipped = await GetCommandLineTestHost(StubServices()).RunAsync(["--csv", "--no-upload"]);
+
+            // Then both headers list the same columns in the same order.
+            Assert.Equal(0, full.ExitCode);
+            Assert.Equal(0, skipped.ExitCode);
+            var fullLines = CsvLines(full.Output);
+            var skippedLines = CsvLines(skipped.Output);
+            Assert.Equal(fullLines[0], skippedLines[0]);
+
+            // And the row has a cell for every column, with the skipped test's cells left empty.
+            Assert.Equal(skippedLines[0].Split(',').Length, skippedLines[1].Split(',').Length);
+            Assert.Equal(string.Empty, Cell(skippedLines, "UploadSpeedBitsPerSecond"));
+            Assert.Equal(string.Empty, Cell(skippedLines, "UploadSucceeded"));
+            Assert.Equal(string.Empty, Cell(skippedLines, "UploadFailed"));
+
+            // And the tests that did run still report their measurements.
+            Assert.Equal("100", Cell(skippedLines, "LatencyMilliseconds"));
+            Assert.Equal("8000", Cell(skippedLines, "DownloadSpeedBitsPerSecond"));
+        }
+
+        /// <summary>
+        /// The CSV header every run writes, whichever tests ran and whatever the unit switches say.
+        /// </summary>
+        private const string NumericCsvHeader = "Timestamp,LatencyMilliseconds,DownloadSpeedBitsPerSecond,DownloadSucceeded,DownloadFailed,UploadSpeedBitsPerSecond,UploadSucceeded,UploadFailed,IPAddress,Hostname";
+
+        private static ServiceCollection StubServices()
+        {
+            var services = new ServiceCollection();
+            services.AddSingleton<ISpeedTestService, SpeedTestStub>();
+            services.AddSingleton<IClock, ClockStub>();
+            services.AddSingleton<IWaiter, NoDelayStub>();
+            return services;
+        }
+
+        /// <summary>
+        /// Splits CSV output into its records, dropping the byte-order mark the console writes ahead
+        /// of the header so the first field of the header compares as itself.
+        /// </summary>
+        private static string[] CsvLines(string output) =>
+            output.TrimStart('\uFEFF').Split('\n', StringSplitOptions.RemoveEmptyEntries).Select(line => line.TrimEnd('\r')).ToArray();
+
+        /// <summary>
+        /// Reads the named column out of the single data row, so a test names the column it means
+        /// rather than counting commas.
+        /// </summary>
+        private static string Cell(string[] lines, string column)
+        {
+            var index = Array.IndexOf(lines[0].Split(','), column);
+            Assert.True(index >= 0, $"The CSV header does not carry a '{column}' column: {lines[0]}");
+            return lines[1].Split(',')[index];
         }
     }
 }
