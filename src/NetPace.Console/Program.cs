@@ -54,7 +54,7 @@ public static class Program
 
         var csvOption = new Option<bool>("--csv")
         {
-            Description = "Display output as a single CSV row (always includes timestamp).",
+            Description = "Display output as a single CSV row (always includes timestamp).\nSpeeds and latency are plain numbers in fixed units, so --unit, --unit-scale and --unit-system do not apply.",
             DefaultValueFactory = _ => false
         };
 
@@ -75,12 +75,6 @@ public static class Program
                 result.AddError($"--csv-delimiter cannot be '{value}'. The CSV timestamp contains that character, so it would split the timestamp across two fields. Use a delimiter such as ',' or ';'.");
             }
         });
-
-        var csvHeaderUnitsOption = new Option<bool>("--csv-header-units")
-        {
-            Description = "Display speed test units (eg. Mbps) in the CSV header row, not the data rows.\n--unit-scale must not be <Auto> for multiple speed tests (eg. --loop or --count).",
-            DefaultValueFactory = _ => false
-        };
 
         var jsonOption = new Option<bool>("--json")
         {
@@ -221,7 +215,6 @@ public static class Program
         command.Options.Add(delayOption);
         command.Options.Add(csvOption);
         command.Options.Add(csvDelimiterOption);
-        command.Options.Add(csvHeaderUnitsOption);
         command.Options.Add(jsonOption);
         command.Options.Add(jsonPrettyOption);
         command.Options.Add(minimalOption);
@@ -256,7 +249,6 @@ public static class Program
                     Delay = parseResult.GetValue(delayOption),
                     CSV = parseResult.GetValue(csvOption),
                     CSVDelimiter = (parseResult.GetValue(csvDelimiterOption) ?? ",")[0],
-                    CSVHeaderUnits = parseResult.GetValue(csvHeaderUnitsOption),
                     Json = parseResult.GetValue(jsonOption),
                     JsonPretty = parseResult.GetValue(jsonPrettyOption),
                     Minimal = parseResult.GetValue(minimalOption),

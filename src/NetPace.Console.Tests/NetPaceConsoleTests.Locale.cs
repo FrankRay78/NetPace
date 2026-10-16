@@ -94,9 +94,7 @@ public sealed partial class NetPaceConsoleTests
         }
 
         /// <summary>
-        /// Every output mode, each asked for a timestamp where that is optional. The stub's upload
-        /// speed is fractional, so each of these carries a decimal separator a comma-decimal
-        /// locale would otherwise change.
+        /// Every output mode, each asked for a timestamp where that is optional.
         /// </summary>
         public static TheoryData<string> EveryOutputMode() =>
         [
@@ -107,8 +105,21 @@ public sealed partial class NetPaceConsoleTests
             "--json-pretty"
         ];
 
+        /// <summary>
+        /// Every output mode that formats a speed for a person to read. The stub's upload speed is
+        /// fractional, so each of these carries a decimal separator a comma-decimal locale would
+        /// otherwise change. CSV is absent because it writes speeds as whole numbers.
+        /// </summary>
+        public static TheoryData<string> EveryModeWithAFormattedSpeed() =>
+        [
+            "-t",
+            "--minimal -t",
+            "--json",
+            "--json-pretty"
+        ];
+
         [Theory]
-        [MemberData(nameof(EveryOutputMode))]
+        [MemberData(nameof(EveryModeWithAFormattedSpeed))]
         public async Task SpeedTest_UnderCommaDecimalLocale_WritesTheSameOutputAsEnglish(string commandLine)
         {
             // SCENARIO: Speed output is the same under a comma-decimal locale
