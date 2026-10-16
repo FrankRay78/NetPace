@@ -62,14 +62,16 @@ winget ships with current versions of Windows 10 and 11, so there is usually not
 winget install netpace
 ```
 
-Open a new terminal afterwards and `netpace` is on your path — no archive to choose and no path to edit. You get the native build for your machine's architecture (x64 or ARM64), which behaves exactly like the release binary of the same version.
+**The NetPace package is pending its first acceptance into the winget community repository.** Until it lands, this reports that no package matched; download a release binary below in the meantime.
 
-Move to each new release with `winget upgrade netpace`, or let `winget upgrade --all` pick NetPace up along with everything else. Remove it with `winget uninstall netpace`, which takes `netpace` back off your path.
+Open a new terminal afterwards and `netpace` is on your path — no archive to choose and nothing for you to edit. You get the native build for your machine's architecture (x64 or ARM64), which behaves exactly like the release binary of the same version.
+
+Move to each new release with `winget upgrade netpace`, or let `winget upgrade --all` pick NetPace up along with everything else. Remove it with `winget uninstall netpace`, after which `netpace` no longer resolves.
 
 To install a known version unattended, from a provisioning script, name the package exactly and pass winget's silent options:
 
 ```powershell
-winget install --id FrankRay78.NetPace --exact --version 0.26.0 --silent --accept-package-agreements --accept-source-agreements
+winget install --id FrankRay78.NetPace --exact --version <version> --silent --accept-package-agreements --accept-source-agreements
 ```
 
 NetPace's Windows binaries are not code-signed, so Windows SmartScreen may warn about the executable the first time you run it.

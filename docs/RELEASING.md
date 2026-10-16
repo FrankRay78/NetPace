@@ -85,24 +85,25 @@ The package is a **zip manifest with a portable nested installer**: it wraps the
 | Decision | Why |
 |----------|-----|
 | Its own workflow, not a job in `release-binaries.yml` | Submitting to someone else's repository under the maintainer's personal credentials is a different function from building binaries, and must not be able to fail a release that built and published correctly. |
-| Triggered by `release-binaries.yml` completing, not by the tag push | The submission reads installer URLs off the published release, and the archives do not exist until that workflow has attached them. |
+| Triggered by `release-binaries.yml` completing, not by the tag push | The submission reads installer URLs off the published release, and the archives do not exist until that workflow has attached them. The trigger matches that workflow's `name:` verbatim, so renaming it silently disables winget submission — no run, nothing red, and no issue raised. Change the two together. |
 | Not triggered by `release: published` | The GitHub Release is created first and the archives arrive afterwards, so that event fires before there is anything to read. |
 | `windows-latest` runner | `wingetcreate` is a Windows executable and hashes each archive it is given. |
 | `wingetcreate` taken at `latest`, not pinned | It tracks the manifest schema the community repository currently accepts; a pinned older build starts being rejected the next time that schema moves. |
 
-**Installer URLs come off the release, never from string concatenation.** `scripts/winget-release-assets.sh` reads the release's own asset list and emits one `<url>|<architecture>` argument per installer, failing if either Windows AOT archive is absent and printing nothing at all when it does. A release missing an archive therefore stops before the submission, rather than producing a manifest whose download URL 404s for every user who installs it. The script also rejects a version carrying a `refs/tags/` prefix or a `v`, both of which would derive archive names that match nothing. Its behaviour is gated by `scripts/winget-release-assets.tests.sh`, which `shell-tests.yml` discovers and runs on every pull request.
+**Installer URLs come off the release, never from string concatenation.** `scripts/winget-release-assets.sh` reads the release's own asset list and emits one `<url>|<architecture>` argument per installer, failing if either Windows AOT archive is absent and printing nothing at all when it does. An archive GitHub never finished receiving counts as absent, so a stranded upload cannot become a URL that 404s either. A release missing an archive therefore stops before the submission, rather than producing a manifest whose download URL 404s for every user who installs it.
+
+**The resolver decides what counts as a release version**, because `release-binaries.yml` builds on any tag push and creates the GitHub Release itself — so a test tag or a release candidate reaches the submission behind a perfectly green release run. Only `MAJOR.MINOR.PATCH` is accepted; a `refs/tags/` prefix, a `v` prefix and a prerelease suffix are all rejected by name. That matters because submitting one publishes it to every `winget upgrade` as the current NetPace, and only a moderated pull request upstream can take it back. Its behaviour is gated by `scripts/winget-release-assets.tests.sh`, which `shell-tests.yml` discovers and runs on every pull request.
 
 Each URL carries its architecture explicitly, so the submission never depends on `wingetcreate` inferring `x64` from `arm64` by pattern-matching the archive name.
 
 ### One-off setup
 
-Three things must exist before the automation can run. All three are one-time; none repeats per release.
+Two things must exist before the automation can run. Both are one-time; neither repeats per release. There is no fork to create — `wingetcreate` forks `microsoft/winget-pkgs` to the token owner's account itself on first submission, and pushes its branch there.
 
-1. **A fork of `microsoft/winget-pkgs`** on the maintainer's GitHub account. `wingetcreate` pushes its branch there and opens the pull request from it.
-2. **A repository secret `WINGET_PKGS_TOKEN`** holding a GitHub personal access token with the `public_repo` scope, owned by the maintainer. It cannot be `GITHUB_TOKEN`, which has no access to another repository. The workflow fails on the missing secret before downloading or submitting anything, rather than skipping — a skip would report a release as published to winget when nothing was sent.
-3. **The first manifest, submitted by hand.** `wingetcreate update` can only move an existing manifest forward; it cannot create one. Run `wingetcreate new` interactively on a Windows machine against both Windows AOT archive URLs of a published release and answer the nested-installer prompts with the values in *winget package* above, then submit. Once that pull request is merged, every subsequent release is automated.
+1. **A repository secret `WINGET_PKGS_TOKEN`** holding a GitHub personal access token with the `public_repo` scope, owned by the maintainer. It must be a **classic** token; `wingetcreate` does not support fine-grained tokens, which is not something the workflow can detect — the secret is present, so the run proceeds and fails later at the submit step. It cannot be `GITHUB_TOKEN`, which has no access to another repository. The workflow fails on the missing secret before downloading or submitting anything, rather than skipping — a skip would report a release as published to winget when nothing was sent.
+2. **The first manifest, submitted by hand.** `wingetcreate update` can only move an existing manifest forward; it cannot create one. Run `wingetcreate new` interactively on a Windows machine against both Windows AOT archive URLs of a published release and answer the nested-installer prompts with the values in *winget package* above, then submit. Once that pull request is merged, every subsequent release is automated.
 
-The README.md and USER_GUIDE.md install instructions go live the moment they merge, so the first hand submission should follow promptly — until it is accepted, `winget install netpace` finds nothing.
+Until that first pull request is accepted, `winget install netpace` finds nothing, so README.md and USER_GUIDE.md both say the package is pending. Removing those two notes is the last step of this setup.
 
 ### If a submission fails or is rejected
 

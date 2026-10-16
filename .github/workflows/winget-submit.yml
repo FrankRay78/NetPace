@@ -14,6 +14,9 @@ name: Submit winget Package
 
 on:
   workflow_run:
+    # Matched on release-binaries.yml's `name:`, verbatim. Renaming that workflow stops this one
+    # firing at all — no run, nothing red, and no issue raised, because there is no run for the
+    # failure step to attach to. Change the two together (docs/RELEASING.md, *winget package*).
     workflows: ["Build and Release Cross-Platform Binaries"]
     types: [completed]
   # Manual retry for a submission the winget moderators rejected, or one that failed after the
@@ -29,8 +32,10 @@ permissions:
   contents: read
 
 env:
-  # The winget package identifier is what users type, so it is a contract: publisher-dot-name per
-  # winget convention, with the `netpace` moniker making `winget install netpace` resolve.
+  # The package identifier `wingetcreate update` addresses, publisher-dot-name per winget
+  # convention. A user-typed contract, so it must match the manifest in microsoft/winget-pkgs
+  # exactly. The `netpace` moniker that makes `winget install netpace` resolve is a field of that
+  # manifest, not of this workflow (docs/RELEASING.md, *winget package*).
   WINGET_IDENTIFIER: FrankRay78.NetPace
 
 jobs:
@@ -47,8 +52,10 @@ jobs:
       # this workflow exists to avoid.
       issues: write
 
-    # A run of release-binaries.yml that did not succeed has no complete set of archives to submit,
-    # and anything other than a tag push is not a release at all.
+    # A run of release-binaries.yml that did not succeed has no complete set of archives to submit.
+    # `event == 'push'` does not on its own prove a tag push, and release-binaries.yml builds on
+    # any tag; what a release version actually looks like is checked by the resolver below, which
+    # is tested and refuses anything that is not MAJOR.MINOR.PATCH.
     if: >-
       github.event_name == 'workflow_dispatch' ||
       (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push')
@@ -135,10 +142,14 @@ jobs:
             --urls "${urls[@]}" \
             --submit
 
-      # AC: a failed submission must be something the maintainer sees. A workflow_run failure
-      # notifies nobody, so the failure is written where it will be read.
+      # A workflow_run failure notifies nobody, so the failure is written where it will be read.
+      #
+      # `!success()` rather than `failure()`: a job stopped by its own timeout-minutes, or
+      # cancelled by hand, is cancelled rather than failed, and `failure()` would skip this step
+      # for exactly the slow hangs — curl on aka.ms, wingetcreate waiting on a prompt — that
+      # leave a release unsubmitted with nobody told.
       - name: Report a failed submission
-        if: failure()
+        if: ${{ !success() }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}

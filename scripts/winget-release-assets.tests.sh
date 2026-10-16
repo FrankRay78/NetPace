@@ -21,9 +21,18 @@ trap 'rm -rf "$SB"' EXIT
 
 # `gh` stub: emits the asset list named by STUB_ASSETS, or fails like a missing release when
 # STUB_FAIL is set. Placed first on PATH so the script under test cannot reach the real gh.
+#
+# It asserts the call before answering it. That single `gh release view` is the script's whole
+# contract with GitHub, so a stub answering any argv would stay green if the version stopped
+# being passed — and `gh release view --json assets` with no tag reads the *latest* release,
+# which is the wrong one on a retry for an older version.
 mkdir -p "$SB/bin"
 cat > "$SB/bin/gh" <<'STUB'
 #!/usr/bin/env bash
+if [ "$*" != "release view ${STUB_EXPECT_VERSION:-} --json assets" ]; then
+  echo "gh stub: expected 'release view ${STUB_EXPECT_VERSION:-} --json assets', got 'gh $*'" >&2
+  exit 64
+fi
 if [ -n "${STUB_FAIL:-}" ]; then
   echo "release not found" >&2
   exit 1
@@ -39,34 +48,52 @@ export PATH="$SB/bin:$PATH"
 
 DL="https://github.com/FrankRay78/NetPace/releases/download"
 
-# The asset list a complete 0.9.0 release carries, trimmed to the entries winget reads. The
-# non-AOT and non-Windows archives are present deliberately: the script must pick the two AOT
-# Windows archives out of a full release, not assume a release holds only what it wants.
+# The asset list a complete 0.9.0 release carries, trimmed to the entries winget reads, with the
+# `state` and `size` real asset objects carry. The non-AOT and non-Windows archives are present
+# deliberately: the script must pick the two AOT Windows archives out of a full release, not
+# assume a release holds only what it wants. The `.sha256` entry sits ahead of the archive it
+# names so that selection has to be an exact match — a prefix match would take the sidecar's URL
+# and the exact-equality assertions below would catch it.
 assets_complete() {
   cat <<JSON
 {"assets":[
-  {"name":"netpace-0.9.0-win-x64-aot.zip","url":"$DL/0.9.0/netpace-0.9.0-win-x64-aot.zip"},
-  {"name":"netpace-0.9.0-win-arm64-aot.zip","url":"$DL/0.9.0/netpace-0.9.0-win-arm64-aot.zip"},
-  {"name":"netpace-0.9.0-win-x64-standalone.zip","url":"$DL/0.9.0/netpace-0.9.0-win-x64-standalone.zip"},
-  {"name":"netpace-0.9.0-linux-x64-aot.tar.gz","url":"$DL/0.9.0/netpace-0.9.0-linux-x64-aot.tar.gz"}
+  {"name":"netpace-0.9.0-win-x64-aot.zip.sha256","state":"uploaded","size":80,"url":"$DL/0.9.0/netpace-0.9.0-win-x64-aot.zip.sha256"},
+  {"name":"netpace-0.9.0-win-x64-aot.zip","state":"uploaded","size":4017822,"url":"$DL/0.9.0/netpace-0.9.0-win-x64-aot.zip"},
+  {"name":"netpace-0.9.0-win-arm64-aot.zip","state":"uploaded","size":3760104,"url":"$DL/0.9.0/netpace-0.9.0-win-arm64-aot.zip"},
+  {"name":"netpace-0.9.0-win-x64-standalone.zip","state":"uploaded","size":41228004,"url":"$DL/0.9.0/netpace-0.9.0-win-x64-standalone.zip"},
+  {"name":"netpace-0.9.0-linux-x64-aot.tar.gz","state":"uploaded","size":3980112,"url":"$DL/0.9.0/netpace-0.9.0-linux-x64-aot.tar.gz"}
 ]}
 JSON
 }
 
 pass=0; fail=0
+# Every case asserts that `gh` was asked for the very version the script was handed, so the stub
+# is told what to expect here rather than per case.
 run() {
   local version="$1"; shift
-  OUTPUT="$(env "$@" bash "$SCRIPT" "$version" 2>&1)"; RC=$?
+  OUTPUT="$(env "STUB_EXPECT_VERSION=$version" "$@" bash "$SCRIPT" "$version" 2>&1)"; RC=$?
 }
 ok() { if eval "$2"; then echo "  ok   $1"; pass=$((pass+1)); else echo "  FAIL $1 -- rc=$RC got:[$OUTPUT]"; fail=$((fail+1)); fi; }
 
 echo "argument validation:"
 OUTPUT="$(bash "$SCRIPT" 2>&1)"; RC=$?
 ok "no version → usage error" '[ "$RC" != 0 ] && grep -qi usage <<<"$OUTPUT"'
+# Each of these greps text only the guard itself emits. Matching the version back out of the
+# message would pass with the guard deleted, because every later failure path echoes the version
+# inside the archive name it could not find.
 run "refs/tags/0.9.0" "STUB_ASSETS=$(assets_complete)"
-ok "refs/tags/ prefix → rejected" '[ "$RC" != 0 ] && grep -q "refs/tags/" <<<"$OUTPUT"'
+ok "refs/tags/ prefix → rejected" '[ "$RC" != 0 ] && grep -q "not a ref" <<<"$OUTPUT"'
 run "v0.9.0" "STUB_ASSETS=$(assets_complete)"
-ok "v prefix → rejected" '[ "$RC" != 0 ] && grep -qi "v0.9.0" <<<"$OUTPUT"'
+ok "v prefix → rejected" '[ "$RC" != 0 ] && grep -q "carry no .v. prefix" <<<"$OUTPUT"'
+
+# release-binaries.yml builds on any tag push and creates the release itself, so a non-release
+# tag arrives here behind a green release run. Submitting one publishes it to every user as the
+# current NetPace.
+run "test-archive-whitelist-0.0.1" "STUB_ASSETS=$(assets_complete)"
+ok "non-release tag → rejected" '[ "$RC" != 0 ] && grep -q "MAJOR.MINOR.PATCH" <<<"$OUTPUT"'
+run "0.9.0-rc1" "STUB_ASSETS=$(assets_complete)"
+ok "release candidate → rejected" '[ "$RC" != 0 ] && grep -q "MAJOR.MINOR.PATCH" <<<"$OUTPUT"'
+ok "release candidate → emits no URL" '! grep -q "releases/download" <<<"$OUTPUT"'
 
 echo "complete release:"
 run "0.9.0" "STUB_ASSETS=$(assets_complete)"
@@ -86,16 +113,38 @@ run "0.9.0" 'STUB_ASSETS={"assets":[]}'
 ok "release with no assets → fails" '[ "$RC" != 0 ]'
 ok "release with no assets → emits no URL" '! grep -q "releases/download" <<<"$OUTPUT"'
 
+echo "stranded upload (listed, but never finished uploading):"
+# A half-attached archive is still in the asset list, so matching on name alone would hand
+# wingetcreate a URL that 404s for every user who installs it.
+run "0.9.0" "STUB_ASSETS=$(assets_complete | sed 's/"state":"uploaded","size":4017822/"state":"starter","size":0/')"
+ok "half-attached x64 archive → fails naming it" '[ "$RC" != 0 ] && grep -q "netpace-0.9.0-win-x64-aot.zip" <<<"$OUTPUT"'
+ok "half-attached x64 archive → emits no URL" '! grep -q "releases/download" <<<"$OUTPUT"'
+
 echo "version coupling:"
-# A release carrying the previous version's archives must not be published as this version: the
-# manifest would claim 0.9.0 and install 0.8.0, which no user could tell apart until it ran.
+# Archive names are derived from the version, so a release carrying 0.8.0's archives must read as
+# missing rather than as a near-enough match. This pins that it is never published as 0.9.0.
 run "0.9.0" "STUB_ASSETS=$(assets_complete | sed 's/0\.9\.0/0.8.0/g')"
 ok "another version's archives → rejected" '[ "$RC" != 0 ]'
+ok "another version's archives → emits no URL" '! grep -q "releases/download" <<<"$OUTPUT"'
 
 echo "gh failure:"
+# The message must blame reading the release, not a missing archive: with the error handling
+# removed the script dies anyway, on both architectures being absent, and sends whoever reads the
+# auto-raised issue to check release assets that are in fact fine.
 run "0.9.0" "STUB_FAIL=1" "STUB_ASSETS=$(assets_complete)"
 ok "gh fails → script fails" '[ "$RC" != 0 ]'
+ok "gh fails → blames the release read" 'grep -q "could not read release" <<<"$OUTPUT"'
+ok "gh fails → does not blame a missing archive" '! grep -q "is missing" <<<"$OUTPUT"'
 ok "gh fails → emits no URL" '! grep -q "releases/download" <<<"$OUTPUT"'
+
+echo "unreadable asset list:"
+# gh exiting zero with the wrong shape: `.assets[]?` does not tolerate indexing an array, so this
+# is a jq hard error, and without a diagnostic of its own it surfaces as a bare parse error with
+# no mention of the version or of whether anything was submitted.
+run "0.9.0" 'STUB_ASSETS=[]'
+ok "unparseable asset list → fails" '[ "$RC" != 0 ]'
+ok "unparseable asset list → says nothing was submitted" 'grep -q "nothing submitted" <<<"$OUTPUT"'
+ok "unparseable asset list → emits no URL" '! grep -q "releases/download" <<<"$OUTPUT"'
 
 echo ""
 echo "RESULT: $pass passed, $fail failed"

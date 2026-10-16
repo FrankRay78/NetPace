@@ -73,6 +73,8 @@ netpace --downloadsize 50 --uploadsize 20
 
 On Windows, the Windows Package Manager (`winget`) installs NetPace in one command and keeps it current. winget ships with current versions of Windows 10 and 11, so there is usually nothing to install first.
 
+**The NetPace package is pending its first acceptance into the winget community repository.** Until it lands, the commands below report that no package matched; [download a release binary](https://github.com/FrankRay78/NetPace/releases) in the meantime.
+
 Find the package:
 ```powershell
 winget search netpace
@@ -83,7 +85,7 @@ Install it:
 winget install netpace
 ```
 
-`netpace` is on your path from the next terminal you open — winget puts the command where your path already points, so there is nothing to edit. `winget install netpace` resolves by moniker; the package's full identifier is `FrankRay78.NetPace`, and scripts should prefer that.
+`netpace` is on your path from the next terminal you open — winget installs the command into its own links directory and puts that directory on your path, so there is nothing for you to edit. `winget install netpace` resolves by moniker; the package's full identifier is `FrankRay78.NetPace`, and scripts should prefer that.
 
 Confirm what you got:
 ```powershell
@@ -102,16 +104,16 @@ Or pick NetPace up along with everything else you manage through winget:
 winget upgrade --all
 ```
 
-Remove it, taking `netpace` back off your path:
+Remove it, so `netpace` no longer resolves:
 ```powershell
 winget uninstall netpace
 ```
 
 ### Installing unattended, from a script
 
-Pass winget's silent options so nothing prompts, and name the package exactly so a moniker match cannot resolve to something else. Pin `--version` when a provisioning script needs a known build rather than the latest:
+Pass winget's silent options so nothing prompts, and name the package exactly so a moniker match cannot resolve to something else. Pin `--version` when a provisioning script needs a known build rather than the latest, naming any version from the [releases page](https://github.com/FrankRay78/NetPace/releases):
 ```powershell
-winget install --id FrankRay78.NetPace --exact --version 0.26.0 --silent --accept-package-agreements --accept-source-agreements
+winget install --id FrankRay78.NetPace --exact --version <version> --silent --accept-package-agreements --accept-source-agreements
 ```
 
 Drop `--version` to install the latest release. `winget uninstall --id FrankRay78.NetPace --exact --silent` removes it just as quietly.
