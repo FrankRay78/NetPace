@@ -69,6 +69,61 @@ netpace --downloadsize 50 --uploadsize 20
 
 ---
 
+## Installing, upgrading and uninstalling on Windows with winget
+
+On Windows, the Windows Package Manager (`winget`) installs NetPace in one command and keeps it current. winget ships with current versions of Windows 10 and 11, so there is usually nothing to install first.
+
+**The NetPace package is pending its first acceptance into the winget community repository.** Until it lands, the commands below report that no package matched; [download a release binary](https://github.com/FrankRay78/NetPace/releases) in the meantime.
+
+Find the package:
+```powershell
+winget search netpace
+```
+
+Install it:
+```powershell
+winget install netpace
+```
+
+`netpace` is on your path from the next terminal you open — winget installs the command into its own links directory and puts that directory on your path, so there is nothing for you to edit. `winget install netpace` resolves by moniker; the package's full identifier is `FrankRay78.NetPace`, and scripts should prefer that.
+
+Confirm what you got:
+```powershell
+netpace --version
+```
+
+That reports the version of the release the package was published from. The installed `netpace` is the native build for your machine's architecture — x64 or ARM64 — and takes the same options and produces the same output as the release binary of the same version, so everything else in this guide applies unchanged.
+
+Move to the latest release:
+```powershell
+winget upgrade netpace
+```
+
+Or pick NetPace up along with everything else you manage through winget:
+```powershell
+winget upgrade --all
+```
+
+Remove it, so `netpace` no longer resolves:
+```powershell
+winget uninstall netpace
+```
+
+### Installing unattended, from a script
+
+Pass winget's silent options so nothing prompts, and name the package exactly so a moniker match cannot resolve to something else. Pin `--version` when a provisioning script needs a known build rather than the latest, naming any version from the [releases page](https://github.com/FrankRay78/NetPace/releases):
+```powershell
+winget install --id FrankRay78.NetPace --exact --version <version> --silent --accept-package-agreements --accept-source-agreements
+```
+
+Drop `--version` to install the latest release. `winget uninstall --id FrankRay78.NetPace --exact --silent` removes it just as quietly.
+
+NetPace's Windows binaries are not code-signed, so Windows SmartScreen may warn about the executable the first time it runs.
+
+On Linux and macOS, and on Windows if you would rather not use winget, [download a release binary](https://github.com/FrankRay78/NetPace/releases), unzip it and run it.
+
+---
+
 ## Choosing an output format
 
 With no format switch, NetPace renders the rich terminal output: a live progress display while each test runs, then the result. That is the right default at a terminal, and it is what you get if you pass nothing.
