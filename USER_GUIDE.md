@@ -55,12 +55,12 @@ Show speeds in bytes/sec, using IEC units (KiB, MiB, GiB):
 netpace --unit BytesPerSecond --unit-system IEC
 ```
 
-Add a timestamp in custom date format:  
+Add a timestamp to the result:  
 ```bash
-netpace --timestamp --datetimeformat "dd/MM/yyyy HH:mm"
+netpace --timestamp
 ```
 
-A `--datetimeformat` value that cannot format a date, or that is blank, is rejected as a usage error before any measurement runs: NetPace names the option, reports the value, and exits non-zero (see [Exit codes](#exit-codes)). The check applies whether or not the run would have printed a timestamp, so a bad value cannot sit unnoticed until you add `--timestamp` or switch to CSV or JSON.
+The timestamp has one fixed format per output mode, with no option to change it — see [Timestamps and regional settings](#timestamps-and-regional-settings).
 
 Limit download to 50 MiB and upload to 20 MiB (for low bandwidth connections):  
 ```bash
@@ -109,7 +109,7 @@ NetPace --json-pretty
   "ServerLocation": "London",
   "ServerSponsor": "Foo Telecom",
   "ServerUrl": "http://speedtest.foo.example:8080/speedtest/upload.php",
-  "Timestamp": "1980-01-01 10:05:00",
+  "Timestamp": "1980-01-01T10:05:00+01:00",
   "Latency": "12 ms",
   "LatencyMilliseconds": 12,
   "DownloadSpeed": "512.6 Mbps",
@@ -132,6 +132,19 @@ NetPace --json-pretty
 The formatted values are still there and still follow the unit options, so a shell one-liner can keep passing one straight into a notification.
 
 A test you skipped with `--no-latency`, `--no-download` or `--no-upload` omits both of its forms. A download or upload test that ran but failed entirely reports `0` in both, with its request counts beside them — see [Detecting failed measurements](#detecting-failed-measurements). A latency measurement that fails ends the run instead, so it reports neither.
+
+### Timestamps and regional settings
+
+The timestamp has one fixed format per output mode. There is no option to change it, so a script reading CSV or JSON never has to know which format a given run chose.
+
+| Output | Timestamp | Example |
+| --- | --- | --- |
+| Default, `--minimal` (with `--timestamp`) | Local time, `yyyy-MM-dd HH:mm:ss` | `2026-10-16 08:21:17` |
+| `--csv`, `--json` (always present) | ISO 8601 local time to the second with its offset from UTC | `2026-10-16T08:21:17+01:00` |
+
+The offset is what makes the machine-readable timestamp one unambiguous instant, so results logged from machines in different time zones — or from one machine either side of a clock change — sort and compare directly, and any date parser reads them without being told the format. Where the local offset is zero, that is written `+00:00`. Terminal output leaves the offset out: you already know the zone you are sitting in.
+
+**NetPace output does not follow the machine's regional settings.** Every value reads the same way on every machine: speeds use `.` as the decimal separator with no digit grouping, and timestamps use the Gregorian calendar with ASCII digits. A result logged on a machine set to German, Thai or any other locale is byte-for-byte comparable with one logged next to it, and a comma-delimited CSV row can never gain a field from a decimal comma. `NetPace.Core` formats speeds the same way, so a library consumer reads the same text whatever culture its thread carries.
 
 ---
 
