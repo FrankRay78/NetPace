@@ -59,7 +59,7 @@ If you have the [.NET 10 SDK](https://dotnet.microsoft.com/en-us/download/dotnet
 dotnet tool install -g NetPace
 ```
 
-`dotnet tool update -g NetPace` moves you to the latest release, and `dnx NetPace` runs it once without installing anything. On Windows and Linux (x64 and ARM64) you get the Native AOT binary; on macOS it runs on the runtime the SDK already provides. See the [User Guide](https://github.com/FrankRay78/NetPace/blob/main/USER_GUIDE.md#installing-netpace) for which platforms the tool package covers.
+`dotnet tool update -g NetPace` moves you to the latest release, and `dnx NetPace` runs it once without installing anything (it asks to confirm the download on first run; `dnx --yes NetPace` skips the prompt in a script). On Windows and Linux (x64 and ARM64) you get the Native AOT binary; on macOS it runs on the runtime the SDK already provides. See the [User Guide](https://github.com/FrankRay78/NetPace/blob/main/USER_GUIDE.md#installing-netpace) for which platforms the tool package covers.
 
 Otherwise, each release contains precompiled binaries you can simply [download](https://github.com/FrankRay78/NetPace/releases), unzip and run. 
 

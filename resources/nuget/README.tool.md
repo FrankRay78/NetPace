@@ -8,6 +8,8 @@ Fan of NetPace? Consider giving the [repo](https://github.com/FrankRay78/NetPace
 
 ## Install
 
+With the [.NET 10 SDK](https://dotnet.microsoft.com/en-us/download/dotnet/10.0):
+
 ```bash
 dotnet tool install -g NetPace
 ```
@@ -25,7 +27,9 @@ dotnet tool update -g NetPace
 dnx NetPace
 ```
 
-On Windows and Linux (x64 and ARM64) the installed command is a Native AOT binary, so it starts without a .NET runtime. On macOS it runs on the .NET runtime the SDK already provides. Platforms outside those six — Alpine-style Linux among them — are not covered by this package; the [releases page](https://github.com/FrankRay78/NetPace/releases) carries standalone downloads instead.
+`dnx` asks you to confirm the download on first run; pass `--yes` in a script.
+
+On Windows and Linux (x64 and ARM64) the installed command is a Native AOT binary, so it starts without a .NET runtime. On macOS (Intel and Apple silicon) it runs on the .NET runtime the SDK already provides. Platforms outside those six — Alpine-style Linux among them — are not covered by this package; the [releases page](https://github.com/FrankRay78/NetPace/releases) carries standalone downloads instead.
 
 ## Usage
 

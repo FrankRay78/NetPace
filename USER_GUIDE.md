@@ -71,7 +71,7 @@ netpace --downloadsize 50 --uploadsize 20
 
 ## Installing NetPace
 
-With the [.NET 10 SDK](https://dotnet.microsoft.com/en-us/download/dotnet/10.0) installed, NetPace installs as a .NET tool in one line, and the `netpace` command is on your path afterwards:
+With the [.NET 10 SDK](https://dotnet.microsoft.com/en-us/download/dotnet/10.0) installed, NetPace installs as a .NET tool in one line, and the `netpace` command is on your path afterwards — provided the .NET global tools directory (`~/.dotnet/tools`, or `%USERPROFILE%\.dotnet\tools` on Windows) is on `PATH`. `dotnet tool install` tells you if it is not:
 
 ```bash
 dotnet tool install -g NetPace
@@ -83,18 +83,18 @@ Move to the latest release at any time:
 dotnet tool update -g NetPace
 ```
 
-Or run NetPace once without installing it — `dnx` fetches the package, runs it, and leaves nothing installed:
+Or run NetPace once without installing it — `dnx` fetches the package, runs it, and leaves nothing installed. The first run asks you to confirm the download, so pass `--yes` where there is no terminal to answer, such as a CI job:
 
 ```bash
 dnx NetPace
-dnx NetPace -- --json
+dnx --yes NetPace -- --json
 ```
 
-Pin a known version in a build or CI job with `dotnet tool install -g NetPace --version 0.26.0`.
+Pin a known version in a build or CI job with `dotnet tool install -g NetPace --version <release>`, naming any version from the [releases page](https://github.com/FrankRay78/NetPace/releases).
 
 The installed command behaves exactly like the release binary of the same version, and `netpace --version` reports the release it was published with.
 
-**Which platforms the tool package covers.** Windows and Linux, on x64 and ARM64, get the Native AOT binary — the same bare-metal build as the `-aot` release download, so it starts without a .NET runtime. macOS, on Intel and Apple silicon, gets a build that runs on the .NET runtime the SDK already provides, because NetPace has no macOS Native AOT build yet. Anything outside those six — Alpine-style Linux among them — is not covered by the tool package; [download](https://github.com/FrankRay78/NetPace/releases) a standalone binary instead.
+**Which platforms the tool package covers.** Windows and Linux, on x64 and ARM64, get the Native AOT binary — built the same way as the `-aot` release download, so it starts without a .NET runtime. macOS, on Intel and Apple silicon, gets a build that runs on the .NET runtime the SDK already provides, because NetPace has no macOS Native AOT build yet. Anything outside those six — Alpine-style Linux among them — is not covered by the tool package; [download](https://github.com/FrankRay78/NetPace/releases) a standalone binary instead.
 
 Without the .NET SDK, the [releases page](https://github.com/FrankRay78/NetPace/releases) carries binaries for every supported platform: unzip and run.
 
