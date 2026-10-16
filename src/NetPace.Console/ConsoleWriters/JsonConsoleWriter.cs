@@ -32,17 +32,15 @@ public sealed class JsonConsoleWriter : IConsoleWriter
         }
 
 
-        // Display speed test result. JSON holds data, not presentation, so every measurement is a
-        // plain number in a fixed unit and the unit options do not reach here.
-        long? latencyMilliseconds = !settings.NoLatency ? fastest.LatencyMilliseconds : null;
-
+        // Display speed test result. JSON holds data, not presentation, so every speed and
+        // latency is a plain number in a fixed unit and the unit options do not reach here.
         var jsonResult = new JsonResult
         {
             ServerLocation = fastest.Server.Location,
             ServerSponsor = fastest.Server.Sponsor,
             ServerUrl = fastest.Server.Url,
             Timestamp = clock.Now.ToWholeSecond(),
-            LatencyMilliseconds = latencyMilliseconds,
+            LatencyMilliseconds = !settings.NoLatency ? fastest.LatencyMilliseconds : null,
             DownloadSpeedBitsPerSecond = downloadResult?.GetBitsPerSecond(),
             DownloadSucceeded = downloadResult?.RequestsSucceeded,
             DownloadFailed = downloadResult?.RequestsFailed,

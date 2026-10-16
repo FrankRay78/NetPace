@@ -34,8 +34,7 @@ public sealed record JsonResult
 
     /// <summary>
     /// Gets the measured latency to the server in milliseconds, or <see langword="null"/> when the
-    /// latency test was not run. A bare number a script reads without parsing a unit out of a
-    /// string.
+    /// latency test was not run.
     /// </summary>
     public long? LatencyMilliseconds { get; init; }
 

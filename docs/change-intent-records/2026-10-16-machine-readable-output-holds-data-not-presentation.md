@@ -1,5 +1,7 @@
 # Machine-readable output holds data, not presentation
 
+**Supersedes:** [`2026-10-15-json-numbers-name-their-unit-in-the-field`](2026-10-15-json-numbers-name-their-unit-in-the-field.md) — its constraint that "every existing field and value had to survive untouched, so the numbers are additions, not replacements". The three formatted fields are now removed, so the numbers are the replacements.
+
 **Intent:** Settle one rule for both machine-readable formats: CSV and JSON report measurements, and nothing on the command line reshapes them. A script reads one field per measurement, in a fixed unit, and gets the same bytes whatever unit switches the run carried.
 
 **Behaviour:** Specified by issue #389, whose acceptance criteria this implements: JSON stops writing the `Latency`, `DownloadSpeed` and `UploadSpeed` display strings and keeps only `LatencyMilliseconds`, `DownloadSpeedBitsPerSecond` and `UploadSpeedBitsPerSecond`, and `--unit`, `--unit-scale` and `--unit-system` shape the default and minimal output only.

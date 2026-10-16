@@ -68,8 +68,8 @@ public sealed partial class NetPaceConsoleTests
             Assert.DoesNotContain("Kbps", switchedUnits.Output, StringComparison.Ordinal);
 
             // Both lines in full, so the formatted speeds the switches shape are reviewable. The
-            // switched run shows 0 MiBps because the stub's speeds are a few hundred bytes a
-            // second, which is what a Mega scale over IEC bytes rounds them to.
+            // switched run shows 0 MiBps because the stub measures about 1 kB/s down and 2.3
+            // kB/s up, which a Mega scale over IEC bytes rounds to zero.
             await Verify(defaultUnits.Output + switchedUnits.Output);
         }
 

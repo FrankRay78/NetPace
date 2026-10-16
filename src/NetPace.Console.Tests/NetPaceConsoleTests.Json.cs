@@ -101,8 +101,8 @@ public sealed partial class NetPaceConsoleTests
         [Theory]
         public async Task Should_Perform_Speed_Test_With_Json_Multiple_Times_Under_Every_Unit_Scale(string jsonSwitch, string scale)
         {
-            // Given a tester whose speed changes between runs, so an automatic scale would have
-            // reported different units from one result to the next.
+            // Given a tester whose speed changes between runs, so a scale that still reached
+            // JSON would have shown different units from one result to the next.
             var services = new ServiceCollection();
             services.AddSingleton<ISpeedTestService, VariableSpeedTester>();
             services.AddSingleton<IClock, IncrementingClockStub>();
@@ -112,7 +112,7 @@ public sealed partial class NetPaceConsoleTests
             // When
             var result = await host.RunAsync([jsonSwitch, "--count", "3", "--unit-scale", $"{scale}"]);
 
-            // Then
+            // Then the run is accepted and every result carries bare numbers in the same fixed units.
             Assert.Equal(0, result.ExitCode);
             await Verify(result.Output).UseParameters(jsonSwitch, scale);
         }
@@ -310,6 +310,7 @@ public sealed partial class NetPaceConsoleTests
         public async Task Should_Report_Speed_And_Latency_As_Json_Numbers(string jsonSwitch)
         {
             // SCENARIO: JSON reports speed and latency only as numbers
+            // SCENARIO: JSON reports speed and latency as numbers in fixed units
 
             // Given a stub that measures 100 ms of latency, 1000 bytes downloaded in 1000 ms
             // (8,000 bits per second) and 7000 bytes uploaded in 3000 ms (18,666.67, rounded).

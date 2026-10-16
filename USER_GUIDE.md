@@ -85,7 +85,7 @@ Three alternative formats are available instead:
 
 `--minimal`, `--csv` and `--json` are written for a program to read, so they carry no line breaks beyond the ones their own format defines — one CSV record per line, and the indentation `--json-pretty` asks for. That holds however narrow the destination is: a pipe, a redirect, or a terminal window narrower than the line. Only the default terminal output wraps to fit the screen.
 
-Every format composes with the result-shaping options — `--timestamp`, and skipping individual tests with `--no-latency` / `--no-download` / `--no-upload`. `--unit`, `--unit-scale` and `--unit-system` are narrower: they shape the default and minimal output only. CSV and JSON report their measurements as plain numbers in fixed units, so those three options are accepted alongside `--csv`, `--json` and `--json-pretty` without an error and change nothing in the output — see [Numeric values in CSV](#numeric-values-in-csv) and [Numeric values in JSON](#numeric-values-in-json).
+Every format composes with skipping individual tests — `--no-latency` / `--no-download` / `--no-upload`. `--timestamp`, `--unit`, `--unit-scale` and `--unit-system` are narrower: they shape the default and minimal output only. CSV and JSON always carry a timestamp, and report their measurements as plain numbers in fixed units, so those options are accepted alongside `--csv`, `--json` and `--json-pretty` without an error and change nothing in the output — see [Numeric values in CSV](#numeric-values-in-csv) and [Numeric values in JSON](#numeric-values-in-json).
 
 Two further options decide whether and where the result appears, and both work with any format: `--quiet` suppresses the result entirely, and `--file` writes it to disk.
 
@@ -160,7 +160,7 @@ NetPace --json-pretty
 
 Need a speed formatted for a person to read — for a notification, say? `--minimal` writes exactly that line, and follows the unit options.
 
-A test you skipped with `--no-latency`, `--no-download` or `--no-upload` omits its field. A download or upload test that ran but failed entirely reports `0`, with its request counts beside it — see [Detecting failed measurements](#detecting-failed-measurements). A latency measurement that fails ends the run instead, so it reports nothing.
+A test you skipped with `--no-latency`, `--no-download` or `--no-upload` omits every field it would have filled. A download or upload test that ran but failed entirely reports `0`, with its request counts beside it — see [Detecting failed measurements](#detecting-failed-measurements). A latency measurement that fails ends the run instead, so it reports nothing.
 
 ### Timestamps and regional settings
 
