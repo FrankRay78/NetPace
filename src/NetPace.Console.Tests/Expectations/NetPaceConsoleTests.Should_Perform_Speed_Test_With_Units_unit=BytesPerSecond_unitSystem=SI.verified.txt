@@ -4,4 +4,4 @@ http://test1.com
 
 Latency: 100 ms, Download: 1 KBps, Upload: 2.33 KBps
 
-Try 'NetPace --help' for more information.
+Try 'netpace --help' for more information.

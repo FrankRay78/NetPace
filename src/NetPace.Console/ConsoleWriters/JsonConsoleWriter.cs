@@ -6,6 +6,9 @@ namespace NetPace.Console.ConsoleWriters;
 
 public sealed class JsonConsoleWriter : IConsoleWriter
 {
+    /// <inheritdoc/>
+    public bool MachineReadable => true;
+
     public async Task<SpeedTestOutcome> PerformSpeedTestAsync(bool initialSpeedTest, IAnsiConsole console, IClock clock, IClientInfoProvider clientInfoProvider, IDiagnosticRecorder recorder, ISpeedTestService speedTestClient, SpeedTestCommandSettings settings, CancellationToken cancellationToken)
     {
         // Get the server to use for speed testing.

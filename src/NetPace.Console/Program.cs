@@ -115,7 +115,7 @@ public static class Program
 
         var serverOption = new Option<string>("--server")
         {
-            Description = "The url of a specific speed test sever. \n'NetPace servers -l' will return your nearest servers.",
+            Description = "The url of a specific speed test sever. \n'netpace servers -l' will return your nearest servers.",
             DefaultValueFactory = _ => string.Empty
         };
 
@@ -205,7 +205,7 @@ public static class Program
 
         var diagnosticsOption = new Option<bool>("--diagnostics")
         {
-            Description = "Write per-request diagnostic detail about the run to the error stream.\nThe result is unchanged, so 'NetPace --json --diagnostics > result.json 2> diagnostics.log' keeps the two apart.",
+            Description = "Write per-request diagnostic detail about the run to the error stream.\nThe result is unchanged, so 'netpace --json --diagnostics > result.json 2> diagnostics.log' keeps the two apart.",
             DefaultValueFactory = _ => false
         };
 

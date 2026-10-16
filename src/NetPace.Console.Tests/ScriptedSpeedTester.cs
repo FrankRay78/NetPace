@@ -12,10 +12,15 @@ public sealed class ScriptedSpeedTester : ISpeedTestService
 {
     public const string Url = "http://ffm.wsqm.telekom-dienste.de:8080/speedtest/upload.php";
 
-    private readonly IServer defaultServer = new Server { Location = "Frankfurt", Sponsor = "Deutsche Telekom", Url = Url };
-
     private int downloadCall;
     private int uploadCall;
+
+    /// <summary>
+    /// The server <see cref="GetServersAsync"/> returns. The by-URL latency overloads build their
+    /// own server from the URL they are given and do not read this. Settable so a test can supply a
+    /// sponsor, location or URL long enough to cross a narrow destination's width.
+    /// </summary>
+    public IServer Server { get; set; } = new Server { Location = "Frankfurt", Sponsor = "Deutsche Telekom", Url = Url };
 
     /// <summary>Supplies the download result for a given zero-based call index.</summary>
     public Func<int, SpeedTestResult> DownloadFactory { get; set; } = _ => Clean(150);
@@ -36,7 +41,7 @@ public sealed class ScriptedSpeedTester : ISpeedTestService
         new() { BytesProcessed = 1000, ElapsedMilliseconds = 1000, RequestsSucceeded = attempts - failed, RequestsFailed = failed };
 
     public Task<IServer[]> GetServersAsync(CancellationToken cancellationToken = default) =>
-        Task.FromResult(new[] { defaultServer });
+        Task.FromResult(new[] { Server });
 
     public Task<LatencyTestResult> GetServerLatencyAsync(IServer server, CancellationToken cancellationToken = default) =>
         Task.FromResult(new LatencyTestResult { Server = server, LatencyMilliseconds = 24 });
