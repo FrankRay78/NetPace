@@ -319,7 +319,7 @@ Do **not** restate the full review in chat — it lives on the issue.
 The only section that changes from one repository to another. Consider each check in step 3 alongside the generic categories, under the same test: raise a gap only where the issue leaves the point open.
 
 - **Library first** — does the feature start in `NetPace.Core`, and does it change `ISpeedTestService`?
-- **Output modes** — does it look the same across default, minimal and JSON output, and does it respect `--unit-scale`? CSV carries plain numbers in fixed units, so the unit options do not reach it; check instead that its numbers agree with JSON's numeric fields.
+- **Output modes** — does it look the same across default and minimal output, and does it respect `--unit-scale`? CSV and JSON carry plain numbers in fixed units, so the unit options do not reach either; check instead that their numbers agree with each other.
 - **CLI docs** — if it touches a CLI option, is updating the README `--help` snapshot and USER_GUIDE.md in scope?
 - **Acceptance criteria** — do they describe outcomes rather than mechanism (constitution §IX), and are the `**Scenario:**` labels right (§VIII)?
 - **AOT trimming** — is it safe for trimmed builds, with no runtime reflection?

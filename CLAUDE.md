@@ -40,7 +40,7 @@ Do not add tests for the `--flag --help` pattern — it is not expected to work.
 
 ### Units and Formatting
 
-`--unit-scale` overrides auto-scaling; formatting must match across default, minimal and JSON output. CSV is not formatted output — it carries plain numbers in fixed units (`LatencyMilliseconds`, `…SpeedBitsPerSecond`) that the unit options do not touch, and those numbers must agree with JSON's numeric fields.
+`--unit-scale` overrides auto-scaling; formatting must match across default and minimal output. CSV and JSON are not formatted output — both carry plain numbers in fixed units (`LatencyMilliseconds`, `…SpeedBitsPerSecond`) that the unit options do not touch, and the numbers they report must agree with each other.
 
 ### Result, Extension and Settings Patterns
 
