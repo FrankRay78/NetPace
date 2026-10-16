@@ -1,3 +1,4 @@
+using System.Globalization;
 using NetPace.Console.Diagnostics;
 using NetPace.Core;
 
@@ -49,18 +50,19 @@ public sealed class CSVConsoleWriter : IConsoleWriter
         }
 
         // Data row. Each measurement is a plain number in the unit its column names, so --unit,
-        // --unit-scale and --unit-system leave CSV untouched and every row of every run matches.
+        // --unit-scale and --unit-system leave CSV untouched and every row carries the same units,
+        // within a run and across runs.
         // A test that did not run leaves its cells empty; one that ran and failed entirely reports
         // a speed of 0 beside the request counts that say so.
         console.WriteLine(string.Join(settings.CSVDelimiter,
             clock.Now.ToString(settings.DateTimeFormat),
-            !settings.NoLatency ? fastest.LatencyMilliseconds.ToString() : string.Empty,
-            downloadResult?.GetBitsPerSecond().ToString() ?? string.Empty,
-            downloadResult?.RequestsSucceeded.ToString() ?? string.Empty,
-            downloadResult?.RequestsFailed.ToString() ?? string.Empty,
-            uploadResult?.GetBitsPerSecond().ToString() ?? string.Empty,
-            uploadResult?.RequestsSucceeded.ToString() ?? string.Empty,
-            uploadResult?.RequestsFailed.ToString() ?? string.Empty,
+            !settings.NoLatency ? fastest.LatencyMilliseconds.ToString(CultureInfo.InvariantCulture) : string.Empty,
+            downloadResult?.GetBitsPerSecond().ToString(CultureInfo.InvariantCulture) ?? string.Empty,
+            downloadResult?.RequestsSucceeded.ToString(CultureInfo.InvariantCulture) ?? string.Empty,
+            downloadResult?.RequestsFailed.ToString(CultureInfo.InvariantCulture) ?? string.Empty,
+            uploadResult?.GetBitsPerSecond().ToString(CultureInfo.InvariantCulture) ?? string.Empty,
+            uploadResult?.RequestsSucceeded.ToString(CultureInfo.InvariantCulture) ?? string.Empty,
+            uploadResult?.RequestsFailed.ToString(CultureInfo.InvariantCulture) ?? string.Empty,
             clientInfoProvider.GetIPAddress(),
             clientInfoProvider.GetHostname()));
 

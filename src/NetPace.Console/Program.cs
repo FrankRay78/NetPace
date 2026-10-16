@@ -53,7 +53,7 @@ public static class Program
 
         var csvOption = new Option<bool>("--csv")
         {
-            Description = "Display output as a single CSV row (always includes timestamp).",
+            Description = "Display output as a single CSV row (always includes timestamp).\nSpeeds and latency are plain numbers in fixed units, so --unit, --unit-scale and --unit-system do not apply.",
             DefaultValueFactory = _ => false
         };
 

@@ -6,6 +6,11 @@ public sealed partial class NetPaceConsoleTests
 {
     public sealed class CSV
     {
+        /// <summary>
+        /// The CSV header every run writes, whichever tests ran and whatever the unit switches say.
+        /// </summary>
+        private const string NumericCsvHeader = "Timestamp,LatencyMilliseconds,DownloadSpeedBitsPerSecond,DownloadSucceeded,DownloadFailed,UploadSpeedBitsPerSecond,UploadSucceeded,UploadFailed,IPAddress,Hostname";
+
         [Fact]
         public async Task Should_Perform_Speed_Test_With_CSV()
         {
@@ -101,7 +106,7 @@ public sealed partial class NetPaceConsoleTests
             var host = GetCommandLineTestHost(services);
 
             // When
-            var result = await host.RunAsync(["--csv", "--count", "3", "--unit-scale", $"{scale}"]);
+            var result = await host.RunAsync(["--csv", "--count", "3", "--unit-scale", scale]);
 
             // Then the run is accepted and every row carries bare numbers in the same fixed units.
             Assert.Equal(0, result.ExitCode);
@@ -189,11 +194,8 @@ public sealed partial class NetPaceConsoleTests
             // SCENARIO: CSV IPAddress and Hostname columns contain empty values when device identity is unavailable
 
             // Given
-            var services = new ServiceCollection();
-            services.AddSingleton<ISpeedTestService, SpeedTestStub>();
-            services.AddSingleton<IClock, ClockStub>();
+            var services = StubServices();
             services.AddSingleton<IClientInfoProvider>(new ClientInfoProviderStub { IPAddress = "", Hostname = "" });
-            services.AddSingleton<IWaiter, NoDelayStub>();
             var host = GetCommandLineTestHost(services);
 
             // When
@@ -210,11 +212,8 @@ public sealed partial class NetPaceConsoleTests
             // SCENARIO: CSV IPAddress column contains ERROR when IP address retrieval raises an exception
 
             // Given
-            var services = new ServiceCollection();
-            services.AddSingleton<ISpeedTestService, SpeedTestStub>();
-            services.AddSingleton<IClock, ClockStub>();
+            var services = StubServices();
             services.AddSingleton<IClientInfoProvider>(new ClientInfoProviderStub { IPAddress = "ERROR", Hostname = "router-a" });
-            services.AddSingleton<IWaiter, NoDelayStub>();
             var host = GetCommandLineTestHost(services);
 
             // When
@@ -232,11 +231,8 @@ public sealed partial class NetPaceConsoleTests
             // SCENARIO: CSV speed test completes and writes output when hostname retrieval raises an exception
 
             // Given
-            var services = new ServiceCollection();
-            services.AddSingleton<ISpeedTestService, SpeedTestStub>();
-            services.AddSingleton<IClock, ClockStub>();
+            var services = StubServices();
             services.AddSingleton<IClientInfoProvider>(new ClientInfoProviderStub { IPAddress = "192.168.1.1", Hostname = "ERROR" });
-            services.AddSingleton<IWaiter, NoDelayStub>();
             var host = GetCommandLineTestHost(services);
 
             // When
@@ -253,11 +249,8 @@ public sealed partial class NetPaceConsoleTests
             // SCENARIO: CSV speed test completes and writes output when both device identity lookups raise exceptions
 
             // Given
-            var services = new ServiceCollection();
-            services.AddSingleton<ISpeedTestService, SpeedTestStub>();
-            services.AddSingleton<IClock, ClockStub>();
+            var services = StubServices();
             services.AddSingleton<IClientInfoProvider>(new ClientInfoProviderErrorStub());
-            services.AddSingleton<IWaiter, NoDelayStub>();
             var host = GetCommandLineTestHost(services);
 
             // When
@@ -304,10 +297,10 @@ public sealed partial class NetPaceConsoleTests
             Assert.Equal(0, json.ExitCode);
             var lines = CsvLines(csv.Output);
             using var document = JsonDocument.Parse(json.Output);
-            var fields = document.RootElement;
-            foreach (var column in new[] { "LatencyMilliseconds", "DownloadSpeedBitsPerSecond", "UploadSpeedBitsPerSecond" })
+            string[] numericColumns = ["LatencyMilliseconds", "DownloadSpeedBitsPerSecond", "UploadSpeedBitsPerSecond"];
+            foreach (string column in numericColumns)
             {
-                Assert.Equal(fields.GetProperty(column).GetInt64().ToString(), Cell(lines, column));
+                Assert.Equal(document.RootElement.GetProperty(column).GetInt64().ToString(), Cell(lines, column));
             }
         }
 
@@ -356,10 +349,9 @@ public sealed partial class NetPaceConsoleTests
         }
 
         /// <summary>
-        /// The CSV header every run writes, whichever tests ran and whatever the unit switches say.
+        /// The registrations a CSV test needs: a stub speed tester, a fixed clock, and a waiter that
+        /// returns immediately. A test that needs more adds it to the returned collection.
         /// </summary>
-        private const string NumericCsvHeader = "Timestamp,LatencyMilliseconds,DownloadSpeedBitsPerSecond,DownloadSucceeded,DownloadFailed,UploadSpeedBitsPerSecond,UploadSucceeded,UploadFailed,IPAddress,Hostname";
-
         private static ServiceCollection StubServices()
         {
             var services = new ServiceCollection();
@@ -370,11 +362,10 @@ public sealed partial class NetPaceConsoleTests
         }
 
         /// <summary>
-        /// Splits CSV output into its records, dropping the byte-order mark the console writes ahead
-        /// of the header so the first field of the header compares as itself.
+        /// Splits CSV output into its records.
         /// </summary>
         private static string[] CsvLines(string output) =>
-            output.TrimStart('\uFEFF').Split('\n', StringSplitOptions.RemoveEmptyEntries).Select(line => line.TrimEnd('\r')).ToArray();
+            output.Split('\n', StringSplitOptions.RemoveEmptyEntries).Select(line => line.TrimEnd('\r')).ToArray();
 
         /// <summary>
         /// Reads the named column out of the single data row, so a test names the column it means

@@ -9,8 +9,10 @@ Removed Sections: N/A
 Downstream documents reviewed (per Amendment Process clause 4):
   ✅ CLAUDE.md (Units and Formatting) — updated: it carried the same output-modes list, and now states that CSV is not formatted output and names the fixed-unit columns.
   ✅ README.md, USER_GUIDE.md — updated by the same change: the `--help` snapshot loses `--csv-header-units`, and the guide gains a *Numeric values in CSV* section stating the columns, their units and that the unit options do not reach CSV.
-  ✅ docs/conventions/testing.md — reviewed, unchanged: it governs assertion style and test integrity, and says nothing about units or output formats.
-  ✅ .claude/commands/{draftissue,reviewissue,confirmissue}.md — reviewed, unchanged: none carries a units or output-format rule.
+  ✅ docs/conventions/testing.md — reviewed, unchanged: it governs assertion style and test integrity, and carries no units or output-formatting rule.
+  ✅ .claude/commands/{draftissue,reviewissue,audit-codebase}.md — updated: each required a measurement to format consistently across CSV and to respect `--unit-scale`, which CSV no longer does; each now names the three formatting modes and states that CSV's numbers must instead agree with JSON's.
+  ✅ .claude/commands/confirmissue.md — reviewed, unchanged: it carries no units or output-format rule.
+  ✅ .claude/skills/diagnose/NETPACE.md — updated by the same change: `--csv-header-units` dropped from its list of output modes usable as a diff signal.
 
 --- superseded, retained for history ---
 Version: 2.2.3 → 2.3.0

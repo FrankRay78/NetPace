@@ -202,7 +202,7 @@ The only section that changes from one repository to another.
 ### Concerns to consider in Step 3
 
 - **Library consumers** — `NetPace.Core` is published to NuGet. Where the feature has a library side, its consumers are users too: say whether the capability is offered to them, not only to the CLI.
-- **Output modes** — a result shown to the user must appear consistently in the default, minimal, CSV and JSON output, and respect `--unit-scale`. Say which modes are in scope.
+- **Output modes** — a result shown to the user must appear consistently in the default, minimal and JSON output, and respect `--unit-scale`. CSV is not formatted output: it carries plain numbers in fixed units that the unit options do not touch, and those numbers must agree with JSON's numeric fields. Say which modes are in scope.
 - **CLI docs** — if the feature adds or changes a CLI option, updating the README `--help` snapshot and `USER_GUIDE.md` is part of the work; make it an acceptance criterion.
 - **Breaking changes** — while NetPace is below 1.0.0, a breaking change needs no approval, but the issue must state plainly what breaks and for whom (constitution §VII).
 
