@@ -35,7 +35,9 @@ printf 'this must never reach a stage\n' > "$SB/stdin-data"
 # kill itself with SIGKILL, which reaches the chain as exit 137 from a stage killed from outside
 # rather than at its time limit (an out-of-memory kill is the real case). An act-<n> file is a
 # script run in the case repo before call n replies, so a case can give the repository the branch,
-# commits and working-tree state a real stage would have left behind.
+# commits and working-tree state a real stage would have left behind. An rc-<n> file is the exit
+# code call n ends with *after* writing its reply, which is how claude ends a turn an API error
+# stopped: the reply is there and names the error, and the process still exits non-zero.
 mkdir -p "$SB/bin"
 cat > "$SB/bin/claude" <<'STUB'
 #!/usr/bin/env bash
@@ -49,6 +51,7 @@ if [ -f "$STUB_DIR/sleep-$n" ]; then
 fi
 if [ -f "$STUB_DIR/kill-$n" ]; then kill -KILL $$; fi
 cat "$STUB_DIR/reply-$n.json"
+if [ -f "$STUB_DIR/rc-$n" ]; then exit "$(cat "$STUB_DIR/rc-$n")"; fi
 STUB
 chmod +x "$SB/bin/claude"
 
@@ -73,6 +76,27 @@ reply() {
   jq -n --arg r "$2" --arg s "sess-$1" \
     '{type:"result",subtype:"success",is_error:false,result:$r,session_id:$s}' > "$STUB_DIR/reply-$1.json"
 }
+
+# The session-limit message a real reply carries, recorded verbatim in the #389 transcript. Held
+# in one place because the cases below both feed it to the stub and look for it in the output.
+LIMIT_TEXT="You've hit your session limit · resets 3:20pm (Europe/Berlin)"
+
+# limit_reply <n> <result text> — the reply claude writes when the account's usage limit refuses
+# the next call, and the exit 1 it leaves with. The envelope is the one a real API-error reply
+# carries (claude 2.1.302: a result object, subtype success, is_error true, the error's message as
+# the result text, and exit 1 all the same), with the typed api_error the CLI documents for a
+# usage limit: `usage_limit_reached`, set when the account's own limit refused the request and set
+# by no other refusal that shares its rate_limit error.
+limit_reply() {
+  jq -n --arg r "$2" --arg s "sess-$1" \
+    '{type:"result",subtype:"success",is_error:true,api_error:"usage_limit_reached",
+      api_error_status:429,terminal_reason:"api_error",result:$r,session_id:$s}' > "$STUB_DIR/reply-$1.json"
+  echo 1 > "$STUB_DIR/rc-$1"
+}
+
+# The chain's own exit code for a stage the usage limit cut off. Written here as the literal the
+# runner reads rather than sourced from the chain, so changing it in one place alone fails here.
+LIMIT_EXIT=75
 
 # chain <args…> — run the chain from inside the case repo. Its stdin carries data on purpose;
 # see stdin-data above. Sets OUTPUT (stdout and stderr) and RC, which every assertion reads.
@@ -240,6 +264,39 @@ ok "exits 1" '[ "$RC" = 1 ]'
 ok "no later stage started" '[ "$(calls)" = 1 ]'
 ok "closing message names build as stalled" 'closing | grep -q build && closing | grep -q stalled'
 ok "the stalled process was ended" '[ -s "$STUB_DIR/pid-1" ] && ! kill -0 "$(cat "$STUB_DIR/pid-1")" 2>/dev/null'
+
+echo "A stage cut off by the usage limit:"
+new_case
+reply 1 'READY branch=feature/270-x'
+limit_reply 2 "$LIMIT_TEXT"
+before="$(repo_state)"
+chain 270
+ok "exits with the chain's own usage-limit code, not its ordinary failure code" '[ "$RC" = "$LIMIT_EXIT" ]'
+ok "no stage after verify started" '[ "$(calls)" = 2 ]'
+ok "the closing line names the usage limit instead of the exit code" 'closing | grep -qF "the Claude usage limit was reached" && ! grep -qF "claude exited with" <<<"$OUTPUT"'
+ok "the closing line quotes the reply's reset wording verbatim" 'closing | grep -qF "resets 3:20pm (Europe/Berlin)"'
+ok "the stage is still named, with its position" 'closing | grep -qF "chain: FAILED at [2/3] verify — "'
+ok "branch, commits and working tree untouched" '[ "$(repo_state)" = "$before" ]'
+new_case
+limit_reply 1 ''
+chain 270
+ok "a limit reply carrying no message still names the usage limit" '[ "$RC" = "$LIMIT_EXIT" ] && [ "$(calls)" = 1 ] && closing | grep -qF "the Claude usage limit was reached"'
+ok "and says the reset time was missing rather than trailing an empty quotation" 'closing | grep -qF "no reset time"'
+new_case
+reply 1 "$(printf 'The build stage reported: %s\nREADY branch=feature/270-x' "$LIMIT_TEXT")"
+reply 2 'VERIFIED branch=feature/270-x'
+reply 3 'RAISED pr=https://github.com/o/r/pull/9'
+chain 270
+ok "a report that merely quotes the limit wording is not a usage-limit stop" '[ "$RC" = 0 ] && [ "$(calls)" = 3 ]'
+new_case
+reply 1 "$(printf '%s\nFAILED reason=suite red' "$LIMIT_TEXT")"
+chain 270
+ok "nor is a failing report that quotes it — that fails with the stage's own reason" '[ "$RC" = 1 ] && closing | grep -qF "suite red" && ! grep -qi "usage limit" <<<"$OUTPUT"'
+new_case
+reply 1 'READY branch=feature/270-x'
+echo 1 > "$STUB_DIR/rc-1"
+chain 270
+ok "a stage that exits non-zero with no limit in its reply fails as it does today" '[ "$RC" = 1 ] && closing | grep -qF "claude exited with 1"'
 
 # SCENARIO: Wrong starting point is refused
 echo "Wrong starting point is refused:"
