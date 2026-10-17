@@ -48,9 +48,15 @@ jobs:
         with:
           dotnet-version: 10.0.x
 
+      # AssemblyVersion and FileVersion accept numbers alone, so they take the tag's numeric part
+      # (0.27.0 for 0.27.0-rc1); every other version property takes the whole tag. docs/RELEASING.md,
+      # Prerelease tags.
       - name: Extract version from tag
         id: get_version
-        run: echo "version=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+        run: |
+          version="${GITHUB_REF#refs/tags/}"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "numeric_version=${version%%-*}" >> "$GITHUB_OUTPUT"
 
       - name: Restore dependencies
         run: dotnet restore src
@@ -60,26 +66,28 @@ jobs:
       - name: Build
         env:
           VERSION: ${{ steps.get_version.outputs.version }}
+          NUMERIC_VERSION: ${{ steps.get_version.outputs.numeric_version }}
         run: |
           dotnet build src \
             --configuration Release \
             --no-restore \
             -p:Version="$VERSION" \
-            -p:AssemblyVersion="$VERSION" \
-            -p:FileVersion="$VERSION" \
+            -p:AssemblyVersion="$NUMERIC_VERSION" \
+            -p:FileVersion="$NUMERIC_VERSION" \
             -p:InformationalVersion="$VERSION"
 
       - name: Pack
         env:
           VERSION: ${{ steps.get_version.outputs.version }}
+          NUMERIC_VERSION: ${{ steps.get_version.outputs.numeric_version }}
         run: |
           dotnet pack src/NetPace.Core/NetPace.Core.csproj \
             --configuration Release \
             --no-build \
             -p:PackageVersion="$VERSION" \
             -p:Version="$VERSION" \
-            -p:AssemblyVersion="$VERSION" \
-            -p:FileVersion="$VERSION" \
+            -p:AssemblyVersion="$NUMERIC_VERSION" \
+            -p:FileVersion="$NUMERIC_VERSION" \
             -p:InformationalVersion="$VERSION" \
             -p:RepositoryUrl=https://github.com/FrankRay78/NetPace \
             -o ./output
@@ -88,6 +96,7 @@ jobs:
         shell: pwsh
         env:
           EXPECTED_VERSION: ${{ steps.get_version.outputs.version }}
+          EXPECTED_NUMERIC_VERSION: ${{ steps.get_version.outputs.numeric_version }}
         run: |
           $unpacked = Join-Path $env:RUNNER_TEMP 'nupkg'
           [System.IO.Compression.ZipFile]::ExtractToDirectory((Get-Item ./output/*.nupkg).FullName, $unpacked)
@@ -98,7 +107,8 @@ jobs:
             $info = [System.Diagnostics.FileVersionInfo]::GetVersionInfo($library.FullName)
             $informational = ($info.ProductVersion -split '\+')[0]
             Write-Host "$($library.FullName): assembly=$assembly file=$($info.FileVersion) informational=$informational"
-            if ($assembly -ne $env:EXPECTED_VERSION -or $info.FileVersion -ne $env:EXPECTED_VERSION -or $informational -ne $env:EXPECTED_VERSION) {
+            # The assembly and file versions carry only the tag's numeric part; the informational version carries the whole tag.
+            if ($assembly -ne $env:EXPECTED_NUMERIC_VERSION -or $info.FileVersion -ne $env:EXPECTED_NUMERIC_VERSION -or $informational -ne $env:EXPECTED_VERSION) {
               throw "Packed library does not report the tag's version $env:EXPECTED_VERSION."
             }
           }
