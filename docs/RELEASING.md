@@ -132,11 +132,28 @@ Every semver tag publishes the `NetPace` .NET tool package to NuGet from `publis
 
 **The archives and the tool package cannot fail each other.** They are separate workflows on the same tag, and no job in one needs a job in the other. A failed native pack or tool-package gate leaves the GitHub Release created with every binary attached and only the NuGet push missing; a failed archive build leaves the tool package unaffected. The cost is that each native RID is compiled once by each workflow — no more than packing inside the archive matrix cost, because a tool package is packed from the project rather than from the archive's binary — and the four native runners are listed in both files, which must change together.
 
-**One manual prerequisite.** `secrets.NUGET_API_KEY` must be scoped to push the `NetPace` and `NetPace.*` package IDs; before this it only ever pushed `NetPace.Core`. The `NetPace.*` prefix reservation on nuget.org is what keeps the six RID package IDs available, and the reservation must cover the bare `NetPace` ID as well as the prefix, or the wrapper push fails with a 403 on release day.
+**Authentication.** The push uses trusted publishing, like the library's — see *Trusted publishing*.
 
 **No conditional skip.** The tool package publishes on every tag, unlike `NetPace.Core` (*Conditional NuGet publish*). The library's skip protects SemVer meaning for consumers who compile against it; a CLI user installing by version needs the release they asked for to exist. This is also why the tool package has its own workflow rather than a job in `publish-nuget.yml`, whose skip condition would otherwise sit beside an opposite one.
 
 **Local verification.** `scripts/tool-package.tests.sh` packs the console project at two versions, installs the result from a sandbox feed and runs it, then updates from the older version to the newer — covering `dotnet tool install`, `dotnet tool update` and `dnx`, the install-nothing path. It also opens all six RID packages and checks each carries the command for its platform, and that the wrapper advertises exactly the six the release publishes. It packs the framework-dependent form, because one machine cannot produce the four native binaries; the AOT pack and its shape are gated by `publish-tool.yml` alone. The matrix runs on every pull request via `shell-tests.yml`.
+
+## Trusted publishing
+
+Both NuGet publishes — `publish-nuget.yml` for `NetPace.Core` and `publish-tool.yml` for the tool package — authenticate by trusted publishing, so no long-lived API key is stored in the repository. Immediately before its push, each publish job runs `NuGet/login`, which exchanges the job's GitHub OIDC token for an API key that expires within the hour; the push uses that key and nothing else.
+
+nuget.org issues the key only to a workflow it has a policy for. A policy names the repository owner, the repository and **one workflow file**, so there are two, one per publishing workflow:
+
+| nuget.org trusted publishing policy | Repository | Workflow file | Pushes |
+|-------------------------------------|------------|---------------|--------|
+| NetPace.Core | `FrankRay78/NetPace` | `publish-nuget.yml` | `NetPace.Core` |
+| NetPace tool | `FrankRay78/NetPace` | `publish-tool.yml` | `NetPace` and the six `NetPace.<rid>` packages |
+
+**What the repository holds.** One secret, `NUGET_USER`: the nuget.org profile name (not the email address) that owns the policies, which `NuGet/login` sends with the exchange. Each publish job declares `id-token: write`, without which GitHub issues no OIDC token, and `contents: read` for the checkout.
+
+**Renaming a publishing workflow breaks its publish.** The policy matches the workflow file by name, so a rename or move makes the next push fail at the login step until the policy is edited to match. The failure is before anything is pushed.
+
+**Re-running a failed publish** uses the workflow as it was at the tag, so a run from a tag that predates trusted publishing still reads the retired `NUGET_API_KEY` secret and cannot be finished this way.
 
 ## Source-build version
 
