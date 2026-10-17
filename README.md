@@ -106,12 +106,9 @@ OPTIONS:
         --count                             Stop speed testing after this many times.
         --delay                             Time between multiple speed tests (HH:MM:SS).
         --csv                               Display output as a single CSV row (always includes timestamp).
-                                            Speeds and latency are plain numbers in fixed units, so --unit, --unit-scale and --unit-system do not apply.
         --csv-delimiter    ,                Single character delimiter to use in CSV output.
         --json                              Display output in Json format.
-                                            Speeds and latency are plain numbers in fixed units, so --unit, --unit-scale and --unit-system do not apply.
         --json-pretty                       Display output in Json format (pretty print).
-                                            Speeds and latency are plain numbers in fixed units, so --unit, --unit-scale and --unit-system do not apply.
         --minimal                           Display the result as a single compact line.
                                             Ideal for batch scripts and redirected output.
         --no-latency                        Do not perform latency test.

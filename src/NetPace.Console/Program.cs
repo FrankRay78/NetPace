@@ -54,7 +54,7 @@ public static class Program
 
         var csvOption = new Option<bool>("--csv")
         {
-            Description = "Display output as a single CSV row (always includes timestamp).\nSpeeds and latency are plain numbers in fixed units, so --unit, --unit-scale and --unit-system do not apply.",
+            Description = "Display output as a single CSV row (always includes timestamp).",
             DefaultValueFactory = _ => false
         };
 
@@ -78,13 +78,13 @@ public static class Program
 
         var jsonOption = new Option<bool>("--json")
         {
-            Description = "Display output in Json format.\nSpeeds and latency are plain numbers in fixed units, so --unit, --unit-scale and --unit-system do not apply.",
+            Description = "Display output in Json format.",
             DefaultValueFactory = _ => false
         };
 
         var jsonPrettyOption = new Option<bool>("--json-pretty")
         {
-            Description = "Display output in Json format (pretty print).\nSpeeds and latency are plain numbers in fixed units, so --unit, --unit-scale and --unit-system do not apply.",
+            Description = "Display output in Json format (pretty print).",
             DefaultValueFactory = _ => false
         };
 
