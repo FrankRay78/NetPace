@@ -79,7 +79,8 @@ public sealed partial class NetPaceConsoleTests
             // When it runs with diagnostics.
             var result = await HostWith().RunAsync(["--json", "--no-upload", "--diagnostics"]);
 
-            // Then the record set says when, as what, on what, and how it was asked to run.
+            // Then the record set says when, as what, on what, and how it was asked to run. The
+            // snapshot carries the whole set, so a change anywhere in the record format lands here.
             await Verify(result.DiagnosticOutput);
         }
 
@@ -117,7 +118,7 @@ public sealed partial class NetPaceConsoleTests
         }
 
         [Fact]
-        public async Task Diagnostics_RecordEveryRequestIndividually()
+        public async Task Diagnostics_RecordEveryRequestAndTheAutoSelectedRoute()
         {
             // Given a run whose every test issues more than one request, and no --server, so
             // screening chooses the route.

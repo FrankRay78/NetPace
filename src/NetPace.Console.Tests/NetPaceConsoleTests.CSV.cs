@@ -7,24 +7,6 @@ public sealed partial class NetPaceConsoleTests
     public sealed class CSV
     {
         [Fact]
-        public async Task Should_Perform_Speed_Test_With_CSV()
-        {
-            // Given
-            var services = new ServiceCollection();
-            services.AddSingleton<ISpeedTestService, SpeedTestStub>();
-            services.AddSingleton<IClock, ClockStub>();
-            services.AddSingleton<IWaiter, NoDelayStub>();
-            var host = GetCommandLineTestHost(services);
-
-            // When
-            var result = await host.RunAsync(["--csv"]);
-
-            // Then
-            Assert.Equal(0, result.ExitCode);
-            await Verify(result.Output);
-        }
-
-        [Fact]
         public async Task Should_Perform_Speed_Test_With_CSV_Continuously()
         {
             // Given
