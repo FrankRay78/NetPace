@@ -108,14 +108,13 @@ public sealed partial class NetPaceConsoleTests
         /// <summary>
         /// Every output mode that formats a speed for a person to read. The stub's upload speed is
         /// fractional, so each of these carries a decimal separator a comma-decimal locale would
-        /// otherwise change. CSV is absent because it writes speeds as whole numbers.
+        /// otherwise change. CSV and JSON are absent because neither formats a speed for a
+        /// person: both carry plain numbers in fixed units.
         /// </summary>
         public static TheoryData<string> EveryModeWithAFormattedSpeed() =>
         [
             "-t",
-            "--minimal -t",
-            "--json",
-            "--json-pretty"
+            "--minimal -t"
         ];
 
         [Theory]

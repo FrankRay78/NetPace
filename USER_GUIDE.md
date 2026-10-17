@@ -85,7 +85,7 @@ Three alternative formats are available instead:
 
 `--minimal`, `--csv` and `--json` are written for a program to read, so they carry no line breaks beyond the ones their own format defines — one CSV record per line, and the indentation `--json-pretty` asks for. That holds however narrow the destination is: a pipe, a redirect, or a terminal window narrower than the line. Only the default terminal output wraps to fit the screen.
 
-Every format composes with the result-shaping options — `--timestamp`, `--unit`, `--unit-scale`, `--unit-system`, and skipping individual tests with `--no-latency` / `--no-download` / `--no-upload`. The one exception is CSV, which reports its measurements as plain numbers in fixed units and so is unaffected by `--unit`, `--unit-scale` and `--unit-system` — see [Numeric values in CSV](#numeric-values-in-csv).
+Every format composes with skipping individual tests — `--no-latency` / `--no-download` / `--no-upload`. `--timestamp`, `--unit`, `--unit-scale` and `--unit-system` are narrower: they shape the default and minimal output only. CSV and JSON always carry a timestamp, and report their measurements as plain numbers in fixed units, so those options are accepted alongside `--csv`, `--json` and `--json-pretty` without an error and change nothing in the output — see [Numeric values in CSV](#numeric-values-in-csv) and [Numeric values in JSON](#numeric-values-in-json).
 
 Two further options decide whether and where the result appears, and both work with any format: `--quiet` suppresses the result entirely, and `--file` writes it to disk.
 
@@ -109,7 +109,7 @@ Timestamp,LatencyMilliseconds,DownloadSpeedBitsPerSecond,DownloadSucceeded,Downl
 1980-01-01T10:05:00+01:00,12,512600000,150,0,48200000,32,0,192.168.1.1,test-host
 ```
 
-**`--unit`, `--unit-scale` and `--unit-system` do not change CSV output at all.** They still shape the default, minimal and JSON output. That is what makes a CSV log safe to append to: under the default automatic scale a formatted speed can be `Kbps` on one run and `Mbps` on the next, so a file collecting rows over weeks would mix units in one column. The numbers never shift, so `--csv` works with `--count` and `--loop` whatever the unit options say, and the numbers match [the numeric fields in JSON](#numeric-values-in-json) for the same run.
+**`--unit`, `--unit-scale` and `--unit-system` do not change CSV output at all.** They shape the default and minimal output only. That is what makes a CSV log safe to append to: under the default automatic scale a formatted speed can be `Kbps` on one run and `Mbps` on the next, so a file collecting rows over weeks would mix units in one column. The numbers never shift, so `--csv` works with `--count` and `--loop` whatever the unit options say, and the numbers match [the numeric fields in JSON](#numeric-values-in-json) for the same run.
 
 The header is the same ten columns in the same order on every run, whichever tests ran. A test you skipped with `--no-latency`, `--no-download` or `--no-upload` leaves its cells empty rather than dropping its columns, so a script reading by position is not moved along by a skipped test:
 
@@ -127,7 +127,7 @@ A download or upload test that ran but failed entirely reports `0`, with its req
 
 ### Numeric values in JSON
 
-JSON reports each measured speed and latency twice: once formatted for a person to read, and once as a plain number in a fixed unit. The field name says which unit, so a saved result explains itself without reference to the command that produced it.
+JSON reports each measured speed and latency once, as a plain number in a fixed unit. The field name says which unit, so a saved result explains itself without reference to the command that produced it. Nothing on the command line can change those units, so a script reads the same field the same way every run.
 
 | Field | What it holds |
 | --- | --- |
@@ -144,13 +144,10 @@ NetPace --json-pretty
   "ServerSponsor": "Foo Telecom",
   "ServerUrl": "http://speedtest.foo.example:8080/speedtest/upload.php",
   "Timestamp": "1980-01-01T10:05:00+01:00",
-  "Latency": "12 ms",
   "LatencyMilliseconds": 12,
-  "DownloadSpeed": "512.6 Mbps",
   "DownloadSpeedBitsPerSecond": 512600000,
   "DownloadSucceeded": 150,
   "DownloadFailed": 0,
-  "UploadSpeed": "48.2 Mbps",
   "UploadSpeedBitsPerSecond": 48200000,
   "UploadSucceeded": 32,
   "UploadFailed": 0,
@@ -159,13 +156,11 @@ NetPace --json-pretty
 }
 ```
 
-**`--unit`, `--unit-scale` and `--unit-system` do not change the numbers.** Those options shape the formatted speeds only — `"DownloadSpeed"` and `"UploadSpeed"`. That is the point of the numeric fields: under the default automatic scale the formatted unit can differ from one run to the next, so a script comparing runs, writing to a database or checking a threshold reads the numbers and never has to strip a unit or convert between scales.
+**`--unit`, `--unit-scale` and `--unit-system` do not change JSON output at all.** They shape the default and minimal output only. Passing one with `--json` or `--json-pretty` is accepted without an error or warning, and the result is byte-for-byte what the same run writes without it. That is what makes a saved JSON result comparable: a script comparing runs, writing to a database or checking a threshold reads the numbers and never has to strip a unit, convert between scales, or know which switches the run was made with.
 
-`"Latency"` is always milliseconds, so `LatencyMilliseconds` saves a script stripping `" ms"` rather than fixing a unit that shifts.
+Need a speed formatted for a person to read — for a notification, say? `--minimal` writes exactly that line, and follows the unit options.
 
-The formatted values are still there and still follow the unit options, so a shell one-liner can keep passing one straight into a notification.
-
-A test you skipped with `--no-latency`, `--no-download` or `--no-upload` omits both of its forms. A download or upload test that ran but failed entirely reports `0` in both, with its request counts beside them — see [Detecting failed measurements](#detecting-failed-measurements). A latency measurement that fails ends the run instead, so it reports neither.
+A test you skipped with `--no-latency`, `--no-download` or `--no-upload` omits every field it would have filled. A download or upload test that ran but failed entirely reports `0`, with its request counts beside it — see [Detecting failed measurements](#detecting-failed-measurements). A latency measurement that fails ends the run instead, so it reports nothing.
 
 ### Timestamps and regional settings
 
@@ -250,9 +245,9 @@ Timestamp,LatencyMilliseconds,DownloadSpeedBitsPerSecond,DownloadSucceeded,Downl
 1980-01-01T10:05:00+01:00,24,512600000,150,0,0,0,32,192.168.1.1,test-host
 ```
 
-**JSON** — each test that ran gains integer `…Succeeded` / `…Failed` fields alongside its speed. The schema keeps one shape: a total failure reports `0 bps` with the counts beside it, exactly as the other formats do. Only a test you skipped (`--no-download`, `--no-upload`) omits its fields entirely:
+**JSON** — each test that ran gains integer `…Succeeded` / `…Failed` fields alongside its speed. The schema keeps one shape: a total failure reports `0` with the counts beside it, exactly as the other formats do. Only a test you skipped (`--no-download`, `--no-upload`) omits its fields entirely:
 ```json
-{ "UploadSpeed": "0 bps", "UploadSpeedBitsPerSecond": 0, "UploadSucceeded": 0, "UploadFailed": 32, … }
+{ "UploadSpeedBitsPerSecond": 0, "UploadSucceeded": 0, "UploadFailed": 32, … }
 ```
 
 The counts are the whole signal — no output format adds a prose warning on top of them. `--quiet` suppresses them along with the rest of the output; use `--fail-on` to detect an all-failed measurement in that mode.

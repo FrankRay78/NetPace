@@ -1,4 +1,3 @@
-using System.Globalization;
 using System.Text.Json;
 using NetPace.Console.Diagnostics;
 using NetPace.Core;
@@ -33,25 +32,18 @@ public sealed class JsonConsoleWriter : IConsoleWriter
         }
 
 
-        // Display speed test result.
-        long? latencyMilliseconds = !settings.NoLatency ? fastest.LatencyMilliseconds : null;
-        var latencyFormatted = latencyMilliseconds is not null ? $"{latencyMilliseconds.Value.ToString(CultureInfo.InvariantCulture)} ms" : null;
-        var downloadFormatted = downloadResult?.GetSpeedString(settings.SpeedUnit, settings.SpeedUnitSystem, settings.SpeedScale);
-        var uploadFormatted = uploadResult?.GetSpeedString(settings.SpeedUnit, settings.SpeedUnitSystem, settings.SpeedScale);
-
+        // Display speed test result. JSON holds data, not presentation, so every speed and
+        // latency is a plain number in a fixed unit and the unit options do not reach here.
         var jsonResult = new JsonResult
         {
             ServerLocation = fastest.Server.Location,
             ServerSponsor = fastest.Server.Sponsor,
             ServerUrl = fastest.Server.Url,
             Timestamp = clock.Now.ToWholeSecond(),
-            Latency = latencyFormatted,
-            LatencyMilliseconds = latencyMilliseconds,
-            DownloadSpeed = downloadFormatted,
+            LatencyMilliseconds = !settings.NoLatency ? fastest.LatencyMilliseconds : null,
             DownloadSpeedBitsPerSecond = downloadResult?.GetBitsPerSecond(),
             DownloadSucceeded = downloadResult?.RequestsSucceeded,
             DownloadFailed = downloadResult?.RequestsFailed,
-            UploadSpeed = uploadFormatted,
             UploadSpeedBitsPerSecond = uploadResult?.GetBitsPerSecond(),
             UploadSucceeded = uploadResult?.RequestsSucceeded,
             UploadFailed = uploadResult?.RequestsFailed,

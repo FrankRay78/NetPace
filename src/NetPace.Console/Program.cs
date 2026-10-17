@@ -54,7 +54,7 @@ public static class Program
 
         var csvOption = new Option<bool>("--csv")
         {
-            Description = "Display output as a single CSV row (always includes timestamp).\nSpeeds and latency are plain numbers in fixed units, so --unit, --unit-scale and --unit-system do not apply.",
+            Description = "Display output as a single CSV row (always includes timestamp).",
             DefaultValueFactory = _ => false
         };
 
@@ -145,20 +145,20 @@ public static class Program
 
         var unitOption = new Option<SpeedUnit>("--unit")
         {
-            Description = "The speed unit. <BitsPerSecond, BytesPerSecond>",
+            Description = "The speed unit. <BitsPerSecond, BytesPerSecond>\nApplies to the default and minimal output.",
             DefaultValueFactory = _ => SpeedUnit.BitsPerSecond
         };
         unitOption.Aliases.Add("-u");
 
         var unitScaleOption = new Option<SpeedScale>("--unit-scale")
         {
-            Description = "The speed unit scale. <Auto, Base, Kilo, Mega, Giga, Tera, Peta>",
+            Description = "The speed unit scale. <Auto, Base, Kilo, Mega, Giga, Tera, Peta>\nApplies to the default and minimal output.",
             DefaultValueFactory = _ => SpeedScale.Auto
         };
 
         var unitSystemOption = new Option<SpeedUnitSystem>("--unit-system")
         {
-            Description = "The speed unit system. <SI, IEC>\nSI steps up in powers of 1000 (KB, MB, GB), common in networking, while IEC uses powers of 1024 (KiB, MiB, GiB), standard in computing and storage.",
+            Description = "The speed unit system. <SI, IEC>\nApplies to the default and minimal output.\nSI steps up in powers of 1000 (KB, MB, GB), common in networking, while IEC uses powers of 1024 (KiB, MiB, GiB), standard in computing and storage.",
             DefaultValueFactory = _ => SpeedUnitSystem.SI
         };
 

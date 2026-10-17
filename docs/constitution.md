@@ -1,5 +1,20 @@
 <!--
 Sync Impact Report:
+Version: 2.4.0 → 2.5.0
+Bump rationale: MINOR — Performance & Scale → Units and Formatting extends its CSV rule to JSON. JSON no longer carries a formatted speed or latency, so it is a second machine-readable format holding plain numbers in fixed units that `--unit`, `--unit-scale` and `--unit-system` do not touch. The consistency bullet now names only the modes that format a speed for a person to read — default and minimal — and the numbers-in-fixed-units bullet covers both machine-readable formats, which must agree with each other. Expanded guidance rather than a redefinition: consistency across the formatting modes is unchanged, and the fixed-unit rule gains a format rather than changing meaning. For review: the consistency bullet drops a mode, which could read as MAJOR.
+Modified Principles: N/A
+Modified Sections: Performance & Scale → Units and Formatting (consistency bullet drops JSON; fixed-unit bullet covers CSV and JSON)
+Added Sections: N/A
+Removed Sections: N/A
+Downstream documents reviewed (per Amendment Process clause 4):
+  ✅ CLAUDE.md (Units and Formatting) — updated: it carried the same output-modes list, and now states that CSV and JSON are both unformatted output.
+  ✅ README.md, USER_GUIDE.md — updated by the same change: the `--help` snapshot gains the unit-option scope lines, and the guide's *Numeric values in JSON* section loses the formatted fields and states that the unit options do not reach JSON.
+  ✅ docs/conventions/testing.md — reviewed, unchanged: it governs assertion style and test integrity, and carries no units or output-formatting rule.
+  ✅ .claude/commands/{draftissue,reviewissue,audit-codebase}.md — updated: each required a measurement to format consistently across JSON and to respect `--unit-scale`, which JSON no longer does; each now names the two formatting modes and states that CSV's and JSON's numbers must agree with each other.
+  ✅ .claude/commands/confirmissue.md — reviewed, unchanged: it carries no units or output-format rule.
+  ✅ .claude/skills/diagnose/NETPACE.md — reviewed, unchanged: it lists output modes as a diff signal and carries no units rule.
+
+--- superseded, retained for history ---
 Version: 2.3.0 → 2.4.0
 Bump rationale: MINOR — Performance & Scale → Units and Formatting gains a rule for CSV. The "consistent formatting across all output modes" bullet listed CSV among the modes the unit options shape, which CSV no longer is: it carries plain numbers in fixed units that `--unit`, `--unit-scale` and `--unit-system` do not touch, and those numbers must agree with JSON's numeric fields. The consistency bullet now names the modes that do format a speed for a person to read. Expanded guidance rather than a redefinition: consistency across the formatting modes is unchanged, and the new bullet states a constraint that did not previously exist. For review: the consistency bullet drops a mode, which could read as MAJOR.
 Modified Principles: N/A
@@ -395,8 +410,8 @@ Before committing, verify:
 - Support SI (1000-based) and IEC (1024-based) unit systems
 - Support BitsPerSecond and BytesPerSecond
 - Auto-scale by default (Mbps, Gbps) with user override
-- Consistent formatting across every output mode that formats a speed for a person to read (default, minimal, JSON)
-- CSV holds unformatted numbers in fixed units, so the unit options do not shape it. The numbers it reports MUST agree with the numeric fields in JSON for the same measurement
+- Consistent formatting across every output mode that formats a speed for a person to read (default, minimal)
+- CSV and JSON hold unformatted numbers in fixed units, so the unit options do not shape either. The numbers they report MUST agree with each other for the same measurement
 
 ## Governance
 
@@ -420,4 +435,4 @@ This constitution supersedes all other development practices and guides. All dev
 - Complexity MUST be justified against simplicity principles
 - For runtime development guidance, refer to `CLAUDE.md`
 
-**Version**: 2.4.0 | **Ratified**: 2026-04-10 | **Last Amended**: 2026-10-16
+**Version**: 2.5.0 | **Ratified**: 2026-04-10 | **Last Amended**: 2026-10-16
