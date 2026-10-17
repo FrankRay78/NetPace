@@ -11,7 +11,7 @@ Fan of NetPace? Consider giving the [repo](https://github.com/FrankRay78/NetPace
 With the [.NET 10 SDK](https://dotnet.microsoft.com/en-us/download/dotnet/10.0):
 
 ```bash
-dotnet tool install -g NetPace
+dotnet tool install -g netpace
 ```
 
 Then run a speed test:
@@ -23,8 +23,8 @@ netpace
 Update to the latest release, or run NetPace once without installing it:
 
 ```bash
-dotnet tool update -g NetPace
-dnx NetPace
+dotnet tool update -g netpace
+dnx netpace
 ```
 
 `dnx` asks you to confirm the download on first run; pass `--yes` in a script.

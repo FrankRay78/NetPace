@@ -21,9 +21,9 @@
 # accidentally resolved a real NetPace package from a real feed would fail rather than pass.
 #
 # Four of the six released RID packages carry Native AOT binaries built on their own native runners;
-# the two macOS packages are framework-dependent (.github/workflows/release-binaries.yml,
+# the two macOS packages are framework-dependent (.github/workflows/publish-tool.yml,
 # docs/RELEASING.md). AOT cannot be cross-compiled, so this matrix packs the framework-dependent form
-# that one machine can build for every RID; the AOT pack and its shape are gated by the release
+# that one machine can build for every RID; the AOT pack and its shape are gated by that
 # workflow.
 #
 # Exits non-zero on any failure. Run after any edit to the tool-package properties.
@@ -45,6 +45,9 @@ VERSION=99.99.99
 # An earlier version to install first, so `dotnet tool update` has somewhere to move from.
 OLD_VERSION=99.99.98
 PACKAGE=NetPace
+# What users type to install it. NuGet ids are case-insensitive, and the docs give the lowercase form to
+# match the command, so the install, update and dnx cases use exactly what the docs tell users to type.
+INSTALL_ID=netpace
 COMMAND=netpace
 
 SB="$(mktemp -d)"
@@ -123,7 +126,7 @@ ok "the wrapper advertises no platform the release does not publish" \
 
 echo "Installing the packed tool:"
 # SCENARIO: Tool installs and runs from its package
-OUTPUT="$(cd "$SB" && dotnet tool install "$PACKAGE" --version "$VERSION" --source "$FEED" --tool-path "$TOOLS" 2>&1)"; RC=$?
+OUTPUT="$(cd "$SB" && dotnet tool install "$INSTALL_ID" --version "$VERSION" --source "$FEED" --tool-path "$TOOLS" 2>&1)"; RC=$?
 ok "the install succeeds from the packed feed alone" '[ "$RC" = 0 ]'
 ok "and leaves the command users type" '[ -x "$TOOLS/$COMMAND" ]'
 OUTPUT="$("$TOOLS/$COMMAND" --version 2>&1)"; RC=$?
@@ -133,16 +136,16 @@ ok "and serves its own help" '[ "$RC" = 0 ] && grep -qF -- "--version" <<<"$OUTP
 
 echo "Updating an installed tool to a newer version:"
 UPDATED="$SB/updated"
-OUTPUT="$(cd "$SB" && dotnet tool install "$PACKAGE" --version "$OLD_VERSION" --source "$FEED" --tool-path "$UPDATED" 2>&1)"; RC=$?
+OUTPUT="$(cd "$SB" && dotnet tool install "$INSTALL_ID" --version "$OLD_VERSION" --source "$FEED" --tool-path "$UPDATED" 2>&1)"; RC=$?
 ok "an older version installs first" '[ "$RC" = 0 ] && [ "$("$UPDATED/$COMMAND" --version)" = "$OLD_VERSION" ]'
-OUTPUT="$(cd "$SB" && dotnet tool update "$PACKAGE" --source "$FEED" --tool-path "$UPDATED" 2>&1)"; RC=$?
+OUTPUT="$(cd "$SB" && dotnet tool update "$INSTALL_ID" --source "$FEED" --tool-path "$UPDATED" 2>&1)"; RC=$?
 ok "the update succeeds from the packed feed alone" '[ "$RC" = 0 ]'
 OUTPUT="$("$UPDATED/$COMMAND" --version 2>&1)"; RC=$?
 ok "and the command now reports the newer version" '[ "$RC" = 0 ] && [ "$OUTPUT" = "$VERSION" ]'
 
 echo "Running it once without installing:"
 # SCENARIO: Tool runs once without installing
-OUTPUT="$(cd "$SB" && dnx --yes --source "$FEED" "$PACKAGE@$VERSION" -- --version 2>&1)"; RC=$?
+OUTPUT="$(cd "$SB" && dnx --yes --source "$FEED" "$INSTALL_ID@$VERSION" -- --version 2>&1)"; RC=$?
 ok "dnx runs the tool and it reports the packed version" '[ "$RC" = 0 ] && grep -qxF "$VERSION" <<<"$OUTPUT"'
 # Asserted against the tool-path stores this matrix owns as well as the global one: `dnx` leaving a
 # command behind anywhere is the thing the scenario is about, and the global store alone cannot show it.

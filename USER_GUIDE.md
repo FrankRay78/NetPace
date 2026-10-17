@@ -74,23 +74,23 @@ netpace --downloadsize 50 --uploadsize 20
 With the [.NET 10 SDK](https://dotnet.microsoft.com/en-us/download/dotnet/10.0) installed, NetPace installs as a .NET tool in one line, and the `netpace` command is on your path afterwards — provided the .NET global tools directory (`~/.dotnet/tools`, or `%USERPROFILE%\.dotnet\tools` on Windows) is on `PATH`. `dotnet tool install` tells you if it is not:
 
 ```bash
-dotnet tool install -g NetPace
+dotnet tool install -g netpace
 ```
 
 Move to the latest release at any time:
 
 ```bash
-dotnet tool update -g NetPace
+dotnet tool update -g netpace
 ```
 
 Or run NetPace once without installing it — `dnx` fetches the package, runs it, and leaves nothing installed. The first run asks you to confirm the download, so pass `--yes` where there is no terminal to answer, such as a CI job:
 
 ```bash
-dnx NetPace
-dnx --yes NetPace -- --json
+dnx netpace
+dnx --yes netpace -- --json
 ```
 
-Pin a known version in a build or CI job with `dotnet tool install -g NetPace --version <release>`, naming any version from the [releases page](https://github.com/FrankRay78/NetPace/releases).
+Pin a known version in a build or CI job with `dotnet tool install -g netpace --version <release>`, naming any version from the [releases page](https://github.com/FrankRay78/NetPace/releases).
 
 The installed command behaves exactly like the release binary of the same version, and `netpace --version` reports the release it was published with.
 
