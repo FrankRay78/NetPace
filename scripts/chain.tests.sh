@@ -273,9 +273,12 @@ before="$(repo_state)"
 chain 270
 ok "exits with the chain's own usage-limit code, not its ordinary failure code" '[ "$RC" = "$LIMIT_EXIT" ]'
 ok "no stage after verify started" '[ "$(calls)" = 2 ]'
-ok "the closing line names the usage limit instead of the exit code" 'closing | grep -qF "the Claude usage limit was reached" && ! grep -qF "claude exited with" <<<"$OUTPUT"'
-ok "the closing line quotes the reply's reset wording verbatim" 'closing | grep -qF "resets 3:20pm (Europe/Berlin)"'
-ok "the stage is still named, with its position" 'closing | grep -qF "chain: FAILED at [2/3] verify — "'
+# One whole-line match, so a stray character, a doubled dash or anything appended after the quoted
+# message fails the case. The negative is separate because it is what pins the limit check running
+# before the exit-code dispatch, which is the ordering the whole feature turns on.
+ok "the closing line names the stage, the usage limit and the reply's wording, and nothing else" 'closing | grep -qxF "chain: FAILED at [2/3] verify — the Claude usage limit was reached — $LIMIT_TEXT"'
+ok "and not the exit code it arrived as" '! grep -qF "claude exited with" <<<"$OUTPUT"'
+ok "the stage whose session is worth reopening after the reset is the one named" 'closing | grep -qF "claude --resume sess-2"'
 ok "branch, commits and working tree untouched" '[ "$(repo_state)" = "$before" ]'
 new_case
 limit_reply 1 ''
@@ -297,6 +300,32 @@ reply 1 'READY branch=feature/270-x'
 echo 1 > "$STUB_DIR/rc-1"
 chain 270
 ok "a stage that exits non-zero with no limit in its reply fails as it does today" '[ "$RC" = 1 ] && closing | grep -qF "claude exited with 1"'
+# The field is matched for one exact value, and the design rests on that: the sibling refusals that
+# share its rate_limit error carry no limit that will ever reset, so parking one as a limit stop
+# would advise the maintainer to wait for nothing.
+new_case
+limit_reply 1 "$LIMIT_TEXT"
+jq '.api_error = "api_key_auth_disabled"' "$STUB_DIR/reply-1.json" > "$STUB_DIR/reply-1.tmp" && mv "$STUB_DIR/reply-1.tmp" "$STUB_DIR/reply-1.json"
+chain 270
+ok "a reply whose api_error is some other refusal is not a usage-limit stop" '[ "$RC" = 1 ] && ! grep -qi "usage limit" <<<"$OUTPUT"'
+# The message is quoted into a one-line closing line, so the pipeline that reduces it to one line
+# is load-bearing. A CRLF reply would otherwise quote a reset time one character short, and the
+# carriage returns go through `tr` for that reason — BSD sed reads `s/\r$//` as a literal `r`.
+new_case
+limit_reply 1 "$(printf '%s\r' "$LIMIT_TEXT")"
+chain 270
+ok "a CRLF limit message leaves no carriage return in the quoted reset time" '[ "$RC" = "$LIMIT_EXIT" ] && closing | grep -qxF "chain: FAILED at [1/3] build — the Claude usage limit was reached — $LIMIT_TEXT"'
+new_case
+limit_reply 1 '   '
+chain 270
+ok "a limit message of nothing but whitespace is no message, not a blank quotation" '[ "$RC" = "$LIMIT_EXIT" ] && closing | grep -qxF "chain: FAILED at [1/3] build — the Claude usage limit was reached; the reply gave no reset time"'
+# A multi-line message: the closing line carries one line of it, and the whole of it still reaches
+# the output, which is the log the parked comment points the maintainer at.
+new_case
+limit_reply 1 "$(printf 'Claude usage limit reached.\n%s\nRun /status for details.' "$LIMIT_TEXT")"
+chain 270
+ok "a multi-line limit message is reduced to its last line in the closing line" '[ "$RC" = "$LIMIT_EXIT" ] && closing | grep -qxF "chain: FAILED at [1/3] build — the Claude usage limit was reached — Run /status for details."'
+ok "and the whole message still reaches the output, reset time included" 'grep -qF "$LIMIT_TEXT" <<<"$OUTPUT"'
 
 # SCENARIO: Wrong starting point is refused
 echo "Wrong starting point is refused:"

@@ -180,8 +180,8 @@ read_verdict() {
 # to usage_limit_reached only when the account's own limit — a session, weekly or per-model plan
 # limit, or a spend cap — refused the request, and no other refusal sharing its rate_limit error
 # sets it. The text is the wrong source for the same reason the verdict is read by position: a
-# report may quote a limit message it merely read about, and this issue's acceptance criteria say
-# in as many words that such a report must not be mistaken for a limit stop.
+# report may quote a limit message it merely read about, and such a report must not be mistaken
+# for a limit stop.
 #
 # claude writes the reply and exits non-zero on an API error, so this is read before the exit code
 # is dispatched on; a reply that is absent, not JSON, or carries no such field leaves every other
@@ -194,6 +194,11 @@ usage_limit_reason() {
   # nothing else in a result reply does — the typed error's reset field rides on the assistant
   # message, not on the result object the chain reads. Its last non-blank line only, because the
   # closing line is one line and a multi-line reason would break the runner's reading of it.
+  #
+  # The carriage returns go through `tr`, not the `sed` below, and must stay there: BSD sed reads
+  # `s/\r$//` as a literal `r`, so on macOS it would eat the message's last character — quoting a
+  # reset time one digit short. The trailing-space strip looks like it covers \r on its own, and
+  # does under GNU sed, which is exactly how the bug hides.
   detail=$(jq -r '.result // empty' 2>/dev/null <<<"$1" | tr -d '\r' | sed -e 's/[[:space:]]*$//' -e '/^$/d' | tail -n 1)
   if [ -n "$detail" ]; then
     echo "the Claude usage limit was reached — $detail"
@@ -228,11 +233,11 @@ branch_state() {
 }
 
 # fail <position> <name> <reason> [exit code] — the branch state, the closing message, then stop,
-# with 1 unless the caller names another code. Nothing is
-# undone: the branch and working tree stay exactly as the failed stage left them, for diagnosis.
-# The state lines exist because a stage killed at its time limit leaves no report at all, and a
-# stage that stops part-way can leave commits or uncommitted edits behind — so the closing
-# output has to say whether there is work on the branch before anyone continues it by hand.
+# with 1 unless the caller names another code. Nothing is undone: the branch and working tree
+# stay exactly as the failed stage left them, for diagnosis. The state lines exist because a
+# stage killed at its time limit leaves no report at all, and a stage that stops part-way can
+# leave commits or uncommitted edits behind — so the closing output has to say whether there is
+# work on the branch before anyone continues it by hand.
 fail() {
   branch_state
   echo "chain: FAILED at [$1/3] $2 — $3"
@@ -277,9 +282,18 @@ run_stage() {
     fail "$pos" "$name" "killed (exit 137) after ${elapsed}s, before its ${limit}s time limit"
   fi
   # Before the exit code is dispatched on, because the limit's own exit code is an ordinary 1 and
-  # would otherwise be reported as "claude exited with 1" — which is all #389's parked comment
-  # said, and the reason its cause had to be dug out of the session transcript by hand.
+  # would otherwise be reported as "claude exited with 1" — which is all the parked comment used
+  # to say, and the reason the cause had to be dug out of the session transcript by hand.
   if limit_reason=$(usage_limit_reason "$reply"); then
+    # The report and the session id, read here because this failure stops the run above the place
+    # every other reply-bearing failure reads them. Without the report the limit's own message
+    # reaches neither the output nor the log the parked comment points at, leaving only the one
+    # line the reason could carry; without the session id the closing line claims no id was
+    # captured, over a reply that carried one — and this is the failure whose session is most
+    # worth reopening once the limit has reset.
+    STAGE_RESULT=$(jq -r '.result // empty' 2>/dev/null <<<"$reply")
+    STAGE_SESSION=$(jq -r '.session_id // empty' 2>/dev/null <<<"$reply")
+    [ -n "$STAGE_RESULT" ] && printf '%s\n' "$STAGE_RESULT"
     fail "$pos" "$name" "$limit_reason" "$USAGE_LIMIT_EXIT"
   fi
   case $rc in

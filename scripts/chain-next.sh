@@ -9,8 +9,8 @@
 # comment naming the failed stage, the log and the kept branch. Where the chain's own exit code
 # says a stage was cut off by the account's Claude usage limit, that comment says so instead and
 # tells the maintainer the issue itself needs only its `parked` label removed once the limit has
-# reset. It never merges, and it never
-# itself deletes or pushes anything on GitHub; only the chain's /raise-pr stage pushes.
+# reset. It never merges, and it never itself deletes or pushes anything on GitHub; only the
+# chain's /raise-pr stage pushes.
 #
 # WHY. chain.sh carries one named issue to a pull request, but someone still has to pick the
 # issue, and return the checkout to a clean main afterwards — the chain leaves its feature branch
