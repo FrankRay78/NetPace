@@ -143,6 +143,26 @@ ok "the update succeeds from the packed feed alone" '[ "$RC" = 0 ]'
 OUTPUT="$("$UPDATED/$COMMAND" --version 2>&1)"; RC=$?
 ok "and the command now reports the newer version" '[ "$RC" = 0 ] && [ "$OUTPUT" = "$VERSION" ]'
 
+echo "Installing a prerelease:"
+# SCENARIO: An installed prerelease tool reports its prerelease version
+# Packed as the release workflows pack a prerelease tag: the assembly and file versions accept only
+# numbers, so they take the tag without its suffix, and everything else takes the whole tag.
+PRERELEASE="$VERSION-rc.1"
+OUTPUT="$(dotnet pack "$PROJECT" \
+  --configuration Release \
+  -p:PackageVersion="$PRERELEASE" \
+  -p:Version="$PRERELEASE" \
+  -p:AssemblyVersion="$VERSION" \
+  -p:FileVersion="$VERSION" \
+  -p:InformationalVersion="$PRERELEASE" \
+  --output "$FEED" 2>&1)"; RC=$?
+ok "the console project packs at a prerelease version" '[ "$RC" = 0 ]'
+PRE_TOOLS="$SB/prerelease"
+OUTPUT="$(cd "$SB" && dotnet tool install "$INSTALL_ID" --version "$PRERELEASE" --source "$FEED" --tool-path "$PRE_TOOLS" 2>&1)"; RC=$?
+ok "the prerelease installs by its version" '[ "$RC" = 0 ]'
+OUTPUT="$("$PRE_TOOLS/$COMMAND" --version 2>&1)"; RC=$?
+ok "and reports the prerelease version, suffix included" '[ "$RC" = 0 ] && [ "$OUTPUT" = "$PRERELEASE" ]'
+
 echo "Running it once without installing:"
 # SCENARIO: Tool runs once without installing
 OUTPUT="$(cd "$SB" && dnx --yes --source "$FEED" "$INSTALL_ID@$VERSION" -- --version 2>&1)"; RC=$?

@@ -37,22 +37,15 @@ public interface IEnvironmentInfoProvider
 /// </summary>
 /// <remarks>
 /// Every value comes from a BCL API that survives trimming - three <see cref="RuntimeInformation"/>
-/// properties and <see cref="System.Reflection.AssemblyName"/> off this assembly's own identity.
-/// None of them reflects over types or members, which is what would make the type unsafe to trim
-/// or publish AOT, so any value added here must come from the same kind of source.
+/// properties and <see cref="AppVersion"/>, which reads this assembly's informational version
+/// attribute. None of them reflects over types or members, which is what would make the type unsafe
+/// to trim or publish AOT, so any value added here must come from the same kind of source.
 /// </remarks>
 public sealed class EnvironmentInfoProvider : IEnvironmentInfoProvider
 {
     /// <inheritdoc />
     /// <remarks>Returns <c>"Unknown"</c> when the assembly carries no version.</remarks>
-    public string GetVersion()
-    {
-        Version? assemblyVersion = typeof(EnvironmentInfoProvider).Assembly.GetName().Version;
-
-        return assemblyVersion != null
-            ? $"{assemblyVersion.Major}.{assemblyVersion.Minor}.{assemblyVersion.Build}"
-            : "Unknown";
-    }
+    public string GetVersion() => AppVersion.Current;
 
     /// <inheritdoc />
     public string GetRuntime() => RuntimeInformation.FrameworkDescription;
