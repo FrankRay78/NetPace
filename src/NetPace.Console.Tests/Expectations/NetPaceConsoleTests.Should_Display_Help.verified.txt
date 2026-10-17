@@ -20,7 +20,6 @@ OPTIONS:
         --count                             Stop speed testing after this many times.                                                                                                          
         --delay                             Time between multiple speed tests (HH:MM:SS).                                                                                                      
         --csv                               Display output as a single CSV row (always includes timestamp).                                                                                    
-                                            Speeds and latency are plain numbers in fixed units, so --unit, --unit-scale and --unit-system do not apply.                                       
         --csv-delimiter    ,                Single character delimiter to use in CSV output.                                                                                                   
         --json                              Display output in Json format.                                                                                                                     
         --json-pretty                       Display output in Json format (pretty print).                                                                                                      
@@ -37,8 +36,11 @@ OPTIONS:
         --downloadsize                      Stop the download test after this many megabytes (IEC MiB).                                                                                        
         --uploadsize                        Stop the upload test after this many megabytes (IEC MiB).                                                                                          
     -u, --unit             BitsPerSecond    The speed unit. <BitsPerSecond, BytesPerSecond>                                                                                                    
+                                            Applies to the default and minimal output.                                                                                                         
         --unit-scale       Auto             The speed unit scale. <Auto, Base, Kilo, Mega, Giga, Tera, Peta>                                                                                   
+                                            Applies to the default and minimal output.                                                                                                         
         --unit-system      SI               The speed unit system. <SI, IEC>                                                                                                                   
+                                            Applies to the default and minimal output.                                                                                                         
                                             SI steps up in powers of 1000 (KB, MB, GB), common in networking, while IEC uses powers of 1024 (KiB, MiB, GiB), standard in computing and storage.
     -f, --file                              Write output to file.                                                                                                                              
         --file-mode        Append           Determines file output behavior. <Append, Overwrite>                                                                                               

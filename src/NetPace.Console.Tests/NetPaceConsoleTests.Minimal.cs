@@ -47,5 +47,35 @@ public sealed partial class NetPaceConsoleTests
             Assert.Equal(0, result.ExitCode);
             await Verify(result.Output);
         }
+
+        [Fact]
+        public async Task Should_Show_Minimal_Speeds_In_The_Unit_The_Switches_Ask_For()
+        {
+            // SCENARIO: Unit switches still shape human-readable output
+
+            // Given the same speed test run twice, once with the default units and once with every
+            // unit switch set to something else.
+            var defaultUnits = await GetCommandLineTestHost(StubServices()).RunAsync(["--minimal"]);
+            var switchedUnits = await GetCommandLineTestHost(StubServices()).RunAsync(
+                ["--minimal", "--unit", "BytesPerSecond", "--unit-scale", "Mega", "--unit-system", "IEC"]);
+
+            // Then neither run reports an error.
+            Assert.Equal(0, defaultUnits.ExitCode);
+            Assert.Equal(0, switchedUnits.ExitCode);
+
+            // And each run shows its speeds in the unit its command line asked for. The
+            // switched run shows 0 MiBps because the stub measures about 1 kB/s down and 2.3
+            // kB/s up, which a Mega scale over IEC bytes rounds to zero.
+            await Verify(defaultUnits.Output + switchedUnits.Output);
+        }
+
+        private static ServiceCollection StubServices()
+        {
+            var services = new ServiceCollection();
+            services.AddSingleton<ISpeedTestService, SpeedTestStub>();
+            services.AddSingleton<IClock, ClockStub>();
+            services.AddSingleton<IWaiter, NoDelayStub>();
+            return services;
+        }
     }
 }

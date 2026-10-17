@@ -68,7 +68,7 @@ public sealed partial class NetPaceConsoleTests
             Assert.DoesNotContain("event=", result.Output, StringComparison.Ordinal);
             Assert.DoesNotContain("Download:", result.DiagnosticOutput, StringComparison.Ordinal);
             Assert.DoesNotContain("DownloadSucceeded", result.DiagnosticOutput, StringComparison.Ordinal);
-            Assert.DoesNotContain("\"DownloadSpeed\"", result.DiagnosticOutput, StringComparison.Ordinal);
+            Assert.DoesNotContain("\"DownloadSpeedBitsPerSecond\"", result.DiagnosticOutput, StringComparison.Ordinal);
         }
 
         [Theory]
