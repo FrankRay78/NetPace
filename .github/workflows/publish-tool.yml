@@ -217,11 +217,6 @@ jobs:
           done
           if [ "$missing" = "true" ]; then exit 1; fi
 
-      # The RID packages go first and the wrapper last. The wrapper carries no nuspec dependencies — it
-      # resolves its RID package at install time — so nuget.org will happily accept a wrapper pointing at
-      # packages that were never published. Pushing it last means a push that dies part-way leaves the
-      # version simply not installable, which a re-run fixes, rather than installable-and-broken for
-      # every user on whichever platform did not make it.
       # Trusted publishing: nuget.org trusts this workflow file in this repository (a policy on the
       # nuget.org account) and exchanges the job's GitHub OIDC token for an API key that expires within
       # the hour, so no long-lived key is stored anywhere. Run immediately before the push, after every
@@ -232,6 +227,11 @@ jobs:
         with:
           user: ${{ secrets.NUGET_USER }}
 
+      # The RID packages go first and the wrapper last. The wrapper carries no nuspec dependencies — it
+      # resolves its RID package at install time — so nuget.org will happily accept a wrapper pointing at
+      # packages that were never published. Pushing it last means a push that dies part-way leaves the
+      # version simply not installable, which a re-run fixes, rather than installable-and-broken for
+      # every user on whichever platform did not make it.
       - name: Publish to NuGet
         env:
           VERSION: ${{ steps.get_version.outputs.version }}

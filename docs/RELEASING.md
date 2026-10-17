@@ -146,8 +146,8 @@ nuget.org issues the key only to a workflow it has a policy for. A policy names 
 
 | nuget.org trusted publishing policy | Repository | Workflow file | Pushes |
 |-------------------------------------|------------|---------------|--------|
-| NetPace.Core | `FrankRay78/NetPace` | `publish-nuget.yml` | `NetPace.Core` |
-| NetPace tool | `FrankRay78/NetPace` | `publish-tool.yml` | `NetPace` and the six `NetPace.<rid>` packages |
+| Publish NetPace Core | `FrankRay78/NetPace` | `publish-nuget.yml` | `NetPace.Core` |
+| Publish NetPace tool | `FrankRay78/NetPace` | `publish-tool.yml` | `NetPace` and the six `NetPace.<rid>` packages |
 
 **What the repository holds.** One secret, `NUGET_USER`: the nuget.org profile name (not the email address) that owns the policies, which `NuGet/login` sends with the exchange. Each publish job declares `id-token: write`, without which GitHub issues no OIDC token, and `contents: read` for the checkout.
 
