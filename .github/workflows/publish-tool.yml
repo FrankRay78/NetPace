@@ -117,39 +117,6 @@ jobs:
           merge-multiple: true
           path: ./tool-feed
 
-      # The filename says nothing about what is inside, so this reads the package. A Native AOT pack puts
-      # the single native binary under tools/any/<rid>/; a framework-dependent one puts a netpace.dll and
-      # its dependencies under tools/net10.0/<rid>/. Both set Runner="executable", and the install gate
-      # below runs on a runner that has the .NET runtime, so without this check four framework-dependent
-      # packages would pass every gate and ship to users promised a binary that needs no runtime.
-      # Asserting the entry count catches the other direction: a native symbol file riding along.
-      - name: Verify a Native AOT package arrived for every native RID
-        env:
-          VERSION: ${{ steps.get_version.outputs.version }}
-        run: |
-          set -euo pipefail
-          missing=false
-          for runtime in win-x64 win-arm64 linux-x64 linux-arm64; do
-            package="./tool-feed/NetPace.$runtime.$VERSION.nupkg"
-            if [ ! -f "$package" ]; then
-              echo "FAIL: no tool package for $runtime — its native build did not produce one."
-              missing=true
-              continue
-            fi
-            echo "$runtime: $(stat -c%s "$package") bytes"
-            entries="$(python3 -I -c "import sys, zipfile; print('\n'.join(n for n in zipfile.ZipFile(sys.argv[1]).namelist() if n.startswith('tools/')))" "$package")"
-            if ! grep -q "^tools/any/$runtime/" <<<"$entries"; then
-              echo "FAIL: $runtime is not a Native AOT package. Its tools/ entries are:"
-              echo "$entries"
-              missing=true
-            elif [ "$(grep -c . <<<"$entries")" != 2 ]; then
-              echo "FAIL: $runtime should carry the native binary and its settings file and nothing else:"
-              echo "$entries"
-              missing=true
-            fi
-          done
-          if [ "$missing" = "true" ]; then exit 1; fi
-
       - name: Restore dependencies
         run: dotnet restore src
 
@@ -173,8 +140,9 @@ jobs:
           done
 
       # The wrapper package is what users name: it carries no binary, only the list of RID packages the
-      # installer picks from. CreateRidSpecificToolPackages=false stops this pack rebuilding the six
-      # RID packages framework-dependent and overwriting the Native AOT ones above.
+      # installer picks from. CreateRidSpecificToolPackages=false (Microsoft.NET.PackTool.targets in the SDK)
+      # stops this pack rebuilding the six RID packages framework-dependent and overwriting the Native AOT
+      # ones above; the final check before the push holds even if a later SDK stops honouring it.
       - name: Pack wrapper tool package
         env:
           VERSION: ${{ steps.get_version.outputs.version }}
@@ -194,7 +162,7 @@ jobs:
       # for this runner's own RID: the wrapper resolves a RID package, that package carries a runnable
       # binary, and the binary reports the tag rather than the 0.0.0 source-build placeholder — the drift
       # the library package once shipped unnoticed (docs/RELEASING.md, Source-build version). It installs
-      # by the lowercase id the docs tell users to type. It covers linux-x64 only; the step above is what
+      # by the lowercase id the docs tell users to type. It covers linux-x64 only; the step after it is what
       # judges the other five. Nothing is pushed if it fails.
       - name: Verify the installed tool reports the tag
         env:
@@ -208,6 +176,41 @@ jobs:
             echo "FAIL: the installed tool reports '$reported', not the tag '$VERSION'."
             exit 1
           fi
+
+      # Runs last, over the feed exactly as it will be pushed, so it judges the packages that ship rather
+      # than the ones that were downloaded: nothing packed in this job can replace an AOT package unseen.
+      # The filename says nothing about what is inside, so this reads the package. A Native AOT pack puts
+      # the single native binary under tools/any/<rid>/; a framework-dependent one puts a netpace.dll and
+      # its dependencies under tools/net10.0/<rid>/. Both set Runner="executable", and the install gate
+      # above runs on a runner that has the .NET runtime, so without this check four framework-dependent
+      # packages would pass every gate and ship to users promised a binary that needs no runtime.
+      # Asserting the entry count catches the other direction: a native symbol file riding along.
+      - name: Verify every native RID package being pushed is Native AOT
+        env:
+          VERSION: ${{ steps.get_version.outputs.version }}
+        run: |
+          set -euo pipefail
+          missing=false
+          for runtime in win-x64 win-arm64 linux-x64 linux-arm64; do
+            package="./tool-feed/NetPace.$runtime.$VERSION.nupkg"
+            if [ ! -f "$package" ]; then
+              echo "FAIL: no tool package for $runtime — its native build did not produce one."
+              missing=true
+              continue
+            fi
+            echo "$runtime: $(stat -c%s "$package") bytes"
+            entries="$(python3 -I -c "import sys, zipfile; print('\n'.join(n for n in zipfile.ZipFile(sys.argv[1]).namelist() if n.startswith('tools/')))" "$package")"
+            if ! grep -q "^tools/any/$runtime/" <<<"$entries"; then
+              echo "FAIL: $runtime is not a Native AOT package. Its tools/ entries are:"
+              echo "$entries"
+              missing=true
+            elif [ "$(grep -c . <<<"$entries")" != 2 ]; then
+              echo "FAIL: $runtime should carry the native binary and its settings file and nothing else. If a new SDK legitimately adds a file, adjust the expected count here and in docs/RELEASING.md:"
+              echo "$entries"
+              missing=true
+            fi
+          done
+          if [ "$missing" = "true" ]; then exit 1; fi
 
       # The RID packages go first and the wrapper last. The wrapper carries no nuspec dependencies — it
       # resolves its RID package at install time — so nuget.org will happily accept a wrapper pointing at
