@@ -1,5 +1,3 @@
-using System.Text.Json;
-
 namespace NetPace.Console.Tests;
 
 public sealed partial class NetPaceConsoleTests
@@ -319,17 +317,10 @@ public sealed partial class NetPaceConsoleTests
             // When
             var result = await host.RunAsync([jsonSwitch]);
 
-            // Then each measurement appears once, as a number in a fixed unit.
+            // Then the run succeeds.
             Assert.Equal(0, result.ExitCode);
-            var json = ParseJsonResult(result.Output);
-            Assert.Equal(JsonValueKind.Number, json.GetProperty("LatencyMilliseconds").ValueKind);
-            Assert.Equal(JsonValueKind.Number, json.GetProperty("DownloadSpeedBitsPerSecond").ValueKind);
-            Assert.Equal(JsonValueKind.Number, json.GetProperty("UploadSpeedBitsPerSecond").ValueKind);
-            Assert.Equal(100, json.GetProperty("LatencyMilliseconds").GetInt64());
-            Assert.Equal(8000, json.GetProperty("DownloadSpeedBitsPerSecond").GetInt64());
-            Assert.Equal(18667, json.GetProperty("UploadSpeedBitsPerSecond").GetInt64());
 
-            // And the whole result, so the full user-visible contract is reviewable.
+            // And each measurement appears once, as a number in a fixed unit.
             await Verify(result.Output).UseParameters(jsonSwitch);
         }
 
@@ -359,16 +350,6 @@ public sealed partial class NetPaceConsoleTests
             services.AddSingleton<IClock, ClockStub>();
             services.AddSingleton<IWaiter, NoDelayStub>();
             return services;
-        }
-
-        /// <summary>
-        /// Parses the one JSON object a single speed test writes. The returned element is owned by a
-        /// disposed document, so it is cloned to stay readable.
-        /// </summary>
-        private static JsonElement ParseJsonResult(string output)
-        {
-            using var document = JsonDocument.Parse(output);
-            return document.RootElement.Clone();
         }
     }
 }
