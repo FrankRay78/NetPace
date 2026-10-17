@@ -38,6 +38,11 @@ jobs:
     needs: check
     if: needs.check.outputs.changed == 'true'
     runs-on: ubuntu-latest
+    # id-token: write lets the job request the OIDC token the NuGet login step exchanges for a key.
+    # Naming permissions replaces the defaults, so contents: read keeps the checkout working.
+    permissions:
+      contents: read
+      id-token: write
 
     steps:
       - name: Checkout code
@@ -103,9 +108,21 @@ jobs:
             }
           }
 
+      # Trusted publishing: nuget.org trusts this workflow file in this repository (a policy on the
+      # nuget.org account) and exchanges the job's GitHub OIDC token for an API key that expires within
+      # the hour, so no long-lived key is stored anywhere. Run immediately before the push, after every
+      # gate, so the key exists only for the push. docs/RELEASING.md, Trusted publishing.
+      - name: Log in to NuGet
+        id: nuget_login
+        uses: NuGet/login@v1
+        with:
+          user: ${{ secrets.NUGET_USER }}
+
       - name: Publish to NuGet
+        env:
+          NUGET_API_KEY: ${{ steps.nuget_login.outputs.NUGET_API_KEY }}
         run: |
           dotnet nuget push ./output/*.nupkg \
-            --api-key ${{ secrets.NUGET_API_KEY }} \
+            --api-key "$NUGET_API_KEY" \
             --source https://api.nuget.org/v3/index.json \
             --skip-duplicate
