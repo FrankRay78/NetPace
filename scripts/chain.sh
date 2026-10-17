@@ -194,7 +194,7 @@ usage_limit_reason() {
   # nothing else in a result reply does — the typed error's reset field rides on the assistant
   # message, not on the result object the chain reads. Its last non-blank line only, because the
   # closing line is one line and a multi-line reason would break the runner's reading of it.
-  detail=$(jq -r '.result // empty' 2>/dev/null <<<"$1" | sed -e 's/\r$//' -e '/^[[:space:]]*$/d' | tail -n 1)
+  detail=$(jq -r '.result // empty' 2>/dev/null <<<"$1" | tr -d '\r' | sed -e 's/[[:space:]]*$//' -e '/^$/d' | tail -n 1)
   if [ -n "$detail" ]; then
     echo "the Claude usage limit was reached — $detail"
   else
