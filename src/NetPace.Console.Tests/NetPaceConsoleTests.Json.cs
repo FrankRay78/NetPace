@@ -329,11 +329,6 @@ public sealed partial class NetPaceConsoleTests
             Assert.Equal(8000, json.GetProperty("DownloadSpeedBitsPerSecond").GetInt64());
             Assert.Equal(18667, json.GetProperty("UploadSpeedBitsPerSecond").GetInt64());
 
-            // And the fields that held a formatted speed or latency are no longer written.
-            Assert.False(json.TryGetProperty("Latency", out _));
-            Assert.False(json.TryGetProperty("DownloadSpeed", out _));
-            Assert.False(json.TryGetProperty("UploadSpeed", out _));
-
             // And the whole result, so the full user-visible contract is reviewable.
             await Verify(result.Output).UseParameters(jsonSwitch);
         }

@@ -29,6 +29,8 @@ That list is the constitution's §IX enumeration, written for *acceptance criter
 
 Note the interaction with NetPace's console-snapshot rule (`CLAUDE.md` → Testing): a snapshot of composed console output is not a mechanism assertion. The snapshot *is* the user-visible contract, which is precisely the observable outcome. What this section rules out is hand-picking an internal rendering detail — a Spectre widget type, a column width — and asserting on that instead.
 
+A test that ends in a snapshot does not also assert on text the snapshot already shows, present or absent. `Assert.Contains`, `Assert.DoesNotContain` or `TryGetProperty` checks ahead of a `Verify` restate part of the snapshot, so they catch nothing the snapshot would miss and leave two places to update when the output changes. Keep the facts a snapshot cannot hold, such as the exit code or the equality of two runs, and let the snapshot carry everything about what the output says.
+
 **Regression exception**: a test that pins a specific mechanism is permitted only when it exists to prevent a named, previously-fixed bug. Reference the bug in the test name or a one-line comment at the site (e.g. `// GH#176 — release archive omitted .pdb after AOT publish`), so a future reader knows why the coupling is deliberate.
 
 ---

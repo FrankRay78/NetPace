@@ -59,15 +59,11 @@ public sealed partial class NetPaceConsoleTests
             var switchedUnits = await GetCommandLineTestHost(StubServices()).RunAsync(
                 ["--minimal", "--unit", "BytesPerSecond", "--unit-scale", "Mega", "--unit-system", "IEC"]);
 
-            // Then each run shows its speeds in the unit its command line asked for.
+            // Then neither run reports an error.
             Assert.Equal(0, defaultUnits.ExitCode);
             Assert.Equal(0, switchedUnits.ExitCode);
-            Assert.Contains("Kbps", defaultUnits.Output, StringComparison.Ordinal);
-            Assert.DoesNotContain("MiBps", defaultUnits.Output, StringComparison.Ordinal);
-            Assert.Contains("MiBps", switchedUnits.Output, StringComparison.Ordinal);
-            Assert.DoesNotContain("Kbps", switchedUnits.Output, StringComparison.Ordinal);
 
-            // Both lines in full, so the formatted speeds the switches shape are reviewable. The
+            // And each run shows its speeds in the unit its command line asked for. The
             // switched run shows 0 MiBps because the stub measures about 1 kB/s down and 2.3
             // kB/s up, which a Mega scale over IEC bytes rounds to zero.
             await Verify(defaultUnits.Output + switchedUnits.Output);
