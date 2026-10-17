@@ -1,22 +1,57 @@
 # NetPace
 
-[![NuGet](https://img.shields.io/nuget/v/NetPace.Core.svg)](https://www.nuget.org/packages/NetPace.Core/)
+[![NetPace.Core on NuGet](https://img.shields.io/nuget/v/NetPace.Core.svg?label=NuGet%3A%20NetPace.Core)](https://www.nuget.org/packages/NetPace.Core/)
+[![netpace .NET tool on NuGet](https://img.shields.io/nuget/v/netpace.svg?label=NuGet%3A%20netpace%20tool)](https://www.nuget.org/packages/netpace/)
 [![Build & Tests](https://github.com/FrankRay78/NetPace/actions/workflows/dotnet.yml/badge.svg)](https://github.com/FrankRay78/NetPace/actions/workflows/dotnet.yml)
 
 Network speed tester including server discovery, latency measurement, download and upload speed testing.
 
 Built with .NET 10.0 — runs on Windows, Linux, and macOS.
 
-> [!IMPORTANT]\
-> **NetPace is pre-1.0.** Any release may change or remove command-line options, output formats or `NetPace.Core` library members, without a deprecation period. Backward compatibility will be maintained from 1.0.0 onwards.
+[Install](#install) · [Usage](#usage) · [Library](#developer-use) · [User Guide](https://github.com/FrankRay78/NetPace/blob/main/USER_GUIDE.md)
 
-<p align="left">
-    <a href="https://github.com/FrankRay78/NetPace/issues/new?labels=needs%20triage,bug&template=bug-report---.md">Report Bug</a>
-    -
-    <a href="https://github.com/FrankRay78/NetPace/issues/new?labels=needs%20triage,enhancement&template=feature-request---.md">Request Feature</a>
-</p>
+The obligatory screenshot (as of 29 August 2025):
+
+<img width="1115" height="628" alt="NetPace_Screenshot_2025-08-29" src="https://github.com/user-attachments/assets/e4bced3d-04a9-47a9-8ba5-fd6ef9390833" />
+
+<br />
+
+
+## Install
+
+```bash
+dotnet tool install -g netpace
+```
+
+| Channel | Platforms | Install with |
+| --- | --- | --- |
+| .NET tool (needs the [.NET 10 SDK](https://dotnet.microsoft.com/en-us/download/dotnet/10.0)) | Windows, Linux, macOS | `dotnet tool install -g netpace` |
+| Precompiled binary | Windows, Linux, macOS | [Download from the releases page](https://github.com/FrankRay78/NetPace/releases), unzip and run |
+
+`dotnet tool update -g netpace` moves you to the latest release, and `dnx netpace` runs it once without installing anything (it asks to confirm the download on first run; `dnx --yes netpace` skips the prompt in a script). On Windows and Linux (x64 and ARM64) you get the Native AOT binary; on macOS it runs on the runtime the SDK already provides. See the [User Guide](https://github.com/FrankRay78/NetPace/blob/main/USER_GUIDE.md#installing-netpace) for which platforms the tool package covers.
+
+Each release carries a binary per platform in three variants: standalone (large file but includes all dependencies), net10 (small file but requires the [Microsoft .NET 10.0 runtime](https://dotnet.microsoft.com/en-us/download/dotnet/10.0) to already be installed), or AOT compiled for bare metal execution (Linux and Windows; macOS AOT remains a future release).
+
+Alternatively, clone this repository locally and build. Developed with Microsoft .NET 10.0 on Windows 10 using Visual Studio 2022 Community; other modern environments should work fine.
+
+<br />
+
+
+## Quick start
+
+```bash
+netpace                 # speed test against the nearest server
+netpace --profile tiny  # keep the whole run under 1 MiB, for a metered or IoT connection
+netpace --json          # machine-readable output, for a script to parse
+netpace servers         # list the nearest speed test servers
+```
+
+Every option is covered in [Usage](#usage) below.
 
 Fan of NetPace? Consider giving the [repo](https://github.com/FrankRay78/NetPace) a star ⭐ - it helps others find it too.
+
+> [!IMPORTANT]\
+> **NetPace is pre-1.0.** Any release may change or remove command-line options, output formats or `NetPace.Core` library members, without a deprecation period. Backward compatibility will be maintained from 1.0.0 onwards.
 
 <br />
 
@@ -37,54 +72,10 @@ A cross-platform command-line application for performing network speed tests, in
 
 NetPace is not affiliated with or endorsed by Ookla or [Speedtest by Ookla](https://www.speedtest.net/) in any way, although their servers are used by the default speed test provider.
 
-The obligatory screenshot (as of 29 August 2025):
-
-<img width="1115" height="628" alt="NetPace_Screenshot_2025-08-29" src="https://github.com/user-attachments/assets/e4bced3d-04a9-47a9-8ba5-fd6ef9390833" />
-
-<br />
-
-
-## Background
-This project came out of my time as the [Spectre.Console](https://github.com/spectreconsole/spectre.console) CLI sub-system maintainer, having never actually used the library for myself. I wanted to gain practical experience by developing a command-line application, following best practices such as the [Command Line Interface Guidelines](https://clig.dev/), and then applying that experience in my maintainer role. This is also known as 'dogfooding' in the tech industry ie. using your own product before expecting others to do the same.
-
-I am no longer the `Spectre.Console` CLI sub-system maintainer, but this project continues to be well supported.
-
-<br />
-
-
-## Getting Started
-If you have the [.NET 10 SDK](https://dotnet.microsoft.com/en-us/download/dotnet/10.0), NetPace installs in one line:
-
-```bash
-dotnet tool install -g netpace
-```
-
-`dotnet tool update -g netpace` moves you to the latest release, and `dnx netpace` runs it once without installing anything (it asks to confirm the download on first run; `dnx --yes netpace` skips the prompt in a script). On Windows and Linux (x64 and ARM64) you get the Native AOT binary; on macOS it runs on the runtime the SDK already provides. See the [User Guide](https://github.com/FrankRay78/NetPace/blob/main/USER_GUIDE.md#installing-netpace) for which platforms the tool package covers.
-
-Otherwise, each release contains precompiled binaries you can simply [download](https://github.com/FrankRay78/NetPace/releases), unzip and run. 
-
-Choose from Windows, Linux and macOS; standalone (large file but includes all dependencies), net10 (small file but requires [Microsoft .NET 10.0 runtime](https://dotnet.microsoft.com/en-us/download/dotnet/10.0)) to already be installed, or AOT compiled for bare metal execution (Linux and Windows; macOS AOT remains a future release). 
-
-Alternatively, clone this repository locally and build.
-
-Developed with Microsoft .NET 10.0 on Windows 10 using Visual Studio 2022 Community. Other modern environments should work fine.
-
 <br />
 
 
 ## Usage
-
-For most users, running a simple speed test is as easy as:
-
-```bash
-netpace
-```
-
-On a metered or IoT connection? Use the Tiny profile (≤ 1 MiB total per run):
-
-```bash
-netpace --profile tiny
-```
 
 For common scenarios and advanced usage (such as scripting, restricting payload size, choosing a traffic profile, or customising output), see the [User Guide](https://github.com/FrankRay78/NetPace/blob/main/USER_GUIDE.md).
 
@@ -156,6 +147,14 @@ SEE ALSO:
 <br />
 
 
+## Background
+This project came out of my time as the [Spectre.Console](https://github.com/spectreconsole/spectre.console) CLI sub-system maintainer, having never actually used the library for myself. I wanted to gain practical experience by developing a command-line application, following best practices such as the [Command Line Interface Guidelines](https://clig.dev/), and then applying that experience in my maintainer role. This is also known as 'dogfooding' in the tech industry ie. using your own product before expecting others to do the same.
+
+I am no longer the `Spectre.Console` CLI sub-system maintainer, but this project continues to be well supported.
+
+<br />
+
+
 ## Developer Use
 
 Want to integrate network speed testing into your own app?
@@ -215,6 +214,12 @@ See the implementations in [NetPace.Core.Clients.Testing](https://github.com/Fra
 You can contribute by [opening a new issue](https://github.com/FrankRay78/NetPace/issues/new/choose) or commenting on existing ones, and you are most welcome to fork the repository for your own purposes. 
 
 But please **don't be offended** if I close or delete issues as I see fit.
+
+<p align="left">
+    <a href="https://github.com/FrankRay78/NetPace/issues/new?labels=needs%20triage,bug&template=bug-report---.md">Report Bug</a>
+    -
+    <a href="https://github.com/FrankRay78/NetPace/issues/new?labels=needs%20triage,enhancement&template=feature-request---.md">Request Feature</a>
+</p>
 
 <br />
 
