@@ -483,11 +483,7 @@ public static class Program
         // Check for version request before parsing
         if (args.Length > 0 && (args[0] is "-v" or "--version"))
         {
-            var assemblyVersion = typeof(Program).Assembly.GetName().Version;
-            var version = assemblyVersion != null
-                ? $"{assemblyVersion.Major}.{assemblyVersion.Minor}.{assemblyVersion.Build}"
-                : "Unknown";
-            ansiConsole.WriteLine(version);
+            ansiConsole.WriteLine(AppVersion.Current);
             return 0;
         }
 

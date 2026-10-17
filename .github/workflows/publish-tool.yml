@@ -61,9 +61,15 @@ jobs:
         with:
           dotnet-version: 10.0.x
 
+      # AssemblyVersion and FileVersion accept numbers alone, so they take the tag's numeric part
+      # (0.27.0 for 0.27.0-rc1); every other version property takes the whole tag. docs/RELEASING.md,
+      # Prerelease tags.
       - name: Extract version from tag
         id: get_version
-        run: echo "version=${GITHUB_REF#refs/tags/}" >> "$GITHUB_OUTPUT"
+        run: |
+          version="${GITHUB_REF#refs/tags/}"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "numeric_version=${version%%-*}" >> "$GITHUB_OUTPUT"
 
       - name: Pack RID-specific tool package
         run: |
@@ -75,8 +81,8 @@ jobs:
             -p:InvariantGlobalization=true \
             -p:PackageVersion=${{ steps.get_version.outputs.version }} \
             -p:Version=${{ steps.get_version.outputs.version }} \
-            -p:AssemblyVersion=${{ steps.get_version.outputs.version }} \
-            -p:FileVersion=${{ steps.get_version.outputs.version }} \
+            -p:AssemblyVersion=${{ steps.get_version.outputs.numeric_version }} \
+            -p:FileVersion=${{ steps.get_version.outputs.numeric_version }} \
             -p:InformationalVersion=${{ steps.get_version.outputs.version }} \
             --output ./tool-package
 
@@ -111,9 +117,15 @@ jobs:
         with:
           dotnet-version: 10.0.x
 
+      # AssemblyVersion and FileVersion accept numbers alone, so they take the tag's numeric part
+      # (0.27.0 for 0.27.0-rc1); every other version property takes the whole tag. docs/RELEASING.md,
+      # Prerelease tags.
       - name: Extract version from tag
         id: get_version
-        run: echo "version=${GITHUB_REF#refs/tags/}" >> "$GITHUB_OUTPUT"
+        run: |
+          version="${GITHUB_REF#refs/tags/}"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "numeric_version=${version%%-*}" >> "$GITHUB_OUTPUT"
 
       - name: Download RID-specific tool packages
         uses: actions/download-artifact@v4
@@ -130,6 +142,7 @@ jobs:
       - name: Pack macOS tool packages
         env:
           VERSION: ${{ steps.get_version.outputs.version }}
+          NUMERIC_VERSION: ${{ steps.get_version.outputs.numeric_version }}
         run: |
           set -euo pipefail
           for runtime in osx-x64 osx-arm64; do
@@ -138,8 +151,8 @@ jobs:
               --runtime "$runtime" \
               -p:PackageVersion="$VERSION" \
               -p:Version="$VERSION" \
-              -p:AssemblyVersion="$VERSION" \
-              -p:FileVersion="$VERSION" \
+              -p:AssemblyVersion="$NUMERIC_VERSION" \
+              -p:FileVersion="$NUMERIC_VERSION" \
               -p:InformationalVersion="$VERSION" \
               --output ./tool-feed
           done
@@ -151,6 +164,7 @@ jobs:
       - name: Pack wrapper tool package
         env:
           VERSION: ${{ steps.get_version.outputs.version }}
+          NUMERIC_VERSION: ${{ steps.get_version.outputs.numeric_version }}
         run: |
           set -euo pipefail
           dotnet pack src/NetPace.Console/NetPace.Console.csproj \
@@ -158,8 +172,8 @@ jobs:
             -p:CreateRidSpecificToolPackages=false \
             -p:PackageVersion="$VERSION" \
             -p:Version="$VERSION" \
-            -p:AssemblyVersion="$VERSION" \
-            -p:FileVersion="$VERSION" \
+            -p:AssemblyVersion="$NUMERIC_VERSION" \
+            -p:FileVersion="$NUMERIC_VERSION" \
             -p:InformationalVersion="$VERSION" \
             --output ./tool-feed
 
