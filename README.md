@@ -28,9 +28,12 @@ dotnet tool install -g netpace
 | .NET tool (needs the [.NET 10 SDK](https://dotnet.microsoft.com/en-us/download/dotnet/10.0)) | Windows, Linux, macOS | `dotnet tool install -g netpace` |
 | Precompiled binary | Windows, Linux, macOS | [Download from the releases page](https://github.com/FrankRay78/NetPace/releases), unzip and run |
 
+> [!IMPORTANT]\
+> **NetPace is pre-1.0.** Any release may change or remove command-line options, output formats or `NetPace.Core` library members, without a deprecation period. Backward compatibility will be maintained from 1.0.0 onwards.
+
 `dotnet tool update -g netpace` moves you to the latest release, and `dnx netpace` runs it once without installing anything (it asks to confirm the download on first run; `dnx --yes netpace` skips the prompt in a script). On Windows and Linux (x64 and ARM64) you get the Native AOT binary; on macOS it runs on the runtime the SDK already provides. See the [User Guide](https://github.com/FrankRay78/NetPace/blob/main/USER_GUIDE.md#installing-netpace) for which platforms the tool package covers.
 
-Each release carries a binary per platform in three variants: standalone (large file but includes all dependencies), net10 (small file but requires the [Microsoft .NET 10.0 runtime](https://dotnet.microsoft.com/en-us/download/dotnet/10.0) to already be installed), or AOT compiled for bare metal execution (Linux and Windows; macOS AOT remains a future release).
+Each release carries a binary per platform in up to three variants: standalone (large file but includes all dependencies), net10 (small file but requires the [Microsoft .NET 10.0 runtime](https://dotnet.microsoft.com/en-us/download/dotnet/10.0) to already be installed), or AOT compiled for bare metal execution (Linux and Windows; macOS AOT remains a future release).
 
 Alternatively, clone this repository locally and build. Developed with Microsoft .NET 10.0 on Windows 10 using Visual Studio 2022 Community; other modern environments should work fine.
 
@@ -49,9 +52,6 @@ netpace servers         # list the nearest speed test servers
 Every option is covered in [Usage](#usage) below.
 
 Fan of NetPace? Consider giving the [repo](https://github.com/FrankRay78/NetPace) a star ⭐ - it helps others find it too.
-
-> [!IMPORTANT]\
-> **NetPace is pre-1.0.** Any release may change or remove command-line options, output formats or `NetPace.Core` library members, without a deprecation period. Backward compatibility will be maintained from 1.0.0 onwards.
 
 <br />
 
