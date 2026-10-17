@@ -33,13 +33,12 @@ public sealed partial class NetPaceConsoleTests
             var output = await RunAtWidthAsync(CommandLineTestHost.RedirectedWidth, ["--json"]);
 
             // Then the result is a single line a standard JSON parser accepts, carrying the values
-            // NetPace composed rather than values a line break landed inside.
+            // NetPace composed rather than values a line break landed inside. Parse throws on a
+            // record a break landed inside, so the call is the assertion; what the line says is the
+            // snapshot's job.
             var lines = Lines(output);
             Assert.Single(lines);
-
-            using var parsed = JsonDocument.Parse(lines[0]);
-            Assert.Equal("Test Sponsor 1", parsed.RootElement.GetProperty("ServerSponsor").GetString());
-            Assert.Equal(8000, parsed.RootElement.GetProperty("DownloadSpeedBitsPerSecond").GetInt64());
+            JsonDocument.Parse(lines[0]).Dispose();
 
             Assert.Equal(await RunAtWidthAsync(CommandLineTestHost.UnlimitedWidth, ["--json"]), output);
             await Verify(output);
@@ -54,11 +53,9 @@ public sealed partial class NetPaceConsoleTests
             var output = await RunAtWidthAsync(CommandLineTestHost.RedirectedWidth, ["--json-pretty"], LongNamedServerTester());
 
             // Then the indentation --json-pretty asks for is the only thing breaking lines, and every
-            // value survives whole.
-            using var parsed = JsonDocument.Parse(output);
-            Assert.Equal(LongSponsor, parsed.RootElement.GetProperty("ServerSponsor").GetString());
-            Assert.Equal(LongLocation, parsed.RootElement.GetProperty("ServerLocation").GetString());
-            Assert.Equal(LongUrl, parsed.RootElement.GetProperty("ServerUrl").GetString());
+            // value survives whole: a break inside a value would leave output no parser accepts, and
+            // the snapshot shows each long value unbroken.
+            JsonDocument.Parse(output).Dispose();
 
             await Verify(output);
         }
