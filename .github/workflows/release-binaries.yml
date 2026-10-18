@@ -39,6 +39,22 @@ jobs:
             publish_aot: true
             publish_single_file: false
             invariant_globalization: true
+          # Native AOT cannot cross-compile between operating systems, so each macOS RID builds on a Mac
+          # runner of its own architecture; hosted Mac runners are free for public repos. macos-15-intel is
+          # GitHub's last x86_64 macOS image — see docs/RELEASING.md §Runner per RID for what happens to the
+          # Intel builds when it retires.
+          - runtime: osx-x64
+            deployment: aot
+            runs_on: macos-15-intel
+            publish_aot: true
+            publish_single_file: false
+            invariant_globalization: true
+          - runtime: osx-arm64
+            deployment: aot
+            runs_on: macos-latest
+            publish_aot: true
+            publish_single_file: false
+            invariant_globalization: true
 
     defaults:
       run:
@@ -62,6 +78,18 @@ jobs:
           if [ "$RUNNER_OS" != "$expected" ]; then
             echo "FAIL: AOT runtime ${{ matrix.runtime }} requires runner OS '$expected', got '$RUNNER_OS'."
             echo "A typo in matrix.include[*].runs_on would silently fall back to ubuntu-latest — guard catches that."
+            exit 1
+          fi
+          # The two macOS RIDs share a runner OS, so the check above cannot tell their runners apart. Swapping
+          # them would build osx-x64 on Apple silicon and smoke-test it through Rosetta, or fail obscurely in the
+          # linker — the architecture is checked directly instead.
+          case "${{ matrix.runtime }}" in
+            osx-x64)   expected_arch="x86_64" ;;
+            osx-arm64) expected_arch="arm64" ;;
+            *)         expected_arch="" ;;
+          esac
+          if [ -n "$expected_arch" ] && [ "$(uname -m)" != "$expected_arch" ]; then
+            echo "FAIL: AOT runtime ${{ matrix.runtime }} requires a $expected_arch runner, got $(uname -m)."
             exit 1
           fi
 
@@ -240,8 +268,6 @@ jobs:
             fi
             standalone_size=$(stat -c%s "$standalone")
             for variant in framework-dependent aot; do
-              # AOT variant exists for Linux and Windows RIDs only (macOS AOT is out of scope)
-              if [ "$variant" = "aot" ] && [[ "$runtime" != linux-* && "$runtime" != win-* ]]; then continue; fi
               target=$(find "./artifacts/netpace-$runtime-$variant" -type f 2>/dev/null | head -1 || true)
               if [ -z "$target" ]; then
                 echo "FAIL: $variant artifact missing for $runtime"

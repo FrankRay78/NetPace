@@ -20,11 +20,10 @@
 # The version packed is deliberately absurd (99.99.99): it matches no release, so a case that
 # accidentally resolved a real NetPace package from a real feed would fail rather than pass.
 #
-# Four of the six released RID packages carry Native AOT binaries built on their own native runners;
-# the two macOS packages are framework-dependent (.github/workflows/publish-tool.yml,
-# docs/RELEASING.md). AOT cannot be cross-compiled, so this matrix packs the framework-dependent form
-# that one machine can build for every RID; the AOT pack and its shape are gated by that
-# workflow.
+# All six released RID packages carry Native AOT binaries, each built on a runner matching its own
+# platform (.github/workflows/publish-tool.yml, docs/RELEASING.md). AOT cannot be cross-compiled, so
+# this matrix packs the framework-dependent form that one machine can build for every RID; the AOT
+# pack and its shape are gated by that workflow.
 #
 # Exits non-zero on any failure. Run after any edit to the tool-package properties.
 #
@@ -36,9 +35,8 @@ HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO="$(cd "$HERE/.." && pwd)"
 PROJECT="$REPO/src/NetPace.Console/NetPace.Console.csproj"
 
-# The RIDs the tool promises to cover. Four carry Native AOT builds in the release workflow; the
-# two macOS RIDs carry framework-dependent builds, and platforms outside this list are out of
-# scope (USER_GUIDE.md).
+# The RIDs the tool promises to cover. Each carries a Native AOT build in the release workflow, and
+# platforms outside this list are out of scope (USER_GUIDE.md).
 RIDS=(win-x64 win-arm64 linux-x64 linux-arm64 osx-x64 osx-arm64)
 
 VERSION=99.99.99
