@@ -77,7 +77,10 @@ run() {
 }
 
 labels_of() { jq -r --argjson n "$1" '.[] | select(.number == $n) | .labels | join(",")' "$STUB_DIR/issues.json"; }
-writes() { { grep -cE '^issue\|edit\|' "$STUB_DIR/gh-log" 2>/dev/null || true; } | tail -1; }
+# The count is 0, not the empty string, when no call has been logged at all.
+writes() { local c; c=$(grep -cE '^issue\|edit\|' "$STUB_DIR/gh-log" 2>/dev/null); echo "${c:-0}"; }
+# asked <field>=<value> — true when the GraphQL call carried that argument.
+asked() { grep -qF "|$1|" "$STUB_DIR/gh-log"; }
 
 echo "A merged pull request clears the workflow labels off the issue it closes:"
 new_case
@@ -86,6 +89,8 @@ issues '[{"number":5,"labels":["ready","feature"]}]'
 run 5
 ok "exits 0" '[ "$RC" = 0 ]'
 ok "the workflow label is gone" '[ "$(labels_of 5)" = feature ]'
+ok "and GitHub was asked about that pull request, in this repository" \
+  'asked number=5 && asked owner=o && asked name=r'
 
 new_case
 pr true '[{"number":9,"repo":"o/r","labels":["ready","review","refine","confirm","needs answers","parked","needs triage","bug","documentation"]}]'
@@ -109,6 +114,14 @@ issues '[{"number":3,"labels":["bug","feature"]}]'
 run 3
 ok "an issue carrying none of the seven is left as it is, with no write at all" \
   '[ "$RC" = 0 ] && [ "$(writes)" = 0 ] && [ "$(labels_of 3)" = "bug,feature" ]'
+
+# A workflow label name is matched whole: `ready for release` is somebody else's label.
+new_case
+pr true '[{"number":12,"repo":"o/r","labels":["ready for release","reviewed","ready"]}]'
+issues '[{"number":12,"labels":["ready for release","reviewed","ready"]}]'
+run 12
+ok "a label that merely contains a workflow label name is left alone" \
+  '[ "$RC" = 0 ] && [ "$(labels_of 12)" = "ready for release,reviewed" ]'
 
 new_case
 pr true '[]'
@@ -142,6 +155,10 @@ run 4
 ok "the run still succeeds" '[ "$RC" = 0 ]'
 ok "the issue that could not be cleared keeps its labels" '[ "$(labels_of 4)" = ready ]'
 ok "and the other issue is cleared anyway" '[ -z "$(labels_of 6)" ]'
+# Tolerating the failure is only defensible because it is reported, so the report is asserted
+# too: without this, deleting the warning entirely leaves the matrix green.
+ok "the write was attempted, and the failure is reported as a warning naming the issue" \
+  '[ "$(writes)" = 2 ] && grep -q "::warning::" <<<"$OUTPUT" && grep -q "#4" <<<"$OUTPUT"'
 
 echo "An unanswerable question fails loudly:"
 new_case
@@ -149,6 +166,15 @@ issues '[{"number":5,"labels":["ready"]}]'
 touch "$STUB_DIR/gh-fail"
 run 5
 ok "a failed query exits non-zero and changes nothing" \
+  '[ "$RC" != 0 ] && [ "$(writes)" = 0 ] && [ "$(labels_of 5)" = ready ]'
+
+# A pull request number that resolves to nothing answers with a null `merged` and exit 0, so the
+# script must refuse rather than guess which way a merge went.
+new_case
+pr null '[{"number":5,"repo":"o/r","labels":["ready"]}]'
+issues '[{"number":5,"labels":["ready"]}]'
+run 5
+ok "an answer that does not say whether it merged exits non-zero and changes nothing" \
   '[ "$RC" != 0 ] && [ "$(writes)" = 0 ] && [ "$(labels_of 5)" = ready ]'
 
 echo "Wrong invocation is refused:"

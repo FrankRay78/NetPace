@@ -19,13 +19,14 @@
 # merge can exercise it; asking GitHub for `merged` in the query it already makes costs one field
 # and makes the rule provable from clear-workflow-labels.tests.sh.
 #
-# WHAT IT COSTS. One GraphQL query, plus one label write per closed issue that still carries a
-# workflow label — none for an issue that carries none.
+# WHAT IT COSTS. One GraphQL query (and a `gh repo view` ahead of it when GH_REPO is unset), plus
+# one label write per closed issue that still carries a workflow label — none for an issue that
+# carries none.
 #
-# A write that fails is reported on the run's log and otherwise ignored: the next issue is still
-# cleared and the run still succeeds. A label left behind is a tidy-up missed, not damage, and it
-# is not worth failing a run after the merge has already happened. A query that fails is the
-# other way round — nothing can be decided without it, so the run fails and says so.
+# A write that fails is reported as a warning on the run and otherwise ignored: the next issue
+# is still cleared and the run still succeeds. A label left behind is a tidy-up missed, not
+# damage, and it is not worth failing a run after the merge has already happened. A query that
+# fails is the other way round — nothing can be decided without it, so the run fails and says so.
 #
 # Prerequisites: gh and jq on PATH, gh signed in with permission to edit issues. GH_REPO names
 # the repository (`owner/name`); gh's own default applies when it is unset. Tests:
@@ -44,14 +45,24 @@ usage() { echo "usage: scripts/clear-workflow-labels.sh <pull-request-number>" >
 say() { echo "clear-workflow-labels: $*"; }
 die() { echo "clear-workflow-labels: $*" >&2; exit 1; }
 
+# True when the label named is one of the workflow labels above, false for every other label.
+is_workflow_label() {
+  local candidate
+  for candidate in "${WORKFLOW_LABELS[@]}"; do
+    [ "$1" = "$candidate" ] && return 0
+  done
+  return 1
+}
+
 main() {
-  local pr=${1:-} repo response merged closing n label wanted
+  local pr=${1:-} repo response merged closing
   case "$pr" in
     '' | *[!0-9]*) usage; exit 1 ;;
   esac
 
-  repo=${GH_REPO:-$(gh repo view --json nameWithOwner --jq .nameWithOwner)} \
-    || die "could not tell which repository to work in; set GH_REPO to owner/name."
+  # A failed lookup prints nothing to stdout, so an empty answer covers both "gh could not say"
+  # and "gh said nothing".
+  repo=${GH_REPO:-$(gh repo view --json nameWithOwner --jq .nameWithOwner)}
   [ -n "$repo" ] || die "could not tell which repository to work in; set GH_REPO to owner/name."
 
   response=$(gh api graphql \
@@ -88,25 +99,32 @@ main() {
     exit 0
   fi
 
-  local -a fields remove
+  local n label
+  local -a fields cleared flags
   while IFS=$'\t' read -r -a fields; do
     [ "${#fields[@]}" -gt 0 ] || continue
     n=${fields[0]}
-    remove=()
+    cleared=()
+    flags=()
     for label in "${fields[@]:1}"; do
-      for wanted in "${WORKFLOW_LABELS[@]}"; do
-        [ "$label" = "$wanted" ] && remove+=(--remove-label "$label")
-      done
+      if is_workflow_label "$label"; then
+        cleared+=("$label")
+        flags+=(--remove-label "$label")
+      fi
     done
-    if [ "${#remove[@]}" -eq 0 ]; then
+    if [ "${#cleared[@]}" -eq 0 ]; then
       say "#$n carries no workflow label — left as it is."
       continue
     fi
     # One write per issue, so a partial removal cannot leave the issue half-cleared.
-    if gh issue edit "$n" "${remove[@]}" >/dev/null </dev/null; then
-      say "#$n: cleared ${remove[*]//--remove-label /}"
+    if gh issue edit "$n" "${flags[@]}" >/dev/null </dev/null; then
+      say "#$n: cleared ${cleared[*]}"
     else
-      say "#$n: could not clear its workflow labels — left as it is, and the run carries on."
+      # A warning annotation, not a plain line: a write that fails for every issue and forever —
+      # `issues: write` dropped from the workflow, a token scope changed — otherwise shows only
+      # in the log of a green run, which nobody opens after the merge.
+      echo "::warning::clear-workflow-labels: #$n: could not clear its workflow labels" \
+        "— left as it is, and the run carries on."
     fi
   done <<<"$closing"
 }
