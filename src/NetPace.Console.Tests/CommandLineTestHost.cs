@@ -37,7 +37,7 @@ public sealed class CommandLineTestHost
 
     private readonly IServiceCollection serviceCollection;
     private readonly int consoleWidth;
-    private readonly bool interactive;
+    private readonly bool _interactive;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="CommandLineTestHost"/> class.
@@ -58,7 +58,7 @@ public sealed class CommandLineTestHost
     {
         serviceCollection = services ?? new ServiceCollection();
         this.consoleWidth = consoleWidth;
-        this.interactive = interactive;
+        _interactive = interactive;
     }
 
     /// <summary>
@@ -71,7 +71,7 @@ public sealed class CommandLineTestHost
     {
         using var testConsole = new TestConsole().Width(consoleWidth);
 
-        if (interactive)
+        if (_interactive)
         {
             testConsole.Interactive();
         }

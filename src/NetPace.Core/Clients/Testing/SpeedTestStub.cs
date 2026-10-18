@@ -139,7 +139,7 @@ public sealed class SpeedTestStub : ISpeedTestService
 
         var result = new SpeedTestResult() { BytesProcessed = 1000, ElapsedMilliseconds = 1000 * serverID, RequestsSucceeded = 150, RequestsFailed = 0 };
 
-        ReportClimbTo(progress, result);
+        ReportClimbTo(result, progress);
 
         return Task.FromResult(result);
     }
@@ -157,45 +157,27 @@ public sealed class SpeedTestStub : ISpeedTestService
 
         var result = new SpeedTestResult() { BytesProcessed = 7000, ElapsedMilliseconds = 3000 * serverID, RequestsSucceeded = 32, RequestsFailed = 0 };
 
-        ReportClimbTo(progress, result);
+        ReportClimbTo(result, progress);
 
         return Task.FromResult(result);
     }
 
     /// <summary>
-    /// Reports progress towards <paramref name="result"/> in four updates, the last of them the
-    /// result itself.
+    /// Reports progress towards <paramref name="result"/>, pausing by the configured delay before
+    /// each report.
     /// </summary>
-    /// <remarks>
-    /// Bytes trail the clock early on and catch it up, so a caller showing the average speed since
-    /// the test began watches a figure that climbs and then settles on exactly the speed the
-    /// returned result reports — the convergence a real measurement shows.
-    /// </remarks>
-    private void ReportClimbTo(IProgress<SpeedTestProgress>? progress, SpeedTestResult result)
+    private void ReportClimbTo(SpeedTestResult result, IProgress<SpeedTestProgress>? progress)
     {
         if (progress is null)
         {
             return;
         }
 
-        (int percentageComplete, double bytesSoFar)[] updates =
-        [
-            (25, 0.10),
-            (50, 0.35),
-            (75, 0.65),
-            (100, 1.00),
-        ];
-
-        foreach (var (percentageComplete, bytesSoFar) in updates)
+        foreach (var report in SpeedTestProgressClimb.Towards(result))
         {
             Task.Delay(delayMilliseconds).Wait();
 
-            progress.Report(new SpeedTestProgress
-            {
-                PercentageComplete = percentageComplete,
-                BytesProcessed = (long)(result.BytesProcessed * bytesSoFar),
-                ElapsedMilliseconds = result.ElapsedMilliseconds * percentageComplete / 100
-            });
+            progress.Report(report);
         }
     }
 

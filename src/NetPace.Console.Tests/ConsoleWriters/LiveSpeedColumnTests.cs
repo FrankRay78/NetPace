@@ -38,17 +38,20 @@ public sealed class LiveSpeedColumnTests
         Assert.Equal(["3.2 Kbps", "5.6 Kbps", "6.93 Kbps", "8 Kbps"], figures);
     }
 
-    [Fact]
-    public void Report_BeforeAnyDataArrives_ShowsNothing()
+    [Theory]
+    [InlineData(0, 40)]
+    [InlineData(100, 0)]
+    public void Report_BeforeAUsableMeasurementArrives_ShowsNothing(long bytesProcessed, long elapsedMilliseconds)
     {
-        // Given a test that has started but moved no bytes yet.
+        // Given a test that has started but has either moved no bytes or had no time to move them
+        // in — a sub-millisecond first report reads as the latter.
         var column = new LiveSpeedColumn(SpeedUnit.BitsPerSecond, SpeedUnitSystem.SI, SpeedScale.Auto);
         var task = RunningTest("Downloading");
 
         // When
-        column.Report(task, new SpeedTestProgress { PercentageComplete = 0, BytesProcessed = 0, ElapsedMilliseconds = 40 });
+        column.Report(task, new SpeedTestProgress { PercentageComplete = 0, BytesProcessed = bytesProcessed, ElapsedMilliseconds = elapsedMilliseconds });
 
-        // Then nothing is shown beside the bar: no placeholder, and never a zero speed.
+        // Then nothing is shown beside the bar: no placeholder, and no figure computed from nothing.
         Assert.Equal(string.Empty, FigureShown(column, task));
     }
 

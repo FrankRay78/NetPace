@@ -56,7 +56,7 @@ public sealed class DefaultConsoleWriter : IConsoleWriter
         if (!(settings.NoDownload && settings.NoUpload))
         {
             // The live figure beside each bar follows the same unit options as the result line, so
-            // the number the user watches is the number they are given.
+            // the speed the user watches is the speed they are given.
             var liveSpeed = new LiveSpeedColumn(settings.SpeedUnit, settings.SpeedUnitSystem, settings.SpeedScale);
 
             await console.Progress()

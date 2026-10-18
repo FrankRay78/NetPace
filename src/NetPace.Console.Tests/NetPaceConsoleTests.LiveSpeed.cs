@@ -21,10 +21,11 @@ public sealed partial class NetPaceConsoleTests
             // When
             var result = await host.RunAsync([]);
 
-            // Then the figure beside each bar is the one the result line reports for that test.
+            // Then the figure beside each bar is the one the result line reports for that test. A
+            // snapshot cannot hold this: it stays green if both figures move together.
             Assert.Equal(0, result.ExitCode);
-            Assert.Equal("8 Kbps", FigureBeside("Downloading", result.Output));
-            Assert.Equal("18.67 Kbps", FigureBeside("Uploading", result.Output));
+            Assert.Equal(FigureOnResultLine("Download", result.Output), FigureBeside("Downloading", result.Output));
+            Assert.Equal(FigureOnResultLine("Upload", result.Output), FigureBeside("Uploading", result.Output));
             await Verify(result.Output);
         }
 
@@ -50,10 +51,11 @@ public sealed partial class NetPaceConsoleTests
             // When
             var result = await host.RunAsync(["--unit", "BytesPerSecond", "--unit-system", "IEC", "--unit-scale", "Mega"]);
 
-            // Then the live figure carries the same unit and scale as the result line.
+            // Then the live figure carries the same unit and scale as the result line; the snapshot
+            // carries which unit that was.
             Assert.Equal(0, result.ExitCode);
-            Assert.Equal("119.21 MiBps", FigureBeside("Downloading", result.Output));
-            Assert.Equal("59.6 MiBps", FigureBeside("Uploading", result.Output));
+            Assert.Equal(FigureOnResultLine("Download", result.Output), FigureBeside("Downloading", result.Output));
+            Assert.Equal(FigureOnResultLine("Upload", result.Output), FigureBeside("Uploading", result.Output));
             await Verify(result.Output);
         }
 
@@ -72,11 +74,10 @@ public sealed partial class NetPaceConsoleTests
             // When
             var result = await host.RunAsync([]);
 
-            // Then the result line is still printed, and no live display precedes it.
+            // Then the result line is still printed, and no live display precedes it. The snapshot
+            // carries both facts, and is byte-identical to the non-interactive runs elsewhere in
+            // this suite.
             Assert.Equal(0, result.ExitCode);
-            Assert.Contains("Latency: 100 ms, Download: 8 Kbps, Upload: 18.67 Kbps", result.Output, StringComparison.Ordinal);
-            Assert.DoesNotContain("Downloading", result.Output, StringComparison.Ordinal);
-            Assert.DoesNotContain("Uploading", result.Output, StringComparison.Ordinal);
             await Verify(result.Output);
         }
 
@@ -95,8 +96,7 @@ public sealed partial class NetPaceConsoleTests
 
             // Then the download has neither a bar nor a figure, and the upload still has both.
             Assert.Equal(0, result.ExitCode);
-            Assert.DoesNotContain("Downloading", result.Output, StringComparison.Ordinal);
-            Assert.Equal("18.67 Kbps", FigureBeside("Uploading", result.Output));
+            Assert.Equal(FigureOnResultLine("Upload", result.Output), FigureBeside("Uploading", result.Output));
             await Verify(result.Output);
         }
 
@@ -115,8 +115,7 @@ public sealed partial class NetPaceConsoleTests
 
             // Then the upload has neither a bar nor a figure, and the download still has both.
             Assert.Equal(0, result.ExitCode);
-            Assert.DoesNotContain("Uploading", result.Output, StringComparison.Ordinal);
-            Assert.Equal("8 Kbps", FigureBeside("Downloading", result.Output));
+            Assert.Equal(FigureOnResultLine("Download", result.Output), FigureBeside("Downloading", result.Output));
             await Verify(result.Output);
         }
 
@@ -174,8 +173,9 @@ public sealed partial class NetPaceConsoleTests
         };
 
         /// <summary>
-        /// The speed figure shown beside the named test's progress bar, read off the rendered
-        /// screen: whatever follows the percentage on that bar's line.
+        /// The speed figure shown beside the first bar for the named test, read off the rendered
+        /// screen: whatever follows the percentage on that bar's line. A capture of several runs
+        /// holds one such bar per run, and this reads the first.
         /// </summary>
         private static string FigureBeside(string description, string output)
         {
@@ -190,6 +190,26 @@ public sealed partial class NetPaceConsoleTests
             Assert.True(percentage >= 0, $"No percentage found on the '{description}' line: '{line}'");
 
             return line[(percentage + 1)..].Trim();
+        }
+
+        /// <summary>
+        /// The speed the result line reports for the named test, so a live figure can be compared
+        /// against the number the user is finally given rather than against a hard-coded literal.
+        /// </summary>
+        private static string FigureOnResultLine(string label, string output)
+        {
+            var line = output
+                .Split('\n')
+                .FirstOrDefault(candidate => candidate.Contains("Latency:", StringComparison.Ordinal));
+
+            Assert.NotNull(line);
+
+            var figures = line.Split(',', StringSplitOptions.TrimEntries)
+                .Where(part => part.StartsWith($"{label}:", StringComparison.Ordinal))
+                .Select(part => part[(label.Length + 1)..].Trim())
+                .ToArray();
+
+            return Assert.Single(figures);
         }
     }
 }
