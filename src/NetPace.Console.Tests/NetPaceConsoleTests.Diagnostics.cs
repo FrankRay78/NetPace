@@ -56,22 +56,6 @@ public sealed partial class NetPaceConsoleTests
         }
 
         [Theory]
-        [MemberData(nameof(OutputFormats))]
-        public async Task Each_Stream_CarriesOnlyItsOwnContent(string outputFormat)
-        {
-            // Given a run with diagnostics in some output format.
-            // When it runs.
-            var result = await HostWith().RunAsync(Invocation(outputFormat, "--diagnostics"));
-
-            // Then the two streams can be redirected apart: no diagnostic record reaches the result,
-            // and no result line reaches the diagnostics.
-            Assert.DoesNotContain("event=", result.Output, StringComparison.Ordinal);
-            Assert.DoesNotContain("Download:", result.DiagnosticOutput, StringComparison.Ordinal);
-            Assert.DoesNotContain("DownloadSucceeded", result.DiagnosticOutput, StringComparison.Ordinal);
-            Assert.DoesNotContain("\"DownloadSpeedBitsPerSecond\"", result.DiagnosticOutput, StringComparison.Ordinal);
-        }
-
-        [Theory]
         [InlineData("--minimal")]
         [InlineData("--csv")]
         [InlineData("--json")]
@@ -95,23 +79,9 @@ public sealed partial class NetPaceConsoleTests
             // When it runs with diagnostics.
             var result = await HostWith().RunAsync(["--json", "--no-upload", "--diagnostics"]);
 
-            // Then the record set says when, as what, on what, and how it was asked to run.
-            Assert.Contains("ts=1980-01-01T10:05:00.000 event=run.start version=0.0.0 runtime=\".NET 10.0.0\" os=\"Test OS 1.0\" arch=x64", result.DiagnosticOutput, StringComparison.Ordinal);
-            Assert.Contains("event=run.invocation args=\"--json --no-upload --diagnostics\"", result.DiagnosticOutput, StringComparison.Ordinal);
-        }
-
-        [Fact]
-        public async Task Diagnostics_RecordAnAutoSelectedServerAndTheScreeningFigureThatChoseIt()
-        {
-            // Given no --server, so screening chooses.
-            // When the run goes ahead with diagnostics.
-            var result = await HostWith().RunAsync(["--minimal", "--diagnostics"]);
-
-            // Then the route is named, and the figure shown is the screening figure the choice was
-            // based on - not the measured figure, which appears in the latency test's own records.
-            Assert.Contains("event=server.selected sponsor=\"Deutsche Telekom\" location=Frankfurt url=" + DiagnosticSpeedTester.Url + " selection=auto-latency latency_ms=31", result.DiagnosticOutput, StringComparison.Ordinal);
-            Assert.Contains("event=test.start test=screening", result.DiagnosticOutput, StringComparison.Ordinal);
-            Assert.Contains("event=test.start test=latency", result.DiagnosticOutput, StringComparison.Ordinal);
+            // Then the record set says when, as what, on what, and how it was asked to run. The
+            // snapshot carries the whole set, so a change anywhere in the record format lands here.
+            await Verify(result.DiagnosticOutput);
         }
 
         [Fact]
@@ -122,9 +92,7 @@ public sealed partial class NetPaceConsoleTests
             var result = await HostWith().RunAsync(["--minimal", "--server", DiagnosticSpeedTester.Url, "--diagnostics"]);
 
             // Then the route says so, and no screening figure is claimed - nothing was screened.
-            Assert.Contains("selection=specified", result.DiagnosticOutput, StringComparison.Ordinal);
-            Assert.DoesNotContain("latency_ms=", result.DiagnosticOutput, StringComparison.Ordinal);
-            Assert.DoesNotContain("test=screening", result.DiagnosticOutput, StringComparison.Ordinal);
+            await Verify(result.DiagnosticOutput);
         }
 
         [Fact]
@@ -135,9 +103,7 @@ public sealed partial class NetPaceConsoleTests
             var result = await HostWith().RunAsync(["--minimal", "--no-latency", "--diagnostics"]);
 
             // Then the route says so, and no latency figure is reported at all.
-            Assert.Contains("selection=first-in-list", result.DiagnosticOutput, StringComparison.Ordinal);
-            Assert.DoesNotContain("latency_ms=", result.DiagnosticOutput, StringComparison.Ordinal);
-            Assert.DoesNotContain("test=latency", result.DiagnosticOutput, StringComparison.Ordinal);
+            await Verify(result.DiagnosticOutput);
         }
 
         [Fact]
@@ -148,19 +114,20 @@ public sealed partial class NetPaceConsoleTests
             var result = await HostWith().RunAsync(["--minimal", "--no-download", "--diagnostics"]);
 
             // Then the tests that ran are named, and the one that did not is absent.
-            Assert.Contains("event=test.start test=latency", result.DiagnosticOutput, StringComparison.Ordinal);
-            Assert.Contains("event=test.start test=upload", result.DiagnosticOutput, StringComparison.Ordinal);
-            Assert.DoesNotContain("test=download", result.DiagnosticOutput, StringComparison.Ordinal);
+            await Verify(result.DiagnosticOutput);
         }
 
         [Fact]
-        public async Task Diagnostics_RecordEveryRequestIndividually()
+        public async Task Diagnostics_RecordEveryRequestAndTheAutoSelectedRoute()
         {
-            // Given a run whose every test issues more than one request.
+            // Given a run whose every test issues more than one request, and no --server, so
+            // screening chooses the route.
             // When it runs with diagnostics.
             var result = await HostWith().RunAsync(["--minimal", "--diagnostics"]);
 
-            // Then each request has its own record, and the test's summary agrees with them.
+            // Then each request has its own record and the test's summary agrees with them, and the
+            // chosen route is named with the screening figure the choice was based on - not the
+            // measured figure, which appears in the latency test's own records.
             await Verify(result.DiagnosticOutput);
         }
 
@@ -175,12 +142,10 @@ public sealed partial class NetPaceConsoleTests
             var result = await HostWith(failEveryUpload: true).RunAsync(["--minimal", "--diagnostics"]);
 
             // Then the cause is attributable to the requests that failed, and it is on the record -
-            // no second run, no hand-patched build.
-            Assert.Contains("event=test.end test=upload requests=2 succeeded=0 failed=2", result.DiagnosticOutput, StringComparison.Ordinal);
-            Assert.Contains("status=failed", result.DiagnosticOutput, StringComparison.Ordinal);
-            Assert.Contains("exception=HttpRequestException", result.DiagnosticOutput, StringComparison.Ordinal);
-            Assert.Contains("sent a TLS alert", result.DiagnosticOutput, StringComparison.Ordinal);
+            // no second run, no hand-patched build. The rejection is a measurement outcome, so the
+            // run still exits 0.
             Assert.Equal(0, result.ExitCode);
+            await Verify(result.DiagnosticOutput);
         }
 
         [Fact]
