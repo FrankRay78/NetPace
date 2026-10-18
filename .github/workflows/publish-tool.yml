@@ -60,8 +60,9 @@ jobs:
             echo "FAIL: runtime ${{ matrix.runtime }} requires runner OS '$expected', got '$RUNNER_OS'."
             exit 1
           fi
-          # The two macOS RIDs share a runner OS, so the check above cannot tell their runners apart; a swap
-          # would pack one RID'"'"'s package from the other'"'"'s binary. The architecture is checked directly instead.
+          # The two macOS RIDs share a runner OS, so the check above cannot tell their runners apart; swapping
+          # them would compile one RID's binary for the other's architecture and then run it through Rosetta at
+          # the install check below. The architecture is checked directly instead.
           case "${{ matrix.runtime }}" in
             osx-x64)   expected_arch="x86_64" ;;
             osx-arm64) expected_arch="arm64" ;;
@@ -102,12 +103,12 @@ jobs:
             -p:InformationalVersion=${{ steps.get_version.outputs.version }} \
             --output ./tool-package
 
-      # Nothing else runs a macOS binary before the push: the publish job's install check runs on its own
-      # runner, so it only ever exercises linux-x64, and the macOS packages were cross-packed framework-dependent
-      # until they became Native AOT. So each Mac installs the package it has just packed and asks the command
-      # its version, on the same pass condition as the Linux check — it must equal the tag. The wrapper is packed
-      # alongside because it is what `dotnet tool install netpace` resolves through; CreateRidSpecificToolPackages=false
-      # stops that pack rebuilding this RID's package framework-dependent over the Native AOT one above.
+      # Nothing else in this workflow runs a macOS binary before the push: the publish job's install check
+      # runs on its own runner, so it only ever exercises linux-x64. So each Mac installs the package it has
+      # just packed and asks the command its version, on the same pass condition as the Linux check — it must
+      # equal the tag. The wrapper is packed alongside because it is what `dotnet tool install netpace` resolves
+      # through, and both go into a feed of their own: the package this job uploads stays exactly the file the
+      # Native AOT pack above produced, whatever a later SDK does with CreateRidSpecificToolPackages.
       - name: Verify the installed tool reports the tag
         if: runner.os == 'macOS'
         env:
@@ -115,6 +116,8 @@ jobs:
           NUMERIC_VERSION: ${{ steps.get_version.outputs.numeric_version }}
         run: |
           set -euo pipefail
+          mkdir ./verify-feed
+          cp "./tool-package/NetPace.${{ matrix.runtime }}.$VERSION.nupkg" ./verify-feed/
           dotnet pack src/NetPace.Console/NetPace.Console.csproj \
             --configuration Release \
             -p:CreateRidSpecificToolPackages=false \
@@ -123,8 +126,8 @@ jobs:
             -p:AssemblyVersion="$NUMERIC_VERSION" \
             -p:FileVersion="$NUMERIC_VERSION" \
             -p:InformationalVersion="$VERSION" \
-            --output ./tool-package
-          dotnet tool install netpace --version "$VERSION" --source ./tool-package --tool-path ./tool-check
+            --output ./verify-feed
+          dotnet tool install netpace --version "$VERSION" --source ./verify-feed --tool-path ./tool-check
           reported=$(./tool-check/netpace --version)
           echo "netpace --version reported: $reported"
           if [ "$reported" != "$VERSION" ]; then

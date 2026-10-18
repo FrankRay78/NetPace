@@ -1,5 +1,7 @@
 # macOS Native AOT
 
+**Supersedes:** [`2026-10-16-tool-package-ships-every-release.md`](2026-10-16-tool-package-ships-every-release.md) — the decision to give macOS framework-dependent RID packages, and the four-entry native pack matrix that followed from it.
+
 **Intent:** Ship NetPace as a Native AOT binary on macOS, for both Intel (`osx-x64`) and Apple silicon (`osx-arm64`), on the same terms as Windows and Linux: a `-aot` release archive per architecture, and a `NetPace.<rid>` tool package carrying the native binary rather than a framework-dependent build. macOS was the only supported platform without one, and the reason recorded when AOT was introduced was "out of scope" with nothing behind it.
 
 **Behaviour:**
