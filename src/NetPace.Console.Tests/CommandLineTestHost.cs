@@ -20,9 +20,15 @@ public sealed class CommandLineTestHost
 
     /// <summary>
     /// A width narrower than a machine-readable result line, standing in for a small terminal
-    /// window. The host sets a width and nothing else, so no test here is interactive.
+    /// window. A width alone does not make a run interactive; pass <c>interactive</c> for that.
     /// </summary>
     public const int NarrowTerminalWidth = 40;
+
+    /// <summary>
+    /// A plausible terminal width for an interactive run: wide enough for a progress bar, its
+    /// percentage and the live speed figure beside it without wrapping.
+    /// </summary>
+    public const int InteractiveTerminalWidth = 80;
 
     /// <summary>
     /// No width limit at all, so nothing the run writes can be wrapped by the console.
@@ -31,6 +37,7 @@ public sealed class CommandLineTestHost
 
     private readonly IServiceCollection serviceCollection;
     private readonly int consoleWidth;
+    private readonly bool interactive;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="CommandLineTestHost"/> class.
@@ -41,10 +48,17 @@ public sealed class CommandLineTestHost
     /// unwrapped whatever the production code does; a test that cares how a narrow destination is
     /// handled passes <see cref="RedirectedWidth"/> or <see cref="NarrowTerminalWidth"/> instead.
     /// </param>
-    public CommandLineTestHost(IServiceCollection? services, int consoleWidth = UnlimitedWidth)
+    /// <param name="interactive">
+    /// Whether the run sees an interactive terminal, so the live progress display renders and the
+    /// captured output carries the screen the user would watch. Defaults to <c>false</c>, the piped
+    /// or redirected destination every other test here stands for. An interactive run needs a
+    /// finite width: pass <see cref="InteractiveTerminalWidth"/> rather than leaving the default.
+    /// </param>
+    public CommandLineTestHost(IServiceCollection? services, int consoleWidth = UnlimitedWidth, bool interactive = false)
     {
         serviceCollection = services ?? new ServiceCollection();
         this.consoleWidth = consoleWidth;
+        this.interactive = interactive;
     }
 
     /// <summary>
@@ -56,6 +70,12 @@ public sealed class CommandLineTestHost
     public async Task<TestResult> RunAsync(string[] args, CancellationToken cancellationToken = default)
     {
         using var testConsole = new TestConsole().Width(consoleWidth);
+
+        if (interactive)
+        {
+            testConsole.Interactive();
+        }
+
         serviceCollection.TryAddSingleton<IAnsiConsole>(testConsole);
 
         // The diagnostic stream is captured separately from the result stream, so a test can assert

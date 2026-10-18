@@ -1,0 +1,24 @@
+﻿                 
+  Choosing server
+                 
+Deutsche Telekom
+http://ffm.wsqm.telekom-dienste.de:8080/speedtest/upload.php
+                                                                  
+Downloading ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 100% 1 Mbps  
+  Uploading ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 100% 500 Kbps
+                                                                  
+Latency: 24 ms, Download: 1 Mbps, Upload: 500 Kbps
+
+Try 'netpace --help' for more information.
+                 
+  Choosing server
+                 
+Deutsche Telekom
+http://ffm.wsqm.telekom-dienste.de:8080/speedtest/upload.php
+                                                                
+Downloading ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 100% 2 Mbps
+  Uploading ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 100% 1 Mbps
+                                                                
+Latency: 24 ms, Download: 2 Mbps, Upload: 1 Mbps
+
+Try 'netpace --help' for more information.

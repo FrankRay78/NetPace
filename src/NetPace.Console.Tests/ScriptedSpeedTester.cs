@@ -22,6 +22,14 @@ public sealed class ScriptedSpeedTester : ISpeedTestService
     /// </summary>
     public IServer Server { get; set; } = new Server { Location = "Frankfurt", Sponsor = "Deutsche Telekom", Url = Url };
 
+    /// <summary>
+    /// Whether a measurement reports progress on its way to the result. Off by default: the
+    /// failure scenarios this tester was written for care only about the result, and a measurement
+    /// that reports nothing is the quietest stand-in for one. A test that watches the live display
+    /// turns it on.
+    /// </summary>
+    public bool ReportsProgress { get; set; }
+
     /// <summary>Supplies the download result for a given zero-based call index.</summary>
     public Func<int, SpeedTestResult> DownloadFactory { get; set; } = _ => Clean(150);
 
@@ -65,13 +73,13 @@ public sealed class ScriptedSpeedTester : ISpeedTestService
         GetDownloadSpeedAsync(server, new NullProgress<SpeedTestProgress>(), cancellationToken);
 
     public Task<SpeedTestResult> GetDownloadSpeedAsync(IServer server, IProgress<SpeedTestProgress> progress, CancellationToken cancellationToken = default) =>
-        Task.FromResult(DownloadFactory(downloadCall++));
+        Task.FromResult(Measure(DownloadFactory(downloadCall++), progress));
 
     public Task<SpeedTestResult> GetUploadSpeedAsync(IServer server, CancellationToken cancellationToken = default) =>
         GetUploadSpeedAsync(server, new NullProgress<SpeedTestProgress>(), cancellationToken);
 
     public Task<SpeedTestResult> GetUploadSpeedAsync(IServer server, IProgress<SpeedTestProgress> progress, CancellationToken cancellationToken = default) =>
-        Task.FromResult(UploadFactory(uploadCall++));
+        Task.FromResult(Measure(UploadFactory(uploadCall++), progress));
 
     public Task<LatencyTestResult> GetServerLatencyAsync(IServer server, IProgress<LatencyTestProgress>? progress, IProgress<RequestDiagnostic>? diagnostics, CancellationToken cancellationToken = default) =>
         GetServerLatencyAsync(server, cancellationToken);
@@ -83,8 +91,42 @@ public sealed class ScriptedSpeedTester : ISpeedTestService
         GetFastestServerByLatencyAsync(servers, cancellationToken);
 
     public Task<SpeedTestResult> GetDownloadSpeedAsync(IServer server, IProgress<SpeedTestProgress>? progress, IProgress<RequestDiagnostic>? diagnostics, CancellationToken cancellationToken = default) =>
-        Task.FromResult(DownloadFactory(downloadCall++));
+        Task.FromResult(Measure(DownloadFactory(downloadCall++), progress));
 
     public Task<SpeedTestResult> GetUploadSpeedAsync(IServer server, IProgress<SpeedTestProgress>? progress, IProgress<RequestDiagnostic>? diagnostics, CancellationToken cancellationToken = default) =>
-        Task.FromResult(UploadFactory(uploadCall++));
+        Task.FromResult(Measure(UploadFactory(uploadCall++), progress));
+
+    /// <summary>
+    /// Reports progress towards <paramref name="result"/> in four updates and returns it, the last
+    /// update being the result itself. Bytes trail the clock early on and catch it up, so a caller
+    /// showing the average speed since the test began watches it climb and settle on exactly the
+    /// speed the result reports.
+    /// </summary>
+    private SpeedTestResult Measure(SpeedTestResult result, IProgress<SpeedTestProgress>? progress)
+    {
+        if (progress is null || !ReportsProgress)
+        {
+            return result;
+        }
+
+        (int percentageComplete, double bytesSoFar)[] updates =
+        [
+            (25, 0.10),
+            (50, 0.35),
+            (75, 0.65),
+            (100, 1.00),
+        ];
+
+        foreach (var (percentageComplete, bytesSoFar) in updates)
+        {
+            progress.Report(new SpeedTestProgress
+            {
+                PercentageComplete = percentageComplete,
+                BytesProcessed = (long)(result.BytesProcessed * bytesSoFar),
+                ElapsedMilliseconds = result.ElapsedMilliseconds * percentageComplete / 100
+            });
+        }
+
+        return result;
+    }
 }
