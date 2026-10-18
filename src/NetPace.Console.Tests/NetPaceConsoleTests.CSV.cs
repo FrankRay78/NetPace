@@ -6,29 +6,6 @@ public sealed partial class NetPaceConsoleTests
 {
     public sealed class CSV
     {
-        /// <summary>
-        /// The CSV header every run writes, whichever tests ran and whatever the unit switches say.
-        /// </summary>
-        private const string NumericCsvHeader = "Timestamp,LatencyMilliseconds,DownloadSpeedBitsPerSecond,DownloadSucceeded,DownloadFailed,UploadSpeedBitsPerSecond,UploadSucceeded,UploadFailed,IPAddress,Hostname";
-
-        [Fact]
-        public async Task Should_Perform_Speed_Test_With_CSV()
-        {
-            // Given
-            var services = new ServiceCollection();
-            services.AddSingleton<ISpeedTestService, SpeedTestStub>();
-            services.AddSingleton<IClock, ClockStub>();
-            services.AddSingleton<IWaiter, NoDelayStub>();
-            var host = GetCommandLineTestHost(services);
-
-            // When
-            var result = await host.RunAsync(["--csv"]);
-
-            // Then
-            Assert.Equal(0, result.ExitCode);
-            await Verify(result.Output);
-        }
-
         [Fact]
         public async Task Should_Perform_Speed_Test_With_CSV_Continuously()
         {
@@ -262,12 +239,12 @@ public sealed partial class NetPaceConsoleTests
         }
 
         [Theory]
-        [InlineData("+")]
-        [InlineData("-")]
-        [InlineData(":")]
-        [InlineData("T")]
-        [InlineData("0")]
-        public async Task Should_Reject_A_CSV_Delimiter_That_Occurs_In_The_Timestamp(string delimiter)
+        [InlineData("+", "plus")]
+        [InlineData("-", "hyphen")]
+        [InlineData(":", "colon")]
+        [InlineData("T", "tee")]
+        [InlineData("0", "zero")]
+        public async Task Should_Reject_A_CSV_Delimiter_That_Occurs_In_The_Timestamp(string delimiter, string delimiterName)
         {
             // Given
             var host = GetCommandLineTestHost(StubServices());
@@ -278,8 +255,10 @@ public sealed partial class NetPaceConsoleTests
             // Then the run is refused up front, naming the option, rather than writing a row whose
             // timestamp is split across two fields.
             Assert.NotEqual(0, result.ExitCode);
-            Assert.Contains("--csv-delimiter", result.Output);
-            Assert.DoesNotContain("Hostname", result.Output);
+
+            // The snapshot is named for the delimiter in words: ":" is not a filename character on
+            // every platform, and sanitising it collides with the "-" case.
+            await Verify(result.Output).UseTextForParameters(delimiterName);
         }
 
         [Fact]
@@ -294,15 +273,9 @@ public sealed partial class NetPaceConsoleTests
             // When
             var result = await host.RunAsync(["--csv"]);
 
-            // Then the columns are named for their fixed units, and the cells hold bare numbers.
+            // Then the columns are named for their fixed units and the cells hold bare numbers, as
+            // the whole row shows.
             Assert.Equal(0, result.ExitCode);
-            var lines = CsvLines(result.Output);
-            Assert.Equal(NumericCsvHeader, lines[0]);
-            Assert.Equal("100", Cell(lines, "LatencyMilliseconds"));
-            Assert.Equal("8000", Cell(lines, "DownloadSpeedBitsPerSecond"));
-            Assert.Equal("18667", Cell(lines, "UploadSpeedBitsPerSecond"));
-
-            // And the whole row, so the full user-visible contract is reviewable.
             await Verify(result.Output);
         }
 
