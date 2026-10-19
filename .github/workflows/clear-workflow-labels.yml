@@ -1,0 +1,61 @@
+name: Clear Workflow Labels
+
+# Takes the issue-workflow labels — the set listed as `WORKFLOW_LABELS` in
+# scripts/clear-workflow-labels.sh — off every issue in this repository that a merged pull request
+# closed. Those labels say where an open issue sits in the issue chain; once the merge closes it
+# they contradict its state and a label view answers with closed issues too. All other labels are
+# left alone.
+#
+# The deciding is all in scripts/clear-workflow-labels.sh, where it is covered by
+# scripts/clear-workflow-labels.tests.sh — including the rule that a pull request closed without
+# being merged changes nothing, which that file also explains. `closed` fires on a merge and on an
+# abandonment alike. This file only says when to run and with what permission.
+#
+# Fork pull requests are left out by the `if:` below: a `pull_request` run from a fork gets a
+# read-only token, so it could not remove a label even when it should, and would only ever log a
+# failure. NetPace's own branches all live in this repository.
+#
+# Like every `pull_request` workflow, a run uses the copy of this file and of the script on the
+# pull request's head ref, so a branch cut before this merged carries neither and clears nothing.
+
+on:
+  pull_request:
+    types: [ closed ]
+    branches: [ "main" ]
+
+# Serialise per pull request. A merge fires once, but a re-run alongside the original would have
+# two runs writing the same labels; cancelling is wrong, because a cancelled run could stop
+# between two issues and leave the second one labelled.
+concurrency:
+  group: clear-workflow-labels-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: read
+
+jobs:
+  clear:
+    name: clear-workflow-labels
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        # Pinned to the head ref. `github.ref` on a `pull_request` event is `refs/pull/<N>/merge`,
+        # which GitHub deletes as the pull request closes, so the default checkout races a ref
+        # that is on its way out; `refs/pull/<N>/head` survives the merge.
+        ref: ${{ github.event.pull_request.head.sha }}
+
+    - name: Clear the workflow labels off every issue this pull request closed
+      # Everything from the event arrives through the environment rather than being interpolated
+      # into the shell text.
+      env:
+        GH_TOKEN: ${{ github.token }}
+        GH_REPO: ${{ github.repository }}
+        PR: ${{ github.event.pull_request.number }}
+      run: bash scripts/clear-workflow-labels.sh "$PR"
