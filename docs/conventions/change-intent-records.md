@@ -23,7 +23,7 @@ A record is also the one place in the codebase where a GitHub issue number belon
 | Following an established pattern already documented elsewhere in the repo? | | ✅ |
 | Obvious or standard implementation with no real alternative? | | ✅ |
 | Temporary workaround you expect to remove? | | ✅ (code comment + TODO instead) |
-| Reasoning already recorded in the issue's confirmed decisions? | | ✅ (link the issue rather than restating it. This does not cover a decision that constrains future work — a public API, an interface contract, dependency direction — which still gets a short record linking the issue for its reasoning) |
+| Reasoning already recorded in the issue's confirmed decisions? | | ✅ (link the issue from the commit message or the pull request body rather than restating it. This does not cover a decision that constrains future work — a public API, an interface contract, dependency direction — which still gets a short record linking the issue for its reasoning) |
 | Change only to documentation written for the project's readers, such as README.md or USER_GUIDE.md? | | ✅ (command prompts, conventions, the constitution and workflows direct future work and are not covered by this row) |
 
 Write a record when a `→ CIR` row applies **and** no `→ No CIR` row does. Most changes need none.
@@ -50,7 +50,7 @@ Save CIRs in `docs/change-intent-records/` as `YYYY-MM-DD-kebab-title.md`.
 
 **Target about 150 words.** A record states its intent in a sentence, and then keeps only what is written nowhere else: each rejected alternative with the reason it was rejected, and any constraint the code will not make obvious. Everything else is linked rather than restated — behaviour to the issue, review notes to the pull request, a documented pattern to the doc that carries it. Write one-line bullets, not paragraphs.
 
-Each piece of reasoning is written once. A rejected alternative belongs in the record, so where a record exists the pull request body points to it instead of repeating its reasoning. A read of ten records found roughly four words in five already written in the issue or the PR body, against a median length of 464 words; one record was first written at 39 lines, most of it duplicating `verify.md` and the issue, and had to be trimmed in review.
+Each piece of reasoning is written once. A rejected alternative belongs in the record, so where a record exists the pull request body points to it instead of repeating its reasoning. A read of ten records found roughly one word in five written nowhere else, against a median length of 464 words; one record was first written at 39 lines, most of it duplicating `verify.md` and the issue, and had to be trimmed in review.
 
 When a record overturns part of an earlier one, add `**Supersedes:** <link> — <which decision>` so the older record is read in light of the newer.
 
@@ -63,7 +63,7 @@ When a record overturns part of an earlier one, add `**Supersedes:** <link> — 
 
 **Behaviour:** See the issue. Gated by `dotnet format --verify-no-changes` over `src/NetPace.sln` in CI.
 
-**Constraints:** Verify snapshots (`*.verified.*`) are byte-exact program output — their trailing whitespace is content, not formatting — so the rules must exempt them.
+**Constraints:** Verify snapshots (`*.verified.*`) are byte-exact program output — their trailing whitespace and missing final newlines are content, not formatting — so the rules must exempt them.
 
 **Decisions:**
 
