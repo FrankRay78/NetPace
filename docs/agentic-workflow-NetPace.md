@@ -128,7 +128,8 @@ Follows the generic *build stage*. NetPace's specifics:
 - **Branch:** `feature/<N>-<short-slug>`, cut from `origin/main`. `/raise-pr`, `/verify`, `scripts/traceability-check.sh` and `scripts/chain-next.sh` all read the issue number from this pattern.
 - **Commits:** `Refs #<N>: …` in the imperative mood (constitution, *Git Workflow*). The failing tests are committed with the implementation that turns them green, never on their own.
 - **Suite:** as in *The gates, concretely*.
-- **Docs it must update** (`CLAUDE.md`'s paired rules): `///` XML docs on any new or changed public `NetPace.Core` API; the README.md `--help` snapshot and USER_GUIDE.md for a changed CLI option; `docs/RELEASING.md` for a release-pipeline change; a Change-Intent Record where the change is non-obvious.
+- **Docs it must update** (`CLAUDE.md`'s paired rules): `///` XML docs on any new or changed public `NetPace.Core` API; the README.md `--help` snapshot and USER_GUIDE.md for a changed CLI option; `docs/RELEASING.md` for a release-pipeline change.
+- **Change-Intent Record:** not a documentation obligation, and most changes get none. `/build` runs the decision table in [`conventions/change-intent-records.md`](conventions/change-intent-records.md) and writes a record only where a `→ CIR` row applies and no `→ No CIR` row does, naming the warranting row in the commit and its final report — or reporting that none was warranted. Where a record exists, `/raise-pr` links it from the pull request body instead of repeating its reasoning.
 
 ## `/verify`
 
