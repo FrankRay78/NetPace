@@ -73,6 +73,14 @@ commit_file() {
   git -C "$REPO" commit -q -m "add $1" || setup_fail "git commit $1"
 }
 
+# commit_binary PATH CONTENT — commit a file carrying a NUL byte, which `grep -I` treats as binary.
+commit_binary() {
+  mkdir -p "$REPO/$(dirname "$1")" || setup_fail "mkdir for $1"
+  printf 'bin\000%s\n' "$2" > "$REPO/$1" || setup_fail "write $1"
+  git -C "$REPO" add -- "$1" || setup_fail "git add $1"
+  git -C "$REPO" commit -q -m "add $1" || setup_fail "git commit $1"
+}
+
 # delete_committed PATH — remove the file from the working tree, leaving it tracked. This is the
 # state a local run meets midway through a deletion, before anything is committed.
 delete_committed() { rm -f "$REPO/$1" || setup_fail "rm $1"; }
@@ -84,7 +92,9 @@ check() {
 passed() { [ "$RC" = 0 ]; }
 failed() { [ "$RC" = 1 ]; }
 names()  { printf '%s' "$OUTPUT" | grep -qF -- "$1"; }
-# A pass must have checked something. All three words appear only in the clean verdict, and the
+# Once and only once — a reference the two checks both match must still be reported a single time.
+named_once() { [ "$(printf '%s' "$OUTPUT" | grep -cF -- "$1")" = 1 ]; }
+# A pass must have checked something. `OK —` opens the clean verdict and nothing else, and the
 # count is asserted non-zero, so a check that scanned no files cannot satisfy this.
 clean()  { passed && printf '%s' "$OUTPUT" | grep -qE 'OK — [1-9][0-9]* reference'; }
 
@@ -134,6 +144,42 @@ commit_file "docs/guide.md" '# Guide'
 check
 ok "a link to a directory that exists passes" 'clean'
 
+new_case
+commit_file "docs/a/b.md" 'Up to [the guide](/docs/guide.md).'
+commit_file "docs/guide.md" '# Guide'
+check
+ok "a root-relative /path resolves from the repository root, as GitHub reads it" 'clean'
+
+new_case
+commit_file "docs/a/b.md" 'Up to [the guide](/docs/nope.md).'
+commit_file "docs/guide.md" '# Guide'
+check
+ok "a root-relative /path that is missing fails" 'failed && names "/docs/nope.md"'
+
+new_case
+commit_file "README.md" 'A [way out](../../outside.md), and [the guide](docs/guide.md).'
+commit_file "docs/guide.md" '# Guide'
+check
+ok "a target climbing above the repository root is skipped, not reported" 'clean'
+
+new_case
+commit_file "README.md" 'An ![diagram](docs/img.png) and a [titled link](docs/guide.md "The Guide").'
+commit_file "docs/img.png" 'png'
+commit_file "docs/guide.md" '# Guide'
+check
+ok "an image target and a titled link target are both checked" 'clean'
+
+new_case
+commit_file "README.md" 'An ![diagram](docs/gone.png) and [the guide](docs/guide.md).'
+commit_file "docs/guide.md" '# Guide'
+check
+ok "a missing image target is reported" 'failed && names "docs/gone.png"'
+
+new_case
+commit_file "README.md" 'A [titled link](docs/gone.md "The Guide").'
+check
+ok "a title after the target is not read as part of the path" 'failed && names "docs/gone.md"'
+
 # --- what is shown rather than followed -------------------------------------------
 new_case
 commit_file "README.md" 'Write the pointer as `- [Title](file.md) — hook` and nothing else. Also [real](docs/guide.md).'
@@ -156,7 +202,7 @@ ok "a fence is closed only by its own delimiter" 'clean'
 new_case
 commit_file "README.md" "$(printf 'Opens a fence and never closes it.\n\n```\n[Title](file.md)\n')"
 check
-ok "an unterminated fence fails rather than passing as link-free" 'failed && names "fence"'
+ok "an unterminated fence fails rather than passing as link-free" 'failed && names "unterminated"'
 
 # --- bare references to the records folder, in any tracked text file ---------------
 new_case
@@ -177,6 +223,28 @@ commit_file "$RECDIR/2026-01-01-a-decision.md" '# A decision'
 commit_file "docs/constitution.md" "Approval: recorded in $RECDIR/2026-01-01-a-decision.md."
 check
 ok "a trailing sentence period is not read as part of the path" 'clean'
+
+# Check 2 strips neither fences nor backticks — a citation is read wherever it appears. Check 1's
+# exemption covers markdown links only, which is what the header and CLAUDE.md say.
+new_case
+commit_file "$RECDIR/2026-01-01-a-decision.md" '# A decision'
+commit_file "docs/guide.md" "An example citation reads \`$RECDIR/2026-01-02-gone.md\`."
+check
+ok "a bare record path inside backticks is still read" 'failed && names "2026-01-02-gone.md"'
+
+new_case
+commit_file "$RECDIR/2026-01-01-a-decision.md" '# A decision'
+commit_binary "data.bin" "$RECDIR/2026-01-02-gone.md"
+commit_file "README.md" "The live one is $RECDIR/2026-01-01-a-decision.md."
+check
+ok "a binary file is not scanned for citations" 'clean'
+
+# Both checks match a dangling record link, and the anchor is cut before the pair is recorded, so
+# the two agree on the string and `sort -u` collapses them.
+new_case
+commit_file "docs/guide.md" "See [the decision]($RECDIR/2026-01-02-gone.md#decisions)."
+check
+ok "an anchored dangling record link is reported once, not twice" 'failed && named_once "2026-01-02-gone.md"'
 
 new_case
 commit_file "$RECDIR/2026-01-01-a-decision.md" "**Supersedes:** [the earlier one]($RECDIR/2026-01-02-gone.md)."
@@ -228,6 +296,15 @@ new_case
 git -C "$REPO" commit -q --allow-empty -m "no files" || setup_fail "empty commit"
 check
 ok "discovering no markdown files fails rather than passing" 'failed && names "no tracked"'
+
+# The scan itself failing is the case the design rule is written for: a verdict that could not be
+# computed must not be reported as a clean one.
+new_case
+commit_file "README.md" 'See [the guide](docs/guide.md).'
+commit_file "docs/guide.md" '# Guide'
+chmod 000 "$REPO/docs/guide.md" || setup_fail "chmod guide"
+check
+ok "a file that cannot be read fails rather than being passed over" 'failed && names "no verdict is possible"'
 
 echo
 echo "cases: $cases  assertions passed: $pass  failed: $fail"

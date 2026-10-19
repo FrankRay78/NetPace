@@ -17,20 +17,22 @@
 #      cited in prose and in YAML comments, neither of which can carry a markdown link, and those
 #      citations go stale exactly as links do.
 #
-# WHAT IS DELIBERATELY NOT A LINK. A target inside a fenced block or inline backticks is being
-# shown to the reader, not offered to be followed: the harness prompts spell out link syntax,
-# `.claude/memory/MEMORY.md` carries `- [Title](file.md) — hook` as its own format, and a check
-# that read those would report six dangling links that are nothing of the kind. So both are
-# stripped before the scan, at the cost of not checking a link someone wrote inside backticks —
-# which was not a working link to begin with. Also skipped: `http`/`https`/`mailto` targets and
+# WHAT IS DELIBERATELY NOT A LINK, in check 1 only. A markdown link inside a fenced block or
+# inline backticks is being shown to the reader, not offered to be followed: the harness prompts
+# spell out link syntax, `.claude/memory/MEMORY.md` carries `- [Title](file.md) — hook` as its own
+# format, and a check that read those would report five dangling links that are nothing of the
+# kind. So both are stripped before the link scan, at the cost of not checking a link someone
+# wrote inside backticks — which was not a working link to begin with. Check 2 strips neither, so
+# a bare record path is read wherever it appears. Also skipped: `http`/`https`/`mailto` targets and
 # anchor-only `#fragment` targets, neither of which names a file here, and a relative path that
 # climbs above the repository root, which is outside this repository's reach.
 #
 # WHAT IS JUDGED is the WORKING TREE, not `HEAD`: the point of a local run is to be used midway
 # through a deletion, before anything is committed, and a check that read `HEAD` would call that
 # state clean right up until the commit landed. The file LIST still comes from `git ls-files`, so
-# untracked scratch files are neither scanned nor counted as satisfying a link. In CI the two are
-# the same thing, because the checkout holds only what was committed.
+# an untracked scratch file is never scanned — but target existence is a plain filesystem test, so
+# a link resolving to one passes here and fails in CI. In CI the two are the same thing, because
+# the checkout holds only what was committed.
 #
 # DESIGN RULE: fail CLOSED, as scripts/traceability-check.sh does and for the same reason — this
 # is a merge gate, and a gate that passes without having run gives exactly the false comfort it
@@ -55,7 +57,7 @@ say() { printf 'link-check: %s\n' "$*"; }
 die() { printf 'link-check: FAIL — %s\n' "$*" >&2; exit 1; }
 
 # --- fail-closed preconditions ----------------------------------------------------
-for tool in git grep sed awk mktemp; do
+for tool in git grep sed awk sort dirname mktemp; do
   command -v "$tool" >/dev/null 2>&1 \
     || die "'$tool' is not available, so the check cannot run. It is a merge gate, so it fails rather than reporting an unverified pass."
 done
@@ -66,8 +68,9 @@ git -C "$REPO_ROOT" rev-parse --git-dir >/dev/null 2>&1 \
 TMP="$(mktemp -d)" || die "could not create a temporary directory."
 trap 'rm -rf "$TMP"' EXIT
 
-# The records folder, as it is written in a citation. Assembled from a prefix and the filename
-# pattern separately so that this line is not itself a reference the second check would read.
+# The records folder, as it is written in a citation. Neither line is itself a reference the
+# second check reads: `RECORD_REF`'s filename part is a bracket expression, whose `[` is outside
+# the class it spells, and `RECORD_DIR` carries no filename at all.
 RECORD_DIR="docs/change-intent-records"
 RECORD_REF='docs/change-intent-records/[A-Za-z0-9._-]+\.md'
 
@@ -77,18 +80,18 @@ RECORD_REF='docs/change-intent-records/[A-Za-z0-9._-]+\.md'
 # filesystem and would follow a symlink out of the tree and succeed on a path that GitHub, which
 # resolves textually, would render as broken.
 resolve_path() {
-  local base="$1" target="$2" joined seg rest out=""
-  local -a parts=()
+  local base="$1" target="$2" joined seg out=""
+  local -a segs=() parts=()
 
   case "$target" in
     /*) joined="${target#/}" ;;                      # root-relative, as GitHub reads a leading /
     *)  if [ "$base" = "." ]; then joined="$target"; else joined="$base/$target"; fi ;;
   esac
 
-  rest="$joined"
-  while [ -n "$rest" ]; do
-    seg="${rest%%/*}"
-    if [ "$seg" = "$rest" ]; then rest=""; else rest="${rest#*/}"; fi
+  # A non-whitespace IFS does not collapse runs of the delimiter, so `a//b` splits to three
+  # segments with an empty one in the middle — dropped below alongside `.`, as GitHub drops it.
+  IFS='/' read -r -a segs <<< "$joined"
+  for seg in "${segs[@]}"; do
     case "$seg" in
       ''|.) ;;
       ..)
@@ -112,7 +115,6 @@ checked=0
 scanned=0
 : > "$TMP/missing"
 
-markdown_seen=0
 while IFS= read -r -d '' file; do
   path="$REPO_ROOT/$file"
   # A tracked path that is gone from the working tree is the half-finished deletion this check
@@ -128,16 +130,14 @@ while IFS= read -r -d '' file; do
     1) refs="" ;;
     *) die "could not scan '$file' for record citations, so the reference set is incomplete and no verdict is possible." ;;
   esac
-  if [ -n "$refs" ]; then
-    while IFS= read -r ref; do
-      [ -n "$ref" ] || continue
-      checked=$((checked + 1))
-      [ -e "$REPO_ROOT/$ref" ] || printf '%s\t%s\n' "$file" "$ref" >> "$TMP/missing"
-    done <<< "$refs"
-  fi
+  while IFS= read -r ref; do
+    [ -n "$ref" ] || continue
+    checked=$((checked + 1))
+    [ -e "$REPO_ROOT/$ref" ] || printf '%s\t%s\n' "$file" "$ref" >> "$TMP/missing"
+  done <<< "$refs"
 
   # --- check 1: markdown links, in a tracked *.md file ----------------------------
-  case "$file" in *.md) markdown_seen=1 ;; *) continue ;; esac
+  case "$file" in *.md) ;; *) continue ;; esac
 
   # Fenced blocks first, dropped by their own delimiter so that a `~~~` block quoting a ``` line
   # stays one block; then backtick spans, shortest-first, so `a` and `b` on one line is two spans
@@ -181,17 +181,19 @@ while IFS= read -r -d '' file; do
 
     resolved="$(resolve_path "$dir" "$target_path")" || continue
     checked=$((checked + 1))
-    [ -e "$REPO_ROOT/$resolved" ] || printf '%s\t%s\n' "$file" "$target" >> "$TMP/missing"
+    [ -e "$REPO_ROOT/$resolved" ] || printf '%s\t%s\n' "$file" "$target_path" >> "$TMP/missing"
   done <<< "$targets"
 done < "$TMP/tracked"
 
-[ "$markdown_seen" = 1 ] \
+[ "$scanned" -gt 0 ] \
   || die "found no tracked '*.md' files in '$REPO_ROOT'. This repository has many, so an empty result means the discovery or the naming has drifted — which is the one outcome that would otherwise report green having checked nothing."
 
 # --- the verdict ------------------------------------------------------------------
 # Deduplicated: a markdown link to a record matches both checks, and one dangling reference should
-# be reported once. Both verdicts carry the counts, which makes a run self-diagnosing after the
-# fact — "2 references checked" alongside a clean verdict reads very differently from "431".
+# be reported once — the anchor is cut before the pair is recorded so that the two checks agree on
+# the string, though a record link written relative to the linking file still differs from a bare
+# citation and is reported twice. Both verdicts carry the counts, which makes a run self-diagnosing
+# after the fact — "2 references checked" alongside a clean verdict reads very differently from "431".
 if [ -s "$TMP/missing" ]; then
   {
     printf 'link-check: FAIL — these references name a file that is not in the repository:\n'
@@ -205,4 +207,4 @@ if [ -s "$TMP/missing" ]; then
   exit 1
 fi
 
-say "OK — $checked reference(s) checked across $scanned markdown file(s), none dangling."
+say "OK — $checked reference(s) checked across $scanned markdown file(s) and every tracked text file, none dangling."

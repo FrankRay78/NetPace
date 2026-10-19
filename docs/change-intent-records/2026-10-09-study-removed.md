@@ -4,7 +4,7 @@
 
 **Behaviour:** `scripts/chain.sh` runs build, verify and raise-pr, and counts stages out of three. `/study`, `/study-review` and `docs/study/` no longer exist.
 
-**Constraints:** Dated records that mention study stay as written rather than being rewritten; the `docs/study/` records they cite as evidence now live only in git history.
+**Constraints:** The `docs/study/` records cited as evidence now live only in git history.
 
 **Decisions:**
 
