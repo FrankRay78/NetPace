@@ -48,7 +48,7 @@ Every review states a risk tier and a yes-or-no verdict on whether the PR could 
 
 Only Low is eligible for merge with no human review. Medium and High both mean maintainer review; High marks the changes that most deserve a careful read.
 
-**Always a person.** A change touching any of these needs the maintainer whatever tier the rest of it would get, so it is never eligible, and the summary names the path responsible:
+**Always a person.** A change touching any of these needs the maintainer whatever tier the rest of it would get, so it is never eligible, and the summary names the path responsible. Read the changed paths from `git diff --name-only origin/<baseRefName>...HEAD` in the checkout, never from step 1's `files`, which stops at 100 files without saying so:
 
 - anything under `.github/` or `scripts/`
 - the release and publish pipeline, including `docs/RELEASING.md`
@@ -59,7 +59,7 @@ Only Low is eligible for merge with no human review. Medium and High both mean m
 
 **The second look.** Even where the areas touched suggest Low, ask whether this particular change still deserves a person. Lift Low to Medium where it does, and say why.
 
-**The verdict** is **yes** only when all three hold: the tier is Low, no always-a-person path is touched, and no verified finding is open other than those tagged **Pre-existing**. Any other open finding, of any severity, makes it **no**. A Pre-existing finding is listed and does not block.
+**The verdict** is **yes** only when all three hold: the tier is Low, no always-a-person path is touched, and no verified finding is open other than a **Pre-existing** one below Critical. Any other open finding, of any severity, makes it **no**. A Pre-existing Major or Minor finding is listed and does not block; a Pre-existing Critical blocks, because it still forces **Merge after addressing** (step 9).
 
 **The line.** The summary states both directly under its header, in this wording every time:
 
