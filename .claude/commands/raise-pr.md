@@ -52,7 +52,7 @@ Every STOP below is a **failure**, so each ends its report with the *Final repor
 
    - **Why** — motivation or context that isn't already obvious from commit messages. Skip for trivial PRs where the title is self-explanatory.
    - **What changes** — a short summary of observable changes. For single-theme PRs, 1–3 bullets. For multi-theme PRs, group by theme rather than by file. Describe *what* changed at a behaviour level, not which files were touched.
-   - **Non-obvious things a reviewer should know** — caveats, deliberate trade-offs, hidden invariants, anything in the diff that looks weird but is intentional. Omit if there are none.
+   - **Non-obvious things a reviewer should know** — caveats, deliberate trade-offs, hidden invariants, anything in the diff that looks weird but is intentional. Omit if there are none. **Where the branch adds a change-intent record under `docs/change-intent-records/`, link it here and stop** — the record already holds the rejected alternatives and the reasoning, so restating them is the same words in two places. Add only what the record does not carry.
    - **How to verify** — a markdown checklist of concrete actions a reviewer can perform. Derive items from what actually changed. Omit for pure-documentation PRs where there's nothing functional to exercise.
    - **Related** — the `Closes #<N>` (or `Refs #<N>`) line settled above, plus links to prior PRs or related issues that give context. This section always survives when step 4 settled a keyword, whatever the PR's size.
 
