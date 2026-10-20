@@ -1,5 +1,5 @@
 ---
-description: Multi-pass verified review of an open PR — triage map, parallel specialist passes, finding verification, inline comments, a risk tier and a merge recommendation. Runs unattended to posting. Supports --dry-run.
+description: Multi-pass verified review of an open PR — triage map, parallel specialist passes, finding verification, inline comments, a risk tier, a no-human-merge verdict and a merge recommendation. Runs unattended to posting. Supports --dry-run.
 argument-hint: "[PR number or URL] [--dry-run]"
 ---
 
@@ -38,12 +38,12 @@ Flags, anywhere in the arguments:
 
 ## Risk tier and human review
 
-Every review states a risk tier and a yes-or-no verdict on whether the PR could merge with no human review. Both are set from what the change touches, never from who authored it. Nothing is merged automatically: the verdict is advice about the commit reviewed, not about anything pushed after it, and the maintainer still makes the merge decision on the PR.
+Every review states a risk tier and a yes-or-no verdict on whether the PR could merge with no human review. The tier is set from what the change touches, and neither is ever set from who authored it. Nothing is merged automatically: the verdict is advice about the commit reviewed, not about anything pushed after it, and the maintainer still makes the merge decision on the PR.
 
 **Tier** — one of:
 
 - **Low** — docs, tests or mechanical changes only (renames, moved files, generated code, lockfiles). A changed snapshot is never Low: a snapshot is a user-visible contract, and a changed one means the output changed.
-- **Medium** — real logic that touches no contract.
+- **Medium** — anything that is neither Low nor High: real logic, or a changed snapshot.
 - **High** — logic in server selection or measurement, security-sensitive code, or a change large enough to span several layers.
 
 Only Low is eligible for merge with no human review. Medium and High both mean maintainer review; High marks the changes that most deserve a careful read.
@@ -52,9 +52,9 @@ Only Low is eligible for merge with no human review. Medium and High both mean m
 
 - anything under `.github/` or `scripts/`
 - the release and publish pipeline, including `docs/RELEASING.md`
-- the Claude harness — `.claude/` hooks, commands, agents and settings — and `CLAUDE.md`
+- the Claude harness — anything under `.claude/` — and `CLAUDE.md`
 - `docs/constitution.md`
-- `Directory.Packages.props`, and package-reference changes in project files
+- `src/Directory.Packages.props`, and package-reference changes in project files
 - any change to a contract a user or a consumer relies on: a CLI option, an exit code, a CSV or JSON field, a public `NetPace.Core` member
 
 **The second look.** Even where the areas touched suggest Low, ask whether this particular change still deserves a person. Lift Low to Medium where it does, and say why.
