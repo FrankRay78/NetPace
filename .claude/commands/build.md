@@ -84,7 +84,12 @@ Two named exceptions, because the project reserves them for discussion. *Project
 
    Re-run the suite if any of this touched code, then commit.
 
-9. **Stop here.** Do **not** run the project's formatter — that is `/verify`'s formatting pass (step 1a). Do **not** push, open a PR, merge, or run `/verify`. Leave the working tree clean — everything committed to the branch — because `/verify`'s preconditions (step 0) require exactly that.
+9. **Decide whether a change-intent record is warranted.** This is not a documentation obligation and it is not a box to tick — **most changes need none**, and writing one that was not warranted is itself a defect. Run the decision table in the project's change-intent record convention, which *Project-specific* names: write a record only when a `→ CIR` row applies **and** no `→ No CIR` row does.
+   - Two new `→ No CIR` rows catch the common cases. Reasoning already recorded in the issue's confirmed decisions is linked, not restated — unless the decision constrains future work (a public API, an interface contract, dependency direction), which keeps a short record linking the issue for its reasoning. A change only to documentation written for the project's readers needs none at all; command prompts, conventions, the constitution and workflows are not covered by that row, because they direct future work.
+   - If you write one, keep it to about **150 words** and hold only what is written nowhere else: the intent in a sentence, each rejected alternative with its reason, and any constraint the code will not make obvious. Link the rest. Do not repeat it in the pull request body — `/raise-pr` points at the record instead.
+   - **Name the row that warranted it**, by quoting the first few words of that row's question, both in the commit that adds the record (e.g. `Refs #239: record why input is validated before parsing` with `CIR row: choosing between multiple viable approaches` in the body) and in the final report. If you write no record, say so in the final report.
+
+10. **Stop here.** Do **not** run the project's formatter — that is `/verify`'s formatting pass (step 1a). Do **not** push, open a PR, merge, or run `/verify`. Leave the working tree clean — everything committed to the branch — because `/verify`'s preconditions (step 0) require exactly that.
 
 ---
 
@@ -94,6 +99,7 @@ Two named exceptions, because the project reserves them for discussion. *Project
 - **RED evidence**: the failing-test output you saw before writing production code.
 - **What you changed**, at a behaviour level, and how each acceptance criterion is met.
 - **Any assumption** you made on an ambiguous point, any public-API change, and anything you deliberately left out of scope.
+- **Change-intent record**: either the record's path and the decision-table row that warranted it, quoted (`CIR row: …`), or a line saying no record was warranted. One or the other always appears — silence here reads as a step skipped.
 - On the way to a `READY` verdict, add this **above the verdict line** — it is boilerplate this command mandates, and appending it below the verdict is the commonest way to lose the verdict: "Run `/verify` to format, gate, review and commit, then `/raise-pr` to push and open the PR — `/raise-pr` derives `Closes #<N>` from this branch name and verifies it before use, then reports what it settled; check that line to confirm the link was made."
 
 **Close the report with the verdict on its own last line** — plain, at column 1, nothing else on that line and nothing after it. Exactly one of:
@@ -142,8 +148,11 @@ The only section that changes from one repository to another.
 - Any new or changed **public API in `NetPace.Core`** needs `///` XML docs — they ship to NuGet consumers.
 - Any changed **CLI option** needs the README.md `--help` snapshot and USER_GUIDE.md updated.
 - Any **release-pipeline** change needs `docs/RELEASING.md` updated.
-- Consider a **Change-Intent Record** per `docs/conventions/change-intent-records.md` if the change is non-obvious.
 - Write markdown one line per paragraph — no hard column wrapping.
+
+### Change-intent records (step 9)
+
+`docs/conventions/change-intent-records.md`, whose decision table step 9 runs. Records live in `docs/change-intent-records/`.
 
 ### What a port must bring
 
