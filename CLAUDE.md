@@ -4,7 +4,7 @@
 
 ## Quick Reference
 
-This guide covers **HOW** (NetPace patterns, conventions, gotchas). The constitution covers **WHAT** and **WHY** (principles, governance).
+This guide covers **HOW** (NetPace patterns, conventions, gotchas). The constitution covers **WHAT** and **WHY** (principles).
 
 ## Project Overview
 
@@ -40,7 +40,7 @@ Do not add tests for the `--flag --help` pattern — it is not expected to work.
 
 ### Units and Formatting
 
-`--unit-scale` overrides auto-scaling; formatting must match across default and minimal output. CSV and JSON are not formatted output — both carry plain numbers in fixed units (`LatencyMilliseconds`, `…SpeedBitsPerSecond`) that the unit options do not touch, and the numbers they report must agree with each other.
+Speeds support SI (1000-based) and IEC (1024-based) unit systems, in bits or bytes per second, auto-scaled by default (Mbps, Gbps). `--unit-scale` overrides auto-scaling; formatting must match across default and minimal output. CSV and JSON are not formatted output — both carry plain numbers in fixed units (`LatencyMilliseconds`, `…SpeedBitsPerSecond`) that the unit options do not touch, and the numbers they report must agree with each other.
 
 ### Result, Extension and Settings Patterns
 
@@ -57,6 +57,7 @@ Paired rules — `Don't` X → `Do` Y instead:
 
 - **Constitution rules apply as written** → TDD, including the config/tooling carve-out where the real tool is the RED test (I); XML docs on public Core APIs (V); justified Core dependencies (VI); no skipped tests, enforced by the no-skipped-tests hook (X). **Pre-1.0 override**: while every released version is below 1.0.0, no breaking or public-API change to the CLI or to `NetPace.Core` needs prior discussion, approval, a deprecation period or a MAJOR/MINOR/PATCH classification (Constitution VII, *Pre-1.0 stance*) — state in the issue or PR what breaks and for whom, and carry on.
 - **Don't commit with failing tests or build warnings** → run `dotnet build src` and `dotnet test src` clean before committing.
+- **Don't leave commented-out code** → delete it; git remembers.
 - **Don't change a CLI option without updating user-facing docs** → README.md `--help` snapshot and USER_GUIDE.md need updating; design-doc cross-ref where applicable. (Per-release "what changed" notes are GitHub-auto-generated from merged PRs — no CHANGELOG.md to maintain.)
 - **Don't change `release-binaries.yml` (or other release-pipeline scope) without updating `docs/RELEASING.md`** → the release matrix, runner-per-RID rationale, naming convention, smoke-test contract, and size-assertion contract live there. Out-of-sync release docs make adding a new RID/variant cost extra. (Action-version bumps such as `actions/checkout@v4→v5` are exempt.)
 - **Don't introduce reflection-heavy or non-trim-safe code** → NetPace targets AOT-trimmable builds (Spectre.Console.Cli was replaced for this reason); avoid runtime reflection, keep types annotation-clean.
