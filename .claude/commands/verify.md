@@ -2,7 +2,7 @@
 description: Orchestrator that turns "implementation looks done" into a reviewed, test-green branch — runs the full suite first and hard-gates on it, then reviews the branch once, fixes the confirmed findings its rules table calls for, and commits them on a green re-run. Stops short of the pull request. Runs unattended, so it can drive a loop.
 ---
 
-Read the project context *Project-specific* at the end of this file names, before proceeding.
+Read the project context that *Project-specific* at the end of this file names, before proceeding.
 
 `/verify` is the stage between `/build` and `/raise-pr`: it turns a feature branch into a **formatted, test-green, reviewed, fully-committed** branch with a clean working tree. It does not push, open a PR, or merge — `/raise-pr` owns all of that, and you run it yourself afterwards.
 
@@ -33,7 +33,7 @@ Every step below is written to be repository-agnostic. Wherever a step needs thi
 
    **1a — Format the tree.** Run the project's formatter, exactly as *Project-specific* gives it.
 
-   - Formatting runs **once here, and once more in step 3 if the review led to edits** — never per commit. It is cosmetic work at a cadence that already costs minutes — see *Formatting is not verification* in [agentic-workflow.md](../../docs/agentic-workflow.md). This pass exists to bring the branch as `/build` left it into line; step 3's exists because a review fix written after this pass would otherwise reach the pull request unformatted.
+   - Formatting runs **once here, and once more in step 3 if the review led to edits** — never per commit. It is cosmetic work at a cadence that already costs minutes. This pass exists to bring the branch as `/build` left it into line; step 3's exists because a review fix written after this pass would otherwise reach the pull request unformatted.
    - **If formatting changed files, commit them now** — `git add -A` and a message in the same `Refs #<N>: <imperative>` form step 3 uses, e.g. `Refs #328: apply formatting` — *before* running the suite. This restores the clean working tree step 0 established, which is what keeps step 3's "anything in the tree is a review edit" invariant true. Do not carry format edits forward into the review commit; they are a separate concern and belong in their own commit.
    - **If formatting changed nothing, make no commit.** A branch already in format reaches step 2 with the commits `/build` left and no format commit.
    - A **non-zero exit** from the formatter is a real failure (bad workspace argument, unparseable source) ⇒ **STOP and report** with the formatter-failure reason *Project-specific* gives. A clean run that merely rewrote files is not a failure — that is the tool doing its job, and the distinction is the exit code, not whether `git status` is dirty afterwards.
@@ -123,7 +123,7 @@ Never report verified over a red suite, a confirmed finding whose row in step 2'
 
 ## Project-specific
 
-The only section that changes from one repository to another. Every step above draws its tools, paths and rules from here.
+The only section that changes from one repository to another.
 
 ### Project context
 
@@ -141,6 +141,8 @@ The explicit `./src/NetPace.sln` argument is **required, not decorative**: `dotn
 
 **Formatter-failure reason** — report `FAILED reason=dotnet format failed` verbatim on a non-zero exit, in step 1a and in step 3.
 
+The reasoning behind step 1a's twice-a-branch cadence is *Formatting is not verification* in [agentic-workflow.md](../../docs/agentic-workflow.md).
+
 ### Build-and-test command (step 1b and step 3)
 
 `dotnet build ./src && dotnet test ./src`, run from the repository root. Both halves, in that order. Never `--no-build` — the `green-gate.sh` hook denies it when stale, and rightly.
@@ -157,5 +159,5 @@ The constitution's *Git Workflow*: imperative mood, `Refs #<N>`, never a GitHub 
 
 - **Sibling commands** — `/build` and `/raise-pr`, the rest of the chain; `/review-slop`, run in wave 1; `/review-pr`, which is Review B; `/capture-learnings`, run later at a supervised checkpoint.
 - **Scripts** — `scripts/chain.sh`, the chain driver that reads the verdict line, and `scripts/chain-next.sh`, which parks an issue on a failed verdict.
-- **Hooks** — the `Bash(gh pr create:*)` `PreToolUse` hook in `.claude/settings.json` that re-runs the build-and-test command, which step 1b weighs and does not rely on; and `.claude/hooks/green-gate.sh`.
+- **Hooks** — the `Bash(gh pr create:*)` `PreToolUse` hook in `.claude/settings.json` that re-runs the build-and-test command, which step 1b weighs and does not rely on; `.claude/hooks/green-gate.sh`; and `.claude/hooks/no-skipped-tests.sh`, which runs on every `git commit` and so can block step 1a's or step 3's.
 - **Plugins** — `pr-review-toolkit`, which supplies every wave-1 reporter and the wave-2 `code-simplifier`.

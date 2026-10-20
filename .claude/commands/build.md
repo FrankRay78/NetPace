@@ -2,7 +2,7 @@
 description: Build one GitHub issue to a green, committed feature branch — reads the issue's acceptance criteria, drives RED-GREEN-REFACTOR, and stops. Runs unattended; hand the result to /verify.
 ---
 
-Read the project context *Project-specific* at the end of this file names, before proceeding.
+Read the project context that *Project-specific* at the end of this file names, before proceeding.
 
 `/build` is the first stage in the `/build` → `/verify` → `/raise-pr` chain: it turns **one GitHub issue** into a green, committed feature branch. It does not format, review, push, open a PR, or merge — `/verify` and `/raise-pr` own all of that, and you run them yourself afterwards.
 
@@ -28,7 +28,7 @@ A GitHub issue number — bare (`239`), hashed (`#239`), or a full issue URL. **
 
 Decide every judgement call yourself. Where the issue is ambiguous, pick the reading most consistent with the existing codebase and the issue's own stated intent, **state the assumption in the final report**, and keep going.
 
-Two named exceptions, because the project reserves them for discussion. *Project-specific* says what each covers here:
+Two named exceptions, because the project reserves them for discussion. *Project-specific* names what each covers:
 
 - **A change to the project's protected public API.** If the issue's acceptance criteria *require* one, the issue is the discussion — proceed, and call it out prominently in the final report so it gets scrutiny at review. If such a change is merely *convenient* and not required by the criteria, do not make it.
 - **A new dependency in a library the project marks dependency-controlled.** Do not add one. If the issue cannot be built without it, STOP and report that — the dependency decision is not yours to make unattended.
@@ -72,7 +72,7 @@ Two named exceptions, because the project reserves them for discussion. *Project
 5. **RED — write the failing tests first (the project's TDD rule, NON-NEGOTIABLE).**
    - **First decide whether this change is production code at all.** If the acceptance criteria are satisfied by configuration, tooling, or CI — an `.editorconfig` value, a `.gitattributes` rule, a workflow step — the RED step is the *real tool or gate* failing, not a test in the project's suite. Run it, quote the failure in the final report, and go to step 6. **Never hand-roll a test that reimplements a tool which already performs the check** — it covers strictly less, carries its own bugs, and reports green when its own matching logic fails. *Project-specific* names where the project states this carve-out.
    - Otherwise, write the tests for the acceptance criteria from step 3 **before any production code**, following the project's test conventions as *Project-specific* gives them. Mock network, filesystem and time.
-   - Run the project's build-and-test command (*Project-specific*) and **watch the new tests fail.** Quote the actual failure output in the final report; that is the evidence the RED step happened. Honour the constraints *Project-specific* lists on how the suite is run and how tests are written.
+   - Run the project's build-and-test command (*Project-specific*) and **watch the new tests fail** — never against a stale build, and never skipping a test; *Project-specific* gives both bans and the hooks that enforce them. Quote the actual failure output in the final report; that is the evidence the RED step happened.
    - If the new tests **pass** on first run, the RED step did not happen: either the behaviour already exists (STOP and report that the issue may already be satisfied) or the test does not actually exercise the criterion (fix the test).
    - Do not commit on red. Tests written ahead of the code they call usually do not compile, so they are committed together with the implementation in step 6.
 
@@ -80,7 +80,7 @@ Two named exceptions, because the project reserves them for discussion. *Project
 
 7. **REFACTOR — improve on green.** With the tests passing and committed, improve the design if it needs it, and re-run the suite. Still green, or revert the refactor. Never refactor on red.
 
-8. **Discharge the documentation obligations** *Project-specific* lists. Each is a rule of the form "a change of this kind also updates that document": apply every one your change triggers, and none of the others.
+8. **Discharge the documentation obligations** *Project-specific* lists — every one your change triggers, and no more.
 
    Re-run the suite if any of this touched code, then commit.
 
@@ -107,7 +107,7 @@ The chain driver reads the last non-blank line of the report and nothing else, s
 
 ## Project-specific
 
-The only section that changes from one repository to another. Every step above draws its tools, paths and rules from here.
+The only section that changes from one repository to another.
 
 ### Project context
 
@@ -128,7 +128,7 @@ The only section that changes from one repository to another. Every step above d
 
 - **TDD** — constitution §I (NON-NEGOTIABLE), whose *Configuration, tooling and CI changes* carve-out is the one step 5 applies when the change is not production code.
 - **Traceability** — constitution §VIII, the issue-label → test-marker chain. Check it with `bash scripts/traceability-check.sh`, which reads **committed** files.
-- **Commit messages** — the constitution's *Git Workflow*: imperative mood, `Refs #<N>`, never a closing keyword.
+- **Commit messages** — the constitution's *Git Workflow*, which states the rule step 6 applies.
 
 ### Protected API, dependencies and breaking changes
 
