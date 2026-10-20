@@ -8,7 +8,7 @@ Read the project context that *Project-specific* at the end of this file names, 
 
 `/build` is designed to run to completion **without prompting** once it has an issue number, so it can be driven back-to-back as well as invoked directly.
 
-Every step below is written to be repository-agnostic. Wherever a step needs this repository's tools, paths or rules, it says so and *Project-specific* at the end of this file supplies them — that section is the only part to rewrite when adopting this command elsewhere.
+Every step below is written to be repository-agnostic. Wherever a step needs this repository's tools, paths or rules, it says so and *Project-specific* at the end of this file supplies them — that section is the only part to rewrite when adopting this command elsewhere. The harness itself is not a project binding: the verdict protocol, the chain scripts that read it and the sibling commands stay named in the steps, so whoever edits the protocol sees what consumes it.
 
 **Stop-on-failure is global:** if any step fails — the tree is dirty, the issue is unbuildable as written, the RED tests do not fail, the suite will not go green — STOP at that step, report it, and do not run any later step. Never report READY over a red suite, an unimplemented acceptance criterion, or an uncommitted change.
 
@@ -39,7 +39,7 @@ Two named exceptions, because the project reserves them for discussion. *Project
 
 ## Steps
 
-1. **Preconditions.** All must hold. Every STOP in this step and the next is a **failure**, so each ends its report with the *Final report*'s `FAILED reason=` verdict line as the last line and nothing after it — the explanatory sentence for a human goes *above* it. A stop message whose last line is not the verdict reaches the chain driver as the far less useful `no readable verdict` instead of the reason, and the chain then parks the issue with that non-reason. These stops are the ones that matter most for that: the chain deliberately does not check the fetch, unpushed commits or the issue itself, because `/build` does.
+1. **Preconditions.** All must hold. Every STOP in this step and the next is a **failure**, so each ends its report with the *Final report*'s `FAILED reason=` verdict line as the last line and nothing after it — the explanatory sentence for a human goes *above* it. A stop message whose last line is not the verdict reaches `scripts/chain.sh` as the far less useful `no readable verdict` instead of the reason, and `scripts/chain-next.sh` then parks the issue with that non-reason. These stops are the ones that matter most for that: the chain deliberately does not check the fetch, unpushed commits or the issue itself, because `/build` does.
    - `git status --porcelain` is empty. If not, STOP: "Commit or stash your changes before building." A dirty tree would be swept into the issue's branch at step 4. Verdict: `FAILED reason=the working tree has uncommitted changes`.
    - `git rev-parse --abbrev-ref HEAD` is `main`. If not, STOP: "Run /build from main — it creates the issue's branch itself." Verdict: `FAILED reason=/build was not run from main`.
    - `git fetch origin main` succeeds. If not, STOP with `FAILED reason=git fetch origin main failed`.
@@ -101,7 +101,7 @@ Two named exceptions, because the project reserves them for discussion. *Project
 - `READY branch=<branch>` — every criterion implemented, whole suite green, everything committed, tree clean.
 - `FAILED reason=<short reason>` — you could not reach that state. Report the wall you actually hit, discovered by working: the criteria conflict, they do not determine the design, the change is larger than they describe. Do not fabricate READY.
 
-The chain driver reads the last non-blank line of the report and nothing else, so one more sentence, a closing pleasantry or a code fence after the verdict costs the run its verdict and stops the chain. The upside of reading only that line: quoting either verdict *earlier* in the report — as RED evidence, in a code block, a list or a table — is free and cannot be mistaken for your own. Decoration on that one line is tolerated, not invited: one leading heading, bullet, numbered-item or blockquote marker, a wrapping run of `*`, `_` or backticks, and an indent of up to three spaces are stripped. Nothing else is — a four-space indent is a code block, and a line carrying anything besides the verdict is read as no verdict at all.
+`scripts/chain.sh` reads the last non-blank line of the report and nothing else, so one more sentence, a closing pleasantry or a code fence after the verdict costs the run its verdict and stops the chain. The upside of reading only that line: quoting either verdict *earlier* in the report — as RED evidence, in a code block, a list or a table — is free and cannot be mistaken for your own. Decoration on that one line is tolerated, not invited: one leading heading, bullet, numbered-item or blockquote marker, a wrapping run of `*`, `_` or backticks, and an indent of up to three spaces are stripped. Nothing else is — a four-space indent is a code block, and a line carrying anything besides the verdict is read as no verdict at all.
 
 ---
 
@@ -148,6 +148,6 @@ The only section that changes from one repository to another.
 ### What a port must bring
 
 - **Sibling commands** — `/verify` and `/raise-pr`, the rest of the chain; `/draftissue`, whose template shapes the issues step 3 reads.
-- **Scripts** — `scripts/chain.sh`, the chain driver that reads the verdict line, and `scripts/chain-next.sh`, which parks an issue on a failed verdict; `scripts/traceability-check.sh`.
+- **Scripts** — `scripts/traceability-check.sh`. The chain scripts are part of the harness and named in the steps.
 - **Hooks** — `.claude/hooks/green-gate.sh` and `.claude/hooks/no-skipped-tests.sh`, wired in `.claude/settings.json`.
 - **Plugins** — none. `/build` spawns no reviewer subagents.
