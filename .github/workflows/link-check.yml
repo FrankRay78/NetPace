@@ -2,9 +2,9 @@ name: Link Check
 
 # Every reference to a file in this repository resolves to a file that is there — markdown links
 # in tracked `*.md` files, whether relative or written as a full link to a path on `main`, the
-# `#heading` such a link names, and bare citations of a change-intent record in prose or a YAML
+# `#heading` any of them names, and bare citations of a change-intent record in prose or a YAML
 # comment. Nothing is fetched: a full link is mapped onto the checkout and read locally, so the
-# verdict depends on this branch's files and on no third-party site being reachable.
+# verdict depends on this branch's files and not on any third-party site being reachable.
 #
 # Pre-merge, and only here. A branch that deletes or renames a linked-to file or heading leaves its
 # inbound pointers in places nobody opens at the time: the constitution, a workflow comment, another

@@ -32,8 +32,8 @@ CHECK="$HERE/link-check.sh"
 RECDIR="docs/change-intent""-records"
 
 # This repository's canonical web URL, as a full link to a file on `main` is written. The check
-# carries the same constant, so a fixture writing it is how the mapping onto the local checkout is
-# driven — the URL is never fetched.
+# matches a lowercased copy of its own constant against it, so writing it here in canonical case is
+# what drives the mapping onto the local checkout — the URL is never fetched.
 MAINURL="https://github.com/FrankRay78/NetPace"
 
 # One parent-scoped root holds every sandbox, so cleanup cannot be defeated by a subshell.
@@ -209,6 +209,15 @@ commit_file "README.md" "$(printf 'Opens a fence and never closes it.\n\n```\n[T
 check
 ok "an unterminated fence fails rather than passing as link-free" 'failed && names "unterminated"'
 
+# The target sorts after the linking file, so the headings are demanded before the scan reaches
+# the file itself — which is what makes this the heading-reading failure and not the one above.
+new_case
+commit_file "README.md" 'Jump to [a part](zz-target.md#the-part).'
+commit_file "zz-target.md" "$(printf '# Guide\n\n```\nnever closed\n')"
+check
+ok "a linked-into file whose headings cannot be read fails closed" 'failed && names "could not read the headings"'
+ok "  …and names the file that links into it" 'names "README.md"'
+
 # --- full links to a path on this repository's main branch ------------------------
 new_case
 commit_file "README.md" "See [the guide]($MAINURL/blob/main/docs/guide.md)."
@@ -218,14 +227,12 @@ ok "a full blob/main link to an existing file passes" 'clean'
 
 new_case
 commit_file "README.md" "See [the guide]($MAINURL/blob/main/docs/gone.md)."
-commit_file "docs/guide.md" '# Guide'
 check
 ok "a full blob/main link to a missing file fails" 'failed && names "docs/gone.md"'
 ok "  …and names the file that carries it" 'names "README.md"'
 
 new_case
 commit_file "README.md" "The [console project]($MAINURL/tree/main/src/App)."
-commit_file "docs/guide.md" '# Guide'
 check
 ok "a full tree/main link to a missing folder fails" 'failed && names "src/App"'
 
@@ -235,14 +242,20 @@ check
 ok "a full raw/main link to a missing file fails" 'failed && names "docs/gone.md"'
 
 new_case
-commit_file "README.md" "See [the guide](HTTPS://GitHub.com/FrankRay78/NETPACE/BLOB/main/docs/gone.md)."
+commit_file "README.md" "See [the guide](HTTPS://GitHub.com/FrankRay78/NETPACE/BLOB/MAIN/docs/gone.md)."
 check
-ok "the repository part of a full link is matched whatever its case" 'failed && names "docs/gone.md"'
+ok "every segment of a full link but the path is matched whatever its case" 'failed && names "docs/gone.md"'
+
+new_case
+commit_file "README.md" "See [the guide](HTTPS://GitHub.com/FrankRay78/NETPACE/BLOB/MAIN/docs/guide.md)."
+commit_file "docs/guide.md" '# Guide'
+check
+ok "  …and an uppercase ref still resolves onto the local path" 'clean'
 
 # Over-reach is the risk here: everything else on github.com is a web page, not a path in this
 # branch, and a check that resolved those against the checkout would fail on correct links.
 new_case
-commit_file "README.md" "Releases are [here]($MAINURL/releases), issues [there]($MAINURL/issues/new/choose), and the repo is [this]($MAINURL). Also [the guide](docs/guide.md)."
+commit_file "README.md" "Releases are [here]($MAINURL/releases), issues [there]($MAINURL/issues/new/choose), the history is [here]($MAINURL/commits/main/docs/gone.md), and the repo is [this]($MAINURL). Also [the guide](docs/guide.md)."
 commit_file "docs/guide.md" '# Guide'
 check
 ok "a GitHub page that is not a path on main is not resolved against the checkout" 'clean'
@@ -289,12 +302,41 @@ commit_file "docs/guide.md" "$(printf '# Guide\n\n## The Part')"
 check
 ok "an anchor on a full blob/main link is checked against the local file" 'failed && names "#the-missing-part"'
 
+# The linking file deliberately carries no heading of its own, so a check that matched the anchor
+# against the WRONG file — the linking one rather than the target — would fail this case.
+new_case
+commit_file "README.md" "Jump to [a part]($MAINURL/blob/main/docs/guide.md#the-part)."
+commit_file "docs/guide.md" "$(printf '# Guide\n\n## The Part')"
+check
+ok "an anchor on a full blob/main link resolves against the target file's headings" 'clean'
+
+new_case
+commit_file "README.md" "Read [the source]($MAINURL/blob/main/docs/guide.md?plain=1), and [again](docs/guide.md)."
+commit_file "docs/guide.md" '# Guide'
+check
+ok "a ?query on a full link is not read as part of the path" 'clean'
+
+# GitHub's own "copy permalink" writes a line reference this way, and it names no heading.
+new_case
+commit_file "README.md" "Read [line ten]($MAINURL/blob/main/docs/guide.md?plain=1#L10), and [a range](docs/guide.md#L10-L20)."
+commit_file "docs/guide.md" '# Guide'
+check
+ok "an #L line reference on a markdown file is not read as a heading" 'clean'
+
 # GitHub's slug keeps letters, digits, hyphens and underscores, drops everything else, and turns
 # each remaining space into a hyphen — so a spaced em dash leaves two.
 new_case
 commit_file "README.md" "$(printf '# Guide\n\n## Appendix — Codebase Setup\n\n### Running with `--diagnostics` (§3)\n\nSee [the appendix](#appendix--codebase-setup) and [the flag](#running-with---diagnostics-3).')"
 check
 ok "heading case, punctuation and spacing are slugified as GitHub does" 'clean'
+
+# GitHub slugs the rendered heading, so a link in one contributes its text and not its target.
+# Folding the target in would make the anchor below unreachable on a link that works on GitHub.
+new_case
+commit_file "README.md" "$(printf '# Guide\n\n### 2.1 Download — [`Ookla.GetAsync`](../src/Ookla.cs)\n\nSee [it](#21-download--ooklagetasync).')"
+commit_file "src/Ookla.cs" '// code'
+check
+ok "a link inside a heading slugs as its text, not its target" 'clean'
 
 new_case
 commit_file "README.md" "$(printf '# Guide\n\n## The Overview\n\nJump to [it](#The-Overview).')"

@@ -6,15 +6,18 @@
 # constitution, the workflow docs, CLAUDE.md and two GitHub workflows. A record is a point-in-time
 # document that is never updated, so pruning one leaves inbound pointers behind in places nobody
 # is reading at the time. This check is what makes that cost visible at the moment of the deletion
-# instead of months later. It now covers the markdown links of every tracked `*.md`, which lean on
-# each other just as heavily and go stale the same way.
+# instead of months later. It covers the markdown links of every tracked `*.md` as well, which
+# lean on each other just as heavily and go stale the same way.
 #
 # TWO CHECKS, because repository references are written in two shapes here:
 #
 #   1. A markdown link in a tracked `*.md` file — `[text](target)`. Three kinds of target are
 #      resolved, every one of them against the files in this branch and none of them fetched:
-#        a. a relative or root-relative path, resolved from the linking file's own directory,
-#           which is how GitHub renders it;
+#        a. a relative path, resolved from the linking file's own directory, which is how GitHub
+#           renders it; or a root-relative one, resolved from the repository root, which GitHub
+#           does NOT do — it reads a leading `/` against the site root, so such a link renders
+#           broken there. Resolving it here is a deliberate leniency, not a match for GitHub;
+
 #        b. a full `https://github.com/FrankRay78/NetPace/{blob,tree,raw}/main/<path>` link, mapped
 #           onto `<path>` in the checkout — the file the link points at, read locally;
 #        c. an `#anchor`, on either of those or on its own, checked against the headings of the
@@ -26,9 +29,19 @@
 # HOW A HEADING IS MATCHED. GitHub derives a heading's anchor by lowercasing the text, dropping
 # everything that is not a letter, digit, hyphen or underscore, turning each remaining space into a
 # hyphen, and suffixing `-1`, `-2`, … to the second and later occurrences of a repeated heading.
-# That is reproduced here over ATX headings (`## Text`) outside code fences, with one limitation: a
-# non-ASCII letter is dropped where GitHub keeps it, so a link to a heading carrying one would be
-# reported as unreachable. No heading here carries one, and the report is loud rather than silent.
+# A link in a heading contributes its text and not its target, which is reproduced here too.
+#
+# That is reproduced over ATX headings (`## Text`) outside code fences. Four kinds of heading are
+# read differently from GitHub, and every one of them costs a FAIL on a link that works there
+# rather than a quiet pass, so the report is loud in each case:
+#   - a non-ASCII letter is dropped where GitHub keeps it;
+#   - a setext heading (`Text` over `====`) is not seen as a heading at all;
+#   - nor is an ATX heading indented by one to three spaces, which GFM allows;
+#   - nor is an explicit `<a id="...">` anchor, which GitHub honours.
+# None of the four occurs in this repository today. Setext is left unread deliberately rather than
+# for want of effort: 32 tracked `*.md` files open with `---` front matter, whose closing delimiter
+# a naive `previous line + ----` rule would mint a heading from, and a check that invents headings
+# passes links that are broken — strictly worse than one that reports a working link, loudly.
 #
 # WHAT IS DELIBERATELY NOT A LINK, in check 1 only. A markdown link inside a fenced block or
 # inline backticks is being shown to the reader, not offered to be followed: the harness prompts
@@ -37,14 +50,17 @@
 # kind. So both are stripped before the link scan, at the cost of not checking a link someone
 # wrote inside backticks — which was not a working link to begin with. Check 2 strips neither, so
 # a bare record path is read wherever it appears. Also skipped:
-#   - a `mailto:` target, and any other URL that is not the full-link shape above. The rest
+#   - a `mailto:` target, and any `scheme://` URL that is not the full-link shape above. The rest
 #     of github.com is a web page rather than a path in this branch — `/releases`, an issue page,
 #     a wiki page, an action badge — as is a path on another ref or in another repository, and
-#     resolving any of those against the checkout would fail on a perfectly good link.
+#     resolving any of those against the checkout would fail on a perfectly good link. A scheme
+#     carrying no `://`, such as `tel:`, is not recognised and is read as a path; none appears
+#     here, and the result is a loud FAIL rather than a quiet pass.
 #   - a relative path that climbs above the repository root, which is outside this repository's
 #     reach.
 #   - an anchor on a target that is not a markdown file: a `#L10-L20` line range on a source file
-#     and a fragment on a folder name no heading.
+#     and a fragment on a folder name no heading. An `#L<n>` anchor names no heading on a markdown
+#     file either, and is skipped there too — it is what GitHub's "copy permalink" writes.
 #
 # WHAT IS JUDGED is the WORKING TREE, not `HEAD`: the point of a local run is to be used midway
 # through a deletion, before anything is committed, and a check that read `HEAD` would call that
@@ -133,31 +149,28 @@ resolve_path() {
 
 # --- main_ref_path URL ------------------------------------------------------------
 # Prints the repository-root-relative path a full link to a file on this repository's `main`
-# branch names, or returns 1 when the URL is not one. The owner and repository name are matched
-# whatever their case, as GitHub serves them; the path part keeps the case it was written in,
-# because the checkout does. Lowercasing goes through `tr` rather than `${var,,}` so the check
-# runs under the bash 3.2 that is still /bin/bash on macOS.
+# branch names, or returns 1 when the URL is not one. The whole shape is matched against a
+# lowercased copy, so the scheme, host, owner, repository and the `blob`/`tree`/`raw` and `main`
+# segments are all read whatever their case; the path is then cut from the original URL by length,
+# so it keeps the case it was written in, because the checkout does. Lowercasing goes through `tr`
+# rather than `${var,,}` so the check runs under the bash 3.2 that is still /bin/bash on macOS.
 main_ref_path() {
-  local url="$1" lower rest path
+  local url="$1" lower path tail
   lower="$(printf '%s' "$url" | LC_ALL=C tr 'A-Z' 'a-z')"
-
-  case "$lower" in
-    "$MAIN_URL_PREFIX"*) ;;
-    *) return 1 ;;
-  esac
-  rest="${url:${#MAIN_URL_PREFIX}}"
-  lower="${lower:${#MAIN_URL_PREFIX}}"
 
   # Only a path on `main` can be answered for by the files in this branch. `blob` and `raw` name a
   # file, `tree` a folder; anything else under this repository's URL is a web page, and any other
   # ref is a different set of files.
   case "$lower" in
-    blob/main/*|tree/main/*|raw/main/*) ;;
+    "$MAIN_URL_PREFIX"blob/main/*|"$MAIN_URL_PREFIX"tree/main/*|"$MAIN_URL_PREFIX"raw/main/*) ;;
     *) return 1 ;;
   esac
 
-  path="${rest#*/main/}"
-  path="${path%%\?*}"                                # `?plain=1` and friends are not path
+  # Cut at the first `/main/` of the lowercased copy, then take that many characters off the end
+  # of the original: matching on `$url` would miss a `/MAIN/` the case test above has accepted.
+  tail="${lower#*/main/}"
+  path="${url:$(( ${#url} - ${#tail} ))}"
+  path="${path%%\?*}"                                # `?plain=1` and friends are not part of it
   [ -n "$path" ] || return 1
   resolve_path "." "$path"
 }
@@ -178,18 +191,18 @@ heading_slugs() {
     /^#+[ \t]/ {
       match($0, /^#+/)
       if (RLENGTH > 6) next                          # seven hashes is not a heading
-      line = $0
-      sub(/^#+[ \t]+/, "", line)
-      sub(/[ \t]+#+[ \t]*$/, "", line)               # an optional closing sequence
-      sub(/[ \t]+$/, "", line)
-      print line
+      sub(/^#+[ \t]+/, "")
+      gsub(/\]\([^)]*\)/, "")                        # a link slugs as its text, never its target
+      sub(/[ \t]+#+[ \t]*$/, "")                     # an optional closing sequence
+      sub(/[ \t]+$/, "")
+      print
     }
     END { if (fence != "") exit 3 }
   ' "$REPO_ROOT/$1" \
     | LC_ALL=C tr 'A-Z' 'a-z' \
     | LC_ALL=C tr -dc 'a-z0-9 _\n-' \
     | LC_ALL=C tr ' ' '-' \
-    | awk '{ if ($0 in n) { print $0 "-" n[$0]; n[$0]++ } else { n[$0] = 1; print } }'
+    | awk '{ seen = count[$0]++; if (seen == 0) print; else print $0 "-" seen }'
 }
 
 # --- the tracked files ------------------------------------------------------------
@@ -292,6 +305,9 @@ while IFS= read -r -d '' file; do
     # --- the heading half of check 1 ----------------------------------------------
     [ -n "$anchor" ] || continue
     case "$resolved" in *.md) ;; *) continue ;; esac
+    # A line reference names no heading even on a markdown file, and GitHub's own "copy permalink"
+    # writes one as `…/docs/guide.md?plain=1#L10`.
+    case "$anchor" in L[0-9]*) continue ;; esac
     [ -f "$REPO_ROOT/$resolved" ] || continue
 
     heading_slugs "$resolved" > "$TMP/slugs" \
