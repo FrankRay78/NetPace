@@ -42,7 +42,7 @@ Flags, anywhere in the arguments:
 
 1. **Resolve the PR.** `gh pr view <N> --json number,url,title,body,state,author,baseRefName,headRefName,headRefOid,files,additions,deletions`. If `state` is not `OPEN`, stop: "PR #<N> is <state> — nothing to review."
 
-2. **Check out the code.** A deep review reads the diff against the whole repository, not in isolation. If the current checkout's `HEAD` is already the PR's `headRefOid` (as it is in CI), review it in place. Otherwise never disturb the invoker's working tree: fetch, create a worktree (`git worktree add .claude/scratch/review-pr-<N> <baseRefName>`), then `gh pr checkout <N>` inside it. Remove the worktree when the review completes or aborts.
+2. **Check out the code.** A deep review reads the diff against the whole repository, not in isolation. If the current checkout's `HEAD` is already the PR's `headRefOid` (as it is in CI), review it in place. Otherwise never disturb the invoker's working tree: `git fetch origin pull/<N>/head`, then `git worktree add --detach .claude/scratch/review-pr-<N> FETCH_HEAD`, and review there — both run from the repository root, so neither needs a `cd`. Remove the worktree (`git worktree remove --force .claude/scratch/review-pr-<N>`) when the review completes or aborts.
 
 3. **Load the context.** In the checkout, read `CLAUDE.md`, `docs/constitution.md` and the convention docs `CLAUDE.md` points to for the layers the PR touches (`docs/conventions/csharp-style.md` for `.cs` files, `docs/conventions/testing.md` for tests). Read the issue the PR body closes or references (`Closes #<N>`, `Refs #<N>`) for intent.
 

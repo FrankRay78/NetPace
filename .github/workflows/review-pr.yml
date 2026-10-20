@@ -5,12 +5,15 @@ name: Review PR
 # single-sourced in .claude/commands/review-pr.md; this workflow adds only the environmental
 # deltas in the prompt below. One review per PR: later pushes are not re-reviewed here, and
 # follow-up rounds run by hand with /review-followup.
+# The action restores `.claude/` and CLAUDE.md from main before the agent runs (the PR head is
+# untrusted), so a change to the command file takes effect on merge, never on its own branch —
+# try one out beforehand by running /review-pr locally.
 # Rationale: docs/change-intent-records/2026-10-20-pr-review-runs-on-pr-open.md
 
 on:
   pull_request:
     types: [opened, ready_for_review]
-  # Re-runs a review, or exercises a prompt change against a branch ref before merge.
+  # Re-runs a review, e.g. after a failed run. It still reads main's copy of the command file.
   # workflow_dispatch already requires write permission, so it is self-gating.
   workflow_dispatch:
     inputs:
@@ -64,8 +67,8 @@ jobs:
       # the token can — and the allowlist cannot pin the method. The check step below therefore
       # asserts the outcome rather than trusting the instruction.
       # `github_token` hands the action this run's token instead of exchanging OIDC for the Claude
-      # app's, which refuses a workflow file that differs from main's copy — so this file can be
-      # exercised on its own pull request.
+      # app's, which refuses a workflow file that differs from main's copy — so a change to this
+      # file runs on its own pull request, even though the command file it reads comes from main.
       - name: Run PR review
         uses: anthropics/claude-code-action@v1
         env:
