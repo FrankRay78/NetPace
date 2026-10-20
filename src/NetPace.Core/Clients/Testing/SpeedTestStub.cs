@@ -135,21 +135,13 @@ public sealed class SpeedTestStub : ISpeedTestService
     /// <inheritdoc/>
     public Task<SpeedTestResult> GetDownloadSpeedAsync(IServer server, IProgress<SpeedTestProgress> progress, CancellationToken cancellationToken = default)
     {
-        if (progress is not null)
-        {
-            Task.Delay(delayMilliseconds).Wait();
-            progress.Report(new SpeedTestProgress { PercentageComplete = 25 });
-            Task.Delay(delayMilliseconds).Wait();
-            progress.Report(new SpeedTestProgress { PercentageComplete = 50 });
-            Task.Delay(delayMilliseconds).Wait();
-            progress.Report(new SpeedTestProgress { PercentageComplete = 75 });
-            Task.Delay(delayMilliseconds).Wait();
-            progress.Report(new SpeedTestProgress { PercentageComplete = 100 });
-        }
-
         var serverID = GetServerID(server.Url);
 
-        return Task.FromResult(new SpeedTestResult() { BytesProcessed = 1000, ElapsedMilliseconds = 1000 * serverID, RequestsSucceeded = 150, RequestsFailed = 0 });
+        var result = new SpeedTestResult() { BytesProcessed = 1000, ElapsedMilliseconds = 1000 * serverID, RequestsSucceeded = 150, RequestsFailed = 0 };
+
+        ReportClimbTo(result, progress);
+
+        return Task.FromResult(result);
     }
 
     /// <inheritdoc/>
@@ -161,21 +153,32 @@ public sealed class SpeedTestStub : ISpeedTestService
     /// <inheritdoc/>
     public Task<SpeedTestResult> GetUploadSpeedAsync(IServer server, IProgress<SpeedTestProgress> progress, CancellationToken cancellationToken = default)
     {
-        if (progress is not null)
-        {
-            Task.Delay(delayMilliseconds).Wait();
-            progress.Report(new SpeedTestProgress { PercentageComplete = 25 });
-            Task.Delay(delayMilliseconds).Wait();
-            progress.Report(new SpeedTestProgress { PercentageComplete = 50 });
-            Task.Delay(delayMilliseconds).Wait();
-            progress.Report(new SpeedTestProgress { PercentageComplete = 75 });
-            Task.Delay(delayMilliseconds).Wait();
-            progress.Report(new SpeedTestProgress { PercentageComplete = 100 });
-        }
-
         var serverID = GetServerID(server.Url);
 
-        return Task.FromResult(new SpeedTestResult() { BytesProcessed = 7000, ElapsedMilliseconds = 3000 * serverID, RequestsSucceeded = 32, RequestsFailed = 0 });
+        var result = new SpeedTestResult() { BytesProcessed = 7000, ElapsedMilliseconds = 3000 * serverID, RequestsSucceeded = 32, RequestsFailed = 0 };
+
+        ReportClimbTo(result, progress);
+
+        return Task.FromResult(result);
+    }
+
+    /// <summary>
+    /// Reports progress towards <paramref name="result"/>, pausing by the configured delay before
+    /// each report.
+    /// </summary>
+    private void ReportClimbTo(SpeedTestResult result, IProgress<SpeedTestProgress>? progress)
+    {
+        if (progress is null)
+        {
+            return;
+        }
+
+        foreach (var report in SpeedTestProgressClimb.Towards(result))
+        {
+            Task.Delay(delayMilliseconds).Wait();
+
+            progress.Report(report);
+        }
     }
 
     /// <inheritdoc/>

@@ -3,7 +3,10 @@ name: PR Issue Link
 # Every pull request must close an open issue. The question "will merging this close an
 # issue?" is put to GitHub — `closingIssuesReferences` on the pull request — rather than worked out
 # from the body, so a closing keyword in the body and an issue attached through the Development
-# sidebar both count, and a bare `#N` reference, which closes nothing, does not.
+# sidebar both count, and a bare `#N` reference, which closes nothing, does not. A body parser was
+# built first and abandoned: 439 lines of bash and awk re-implementing GitHub's Markdown rules to
+# tell a real `Closes #N` from one quoted in code, and three review rounds each found bodies it
+# passed that GitHub would not link.
 #
 # `edited` is in the trigger list on purpose. The usual failure is a body that names no issue, and
 # the fix is an edit rather than a push — without `edited` the author would have to push an empty

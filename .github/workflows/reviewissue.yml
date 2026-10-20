@@ -8,9 +8,10 @@ name: Review Issue
 # On the `issues` path the run uses the default branch's copy of both this file and the
 # command file, so a change there takes effect on merge, not on branch; a workflow_dispatch
 # run uses the ref it is dispatched against, and is always a review.
-# Rationale: docs/change-intent-records/2026-09-07-automated-prespec-review.md,
-#            docs/change-intent-records/2026-09-11-confirmed-decisions-replace-the-review.md and
-#            docs/change-intent-records/2026-10-14-one-label-per-issue-state.md
+# Rationale: docs/change-intent-records/2026-09-07-automated-prespec-review.md and
+#            docs/change-intent-records/2026-09-11-confirmed-decisions-replace-the-review.md.
+# The one-label-per-state model each trigger assumes: docs/agentic-workflow-NetPace.md,
+# "One label per issue state" and "The labels are the state".
 
 on:
   issues:
