@@ -36,6 +36,14 @@ Flags, anywhere in the arguments:
 - Breaking changes as such. While NetPace is pre-1.0 they need no approval or deprecation period (Constitution VII). Flag only a PR that does not state what breaks and for whom.
 - Preferences with no consequence a reader could name.
 
+## Subagents
+
+Every subagent this command starts — triage, specialists, verifiers — follows these rules, and each one's brief repeats the second and third.
+
+- **Run them in the foreground and wait for them.** Start a phase's subagents together in one message so they run in parallel, never in the background, and have every result before starting the next phase. Never end your turn while one is still running: in CI the session ends with your turn, and unfinished work is lost with nothing posted.
+- **Investigate by reading.** Use Read, Grep and Glob. Use Bash only for single `git` and `gh` commands run from the checkout root — no pipes, no chaining, no `cd`. A run may refuse anything else.
+- **Never run code from the PR.** Its scripts, tests and build are untrusted, and in CI the run holds a token that can write to the PR. CI's own checks already run the PR's tests. Reason from the code instead.
+
 ## Steps
 
 ### Phase 0 — Resolve and gather context
