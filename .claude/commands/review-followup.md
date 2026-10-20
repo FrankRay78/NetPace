@@ -1,5 +1,5 @@
 ---
-description: Follow-up round on a PR previously reviewed with review-pr — evaluate author replies, verify fixes in new commits, resolve or re-raise threads, re-review the new diff only, update the recommendation. Runs unattended to posting. Caps at three rounds.
+description: Follow-up round on a PR previously reviewed with review-pr — evaluate author replies, verify fixes in new commits, resolve or re-raise threads, re-review the new diff only, update the recommendation, risk tier and no-human verdict. Runs unattended to posting. Caps at three rounds.
 argument-hint: "[PR number or URL] [--dry-run]"
 ---
 
@@ -25,7 +25,7 @@ A PR number (`158`), `#158`, or a full PR URL; empty resolves the current branch
 
 3. **Fetch the threads.** Via GraphQL (`gh api graphql`), get the PR's `reviewThreads` with `id`, `isResolved`, `path`, `line` and each thread's comments (`databaseId`, author, body, `pullRequestReview { databaseId }`). The threads from prior rounds are those whose first comment belongs to one of the marked reviews from step 1. For each, establish what has happened since: author replied, author pushed commits, or nothing.
 
-4. **Check out the new state.** As in `/review-pr` step 2: in place if `HEAD` is already `headRefOid`, otherwise a detached worktree of `pull/<N>/head` under `.claude/scratch/`, removed when the round completes or aborts. Compute the delta since the last reviewed commit (the `commit_id` of the most recent marked review) from the author's own work only. A merge of the base branch brings in code already reviewed there, so `git diff <last-reviewed-sha>..HEAD` would re-review it: take the commits in `git log --first-parent --no-merges <last-reviewed-sha>..HEAD` (`--first-parent` keeps out the base-branch commits a merge brought in), plus any hand-resolved conflicts in a merge (`git show --remerge-diff <merge-sha>`; empty means the merge was clean). Load the same context and review contract as `/review-pr`, and follow its *Subagents* rules for every subagent this round starts.
+4. **Check out the new state.** As in `/review-pr` step 2: in place if `HEAD` is already `headRefOid`, otherwise a detached worktree of `pull/<N>/head` under `.claude/scratch/`, removed when the round completes or aborts. Compute the delta since the last reviewed commit (the `commit_id` of the most recent marked review) from the author's own work only. A merge of the base branch brings in code already reviewed there, so `git diff <last-reviewed-sha>..HEAD` would re-review it: take the commits in `git log --first-parent --no-merges <last-reviewed-sha>..HEAD` (`--first-parent` keeps out the base-branch commits a merge brought in), plus any hand-resolved conflicts in a merge (`git show --remerge-diff <merge-sha>`; empty means the merge was clean). Load the same context, review contract and *Risk tier and human review* rules as `/review-pr`, and follow its *Subagents* rules for every subagent this round starts.
 
 ### Evaluate each open thread
 
@@ -43,7 +43,9 @@ A PR number (`158`), `#158`, or a full PR URL; empty resolves the current branch
 
 ### Compose and post
 
-7. **Summary and recommendation.** Compose a short round summary: the `<!-- review-pr -->` marker on its first line, per-thread outcomes (fixed / justified-accepted / still open), any new verified findings (numbered continuing from the previous round's list), the round number, and an updated recommendation (**Merge** / **Merge after addressing** / **Do not merge**) under the same rules as `/review-pr`. Footer: `*Review assisted by Claude Code.*`
+7. **Summary, recommendation, tier and verdict.** Compose a short round summary: the `<!-- review-pr -->` marker on its first line, a one-line header naming the PR and the round, the tier and verdict line in the wording `/review-pr` fixes with its reasons, per-thread outcomes (fixed / justified-accepted / still open), any new verified findings (numbered continuing from the previous round's list), and an updated recommendation (**Merge** / **Merge after addressing** / **Do not merge**) under the same rules as `/review-pr`. Footer: `*Review assisted by Claude Code.*`
+
+   Carry the previous round's tier forward and re-decide it. Judge the tier and the always-a-person check on the **whole PR diff against the base at the current head**, not on the delta: step 6's finding hunt stays scoped to the new commits, but a commit that touches an always-a-person path, or that lifts the tier, changes the verdict for the whole PR. A finding counts as open unless its thread was resolved, so a still-open thread from any round blocks the verdict exactly as a new finding does. The verdict applies to the current head commit. Where the tier or the verdict has moved since the last round, say so and why.
 
 8. **Post.** In `--dry-run`, print every reply, resolution and the summary, and stop. Otherwise post thread replies and resolutions first, then new inline findings and the summary as one review (`event: COMMENT`, `commit_id` set to `headRefOid`), as in `/review-pr`.
 

@@ -1,11 +1,11 @@
 ---
-description: Multi-pass verified review of an open PR — triage map, parallel specialist passes, finding verification, inline comments and a merge recommendation. Runs unattended to posting. Supports --dry-run.
+description: Multi-pass verified review of an open PR — triage map, parallel specialist passes, finding verification, inline comments, a risk tier and a merge recommendation. Runs unattended to posting. Supports --dry-run.
 argument-hint: "[PR number or URL] [--dry-run]"
 ---
 
 # review-pr
 
-Review an open pull request in depth and post the results back to the PR: a summary comment with a triage map and merge recommendation, plus one inline review comment per verified finding. Designed for large PRs spanning several layers in code the reviewer may not know.
+Review an open pull request in depth and post the results back to the PR: a summary comment with a triage map, a risk tier, a verdict on whether the PR could merge with no human review, and a merge recommendation, plus one inline review comment per verified finding. Designed for large PRs spanning several layers in code the reviewer may not know.
 
 `.github/workflows/review-pr.yml` runs this command on every pull request `FrankRay78` opens, so a run there posts as the workflow's bot. Run by hand, it posts under the invoker's own `gh` account. Either way it runs unattended from start to post: it never stops for confirmation, and it posts whoever authored the PR. Run it on your strongest available model — a missed bug costs more than the review tokens.
 
@@ -35,6 +35,37 @@ Flags, anywhere in the arguments:
 - Anything a required CI check already gates (build, tests, traceability, issue link), unless the check itself is what the PR breaks.
 - Breaking changes as such. While NetPace is pre-1.0 they need no approval or deprecation period (Constitution VII). Flag only a PR that does not state what breaks and for whom.
 - Preferences with no consequence a reader could name.
+
+## Risk tier and human review
+
+Every review states a risk tier and a yes-or-no verdict on whether the PR could merge with no human review. Both are set from what the change touches, never from who authored it. Nothing is merged automatically: the verdict is advice about the commit reviewed, not about anything pushed after it, and the maintainer still makes the merge decision on the PR.
+
+**Tier** — one of:
+
+- **Low** — docs, tests or mechanical changes only (renames, moved files, generated code, lockfiles). A changed snapshot is never Low: a snapshot is a user-visible contract, and a changed one means the output changed.
+- **Medium** — real logic that touches no contract.
+- **High** — logic in server selection or measurement, security-sensitive code, or a change large enough to span several layers.
+
+Only Low is eligible for merge with no human review. Medium and High both mean maintainer review; High marks the changes that most deserve a careful read.
+
+**Always a person.** A change touching any of these needs the maintainer whatever tier the rest of it would get, so it is never eligible, and the summary names the path responsible:
+
+- anything under `.github/` or `scripts/`
+- the release and publish pipeline, including `docs/RELEASING.md`
+- the Claude harness — `.claude/` hooks, commands, agents and settings — and `CLAUDE.md`
+- `docs/constitution.md`
+- `Directory.Packages.props`, and package-reference changes in project files
+- any change to a contract a user or a consumer relies on: a CLI option, an exit code, a CSV or JSON field, a public `NetPace.Core` member
+
+**The second look.** Even where the areas touched suggest Low, ask whether this particular change still deserves a person. Lift Low to Medium where it does, and say why.
+
+**The verdict** is **yes** only when all three hold: the tier is Low, no always-a-person path is touched, and no verified finding is open other than those tagged **Pre-existing**. Any other open finding, of any severity, makes it **no**. A Pre-existing finding is listed and does not block.
+
+**The line.** The summary states both directly under its header, in this wording every time:
+
+`Risk tier: <Low|Medium|High> · Merge with no human review: <yes|no>`
+
+The reasons follow it: what set the tier, the always-a-person path where one applies, and what makes the verdict **no** where it is no.
 
 ## Subagents
 
@@ -78,15 +109,17 @@ Every subagent this command starts — triage, specialists, verifiers — follow
 
 8. **Compose the review.**
    - *Inline comments*: one per finding that sits on a line present in the diff — body gives severity, the claim, why it matters here, and the suggested fix. Findings on lines outside the diff go in the summary instead.
-   - *Summary comment*: the marker `<!-- review-pr -->` on its first line (`/review-followup` and the workflow find prior rounds by it); a one-line header naming the PR; the triage map; findings as a single continuously numbered list across all severities (1, 2, 3, …) so discussion can reference "item 3" — inline-posted findings appear here as one numbered line linking to their thread; counts per severity; the merge recommendation; and the footer `*Review assisted by Claude Code.*`
+   - *Summary comment*: the marker `<!-- review-pr -->` on its first line (`/review-followup` and the workflow find prior rounds by it); a one-line header naming the PR; the tier and verdict line in the wording fixed above, with its reasons; the triage map; findings as a single continuously numbered list across all severities (1, 2, 3, …) so discussion can reference "item 3" — inline-posted findings appear here as one numbered line linking to their thread; counts per severity; the merge recommendation; and the footer `*Review assisted by Claude Code.*`
 
-9. **Recommendation.** Decide one of:
+9. **Recommendation, tier and verdict.** Decide one of:
    - **Merge** — nothing blocking; remarks are optional.
    - **Merge after addressing** — list the specific items that must be fixed first.
    - **Do not merge** — explain the blocker.
 
    Any Critical finding forces at least **Merge after addressing**. The recommendation is advice to the maintainer, who makes the merge decision on the PR.
 
+   Then set the tier and the no-human verdict per *Risk tier and human review*. The two decisions are independent — the recommendation answers what the review found, the tier answers what the change touches — so a **Merge** with nothing found can still require maintainer review.
+
 10. **Post.** In `--dry-run` mode, print instead of posting and stop. Otherwise post inline findings and the summary as a single PR review via `gh api repos/{owner}/{repo}/pulls/<N>/reviews --input <file>` with `event: COMMENT`, `commit_id` set to `headRefOid`, the summary as `body`, and `comments[]` entries of `{path, line, side: "RIGHT", body}`. Write the JSON to `.claude/scratch/review-pr-<N>.json` first, so backticks and `$` pass through untouched. If the API rejects an inline position, move that finding's full text to the summary and post again rather than dropping it.
 
-11. **Report.** Print the PR URL, the recommendation, counts per severity, how many candidates verification rejected, and that follow-up rounds run via `/review-followup <N>`.
+11. **Report.** Print the PR URL, the recommendation, the tier and the no-human verdict, counts per severity, how many candidates verification rejected, and that follow-up rounds run via `/review-followup <N>`.
