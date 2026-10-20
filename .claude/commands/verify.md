@@ -31,7 +31,7 @@ Every step below is written to be repository-agnostic. Wherever a step needs thi
 
 1. **Format (1a), then the full test run (1b).**
 
-   **1a — Format the tree.** Run the project's formatter, exactly as *Project-specific* gives it, together with any reasoning that section attaches to the form of the command.
+   **1a — Format the tree.** Run the project's formatter, exactly as *Project-specific* gives it.
 
    - Formatting runs **once here, and once more in step 3 if the review led to edits** — never per commit. It is cosmetic work at a cadence that already costs minutes — see *Formatting is not verification* in [agentic-workflow.md](../../docs/agentic-workflow.md). This pass exists to bring the branch as `/build` left it into line; step 3's exists because a review fix written after this pass would otherwise reach the pull request unformatted.
    - **If formatting changed files, commit them now** — `git add -A` and a message in the same `Refs #<N>: <imperative>` form step 3 uses, e.g. `Refs #328: apply formatting` — *before* running the suite. This restores the clean working tree step 0 established, which is what keeps step 3's "anything in the tree is a review edit" invariant true. Do not carry format edits forward into the review commit; they are a separate concern and belong in their own commit.
