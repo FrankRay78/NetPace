@@ -20,14 +20,15 @@ The generic "CI on PR" step **applies fully**:
 | `pr-issue-link.yml` — PR Issue Link | pull_request (incl. `edited`) → main | the **issue-link** gate: merging the PR must close an open issue in this repository |
 | `clear-workflow-labels.yml` — Clear Workflow Labels | pull_request `closed` → main | takes the issue-chain labels off every issue in this repository the merge closed |
 | `codeql.yml` — CodeQL | push/PR/weekly | security analysis (see the [supply-chain CIR](change-intent-records/2026-07-13-dependency-supply-chain-hardening.md)) |
-| `claude.yml` — Claude Code | `@claude` in an issue/PR comment by `FrankRay78` | **Review B** |
+| `claude.yml` — Claude Code | `@claude` in an issue/PR comment by `FrankRay78` | on-demand agent help on an issue or PR |
+| `review-pr.yml` — Review PR | pull_request `opened`/`ready_for_review` by `FrankRay78`, or manual dispatch | **Review B**: runs `/review-pr` and posts it unattended |
 | `reviewissue.yml` — Review Issue | `review` or `refine` label applied to an issue (labeller-gated), or manual dispatch | posts the issue gap analysis, or re-frames the questions that asked for help, unattended — see below |
 | `confirmissue.yml` — Confirm Issue | `confirm` label applied to an issue (labeller-gated), or manual dispatch | folds the answered review into the issue body unattended — see below |
 | `publish-nuget.yml` | tag push | publish `NetPace.Core` to NuGet |
 | `release-binaries.yml` | tag push | cross-platform binary release matrix |
 | `publish-tool.yml` | semver tag push | publish the `NetPace` .NET tool package to NuGet |
 
-**Deviations from the generic Appendix.** Review B is mention-triggered only (`/raise-pr` posts the mention); there is no automatic review of agent-authored PRs. There is no PR template and no `AGENTS.md` symlink.
+**Deviations from the generic Appendix.** Review B runs once, when the PR opens; a later push is not re-reviewed automatically, and follow-up rounds run by hand with `/review-followup`. There is no PR template and no `AGENTS.md` symlink.
 
 **The whole pre-build issue gate runs in CI.** Every step is label-triggered, so an issue raised away from the desk can be reviewed, answered and confirmed without a checkout. Labelling `review` runs [`.claude/commands/reviewissue.md`](../.claude/commands/reviewissue.md) and leaves the gap analysis as a comment; the author answers it inline in the GitHub UI; where an answer asks for help rather than deciding, labelling `refine` runs step 6 of the same command and re-frames just those questions in place; labelling `confirm` then runs [`.claude/commands/confirmissue.md`](../.claude/commands/confirmissue.md), which folds the answers into the issue body and deletes the comment. Each workflow applies its command as written, keeping the logic single-sourced. Both commands still run locally.
 

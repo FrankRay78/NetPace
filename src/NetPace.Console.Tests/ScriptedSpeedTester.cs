@@ -1,5 +1,6 @@
 using NetPace.Core;
 using NetPace.Core.Clients.Ookla;
+using NetPace.Core.Clients.Testing;
 
 namespace NetPace.Console.Tests;
 
@@ -21,6 +22,14 @@ public sealed class ScriptedSpeedTester : ISpeedTestService
     /// sponsor, location or URL long enough to cross a narrow destination's width.
     /// </summary>
     public IServer Server { get; set; } = new Server { Location = "Frankfurt", Sponsor = "Deutsche Telekom", Url = Url };
+
+    /// <summary>
+    /// Whether a measurement reports progress on its way to the result. Off by default: the
+    /// failure scenarios this tester was written for care only about the result, and a measurement
+    /// that reports nothing is the quietest stand-in for one. A test that watches the live display
+    /// turns it on.
+    /// </summary>
+    public bool ReportsProgress { get; set; }
 
     /// <summary>Supplies the download result for a given zero-based call index.</summary>
     public Func<int, SpeedTestResult> DownloadFactory { get; set; } = _ => Clean(150);
@@ -65,13 +74,13 @@ public sealed class ScriptedSpeedTester : ISpeedTestService
         GetDownloadSpeedAsync(server, new NullProgress<SpeedTestProgress>(), cancellationToken);
 
     public Task<SpeedTestResult> GetDownloadSpeedAsync(IServer server, IProgress<SpeedTestProgress> progress, CancellationToken cancellationToken = default) =>
-        Task.FromResult(DownloadFactory(downloadCall++));
+        Task.FromResult(ReportClimbTo(DownloadFactory(downloadCall++), progress));
 
     public Task<SpeedTestResult> GetUploadSpeedAsync(IServer server, CancellationToken cancellationToken = default) =>
         GetUploadSpeedAsync(server, new NullProgress<SpeedTestProgress>(), cancellationToken);
 
     public Task<SpeedTestResult> GetUploadSpeedAsync(IServer server, IProgress<SpeedTestProgress> progress, CancellationToken cancellationToken = default) =>
-        Task.FromResult(UploadFactory(uploadCall++));
+        Task.FromResult(ReportClimbTo(UploadFactory(uploadCall++), progress));
 
     public Task<LatencyTestResult> GetServerLatencyAsync(IServer server, IProgress<LatencyTestProgress>? progress, IProgress<RequestDiagnostic>? diagnostics, CancellationToken cancellationToken = default) =>
         GetServerLatencyAsync(server, cancellationToken);
@@ -83,8 +92,27 @@ public sealed class ScriptedSpeedTester : ISpeedTestService
         GetFastestServerByLatencyAsync(servers, cancellationToken);
 
     public Task<SpeedTestResult> GetDownloadSpeedAsync(IServer server, IProgress<SpeedTestProgress>? progress, IProgress<RequestDiagnostic>? diagnostics, CancellationToken cancellationToken = default) =>
-        Task.FromResult(DownloadFactory(downloadCall++));
+        Task.FromResult(ReportClimbTo(DownloadFactory(downloadCall++), progress));
 
     public Task<SpeedTestResult> GetUploadSpeedAsync(IServer server, IProgress<SpeedTestProgress>? progress, IProgress<RequestDiagnostic>? diagnostics, CancellationToken cancellationToken = default) =>
-        Task.FromResult(UploadFactory(uploadCall++));
+        Task.FromResult(ReportClimbTo(UploadFactory(uploadCall++), progress));
+
+    /// <summary>
+    /// Reports progress towards <paramref name="result"/> and returns it, when
+    /// <see cref="ReportsProgress"/> is set. Reports nothing otherwise.
+    /// </summary>
+    private SpeedTestResult ReportClimbTo(SpeedTestResult result, IProgress<SpeedTestProgress>? progress)
+    {
+        if (progress is null || !ReportsProgress)
+        {
+            return result;
+        }
+
+        foreach (var report in SpeedTestProgressClimb.Towards(result))
+        {
+            progress.Report(report);
+        }
+
+        return result;
+    }
 }

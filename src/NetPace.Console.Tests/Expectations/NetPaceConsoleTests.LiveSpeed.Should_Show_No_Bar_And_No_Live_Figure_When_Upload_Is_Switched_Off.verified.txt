@@ -1,0 +1,11 @@
+﻿                 
+  Choosing server
+                 
+Test Sponsor 1
+http://test1.com
+                                                                
+Downloading ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 100% 8 Kbps
+                                                                
+Latency: 100 ms, Download: 8 Kbps
+
+Try 'netpace --help' for more information.

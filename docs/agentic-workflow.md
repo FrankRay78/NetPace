@@ -50,7 +50,7 @@ The confirmed issue **is** the specification. There is no separate spec, test pl
 
 ### Shared — verify, then raise
 - `/verify` ← one orchestrator: **format → full suite (the gate) → clean-context review → fix → format → re-run suite → commit**. One review, and the commit of its fixes is read by Review B on the pull request. Unattended, so it can drive a loop. Includes the PR review and slop review. Ends at a green, reviewed, fully-committed branch; it does **not** raise the PR.
-- `/raise-pr` ← push the branch, open the PR and request Review B. A separate stage because it is the one irreversible, outward-facing act; everything before it stays freely re-runnable.
+- `/raise-pr` ← push the branch and open the PR; opening it triggers Review B. A separate stage because it is the one irreversible, outward-facing act; everything before it stays freely re-runnable.
 
 ### Periodic (not per-feature)
 - **capture learnings** — fold corrections back into memory/skills. Not part of `/verify`: it needs human curation and batches better, so run it at a supervised checkpoint after several features.
@@ -102,7 +102,7 @@ Properties worth copying:
 - **Stop before the irreversible step.** End at the verified branch; leave pushing and the PR to a separate, deliberate invocation. Everything before it is safe to re-run; the outward-facing act is not, and it is the step worth a human's decision.
 - **Let unfixed findings end with the stage's report.** A finding left unfixed — a suggestion, or a problem in code the branch did not touch — is named in the closing report and carried nowhere else. Handing the first review's leftovers to the pull-request review tells it what to conclude; it should judge the branch on what it sees.
 
-**Two reviews, not one.** *Review A* is synchronous inside `/verify`: clean-context subagents over the branch diff, run once, whose findings stay in the conversation for `capture-learnings`. *Review B* is the asynchronous agent review on the raised PR, requested by `/raise-pr`, for a human to read at merge. Nothing waits on Review B. It is also what reads Review A's fix commit, and that is a known cost: a narrowed `catch` clause once reached an open PR as the only code on the branch nothing but the suite had read, which is what the loop was built to stop. Keeping the fix small is what is left to guard against that.
+**Two reviews, not one.** *Review A* is synchronous inside `/verify`: clean-context subagents over the branch diff, run once, whose findings stay in the conversation for `capture-learnings`. *Review B* is the asynchronous agent review on the raised PR, triggered by the PR opening, for a human to read at merge. Nothing waits on Review B. It is also what reads Review A's fix commit, and that is a known cost: a narrowed `catch` clause once reached an open PR as the only code on the branch nothing but the suite had read, which is what the loop was built to stop. Keeping the fix small is what is left to guard against that.
 
 ---
 
@@ -301,7 +301,7 @@ The kinds of files a project adds to make this workflow operational (names illus
 
 ### Agent configuration (`.claude/` or `.agents/`)
 - **settings** — checked-in permissions allowlist + hooks: *stale-build guard*, any denylist gates backing a standing exclusion, and a deny path over upstream-managed vendored files. Not here: the test-green gate, which is a real suite run inside `/verify`.
-- **commands** — the slash commands above: `draftissue`, `reviewissue` and `confirmissue` (issue stage); `build` (build stage); the `verify` orchestrator for the pre-PR steps; and `raise-pr`, the separate stage after it. Plus maintenance commands: slop review, dead-code audit, codebase audit, context-gardening, capture-learnings, `bugmagnet` (systematic test-coverage and edge-case discovery for one module) and `install-harness-tooling` (installs the token/context plugins below).
+- **commands** — the slash commands above: `draftissue`, `reviewissue` and `confirmissue` (issue stage); `build` (build stage); the `verify` orchestrator for the pre-PR steps; and `raise-pr`, the separate stage after it. `review-pr` is Review B, and `review-followup` runs its later rounds. Plus maintenance commands: slop review, dead-code audit, codebase audit, context-gardening, capture-learnings, `bugmagnet` (systematic test-coverage and edge-case discovery for one module) and `install-harness-tooling` (installs the token/context plugins below).
 - **scripts** — `chain.sh` with its stub-agent tests `chain.tests.sh`, and `chain-next.sh` for the unattended runner (see *The chain script* and *The chain runner*).
 - **skills / sub-agents** — simplifier, verifier, a `diagnose` skill (a reproduce → minimise → hypothesise → instrument → fix → regression-test loop for hard bugs), and any stack-orchestration script.
 
