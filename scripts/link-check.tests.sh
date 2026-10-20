@@ -31,6 +31,11 @@ CHECK="$HERE/link-check.sh"
 # Assembled, never written out. See note 2 above.
 RECDIR="docs/change-intent""-records"
 
+# This repository's canonical web URL, as a full link to a file on `main` is written. The check
+# carries the same constant, so a fixture writing it is how the mapping onto the local checkout is
+# driven — the URL is never fetched.
+MAINURL="https://github.com/FrankRay78/NetPace"
+
 # One parent-scoped root holds every sandbox, so cleanup cannot be defeated by a subshell.
 ROOT="$(mktemp -d)"
 cleanup() { chmod -R u+rwX "$ROOT" 2>/dev/null; rm -rf "$ROOT"; }
@@ -128,15 +133,15 @@ ok "a ../ link that does not resolve fails" 'failed && names "../examples/one.md
 
 new_case
 commit_file "README.md" 'Jump to [the part](docs/guide.md#the-part).'
-commit_file "docs/guide.md" '# Guide'
+commit_file "docs/guide.md" "$(printf '# Guide\n\n## The Part')"
 check
-ok "an #anchor suffix is stripped before resolving" 'clean'
+ok "an #anchor suffix is not read as part of the file path" 'clean'
 
 new_case
-commit_file "README.md" 'Jump to [a section](#overview) below, or [the site](https://example.invalid/x.md), or [mail](mailto:a@example.invalid).'
+commit_file "README.md" "$(printf '# Guide\n\n## Overview\n\nJump to [a section](#overview) below, or [the site](https://example.invalid/x.md), or [mail](mailto:a@example.invalid).')"
 commit_file "docs/guide.md" '[up](../README.md)'
 check
-ok "anchor-only, http and mailto targets are not repository paths" 'clean'
+ok "an http or mailto target is no repository path, and an anchor-only one names a heading here" 'clean'
 
 new_case
 commit_file "README.md" 'The [docs folder](docs) holds it.'
@@ -203,6 +208,134 @@ new_case
 commit_file "README.md" "$(printf 'Opens a fence and never closes it.\n\n```\n[Title](file.md)\n')"
 check
 ok "an unterminated fence fails rather than passing as link-free" 'failed && names "unterminated"'
+
+# --- full links to a path on this repository's main branch ------------------------
+new_case
+commit_file "README.md" "See [the guide]($MAINURL/blob/main/docs/guide.md)."
+commit_file "docs/guide.md" '# Guide'
+check
+ok "a full blob/main link to an existing file passes" 'clean'
+
+new_case
+commit_file "README.md" "See [the guide]($MAINURL/blob/main/docs/gone.md)."
+commit_file "docs/guide.md" '# Guide'
+check
+ok "a full blob/main link to a missing file fails" 'failed && names "docs/gone.md"'
+ok "  …and names the file that carries it" 'names "README.md"'
+
+new_case
+commit_file "README.md" "The [console project]($MAINURL/tree/main/src/App)."
+commit_file "docs/guide.md" '# Guide'
+check
+ok "a full tree/main link to a missing folder fails" 'failed && names "src/App"'
+
+new_case
+commit_file "README.md" "A [raw file]($MAINURL/raw/main/docs/gone.md)."
+check
+ok "a full raw/main link to a missing file fails" 'failed && names "docs/gone.md"'
+
+new_case
+commit_file "README.md" "See [the guide](HTTPS://GitHub.com/FrankRay78/NETPACE/BLOB/main/docs/gone.md)."
+check
+ok "the repository part of a full link is matched whatever its case" 'failed && names "docs/gone.md"'
+
+# Over-reach is the risk here: everything else on github.com is a web page, not a path in this
+# branch, and a check that resolved those against the checkout would fail on correct links.
+new_case
+commit_file "README.md" "Releases are [here]($MAINURL/releases), issues [there]($MAINURL/issues/new/choose), and the repo is [this]($MAINURL). Also [the guide](docs/guide.md)."
+commit_file "docs/guide.md" '# Guide'
+check
+ok "a GitHub page that is not a path on main is not resolved against the checkout" 'clean'
+
+new_case
+commit_file "README.md" "A [tagged file]($MAINURL/blob/v1.2.3/docs/gone.md), and [the guide](docs/guide.md)."
+commit_file "docs/guide.md" '# Guide'
+check
+ok "a full link to a path on another ref is not checked" 'clean'
+
+new_case
+commit_file "README.md" 'A [file elsewhere](https://github.com/owner/repo/blob/main/src/Foo.cs), and [the guide](docs/guide.md).'
+commit_file "docs/guide.md" '# Guide'
+check
+ok "a full link into another repository is not checked" 'clean'
+
+# --- links to a heading, in the same file or another one --------------------------
+new_case
+commit_file "README.md" "$(printf '# Guide\n\n## The Overview\n\nJump to [the overview](#the-overview).')"
+check
+ok "a same-file anchor naming a heading that exists passes" 'clean'
+
+new_case
+commit_file "README.md" "$(printf '# Guide\n\n## The Overview\n\nJump to [nowhere](#the-summary).')"
+check
+ok "a same-file anchor naming a heading that does not exist fails" 'failed && names "#the-summary"'
+ok "  …and names the file that carries it" 'names "README.md"'
+
+new_case
+commit_file "README.md" 'Jump to [a part](docs/guide.md#the-part).'
+commit_file "docs/guide.md" "$(printf '# Guide\n\n## The Part')"
+check
+ok "an anchor into another file naming a heading that exists passes" 'clean'
+
+new_case
+commit_file "README.md" 'Jump to [a part](docs/guide.md#the-missing-part).'
+commit_file "docs/guide.md" "$(printf '# Guide\n\n## The Part')"
+check
+ok "an anchor into another file naming a heading that does not exist fails" 'failed && names "#the-missing-part"'
+
+new_case
+commit_file "README.md" "Jump to [a part]($MAINURL/blob/main/docs/guide.md#the-missing-part)."
+commit_file "docs/guide.md" "$(printf '# Guide\n\n## The Part')"
+check
+ok "an anchor on a full blob/main link is checked against the local file" 'failed && names "#the-missing-part"'
+
+# GitHub's slug keeps letters, digits, hyphens and underscores, drops everything else, and turns
+# each remaining space into a hyphen — so a spaced em dash leaves two.
+new_case
+commit_file "README.md" "$(printf '# Guide\n\n## Appendix — Codebase Setup\n\n### Running with `--diagnostics` (§3)\n\nSee [the appendix](#appendix--codebase-setup) and [the flag](#running-with---diagnostics-3).')"
+check
+ok "heading case, punctuation and spacing are slugified as GitHub does" 'clean'
+
+new_case
+commit_file "README.md" "$(printf '# Guide\n\n## The Overview\n\nJump to [it](#The-Overview).')"
+check
+ok "an anchor in the wrong case does not match GitHub's lowercase slug" 'failed && names "#The-Overview"'
+
+# A repeated heading is disambiguated by GitHub with a counter, the first occurrence unsuffixed.
+new_case
+commit_file "README.md" "$(printf '# Guide\n\n## The Stage\n\n## The Stage\n\nFirst [one](#the-stage), second [two](#the-stage-1).')"
+check
+ok "a repeated heading takes GitHub's -1 suffix on its second occurrence" 'clean'
+
+new_case
+commit_file "README.md" "$(printf '# Guide\n\n## The Stage\n\n## The Stage\n\nThird [three](#the-stage-2).')"
+check
+ok "a counter beyond the repeat count does not resolve" 'failed && names "#the-stage-2"'
+
+new_case
+commit_file "README.md" "$(printf '# Guide\n\nJump to [it](#treat-this-as-a-failure).\n\n```bash\n# Treat this as a failure\n```\n')"
+check
+ok "a hash line inside a fenced block is not a heading" 'failed && names "#treat-this-as-a-failure"'
+
+new_case
+commit_file "README.md" 'The [source](src/Foo.cs#L10-L20), and [the guide](docs/guide.md).'
+commit_file "src/Foo.cs" '// code'
+commit_file "docs/guide.md" '# Guide'
+check
+ok "an anchor on a target that is not markdown is not read as a heading" 'clean'
+
+new_case
+commit_file "README.md" 'The [docs folder](docs#anything), and [the guide](docs/guide.md).'
+commit_file "docs/guide.md" '# Guide'
+check
+ok "an anchor on a folder target is not read as a heading" 'clean'
+
+new_case
+commit_file "README.md" 'See [the guide](docs/gone.md#the-part).'
+commit_file "docs/guide.md" '# Guide'
+check
+ok "a missing file with an anchor is reported as the missing file, once" 'failed && named_once "docs/gone.md"'
+ok "  …and the heading is not reported as well" '! names "#the-part"'
 
 # --- bare references to the records folder, in any tracked text file ---------------
 new_case
