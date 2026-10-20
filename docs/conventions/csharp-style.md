@@ -10,10 +10,13 @@
 
 ## Naming
 
-- **PascalCase**: classes, methods, public properties, events, enums, **constants** (not ALL_CAPS)
-- **camelCase**: local variables, method parameters, private/internal fields — no `_`, `s_` or `t_` prefix
+- **PascalCase**: classes, methods, public properties, events, enums, non-private static and readonly fields, **constants** (not ALL_CAPS)
+- **camelCase**: local variables, method parameters
+- **_camelCase**: private instance fields
 - **IPrefix**: interfaces (e.g. ISpeedTestService, IWorkerQueue)
 - **No Hungarian notation**, no abbreviations
+
+The field rules are the ones `.editorconfig` states, so the IDE flags a field that breaks them.
 
 ## Primary Constructor Parameters
 

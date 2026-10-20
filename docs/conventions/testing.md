@@ -17,9 +17,9 @@ A test's assertions must describe an outcome an outside observer can verify, not
 | Avoid (mechanism, brittle) | Prefer (outcome, durable) |
 |---|---|
 | Assert `GetFastestServerByLatencyAsync` was called once on a mock | Assert the reported server is the one with the lowest measured latency |
-| Assert the latency probe sends exactly three requests 50 ms apart | Assert the reported latency is derived from the measured round trips |
+| Assert each latency request is timed by a particular timer API | Assert the reported latency is the average of the measured round trips, over the number of requests `LatencyTestSettings.LatencyTestIterations` sets — a public setting, so it is named exactly |
 | Assert the JSON is written by `System.Text.Json` with a given naming policy | Assert `DownloadSpeedBitsPerSecond` in the JSON output equals the measured bits per second — an interface contract, so it is named exactly |
-| Assert an invalid server URL produces the literal message `"Invalid server URL"` | Assert the command exits non-zero and the composed output (snapshot) reports the rejected URL |
+| Assert `--csv-delimiter :` produces an exact error string | Assert the command exits non-zero and the composed output (snapshot) tells the user the delimiter was rejected |
 | Assert stdout contains the literal string `"Mbps"` | Assert the output presents the measured throughput in a unit the caller can interpret |
 | Assert the result row is rendered via `Spectre.Console.Table` with column widths 12/8/8 | Assert the results are presented as a tabular summary readable in a terminal |
 
