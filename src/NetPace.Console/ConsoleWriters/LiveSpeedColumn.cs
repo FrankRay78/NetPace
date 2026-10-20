@@ -28,7 +28,8 @@ internal sealed class LiveSpeedColumn(SpeedUnit unit, SpeedUnitSystem unitSystem
     /// <remarks>
     /// Nothing is shown until a report carries both bytes and elapsed time, so a bar shows no
     /// placeholder and no figure computed from nothing. A provider that reports a percentage and
-    /// nothing else therefore shows no figure at all.
+    /// nothing else therefore shows no figure while the test runs, only the result's figure once
+    /// it completes.
     /// </remarks>
     internal void Report(ProgressTask task, SpeedTestProgress progress)
     {
