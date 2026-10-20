@@ -36,10 +36,7 @@ public sealed partial class NetPaceConsoleTests
             // NetPace composed rather than values a line break landed inside.
             var lines = Lines(output);
             Assert.Single(lines);
-
-            using var parsed = JsonDocument.Parse(lines[0]);
-            Assert.Equal("Test Sponsor 1", parsed.RootElement.GetProperty("ServerSponsor").GetString());
-            Assert.Equal("8 Kbps", parsed.RootElement.GetProperty("DownloadSpeed").GetString());
+            AssertParsesAsJson(lines[0]);
 
             Assert.Equal(await RunAtWidthAsync(CommandLineTestHost.UnlimitedWidth, ["--json"]), output);
             await Verify(output);
@@ -54,11 +51,8 @@ public sealed partial class NetPaceConsoleTests
             var output = await RunAtWidthAsync(CommandLineTestHost.RedirectedWidth, ["--json-pretty"], LongNamedServerTester());
 
             // Then the indentation --json-pretty asks for is the only thing breaking lines, and every
-            // value survives whole.
-            using var parsed = JsonDocument.Parse(output);
-            Assert.Equal(LongSponsor, parsed.RootElement.GetProperty("ServerSponsor").GetString());
-            Assert.Equal(LongLocation, parsed.RootElement.GetProperty("ServerLocation").GetString());
-            Assert.Equal(LongUrl, parsed.RootElement.GetProperty("ServerUrl").GetString());
+            // value survives whole - the snapshot shows each long value unbroken.
+            AssertParsesAsJson(output);
 
             await Verify(output);
         }
@@ -254,6 +248,14 @@ public sealed partial class NetPaceConsoleTests
         /// </summary>
         private static string[] Lines(string output) =>
             output.Replace("\r\n", "\n").Split('\n', StringSplitOptions.RemoveEmptyEntries);
+
+        /// <summary>
+        /// Asserts the text is JSON a standard parser accepts. A line break landed inside a record
+        /// leaves text no parser accepts, so the parse is the whole assertion and the document is
+        /// discarded unread - what the output says is the snapshot's job.
+        /// </summary>
+        private static void AssertParsesAsJson(string json) =>
+            JsonDocument.Parse(json).Dispose();
 
         private static void AssertEveryLineMatchesTheHeaderFieldCount(string[] lines)
         {

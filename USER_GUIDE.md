@@ -10,9 +10,9 @@ Write test results to a file, while also displaying them in the console:
 netpace --file results.txt
 ```
 
-Produce CSV output with test results in megabits, suitable for parsing:
+Produce CSV output, with every speed and latency a plain number, suitable for parsing:
 ```bash
-netpace --csv --csv-header-units --unit-scale Mega
+netpace --csv
 ```
 
 Report the result as a single compact line:
@@ -55,17 +55,48 @@ Show speeds in bytes/sec, using IEC units (KiB, MiB, GiB):
 netpace --unit BytesPerSecond --unit-system IEC
 ```
 
-Add a timestamp in custom date format:  
+Add a timestamp to the result:  
 ```bash
-netpace --timestamp --datetimeformat "dd/MM/yyyy HH:mm"
+netpace --timestamp
 ```
 
-A `--datetimeformat` value that cannot format a date, or that is blank, is rejected as a usage error before any measurement runs: NetPace names the option, reports the value, and exits non-zero (see [Exit codes](#exit-codes)). The check applies whether or not the run would have printed a timestamp, so a bad value cannot sit unnoticed until you add `--timestamp` or switch to CSV or JSON.
+The timestamp has one fixed format per output mode, with no option to change it — see [Timestamps and regional settings](#timestamps-and-regional-settings).
 
 Limit download to 50 MiB and upload to 20 MiB (for low bandwidth connections):  
 ```bash
 netpace --downloadsize 50 --uploadsize 20
 ```
+
+---
+
+## Installing NetPace
+
+With the [.NET 10 SDK](https://dotnet.microsoft.com/en-us/download/dotnet/10.0) installed, NetPace installs as a .NET tool in one line, and the `netpace` command is on your path afterwards — provided the .NET global tools directory (`~/.dotnet/tools`, or `%USERPROFILE%\.dotnet\tools` on Windows) is on `PATH`. `dotnet tool install` tells you if it is not:
+
+```bash
+dotnet tool install -g netpace
+```
+
+Move to the latest release at any time:
+
+```bash
+dotnet tool update -g netpace
+```
+
+Or run NetPace once without installing it — `dnx` fetches the package, runs it, and leaves nothing installed. The first run asks you to confirm the download, so pass `--yes` where there is no terminal to answer, such as a CI job:
+
+```bash
+dnx netpace
+dnx --yes netpace -- --json
+```
+
+Pin a known version in a build or CI job with `dotnet tool install -g netpace --version <release>`, naming any version from the [releases page](https://github.com/FrankRay78/NetPace/releases).
+
+The installed command behaves exactly like the release binary of the same version, and `netpace --version` reports the release it was published with.
+
+**Which platforms the tool package covers.** Windows and Linux, on x64 and ARM64, get the Native AOT binary — built the same way as the `-aot` release download, so it starts without a .NET runtime. macOS, on Intel and Apple silicon, gets a build that runs on the .NET runtime the SDK already provides, because NetPace has no macOS Native AOT build yet. Anything outside those six — Alpine-style Linux among them — is not covered by the tool package; [download](https://github.com/FrankRay78/NetPace/releases) a standalone binary instead.
+
+Without the .NET SDK, Windows users can [install with winget](#installing-upgrading-and-uninstalling-on-windows-with-winget), and the [releases page](https://github.com/FrankRay78/NetPace/releases) carries binaries for every supported platform: unzip and run.
 
 ---
 
@@ -120,7 +151,7 @@ Drop `--version` to install the latest release. `winget uninstall --id FrankRay7
 
 NetPace's Windows binaries are not code-signed, so Windows SmartScreen may warn about the executable the first time it runs.
 
-On Linux and macOS, and on Windows if you would rather not use winget, [download a release binary](https://github.com/FrankRay78/NetPace/releases), unzip it and run it.
+On Linux and macOS, and on Windows if you would rather not use winget, [install the .NET tool](#installing-netpace) or [download a release binary](https://github.com/FrankRay78/NetPace/releases), unzip it and run it.
 
 ---
 
@@ -128,27 +159,63 @@ On Linux and macOS, and on Windows if you would rather not use winget, [download
 
 With no format switch, NetPace renders the rich terminal output: a live progress display while each test runs, then the result. That is the right default at a terminal, and it is what you get if you pass nothing.
 
+At an interactive terminal, each running test's progress bar carries a live speed beside it — the average speed since that test began, so it climbs and steadies as the test runs and ends on exactly the figure the result line reports for that test. It is written in whatever `--unit`, `--unit-system` and `--unit-scale` ask for, the same as the result line, and nothing is shown beside a bar until that test's first data arrives. Output that is not going to an interactive terminal — piped, redirected, or written with `--file` — is unaffected: the live display never appears there, and the result line is printed as before.
+
 Three alternative formats are available instead:
 
 | Switch | Output |
 | --- | --- |
 | `--minimal` | The result as a single compact line. No live progress display. |
-| `--csv` | A single CSV row, always including a timestamp. `--csv-header-units` and `--csv-delimiter` shape it. |
+| `--csv` | A single CSV row, always including a timestamp. `--csv-delimiter` chooses the separator. |
 | `--json` | A JSON object. `--json-pretty` selects the same format and indents it for reading. |
 
 `--minimal`, `--csv` and `--json` are peers, and exactly one format may be selected. Passing two together is an error naming the conflict, so a stray or mistyped flag in a script fails loudly instead of quietly producing the wrong format. `--json-pretty` counts as selecting JSON, so `--json --json-pretty` is the one combination allowed — they are the same format, indented — while `--csv --json-pretty` and `--json-pretty --minimal` are conflicts like any other pair.
 
 `--minimal`, `--csv` and `--json` are written for a program to read, so they carry no line breaks beyond the ones their own format defines — one CSV record per line, and the indentation `--json-pretty` asks for. That holds however narrow the destination is: a pipe, a redirect, or a terminal window narrower than the line. Only the default terminal output wraps to fit the screen.
 
-Every format composes with the result-shaping options — `--timestamp`, `--unit`, `--unit-scale`, `--unit-system`, and skipping individual tests with `--no-latency` / `--no-download` / `--no-upload`.
+Every format composes with skipping individual tests — `--no-latency` / `--no-download` / `--no-upload`. `--timestamp`, `--unit`, `--unit-scale` and `--unit-system` are narrower: they shape the default and minimal output only. CSV and JSON always carry a timestamp, and report their measurements as plain numbers in fixed units, so those options are accepted alongside `--csv`, `--json` and `--json-pretty` without an error and change nothing in the output — see [Numeric values in CSV](#numeric-values-in-csv) and [Numeric values in JSON](#numeric-values-in-json).
 
 Two further options decide whether and where the result appears, and both work with any format: `--quiet` suppresses the result entirely, and `--file` writes it to disk.
 
 `--diagnostics` is not a fifth format — it adds a second stream alongside whichever format you picked, leaving the result untouched. See [Diagnosing a failure with `--diagnostics`](#diagnosing-a-failure-with---diagnostics).
 
+### Numeric values in CSV
+
+CSV is read by spreadsheets, importers and logs, so every measurement is a plain number in a fixed unit, and the column name says which unit. Nothing in a cell has to be stripped or converted before it can be summed, charted or compared.
+
+| Column | What it holds |
+| --- | --- |
+| `LatencyMilliseconds` | Latency as a whole number of milliseconds. |
+| `DownloadSpeedBitsPerSecond` | Download speed in bits per second, rounded to the nearest whole number. |
+| `UploadSpeedBitsPerSecond` | Upload speed in bits per second, rounded to the nearest whole number. |
+
+```bash
+netpace --csv
+```
+```
+Timestamp,LatencyMilliseconds,DownloadSpeedBitsPerSecond,DownloadSucceeded,DownloadFailed,UploadSpeedBitsPerSecond,UploadSucceeded,UploadFailed,IPAddress,Hostname
+1980-01-01T10:05:00+01:00,12,512600000,150,0,48200000,32,0,192.168.1.1,test-host
+```
+
+**`--unit`, `--unit-scale` and `--unit-system` do not change CSV output at all.** They shape the default and minimal output only. That is what makes a CSV log safe to append to: under the default automatic scale a formatted speed can be `Kbps` on one run and `Mbps` on the next, so a file collecting rows over weeks would mix units in one column. The numbers never shift, so `--csv` works with `--count` and `--loop` whatever the unit options say, and the numbers match [the numeric fields in JSON](#numeric-values-in-json) for the same run.
+
+The header is the same ten columns in the same order on every run, whichever tests ran. A test you skipped with `--no-latency`, `--no-download` or `--no-upload` leaves its cells empty rather than dropping its columns, so a script reading by position is not moved along by a skipped test:
+
+```bash
+netpace --csv --no-upload
+```
+```
+Timestamp,LatencyMilliseconds,DownloadSpeedBitsPerSecond,DownloadSucceeded,DownloadFailed,UploadSpeedBitsPerSecond,UploadSucceeded,UploadFailed,IPAddress,Hostname
+1980-01-01T10:05:00+01:00,12,512600000,150,0,,,,192.168.1.1,test-host
+```
+
+A download or upload test that ran but failed entirely reports `0`, with its request counts beside it — see [Detecting failed measurements](#detecting-failed-measurements).
+
+`--csv-delimiter` chooses the separator, for a locale or a tool that wants something other than a comma.
+
 ### Numeric values in JSON
 
-JSON reports each measured speed and latency twice: once formatted for a person to read, and once as a plain number in a fixed unit. The field name says which unit, so a saved result explains itself without reference to the command that produced it.
+JSON reports each measured speed and latency once, as a plain number in a fixed unit. The field name says which unit, so a saved result explains itself without reference to the command that produced it. Nothing on the command line can change those units, so a script reads the same field the same way every run.
 
 | Field | What it holds |
 | --- | --- |
@@ -164,14 +231,11 @@ NetPace --json-pretty
   "ServerLocation": "London",
   "ServerSponsor": "Foo Telecom",
   "ServerUrl": "http://speedtest.foo.example:8080/speedtest/upload.php",
-  "Timestamp": "1980-01-01 10:05:00",
-  "Latency": "12 ms",
+  "Timestamp": "1980-01-01T10:05:00+01:00",
   "LatencyMilliseconds": 12,
-  "DownloadSpeed": "512.6 Mbps",
   "DownloadSpeedBitsPerSecond": 512600000,
   "DownloadSucceeded": 150,
   "DownloadFailed": 0,
-  "UploadSpeed": "48.2 Mbps",
   "UploadSpeedBitsPerSecond": 48200000,
   "UploadSucceeded": 32,
   "UploadFailed": 0,
@@ -180,13 +244,26 @@ NetPace --json-pretty
 }
 ```
 
-**`--unit`, `--unit-scale` and `--unit-system` do not change the numbers.** Those options shape the formatted speeds only — `"DownloadSpeed"` and `"UploadSpeed"`. That is the point of the numeric fields: under the default automatic scale the formatted unit can differ from one run to the next, so a script comparing runs, writing to a database or checking a threshold reads the numbers and never has to strip a unit or convert between scales.
+**`--unit`, `--unit-scale` and `--unit-system` do not change JSON output at all.** They shape the default and minimal output only. Passing one with `--json` or `--json-pretty` is accepted without an error or warning, and the result is byte-for-byte what the same run writes without it. That is what makes a saved JSON result comparable: a script comparing runs, writing to a database or checking a threshold reads the numbers and never has to strip a unit, convert between scales, or know which switches the run was made with.
 
-`"Latency"` is always milliseconds, so `LatencyMilliseconds` saves a script stripping `" ms"` rather than fixing a unit that shifts.
+Need a speed formatted for a person to read — for a notification, say? `--minimal` writes exactly that line, and follows the unit options.
 
-The formatted values are still there and still follow the unit options, so a shell one-liner can keep passing one straight into a notification.
+A test you skipped with `--no-latency`, `--no-download` or `--no-upload` omits every field it would have filled. A download or upload test that ran but failed entirely reports `0`, with its request counts beside it — see [Detecting failed measurements](#detecting-failed-measurements). A latency measurement that fails ends the run instead, so it reports nothing.
 
-A test you skipped with `--no-latency`, `--no-download` or `--no-upload` omits both of its forms. A download or upload test that ran but failed entirely reports `0` in both, with its request counts beside them — see [Detecting failed measurements](#detecting-failed-measurements). A latency measurement that fails ends the run instead, so it reports neither.
+### Timestamps and regional settings
+
+The timestamp has one fixed format per output mode. There is no option to change it, so a script reading CSV or JSON never has to know which format a given run chose.
+
+| Output | Timestamp | Example |
+| --- | --- | --- |
+| Default, `--minimal` (with `--timestamp`) | Local time, `yyyy-MM-dd HH:mm:ss` | `2026-10-16 08:21:17` |
+| `--csv`, `--json` (always present) | ISO 8601 local time to the second with its offset from UTC | `2026-10-16T08:21:17+01:00` |
+
+The offset is what makes the machine-readable timestamp one unambiguous instant, so results logged from machines in different time zones — or from one machine either side of a clock change — sort and compare directly, and any date parser reads them without being told the format. Where the local offset is zero, that is written `+00:00`. Terminal output leaves the offset out: you already know the zone you are sitting in.
+
+Because that timestamp is a CSV field like any other, `--csv-delimiter` refuses a character the timestamp itself contains — a digit, `-`, `T`, `:` or `+`. Such a delimiter would split the timestamp across two fields and leave the row with one more field than its header, so NetPace reports the clash and exits rather than writing a row no CSV reader can line up. `,`, `;` and tab are all unaffected.
+
+**NetPace output does not follow the machine's regional settings.** Every value reads the same way on every machine: speeds use `.` as the decimal separator with no digit grouping, and timestamps use the Gregorian calendar with ASCII digits. A result logged on a machine set to German, Thai or any other locale is byte-for-byte comparable with one logged next to it, and a comma-delimited CSV row can never gain a field from a decimal comma. `NetPace.Core` formats speeds the same way, so a library consumer reads the same text whatever culture its thread carries.
 
 ---
 
@@ -241,7 +318,7 @@ netpace --profile large --downloadsize 200
 
 ## Detecting failed measurements
 
-A speed test runs many small requests in parallel and reports the aggregate throughput. If some of those requests fail (a dropped connection, a TLS error, a timeout, or a server that rejects the transfer), NetPace does **not** silently treat them as zero-speed data — it counts them, so you can tell a genuinely slow link from a server that isn't transferring at all. When *every* request in a test fails, the speed reads `0 bps`, and the counts tell you it was a total failure rather than a 0 bps link.
+A speed test runs many small requests in parallel and reports the aggregate throughput. If some of those requests fail (a dropped connection, a TLS error, a timeout, or a server that rejects the transfer), NetPace does **not** silently treat them as zero-speed data — it counts them, so you can tell a genuinely slow link from a server that isn't transferring at all. When *every* request in a test fails, the speed reads zero, and the counts tell you it was a total failure rather than a 0 bps link.
 
 Every output format carries the counts:
 
@@ -250,14 +327,15 @@ Every output format carries the counts:
 Latency: 24 ms, Download: 512.6 Mbps, Upload: 0 bps (32 of 32 requests failed)
 ```
 
-**CSV** — a `Succeeded` and `Failed` column sits next to each speed column:
+**CSV** — a `Succeeded` and `Failed` column sits next to each speed column, and a total failure reports a speed of `0` beside the counts that say so:
 ```
-Timestamp,Latency,Download,DownloadSucceeded,DownloadFailed,Upload,UploadSucceeded,UploadFailed,IPAddress,Hostname
+Timestamp,LatencyMilliseconds,DownloadSpeedBitsPerSecond,DownloadSucceeded,DownloadFailed,UploadSpeedBitsPerSecond,UploadSucceeded,UploadFailed,IPAddress,Hostname
+1980-01-01T10:05:00+01:00,24,512600000,150,0,0,0,32,192.168.1.1,test-host
 ```
 
-**JSON** — each test that ran gains integer `…Succeeded` / `…Failed` fields alongside its speed. The schema keeps one shape: a total failure reports `0 bps` with the counts beside it, exactly as normal and CSV output do. Only a test you skipped (`--no-download`, `--no-upload`) omits its fields entirely:
+**JSON** — each test that ran gains integer `…Succeeded` / `…Failed` fields alongside its speed. The schema keeps one shape: a total failure reports `0` with the counts beside it, exactly as the other formats do. Only a test you skipped (`--no-download`, `--no-upload`) omits its fields entirely:
 ```json
-{ "UploadSpeed": "0 bps", "UploadSpeedBitsPerSecond": 0, "UploadSucceeded": 0, "UploadFailed": 32, … }
+{ "UploadSpeedBitsPerSecond": 0, "UploadSucceeded": 0, "UploadFailed": 32, … }
 ```
 
 The counts are the whole signal — no output format adds a prose warning on top of them. `--quiet` suppresses them along with the rest of the output; use `--fail-on` to detect an all-failed measurement in that mode.

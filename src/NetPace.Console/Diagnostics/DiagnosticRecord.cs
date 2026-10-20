@@ -24,8 +24,8 @@ namespace NetPace.Console.Diagnostics;
 public static class DiagnosticRecord
 {
     /// <summary>
-    /// The timestamp format. Deliberately not affected by <c>--datetimeformat</c>, which shapes the
-    /// result: diagnostics stay stable however a user has chosen to format their output.
+    /// The timestamp format. Deliberately its own, carrying milliseconds the result timestamps do
+    /// not: a diagnostic stream is read to see the order and spacing of events within a single run.
     /// </summary>
     private const string TimestampFormat = "yyyy-MM-ddTHH:mm:ss.fff";
 

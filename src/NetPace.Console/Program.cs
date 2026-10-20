@@ -2,6 +2,7 @@ using System.CommandLine;
 
 using Microsoft.Extensions.DependencyInjection;
 using NetPace.Console.Commands;
+using NetPace.Console.ConsoleWriters;
 using NetPace.Console.Diagnostics;
 using NetPace.Core;
 using NetPace.Core.Clients.Ookla;
@@ -69,13 +70,11 @@ public static class Program
             {
                 result.AddError("--csv-delimiter must be a single character.");
             }
+            else if (value != null && Timestamps.MachineReadableCharacters.Contains(value, StringComparison.Ordinal))
+            {
+                result.AddError($"--csv-delimiter cannot be '{value}'. The CSV timestamp contains that character, so it would split the timestamp across two fields. Use a delimiter such as ',' or ';'.");
+            }
         });
-
-        var csvHeaderUnitsOption = new Option<bool>("--csv-header-units")
-        {
-            Description = "Display speed test units (eg. Mbps) in the CSV header row, not the data rows.\n--unit-scale must not be <Auto> for multiple speed tests (eg. --loop or --count).",
-            DefaultValueFactory = _ => false
-        };
 
         var jsonOption = new Option<bool>("--json")
         {
@@ -126,12 +125,6 @@ public static class Program
         };
         timestampOption.Aliases.Add("-t");
 
-        var datetimeFormatOption = new Option<string>("--datetimeformat")
-        {
-            Description = "The datetime format string, as defined by Microsoft.Net.",
-            DefaultValueFactory = _ => "yyyy-MM-dd HH:mm:ss"
-        };
-
         var profileOption = new Option<Profile>("--profile")
         {
             Description = "Profile bundle of payload settings (Tiny | Small | Medium | Large | Mega).",
@@ -152,20 +145,20 @@ public static class Program
 
         var unitOption = new Option<SpeedUnit>("--unit")
         {
-            Description = "The speed unit. <BitsPerSecond, BytesPerSecond>",
+            Description = "The speed unit. <BitsPerSecond, BytesPerSecond>\nApplies to the default and minimal output.",
             DefaultValueFactory = _ => SpeedUnit.BitsPerSecond
         };
         unitOption.Aliases.Add("-u");
 
         var unitScaleOption = new Option<SpeedScale>("--unit-scale")
         {
-            Description = "The speed unit scale. <Auto, Base, Kilo, Mega, Giga, Tera, Peta>",
+            Description = "The speed unit scale. <Auto, Base, Kilo, Mega, Giga, Tera, Peta>\nApplies to the default and minimal output.",
             DefaultValueFactory = _ => SpeedScale.Auto
         };
 
         var unitSystemOption = new Option<SpeedUnitSystem>("--unit-system")
         {
-            Description = "The speed unit system. <SI, IEC>\nSI steps up in powers of 1000 (KB, MB, GB), common in networking, while IEC uses powers of 1024 (KiB, MiB, GiB), standard in computing and storage.",
+            Description = "The speed unit system. <SI, IEC>\nApplies to the default and minimal output.\nSI steps up in powers of 1000 (KB, MB, GB), common in networking, while IEC uses powers of 1024 (KiB, MiB, GiB), standard in computing and storage.",
             DefaultValueFactory = _ => SpeedUnitSystem.SI
         };
 
@@ -222,7 +215,6 @@ public static class Program
         command.Options.Add(delayOption);
         command.Options.Add(csvOption);
         command.Options.Add(csvDelimiterOption);
-        command.Options.Add(csvHeaderUnitsOption);
         command.Options.Add(jsonOption);
         command.Options.Add(jsonPrettyOption);
         command.Options.Add(minimalOption);
@@ -231,7 +223,6 @@ public static class Program
         command.Options.Add(noUploadOption);
         command.Options.Add(serverOption);
         command.Options.Add(timestampOption);
-        command.Options.Add(datetimeFormatOption);
         command.Options.Add(profileOption);
         command.Options.Add(downloadSizeOption);
         command.Options.Add(uploadSizeOption);
@@ -258,7 +249,6 @@ public static class Program
                     Delay = parseResult.GetValue(delayOption),
                     CSV = parseResult.GetValue(csvOption),
                     CSVDelimiter = (parseResult.GetValue(csvDelimiterOption) ?? ",")[0],
-                    CSVHeaderUnits = parseResult.GetValue(csvHeaderUnitsOption),
                     Json = parseResult.GetValue(jsonOption),
                     JsonPretty = parseResult.GetValue(jsonPrettyOption),
                     Minimal = parseResult.GetValue(minimalOption),
@@ -267,7 +257,6 @@ public static class Program
                     NoUpload = parseResult.GetValue(noUploadOption),
                     ServerUrl = parseResult.GetValue(serverOption) ?? string.Empty,
                     IncludeTimestamp = parseResult.GetValue(timestampOption),
-                    DateTimeFormat = parseResult.GetValue(datetimeFormatOption)!,
                     Profile = parseResult.GetValue(profileOption),
                     DownloadSizeMb = parseResult.GetValue(downloadSizeOption),
                     UploadSizeMb = parseResult.GetValue(uploadSizeOption),
@@ -494,11 +483,7 @@ public static class Program
         // Check for version request before parsing
         if (args.Length > 0 && (args[0] is "-v" or "--version"))
         {
-            var assemblyVersion = typeof(Program).Assembly.GetName().Version;
-            var version = assemblyVersion != null
-                ? $"{assemblyVersion.Major}.{assemblyVersion.Minor}.{assemblyVersion.Build}"
-                : "Unknown";
-            ansiConsole.WriteLine(version);
+            ansiConsole.WriteLine(AppVersion.Current);
             return 0;
         }
 

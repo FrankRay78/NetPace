@@ -1,10 +1,16 @@
-using static System.Formats.Asn1.AsnWriter;
+using System.Globalization;
 
 namespace NetPace.Core;
 
 /// <summary>
 /// Extension methods for <see cref="SpeedTestResult"/> and <see cref="SpeedTestProgress"/>.
 /// </summary>
+/// <remarks>
+/// Every speed string these methods return is formatted through the invariant culture: <c>.</c> as
+/// the decimal separator, at most two decimal places, and no digit grouping. A consumer therefore
+/// reads the same text whatever culture the calling thread carries, so a formatted speed is safe to
+/// log, compare and parse across machines.
+/// </remarks>
 public static class SpeedTestExtensions
 {
     /// <summary>
@@ -108,6 +114,12 @@ public static class SpeedTestExtensions
 
     #region Private Methods
 
+    // Speeds are written the same way on every machine: "." as the decimal separator, at
+    // most two decimal places, and no digit grouping. Formatted through the invariant
+    // culture rather than the caller's, so a consumer on a comma-decimal thread reads the
+    // same text as everyone else, and a CSV row cannot gain a field from a stray comma.
+    private const string SpeedFormat = "0.##";
+
     private const double BitsPerByte = 8.0;
     private const double MillisecondsPerSecond = 1000.0;
 
@@ -186,7 +198,7 @@ public static class SpeedTestExtensions
             index++;
         }
 
-        return ($"{speed.ToString("0.##")}", $"{units[index]}");
+        return (speed.ToString(SpeedFormat, CultureInfo.InvariantCulture), units[index]);
     }
 
     private static (string speed, string unit) FormatSpeed_FixedScale(double speed, bool isBits, SpeedUnitSystem unitSystem, double divisor, int fixedScale)
@@ -204,7 +216,7 @@ public static class SpeedTestExtensions
             speed /= divisor;
         }
 
-        return ($"{speed.ToString("0.##")}", $"{units[index]}");
+        return (speed.ToString(SpeedFormat, CultureInfo.InvariantCulture), units[index]);
     }
 
     #endregion

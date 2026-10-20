@@ -54,6 +54,16 @@ I am no longer the `Spectre.Console` CLI sub-system maintainer, but this project
 
 ## Getting Started
 
+### Any platform with the .NET SDK: install as a .NET tool
+
+If you have the [.NET 10 SDK](https://dotnet.microsoft.com/en-us/download/dotnet/10.0), NetPace installs in one line:
+
+```bash
+dotnet tool install -g netpace
+```
+
+`dotnet tool update -g netpace` moves you to the latest release, and `dnx netpace` runs it once without installing anything (it asks to confirm the download on first run; `dnx --yes netpace` skips the prompt in a script). On Windows and Linux (x64 and ARM64) you get the Native AOT binary; on macOS it runs on the runtime the SDK already provides. See the [User Guide](https://github.com/FrankRay78/NetPace/blob/main/USER_GUIDE.md#installing-netpace) for which platforms the tool package covers.
+
 ### Windows: install with winget
 
 winget ships with current versions of Windows 10 and 11, so there is usually nothing to install first:
@@ -124,44 +134,44 @@ USAGE:
     netpace [OPTIONS] [COMMAND]
 
 OPTIONS:
-                              DEFAULT
-    -h, --help                                       Prints help information.
-    -v, --version                                    Prints version information.
-        --loop                                       Performs the speed test on continuous loop.
-        --count                                      Stop speed testing after this many times.
-        --delay                                      Time between multiple speed tests (HH:MM:SS).
-        --csv                                        Display output as a single CSV row (always includes timestamp).
-        --csv-delimiter       ,                      Single character delimiter to use in CSV output.
-        --csv-header-units                           Display speed test units (eg. Mbps) in the CSV header row, not the data rows.
-                                                     --unit-scale must not be <Auto> for multiple speed tests (eg. --loop or --count).
-        --json                                       Display output in Json format.
-        --json-pretty                                Display output in Json format (pretty print).
-        --minimal                                    Display the result as a single compact line.
-                                                     Ideal for batch scripts and redirected output.
-        --no-latency                                 Do not perform latency test.                                                                                                                       
-                                                     When used without --server, the first available server is selected.                                                                                
-        --no-download                                Do not perform download test.
-        --no-upload                                  Do not perform upload test.
-        --server                                     The url of a specific speed test sever.
-                                                     'netpace servers -l' will return your nearest servers.
-    -t, --timestamp                                  Include a timestamp in the output.
-        --datetimeformat      yyyy-MM-dd HH:mm:ss    The datetime format string, as defined by Microsoft.Net.
-        --profile             Medium                 Profile bundle of payload settings (Tiny | Small | Medium | Large | Mega).
-        --downloadsize                               Stop the download test after this many megabytes (IEC MiB).
-        --uploadsize                                 Stop the upload test after this many megabytes (IEC MiB).
-    -u, --unit                BitsPerSecond          The speed unit. <BitsPerSecond, BytesPerSecond>
-        --unit-scale          Auto                   The speed unit scale. <Auto, Base, Kilo, Mega, Giga, Tera, Peta>
-        --unit-system         SI                     The speed unit system. <SI, IEC>
-                                                     SI steps up in powers of 1000 (KB, MB, GB), common in networking, 
-                                                     while IEC uses powers of 1024 (KiB, MiB, GiB), standard in computing and storage.
-    -f, --file                                       Write output to file.
-        --file-mode           Append                 Determines file output behavior. <Append, Overwrite>
-    -q, --quiet                                      Suppress all normal console output (file output still works).
-        --fail-on             None                   Exit with a non-zero code on a failed measurement. <None, Total, Partial>
-                                                     None never affects the exit code; Total triggers when a test is all-failed;
-                                                     Partial triggers on any failed request. Fail-fast across --count and --loop.
-        --diagnostics                                Write per-request diagnostic detail about the run to the error stream.
-                                                     The result is unchanged, so 'netpace --json --diagnostics > result.json 2> diagnostics.log' keeps the two apart.
+                           DEFAULT
+    -h, --help                              Prints help information.
+    -v, --version                           Prints version information.
+        --loop                              Performs the speed test on continuous loop.
+        --count                             Stop speed testing after this many times.
+        --delay                             Time between multiple speed tests (HH:MM:SS).
+        --csv                               Display output as a single CSV row (always includes timestamp).
+        --csv-delimiter    ,                Single character delimiter to use in CSV output.
+        --json                              Display output in Json format.
+        --json-pretty                       Display output in Json format (pretty print).
+        --minimal                           Display the result as a single compact line.
+                                            Ideal for batch scripts and redirected output.
+        --no-latency                        Do not perform latency test.
+                                            When used without --server, the first available server is selected.
+        --no-download                       Do not perform download test.
+        --no-upload                         Do not perform upload test.
+        --server                            The url of a specific speed test sever.
+                                            'netpace servers -l' will return your nearest servers.
+    -t, --timestamp                         Include a timestamp in the output.
+        --profile          Medium           Profile bundle of payload settings (Tiny | Small | Medium | Large | Mega).
+        --downloadsize                      Stop the download test after this many megabytes (IEC MiB).
+        --uploadsize                        Stop the upload test after this many megabytes (IEC MiB).
+    -u, --unit             BitsPerSecond    The speed unit. <BitsPerSecond, BytesPerSecond>
+                                            Applies to the default and minimal output.
+        --unit-scale       Auto             The speed unit scale. <Auto, Base, Kilo, Mega, Giga, Tera, Peta>
+                                            Applies to the default and minimal output.
+        --unit-system      SI               The speed unit system. <SI, IEC>
+                                            Applies to the default and minimal output.
+                                            SI steps up in powers of 1000 (KB, MB, GB), common in networking, 
+                                            while IEC uses powers of 1024 (KiB, MiB, GiB), standard in computing and storage.
+    -f, --file                              Write output to file.
+        --file-mode        Append           Determines file output behavior. <Append, Overwrite>
+    -q, --quiet                             Suppress all normal console output (file output still works).
+        --fail-on          None             Exit with a non-zero code on a failed measurement. <None, Total, Partial>
+                                            None never affects the exit code; Total triggers when a test is all-failed;
+                                            Partial triggers on any failed request. Fail-fast across --count and --loop.
+        --diagnostics                       Write per-request diagnostic detail about the run to the error stream.
+                                            The result is unchanged, so 'netpace --json --diagnostics > result.json 2> diagnostics.log' keeps the two apart.
 
 COMMANDS:
     servers    Show the nearest speed test servers.

@@ -1,0 +1,15 @@
+﻿{
+  "ServerLocation": "Location 1",
+  "ServerSponsor": "Test Sponsor 1",
+  "ServerUrl": "http://test1.com",
+  "Timestamp": "1980-01-01T10:05:00+01:00",
+  "LatencyMilliseconds": 100,
+  "DownloadSpeedBitsPerSecond": 8000,
+  "DownloadSucceeded": 150,
+  "DownloadFailed": 0,
+  "UploadSpeedBitsPerSecond": 18667,
+  "UploadSucceeded": 32,
+  "UploadFailed": 0,
+  "IPAddress": "192.168.1.1",
+  "Hostname": "test-host"
+}

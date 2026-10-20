@@ -6,8 +6,11 @@
 # with no open pull request linked to it and no open blocking issue — resets the runner's own
 # dedicated clone to the latest main, and runs scripts/chain.sh against it there. It ends with
 # either an open pull request (chain.sh's last stage) or the issue labelled `parked` with a
-# comment naming the failed stage, the log and the kept branch. It never merges, and it never
-# itself deletes or pushes anything on GitHub; only the chain's /raise-pr stage pushes.
+# comment naming the failed stage, the log and the kept branch. Where the chain's own exit code
+# says a stage was cut off by the account's Claude usage limit, that comment says so instead and
+# tells the maintainer the issue itself needs only its `parked` label removed once the limit has
+# reset. It never merges, and it never itself deletes or pushes anything on GitHub; only the
+# chain's /raise-pr stage pushes.
 #
 # WHY. chain.sh carries one named issue to a pull request, but someone still has to pick the
 # issue, and return the checkout to a clean main afterwards — the chain leaves its feature branch
@@ -39,6 +42,13 @@ usage() {
   echo "usage: scripts/chain-next.sh [--dry-run]" >&2
   echo "  --dry-run: name the issue the next firing would build, and change nothing" >&2
 }
+
+# chain.sh's USAGE_LIMIT_EXIT: the exit code it reserves for a stage the account's usage limit cut
+# off. Written here as a literal rather than read out of chain.sh, because a firing runs the
+# chain.sh main holds after the reset, which may not be the one this file was written against —
+# the same version skew park() already allows for in reading the closing line. A chain that does
+# not use the code parks exactly as it did before.
+CHAIN_USAGE_LIMIT_EXIT=75
 
 say() { echo "chain-next: $*"; }
 die() { echo "chain-next: $*" >&2; exit 1; }
@@ -107,9 +117,12 @@ reset_clone() {
   done
 }
 
-# park <n> <log> — label the issue parked and say why on it, from the chain's closing line.
+# park <n> <log> <chain exit code> — label the issue parked and say why on it, from the chain's
+# closing line. The exit code, not the closing line's prose, is what tells a usage-limit stop from
+# every other failure: the chain decides that from the reply's typed error field, where the prose
+# could be a report quoting a limit message it merely read about.
 park() {
-  local n=$1 log=$2 closing stage reason kept remote body
+  local n=$1 log=$2 rc=$3 closing stage reason kept remote body
   # The stage total is matched as any number, not the current one. A firing runs the park() it
   # loaded before the reset pulled main's chain.sh, so a change to how many stages the chain has
   # would otherwise park that firing's failure as "before the first stage". #334's change from
@@ -135,7 +148,14 @@ park() {
   if [ -n "$remote" ]; then
     body+="- \`$remote\` was pushed but has no open pull request. The runner never deletes anything on GitHub, so remove or reuse it by hand before un-parking, or the next push will be rejected."$'\n'
   fi
-  body+=$'\n'"Remove the \`parked\` label to have the runner build this issue again from scratch."
+  if [ "$rc" = "$CHAIN_USAGE_LIMIT_EXIT" ]; then
+    # Nothing to diagnose, so the comment says so first: before this, a usage-limit stop and a
+    # genuine failure parked identically, and the maintainer read the transcript to tell them
+    # apart. "From scratch" stays true — un-parking restarts the issue, it does not resume it.
+    body+=$'\n'"Nothing on this issue needs looking at: the chain stopped because the Claude usage limit was reached, not because anything is wrong with the issue. Remove the \`parked\` label once the limit has reset, and the runner will build it again from scratch."
+  else
+    body+=$'\n'"Remove the \`parked\` label to have the runner build this issue again from scratch."
+  fi
   gh issue edit "$n" --add-label parked >/dev/null || die "could not label #$n parked — it will be selected again. Log: $log"
   gh issue comment "$n" --body "$body" >/dev/null || die "#$n is parked but the comment could not be posted. Log: $log"
   say "#$n parked — $stage — $reason (log: $log)"
@@ -196,7 +216,7 @@ main() {
     say "#$n raised (log: $log)"
     exit 0
   fi
-  park "$n" "$log"
+  park "$n" "$log" "$rc"
   exit 1
 }
 
