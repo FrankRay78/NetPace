@@ -11,10 +11,7 @@
 ## Naming
 
 - **PascalCase**: classes, methods, public properties, events, enums, **constants** (not ALL_CAPS)
-- **camelCase**: local variables, method parameters, private/internal fields
-- **_camelCase**: private instance fields (underscore prefix)
-- **s_camelCase**: private/internal static fields
-- **t_camelCase**: thread-static fields
+- **camelCase**: local variables, method parameters, private/internal fields — no `_`, `s_` or `t_` prefix
 - **IPrefix**: interfaces (e.g. ISpeedTestService, IWorkerQueue)
 - **No Hungarian notation**, no abbreviations
 
@@ -69,6 +66,7 @@
 - Brace placement (Allman), 4-space indentation and file-scoped namespaces are enforced by `.editorconfig` + `dotnet format --verify-no-changes` in CI — don't hand-police them.
 - **Always use braces** for if/else — never omit even for single-line bodies
 - **One statement per line**, one declaration per line
+- **No column alignment.** Separate tokens with a single space. Don't pad consecutive `if`/`return`/`=>`/`=` lines to line up columns: renaming the longest identifier then reformats every row, and the alignment breaks outside the editor that made it. The only exception is end-of-line comments on tabular test data such as `[InlineData]` rows.
 
 ## Member Ordering
 
@@ -87,12 +85,9 @@ Within a class, order members as follows:
 - **Depend on interfaces**, not concrete types (e.g. `ISpeedTestService`, not `OoklaSpeedtest`)
 - Store injected dependencies in private readonly fields
 
-## Testing (xUnit)
+## Testing
 
-- **Name tests**: `MethodName_Scenario_ExpectedResult`
-- **Follow**: Arrange / Act / Assert (Given / When / Then)
-- **Cover**: Happy paths, edge cases, error scenarios
-- **Mock**: External dependencies (network, filesystem, time)
+See `docs/conventions/testing.md`; test naming and structure are set by the constitution's Testing Standards.
 
 ---
 

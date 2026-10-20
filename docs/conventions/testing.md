@@ -16,10 +16,10 @@ A test's assertions must describe an outcome an outside observer can verify, not
 
 | Avoid (mechanism, brittle) | Prefer (outcome, durable) |
 |---|---|
-| Assert the response body contains the literal string `"Invalid email address"` | Assert the caller is told the input was rejected, and given an error code identifying the validation failure |
-| Assert the response body is `{"status":"ok","data":[...]}` with HTTP 200 | Assert the caller can retrieve the current list of services in a single successful response |
-| Assert the setting is written to the `user_preferences` table and cached in Redis | Assert the setting is remembered across sessions and visible on the next sign-in |
-| Assert the endpoint returns `[]` when no records match | Assert the caller is shown a clear empty-result state when no records match |
+| Assert `GetFastestServerByLatencyAsync` was called once on a mock | Assert the reported server is the one with the lowest measured latency |
+| Assert the latency probe sends exactly three requests 50 ms apart | Assert the reported latency is derived from the measured round trips |
+| Assert the JSON is written by `System.Text.Json` with a given naming policy | Assert `DownloadSpeedBitsPerSecond` in the JSON output equals the measured bits per second — an interface contract, so it is named exactly |
+| Assert an invalid server URL produces the literal message `"Invalid server URL"` | Assert the command exits non-zero and the composed output (snapshot) reports the rejected URL |
 | Assert stdout contains the literal string `"Mbps"` | Assert the output presents the measured throughput in a unit the caller can interpret |
 | Assert the result row is rendered via `Spectre.Console.Table` with column widths 12/8/8 | Assert the results are presented as a tabular summary readable in a terminal |
 
