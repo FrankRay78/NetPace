@@ -85,8 +85,8 @@ Two named exceptions, because the project reserves them for discussion. *Project
    Re-run the suite if any of this touched code, then commit.
 
 9. **Decide whether a change-intent record is warranted.** Only a project that keeps change-intent records has this decision to make, and *Project-specific* says whether this one does. If it keeps none, write none and go to step 10. Otherwise: this is not a documentation obligation and it is not a box to tick — **most changes need none**, and writing one that was not warranted is itself a defect. Run the decision table in the project's change-intent record convention, which *Project-specific* names: write a record only when a `→ CIR` row applies **and** no `→ No CIR` row does.
-   - Two new `→ No CIR` rows catch the common cases. Reasoning already recorded in the issue's confirmed decisions is linked, not restated — unless the decision constrains future work (a public API, an interface contract, dependency direction), which keeps a short record linking the issue for its reasoning. A change only to documentation written for the project's readers needs none at all; command prompts, conventions, the constitution and workflows are not covered by that row, because they direct future work.
-   - If you write one, keep it to about **150 words** and hold only what is written nowhere else: the intent in a sentence, each rejected alternative with its reason, and any constraint the code will not make obvious. Link the rest. Do not repeat it in the pull request body — `/raise-pr` points at the record instead.
+   - Weigh the `→ No CIR` rows as carefully as the `→ CIR` ones: they catch the common cases, and *Project-specific* names the ones that most often apply.
+   - If you write one, follow the convention's length target and shape, hold only what is written nowhere else, and link the rest. Do not repeat it in the pull request body — `/raise-pr` points at the record instead.
    - **Name the row that warranted it**, by quoting the first few words of that row's question, both in the commit that adds the record (e.g. `Refs #239: record why input is validated before parsing` with `CIR row: choosing between multiple viable approaches` in the body) and in the final report. If you write no record, say so in the final report.
 
 10. **Stop here.** Do **not** run the project's formatter — that is `/verify`'s formatting pass (step 1a). Do **not** push, open a PR, merge, or run `/verify`. Leave the working tree clean — everything committed to the branch — because `/verify`'s preconditions (step 0) require exactly that.
@@ -153,6 +153,9 @@ The only section that changes from one repository to another.
 ### Change-intent records (step 9)
 
 This project keeps them. The convention is `docs/conventions/change-intent-records.md`, whose decision table step 9 runs, and records live in `docs/change-intent-records/`. A project that keeps none says so here, and step 9 then writes none.
+
+- **The `→ No CIR` rows that most often apply.** Reasoning already recorded in the issue's confirmed decisions is linked, not restated — unless the decision constrains future work (a public API, an interface contract, dependency direction), which keeps a short record linking the issue for its reasoning. A change only to documentation written for the project's readers needs none at all; command prompts, conventions, the constitution and workflows are not covered by that row, because they direct future work.
+- **Length and shape.** About **150 words**: the intent in a sentence, each rejected alternative with its reason, and any constraint the code will not make obvious.
 
 ### What a port must bring
 
