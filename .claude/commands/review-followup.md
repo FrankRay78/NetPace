@@ -25,7 +25,7 @@ A PR number (`158`), `#158`, or a full PR URL; empty resolves the current branch
 
 3. **Fetch the threads.** Via GraphQL (`gh api graphql`), get the PR's `reviewThreads` with `id`, `isResolved`, `path`, `line` and each thread's comments (`databaseId`, author, body, `pullRequestReview { databaseId }`). The threads from prior rounds are those whose first comment belongs to one of the marked reviews from step 1. For each, establish what has happened since: author replied, author pushed commits, or nothing.
 
-4. **Check out the new state.** As in `/review-pr` step 2: in place if `HEAD` is already `headRefOid`, otherwise a detached worktree of `pull/<N>/head` under `.claude/scratch/`, removed when the round completes or aborts. Compute the delta since the last reviewed commit (the `commit_id` of the most recent marked review): `git diff <last-reviewed-sha>..HEAD`. Load the same context and review contract as `/review-pr`.
+4. **Check out the new state.** As in `/review-pr` step 2: in place if `HEAD` is already `headRefOid`, otherwise a detached worktree of `pull/<N>/head` under `.claude/scratch/`, removed when the round completes or aborts. Compute the delta since the last reviewed commit (the `commit_id` of the most recent marked review) from the author's own work only. A merge of the base branch brings in code already reviewed there, so `git diff <last-reviewed-sha>..HEAD` would re-review it: take the commits in `git log --first-parent --no-merges <last-reviewed-sha>..HEAD` (`--first-parent` keeps out the base-branch commits a merge brought in), plus any hand-resolved conflicts in a merge (`git show --remerge-diff <merge-sha>`; empty means the merge was clean). Load the same context and review contract as `/review-pr`.
 
 ### Evaluate each open thread
 
@@ -39,7 +39,7 @@ A PR number (`158`), `#158`, or a full PR URL; empty resolves the current branch
 
 ### Re-review the delta only
 
-6. **New diff only.** Run the `/review-pr` specialist-and-verify pipeline (Phases 2–3) scoped strictly to the delta from step 4. Never repeat a finding already posted in any round, and never flag code untouched since the last review. Flag the class of any new bug so the author fixes every instance.
+6. **New diff only.** Run the `/review-pr` specialist-and-verify pipeline (Phases 2–3) scoped strictly to the delta from step 4, running only the dimensions that delta actually touches — a delta of comment or doc fixes needs no security or contracts pass. Never repeat a finding already posted in any round, and never flag code untouched since the last review. Flag the class of any new bug so the author fixes every instance.
 
 ### Compose and post
 
