@@ -107,7 +107,9 @@ jobs:
       # just packed and asks the command its version, on the same pass condition as the Linux check — it must
       # equal the tag. The wrapper is packed alongside because it is what `dotnet tool install netpace` resolves
       # through, and both go into a feed of their own: the package this job uploads stays exactly the file the
-      # Native AOT pack above produced, whatever a later SDK does with CreateRidSpecificToolPackages.
+      # Native AOT pack above produced, whatever a later SDK does with CreateRidSpecificToolPackages. The feed
+      # is added to nuget.org rather than replacing it: on a Mac the installer also fetches a .NET host
+      # package, as a user's install does, and a feed holding only NetPace's packages fails it.
       - name: Verify the installed tool reports the tag
         if: runner.os == 'macOS'
         env:
@@ -126,7 +128,7 @@ jobs:
             -p:FileVersion="$NUMERIC_VERSION" \
             -p:InformationalVersion="$VERSION" \
             --output ./verify-feed
-          dotnet tool install netpace --version "$VERSION" --source ./verify-feed --tool-path ./tool-check
+          dotnet tool install netpace --version "$VERSION" --add-source ./verify-feed --tool-path ./tool-check
           reported=$(./tool-check/netpace --version)
           echo "netpace --version reported: $reported"
           if [ "$reported" != "$VERSION" ]; then
