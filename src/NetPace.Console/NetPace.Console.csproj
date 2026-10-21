@@ -51,8 +51,9 @@
          netpace.pdb on Windows, a netpace.dSYM folder on macOS) and copies them into the publish
          directory after Publish has run, where no publish-output filter can reach them. They are
          roughly twice the size of the binary and ship to nobody, so they would otherwise make every
-         RID-specific tool package about two and a half times its packed size. The release workflow asserts each native package holds the binary and its
-         settings file and nothing else, so one slipping through fails the release rather than shipping. -->
+         RID-specific tool package about two and a half times its packed size. The release workflow
+         asserts each native package holds the binary and its settings file and nothing else, so one
+         slipping through fails the release rather than shipping. -->
     <CopyOutputSymbolsToPublishDirectory>false</CopyOutputSymbolsToPublishDirectory>
   </PropertyGroup>
 

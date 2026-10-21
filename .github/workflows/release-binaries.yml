@@ -44,9 +44,8 @@ jobs:
             invariant_globalization: true
           # Native AOT cannot cross-compile between operating systems, so both macOS RIDs build on a Mac;
           # each gets a runner of its own architecture so the smoke test runs natively rather than through
-          # Rosetta. Hosted Mac runners are free for public repos. macos-15-intel is
-          # GitHub's last x86_64 macOS image — see docs/RELEASING.md §Runner per RID for what happens to the
-          # Intel builds when it retires.
+          # Rosetta. macos-15-intel is GitHub's last x86_64 macOS image — see docs/RELEASING.md, When the
+          # Intel Mac runner retires.
           - runtime: osx-x64
             deployment: aot
             runs_on: macos-15-intel
@@ -173,9 +172,8 @@ jobs:
       # Whitelist approach: archive the executable by name rather than the entire publish directory. All variants
       # (PublishSingleFile and Native AOT) produce a single binary by design; the publish dir may also contain
       # toolchain by-products (NetPace.Core.xml, netpace.pdb on Windows AOT, netpace.dbg on Linux AOT, the
-      # netpace.dSYM folder on macOS AOT) that
-      # must never ship to end users. Archiving by name keeps the release contract immune to whatever the
-      # next toolchain version decides to emit alongside the binary.
+      # netpace.dSYM folder on macOS AOT) that must never ship to end users. Archiving by name keeps the
+      # release contract immune to whatever the next toolchain version decides to emit alongside the binary.
       - name: Create archive
         shell: bash
         run: |
@@ -217,7 +215,7 @@ jobs:
             exit 1
           fi
 
-      # shell: bash forces Git Bash on the Windows runners so the unzip/tar branching reuses one script across Linux + Windows AOT entries.
+      # shell: bash forces Git Bash on the Windows runners so the unzip/tar branching reuses one script across all AOT entries.
       - name: Smoke test (AOT only)
         if: matrix.deployment == 'aot'
         shell: bash

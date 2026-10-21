@@ -22,9 +22,8 @@
 #
 # All six released RID packages carry Native AOT binaries, each built on a runner matching its own
 # platform (.github/workflows/publish-tool.yml, docs/RELEASING.md). AOT cannot be cross-compiled across
-# operating systems, so
-# this matrix packs the framework-dependent form that one machine can build for every RID; the AOT
-# pack and its shape are gated by that workflow.
+# operating systems, so this matrix packs the framework-dependent form that one machine can build for
+# every RID; the AOT pack and its shape are gated by that workflow.
 #
 # Exits non-zero on any failure. Run after any edit to the tool-package properties.
 #
