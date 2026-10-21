@@ -104,8 +104,6 @@ Without the .NET SDK, Windows users can [install with winget](#installing-upgrad
 
 On Windows, the Windows Package Manager (`winget`) installs NetPace in one command and keeps it current. winget ships with current versions of Windows 10 and 11, so there is usually nothing to install first.
 
-**The NetPace package is pending its first acceptance into the winget community repository.** Until it lands, the commands below report that no package matched; [download a release binary](https://github.com/FrankRay78/NetPace/releases) in the meantime.
-
 Find the package:
 ```powershell
 winget search netpace
