@@ -63,6 +63,9 @@ for arch in "${ARCHITECTURES[@]}"; do
     'first(.assets[]? | select(.name == $n and .state == "uploaded" and .size > 0) | .url) // empty' \
     <<<"$assets")" \
     || die "could not parse the asset list for release '$version' — nothing submitted"
+  # The Windows runner's native jq.exe ends its output in CRLF and `$(...)` strips only the LF;
+  # wingetcreate does not trim the URL part of `<url>|<arch>`, so a stray CR would reach the manifest.
+  url="${url%$'\r'}"
   if [ -z "$url" ]; then
     missing+=("$name")
     continue
