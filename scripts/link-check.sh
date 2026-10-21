@@ -6,16 +6,43 @@
 # constitution, the workflow docs, CLAUDE.md and two GitHub workflows. A record is a point-in-time
 # document that is never updated, so pruning one leaves inbound pointers behind in places nobody
 # is reading at the time. This check is what makes that cost visible at the moment of the deletion
-# instead of months later.
+# instead of months later. It covers the markdown links of every tracked `*.md` as well, which
+# lean on each other just as heavily and go stale the same way.
 #
 # TWO CHECKS, because repository references are written in two shapes here:
 #
-#   1. A markdown link in a tracked `*.md` file — `[text](path)` — resolved relative to the
-#      linking file's own directory, which is how GitHub renders it. An `#anchor` suffix is cut
-#      before resolving; the anchor itself is not checked.
+#   1. A markdown link in a tracked `*.md` file — `[text](target)`. Three kinds of target are
+#      resolved, every one of them against the files in this branch and none of them fetched:
+#        a. a relative path, resolved from the linking file's own directory, which is how GitHub
+#           renders it; or a root-relative one, resolved from the repository root, which GitHub
+#           does NOT do — it reads a leading `/` against the site root, so such a link renders
+#           broken there. Resolving it here is a deliberate leniency, not a match for GitHub;
+
+#        b. a full `https://github.com/FrankRay78/NetPace/{blob,tree,raw}/main/<path>` link, mapped
+#           onto `<path>` in the checkout — the file the link points at, read locally;
+#        c. an `#anchor`, on either of those or on its own, checked against the headings of the
+#           markdown file it lands in.
 #   2. A bare `docs/change-intent-records/<name>.md` path in any tracked text file. Records are
 #      cited in prose and in YAML comments, neither of which can carry a markdown link, and those
 #      citations go stale exactly as links do.
+#
+# HOW A HEADING IS MATCHED. GitHub derives a heading's anchor by lowercasing the text, dropping
+# everything that is not a letter, digit, hyphen or underscore, turning each remaining space into a
+# hyphen, and suffixing `-1`, `-2`, … to the second and later occurrences of a repeated heading.
+# A link in a heading contributes its text and not its target, which is reproduced here too.
+#
+# That is reproduced over ATX headings (`## Text`) outside code fences, front matter and multi-line
+# HTML comments, none of which GitHub renders as headings. Four kinds of heading are
+# read differently from GitHub, and every one of them costs a FAIL on a link that works there
+# rather than a quiet pass, so the report is loud in each case:
+#   - a non-ASCII letter is dropped where GitHub keeps it;
+#   - a setext heading (`Text` over `====`) is not seen as a heading at all;
+#   - nor is an ATX heading indented by one to three spaces, which GFM allows;
+#   - nor is an explicit `<a id="...">` anchor, which GitHub honours.
+# None of the four occurs in this repository today. Setext is left unread deliberately rather than
+# for want of effort: 32 tracked `*.md` files open with `---` front matter, whose closing delimiter
+# a naive `previous line + ----` rule would mint a heading from, and a check that invents headings
+# passes links that are broken — strictly worse than one that reports a working link, loudly.
 #
 # WHAT IS DELIBERATELY NOT A LINK, in check 1 only. A markdown link inside a fenced block or
 # inline backticks is being shown to the reader, not offered to be followed: the harness prompts
@@ -23,9 +50,18 @@
 # format, and a check that read those would report five dangling links that are nothing of the
 # kind. So both are stripped before the link scan, at the cost of not checking a link someone
 # wrote inside backticks — which was not a working link to begin with. Check 2 strips neither, so
-# a bare record path is read wherever it appears. Also skipped: `http`/`https`/`mailto` targets and
-# anchor-only `#fragment` targets, neither of which names a file here, and a relative path that
-# climbs above the repository root, which is outside this repository's reach.
+# a bare record path is read wherever it appears. Also skipped:
+#   - a `mailto:` target, and any `scheme://` URL that is not the full-link shape above. The rest
+#     of github.com is a web page rather than a path in this branch — `/releases`, an issue page,
+#     a wiki page, an action badge — as is a path on another ref or in another repository, and
+#     resolving any of those against the checkout would fail on a perfectly good link. A scheme
+#     carrying no `://`, such as `tel:`, is not recognised and is read as a path; none appears
+#     here, and the result is a loud FAIL rather than a quiet pass.
+#   - a relative path that climbs above the repository root, which is outside this repository's
+#     reach.
+#   - an anchor on a target that is not a markdown file: a `#L10-L20` line range on a source file
+#     and a fragment on a folder name no heading. An `#L<n>` anchor names no heading on a markdown
+#     file either, and is skipped there too — it is what GitHub's "copy permalink" writes.
 #
 # WHAT IS JUDGED is the WORKING TREE, not `HEAD`: the point of a local run is to be used midway
 # through a deletion, before anything is committed, and a check that read `HEAD` would call that
@@ -57,7 +93,7 @@ say() { printf 'link-check: %s\n' "$*"; }
 die() { printf 'link-check: FAIL — %s\n' "$*" >&2; exit 1; }
 
 # --- fail-closed preconditions ----------------------------------------------------
-for tool in git grep sed awk sort dirname mktemp; do
+for tool in git grep sed awk sort tr dirname mktemp; do
   command -v "$tool" >/dev/null 2>&1 \
     || die "'$tool' is not available, so the check cannot run. It is a merge gate, so it fails rather than reporting an unverified pass."
 done
@@ -73,6 +109,11 @@ trap 'rm -rf "$TMP"' EXIT
 # the class it spells, and `RECORD_DIR` carries no filename at all.
 RECORD_DIR="docs/change-intent-records"
 RECORD_REF='docs/change-intent-records/[A-Za-z0-9._-]+\.md'
+
+# This repository's canonical web URL, lowercased, with its trailing slash. Hardcoded rather than
+# read from `git remote`: the links in these documents name the canonical repository whoever is
+# holding the clone, so a fork's own origin is the wrong thing to resolve them against.
+MAIN_URL_PREFIX="https://github.com/frankray78/netpace/"
 
 # --- resolve BASE_DIR TARGET ------------------------------------------------------
 # Prints the repository-root-relative path a link target names, or returns 1 when it climbs above
@@ -107,6 +148,72 @@ resolve_path() {
   printf '%s' "$out"
 }
 
+# --- main_ref_path URL ------------------------------------------------------------
+# Prints the repository-root-relative path a full link to a file on this repository's `main`
+# branch names, or returns 1 when the URL is not one. The whole shape is matched against a
+# lowercased copy, so the scheme, host, owner, repository and the `blob`/`tree`/`raw` and `main`
+# segments are all read whatever their case; the path is then cut from the original URL by length,
+# so it keeps the case it was written in, because the checkout does. Lowercasing goes through `tr`
+# rather than `${var,,}` so the check runs under the bash 3.2 that is still /bin/bash on macOS.
+main_ref_path() {
+  local url="$1" lower path tail
+  lower="$(printf '%s' "$url" | LC_ALL=C tr 'A-Z' 'a-z')"
+
+  # Only a path on `main` can be answered for by the files in this branch. `blob` and `raw` name a
+  # file, `tree` a folder; anything else under this repository's URL is a web page, and any other
+  # ref is a different set of files.
+  case "$lower" in
+    "$MAIN_URL_PREFIX"blob/main/*|"$MAIN_URL_PREFIX"tree/main/*|"$MAIN_URL_PREFIX"raw/main/*) ;;
+    *) return 1 ;;
+  esac
+
+  # Cut at the first `/main/` of the lowercased copy, then take that many characters off the end
+  # of the original: matching on `$url` would miss a `/MAIN/` the case test above has accepted.
+  tail="${lower#*/main/}"
+  path="${url:$(( ${#url} - ${#tail} ))}"
+  path="${path%%\?*}"                                # `?plain=1` and friends are not part of it
+  [ -n "$path" ] || return 1
+  resolve_path "." "$path"
+}
+
+# --- heading_slugs FILE -----------------------------------------------------------
+# Prints the GitHub anchor of every ATX heading in a markdown file, in document order. See
+# HOW A HEADING IS MATCHED above. Returns non-zero when the file cannot be read to the end.
+heading_slugs() {
+  awk '
+    match($0, /^[[:space:]]*(```+|~~~+)/) {
+      marker = substr($0, RSTART, RLENGTH)
+      gsub(/[[:space:]]/, "", marker)
+      if (fence == "") { fence = marker; next }
+      # CommonMark closes a fence only on a marker line with nothing after it: inside a ```markdown
+      # block, a ```bash line is content, not the end of the block.
+      if (substr(marker, 1, 1) == substr(fence, 1, 1) && length(marker) >= length(fence) && $0 ~ /^[[:space:]]*(```+|~~~+)[[:space:]]*$/) fence = ""
+      next
+    }
+    fence != "" { next }
+    # Front matter (a `---` block opening on line 1) is rendered as a table, never as headings.
+    NR == 1 && /^---[[:space:]]*$/ { front = 1; next }
+    front { if (/^---[[:space:]]*$/) front = 0; next }
+    # Nor is anything inside an HTML comment that spans lines.
+    comment { if (/-->/) comment = 0; next }
+    /^[[:space:]]*<!--/ && !/-->/ { comment = 1; next }
+    /^#+[ \t]/ {
+      match($0, /^#+/)
+      if (RLENGTH > 6) next                          # seven hashes is not a heading
+      sub(/^#+[ \t]+/, "")
+      gsub(/\]\([^)]*\)/, "")                        # a link slugs as its text, never its target
+      sub(/[ \t]+#+[ \t]*$/, "")                     # an optional closing sequence
+      sub(/[ \t]+$/, "")
+      print
+    }
+    END { if (fence != "") exit 3 }
+  ' "$REPO_ROOT/$1" \
+    | LC_ALL=C tr 'A-Z' 'a-z' \
+    | LC_ALL=C tr -dc 'a-z0-9 _\n-' \
+    | LC_ALL=C tr ' ' '-' \
+    | awk '{ seen = count[$0]++; if (seen == 0) print; else print $0 "-" seen }'
+}
+
 # --- the tracked files ------------------------------------------------------------
 git -C "$REPO_ROOT" ls-files -z > "$TMP/tracked" \
   || die "could not list the tracked files of '$REPO_ROOT'."
@@ -114,6 +221,7 @@ git -C "$REPO_ROOT" ls-files -z > "$TMP/tracked" \
 checked=0
 scanned=0
 : > "$TMP/missing"
+: > "$TMP/noheading"
 
 while IFS= read -r -d '' file; do
   path="$REPO_ROOT/$file"
@@ -147,7 +255,9 @@ while IFS= read -r -d '' file; do
       marker = substr($0, RSTART, RLENGTH)
       gsub(/[[:space:]]/, "", marker)
       if (fence == "") { fence = marker; next }
-      if (substr(marker, 1, 1) == substr(fence, 1, 1) && length(marker) >= length(fence)) fence = ""
+      # CommonMark closes a fence only on a marker line with nothing after it: inside a ```markdown
+      # block, a ```bash line is content, not the end of the block.
+      if (substr(marker, 1, 1) == substr(fence, 1, 1) && length(marker) >= length(fence) && $0 ~ /^[[:space:]]*(```+|~~~+)[[:space:]]*$/) fence = ""
       next
     }
     fence == "" { gsub(/`[^`]*`/, "", $0); print }
@@ -173,15 +283,49 @@ while IFS= read -r -d '' file; do
   dir="$(dirname "$file")"
   while IFS= read -r target; do
     [ -n "$target" ] || continue
-    case "$target" in
-      \#*|http://*|https://*|mailto:*|*://*) continue ;;
-    esac
-    target_path="${target%%#*}"
-    [ -n "$target_path" ] || continue
 
-    resolved="$(resolve_path "$dir" "$target_path")" || continue
+    target_path="${target%%#*}"
+    anchor="${target#*#}"
+    [ "$anchor" = "$target" ] && anchor=""           # no `#` in the target at all
+
+    case "$target_path" in
+      '')
+        # An anchor-only target names a heading in the linking file itself.
+        resolved="$file"
+        ;;
+      mailto:*) continue ;;
+      *://*)
+        # Every scheme goes through the mapping, which returns 1 for anything that is not a path
+        # on this repository's `main` — so a scheme written in any case is read, and nothing else
+        # about the URL has to be matched twice.
+        resolved="$(main_ref_path "$target_path")" || continue
+        ;;
+      *)
+        resolved="$(resolve_path "$dir" "$target_path")" || continue
+        ;;
+    esac
+
+    if [ -n "$target_path" ]; then
+      checked=$((checked + 1))
+      if [ ! -e "$REPO_ROOT/$resolved" ]; then
+        printf '%s\t%s\n' "$file" "$target_path" >> "$TMP/missing"
+        continue                                     # the file is the finding, not its heading
+      fi
+    fi
+
+    # --- the heading half of check 1 ----------------------------------------------
+    [ -n "$anchor" ] || continue
+    case "$resolved" in *.md) ;; *) continue ;; esac
+    # A line reference names no heading even on a markdown file, and GitHub's own "copy permalink"
+    # writes one as `…/docs/guide.md?plain=1#L10`.
+    case "$anchor" in L[0-9]*) continue ;; esac
+    [ -f "$REPO_ROOT/$resolved" ] || continue
+
+    heading_slugs "$resolved" > "$TMP/slugs" \
+      || die "could not read the headings of '$resolved', which '$file' links into, so no verdict is possible. An unterminated code fence in it is the commonest cause."
     checked=$((checked + 1))
-    [ -e "$REPO_ROOT/$resolved" ] || printf '%s\t%s\n' "$file" "$target_path" >> "$TMP/missing"
+    grep -qxF -- "$anchor" "$TMP/slugs" \
+      || printf '%s\t%s\t%s\n' "$file" "#$anchor" "$resolved" >> "$TMP/noheading"
   done <<< "$targets"
 done < "$TMP/tracked"
 
@@ -194,14 +338,25 @@ done < "$TMP/tracked"
 # the string, though a record link written relative to the linking file still differs from a bare
 # citation and is reported twice. Both verdicts carry the counts, which makes a run self-diagnosing
 # after the fact — "2 references checked" alongside a clean verdict reads very differently from "431".
-if [ -s "$TMP/missing" ]; then
+if [ -s "$TMP/missing" ] || [ -s "$TMP/noheading" ]; then
   {
-    printf 'link-check: FAIL — these references name a file that is not in the repository:\n'
-    sort -u "$TMP/missing" | sed $'s/\t/ → /; s/^/  - /'
-    printf '\n'
-    printf 'Point each one at where the reasoning now lives, or remove it where the surrounding\n'
-    printf 'text no longer needs it. A citation of a deleted %s record is the\n' "$RECORD_DIR"
-    printf 'commonest cause.\n'
+    if [ -s "$TMP/missing" ]; then
+      printf 'link-check: FAIL — these references name a file that is not in the repository:\n'
+      sort -u "$TMP/missing" | sed $'s/\t/ → /; s/^/  - /'
+      printf '\n'
+      printf 'Point each one at where the reasoning now lives, or remove it where the surrounding\n'
+      printf 'text no longer needs it. A citation of a deleted %s record is the\n' "$RECORD_DIR"
+      printf 'commonest cause.\n'
+    fi
+    if [ -s "$TMP/noheading" ]; then
+      [ -s "$TMP/missing" ] && printf '\n'
+      printf 'link-check: FAIL — these links name a heading the file they point at does not have:\n'
+      sort -u "$TMP/noheading" | sed $'s/\t/ → /; s/\t/ in /; s/^/  - /'
+      printf '\n'
+      printf 'Retitle the link to the heading as it now reads, or point it at one that is there.\n'
+      printf 'GitHub lowercases a heading, drops anything that is not a letter, digit, hyphen or\n'
+      printf 'underscore, and turns each remaining space into a hyphen.\n'
+    fi
     printf 'Checked %s reference(s) across %s markdown file(s) and every tracked text file.\n' "$checked" "$scanned"
   } >&2
   exit 1

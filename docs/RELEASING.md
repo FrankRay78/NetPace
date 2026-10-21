@@ -101,7 +101,7 @@ The `IsAotCompatible=true` property on `NetPace.Core.csproj` causes `dotnet pack
 
 **Version check**: before pushing, the `Verify packed library version` step unpacks the `.nupkg` and fails the job unless every `NetPace.Core.dll` inside reports the tag as its informational version and the tag's numeric part as its assembly and file versions (the same thing for a plain `X.Y.Z` tag — see *Prerelease tags*). Nothing is pushed to nuget.org when it fails.
 
-**Why**: with the version passed only to Pack, the package carried the tag while the library inside kept the placeholder from `src/Directory.Build.props`, and nothing checked it (#341).
+**Why**: with the version passed only to Pack, the package carried the tag while the library inside kept the placeholder from `src/Directory.Build.props`, and nothing checked it.
 
 ## NetPace.Core publishes on every release
 
