@@ -16,8 +16,8 @@
 # match the release.
 #
 # Needs `gh` authenticated against the NetPace repository (GH_TOKEN and GH_REPO, or a working
-# directory inside the clone), plus `jq`, `curl` and `sha256sum`. Run by hand to seed the tap's
-# first formula; every other run comes from .github/workflows/homebrew-publish.yml.
+# directory inside the clone), plus `jq`, `curl` and `sha256sum`. Can be run by hand against a
+# published release; every automated run comes from .github/workflows/homebrew-publish.yml.
 
 set -euo pipefail
 
@@ -60,6 +60,15 @@ if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
   die "version must be MAJOR.MINOR.PATCH: got '$version' — not a release version, nothing published"
 fi
 
+# Each tool is named before it is reached, because every call below is in a pipeline or a command
+# substitution whose `|| die` blames the release: a machine with no `sha256sum` — any Mac, which
+# ships `shasum -a 256` instead — otherwise reports "could not download ... to checksum it", and
+# sends whoever reads that to inspect release assets which are in fact fine.
+for tool in gh jq curl sha256sum; do
+  command -v "$tool" >/dev/null \
+    || die "$tool is required but is not on PATH — nothing published"
+done
+
 assets="$(gh release view "$version" --json assets)" \
   || die "could not read release '$version' — nothing published"
 
@@ -92,8 +101,8 @@ if [ "${#missing[@]}" -gt 0 ]; then
 fi
 
 # Homebrew verifies the archive it downloads against this checksum, so it is taken over the bytes
-# the release actually serves rather than read from a sidecar: that makes the download itself part
-# of the check, and a formula is never published naming a URL that could not be fetched.
+# the release actually serves: that makes the download itself part of the check, and a formula is
+# never published naming a URL that could not be fetched.
 shas=()
 for i in "${!urls[@]}"; do
   sha="$(curl -sSLf "${urls[$i]}" | sha256sum | cut -d' ' -f1)" \
@@ -135,7 +144,8 @@ printf '  end\n'
 
 # Every archive holds exactly one entry, the `netpace` binary (docs/RELEASING.md,
 # *Archive-contents contract*), so the install is the one file and nothing needs unpacking around
-# it. The test is what `brew test` and the pre-push check in homebrew-publish.yml both run.
+# it. The `test` block is what `brew test` runs; homebrew-publish.yml asserts the version itself,
+# against the binary it installed, rather than through `brew test`.
 cat <<'RUBY'
 
   def install

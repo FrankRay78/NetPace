@@ -19,6 +19,9 @@ SCRIPT="$HERE/homebrew-formula.sh"
 
 SB="$(mktemp -d)"
 trap 'rm -rf "$SB"' EXIT
+# Checked before anything is written under it: an empty `SB` would turn every path below into an
+# absolute one, so the stubs would be written to /bin rather than to the sandbox.
+[ -n "$SB" ] && [ -d "$SB" ] || { echo "FAIL: mktemp -d gave no usable directory." >&2; exit 1; }
 
 mkdir -p "$SB/bin"
 
@@ -71,12 +74,13 @@ DL="https://github.com/FrankRay78/NetPace/releases/download"
 # checksum, which is the part a reader of the formula cannot verify by eye.
 sha_of() { printf '%s' "$1" | sha256sum | cut -d' ' -f1; }
 
-# The asset list a complete 0.9.0 release carries, trimmed to the entries the formula reads, with
-# the `state` and `size` real asset objects carry. The Windows and non-AOT archives are present
+# A complete 0.9.0 release's asset list, trimmed to the entries the formula reads, with the
+# `state` and `size` real asset objects carry. The Windows and non-AOT archives are present
 # deliberately: the script must pick the four Unix AOT archives out of a full release, not assume
-# a release holds only what it wants. The `.sha256` entry sits ahead of the archive it names so
-# that selection has to be an exact match — a prefix match would take the sidecar's URL, and the
-# exact-equality assertions below would catch it.
+# a release holds only what it wants. The leading `.sha256` entry is the one name here a NetPace
+# release does not carry — release-binaries.yml attaches no checksum sidecars. It is a synthetic
+# near-miss, placed ahead of the archive it names so that selection has to be an exact match: a
+# prefix match would take this URL, and the exact-equality assertions below would catch it.
 assets_complete() {
   cat <<JSON
 {"assets":[
@@ -93,21 +97,28 @@ assets_complete() {
 JSON
 }
 
-pass=0; fail=0
+pass=0; fail=0; cases=0
 # Every case asserts that `gh` was asked for the very version the script was handed, so the stub
 # is told what to expect here rather than per case.
 run() {
   local version="$1"; shift
   OUTPUT="$(env "STUB_EXPECT_VERSION=$version" "$@" bash "$SCRIPT" "$version" 2>&1)"; RC=$?
 }
-ok() { if eval "$2"; then echo "  ok   $1"; pass=$((pass+1)); else echo "  FAIL $1 -- rc=$RC got:[$OUTPUT]"; fail=$((fail+1)); fi; }
+ok() { cases=$((cases+1)); if eval "$2"; then echo "  ok   $1"; pass=$((pass+1)); else echo "  FAIL $1 -- rc=$RC got:[$OUTPUT]"; fail=$((fail+1)); fi; }
 
 echo "argument validation:"
 OUTPUT="$(bash "$SCRIPT" 2>&1)"; RC=$?
 ok "no version → usage error" '[ "$RC" != 0 ] && grep -qi usage <<<"$OUTPUT"'
+OUTPUT="$(bash "$SCRIPT" 0.9.0 extra 2>&1)"; RC=$?
+ok "surplus argument → usage error" '[ "$RC" != 0 ] && grep -qi usage <<<"$OUTPUT"'
 # Each of these greps text only the guard itself emits. Matching the version back out of the
 # message would pass with the guard deleted, because every later failure path echoes the version
 # inside the archive name it could not find.
+# An empty version reaches the arity check as one argument, so it is the version guards that must
+# reject it. Pinned on its own message, which is the only thing distinguishing it from the
+# MAJOR.MINOR.PATCH guard that would otherwise catch it.
+run "" "STUB_ASSETS=$(assets_complete)"
+ok "empty version → rejected as empty" '[ "$RC" != 0 ] && grep -q "must not be empty" <<<"$OUTPUT"'
 run "refs/tags/0.9.0" "STUB_ASSETS=$(assets_complete)"
 ok "refs/tags/ prefix → rejected" '[ "$RC" != 0 ] && grep -q "not a ref" <<<"$OUTPUT"'
 run "v0.9.0" "STUB_ASSETS=$(assets_complete)"
@@ -145,8 +156,8 @@ echo "every platform resolved, each url paired with its own checksum:"
 for entry in "osx-x64" "osx-arm64" "linux-x64" "linux-arm64"; do
   url="$DL/0.9.0/netpace-0.9.0-${entry}-aot.tar.gz"
   expected="$(sha_of "$url")"
-  ok "$entry url present" "grep -qF '      url \"$url\"' <<<\"\$OUTPUT\""
-  ok "$entry checksum follows its own url" "[ \"\$(grep -A1 -F '      url \"$url\"' <<<\"\$OUTPUT\" | sed -n 2p)\" = '      sha256 \"$expected\"' ]"
+  ok "$entry url present" 'grep -qF "      url \"$url\"" <<<"$OUTPUT"'
+  ok "$entry checksum follows its own url" '[ "$(grep -A1 -F "      url \"$url\"" <<<"$OUTPUT" | sed -n 2p)" = "      sha256 \"$expected\"" ]'
 done
 
 echo "only the Unix AOT archives are offered:"
@@ -158,22 +169,51 @@ ok "no Windows archive leaks in" '! grep -q "win-" <<<"$OUTPUT"'
 ok "no checksum sidecar leaks in" '! grep -q "tar.gz.sha256" <<<"$OUTPUT"'
 
 echo "both operating systems are described:"
-ok "macOS block present" 'grep -q "on_macos do" <<<"$OUTPUT"'
-ok "Linux block present" 'grep -q "on_linux do" <<<"$OUTPUT"'
+ok "macOS block present" '[ "$(grep -c "^  on_macos do$" <<<"$OUTPUT")" = 1 ]'
+ok "Linux block present" '[ "$(grep -c "^  on_linux do$" <<<"$OUTPUT")" = 1 ]'
 # A formula naming one architecture per operating system installs on the other by downloading the
 # wrong binary, which runs nowhere.
 ok "both architectures per os" '[ "$(grep -c "on_intel do\|on_arm do" <<<"$OUTPUT")" = 4 ]'
+
+echo "each rid sits in the os and cpu block that selects it:"
+# Which rid ends up under which `on_macos`/`on_intel` pair is the whole of what `brew install`
+# resolves on, and none of the assertions above pin it: they check that each url appears somewhere
+# with its own checksum beside it, and that the block openers appear the right number of times.
+# Swapping the os blocks of all four platforms, or emitting one os block per architecture instead
+# of grouping them, satisfies every one of them while sending an Intel Mac the arm64 archive. So
+# the nesting is compared as a whole, in emission order.
+structure="$(grep -E '^  on_(macos|linux) do$|^    on_(intel|arm) do$|^      url ' <<<"$OUTPUT")"
+expected_structure="$(cat <<EXPECTED
+  on_macos do
+    on_intel do
+      url "$DL/0.9.0/netpace-0.9.0-osx-x64-aot.tar.gz"
+    on_arm do
+      url "$DL/0.9.0/netpace-0.9.0-osx-arm64-aot.tar.gz"
+  on_linux do
+    on_intel do
+      url "$DL/0.9.0/netpace-0.9.0-linux-x64-aot.tar.gz"
+    on_arm do
+      url "$DL/0.9.0/netpace-0.9.0-linux-arm64-aot.tar.gz"
+EXPECTED
+)"
+ok "every rid nests under the os and cpu that select it" '[ "$structure" = "$expected_structure" ]'
+# Nothing above counts `end`, so dropping the one that closes the final os block leaves a formula
+# whose blocks do not balance — unparseable Ruby that every assertion above still passes, and that
+# surfaces for the first time as a failed `brew install` on all three verify runners.
+ok "every block is closed" '[ "$(grep -c "^ *end$" <<<"$OUTPUT")" = 9 ]'
 
 echo "incomplete release (must stop, not guess):"
 for entry in "osx-x64" "osx-arm64" "linux-x64" "linux-arm64"; do
   name="netpace-0.9.0-${entry}-aot.tar.gz"
   # grep -v on the exact line, so removing linux-x64 does not also remove linux-x64-standalone.
   run "0.9.0" "STUB_ASSETS=$(assets_complete | grep -v "\"name\":\"$name\"")"
-  ok "$entry archive absent → fails naming it" "[ \"\$RC\" != 0 ] && grep -qF '$name' <<<\"\$OUTPUT\""
+  ok "$entry archive absent → fails naming it" '[ "$RC" != 0 ] && grep -qF "$name" <<<"$OUTPUT"'
   ok "$entry archive absent → emits no formula" '! grep -q "class Netpace" <<<"$OUTPUT"'
 done
 run "0.9.0" 'STUB_ASSETS={"assets":[]}'
-ok "release with no assets → fails" '[ "$RC" != 0 ]'
+# Pinned on the missing-archive message, like its neighbours: a bare non-zero exit would also be
+# satisfied by the script dying for an unrelated reason, such as a stub argv mismatch.
+ok "release with no assets → fails naming what is missing" '[ "$RC" != 0 ] && grep -q "is missing" <<<"$OUTPUT"'
 ok "release with no assets → emits no formula" '! grep -q "class Netpace" <<<"$OUTPUT"'
 
 echo "stranded upload (listed, but never finished uploading):"
@@ -191,7 +231,7 @@ echo "version coupling:"
 # Archive names are derived from the version, so a release carrying 0.8.0's archives must read as
 # missing rather than as a near-enough match. This pins that it is never published as 0.9.0.
 run "0.9.0" "STUB_ASSETS=$(assets_complete | sed 's/0\.9\.0/0.8.0/g')"
-ok "another version's archives → rejected" '[ "$RC" != 0 ]'
+ok "another version's archives → rejected as missing" '[ "$RC" != 0 ] && grep -q "is missing" <<<"$OUTPUT"'
 ok "another version's archives → emits no formula" '! grep -q "class Netpace" <<<"$OUTPUT"'
 
 echo "undownloadable archive:"
@@ -224,5 +264,9 @@ ok "unparseable asset list → says nothing was published" 'grep -q "nothing pub
 ok "unparseable asset list → emits no formula" '! grep -q "class Netpace" <<<"$OUTPUT"'
 
 echo ""
-echo "RESULT: $pass passed, $fail failed"
-[ "$fail" = 0 ]
+echo "RESULT: $cases cases, $pass passed, $fail failed"
+[ "$fail" = 0 ] || exit 1
+# A floor, as scripts/traceability-check.tests.sh carries for the same reason: sixteen of these
+# cases come from two `for entry in …` loops, and emptying either list drops the count while
+# reporting zero failures and exit 0 — a matrix that shrinks to nothing and still reads green.
+[ "$cases" -ge 59 ] || { echo "FAIL: expected at least 59 cases, ran $cases — did a block get dropped?" >&2; exit 1; }

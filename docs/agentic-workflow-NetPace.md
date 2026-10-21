@@ -27,6 +27,7 @@ The generic "CI on PR" step **applies fully**:
 | `publish-nuget.yml` | tag push | publish `NetPace.Core` to NuGet |
 | `release-binaries.yml` | tag push | cross-platform binary release matrix |
 | `publish-tool.yml` | semver tag push | publish the `NetPace` .NET tool package to NuGet |
+| `homebrew-publish.yml` — Publish Homebrew Tap | `release-binaries.yml` completing, or manual dispatch | render the `netpace` formula from the release, install it on three runners, then push it to the Homebrew tap |
 
 **Deviations from the generic Appendix.** Review B runs once, when the PR opens; a later push is not re-reviewed automatically, and follow-up rounds run by hand with `/review-followup`. There is no PR template and no `AGENTS.md` symlink.
 

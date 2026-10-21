@@ -166,7 +166,7 @@ Install it:
 brew install FrankRay78/tap/netpace
 ```
 
-That one command adds NetPace's tap and installs the formula from it. `netpace` is on your path from the next terminal you open — Homebrew links the command into its own `bin` directory, which is already on your path, so there is nothing for you to edit.
+That one command adds NetPace's tap and installs the formula from it. `netpace` is on your path straight away, in the same terminal — Homebrew links the command into its own `bin` directory, which is already on your path, so there is nothing for you to edit and no new shell to open.
 
 Confirm what you got:
 ```bash
@@ -194,7 +194,7 @@ brew uninstall netpace
 
 `brew untap FrankRay78/tap` additionally forgets the tap, if you do not intend to reinstall.
 
-The tap carries only stable releases, one formula version at a time, so Homebrew installs the latest and `brew install netpace@<version>` is not offered. To pin a known version — in a provisioning script, say — [download a release binary](https://github.com/FrankRay78/NetPace/releases) or [install the .NET tool](#installing-netpace) with `--version`.
+The tap carries only `MAJOR.MINOR.PATCH` releases, never release candidates, and one formula version at a time, so Homebrew installs the latest and `brew install netpace@<version>` is not offered. To pin a known version — in a provisioning script, say — [download a release binary](https://github.com/FrankRay78/NetPace/releases) or [install the .NET tool](#installing-netpace) with `--version`.
 
 On Windows, [install with winget](#installing-upgrading-and-uninstalling-on-windows-with-winget) instead.
 

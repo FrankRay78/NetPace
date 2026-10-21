@@ -66,17 +66,24 @@ jobs:
       # On a workflow_run the tag that triggered release-binaries.yml arrives as head_branch;
       # GitHub populates it with the short ref, which for a tag push is the tag name.
       #
-      # A release candidate or test tag is a clean skip, not a failure: it is not a release, and
-      # reporting it as a failed tap update would raise a false issue on every such tag. A version
-      # given by hand is never skipped — the generator refuses a bad one loudly instead.
+      # A release candidate is a clean skip, not a failure: it is not a release, and reporting it as
+      # a failed tap update would raise a false issue on every such tag. A version given by hand is
+      # never skipped — the generator refuses a bad one loudly instead.
+      #
+      # A ref of neither shape is an error rather than a skip. release-binaries.yml triggers only on
+      # `[0-9]+.[0-9]+.[0-9]+` and `[0-9]+.[0-9]+.[0-9]+-*`, so every ref that can reach here is one
+      # of the two; anything else means head_branch did not hold the tag this step assumes it holds.
+      # Treating that as a skip would leave the tap silently a version behind, green, with the only
+      # trace a `::notice::` in a log nobody opens — and the first report a user's `brew upgrade`.
       - name: Resolve version
         id: version
         env:
+          EVENT_NAME: ${{ github.event_name }}
           DISPATCH_VERSION: ${{ inputs.version }}
           TRIGGERING_REF: ${{ github.event.workflow_run.head_branch }}
         run: |
           set -euo pipefail
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
             version="$DISPATCH_VERSION"
           else
             version="$TRIGGERING_REF"
@@ -86,10 +93,16 @@ jobs:
             exit 1
           fi
           echo "version=$version" >> "$GITHUB_OUTPUT"
-          if [ "${{ github.event_name }}" != "workflow_dispatch" ] && [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            echo "::notice::'$version' is not a MAJOR.MINOR.PATCH release — the tap is unchanged."
-            echo "release=false" >> "$GITHUB_OUTPUT"
-            exit 0
+          if [ "$EVENT_NAME" != "workflow_dispatch" ]; then
+            if [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+-. ]]; then
+              echo "::notice::'$version' is a prerelease tag — the tap is unchanged."
+              echo "release=false" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+            if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+              echo "::error::Could not resolve a release tag from head_branch '$version'."
+              exit 1
+            fi
           fi
           echo "Publishing version: $version"
           echo "release=true" >> "$GITHUB_OUTPUT"
@@ -182,7 +195,7 @@ jobs:
           if ! command -v brew >/dev/null; then
             if [ -x /home/linuxbrew/.linuxbrew/bin/brew ]; then
               eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
-              echo "$(dirname "$(command -v brew)")" >> "$GITHUB_PATH"
+              dirname "$(command -v brew)" >> "$GITHUB_PATH"
             else
               echo "::error::Homebrew is not available on ${{ matrix.runs_on }} — cannot verify the formula."
               exit 1
