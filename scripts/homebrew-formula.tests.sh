@@ -241,6 +241,10 @@ echo "undownloadable archive:"
 run "0.9.0" "STUB_ASSETS=$(assets_complete)" "STUB_CURL_FAIL=osx-arm64-aot"
 ok "download fails → script fails" '[ "$RC" != 0 ]'
 ok "download fails → names the archive it could not hash" 'grep -q "netpace-0.9.0-osx-arm64-aot.tar.gz" <<<"$OUTPUT"'
+# The archive name above also appears in the stub's own stderr, so the generator's diagnostic is
+# pinned on its own wording: without it, `set -e` and `pipefail` still fail the run, but real
+# `curl -f` prints only `curl: (22) … 404`, which names no archive.
+ok "download fails → says it could not download" 'grep -q "could not download netpace-0.9.0-osx-arm64-aot.tar.gz" <<<"$OUTPUT"'
 ok "download fails → emits no formula" '! grep -q "class Netpace" <<<"$OUTPUT"'
 ok "download fails → emits no empty checksum" '! grep -q "sha256 \"\"" <<<"$OUTPUT"'
 
@@ -255,18 +259,41 @@ ok "gh fails → does not blame a missing archive" '! grep -q "is missing" <<<"$
 ok "gh fails → emits no formula" '! grep -q "class Netpace" <<<"$OUTPUT"'
 
 echo "unreadable asset list:"
-# gh exiting zero with the wrong shape: `.assets[]?` does not tolerate indexing an array, so this
-# is a jq hard error, and without a diagnostic of its own it surfaces as a bare parse error with
-# no mention of the version or of whether anything was published.
-run "0.9.0" 'STUB_ASSETS=[]'
+# gh exiting zero with something that is not JSON. jq fails on unparseable input before any filter
+# runs, and without a diagnostic of its own it surfaces as a bare parse error with no mention of
+# the version. Asserted on the parse message and against the missing-archive one, because both end
+# in "nothing published": a reply jq can parse but that holds no assets reads as missing archives,
+# which the empty-release case above already covers.
+run "0.9.0" 'STUB_ASSETS=not json'
 ok "unparseable asset list → fails" '[ "$RC" != 0 ]'
-ok "unparseable asset list → says nothing was published" 'grep -q "nothing published" <<<"$OUTPUT"'
+ok "unparseable asset list → blames the asset list" 'grep -q "could not parse the asset list" <<<"$OUTPUT"'
+ok "unparseable asset list → does not blame a missing archive" '! grep -q "is missing" <<<"$OUTPUT"'
 ok "unparseable asset list → emits no formula" '! grep -q "class Netpace" <<<"$OUTPUT"'
+
+echo "missing tool (named, not misdiagnosed as a bad release):"
+# Each run sees a PATH holding the stubs and every tool the script needs except one. The stubs are
+# otherwise only prepended to the real PATH, so the real tools are always found and the guard is
+# never reached. Without it a missing tool is blamed on the release — a Mac with no `sha256sum`
+# reports "could not download ... to checksum it" for archives that are in fact fine.
+BASH_BIN="$(command -v bash)"
+for missing_tool in gh jq curl sha256sum; do
+  dir="$SB/no-$missing_tool"
+  mkdir -p "$dir"
+  for t in bash env cut cat jq sha256sum; do
+    [ "$t" = "$missing_tool" ] || ln -sf "$(command -v "$t")" "$dir/$t"
+  done
+  for t in gh curl; do
+    [ "$t" = "$missing_tool" ] || ln -sf "$SB/bin/$t" "$dir/$t"
+  done
+  OUTPUT="$(env STUB_EXPECT_VERSION=0.9.0 "STUB_ASSETS=$(assets_complete)" PATH="$dir" "$BASH_BIN" "$SCRIPT" 0.9.0 2>&1)"; RC=$?
+  ok "$missing_tool absent → fails naming it" '[ "$RC" != 0 ] && grep -q "$missing_tool is required" <<<"$OUTPUT"'
+  ok "$missing_tool absent → emits no formula" '! grep -q "class Netpace" <<<"$OUTPUT"'
+done
 
 echo ""
 echo "RESULT: $cases cases, $pass passed, $fail failed"
 [ "$fail" = 0 ] || exit 1
-# A floor, as scripts/traceability-check.tests.sh carries for the same reason: sixteen of these
-# cases come from two `for entry in …` loops, and emptying either list drops the count while
-# reporting zero failures and exit 0 — a matrix that shrinks to nothing and still reads green.
-[ "$cases" -ge 59 ] || { echo "FAIL: expected at least 59 cases, ran $cases — did a block get dropped?" >&2; exit 1; }
+# A floor, as scripts/traceability-check.tests.sh carries for the same reason: twenty-four of these
+# cases come from three `for … in …` loops, and emptying any list drops the count while reporting
+# zero failures and exit 0 — a matrix that shrinks to nothing and still reads green.
+[ "$cases" -ge 69 ] || { echo "FAIL: expected at least 69 cases, ran $cases — did a block get dropped?" >&2; exit 1; }

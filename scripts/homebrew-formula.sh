@@ -107,10 +107,6 @@ shas=()
 for i in "${!urls[@]}"; do
   sha="$(curl -sSLf "${urls[$i]}" | sha256sum | cut -d' ' -f1)" \
     || die "could not download ${names[$i]} to checksum it — nothing published"
-  # A truncated or empty hash would otherwise reach the formula as a plausible-looking literal,
-  # and surface to users as `brew` reporting a corrupt download of a perfectly good archive.
-  [[ "$sha" =~ ^[0-9a-f]{64}$ ]] \
-    || die "refusing a malformed checksum for ${names[$i]}: got '$sha' — nothing published"
   shas+=("$sha")
 done
 

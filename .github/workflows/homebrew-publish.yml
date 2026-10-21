@@ -33,6 +33,14 @@ on:
 permissions:
   contents: read
 
+# One tap update at a time, so two releases close together cannot race their pushes — one would be
+# rejected as a non-fast-forward and raise a false failure issue. Queued, never cancelled: a run in
+# flight is left to finish. GitHub keeps only the newest pending run, so a third run arriving while
+# one is pending replaces it; the downgrade guard in the publish job makes that order-independent.
+concurrency:
+  group: homebrew-tap
+  cancel-in-progress: false
+
 env:
   # The tap repository and the path within it. Users reach the formula as
   # `brew install FrankRay78/tap/netpace` — Homebrew strips the `homebrew-` prefix from the
@@ -203,8 +211,10 @@ jobs:
           fi
           brew --version
 
-      # Installed from the file rather than from the tap, because the point is to check this
-      # formula before the tap ever carries it.
+      # Installed through a throwaway local tap rather than from FrankRay78/homebrew-tap, because
+      # the point is to check this formula before the real tap ever carries it. Not from the file
+      # path: from Homebrew 5.0.0 `brew install ./netpace.rb` is refused outright unless
+      # HOMEBREW_DEVELOPER is set, which would change other behaviour too.
       - name: Install NetPace from the rendered formula
         env:
           HOMEBREW_NO_AUTO_UPDATE: 1
@@ -212,7 +222,9 @@ jobs:
           HOMEBREW_NO_INSTALL_CLEANUP: 1
         run: |
           set -euo pipefail
-          brew install --formula ./netpace.rb
+          brew tap-new --no-git local/verify
+          cp netpace.rb "$(brew --repository local/verify)/Formula/netpace.rb"
+          brew install local/verify/netpace
 
       # The check the whole job exists for: the binary Homebrew laid down runs, and it is the
       # release the formula names. A formula that installs an archive from another version would
@@ -238,7 +250,7 @@ jobs:
       - name: brew uninstall removes the netpace command
         run: |
           set -euo pipefail
-          brew uninstall netpace
+          brew uninstall local/verify/netpace
           if command -v netpace >/dev/null; then
             echo "::error::netpace is still on PATH after brew uninstall."
             exit 1
@@ -269,12 +281,29 @@ jobs:
       # Committing nothing when nothing changed keeps a manual retry of an already-published
       # version a no-op rather than an empty commit — and `git commit` would fail on it, which
       # would raise a failure issue for a tap that is in fact correct.
+      #
+      # An older version than the tap already carries is skipped, never pushed: a retry of a
+      # superseded release, or a re-run of an old tag's release-binaries.yml run, would otherwise
+      # hand every `brew install` the older NetPace with nothing red. A skip rather than a failure,
+      # because the tap is already ahead and correct — a failure would raise an issue for nothing.
       - name: Commit the formula
         working-directory: tap
         env:
           VERSION: ${{ needs.formula.outputs.version }}
         run: |
           set -euo pipefail
+          if [ -f "$FORMULA_PATH" ]; then
+            current="$(sed -n 's/^  version "\(.*\)"$/\1/p' "$FORMULA_PATH")"
+            if [ -z "$current" ]; then
+              echo "::error::Could not read the version the tap carries from $FORMULA_PATH — not pushing over it."
+              exit 1
+            fi
+            if [ "$current" != "$VERSION" ] && \
+               [ "$(printf '%s\n%s\n' "$current" "$VERSION" | sort -V | tail -n1)" = "$current" ]; then
+              echo "::warning::The tap already carries $current, newer than $VERSION — not pushing an older version over it."
+              exit 0
+            fi
+          fi
           mkdir -p "$(dirname "$FORMULA_PATH")"
           cp ../netpace.rb "$FORMULA_PATH"
           git config user.name "github-actions[bot]"
