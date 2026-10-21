@@ -107,9 +107,10 @@ jobs:
       # just packed and asks the command its version, on the same pass condition as the Linux check — it must
       # equal the tag. The wrapper is packed alongside because it is what `dotnet tool install netpace` resolves
       # through, and both go into a feed of their own: the package this job uploads stays exactly the file the
-      # Native AOT pack above produced, whatever a later SDK does with CreateRidSpecificToolPackages. The feed
-      # is added to nuget.org rather than replacing it: on a Mac the installer also fetches a .NET host
-      # package, as a user's install does, and a feed holding only NetPace's packages fails it.
+      # Native AOT pack above produced, whatever a later SDK does with CreateRidSpecificToolPackages. On the
+      # Apple silicon runner the installer was seen to request microsoft.netcore.app.host.osx-x64, which only
+      # nuget.org holds, so nuget.org is a source too. Source mapping sends every NetPace package to the local
+      # feed alone, so a copy already pushed by an earlier run of this tag can never stand in for this one.
       - name: Verify the installed tool reports the tag
         if: runner.os == 'macOS'
         env:
@@ -128,7 +129,26 @@ jobs:
             -p:FileVersion="$NUMERIC_VERSION" \
             -p:InformationalVersion="$VERSION" \
             --output ./verify-feed
-          dotnet tool install netpace --version "$VERSION" --add-source ./verify-feed --tool-path ./tool-check
+          cat > ./verify-nuget.config <<'CONFIG'
+          <?xml version="1.0" encoding="utf-8"?>
+          <configuration>
+            <packageSources>
+              <clear />
+              <add key="verify-feed" value="./verify-feed" />
+              <add key="nuget.org" value="https://api.nuget.org/v3/index.json" />
+            </packageSources>
+            <packageSourceMapping>
+              <packageSource key="verify-feed">
+                <package pattern="NetPace" />
+                <package pattern="NetPace.*" />
+              </packageSource>
+              <packageSource key="nuget.org">
+                <package pattern="*" />
+              </packageSource>
+            </packageSourceMapping>
+          </configuration>
+          CONFIG
+          dotnet tool install netpace --version "$VERSION" --configfile ./verify-nuget.config --tool-path ./tool-check
           reported=$(./tool-check/netpace --version)
           echo "netpace --version reported: $reported"
           if [ "$reported" != "$VERSION" ]; then
