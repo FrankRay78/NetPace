@@ -49,13 +49,29 @@ chmod +x "$SB/bin/gh"
 # `curl` stub: answers each download with the URL it was asked for, as the archive's bytes. The
 # real sha256sum then runs over them, so every expected checksum below is computed the same way
 # from the same URL — which is what makes a transposed url/sha256 pair detectable. STUB_CURL_FAIL
-# holds a substring; a URL matching it fails like an archive that cannot be fetched.
+# holds a substring; a URL matching it answers like a server error. As with real curl, only `-f`
+# turns that into a non-zero exit — without it the error page is served as the archive's bytes —
+# and only `-L` follows GitHub's redirect to the bytes at all.
 cat > "$SB/bin/curl" <<'STUB'
 #!/usr/bin/env bash
 url="${!#}"
+fail=""; follow=""
+for arg in "${@:1:$#-1}"; do
+  case "$arg" in
+    --fail) fail=1 ;;
+    --location) follow=1 ;;
+    --*) ;;
+    -*) [[ "$arg" == *f* ]] && fail=1; [[ "$arg" == *L* ]] && follow=1 ;;
+  esac
+done
+[ -n "$follow" ] || exit 0
 if [ -n "${STUB_CURL_FAIL:-}" ] && [[ "$url" == *"$STUB_CURL_FAIL"* ]]; then
-  echo "curl stub: refusing $url" >&2
-  exit 22
+  if [ -n "$fail" ]; then
+    echo "curl stub: refusing $url" >&2
+    exit 22
+  fi
+  printf '<html>500 Internal Server Error</html>'
+  exit 0
 fi
 printf '%s' "$url"
 STUB
@@ -124,9 +140,10 @@ ok "refs/tags/ prefix → rejected" '[ "$RC" != 0 ] && grep -q "not a ref" <<<"$
 run "v0.9.0" "STUB_ASSETS=$(assets_complete)"
 ok "v prefix → rejected" '[ "$RC" != 0 ] && grep -q "carry no .v. prefix" <<<"$OUTPUT"'
 
-# release-binaries.yml builds on any tag push and creates the release itself, so a non-release tag
-# arrives here behind a green release run. The tap follows plain X.Y.Z releases only: pushing a
-# release candidate to it publishes that candidate to every `brew upgrade` as the current NetPace.
+# release-binaries.yml also builds on release-candidate tags, so a candidate arrives here behind a
+# green release run; any other non-release version can arrive only by hand. The tap follows plain
+# X.Y.Z releases only: pushing a candidate to it publishes that candidate to every `brew upgrade` as
+# the current NetPace.
 # Each tag is given archives named after itself, as release-binaries.yml would attach, so that
 # with the guard removed the script would find them — and "emits no formula" is what catches it.
 run "test-archive-whitelist-0.0.1" "STUB_ASSETS=$(assets_complete | sed 's/0\.9\.0/test-archive-whitelist-0.0.1/g')"

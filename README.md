@@ -94,7 +94,7 @@ If you use [Homebrew](https://brew.sh/), NetPace installs in one line:
 brew install FrankRay78/tap/netpace
 ```
 
-**The NetPace tap is pending its first release.** Until it lands, this reports that the tap could not be found; download a release binary below in the meantime.
+**The NetPace tap has not been set up yet.** Until it is, this reports that the tap could not be found; download a release binary below in the meantime.
 
 `netpace` is on your path straight away, in the same terminal — no archive to choose and nothing for you to edit. You get the Native AOT build for your machine's platform and architecture (macOS or Linux, Intel or ARM64), which starts without a .NET runtime and behaves exactly like the release binary of the same version. On macOS it runs without you having to clear a Gatekeeper warning.
 

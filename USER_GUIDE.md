@@ -159,7 +159,7 @@ On Linux and macOS, [install with Homebrew](#installing-upgrading-and-uninstalli
 
 On macOS and Linux, [Homebrew](https://brew.sh/) installs NetPace in one command and keeps it current. You need no .NET SDK and no runtime.
 
-**The NetPace tap is pending its first release.** Until it lands, the commands below report that the tap could not be found; [download a release binary](https://github.com/FrankRay78/NetPace/releases) in the meantime.
+**The NetPace tap has not been set up yet.** Until it is, the commands below report that the tap could not be found; [download a release binary](https://github.com/FrankRay78/NetPace/releases) in the meantime.
 
 Install it:
 ```bash

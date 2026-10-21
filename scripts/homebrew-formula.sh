@@ -26,7 +26,7 @@ set -euo pipefail
 # and must keep each operating system's two architectures together.
 #
 # The AOT archive is the one offered on every platform: it carries no .NET runtime dependency and
-# is roughly a tenth the size of the standalone build. macOS included — it gained Native AOT
+# is roughly a seventh the size of the standalone build. macOS included — it gained Native AOT
 # archives after this tap's acceptance criteria were written, and those criteria name the
 # standalone build for macOS only because no AOT build existed then
 # (docs/change-intent-records/2026-10-21-homebrew-tap-ships-the-aot-archives.md).
@@ -52,10 +52,10 @@ case "$version" in
   "") die "version must not be empty" ;;
 esac
 
-# Only a MAJOR.MINOR.PATCH version is a release. release-binaries.yml builds on any tag push, and
-# creates the GitHub Release itself, so a test tag or a release candidate arrives here behind a
-# perfectly green release run. The tap follows plain releases only: pushing a candidate to it
-# publishes that candidate to every `brew upgrade` as the current NetPace.
+# Only a MAJOR.MINOR.PATCH version is a release. release-binaries.yml also builds on release-candidate
+# tags, so a candidate can arrive here behind a perfectly green release run, as can any version
+# given by hand. The tap follows plain releases only: pushing a candidate to it publishes that
+# candidate to every `brew upgrade` as the current NetPace.
 if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
   die "version must be MAJOR.MINOR.PATCH: got '$version' — not a release version, nothing published"
 fi

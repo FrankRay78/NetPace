@@ -33,14 +33,6 @@ on:
 permissions:
   contents: read
 
-# One tap update at a time, so two releases close together cannot race their pushes — one would be
-# rejected as a non-fast-forward and raise a false failure issue. Queued, never cancelled: a run in
-# flight is left to finish. GitHub keeps only the newest pending run, so a third run arriving while
-# one is pending replaces it; the downgrade guard in the publish job makes that order-independent.
-concurrency:
-  group: homebrew-tap
-  cancel-in-progress: false
-
 env:
   # The tap repository and the path within it. Users reach the formula as
   # `brew install FrankRay78/tap/netpace` — Homebrew strips the `homebrew-` prefix from the
@@ -56,9 +48,8 @@ jobs:
     timeout-minutes: 15
 
     # A run of release-binaries.yml that did not succeed has no complete set of archives to
-    # publish. `event == 'push'` does not on its own prove a tag push, and release-binaries.yml
-    # builds on any tag; which tags are releases is decided by the version step below, since an
-    # expression here cannot match a pattern.
+    # publish. That workflow also builds on release-candidate tags; which tags are releases is
+    # decided by the version step below, since an expression here cannot match a pattern.
     if: >-
       github.event_name == 'workflow_dispatch' ||
       (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push')
@@ -155,7 +146,7 @@ jobs:
   # The formula is installed before it is pushed, because nothing downstream of the push would
   # catch a bad one: the tap has no CI of its own, and the first report would be a user's failed
   # `brew install`. This is what makes the URLs and checksums in the pushed formula ones that
-  # have actually been installed from.
+  # have actually been installed from, on three of its four platforms (linux-arm64 is not; below).
   verify:
     name: Install on ${{ matrix.runs_on }}
     needs: formula
@@ -240,8 +231,8 @@ jobs:
           set -euo pipefail
           reported="$(netpace --version)"
           echo "netpace --version: $reported"
-          if ! grep -qF "$VERSION" <<<"$reported"; then
-            echo "::error::Installed netpace reports '$reported', expected it to name '$VERSION' — not pushing to the tap."
+          if [ "$reported" != "$VERSION" ]; then
+            echo "::error::Installed netpace reports '$reported', expected '$VERSION' — not pushing to the tap."
             exit 1
           fi
 
@@ -262,6 +253,13 @@ jobs:
     if: needs.formula.outputs.release == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    # One push at a time, so two releases close together cannot race — one would be rejected as a
+    # non-fast-forward and raise a false failure issue. Set on this job, not the workflow, so only
+    # a run that is about to push can wait here: GitHub cancels a waiting entry when another
+    # arrives, and a cancelled job, unlike a cancelled run, still reaches report-failure.
+    concurrency:
+      group: homebrew-tap-push
+      cancel-in-progress: false
 
     steps:
       - name: Checkout the tap
