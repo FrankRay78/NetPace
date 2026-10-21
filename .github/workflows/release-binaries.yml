@@ -1,9 +1,12 @@
 name: Build and Release Cross-Platform Binaries
 
+# Only semver-shaped tags trigger it, as for every release workflow: a tag means a release.
+# docs/RELEASING.md, Release tags.
 on:
   push:
     tags:
-      - '*'  # Match any tag like 0.4.0, 1.0.0, etc.
+      - '[0-9]+.[0-9]+.[0-9]+'
+      - '[0-9]+.[0-9]+.[0-9]+-*'
 
 jobs:
   build-cross-platform:

@@ -7,9 +7,8 @@ name: Publish .NET Tool Package
 # Its own workflow, independent of release-binaries.yml, so neither can fail the other: a tool-package
 # problem never withholds the release archives, and an archive problem never withholds the package.
 #
-# Only semver-shaped tags trigger it. The SDK cannot parse a tag such as test-archive-whitelist-0.0.1 as
-# a package version, and a test tag must not push a real package to NuGet. The filter is on shape, not
-# intent: a prerelease-shaped tag such as 0.0.1-test1 is valid semver and does publish.
+# Only semver-shaped tags trigger it, as for every release workflow: a tag means a release, and a
+# prerelease-shaped tag such as 0.29.0-rc1 publishes too. docs/RELEASING.md, Release tags.
 on:
   push:
     tags:

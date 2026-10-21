@@ -111,7 +111,7 @@ The `IsAotCompatible=true` property on `NetPace.Core.csproj` causes `dotnet pack
 
 **Consequence**: `NetPace.Core` versions published to nuget.org may skip values (e.g. `0.5.0` → `0.7.0`) when intermediate tags were CLI-only. This is intentional — the published version always reflects a real Core change.
 
-The GitHub Release / binary-attachment flow via `release-binaries.yml` is unaffected and ships every tag.
+The GitHub Release / binary-attachment flow via `release-binaries.yml` is unaffected and ships every release tag.
 
 ## .NET tool package
 
@@ -140,8 +140,6 @@ Every semver tag publishes the `NetPace` .NET tool package to NuGet from `publis
 5. Last, immediately before the push, every one of the six RID packages in the feed is opened and its `tools/` entries read — so it judges exactly what is pushed, not what was downloaded, and nothing packed later in the job (the wrapper pack writes to the same feed) can replace an AOT package unseen. A Native AOT pack puts the single native binary under `tools/any/<rid>/`; a framework-dependent pack puts `netpace.dll` and its dependencies under `tools/net10.0/<rid>/`. Both set `Runner="executable"` and both run fine on a runner that has the .NET runtime, so the install checks above cannot tell them apart — without this gate, six framework-dependent packages would pass every check and ship to users promised a binary that needs no runtime. The entry count must be exactly two (the binary and its settings file), which also catches native symbols riding along — including the macOS `netpace.dSYM` folder (*Archive-contents contract*).
 
 **Push order.** The six RID packages are pushed first and the wrapper last. The wrapper carries no nuspec dependencies — it resolves its RID package at install time — so nuget.org will accept a wrapper pointing at packages that were never published. Pushing it last means a push that dies part-way leaves the version simply not installable, which re-running the failed `publish-tool.yml` run fixes (`--skip-duplicate` makes that safe) — the recovery for any failed tool publish, since the tag and its archives are already out, rather than installable-and-broken for every user on the platform that did not make it.
-
-**Only semver-shaped tags publish a tool package.** `release-binaries.yml` triggers on every tag, including the non-semver tags used to exercise the archive contract (`test-archive-whitelist-0.0.1`). `publish-tool.yml` filters its trigger to semver-shaped tags (`[0-9]+.[0-9]+.[0-9]+` and `[0-9]+.[0-9]+.[0-9]+-*`), because the SDK cannot parse any other tag as a package version and a test tag must not push a real package. A test tag therefore builds and attaches every archive and never starts the tool workflow. The filter is on the *shape* of the tag, not its intent: a prerelease-shaped tag such as `0.0.1-test1` is valid semver and does publish to NuGet, so keep test tags in the existing non-semver form (see *Prerelease tags*).
 
 **The archives and the tool package cannot fail each other.** They are separate workflows on the same tag, and no job in one needs a job in the other. A failed native pack or tool-package gate leaves the GitHub Release created with every binary attached and only the NuGet push missing; a failed archive build leaves the tool package unaffected. The cost is that each native RID is compiled once by each workflow — no more than packing inside the archive matrix cost, because a tool package is packed from the project rather than from the archive's binary — and the six native runners are listed in both files, which must change together.
 
@@ -178,6 +176,12 @@ nuget.org issues the key only to a workflow it has a policy for. A policy names 
 
 **The `NetPace.Core` package reports its tag too.** `publish-nuget.yml` passes the same four properties to its Build step, and the `Verify packed library version` step fails the job if the packed library does not report the tag (see *NuGet package version*).
 
+## Release tags
+
+All three release workflows (`release-binaries.yml`, `publish-tool.yml`, `publish-nuget.yml`) trigger on semver-shaped tags only: `X.Y.Z` and `X.Y.Z-suffix`. A tag of any other shape starts nothing. There is no test-tag form, because every tag is a release: the SDK and NuGet reject a non-semver version before anything compiles.
+
+**Proving a release-pipeline change.** Merge it, then tag a release candidate (`X.Y.Z-rcN`). It runs every workflow and gate and publishes as a prerelease, which `dotnet tool install` and `dotnet tool update` skip by default. If a gate fails, fix it and tag the next rc. Some changes, such as a new macOS or Windows Native AOT entry, cannot be built locally at all, so the rc is their only proof.
+
 ## Prerelease tags
 
 A tag of the form `X.Y.Z-suffix` (`0.27.0-rc1`, `0.27.0-rc.1`) is a prerelease. It runs all three release workflows like any other tag: the archives are built and attached to the GitHub Release, the tool package is published, and `NetPace.Core` is published when the library changed — every one of them at the prerelease version.
@@ -186,7 +190,7 @@ A tag of the form `X.Y.Z-suffix` (`0.27.0-rc1`, `0.27.0-rc.1`) is a prerelease. 
 
 **What users see.** `netpace --version` reports the whole tag, suffix included, from both an archive download and the installed tool. NuGet treats the packages as prereleases: `dotnet tool install -g netpace` and `dotnet tool update -g netpace` skip them, and installing one takes `--prerelease` or an explicit `--version 0.27.0-rc1`.
 
-**A prerelease publishes for real.** Its packages reach nuget.org and stay there (they can be unlisted, not deleted). A tag meant only to exercise the archive contract stays in the non-semver form (`test-archive-whitelist-0.0.1`), which the tool and library workflows cannot parse as a version and so do not publish.
+**A prerelease publishes for real.** Its packages reach nuget.org and stay there (they can be unlisted, not deleted). That is what makes it the proof for a release-pipeline change (*Release tags*).
 
 ## SDK version pinning
 
