@@ -31,7 +31,8 @@
 # hyphen, and suffixing `-1`, `-2`, … to the second and later occurrences of a repeated heading.
 # A link in a heading contributes its text and not its target, which is reproduced here too.
 #
-# That is reproduced over ATX headings (`## Text`) outside code fences. Four kinds of heading are
+# That is reproduced over ATX headings (`## Text`) outside code fences, front matter and multi-line
+# HTML comments, none of which GitHub renders as headings. Four kinds of heading are
 # read differently from GitHub, and every one of them costs a FAIL on a link that works there
 # rather than a quiet pass, so the report is loud in each case:
 #   - a non-ASCII letter is dropped where GitHub keeps it;
@@ -184,10 +185,18 @@ heading_slugs() {
       marker = substr($0, RSTART, RLENGTH)
       gsub(/[[:space:]]/, "", marker)
       if (fence == "") { fence = marker; next }
-      if (substr(marker, 1, 1) == substr(fence, 1, 1) && length(marker) >= length(fence)) fence = ""
+      # CommonMark closes a fence only on a marker line with nothing after it: inside a ```markdown
+      # block, a ```bash line is content, not the end of the block.
+      if (substr(marker, 1, 1) == substr(fence, 1, 1) && length(marker) >= length(fence) && $0 ~ /^[[:space:]]*(```+|~~~+)[[:space:]]*$/) fence = ""
       next
     }
     fence != "" { next }
+    # Front matter (a `---` block opening on line 1) is rendered as a table, never as headings.
+    NR == 1 && /^---[[:space:]]*$/ { front = 1; next }
+    front { if (/^---[[:space:]]*$/) front = 0; next }
+    # Nor is anything inside an HTML comment that spans lines.
+    comment { if (/-->/) comment = 0; next }
+    /^[[:space:]]*<!--/ && !/-->/ { comment = 1; next }
     /^#+[ \t]/ {
       match($0, /^#+/)
       if (RLENGTH > 6) next                          # seven hashes is not a heading
@@ -246,7 +255,9 @@ while IFS= read -r -d '' file; do
       marker = substr($0, RSTART, RLENGTH)
       gsub(/[[:space:]]/, "", marker)
       if (fence == "") { fence = marker; next }
-      if (substr(marker, 1, 1) == substr(fence, 1, 1) && length(marker) >= length(fence)) fence = ""
+      # CommonMark closes a fence only on a marker line with nothing after it: inside a ```markdown
+      # block, a ```bash line is content, not the end of the block.
+      if (substr(marker, 1, 1) == substr(fence, 1, 1) && length(marker) >= length(fence) && $0 ~ /^[[:space:]]*(```+|~~~+)[[:space:]]*$/) fence = ""
       next
     }
     fence == "" { gsub(/`[^`]*`/, "", $0); print }

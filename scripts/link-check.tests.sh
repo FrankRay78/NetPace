@@ -226,6 +226,12 @@ check
 ok "a full blob/main link to an existing file passes" 'clean'
 
 new_case
+commit_file "README.md" "See [the provider]($MAINURL/blob/main/src/NetPace.Core/Ookla.cs)."
+commit_file "src/NetPace.Core/Ookla.cs" '// code'
+check
+ok "a full blob/main link keeps the path's case" 'clean'
+
+new_case
 commit_file "README.md" "See [the guide]($MAINURL/blob/main/docs/gone.md)."
 check
 ok "a full blob/main link to a missing file fails" 'failed && names "docs/gone.md"'
@@ -359,12 +365,40 @@ commit_file "README.md" "$(printf '# Guide\n\nJump to [it](#treat-this-as-a-fail
 check
 ok "a hash line inside a fenced block is not a heading" 'failed && names "#treat-this-as-a-failure"'
 
+# The target is a shell script with a `# Usage` comment, so only the not-markdown guard keeps the
+# anchor from being matched against comment lines: an `L…` anchor would be skipped by the
+# line-reference rule first, and would pass whether the guard existed or not.
 new_case
-commit_file "README.md" 'The [source](src/Foo.cs#L10-L20), and [the guide](docs/guide.md).'
-commit_file "src/Foo.cs" '// code'
+commit_file "README.md" 'The [usage](scripts/foo.sh#nowhere), and [the guide](docs/guide.md).'
+commit_file "scripts/foo.sh" "$(printf '#!/usr/bin/env bash\n# Usage\n')"
 commit_file "docs/guide.md" '# Guide'
 check
 ok "an anchor on a target that is not markdown is not read as a heading" 'clean'
+
+new_case
+commit_file "README.md" "$(printf '# Guide\n\n####### Seven\n\nJump to [it](#seven).')"
+check
+ok "seven hashes is not a heading" 'failed && names "#seven"'
+
+new_case
+commit_file "README.md" "$(printf '# Guide\n\n## Foo ##\n\nJump to [it](#foo).')"
+check
+ok "a heading's closing hashes are not part of its slug" 'clean'
+
+new_case
+commit_file "README.md" "$(printf '# Guide\n\n<!--\n## Old section\n-->\n\nJump to [it](#old-section).')"
+check
+ok "a hash line inside an HTML comment is not a heading" 'failed && names "#old-section"'
+
+new_case
+commit_file "README.md" "$(printf -- '---\ntitle: Guide\n# note\n---\n\n# Guide\n\nJump to [it](#note).')"
+check
+ok "a hash line inside front matter is not a heading" 'failed && names "#note"'
+
+new_case
+commit_file "README.md" "$(printf '# Guide\n\n```markdown\n```bash\n# Run this\n```\n\nJump to [it](#run-this).')"
+check
+ok "a fence line with an info string does not close an open fence" 'failed && names "#run-this"'
 
 new_case
 commit_file "README.md" 'The [docs folder](docs#anything), and [the guide](docs/guide.md).'
