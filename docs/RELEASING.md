@@ -103,15 +103,13 @@ The `IsAotCompatible=true` property on `NetPace.Core.csproj` causes `dotnet pack
 
 **Why**: with the version passed only to Pack, the package carried the tag while the library inside kept the placeholder from `src/Directory.Build.props`, and nothing checked it (#341).
 
-## Conditional NuGet publish
+## NetPace.Core publishes on every release
 
-`publish-nuget.yml` only packs and pushes `NetPace.Core` when `src/NetPace.Core/**` has changed between the current tag and the previous tag. On CLI-only tags (the common case — ~90% of releases), the workflow logs a skip message and exits successfully without invoking `dotnet pack` or `nuget push`.
+Every release tag packs and pushes `NetPace.Core` at the tag's version, whether or not the library changed since the previous tag. Most releases change only the CLI, so most library versions are identical in content to the one before.
 
-**Why**: each tag would otherwise produce a new `NetPace.Core` version on nuget.org byte-equivalent to the previous one, eroding SemVer meaning for library consumers.
+**Why**: the workflow used to publish only when `src/NetPace.Core/**` differed from the nearest earlier tag. That tag could be a release candidate, so a stable release tagged after an rc that carried the library's last change found no difference and never published the stable library. The diff also never saw `src/Directory.Build.props` or `src/Directory.Packages.props`, which shape the library too. Before 1.0 a version number makes no compatibility promise (Constitution VII, *Pre-1.0 stance*), so the skip protected nothing worth the risk of a release with no library.
 
-**Consequence**: `NetPace.Core` versions published to nuget.org may skip values (e.g. `0.5.0` → `0.7.0`) when intermediate tags were CLI-only. This is intentional — the published version always reflects a real Core change.
-
-The GitHub Release / binary-attachment flow via `release-binaries.yml` is unaffected and ships every release tag.
+The GitHub Release / binary-attachment flow via `release-binaries.yml` ships every release tag too.
 
 ## .NET tool package
 
@@ -145,7 +143,7 @@ Every semver tag publishes the `NetPace` .NET tool package to NuGet from `publis
 
 **Authentication.** The push uses trusted publishing, like the library's — see *Trusted publishing*.
 
-**No conditional skip.** The tool package publishes on every tag, unlike `NetPace.Core` (*Conditional NuGet publish*). The library's skip protects SemVer meaning for consumers who compile against it; a CLI user installing by version needs the release they asked for to exist. This is also why the tool package has its own workflow rather than a job in `publish-nuget.yml`, whose skip condition would otherwise sit beside an opposite one.
+**Every tag publishes.** Like `NetPace.Core` (*NetPace.Core publishes on every release*), the tool package publishes on every release tag, because a user installing by version needs the release they asked for to exist.
 
 **Local verification.** `scripts/tool-package.tests.sh` packs the console project at two versions, installs the result from a sandbox feed and runs it, then updates from the older version to the newer — covering `dotnet tool install`, `dotnet tool update` and `dnx`, the install-nothing path. It also opens all six RID packages and checks each carries the command for its platform, and that the wrapper advertises exactly the six the release publishes. It packs the framework-dependent form, because one machine cannot produce the six native binaries; the AOT pack and its shape are gated by `publish-tool.yml` alone. The matrix runs on every pull request via `shell-tests.yml`.
 
@@ -184,7 +182,7 @@ All three release workflows (`release-binaries.yml`, `publish-tool.yml`, `publis
 
 ## Prerelease tags
 
-A tag of the form `X.Y.Z-suffix` (`0.27.0-rc1`, `0.27.0-rc.1`) is a prerelease. It runs all three release workflows like any other tag: the archives are built and attached to the GitHub Release, the tool package is published, and `NetPace.Core` is published when the library changed — every one of them at the prerelease version.
+A tag of the form `X.Y.Z-suffix` (`0.27.0-rc1`, `0.27.0-rc.1`) is a prerelease. It runs all three release workflows like any other tag: the archives are built and attached to the GitHub Release, and the tool package and `NetPace.Core` are published — every one of them at the prerelease version.
 
 **How the version is split.** `AssemblyVersion` and `FileVersion` accept numbers alone, so each workflow's `Extract version from tag` step also outputs the tag's numeric part (`0.27.0` for `0.27.0-rc1`), and only those two properties take it. `Version`, `InformationalVersion` and `PackageVersion` take the whole tag. For a plain `X.Y.Z` tag the two are identical. Passing the whole prerelease tag to `AssemblyVersion` or `FileVersion` fails the compile (CS7034), which is how a prerelease tag failed before the split existed.
 

@@ -36,4 +36,7 @@
 
 7. **The gates are proven on a tag, not locally.** Native AOT for macOS cannot be produced on a Linux or Windows machine, so no local run can exercise the new matrix entries. They are proven by the first release candidate after merge (`X.Y.Z-rcN`), which runs every archive and tool-package gate; a failure is fixed and re-proven with the next rc. Rejected: a non-semver test tag — NuGet rejects a non-semver version at restore, so no such tag can build, and every release workflow now triggers on semver-shaped tags only (`docs/RELEASING.md`, *Release tags*).
 
+8. **`NetPace.Core` publishes on every release tag.** Proving the gates with an rc (decision 7) made a latent fault routine: `publish-nuget.yml` published only when the library differed from the nearest earlier tag, and after `0.28.0-rc1` and `rc2` that tag was `0.28.0-rc2`, so `0.28.0` on `main` would have skipped the stable library although it changed since `0.27.0`.
+   - Rejected: excluding prerelease tags from the previous-tag lookup. It fixes the rc case but keeps a skip that also misses changes to `src/Directory.Build.props` and `src/Directory.Packages.props`, and before 1.0 a version number promises no compatibility for the skip to protect.
+
 **Date:** 2026-10-18

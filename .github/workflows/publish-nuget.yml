@@ -9,37 +9,10 @@ on:
       - '[0-9]+.[0-9]+.[0-9]+-*'
 
 jobs:
-  check:
-    runs-on: ubuntu-latest
-    outputs:
-      changed: ${{ steps.core_changed.outputs.changed }}
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0  # Need full history + tags for diff against previous tag
-
-      - name: Check if NetPace.Core changed since previous tag
-        id: core_changed
-        run: |
-          set -euo pipefail
-          TAG_COMMIT=$(git rev-parse "${GITHUB_REF}^0")
-          PREV_TAG=$(git describe --tags --abbrev=0 "${TAG_COMMIT}^" 2>/dev/null || echo "")
-          if [ -z "$PREV_TAG" ]; then
-            echo "No previous tag found — treating as first release, will publish."
-            echo "changed=true" >> $GITHUB_OUTPUT
-          elif git diff --quiet "$PREV_TAG".."${GITHUB_REF}" -- src/NetPace.Core; then
-            echo "NetPace.Core unchanged since $PREV_TAG — skipping NuGet pack/push."
-            echo "changed=false" >> $GITHUB_OUTPUT
-          else
-            echo "NetPace.Core changed since $PREV_TAG — will publish."
-            echo "changed=true" >> $GITHUB_OUTPUT
-          fi
-
+  # Every release tag publishes NetPace.Core, whether or not the library changed since the last
+  # one, so a release never leaves the library behind. docs/RELEASING.md, NetPace.Core publishes
+  # on every release.
   publish:
-    needs: check
-    if: needs.check.outputs.changed == 'true'
     runs-on: ubuntu-latest
     # id-token: write lets the job request the OIDC token the NuGet login step exchanges for a key.
     # Naming permissions replaces the defaults, so contents: read keeps the checkout working.
