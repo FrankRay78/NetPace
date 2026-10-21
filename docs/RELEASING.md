@@ -1,6 +1,6 @@
 # Releasing NetPace
 
-This document describes the release pipeline that runs when a semver tag is pushed: it builds and attaches downloadable artifacts to a GitHub Release, publishes the `NetPace` .NET tool package to NuGet, and publishes the `NetPace.Core` library package.
+This document describes the release pipeline that runs when a semver tag is pushed: it builds and attaches downloadable artifacts to a GitHub Release, publishes the `NetPace` .NET tool package to NuGet, publishes the `NetPace.Core` library package, and — for a stable `MAJOR.MINOR.PATCH` tag only — submits an updated winget package for Windows users.
 
 ## Release matrix
 
@@ -84,6 +84,47 @@ The `attach-to-release` job validates two relative size invariants before attach
 2. For every RID: `aot < self-contained`.
 
 Either invariant failing fails the entire release job; no archives are attached.
+
+## winget package
+
+NetPace is published to the Windows Package Manager community repository ([`microsoft/winget-pkgs`](https://github.com/microsoft/winget-pkgs)) as `FrankRay78.NetPace`, with the moniker `netpace` so that `winget install netpace` resolves. The identifier and the moniker are what users type, so both are contracts — changing either breaks every script that installs NetPace.
+
+The package is a **zip manifest with a portable nested installer**: it wraps the existing `netpace-{ver}-win-{x64|arm64}-aot.zip` release archives, one installer node per architecture, with `NestedInstallerType: portable`, `RelativeFilePath: netpace.exe` and `PortableCommandAlias: netpace`. That alias is what puts `netpace` on the user's path without an installer and takes it off again on uninstall. There is no MSI or EXE setup program, and the self-contained and framework-dependent Windows builds are not offered through winget — the native AOT archive only.
+
+**The submission is automated.** `.github/workflows/winget-submit.yml` runs `wingetcreate update` against the published release and opens a pull request on `microsoft/winget-pkgs`. Acceptance into that repository is reviewed by Microsoft's moderators and is outside this project's control; everything up to the pull request is hands-off.
+
+| Decision | Why |
+|----------|-----|
+| Its own workflow, not a job in `release-binaries.yml` | Submitting to someone else's repository under the maintainer's personal credentials is a different function from building binaries, and must not be able to fail a release that built and published correctly. |
+| Triggered by `release-binaries.yml` completing, not by the tag push | The submission reads installer URLs off the published release, and the archives do not exist until that workflow has attached them. The trigger matches that workflow's `name:` verbatim, so renaming it silently disables winget submission — no run, nothing red, and no issue raised. Change the two together. |
+| Not triggered by `release: published` | The GitHub Release is created first and the archives arrive afterwards, so that event fires before there is anything to read. |
+| `windows-latest` runner | `wingetcreate` is a Windows executable and hashes each archive it is given. |
+| `wingetcreate` taken at `latest`, not pinned | It tracks the manifest schema the community repository currently accepts; a pinned older build starts being rejected the next time that schema moves. |
+
+**Installer URLs come off the release, never from string concatenation.** `scripts/winget-release-assets.sh` reads the release's own asset list and emits one `<url>|<architecture>` argument per installer, failing if either Windows AOT archive is absent and printing nothing at all when it does. An archive GitHub never finished receiving counts as absent, so a stranded upload cannot become a URL that 404s either. A release missing an archive therefore stops before the submission, rather than producing a manifest whose download URL 404s for every user who installs it.
+
+**Only a `MAJOR.MINOR.PATCH` tag is submitted**, because `release-binaries.yml` builds on any tag push and creates the GitHub Release itself — so a test tag or a release candidate reaches the submission behind a perfectly green release run. The workflow skips any other tag cleanly, with a notice and no issue raised, since it is not a release and a failure report would be a false alarm. The resolver refuses one too, as a second line of defence and for a version given by hand: a `refs/tags/` prefix, a `v` prefix and a prerelease suffix are all rejected by name, and fail the run. That matters because submitting one publishes it to every `winget upgrade` as the current NetPace, and only a moderated pull request upstream can take it back. Its behaviour is gated by `scripts/winget-release-assets.tests.sh`, which `shell-tests.yml` discovers and runs on every pull request.
+
+Each URL carries its architecture explicitly, so the submission never depends on `wingetcreate` inferring `x64` from `arm64` by pattern-matching the archive name.
+
+### One-off setup
+
+Two things must exist before the automation can run. Both are one-time; neither repeats per release. There is no fork to create — `wingetcreate` forks `microsoft/winget-pkgs` to the token owner's account itself on first submission, and pushes its branch there.
+
+1. **A repository secret `WINGET_PKGS_TOKEN`** holding a GitHub personal access token with the `public_repo` scope, owned by the maintainer. It must be a **classic** token; `wingetcreate` does not support fine-grained tokens, which is not something the workflow can detect — the secret is present, so the run proceeds and fails later at the submit step. It cannot be `GITHUB_TOKEN`, which has no access to another repository. The workflow fails on the missing secret before downloading or submitting anything, rather than skipping — a skip would report a release as published to winget when nothing was sent.
+2. **The first manifest, submitted by hand.** `wingetcreate update` can only move an existing manifest forward; it cannot create one. Run `wingetcreate new` interactively on a Windows machine against both Windows AOT archive URLs of a published release and answer the nested-installer prompts with the values in *winget package* above. When asked whether to modify the optional default-locale fields, answer yes and set `Moniker: netpace` — it is not among the installer prompts, and a manifest submitted without it carries no moniker into every later release. Then submit. Once that pull request is merged, every subsequent release is automated.
+
+Until that first pull request is accepted, `winget install netpace` finds nothing, so README.md and USER_GUIDE.md both say the package is pending. Removing those two notes is the last step of this setup.
+
+### If a submission fails or is rejected
+
+A failed submission **raises a GitHub issue** titled `winget submission failed for <version>`, linking the run. This exists because a `workflow_run`-triggered failure emails nobody: the run goes red in the Actions tab and otherwise passes silently. Treat the issue as the signal that `winget upgrade` will not reach that release.
+
+To retry, run the **Submit winget Package** workflow manually from the Actions tab and give it the version to submit. It takes the same path as the automatic run, so a transient failure usually clears on a second attempt.
+
+A rejection is different from a failure: the pull request was opened and the moderators declined it, so no issue is raised here and the feedback is on the pull request in `microsoft/winget-pkgs`. Address it there — amend the pull request rather than re-running the workflow, since a fresh submission for the same version collides with the open one. The exception is a manifest-schema change, which amending cannot fix: close the rejected pull request first, then re-run the workflow, which picks up a newer `wingetcreate`. The other common cause is a validation failure against the installer itself; NetPace's Windows binaries are not code-signed, which is accepted by the community repository but can surface as a SmartScreen warning for users.
+
+The GitHub Release and its archives are unaffected by any of this. A winget submission that never lands costs Windows users the one-line install for that version; it does not hold back the release.
 
 ## Build-time AOT gating
 
@@ -182,7 +223,7 @@ All three release workflows (`release-binaries.yml`, `publish-tool.yml`, `publis
 
 ## Prerelease tags
 
-A tag of the form `X.Y.Z-suffix` (`0.27.0-rc1`, `0.27.0-rc.1`) is a prerelease. It runs all three release workflows like any other tag: the archives are built and attached to the GitHub Release, and the tool package and `NetPace.Core` are published — every one of them at the prerelease version.
+A tag of the form `X.Y.Z-suffix` (`0.27.0-rc1`, `0.27.0-rc.1`) is a prerelease. It runs all three release workflows like any other tag: the archives are built and attached to the GitHub Release, and the tool package and `NetPace.Core` are published — every one of them at the prerelease version. It is not submitted to winget: the winget workflow runs after the release and skips it (*winget package*).
 
 **How the version is split.** `AssemblyVersion` and `FileVersion` accept numbers alone, so each workflow's `Extract version from tag` step also outputs the tag's numeric part (`0.27.0` for `0.27.0-rc1`), and only those two properties take it. `Version`, `InformationalVersion` and `PackageVersion` take the whole tag. For a plain `X.Y.Z` tag the two are identical. Passing the whole prerelease tag to `AssemblyVersion` or `FileVersion` fails the compile (CS7034), which is how a prerelease tag failed before the split existed.
 
