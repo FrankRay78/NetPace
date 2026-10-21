@@ -1,6 +1,6 @@
 # Releasing NetPace
 
-This document describes the release pipeline that runs when a semver tag is pushed: it builds and attaches downloadable artifacts to a GitHub Release, publishes the `NetPace` .NET tool package to NuGet, publishes the `NetPace.Core` library package, and — for a stable `MAJOR.MINOR.PATCH` tag only — submits an updated winget package for Windows users.
+This document describes the release pipeline that runs when a semver tag is pushed: it builds and attaches downloadable artifacts to a GitHub Release, publishes the `NetPace` .NET tool package to NuGet, publishes the `NetPace.Core` library package, and — for a stable `MAJOR.MINOR.PATCH` tag only — submits an updated winget package for Windows users and pushes an updated Homebrew formula for macOS and Linux users.
 
 ## Release matrix
 
@@ -125,6 +125,52 @@ To retry, run the **Submit winget Package** workflow manually from the Actions t
 A rejection is different from a failure: the pull request was opened and the moderators declined it, so no issue is raised here and the feedback is on the pull request in `microsoft/winget-pkgs`. Address it there — amend the pull request rather than re-running the workflow, since a fresh submission for the same version collides with the open one. The exception is a manifest-schema change, which amending cannot fix: close the rejected pull request first, then re-run the workflow, which picks up a newer `wingetcreate`. The other common cause is a validation failure against the installer itself; NetPace's Windows binaries are not code-signed, which is accepted by the community repository but can surface as a SmartScreen warning for users.
 
 The GitHub Release and its archives are unaffected by any of this. A winget submission that never lands costs Windows users the one-line install for that version; it does not hold back the release.
+
+## Homebrew tap
+
+NetPace is published to a project-owned Homebrew tap, the repository [`FrankRay78/homebrew-tap`](https://github.com/FrankRay78/homebrew-tap), as a formula named `netpace`. Homebrew strips the `homebrew-` prefix from a tap's repository name, so users install with `brew install FrankRay78/tap/netpace`. The tap name and the formula name are both what users type, so both are contracts — renaming either breaks every script that installs NetPace this way.
+
+It is a **tap rather than homebrew-core** because Homebrew's main repository requires formulae to build from source ([Acceptable Formulae](https://docs.brew.sh/Acceptable-Formulae)), and NetPace ships prebuilt binaries. It is a **formula rather than a cask** because a cask applies macOS's download quarantine flag and a formula does not, so the formula is what lets an unsigned macOS binary start without the user clearing a Gatekeeper warning.
+
+The formula covers **four platforms — macOS and Linux, each on x64 and ARM64 — and offers the Native AOT archive on all of them**: `netpace-{ver}-{osx|linux}-{x64|arm64}-aot.tar.gz`. The standalone and framework-dependent builds are not offered through Homebrew. Each archive holds exactly one entry (*Archive-contents contract*), so the formula's install step is `bin.install "netpace"` and nothing else. Offering AOT on macOS departs from the acceptance criteria that asked for the standalone build there, which were written before macOS had an AOT archive — see [`docs/change-intent-records/2026-10-21-homebrew-tap-ships-the-aot-archives.md`](change-intent-records/2026-10-21-homebrew-tap-ships-the-aot-archives.md).
+
+**The formula is generated, never hand-edited.** `scripts/homebrew-formula.sh <version>` renders `Formula/netpace.rb` from the published release: it reads each archive's URL off the release's own asset list, and takes each `sha256` over the bytes that URL actually serves. Nothing is printed unless all four platforms resolve and all four checksums compute, so a release missing an archive stops before the tap changes rather than producing a formula that installs on some platforms and fails on the rest. A stranded upload counts as absent, so an archive GitHub never finished receiving cannot become a URL that 404s. Its behaviour is gated by `scripts/homebrew-formula.tests.sh`, which `shell-tests.yml` discovers and runs on every pull request. The file it writes carries a do-not-edit header, because every release overwrites it.
+
+**The push is automated.** `.github/workflows/homebrew-publish.yml` renders the formula, installs it on a runner of every architecture it claims to cover, and only then pushes it to the tap.
+
+| Decision | Why |
+|----------|-----|
+| Its own workflow, not a job in `release-binaries.yml` | Pushing to another repository under a token the maintainer holds is a different function from building binaries, and must not be able to fail a release that built and published correctly. A tap failure shows as its own red run. |
+| Triggered by `release-binaries.yml` completing, not by the tag push | The formula is rendered from the archives on the published release, and they do not exist until that workflow has attached them. The trigger matches that workflow's `name:` verbatim, so renaming it silently disables the tap update — no run, nothing red, and no issue raised. Change the two together. |
+| Not triggered by `release: published` | The GitHub Release is created first and the archives arrive afterwards, so that event fires before there is anything to read. |
+| Install-before-push, on all four architectures | Nothing downstream of the push would catch a bad formula: the tap has no CI of its own, and the first report would be a user's failed `brew install`. Every URL and checksum in the pushed formula is therefore one that has actually been installed from. The two macOS RIDs get a runner each for the same reason `release-binaries.yml` splits them (*Runner per RID*) — an Apple silicon runner would leave the `osx-x64` entry unverified. |
+| `netpace --version` asserted against the tag | A formula that installed another version's archive would otherwise reach users as a successful upgrade that changed nothing. |
+| `brew uninstall` checked on the same install | Taking the command back off the path is part of what the tap promises, and it costs one step on an install that already exists. |
+| Commits nothing when the formula is unchanged | Keeps a manual retry of an already-published version a no-op. `git commit` fails on an empty commit, which would raise a failure issue for a tap that is in fact correct. |
+
+**Only a `MAJOR.MINOR.PATCH` tag is published**, because `release-binaries.yml` builds on any tag push and creates the GitHub Release itself — so a test tag or a release candidate reaches the tap behind a perfectly green release run. The workflow skips any other tag cleanly, with a notice and no issue raised, since it is not a release and a failure report would be a false alarm. The generator refuses one too, as a second line of defence and for a version given by hand: a `refs/tags/` prefix, a `v` prefix and a prerelease suffix are all rejected by name, and fail the run. That matters because pushing one publishes it to every `brew upgrade` as the current NetPace.
+
+### One-off tap setup
+
+Three things must exist before the automation can run. All are one-time; none repeats per release.
+
+1. **The tap repository `FrankRay78/homebrew-tap`**, public, with a `Formula/` directory. The name must carry the `homebrew-` prefix, which is what makes `brew install FrankRay78/tap/netpace` resolve. An empty repository is enough — the first automated release writes `Formula/netpace.rb` into it.
+2. **A repository secret `HOMEBREW_TAP_TOKEN`** holding a GitHub personal access token with write access to the tap repository, owned by the maintainer. It cannot be `GITHUB_TOKEN`, which has no access to another repository. The workflow fails on the missing secret before rendering or pushing anything, rather than skipping — a skip would report a release as published to the tap when nothing was pushed.
+3. **A hand-check of the macOS binaries on real hardware.** Before the tap is announced, install it on one Intel and one Apple silicon Mac and run `netpace`. The runners prove the formula installs and the binary starts, but they are not a user's machine. If either Mac refuses to run it, stop and raise a signing issue — NetPace's macOS binaries are not signed or notarised (*macOS code signing*).
+
+Seeding the tap by hand is not necessary: unlike the winget manifest, a formula has no upstream review and the generator creates the file as readily as it updates it. To do it anyway, run `bash scripts/homebrew-formula.sh <version> > netpace.rb` against a published release and commit the result to the tap as `Formula/netpace.rb`.
+
+Until the tap repository exists, `brew install FrankRay78/tap/netpace` reports that the tap could not be found, so README.md and USER_GUIDE.md both say the tap is pending. Removing those two notes is the last step of this setup.
+
+### If a tap update fails
+
+A failed update **raises a GitHub issue** titled `Homebrew tap update failed for <version>`, linking the run. This exists because a `workflow_run`-triggered failure emails nobody: the run goes red in the Actions tab and otherwise passes silently. Treat the issue as the signal that `brew upgrade` will not reach that release.
+
+To retry, run the **Publish Homebrew Tap** workflow manually from the Actions tab and give it the version to publish. It takes the same path as the automatic run, including the install check, so a transient failure usually clears on a second attempt and an already-published version is a no-op.
+
+A failure in the install check is different from a transient one: the formula was rendered but did not install or did not report the right version on at least one architecture, and re-running will fail the same way. Read the failing matrix job — the release's archive for that platform is the likely cause, and a release missing an archive stops the generator with the archive named.
+
+The GitHub Release and its archives are unaffected by any of this. A tap update that never lands costs macOS and Linux users the one-line install for that version; it does not hold back the release.
 
 ## Build-time AOT gating
 
