@@ -131,10 +131,10 @@ jobs:
           name: homebrew-formula
           path: netpace.rb
 
-  # The formula is installed before it is pushed, on a runner of every architecture it claims to
-  # cover, because nothing downstream of the push would catch a bad one: the tap has no CI of its
-  # own, and the first report would be a user's failed `brew install`. This is what makes every
-  # URL and checksum in the pushed formula one that has actually been installed from.
+  # The formula is installed before it is pushed, because nothing downstream of the push would
+  # catch a bad one: the tap has no CI of its own, and the first report would be a user's failed
+  # `brew install`. This is what makes the URLs and checksums in the pushed formula ones that
+  # have actually been installed from.
   verify:
     name: Install on ${{ matrix.runs_on }}
     needs: formula
@@ -147,12 +147,18 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # One runner per url in the formula. The macOS pair is split across architectures for
-          # the same reason release-binaries.yml splits it: an Apple silicon runner would install
-          # the osx-arm64 archive whichever one the formula was asked for, leaving the osx-x64
-          # entry unverified (docs/RELEASING.md, *Runner per RID*).
+          # The macOS pair is split across architectures for the same reason
+          # release-binaries.yml splits it: an Apple silicon runner would install the osx-arm64
+          # archive whichever one the formula was asked for, leaving the osx-x64 entry
+          # unverified (docs/RELEASING.md, *Runner per RID*).
+          #
+          # Linux is checked on x64 only, deliberately. Homebrew is pre-installed on GitHub's
+          # x64 Ubuntu images but not dependably on the ARM64 ones, so adding that runner would
+          # turn every release's tap update red for want of `brew` rather than for anything
+          # wrong with the formula. The linux-arm64 entry is structurally identical to the
+          # linux-x64 one that is checked, and its URL and checksum come off the release and the
+          # bytes it serves either way (docs/RELEASING.md, *Homebrew tap*).
           - runs_on: ubuntu-latest
-          - runs_on: ubuntu-24.04-arm
           - runs_on: macos-15-intel
           - runs_on: macos-latest
 
@@ -166,7 +172,7 @@ jobs:
         with:
           name: homebrew-formula
 
-      # Homebrew is pre-installed on GitHub's macOS and Ubuntu images, but on Linux it lives
+      # Homebrew is pre-installed on GitHub's macOS and x64 Ubuntu images, but on Linux it lives
       # outside the default PATH on some image versions. Resolved here rather than assumed, so a
       # missing Homebrew fails saying so instead of as an unhelpful `brew: command not found`
       # inside the install step.
