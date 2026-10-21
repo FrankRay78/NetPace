@@ -19,8 +19,10 @@ on:
     # failure step to attach to. Change the two together (docs/RELEASING.md, *winget package*).
     workflows: ["Build and Release Cross-Platform Binaries"]
     types: [completed]
-  # Manual retry for a submission the winget moderators rejected, or one that failed after the
-  # release itself was fine. Registered from the default branch only, as all workflow_dispatch is.
+  # Manual retry for a submission that failed after the release itself was fine. Not for one the
+  # winget moderators rejected while its pull request is still open — a fresh submission collides
+  # with it (docs/RELEASING.md, *If a submission fails or is rejected*). Registered from the
+  # default branch only, as all workflow_dispatch is.
   workflow_dispatch:
     inputs:
       version:
@@ -54,8 +56,8 @@ jobs:
 
     # A run of release-binaries.yml that did not succeed has no complete set of archives to submit.
     # `event == 'push'` does not on its own prove a tag push, and release-binaries.yml builds on
-    # any tag; what a release version actually looks like is checked by the resolver below, which
-    # is tested and refuses anything that is not MAJOR.MINOR.PATCH.
+    # any tag; which tags are releases is decided by the version step below, since an expression
+    # here cannot match a pattern.
     if: >-
       github.event_name == 'workflow_dispatch' ||
       (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push')
@@ -70,6 +72,10 @@ jobs:
 
       # On a workflow_run the tag that triggered release-binaries.yml arrives as head_branch;
       # GitHub populates it with the short ref, which for a tag push is the tag name.
+      #
+      # A release candidate or test tag is a clean skip, not a failure: it is not a release, and
+      # reporting it as a failed submission would raise a false issue on every such tag. A version
+      # given by hand is never skipped — the resolver refuses a bad one loudly instead.
       - name: Resolve version
         id: version
         env:
@@ -86,13 +92,20 @@ jobs:
             echo "::error::Could not determine the released version to submit."
             exit 1
           fi
-          echo "Submitting version: $version"
           echo "version=$version" >> "$GITHUB_OUTPUT"
+          if [ "${{ github.event_name }}" != "workflow_dispatch" ] && [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::notice::'$version' is not a MAJOR.MINOR.PATCH release — nothing submitted to winget."
+            echo "release=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "Submitting version: $version"
+          echo "release=true" >> "$GITHUB_OUTPUT"
 
       # Fails before anything is downloaded or submitted: a missing secret is one-off setup that
       # was never done (docs/RELEASING.md, *One-off setup*), and skipping on it would report a
       # release as published to winget when nothing was sent.
       - name: Verify submission token is configured
+        if: steps.version.outputs.release == 'true'
         env:
           WINGET_CREATE_GITHUB_TOKEN: ${{ secrets.WINGET_PKGS_TOKEN }}
         run: |
@@ -106,6 +119,7 @@ jobs:
       # so a release missing a Windows AOT archive stops here rather than producing a manifest
       # whose download URL 404s. Covered by scripts/winget-release-assets.tests.sh.
       - name: Resolve installer URLs from the release
+        if: steps.version.outputs.release == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}
@@ -120,6 +134,7 @@ jobs:
       # schema the community repository currently accepts, and a pinned older build starts being
       # rejected the next time that schema moves.
       - name: Download wingetcreate
+        if: steps.version.outputs.release == 'true'
         run: |
           set -euo pipefail
           curl -sSLf -o wingetcreate.exe https://aka.ms/wingetcreate/latest
@@ -131,6 +146,7 @@ jobs:
       # Each URL carries its architecture explicitly, so the submission never depends on
       # wingetcreate inferring x64 from arm64 by pattern-matching the archive name.
       - name: Submit updated manifest
+        if: steps.version.outputs.release == 'true'
         env:
           WINGET_CREATE_GITHUB_TOKEN: ${{ secrets.WINGET_PKGS_TOKEN }}
           VERSION: ${{ steps.version.outputs.version }}

@@ -142,7 +142,7 @@ winget uninstall netpace
 
 ### Installing unattended, from a script
 
-Pass winget's silent options so nothing prompts, and name the package exactly so a moniker match cannot resolve to something else. Pin `--version` when a provisioning script needs a known build rather than the latest, naming any version from the [releases page](https://github.com/FrankRay78/NetPace/releases):
+Pass winget's silent options so nothing prompts, and name the package exactly so a moniker match cannot resolve to something else. Pin `--version` when a provisioning script needs a known build rather than the latest, naming any version that `winget show --id FrankRay78.NetPace --exact --versions` lists — winget carries only stable releases from the package's first acceptance onward, so not every version on the releases page:
 ```powershell
 winget install --id FrankRay78.NetPace --exact --version <version> --silent --accept-package-agreements --accept-source-agreements
 ```
