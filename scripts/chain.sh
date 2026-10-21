@@ -121,6 +121,10 @@ fi
 # verdict sit last and be read as the stage's own, which is precisely what position is meant to
 # prevent.
 
+# The verdict lines these patterns read are written by the stage prompts: .claude/commands/build.md
+# (READY), verify.md (VERIFIED) and raise-pr.md (RAISED), and all three emit FAILED. A change to a
+# pattern here is a change to what those prompts must tell the model to write, and the reverse.
+
 # One leading markdown marker, with its whitespace. `-`, `*` and `+` count as a bullet only when
 # whitespace follows, so the `**` opening a bold verdict is not read as one and left half-stripped.
 VERDICT_MARKER='^(#+[[:space:]]+|>[[:space:]]*|[-+*][[:space:]]+|[0-9]+[.)][[:space:]]+)'

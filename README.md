@@ -62,7 +62,7 @@ If you have the [.NET 10 SDK](https://dotnet.microsoft.com/en-us/download/dotnet
 dotnet tool install -g netpace
 ```
 
-`dotnet tool update -g netpace` moves you to the latest release, and `dnx netpace` runs it once without installing anything (it asks to confirm the download on first run; `dnx --yes netpace` skips the prompt in a script). On Windows and Linux (x64 and ARM64) you get the Native AOT binary; on macOS it runs on the runtime the SDK already provides. See the [User Guide](https://github.com/FrankRay78/NetPace/blob/main/USER_GUIDE.md#installing-netpace) for which platforms the tool package covers.
+`dotnet tool update -g netpace` moves you to the latest release, and `dnx netpace` runs it once without installing anything (it asks to confirm the download on first run; `dnx --yes netpace` skips the prompt in a script). On every platform it covers — Windows, Linux and macOS, x64 and ARM64 — you get the Native AOT binary, which starts without a .NET runtime. See the [User Guide](https://github.com/FrankRay78/NetPace/blob/main/USER_GUIDE.md#installing-netpace) for which platforms the tool package covers.
 
 ### Windows: install with winget
 
@@ -90,7 +90,7 @@ NetPace's Windows binaries are not code-signed, so Windows SmartScreen may warn 
 
 Each release contains precompiled binaries you can simply [download](https://github.com/FrankRay78/NetPace/releases), unzip and run. 
 
-Choose from Windows, Linux and macOS; standalone (large file but includes all dependencies), net10 (small file but requires [Microsoft .NET 10.0 runtime](https://dotnet.microsoft.com/en-us/download/dotnet/10.0)) to already be installed, or AOT compiled for bare metal execution (Linux and Windows; macOS AOT remains a future release). 
+Choose from Windows, Linux and macOS; standalone (large file but includes all dependencies), net10 (small file but requires [Microsoft .NET 10.0 runtime](https://dotnet.microsoft.com/en-us/download/dotnet/10.0)) to already be installed, or AOT compiled for bare metal execution. 
 
 Alternatively, clone this repository locally and build.
 

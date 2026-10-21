@@ -1,0 +1,45 @@
+name: Link Check
+
+# Every reference to a file in this repository resolves to a file that is there — markdown links
+# in tracked `*.md` files, whether relative or written as a full link to a path on `main`, the
+# `#heading` any of them names, and bare citations of a change-intent record in prose or a YAML
+# comment. Nothing is fetched: a full link is mapped onto the checkout and read locally, so the
+# verdict depends on this branch's files and not on any third-party site being reachable.
+#
+# Pre-merge, and only here. A branch that deletes or renames a linked-to file or heading leaves its
+# inbound pointers in places nobody opens at the time: the constitution, a workflow comment, another
+# record. This job is where that shows up while the change is still a pull request.
+#
+# Deliberately its own workflow rather than a job in dotnet.yml or shell-tests.yml: the job name
+# becomes the required-status-check context, and keeping it here means an unrelated change to the
+# .NET build matrix or the shell-test discovery can never rename it out from under the ruleset.
+#
+# The check's own behaviour is gated separately — scripts/link-check.tests.sh is a committed
+# `*.tests.sh`, so shell-tests.yml discovers and runs it with no entry needed here.
+
+on:
+  pull_request:
+    branches: [ "main" ]
+
+permissions:
+  contents: read
+
+jobs:
+  # Do NOT add a `paths:` filter or an `if:` condition to this job. To GitHub a skipped job is not
+  # a failure, so a required `link-check` context is satisfied by one that never ran — and since
+  # `pull_request` workflows are evaluated from the head ref, the branch adding the filter is the
+  # branch it stops gating. A docs-only `paths` filter would be especially wrong here: a branch
+  # that deletes a linked-to file under `scripts/` or `.claude/` is exactly what this catches.
+  link-check:
+    name: link-check
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Check every repository reference resolves
+      # No token and no network: the check reads the checkout and nothing else. The file list comes
+      # from `git ls-files`, so the default fetch depth is enough — no history is read.
+      run: bash scripts/link-check.sh

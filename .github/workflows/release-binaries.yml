@@ -1,9 +1,12 @@
 name: Build and Release Cross-Platform Binaries
 
+# Only semver-shaped tags trigger it, as for every release workflow: a tag means a release.
+# docs/RELEASING.md, Release tags.
 on:
   push:
     tags:
-      - '*'  # Match any tag like 0.4.0, 1.0.0, etc.
+      - '[0-9]+.[0-9]+.[0-9]+'
+      - '[0-9]+.[0-9]+.[0-9]+-*'
 
 jobs:
   build-cross-platform:
@@ -39,6 +42,22 @@ jobs:
             publish_aot: true
             publish_single_file: false
             invariant_globalization: true
+          # Native AOT cannot cross-compile between operating systems, so both macOS RIDs build on a Mac;
+          # each gets a runner of its own architecture so the smoke test runs natively rather than through
+          # Rosetta. macos-15-intel is GitHub's last x86_64 macOS image — see docs/RELEASING.md, When the
+          # Intel Mac runner retires.
+          - runtime: osx-x64
+            deployment: aot
+            runs_on: macos-15-intel
+            publish_aot: true
+            publish_single_file: false
+            invariant_globalization: true
+          - runtime: osx-arm64
+            deployment: aot
+            runs_on: macos-latest
+            publish_aot: true
+            publish_single_file: false
+            invariant_globalization: true
 
     defaults:
       run:
@@ -62,6 +81,18 @@ jobs:
           if [ "$RUNNER_OS" != "$expected" ]; then
             echo "FAIL: AOT runtime ${{ matrix.runtime }} requires runner OS '$expected', got '$RUNNER_OS'."
             echo "A typo in matrix.include[*].runs_on would silently fall back to ubuntu-latest — guard catches that."
+            exit 1
+          fi
+          # The two macOS RIDs share a runner OS, so the check above cannot tell their runners apart. Swapping
+          # them would build osx-x64 on Apple silicon and smoke-test it through Rosetta, or fail obscurely in the
+          # linker — the architecture is checked directly instead.
+          case "${{ matrix.runtime }}" in
+            osx-x64)   expected_arch="x86_64" ;;
+            osx-arm64) expected_arch="arm64" ;;
+            *)         expected_arch="" ;;
+          esac
+          if [ -n "$expected_arch" ] && [ "$(uname -m)" != "$expected_arch" ]; then
+            echo "FAIL: AOT runtime ${{ matrix.runtime }} requires a $expected_arch runner, got $(uname -m)."
             exit 1
           fi
 
@@ -140,9 +171,9 @@ jobs:
       # shell: bash forces Git Bash on the Windows runners so the same script (zip vs tar) runs uniformly across all matrix entries.
       # Whitelist approach: archive the executable by name rather than the entire publish directory. All variants
       # (PublishSingleFile and Native AOT) produce a single binary by design; the publish dir may also contain
-      # toolchain by-products (NetPace.Core.xml, netpace.pdb on Windows AOT, netpace.dbg on Linux AOT) that
-      # must never ship to end users. Archiving by name keeps the release contract immune to whatever the
-      # next toolchain version decides to emit alongside the binary.
+      # toolchain by-products (NetPace.Core.xml, netpace.pdb on Windows AOT, netpace.dbg on Linux AOT, the
+      # netpace.dSYM folder on macOS AOT) that must never ship to end users. Archiving by name keeps the
+      # release contract immune to whatever the next toolchain version decides to emit alongside the binary.
       - name: Create archive
         shell: bash
         run: |
@@ -152,7 +183,9 @@ jobs:
           if [[ "${{ matrix.runtime }}" == win-* ]]; then
             7z a "${archive_stem}.zip" netpace.exe
           else
-            tar -czf "${archive_stem}.tar.gz" netpace
+            # COPYFILE_DISABLE stops Apple's tar writing extended attributes into a sibling ._netpace
+            # member, which would break the one-entry contract below. GNU tar ignores it.
+            COPYFILE_DISABLE=1 tar -czf "${archive_stem}.tar.gz" netpace
           fi
 
       - name: Verify archive contents
@@ -182,7 +215,7 @@ jobs:
             exit 1
           fi
 
-      # shell: bash forces Git Bash on the Windows runners so the unzip/tar branching reuses one script across Linux + Windows AOT entries.
+      # shell: bash forces Git Bash on the Windows runners so the unzip/tar branching reuses one script across all AOT entries.
       - name: Smoke test (AOT only)
         if: matrix.deployment == 'aot'
         shell: bash
@@ -240,8 +273,6 @@ jobs:
             fi
             standalone_size=$(stat -c%s "$standalone")
             for variant in framework-dependent aot; do
-              # AOT variant exists for Linux and Windows RIDs only (macOS AOT is out of scope)
-              if [ "$variant" = "aot" ] && [[ "$runtime" != linux-* && "$runtime" != win-* ]]; then continue; fi
               target=$(find "./artifacts/netpace-$runtime-$variant" -type f 2>/dev/null | head -1 || true)
               if [ -z "$target" ]; then
                 echo "FAIL: $variant artifact missing for $runtime"
