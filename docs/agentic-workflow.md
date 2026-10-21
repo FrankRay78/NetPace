@@ -306,7 +306,7 @@ The kinds of files a project adds to make this workflow operational (names illus
 - **skills / sub-agents** — simplifier, verifier, a `diagnose` skill (a reproduce → minimise → hypothesise → instrument → fix → regression-test loop for hard bugs), and any stack-orchestration script.
 
 ### Governance
-- **constitution** — project governance, versioned, supersedes other guides. Kept with the project docs, and loaded into every agent session.
+- **constitution** — project governance, supersedes other guides. Kept with the project docs, and loaded into every agent session.
 
 ### CI / SCM integration
 - **CI workflow** — build + test on PRs (full suite or deterministic subset; see enforcement).

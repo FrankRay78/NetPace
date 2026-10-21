@@ -22,7 +22,7 @@ A record is also the one place in the codebase where a GitHub issue number belon
 | Trade-off made (performance vs. readability, simplicity vs. flexibility) where the rejected option is plausible? | ✅ | |
 | Following an established pattern already documented elsewhere in the repo? | | ✅ |
 | Obvious or standard implementation with no real alternative? | | ✅ |
-| Temporary workaround you expect to remove? | | ✅ (code comment + TODO instead) |
+| Temporary workaround you expect to remove? | | ✅ (a code comment describing the current state, with the removal tracked in an open issue) |
 | Reasoning already recorded in the issue's confirmed decisions, and the change constrains no public API, interface contract or dependency direction? | | ✅ (link the issue from the commit message or the pull request body rather than restating it) |
 | Change only to documentation written for the project's readers, such as README.md or USER_GUIDE.md? | | ✅ (command prompts, conventions, the constitution and workflows direct future work and are not covered by this row) |
 
@@ -54,7 +54,7 @@ Each piece of reasoning is written once. A rejected alternative belongs in the r
 
 When a record overturns part of an earlier one, add `**Supersedes:** <link> — <which decision>` so the older record is read in light of the newer.
 
-**A worked sample at the target length.** This is condensed from the 2026-09-03 whitespace-rules record, which is left at the length it was filed:
+**A worked sample at the target length.** This is condensed from the 2026-09-03 whitespace-rules record:
 
 ```markdown
 # Whitespace Rules Must Agree With What Is Stored

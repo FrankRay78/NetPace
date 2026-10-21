@@ -4,7 +4,7 @@
 
 **Scope**: `OoklaSpeedtest.GetFastestServerByLatencyAsync`, `ServerDiscoverySettings`, `ServerSelector`, `ListServersCommand`
 **Audience**: anyone changing server selection, the latency probe, or the settings that bound either
-**Issue**: [#239](https://github.com/FrankRay78/NetPace/issues/239)
+**Decision record**: [screening-separate-from-measuring](../change-intent-records/2026-10-06-screening-separate-from-measuring.md)
 
 ---
 
