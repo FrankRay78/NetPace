@@ -29,7 +29,7 @@ dnx netpace
 
 `dnx` asks you to confirm the download on first run; pass `--yes` in a script.
 
-On Windows and Linux (x64 and ARM64) the installed command is a Native AOT binary, so it starts without a .NET runtime. On macOS (Intel and Apple silicon) it runs on the .NET runtime the SDK already provides. Platforms outside those six — Alpine-style Linux among them — are not covered by this package; the [releases page](https://github.com/FrankRay78/NetPace/releases) carries standalone downloads instead.
+On Windows, Linux and macOS, each on x64 and ARM64 (Intel and Apple silicon), the installed command is a Native AOT binary, so it starts without a .NET runtime. Platforms outside those six — Alpine-style Linux among them — are not covered by this package; the [releases page](https://github.com/FrankRay78/NetPace/releases) carries standalone downloads instead.
 
 ## Usage
 

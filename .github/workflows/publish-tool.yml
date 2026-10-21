@@ -7,9 +7,8 @@ name: Publish .NET Tool Package
 # Its own workflow, independent of release-binaries.yml, so neither can fail the other: a tool-package
 # problem never withholds the release archives, and an archive problem never withholds the package.
 #
-# Only semver-shaped tags trigger it. The SDK cannot parse a tag such as test-archive-whitelist-0.0.1 as
-# a package version, and a test tag must not push a real package to NuGet. The filter is on shape, not
-# intent: a prerelease-shaped tag such as 0.0.1-test1 is valid semver and does publish.
+# Only semver-shaped tags trigger it, as for every release workflow: a tag means a release, and a
+# prerelease-shaped tag such as 0.29.0-rc1 publishes too. docs/RELEASING.md, Release tags.
 on:
   push:
     tags:
@@ -33,6 +32,10 @@ jobs:
             runs_on: windows-latest
           - runtime: win-arm64
             runs_on: windows-11-arm
+          - runtime: osx-x64
+            runs_on: macos-15-intel
+          - runtime: osx-arm64
+            runs_on: macos-latest
 
     defaults:
       run:
@@ -49,10 +52,23 @@ jobs:
           case "${{ matrix.runtime }}" in
             win-*)   expected="Windows" ;;
             linux-*) expected="Linux" ;;
+            osx-*)   expected="macOS" ;;
             *)       echo "Unknown runtime prefix: ${{ matrix.runtime }}"; exit 1 ;;
           esac
           if [ "$RUNNER_OS" != "$expected" ]; then
             echo "FAIL: runtime ${{ matrix.runtime }} requires runner OS '$expected', got '$RUNNER_OS'."
+            exit 1
+          fi
+          # The two macOS RIDs share a runner OS, so the check above cannot tell their runners apart; swapping
+          # them would compile one RID's binary for the other's architecture and then run it through Rosetta at
+          # the install check below. The architecture is checked directly instead.
+          case "${{ matrix.runtime }}" in
+            osx-x64)   expected_arch="x86_64" ;;
+            osx-arm64) expected_arch="arm64" ;;
+            *)         expected_arch="" ;;
+          esac
+          if [ -n "$expected_arch" ] && [ "$(uname -m)" != "$expected_arch" ]; then
+            echo "FAIL: runtime ${{ matrix.runtime }} requires a $expected_arch runner, got $(uname -m)."
             exit 1
           fi
 
@@ -85,6 +101,38 @@ jobs:
             -p:FileVersion=${{ steps.get_version.outputs.numeric_version }} \
             -p:InformationalVersion=${{ steps.get_version.outputs.version }} \
             --output ./tool-package
+
+      # Nothing else in this workflow runs a macOS binary before the push: the publish job's install check
+      # runs on its own runner, so it only ever exercises linux-x64. So each Mac installs the package it has
+      # just packed and asks the command its version, on the same pass condition as the Linux check — it must
+      # equal the tag. The wrapper is packed alongside because it is what `dotnet tool install netpace` resolves
+      # through, and both go into a feed of their own: the package this job uploads stays exactly the file the
+      # Native AOT pack above produced, whatever a later SDK does with CreateRidSpecificToolPackages.
+      - name: Verify the installed tool reports the tag
+        if: runner.os == 'macOS'
+        env:
+          VERSION: ${{ steps.get_version.outputs.version }}
+          NUMERIC_VERSION: ${{ steps.get_version.outputs.numeric_version }}
+        run: |
+          set -euo pipefail
+          mkdir ./verify-feed
+          cp "./tool-package/NetPace.${{ matrix.runtime }}.$VERSION.nupkg" ./verify-feed/
+          dotnet pack src/NetPace.Console/NetPace.Console.csproj \
+            --configuration Release \
+            -p:CreateRidSpecificToolPackages=false \
+            -p:PackageVersion="$VERSION" \
+            -p:Version="$VERSION" \
+            -p:AssemblyVersion="$NUMERIC_VERSION" \
+            -p:FileVersion="$NUMERIC_VERSION" \
+            -p:InformationalVersion="$VERSION" \
+            --output ./verify-feed
+          dotnet tool install netpace --version "$VERSION" --source ./verify-feed --tool-path ./tool-check
+          reported=$(./tool-check/netpace --version)
+          echo "netpace --version reported: $reported"
+          if [ "$reported" != "$VERSION" ]; then
+            echo "FAIL: the installed tool reports '$reported', not the tag '$VERSION'."
+            exit 1
+          fi
 
       # Named exactly rather than globbed, and erroring on no match: the default is to warn and report
       # success, so a pack that stopped producing this file would leave the job green and surface a job
@@ -137,26 +185,6 @@ jobs:
       - name: Restore dependencies
         run: dotnet restore src
 
-      # macOS has no Native AOT build (out of scope), so its two RIDs ship framework-dependent packages
-      # and run on the .NET runtime the SDK already provides. Both cross-pack fine from this runner.
-      - name: Pack macOS tool packages
-        env:
-          VERSION: ${{ steps.get_version.outputs.version }}
-          NUMERIC_VERSION: ${{ steps.get_version.outputs.numeric_version }}
-        run: |
-          set -euo pipefail
-          for runtime in osx-x64 osx-arm64; do
-            dotnet pack src/NetPace.Console/NetPace.Console.csproj \
-              --configuration Release \
-              --runtime "$runtime" \
-              -p:PackageVersion="$VERSION" \
-              -p:Version="$VERSION" \
-              -p:AssemblyVersion="$NUMERIC_VERSION" \
-              -p:FileVersion="$NUMERIC_VERSION" \
-              -p:InformationalVersion="$VERSION" \
-              --output ./tool-feed
-          done
-
       # The wrapper package is what users name: it carries no binary, only the list of RID packages the
       # installer picks from. CreateRidSpecificToolPackages=false (Microsoft.NET.PackTool.targets in the SDK)
       # stops this pack rebuilding the six RID packages framework-dependent and overwriting the Native AOT
@@ -181,8 +209,9 @@ jobs:
       # for this runner's own RID: the wrapper resolves a RID package, that package carries a runnable
       # binary, and the binary reports the tag rather than the 0.0.0 source-build placeholder — the drift
       # the library package once shipped unnoticed (docs/RELEASING.md, Source-build version). It installs
-      # by the lowercase id the docs tell users to type. It covers linux-x64 only; the step after it is what
-      # judges the other five. Nothing is pushed if it fails.
+      # by the lowercase id the docs tell users to type. It covers linux-x64 only; the two Mac entries of
+      # pack-native run the same check for themselves, and the step after this one judges the rest.
+      # Nothing is pushed if it fails.
       - name: Verify the installed tool reports the tag
         env:
           VERSION: ${{ steps.get_version.outputs.version }}
@@ -201,16 +230,17 @@ jobs:
       # The filename says nothing about what is inside, so this reads the package. A Native AOT pack puts
       # the single native binary under tools/any/<rid>/; a framework-dependent one puts a netpace.dll and
       # its dependencies under tools/net10.0/<rid>/. Both set Runner="executable", and the install gate
-      # above runs on a runner that has the .NET runtime, so without this check four framework-dependent
+      # above runs on a runner that has the .NET runtime, so without this check six framework-dependent
       # packages would pass every gate and ship to users promised a binary that needs no runtime.
-      # Asserting the entry count catches the other direction: a native symbol file riding along.
-      - name: Verify every native RID package being pushed is Native AOT
+      # Asserting the entry count catches the other direction: a native symbol file riding along — on macOS
+      # the AOT toolchain emits a netpace.dSYM folder rather than a single file, and the count catches that too.
+      - name: Verify every RID package being pushed is Native AOT
         env:
           VERSION: ${{ steps.get_version.outputs.version }}
         run: |
           set -euo pipefail
           missing=false
-          for runtime in win-x64 win-arm64 linux-x64 linux-arm64; do
+          for runtime in win-x64 win-arm64 linux-x64 linux-arm64 osx-x64 osx-arm64; do
             package="./tool-feed/NetPace.$runtime.$VERSION.nupkg"
             if [ ! -f "$package" ]; then
               echo "FAIL: no tool package for $runtime — its native build did not produce one."
