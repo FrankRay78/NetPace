@@ -10,6 +10,15 @@ public sealed partial class NetPaceConsoleTests
         return new CommandLineTestHost(serviceCollection);
     }
 
+    /// <summary>
+    /// Create the CommandLineTestHost for a run that sees an interactive terminal, so the live
+    /// progress display renders into the captured output.
+    /// </summary>
+    private static CommandLineTestHost GetInteractiveCommandLineTestHost(IServiceCollection? serviceCollection)
+    {
+        return new CommandLineTestHost(serviceCollection, CommandLineTestHost.InteractiveTerminalWidth, interactive: true);
+    }
+
     [Fact]
     public async Task Should_Perform_Speed_Test()
     {

@@ -13,6 +13,12 @@
 # stage's report and start the next. The ordering is enforced here, outside the model, so no
 # stage can start over unverified work.
 #
+# One failure is told apart from the rest: a stage the account's own Claude usage limit cut off,
+# which is not a fault in the issue and needs no diagnosis. It is recognised from the reply's
+# typed error field alone, the closing line names the limit and quotes the reply's reset wording,
+# and the chain exits 75 rather than 1 so a runner can tell that stop from every other one
+# without reading the prose.
+#
 # WHAT IT COSTS. A full run spends substantial model time — the better part of an hour — and its
 # last stage opens a real pull request. The deliberate human act is starting the chain against
 # one named issue. The chain itself never resets, cleans, stashes, checks out, pushes or writes
@@ -41,6 +47,12 @@ BUILD_LIMIT=${CHAIN_STAGE_TIMEOUT:-7200}
 # stall detector, so the headroom is deliberately about three times that and no more.
 VERIFY_LIMIT=${CHAIN_STAGE_TIMEOUT:-7200}
 RAISE_PR_LIMIT=${CHAIN_STAGE_TIMEOUT:-1800}
+
+# The chain's own exit code for a stage the account's usage limit cut off, so a runner can tell
+# that stop from every other failure without parsing the closing line's prose. 75 is sysexits'
+# EX_TEMPFAIL — the failure that clears on its own — and collides with none of the codes the chain
+# already reports: timeout's 124, the shell's 125-127, and 137 for a stage killed by SIGKILL.
+USAGE_LIMIT_EXIT=75
 
 usage() {
   echo "usage: scripts/chain.sh [--dry-run] <issue>" >&2
@@ -109,6 +121,10 @@ fi
 # verdict sit last and be read as the stage's own, which is precisely what position is meant to
 # prevent.
 
+# The verdict lines these patterns read are written by the stage prompts: .claude/commands/build.md
+# (READY), verify.md (VERIFIED) and raise-pr.md (RAISED), and all three emit FAILED. A change to a
+# pattern here is a change to what those prompts must tell the model to write, and the reverse.
+
 # One leading markdown marker, with its whitespace. `-`, `*` and `+` count as a bullet only when
 # whitespace follows, so the `**` opening a bold verdict is not read as one and left half-stripped.
 VERDICT_MARKER='^(#+[[:space:]]+|>[[:space:]]*|[-+*][[:space:]]+|[0-9]+[.)][[:space:]]+)'
@@ -161,6 +177,40 @@ read_verdict() {
   STAGE_VERDICT=$line
 }
 
+# usage_limit_reason <reply> — the reason line for a stage the account's usage limit stopped, or
+# nothing (and a non-zero return) when the reply does not say one did.
+#
+# Read from the reply's typed `api_error` field ALONE, never from the report text. claude sets it
+# to usage_limit_reached only when the account's own limit — a session, weekly or per-model plan
+# limit, or a spend cap — refused the request, and no other refusal sharing its rate_limit error
+# sets it. The text is the wrong source for the same reason the verdict is read by position: a
+# report may quote a limit message it merely read about, and such a report must not be mistaken
+# for a limit stop.
+#
+# claude writes the reply and exits non-zero on an API error, so this is read before the exit code
+# is dispatched on; a reply that is absent, not JSON, or carries no such field leaves every other
+# failure reported exactly as before.
+usage_limit_reason() {
+  local detail
+  [ "$(jq -r '.api_error // empty' 2>/dev/null <<<"$1")" = usage_limit_reached ] || return 1
+  # The limit's own message, quoted verbatim and not converted: it carries the reset time in the
+  # reader's own timezone ("You've hit your session limit · resets 3:20pm (Europe/Berlin)"), and
+  # nothing else in a result reply does — the typed error's reset field rides on the assistant
+  # message, not on the result object the chain reads. Its last non-blank line only, because the
+  # closing line is one line and a multi-line reason would break the runner's reading of it.
+  #
+  # The carriage returns go through `tr`, not the `sed` below, and must stay there: BSD sed reads
+  # `s/\r$//` as a literal `r`, so on macOS it would eat the message's last character — quoting a
+  # reset time one digit short. The trailing-space strip looks like it covers \r on its own, and
+  # does under GNU sed, which is exactly how the bug hides.
+  detail=$(jq -r '.result // empty' 2>/dev/null <<<"$1" | tr -d '\r' | sed -e 's/[[:space:]]*$//' -e '/^$/d' | tail -n 1)
+  if [ -n "$detail" ]; then
+    echo "the Claude usage limit was reached — $detail"
+  else
+    echo "the Claude usage limit was reached; the reply gave no reset time"
+  fi
+}
+
 # branch_state — what a stopping run leaves behind: the commits the current branch holds over
 # main, and whether the working tree is dirty. Read-only, like everything else the chain does to
 # the repository. Printed *before* fail()'s closing lines, not after, so the two closing lines stay
@@ -186,11 +236,12 @@ branch_state() {
   fi
 }
 
-# fail <position> <name> <reason> — the branch state, the closing message, then stop. Nothing is
-# undone: the branch and working tree stay exactly as the failed stage left them, for diagnosis.
-# The state lines exist because a stage killed at its time limit leaves no report at all, and a
-# stage that stops part-way can leave commits or uncommitted edits behind — so the closing
-# output has to say whether there is work on the branch before anyone continues it by hand.
+# fail <position> <name> <reason> [exit code] — the branch state, the closing message, then stop,
+# with 1 unless the caller names another code. Nothing is undone: the branch and working tree
+# stay exactly as the failed stage left them, for diagnosis. The state lines exist because a
+# stage killed at its time limit leaves no report at all, and a stage that stops part-way can
+# leave commits or uncommitted edits behind — so the closing output has to say whether there is
+# work on the branch before anyone continues it by hand.
 fail() {
   branch_state
   echo "chain: FAILED at [$1/3] $2 — $3"
@@ -199,7 +250,7 @@ fail() {
   else
     echo "chain: no later stage ran; no session id was captured, so reopen the most recent headless session in this repo with \`claude --resume\`."
   fi
-  exit 1
+  exit "${4:-1}"
 }
 
 # run_stage <position> <name> <prompt> <success verdict ERE> <limit>
@@ -211,7 +262,7 @@ fail() {
 # sharing its line with anything else (`VERIFIED branch=x, FAILED reason=…`) is that verdict.
 run_stage() {
   local pos=$1 name=$2 prompt=$3 verdict=$4 limit=$5
-  local reply rc reason reply_type is_error subtype started elapsed
+  local reply rc reason reply_type is_error subtype started elapsed limit_reason
   # Cleared before the call, so a stage that fails before the parse below — a stall, a launch
   # failure, a reply that is not JSON — does not leave the previous stage's id in place and send
   # the reader to an already-finished session. Empty is the "no session id was captured" fallback.
@@ -233,6 +284,21 @@ run_stage() {
   # --preserve-status, which is not worth it.
   if [ "$rc" = 137 ] && [ "$elapsed" -lt "$limit" ]; then
     fail "$pos" "$name" "killed (exit 137) after ${elapsed}s, before its ${limit}s time limit"
+  fi
+  # Before the exit code is dispatched on, because the limit's own exit code is an ordinary 1 and
+  # would otherwise be reported as "claude exited with 1" — which is all the parked comment used
+  # to say, and the reason the cause had to be dug out of the session transcript by hand.
+  if limit_reason=$(usage_limit_reason "$reply"); then
+    # The report and the session id, read here because this failure stops the run above the place
+    # every other reply-bearing failure reads them. Without the report the limit's own message
+    # reaches neither the output nor the log the parked comment points at, leaving only the one
+    # line the reason could carry; without the session id the closing line claims no id was
+    # captured, over a reply that carried one — and this is the failure whose session is most
+    # worth reopening once the limit has reset.
+    STAGE_RESULT=$(jq -r '.result // empty' 2>/dev/null <<<"$reply")
+    STAGE_SESSION=$(jq -r '.session_id // empty' 2>/dev/null <<<"$reply")
+    [ -n "$STAGE_RESULT" ] && printf '%s\n' "$STAGE_RESULT"
+    fail "$pos" "$name" "$limit_reason" "$USAGE_LIMIT_EXIT"
   fi
   case $rc in
     0) ;;

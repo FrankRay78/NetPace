@@ -55,6 +55,10 @@ public sealed class DefaultConsoleWriter : IConsoleWriter
         // Perform speed test
         if (!(settings.NoDownload && settings.NoUpload))
         {
+            // The live figure beside each bar follows the same unit options as the result line, so
+            // the speed the user watches is the speed they are given.
+            var liveSpeed = new LiveSpeedColumn(settings.SpeedUnit, settings.SpeedUnitSystem, settings.SpeedScale);
+
             await console.Progress()
                 .AutoClear(false)
                 .Columns(
@@ -62,6 +66,7 @@ public sealed class DefaultConsoleWriter : IConsoleWriter
                     new TaskDescriptionColumn(),
                     new ProgressBarColumn(),
                     new PercentageColumn(),
+                    liveSpeed,
                 ])
                 .StartAsync(async progress =>
                 {
@@ -82,15 +87,25 @@ public sealed class DefaultConsoleWriter : IConsoleWriter
                     // SyncContext/thread pool, which races Spectre's renderer and drops updates.
                     if (!settings.NoDownload)
                     {
-                        var downloadProgressReporter = new SyncProgress<SpeedTestProgress>(p => downloadProgress!.Value = p.PercentageComplete);
+                        var downloadProgressReporter = new SyncProgress<SpeedTestProgress>(p =>
+                        {
+                            downloadProgress!.Value = p.PercentageComplete;
+                            liveSpeed.Report(downloadProgress, p);
+                        });
                         using var download = DiagnosticTestScope.For(recorder, DiagnosticTests.Download);
                         downloadResult = await speedTestClient.GetDownloadSpeedAsync(fastest.Server, downloadProgressReporter, download, cancellationToken);
+                        liveSpeed.Settle(downloadProgress!, downloadResult);
                     }
                     if (!settings.NoUpload)
                     {
-                        var uploadProgressReporter = new SyncProgress<SpeedTestProgress>(p => uploadProgress!.Value = p.PercentageComplete);
+                        var uploadProgressReporter = new SyncProgress<SpeedTestProgress>(p =>
+                        {
+                            uploadProgress!.Value = p.PercentageComplete;
+                            liveSpeed.Report(uploadProgress, p);
+                        });
                         using var upload = DiagnosticTestScope.For(recorder, DiagnosticTests.Upload);
                         uploadResult = await speedTestClient.GetUploadSpeedAsync(fastest.Server, uploadProgressReporter, upload, cancellationToken);
+                        liveSpeed.Settle(uploadProgress!, uploadResult);
                     }
                 });
         }

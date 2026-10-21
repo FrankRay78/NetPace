@@ -1,5 +1,5 @@
 ---
-description: Raise a PR for the current feature branch — composes a PR body sized to the change, pushes, and requests an @claude review.
+description: Raise a PR for the current feature branch — composes a PR body sized to the change and pushes. The review-pr workflow reviews the PR once it opens.
 ---
 
 Read `CLAUDE.md` for project context before proceeding.
@@ -35,10 +35,10 @@ Every STOP below is a **failure**, so each ends its report with the *Final repor
      - **No issue** — the lookup settled the question. Either it exited 0 and the answer disqualifies the number (a pull request, an issue already `CLOSED`, or an issue in another repo), or it exited non-zero saying `Could not resolve to an issue or pull request`, which is GitHub definitively answering that nothing exists at `<N>`. Add no closing keyword. When it is a real but closed issue in *this* repo, still record `Refs #<N>` in **Related**: dropping the closing keyword is the safety property, dropping every trace of the link is collateral damage.
      - **Unverified** — the lookup could not answer at all: expired auth, no network, rate limit, `gh` missing. Add no closing keyword, and say the check could not run, quoting `gh`'s stderr. Read the stderr, not the exit code, to tell this from the case above — both exit non-zero, but `HTTP 401: Bad credentials` is a broken check while `Could not resolve to an issue or pull request` is an answer. Reporting a fixable auth failure as "no such issue" sends the invoker looking in the wrong place.
    - A non-zero `gh issue view` here is **not** a stop-on-failure condition for the calling chain — it is an abstain, reported rather than fatal. Compose the rest of the body and carry on.
-   - **An abstain is no longer free, and the report must say so.** The `issue-link` gate ([`pr-issue-link.yml`](../../.github/workflows/pr-issue-link.yml)) fails any pull request that GitHub says closes no open issue in this repo, so both outcomes above raise a PR whose `issue-link` check reports **red**. Still abstain rather than guess — a wrong `Closes` is worse than an absent one — but name the red check in the step 8 report so the invoker knows an edit is owed. The gate re-runs on `edited`, so fixing the body needs no new push.
+   - **An abstain is no longer free, and the report must say so.** The `issue-link` gate ([`pr-issue-link.yml`](../../.github/workflows/pr-issue-link.yml)) fails any pull request that GitHub says closes no open issue in this repo, so both outcomes above raise a PR whose `issue-link` check reports **red**. Still abstain rather than guess — a wrong `Closes` is worse than an absent one — but name the red check in the step 7 report so the invoker knows an edit is owed. The gate re-runs on `edited`, so fixing the body needs no new push.
    - What this proves is bounded, and worth knowing: that `<N>` is an open issue in this repo, never that it is *this branch's* issue, and it can change state between here and merge. Restricting inference to the `/build` shape is what keeps that gap narrow.
    - The PR body is the *only* place a closing keyword belongs — never a commit message, which would close the issue as soon as it reached `main`, ahead of review.
-   - Whichever way it lands, step 8 reports it.
+   - Whichever way it lands, step 7 reports it.
 
    **Guiding principle — don't duplicate things a reviewer can get elsewhere.** GitHub already shows:
    - the list of changed files and their diffs
@@ -52,7 +52,7 @@ Every STOP below is a **failure**, so each ends its report with the *Final repor
 
    - **Why** — motivation or context that isn't already obvious from commit messages. Skip for trivial PRs where the title is self-explanatory.
    - **What changes** — a short summary of observable changes. For single-theme PRs, 1–3 bullets. For multi-theme PRs, group by theme rather than by file. Describe *what* changed at a behaviour level, not which files were touched.
-   - **Non-obvious things a reviewer should know** — caveats, deliberate trade-offs, hidden invariants, anything in the diff that looks weird but is intentional. Omit if there are none.
+   - **Non-obvious things a reviewer should know** — caveats, deliberate trade-offs, hidden invariants, anything in the diff that looks weird but is intentional. Omit if there are none. **Where the branch adds a change-intent record under `docs/change-intent-records/`, link it here and stop** — the record already holds the rejected alternatives and the reasoning, so restating them is the same words in two places. Add only what the record does not carry.
    - **How to verify** — a markdown checklist of concrete actions a reviewer can perform. Derive items from what actually changed. Omit for pure-documentation PRs where there's nothing functional to exercise.
    - **Related** — the `Closes #<N>` (or `Refs #<N>`) line settled above, plus links to prior PRs or related issues that give context. This section always survives when step 4 settled a keyword, whatever the PR's size.
 
@@ -62,21 +62,7 @@ Every STOP below is a **failure**, so each ends its report with the *Final repor
 
 6. **Create PR**: Run `gh pr create --title "<inferred title>" --body "<pr body>"` with the title from step 3 and the body from step 4. Capture the PR URL from the output. Use whatever multi-line string quoting your shell needs (bash heredoc, PowerShell here-string, etc.).
 
-7. **Request @claude review**: Run `gh pr comment <PR URL> --body "<review prompt>"` with this body (same shell-quoting rules as step 6):
-
-   ```
-   @claude Review this pull request. Analyse the code changes and provide feedback covering:
-
-   - Bugs or correctness issues
-   - Security concerns (including any flagged by static analysis)
-   - Adherence to the project conventions in CLAUDE.md
-   - Test coverage — do the tests adequately cover the new behaviour?
-   - Any spec/test-plan mismatches
-
-   End the review with a recommendation whether to merge the PR, and if not, what you suggest needs addressing first.
-   ```
-
-8. **Output result**: First print step 4's outcome in whichever of its three forms applies — `Closes #<N> — <issue title>`; `No closing keyword: <reason>` (the branch carries no issue number; `#<N>` is a pull request; `#<N>` is closed); or `Closing keyword unverified: <gh stderr>` — so the invoker can see from the output alone what merging this PR will close, if anything.
+7. **Output result**: First print step 4's outcome in whichever of its three forms applies — `Closes #<N> — <issue title>`; `No closing keyword: <reason>` (the branch carries no issue number; `#<N>` is a pull request; `#<N>` is closed); or `Closing keyword unverified: <gh stderr>` — so the invoker can see from the output alone what merging this PR will close, if anything.
 
     **Then close the report with the verdict on its own last line** — plain, at column 1, nothing else on that line and nothing after it. `RAISED pr=<url>`, naming the pull request this run opened, and only for a pull request this run actually opened. If no PR was opened, for any reason, the last line is `FAILED reason=<short reason>` and never the `RAISED` line, even when the report above quotes the URL of a PR that already exists.
 

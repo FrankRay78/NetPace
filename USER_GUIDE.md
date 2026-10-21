@@ -104,6 +104,8 @@ Without the .NET SDK, the [releases page](https://github.com/FrankRay78/NetPace/
 
 With no format switch, NetPace renders the rich terminal output: a live progress display while each test runs, then the result. That is the right default at a terminal, and it is what you get if you pass nothing.
 
+At an interactive terminal, each running test's progress bar carries a live speed beside it — the average speed since that test began, so it climbs and steadies as the test runs and ends on exactly the figure the result line reports for that test. It is written in whatever `--unit`, `--unit-system` and `--unit-scale` ask for, the same as the result line, and nothing is shown beside a bar until that test's first data arrives. Output that is not going to an interactive terminal — piped, redirected, or written with `--file` — is unaffected: the live display never appears there, and the result line is printed as before.
+
 Three alternative formats are available instead:
 
 | Switch | Output |

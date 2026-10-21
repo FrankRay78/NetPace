@@ -11,7 +11,9 @@
 #
 # The stub chain stands in for chain.sh: it refuses to start anywhere but a clean main and,
 # standing in for /build's stop on an uninspected earlier branch, fails at build when a
-# feature/<N>-* branch is already present. That is what makes "the second run starts
+# feature/<N>-* branch is already present. A limit-<N> file makes it stop the way the real chain
+# stops when the account's usage limit cut a stage off: that closing line, and the chain's own
+# usage-limit exit code rather than its ordinary 1. That is what makes "the second run starts
 # cleanly" and "an un-parked issue is built from scratch" observable: a runner that got the
 # starting point wrong would see the stub refuse.
 #
@@ -93,6 +95,11 @@ fi
 if [ -n "$(git for-each-ref --format='%(refname)' "refs/heads/feature/$n-*")" ]; then
   echo "chain: [1/3] build — starting"
   echo "chain: FAILED at [1/3] build — feature/$n-work already exists"; exit 1
+fi
+if [ -f "$STUB_DIR/limit-$n" ]; then
+  echo "chain: [1/3] build — starting"
+  echo "chain: FAILED at [1/3] build — the Claude usage limit was reached — You've hit your session limit · resets 3:20pm (Europe/Berlin)"
+  exit 75
 fi
 git checkout -q -b "feature/$n-work"
 git commit -q --allow-empty -m "Refs #$n: stub work"
@@ -247,6 +254,7 @@ ok "local branches whose upstream is gone are deleted" '[ "$RC" = 0 ] && ! git -
 ok "kept attempt branches are not" 'git -C "$CLONE" rev-parse -q --verify refs/heads/attempt/4-20260101T000000Z >/dev/null'
 
 # // SCENARIO: A failing issue is parked and not retried
+# // SCENARIO: Other failures are parked as today
 echo "A failing issue is parked and not retried:"
 new_case
 issues '[{"number":8,"state":"OPEN","labels":["ready"]}]'
@@ -255,6 +263,7 @@ fire
 ok "exits non-zero" '[ "$RC" != 0 ]'
 ok "the issue is marked parked" '[ "$(labels_of 8)" = "ready,parked" ]'
 ok "the comment names the failed stage and its reason" 'grep -qF "stopped at **[2/3] verify** — suite red" "$STUB_DIR/comment-8.txt"'
+ok "the comment names no usage limit, and closes the way it always has" '! grep -qi "usage limit" "$STUB_DIR/comment-8.txt" && grep -qF "Remove the \`parked\` label to have the runner build this issue again from scratch." "$STUB_DIR/comment-8.txt"'
 log=$(ls "$STATE"/logs/8-*.log 2>/dev/null | head -n 1)
 ok "the comment names the log, which holds the chain's full output" '[ -n "$log" ] && grep -qF "$log" "$STUB_DIR/comment-8.txt" && grep -qF "claude --resume sess-2" "$log"'
 kept=$(git -C "$CLONE" for-each-ref --format='%(refname:short)' 'refs/heads/attempt/8-*')
@@ -301,6 +310,25 @@ git -C "$CLONE" checkout -q -b feature/8-work
 git -C "$CLONE" commit -q --allow-empty -m "killed mid-run"
 fire
 ok "an earlier run's leftover branch does not stop the next run" '[ "$RC" = 0 ] && grep -qF "pull/108" <<<"$OUTPUT" && [ -n "$(git -C "$CLONE" for-each-ref "refs/heads/attempt/8-*")" ]'
+
+# // SCENARIO: Usage limit is named in the parked comment
+echo "Usage limit is named in the parked comment:"
+new_case
+issues '[{"number":8,"state":"OPEN","labels":["ready"]}]'
+touch "$STUB_DIR/limit-8"
+fire
+ok "exits non-zero" '[ "$RC" != 0 ]'
+ok "the issue is parked, as any other stop parks it" '[ "$(labels_of 8)" = "ready,parked" ]'
+ok "the comment says the usage limit was reached" 'grep -qF "the Claude usage limit was reached" "$STUB_DIR/comment-8.txt"'
+ok "the comment carries the reply's own reset wording" 'grep -qF "resets 3:20pm (Europe/Berlin)" "$STUB_DIR/comment-8.txt"'
+ok "the comment says the issue itself needs nothing" 'grep -qF "not because anything is wrong with the issue" "$STUB_DIR/comment-8.txt"'
+ok "the comment says to remove the label once the limit has reset" 'grep -qF "Remove the \`parked\` label once the limit has reset" "$STUB_DIR/comment-8.txt"'
+ok "the runner's own log names the usage limit in the same way" 'grep -qF "the Claude usage limit was reached" <<<"$OUTPUT"'
+limit_log=$(ls "$STATE"/logs/8-*.log 2>/dev/null | head -n 1)
+ok "so does the chain log the comment points at" '[ -n "$limit_log" ] && grep -qF "the Claude usage limit was reached" "$limit_log"'
+unpark 8; rm "$STUB_DIR/limit-8"
+fire
+ok "removing the label is all it takes: the next firing builds the issue" '[ "$RC" = 0 ] && grep -qF "pull/108" <<<"$OUTPUT"'
 
 # // SCENARIO: Overlapping triggers do not start a second run
 echo "Overlapping triggers do not start a second run:"
