@@ -54,7 +54,7 @@ The three paths share one per-issue concurrency group, `issue-<n>`. Concurrency 
 **The labels are the state** — the generic *Context management* rule, made concrete. A green run always removes the label that triggered it. So:
 
 - **`review` labelled** — a review is pending; if it stays labelled, the run did not complete.
-- **`needs answers`, with a `<!-- speckit:review -->` comment** — a review is posted and awaiting answers.
+- **`needs answers`, with a `<!-- speckit:review -->` comment from a review account** — a review is posted and awaiting answers. The review accounts are the review workflow's and the maintainer's; all three paths ignore a sentinel comment from anyone else, since on a public repository anyone can post one.
 - **`refine` labelled** — a refine is pending; if it stays labelled, the run did not complete. `needs answers` stays on throughout: a re-framed question is still a question.
 - **`confirm` labelled** — a confirmation is pending; if it stays labelled, the run did not complete. On one of the command's hard-stops the issue is untouched and the answers are still there to fix and re-label; on a failed post-condition the decisions may already be on the body with a half-applied set of labels. The run summary is what tells the two apart.
 - **`ready`, with a `## Confirmed decisions` section** — the gate is finished. `ready` takes precedence: an issue confirmed before these changes carries both markers and is finished, not waiting.

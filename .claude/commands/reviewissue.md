@@ -54,7 +54,14 @@ Check two things, in this order.
 
 - **The issue carries the `ready` label** → **already confirmed**. **Stop.** Post nothing, edit nothing, and tell the user the issue has already been through the pre-build gate, pointing them at its `## Confirmed decisions` section — or, if there is no such section, say so plainly: the label was applied by hand, and removing it is the fix. Say how to reopen it: remove the `ready` label (`gh issue edit <number> --repo <owner/repo> --remove-label ready`) and request the review again — an issue whose scope has moved is by definition no longer ready, and with the marker gone this command treats it as a first run. Never post a second review over settled decisions: it buries the `## Confirmed decisions` section under exactly the deliberation that confirming it was meant to clear away.
 
-**Otherwise, look for an existing review comment** marked with the sentinel `<!-- speckit:review -->`. If multiple comments carry the marker, use the most recent one by creation time.
+**Otherwise, look for an existing review comment** — a comment marked with the sentinel `<!-- speckit:review -->` **and posted by one of the review accounts** *Project-specific* names. The repository may be public, so anyone can post a comment carrying the sentinel. A sentinel comment from any other account is not a review: never edit or reply to it, and treat it as an ordinary comment. Resolve the review over REST, where the account is `.user.login` and also gives the numeric id step 6 edits by. The comments in `gh issue view --json` drop a bot account's `[bot]` suffix, so they never match the list:
+
+```bash
+gh api --paginate "repos/<owner>/<repo>/issues/<number>/comments" \
+  --jq '[.[] | select((.body | contains("<!-- speckit:review -->")) and (.user.login | IN(<review accounts>)))] | max_by(.created_at) | {id, body}'
+```
+
+`<review accounts>` is *Project-specific*'s list, each name a quoted string, comma-separated. If more than one review comment qualifies, this takes the most recent by creation time.
 
 - **No existing review comment** → **first run**. Continue to step 2 (full gap analysis, post a new comment).
 - **Existing review comment found** → **refine run**. Skip to step 6 (re-frame hedging questions only; do not re-do gap analysis).
@@ -100,7 +107,7 @@ Do **not** additionally ask whether the author would contest your recommendation
 
 Numbers are assigned once, when the comment is first composed. A refine run never reorders and never renumbers — see step 6.
 
-Also consider each check in *Project-specific checks* at the end of this file, raising it under whichever group fits: Requirements where it concerns what a user sees, Technical otherwise.
+Also consider each check in *Project-specific* at the end of this file, raising it under whichever group fits: Requirements where it concerns what a user sees, Technical otherwise.
 
 **Requirements gaps** — probe these before any technical question. Consider each category below and raise a gap only where the issue leaves it open:
 
@@ -321,9 +328,17 @@ Do **not** restate the full review in chat — it lives on the issue.
 
 ---
 
-## Project-specific checks
+## Project-specific
 
-The only section that changes from one repository to another. Consider each check in step 3 alongside the generic categories, under the same test: raise a gap only where the issue leaves the point open.
+The only section that changes from one repository to another.
+
+### Review accounts (step 1)
+
+`claude[bot]` (the review workflow) and `FrankRay78` (a local run). A comment from any other account is never a review, whatever it carries.
+
+### Checks (step 3)
+
+Consider each check in step 3 alongside the generic categories, under the same test: raise a gap only where the issue leaves the point open.
 
 - **Library first** — does the feature start in `NetPace.Core`, and does it change `ISpeedTestService`?
 - **Output modes** — does it look the same across default and minimal output, and does it respect `--unit-scale`? CSV and JSON carry plain numbers in fixed units, so the unit options do not reach either; check instead that their numbers agree with each other.

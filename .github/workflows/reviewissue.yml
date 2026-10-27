@@ -55,6 +55,11 @@ jobs:
       id-token: write
     env:
       ISSUE_NUMBER: ${{ github.event.issue.number || inputs.issue_number }}
+      # Only these accounts post reviews, so only their comments count as one: the repository is
+      # public and anyone can post a comment carrying the sentinel. Names are space-separated, as
+      # REST's `user.login` spells them. Must match the review accounts in the command file's
+      # Project-specific section. Rationale: docs/change-intent-records/2026-10-27-reviews-come-from-named-accounts.md
+      REVIEW_ACCOUNTS: 'claude[bot] FrankRay78'
       # Which job this run is doing, taken from the label that triggered it. A manual dispatch
       # carries no label and is always a review: a mode input was considered and dropped, because
       # its only purpose would have been exercising refine once before merge, and refine is
@@ -119,7 +124,7 @@ jobs:
             exit 0
           fi
           gh api --paginate "repos/$GITHUB_REPOSITORY/issues/$ISSUE_NUMBER/comments" \
-            --jq '.[].body' > .claude/scratch/issue-comments.txt
+            --jq '.[] | select(.user.login as $l | env.REVIEW_ACCOUNTS | split(" ") | index($l)) | .body' > .claude/scratch/issue-comments.txt
           reviewed=false
           if grep -qF '<!-- speckit:review -->' .claude/scratch/issue-comments.txt; then
             reviewed=true
@@ -205,7 +210,7 @@ jobs:
             2. Step 4's link rules tell you to resolve the default branch with `gh repo view`. Do not — it is `main`, given above. Use it for the absolute GitHub links those rules require.
             3. Step 6 writes the updated comment body to `.claude/scratch/reviewissue-body.md`. Write it to `ci-scratch/reviewissue-body.md` instead — `.claude/` is write-protected in this headless run. Run `mkdir -p ci-scratch` first, then PATCH with `gh api -X PATCH repos/<owner>/<repo>/issues/comments/<id> -F body=@ci-scratch/reviewissue-body.md`.
 
-            Resolve the review comment and its numeric id over REST — `gh api --paginate "repos/<owner>/<repo>/issues/<number>/comments"` — and read the comments posted after it from the same call, because step 6 tells you what to do with one an answer points at. That call is the authoritative comment list. If it shows no comment carrying `<!-- speckit:review -->`, stop and report that as an error rather than making no edit: the guard has already established that one exists, so its absence here means something is wrong, not that there is nothing to do.
+            Resolve the review comment and its numeric id over REST — `gh api --paginate "repos/<owner>/<repo>/issues/<number>/comments"` — and read the comments posted after it from the same call, because step 6 tells you what to do with one an answer points at. That call is the authoritative comment list. If it shows no review comment — step 1 of the command file says which comments count — stop and report that as an error rather than making no edit: the guard has already established that one exists, so its absence here means something is wrong, not that there is nothing to do.
 
             Ground every new option, trade-off and worked example in this checkout by actually reading files — `CLAUDE.md`, `docs/constitution.md`, the `src/` tree, `docs/`, the neighbouring code the issue would touch. A re-framed question must cite real paths and real conventions from this repository, not observations that would fit any codebase.
 
@@ -231,7 +236,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh api --paginate "repos/$GITHUB_REPOSITORY/issues/$ISSUE_NUMBER/comments" \
-            --jq '.[].body' > .claude/scratch/issue-comments-after.txt
+            --jq '.[] | select(.user.login as $l | env.REVIEW_ACCOUNTS | split(" ") | index($l)) | .body' > .claude/scratch/issue-comments-after.txt
           if ! grep -qF '<!-- speckit:review -->' .claude/scratch/issue-comments-after.txt; then
             echo "::error::No <!-- speckit:review --> comment on #$ISSUE_NUMBER — the review did not post."
             exit 1
@@ -261,7 +266,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh api --paginate "repos/$GITHUB_REPOSITORY/issues/$ISSUE_NUMBER/comments" \
-            --jq '.[].body' > .claude/scratch/issue-comments-after.txt
+            --jq '.[] | select(.user.login as $l | env.REVIEW_ACCOUNTS | split(" ") | index($l)) | .body' > .claude/scratch/issue-comments-after.txt
           if ! grep -qF '<!-- speckit:review -->' .claude/scratch/issue-comments-after.txt; then
             echo "::error::The <!-- speckit:review --> comment is gone from #$ISSUE_NUMBER — the refine rewrote or destroyed it, and the author's answers went with it. Recover them from the comment's edit history on the issue."
             exit 1

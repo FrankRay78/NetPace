@@ -49,6 +49,11 @@ jobs:
       id-token: write
     env:
       ISSUE_NUMBER: ${{ github.event.issue.number || inputs.issue_number }}
+      # Only these accounts post reviews, so only their comments count as one: the repository is
+      # public and anyone can post a comment carrying the sentinel. Names are space-separated, as
+      # REST's `user.login` spells them. Must match the review accounts in the command file's
+      # Project-specific section. Rationale: docs/change-intent-records/2026-10-27-reviews-come-from-named-accounts.md
+      REVIEW_ACCOUNTS: 'claude[bot] FrankRay78'
       REPORT_FILE: ci-scratch/confirmissue-report.md
     steps:
       - name: Checkout repository
@@ -93,7 +98,7 @@ jobs:
           ready=$(gh issue view "$ISSUE_NUMBER" --repo "$GITHUB_REPOSITORY" --json labels \
             --jq '[.labels[].name] | index("ready") != null')
           gh api --paginate "repos/$GITHUB_REPOSITORY/issues/$ISSUE_NUMBER/comments" \
-            --jq '.[].body' > .claude/scratch/issue-comments-guard.txt
+            --jq '.[] | select(.user.login as $l | env.REVIEW_ACCOUNTS | split(" ") | index($l)) | .body' > .claude/scratch/issue-comments-guard.txt
           if [ "$ready" = "true" ]; then
             if grep -qF '<!-- speckit:review -->' .claude/scratch/issue-comments-guard.txt; then
               echo "::error::#$ISSUE_NUMBER is labelled 'ready' but still carries a <!-- speckit:review --> comment — a previous confirmation saved its decisions and applied the label but could not delete the review. Delete that comment by hand, then re-apply 'confirm' if anything still needs folding in."
@@ -202,7 +207,7 @@ jobs:
           # surviving sentinel past it would be invisible — reporting a review deleted when it
           # is still on the thread, ready to be folded in a second time.
           gh api --paginate "repos/$GITHUB_REPOSITORY/issues/$ISSUE_NUMBER/comments" \
-            --jq '.[].body' > .claude/scratch/issue-comments-after.txt
+            --jq '.[] | select(.user.login as $l | env.REVIEW_ACCOUNTS | split(" ") | index($l)) | .body' > .claude/scratch/issue-comments-after.txt
           if grep -qF '<!-- speckit:review -->' .claude/scratch/issue-comments-after.txt; then
             echo "::error::A <!-- speckit:review --> comment is still on #$ISSUE_NUMBER — the review was not deleted."
             failed=1
