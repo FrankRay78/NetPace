@@ -162,8 +162,6 @@ Three things must exist before the automation can run. All are one-time; none re
 
 Seeding the tap by hand is not necessary: unlike the winget manifest, a formula has no upstream review and the generator creates the file as readily as it updates it. To do it anyway, run `bash scripts/homebrew-formula.sh <version> > netpace.rb` against a published release and commit the result to the tap as `Formula/netpace.rb`.
 
-Until the tap repository exists, `brew install FrankRay78/tap/netpace` reports that the tap could not be found, so README.md and USER_GUIDE.md both say the tap is pending. Removing those two notes is the last step of this setup.
-
 ### If a tap update fails
 
 A failed update **raises a GitHub issue** titled `Homebrew tap update failed for <version>`, linking the run. This exists because a `workflow_run`-triggered failure emails nobody: the run goes red in the Actions tab and otherwise passes silently. Treat the issue as the signal that `brew upgrade` will not reach that release.
