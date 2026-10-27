@@ -96,7 +96,7 @@ jobs:
             --jq '.[].body' > .claude/scratch/issue-comments-guard.txt
           if [ "$ready" = "true" ]; then
             if grep -qF '<!-- speckit:review -->' .claude/scratch/issue-comments-guard.txt; then
-              echo "::error::#$ISSUE_NUMBER is labelled 'ready' but still carries a <!-- speckit:review --> comment — a previous confirmation saved its decisions and applied the label but could not delete the review. Check the Confirmed decisions on the body against your own answers in that comment, then delete it by hand and re-apply 'confirm' if anything still needs folding in."
+              echo "::error::#$ISSUE_NUMBER is labelled 'ready' but still carries a <!-- speckit:review --> comment — a previous confirmation saved its decisions and applied the label but could not delete the review. Delete that comment by hand, then re-apply 'confirm' if anything still needs folding in."
               exit 1
             fi
             echo "::notice::#$ISSUE_NUMBER is already confirmed (ready) — clearing the label and skipping."
@@ -204,7 +204,7 @@ jobs:
           gh api --paginate "repos/$GITHUB_REPOSITORY/issues/$ISSUE_NUMBER/comments" \
             --jq '.[].body' > .claude/scratch/issue-comments-after.txt
           if grep -qF '<!-- speckit:review -->' .claude/scratch/issue-comments-after.txt; then
-            echo "::error::A <!-- speckit:review --> comment is still on #$ISSUE_NUMBER — the review was not deleted. Before deleting it, check the Confirmed decisions on the body against your own answers in it: a surviving review can mean a newer marker comment from someone else was folded in instead. The chain runner will not build the issue while the comment is there."
+            echo "::error::A <!-- speckit:review --> comment is still on #$ISSUE_NUMBER — the review was not deleted."
             failed=1
           fi
           if [ ! -f "$REPORT_FILE" ]; then

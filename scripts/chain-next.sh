@@ -3,7 +3,8 @@
 # chain-next.sh — build the next ready issue to a pull request, from a timer, unattended.
 #
 # Each firing picks the lowest-numbered eligible issue — open, labelled `ready`, not `parked`,
-# with no open pull request linked to it and no open blocking issue — resets the runner's own
+# with no open pull request linked to it, no open blocking issue, and nobody but the maintainer
+# and the review bot ever having written on it — resets the runner's own
 # dedicated clone to the latest main, and runs scripts/chain.sh against it there. It ends with
 # either an open pull request (chain.sh's last stage) or the issue labelled `parked` with a
 # comment naming the failed stage, the log and the kept branch. Where the chain's own exit code
@@ -50,11 +51,11 @@ usage() {
 # not use the code parks exactly as it did before.
 CHAIN_USAGE_LIMIT_EXIT=75
 
-# The only account whose issues are built. The repository is public, and an issue's author can
-# edit its body, Confirmed decisions included, long after it was confirmed, so an issue anyone
-# else raised is never built, however it came to be ready. A contributor's idea is re-raised
-# under this account first.
-MAINTAINER=FrankRay78
+# The only accounts whose writing is built, as GitHub's GraphQL API names them: the maintainer
+# and the bot that posts reviews. The repository is public, so anyone can raise an issue or post
+# a review-shaped comment that a confirmation would fold into the body. An issue anyone else has
+# raised or commented on is never built; the maintainer builds it by hand after reading it.
+WRITERS='["FrankRay78","claude"]'
 
 say() { echo "chain-next: $*"; }
 die() { echo "chain-next: $*" >&2; exit 1; }
@@ -63,8 +64,8 @@ die() { echo "chain-next: $*" >&2; exit 1; }
 # any GitHub query that fails or returns something unreadable ends the firing with an error
 # rather than guessing, because a guess in either direction builds the wrong thing or nothing.
 select_issue() {
-  local issues prs raised candidates n blockers open comments reviews
-  issues=$(gh issue list --state open --label ready --json number,labels,author --limit 1000) \
+  local issues prs raised candidates n blockers open writers
+  issues=$(gh issue list --state open --label ready --json number,labels --limit 1000) \
     || die "refused — could not list ready issues; nothing selected."
   prs=$(gh pr list --state open --json number,headRefName,closingIssuesReferences --limit 1000) \
     || die "refused — could not list open pull requests; nothing selected."
@@ -73,8 +74,8 @@ select_issue() {
   raised=$(jq -r '[.[] | (.closingIssuesReferences // [] | .[].number),
       (.headRefName | capture("^feature/(?<n>[0-9]+)-")? | .n | tonumber)] | unique | .[]' <<<"$prs") \
     || die "refused — the open pull request list was unreadable; nothing selected."
-  candidates=$(jq -r --argjson raised "$(jq -s . <<<"$raised")" --arg maintainer "$MAINTAINER" \
-      '[.[] | select((.labels | map(.name) | index("parked")) | not) | select(.author.login == $maintainer) | .number]
+  candidates=$(jq -r --argjson raised "$(jq -s . <<<"$raised")" \
+      '[.[] | select((.labels | map(.name) | index("parked")) | not) | .number]
        | map(select(. as $n | $raised | index($n) | not)) | sort | .[]' <<<"$issues") \
     || die "refused — the ready issue list was unreadable; nothing selected."
   for n in $candidates; do
@@ -83,18 +84,20 @@ select_issue() {
     open=$(jq -s '[.[][] | select(.state == "open")] | length' <<<"$blockers") \
       || die "refused — the blocker list for #$n was unreadable; nothing selected."
     [ "$open" = 0 ] || continue
-    # A confirmation deletes only the review it folded in. A review comment still on a ready
-    # issue means the confirmation did not finish, or folded in a comment from someone else
-    # while the genuine review, which they cannot delete, was left behind. Either way the
-    # decisions on the body are not the maintainer's to build from. Any account's counts: on a
-    # public repository anyone can post the marker, and the worst that does here is hold an
-    # issue back.
-    comments=$(gh api --paginate "repos/{owner}/{repo}/issues/$n/comments") \
-      || die "refused — could not read the comments on #$n; nothing selected."
-    reviews=$(jq -s '[.[][] | select(.body | contains("<!-- speckit:review -->"))] | length' <<<"$comments") \
-      || die "refused — the comment list for #$n was unreadable; nothing selected."
-    if [ "$reviews" != 0 ]; then
-      say "skipped #$n — it is ready but still carries a review comment, so its confirmation did not finish cleanly." >&2
+    # Deleted comments count: GitHub records the author of a comment someone else deleted, so a
+    # stranger's comment that a confirmation folded in and then deleted still shows here.
+    writers=$(gh api graphql --paginate -F owner='{owner}' -F repo='{repo}' -F n="$n" -f query='
+      query($owner: String!, $repo: String!, $n: Int!, $endCursor: String) {
+        repository(owner: $owner, name: $repo) { issue(number: $n) { author { login }
+          timelineItems(first: 100, after: $endCursor, itemTypes: [ISSUE_COMMENT, COMMENT_DELETED_EVENT]) {
+            pageInfo { hasNextPage endCursor }
+            nodes { ... on IssueComment { author { login } } ... on CommentDeletedEvent { deletedCommentAuthor { login } } } } } } }') \
+      || die "refused — could not read who has written on #$n; nothing selected."
+    writers=$(jq -s --argjson allowed "$WRITERS" '[.[].data.repository.issue | .author.login,
+        (.timelineItems.nodes[] | (.author // .deletedCommentAuthor).login)] - $allowed | length' <<<"$writers") \
+      || die "refused — the writer list for #$n was unreadable; nothing selected."
+    if [ "$writers" != 0 ]; then
+      say "skipped #$n — someone other than the maintainer or the review bot has written on it." >&2
       continue
     fi
     echo "$n"; return 0
