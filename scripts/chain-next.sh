@@ -3,7 +3,8 @@
 # chain-next.sh — build the next ready issue to a pull request, from a timer, unattended.
 #
 # Each firing picks the lowest-numbered eligible issue — open, labelled `ready`, not `parked`,
-# with no open pull request linked to it and no open blocking issue — resets the runner's own
+# with no open pull request linked to it, no open blocking issue, and no sign of anyone but the
+# maintainer and the review bot having written on it — resets the runner's own
 # dedicated clone to the latest main, and runs scripts/chain.sh against it there. It ends with
 # either an open pull request (chain.sh's last stage) or the issue labelled `parked` with a
 # comment naming the failed stage, the log and the kept branch. Where the chain's own exit code
@@ -50,6 +51,13 @@ usage() {
 # not use the code parks exactly as it did before.
 CHAIN_USAGE_LIMIT_EXIT=75
 
+# The only accounts whose writing is built, as type and login: the maintainer and the bot that
+# posts reviews. The type matters because GraphQL names the bot `claude`, a login an unrelated
+# person also holds. The repository is public, so anyone can raise an issue or post
+# a review-shaped comment that a confirmation would fold into the body. An issue anyone else has
+# raised or commented on is never built; the maintainer builds it by hand after reading it.
+WRITERS='["User:FrankRay78","Bot:claude"]'
+
 say() { echo "chain-next: $*"; }
 die() { echo "chain-next: $*" >&2; exit 1; }
 
@@ -57,7 +65,7 @@ die() { echo "chain-next: $*" >&2; exit 1; }
 # any GitHub query that fails or returns something unreadable ends the firing with an error
 # rather than guessing, because a guess in either direction builds the wrong thing or nothing.
 select_issue() {
-  local issues prs raised candidates n blockers open
+  local issues prs raised candidates n blockers open writers
   issues=$(gh issue list --state open --label ready --json number,labels --limit 1000) \
     || die "refused — could not list ready issues; nothing selected."
   prs=$(gh pr list --state open --json number,headRefName,closingIssuesReferences --limit 1000) \
@@ -76,7 +84,24 @@ select_issue() {
       || die "refused — could not read what blocks #$n; nothing selected."
     open=$(jq -s '[.[][] | select(.state == "open")] | length' <<<"$blockers") \
       || die "refused — the blocker list for #$n was unreadable; nothing selected."
-    if [ "$open" = 0 ]; then echo "$n"; return 0; fi
+    [ "$open" = 0 ] || continue
+    # Deleted comments count: GitHub records the author of a comment someone else deleted, so a
+    # stranger's comment that a confirmation folded in and then deleted still shows here.
+    writers=$(gh api graphql --paginate -F owner='{owner}' -F repo='{repo}' -F n="$n" -f query='
+      query($owner: String!, $repo: String!, $n: Int!, $endCursor: String) {
+        repository(owner: $owner, name: $repo) { issue(number: $n) { author { __typename login }
+          timelineItems(first: 100, after: $endCursor, itemTypes: [ISSUE_COMMENT, COMMENT_DELETED_EVENT]) {
+            pageInfo { hasNextPage endCursor }
+            nodes { ... on IssueComment { author { __typename login } } ... on CommentDeletedEvent { deletedCommentAuthor { __typename login } } } } } } }') \
+      || die "refused — could not read who has written on #$n; nothing selected."
+    writers=$(jq -s --argjson allowed "$WRITERS" '[.[].data.repository.issue | .author,
+        (.timelineItems.nodes[] | .author // .deletedCommentAuthor) | "\(.__typename):\(.login)"] - $allowed | length' <<<"$writers") \
+      || die "refused — the writer list for #$n was unreadable; nothing selected."
+    if [ "$writers" != 0 ]; then
+      say "skipped #$n — someone other than the maintainer or the review bot has written on it." >&2
+      continue
+    fi
+    echo "$n"; return 0
   done
 }
 

@@ -33,9 +33,12 @@ trap 'kill $(jobs -p) 2>/dev/null; rm -rf "$SB"' EXIT
 unset CHAIN_NEXT_CLONE CHAIN_NEXT_STATE_DIR
 
 # The stub gh. One log line per invocation, arguments separated by `|`. Issues live in
-# issues.json as [{number, state, labels:[names]}] and are filtered by whatever --state and
-# --label the runner asks for, so a runner that forgot to ask would see closed or unready ones.
-# Open pull requests live in prs.json; blockers in blocked-<n>.json. A gh-fail file makes every
+# issues.json as [{number, state, labels:[names], author?}] and are filtered by whatever --state
+# and --label the runner asks for, so a runner that forgot to ask would see closed or unready ones.
+# An issue with no author was raised by the maintainer. Open pull requests live in prs.json;
+# blockers in blocked-<n>.json. The GraphQL lookup of who has written on an issue answers with
+# that author, always a User, and the timeline nodes in comments-<n>.json, and a comments-fail-<n>
+# file makes it fail; a comments-<n>.json that is not JSON is passed through as the reply. A gh-fail file makes every
 # call fail, as an outage would; gh-fail-<command> fails only that command (gh-fail-pr, gh-fail-api). Label and comment writes are applied to the stub's own state,
 # so a parked issue stays parked for the next firing.
 mkdir -p "$SB/bin"
@@ -61,6 +64,17 @@ case "$1 $2" in
   "issue comment")
     printf '%s' "$(opt --body)" > "$STUB_DIR/comment-$3.txt" ;;
   *)
+    if [ "$1 $2" = "api graphql" ]; then
+      n=$(printf '%s\n' "$@" | sed -n 's/^n=//p')
+      if [ -f "$STUB_DIR/comments-fail-$n" ]; then echo "gh: HTTP 502: Bad Gateway" >&2; exit 1; fi
+      f="$STUB_DIR/comments-$n.json"
+      [ -f "$f" ] || f=/dev/null
+      jq . "$f" >/dev/null 2>&1 || { cat "$f"; exit 0; }
+      jq -n --argjson n "$n" --slurpfile i "$STUB_DIR/issues.json" --slurpfile c "$f" \
+        '{data: {repository: {issue: {author: {__typename: "User", login: ($i[0][] | select(.number == $n) | .author // "FrankRay78")},
+          timelineItems: {pageInfo: {hasNextPage: false}, nodes: ($c[0] // [])}}}}}'
+      exit $?
+    fi
     if [ "$1" = api ]; then
       for a in "$@"; do
         if [[ "$a" =~ issues/([0-9]+)/dependencies/blocked_by ]]; then
@@ -210,6 +224,42 @@ ok "an issue whose only blocker is open is not built" '[ "$RC" = 0 ] && [ -z "$(
 echo '[{"number":40,"state":"closed"}]' > "$STUB_DIR/blocked-4.json"
 fire
 ok "and is picked up once its blocker closes, with nothing restarted" '[ "$RC" = 0 ] && [ "$(chain_calls)" = 4 ]'
+
+# // SCENARIO: An issue raised by someone else is not built
+echo "An issue raised by someone else is not built:"
+new_case
+issues '[{"number":3,"state":"OPEN","labels":["ready"],"author":"someone-else"},{"number":5,"state":"OPEN","labels":["ready"]}]'
+fire --dry-run
+ok "the issue someone else raised is passed over, and named as skipped" '[ "$RC" = 0 ] && grep -qF "would build #5" <<<"$OUTPUT" && grep -qF "skipped #3" <<<"$OUTPUT"'
+fire
+ok "and a real firing builds only the maintainer's, parking nothing" '[ "$RC" = 0 ] && [ "$(chain_calls)" = 5 ] && [ "$(gh_writes)" = 0 ]'
+
+# // SCENARIO: An issue someone else has commented on is not built
+echo "An issue someone else has commented on is not built:"
+new_case
+issues '[{"number":4,"state":"OPEN","labels":["ready"]},{"number":5,"state":"OPEN","labels":["ready"]},{"number":6,"state":"OPEN","labels":["ready"]},{"number":7,"state":"OPEN","labels":["ready"]}]'
+echo '[{"author":{"__typename":"User","login":"someone-else"}}]' > "$STUB_DIR/comments-4.json"
+echo '[{"author":{"__typename":"User","login":"claude"}}]' > "$STUB_DIR/comments-5.json"
+echo '[{"deletedCommentAuthor":{"__typename":"User","login":"someone-else"}}]' > "$STUB_DIR/comments-6.json"
+echo '[{"author":{"__typename":"Bot","login":"claude"}},{"author":{"__typename":"User","login":"FrankRay78"}},{"deletedCommentAuthor":{"__typename":"Bot","login":"claude"}}]' > "$STUB_DIR/comments-7.json"
+fire --dry-run
+ok "issues with someone else's comment, live or deleted, are passed over for one only the maintainer and the bot wrote on" '[ "$RC" = 0 ] && grep -qF "would build #7" <<<"$OUTPUT" && grep -qF "skipped #4" <<<"$OUTPUT" && grep -qF "skipped #6" <<<"$OUTPUT"'
+ok "a person whose login matches the bot's is someone else too" 'grep -qF "skipped #5" <<<"$OUTPUT"'
+fire
+ok "and a real firing builds that one, parking nothing" '[ "$RC" = 0 ] && [ "$(chain_calls)" = 7 ] && [ "$(gh_writes)" = 0 ]'
+
+# // SCENARIO: A failed comment lookup selects nothing
+echo "A failed comment lookup selects nothing:"
+new_case
+issues '[{"number":12,"state":"OPEN","labels":["ready"]}]'
+touch "$STUB_DIR/comments-fail-12"
+fire
+ok "a failed lookup of who wrote on the issue selects nothing" '[ "$RC" != 0 ] && [ -z "$(chain_calls)" ]'
+new_case
+issues '[{"number":12,"state":"OPEN","labels":["ready"]}]'
+printf 'not json' > "$STUB_DIR/comments-12.json"
+fire
+ok "and so does an unreadable one" '[ "$RC" != 0 ] && [ -z "$(chain_calls)" ]'
 
 # // SCENARIO: A ready issue becomes a pull request
 echo "A ready issue becomes a pull request:"
