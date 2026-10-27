@@ -1,5 +1,6 @@
 ---
 description: Build one GitHub issue to a green, committed feature branch — reads the issue's acceptance criteria, drives RED-GREEN-REFACTOR, and stops. Runs unattended; hand the result to /verify.
+argument-hint: "<issue number or URL>"
 ---
 
 Read the project context that *Project-specific* at the end of this file names, before proceeding.
