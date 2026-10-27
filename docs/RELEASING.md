@@ -154,12 +154,15 @@ The formula covers **four platforms — macOS and Linux, each on x64 and ARM64 �
 
 ### One-off tap setup
 
-Two things must exist before the automation can run. Both are one-time; neither repeats per release.
+Three things must exist before the automation can run. All are one-time; none repeats per release.
 
 1. **The tap repository `FrankRay78/homebrew-tap`**, public. The name must carry the `homebrew-` prefix, which is what makes `brew install FrankRay78/tap/netpace` resolve. No `Formula/` directory is needed — the workflow creates it and writes `Formula/netpace.rb` on the first automated release. The repository does need at least one commit, so create it with a README rather than leaving it bare: a repository with no commits has no default branch for the workflow to check out, and the first tap update would fail and raise an issue for a release that was otherwise fine.
 2. **A repository secret `HOMEBREW_TAP_TOKEN`** holding a GitHub personal access token with write access to the tap repository, owned by the maintainer. It cannot be `GITHUB_TOKEN`, which has no access to another repository. The workflow fails on the missing secret before rendering or pushing anything, rather than skipping — a skip would report a release as published to the tap when nothing was pushed.
+3. **A hand-check of the macOS binaries on real hardware.** Before the tap is announced, install it on one Intel and one Apple silicon Mac and run `netpace`. The runners prove the formula installs and the binary starts, but they are not a user's machine. If either Mac refuses to run it, stop and raise a signing issue — NetPace's macOS binaries are not signed or notarised (*macOS code signing*).
 
 Seeding the tap by hand is not necessary: unlike the winget manifest, a formula has no upstream review and the generator creates the file as readily as it updates it. To do it anyway, run `bash scripts/homebrew-formula.sh <version> > netpace.rb` against a published release and commit the result to the tap as `Formula/netpace.rb`.
+
+Until the tap repository exists, `brew install FrankRay78/tap/netpace` reports that the tap could not be found, so README.md and USER_GUIDE.md both say the tap is pending. Removing those two notes is the last step of this setup.
 
 ### If a tap update fails
 
