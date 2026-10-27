@@ -114,8 +114,6 @@ Two things must exist before the automation can run. Both are one-time; neither 
 1. **A repository secret `WINGET_PKGS_TOKEN`** holding a GitHub personal access token with the `public_repo` scope, owned by the maintainer. It must be a **classic** token; `wingetcreate` does not support fine-grained tokens, which is not something the workflow can detect — the secret is present, so the run proceeds and fails later at the submit step. It cannot be `GITHUB_TOKEN`, which has no access to another repository. The workflow fails on the missing secret before downloading or submitting anything, rather than skipping — a skip would report a release as published to winget when nothing was sent.
 2. **The first manifest, submitted by hand.** `wingetcreate update` can only move an existing manifest forward; it cannot create one. Run `wingetcreate new` interactively on a Windows machine against both Windows AOT archive URLs of a published release and answer the nested-installer prompts with the values in *winget package* above. When asked whether to modify the optional default-locale fields, answer yes and set `Moniker: netpace` — it is not among the installer prompts, and a manifest submitted without it carries no moniker into every later release. Then submit. Once that pull request is merged, every subsequent release is automated.
 
-Until that first pull request is accepted, `winget install netpace` finds nothing, so README.md and USER_GUIDE.md both say the package is pending. Removing those two notes is the last step of this setup.
-
 ### If a submission fails or is rejected
 
 A failed submission **raises a GitHub issue** titled `winget submission failed for <version>`, linking the run. This exists because a `workflow_run`-triggered failure emails nobody: the run goes red in the Actions tab and otherwise passes silently. Treat the issue as the signal that `winget upgrade` will not reach that release.
@@ -161,8 +159,6 @@ Three things must exist before the automation can run. All are one-time; none re
 3. **A hand-check of the macOS binaries on real hardware.** Before the tap is announced, install it on one Intel and one Apple silicon Mac and run `netpace`. The runners prove the formula installs and the binary starts, but they are not a user's machine. If either Mac refuses to run it, stop and raise a signing issue — NetPace's macOS binaries are not signed or notarised (*macOS code signing*).
 
 Seeding the tap by hand is not necessary: unlike the winget manifest, a formula has no upstream review and the generator creates the file as readily as it updates it. To do it anyway, run `bash scripts/homebrew-formula.sh <version> > netpace.rb` against a published release and commit the result to the tap as `Formula/netpace.rb`.
-
-Until the tap repository exists, `brew install FrankRay78/tap/netpace` reports that the tap could not be found, so README.md and USER_GUIDE.md both say the tap is pending. Removing those two notes is the last step of this setup.
 
 ### If a tap update fails
 
@@ -216,7 +212,7 @@ Every semver tag publishes the `NetPace` .NET tool package to NuGet from `publis
 
 **Why the packing is split.** A RID-specific tool package carrying a Native AOT binary can only be built on a runner matching that RID — the same constraint as the AOT archives (*Runner per RID*). So each `pack-native` matrix entry packs its own RID package on its native runner — the same runner the matching AOT archive is built on — and uploads it as a `tool-package-<rid>` artifact. The `publish` job then adds the wrapper, which carries no binary and so packs anywhere, and pushes the set.
 
-**Platform coverage.** The wrapper lists exactly those six RIDs, and the installer resolves the one matching the user's machine. A platform outside the list — Alpine-style Linux, for instance — cannot install the tool package at all: the wrapper carries no RID-agnostic fallback implementation, because packing one would mean a seventh, framework-dependent copy of NetPace in the package the installer reaches for *first*, on every platform. Those users download a release archive instead (USER_GUIDE.md says so).
+**Platform coverage.** The wrapper lists exactly those six RIDs, and the installer resolves the one matching the user's machine. A platform outside the list — Alpine-style Linux, for instance — cannot install the tool package at all: the wrapper carries no RID-agnostic fallback implementation, because packing one would mean a seventh, framework-dependent copy of NetPace in the package the installer reaches for *first*, on every platform. Those users download a release archive instead (INSTALLATION.md says so).
 
 **Release gates.** Five, all before `dotnet nuget push`:
 
