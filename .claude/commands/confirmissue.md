@@ -1,3 +1,8 @@
+---
+description: Fold author answers from a /reviewissue comment into a Confirmed decisions list on the issue body, then delete the review comment.
+argument-hint: "[issue number or URL]"
+---
+
 # confirmissue
 
 Take a `/reviewissue` comment that the author has answered inline, fold the answers into a clean **Confirmed decisions** bullet list, append that list to the issue body so `/build` consumes decisions, not deliberation — then delete the review comment it came from.

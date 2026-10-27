@@ -1,5 +1,6 @@
 ---
 description: Raise a PR for the current feature branch — composes a PR body sized to the change and pushes. The review-pr workflow reviews the PR once it opens.
+argument-hint: "[issue number or URL]"
 ---
 
 Read `CLAUDE.md` for project context before proceeding.
@@ -22,7 +23,7 @@ Every STOP below is a **failure**, so each ends its report with the *Final repor
 
 3. **Infer PR title**: Take the branch name from step 1, strip any leading path segment (`feat/`, `fix/`, `chore/`, `docs/`, etc.), strip any leading `NNN-` numeric prefix on the remaining segment, replace hyphens with spaces, and apply title case. Examples: `feature/316-remove-planning-pipeline` → `Remove Planning Pipeline`; `chore/docs-tidy` → `Docs Tidy`.
 
-4. **Compose PR body**: Write a description sized to the change. **Do not follow a fixed template.** Decide which sections earn their place based on what's actually in this PR.
+4. **Compose PR body**: Read `git log main..HEAD` and `git diff main...HEAD` first, so the body describes what actually changed, not what the branch name suggests. Write a description sized to the change. **Do not follow a fixed template.** Decide which sections earn their place based on what's actually in this PR.
 
    **First, settle the closing keyword.** A merged PR must close the issue it implemented without the invoker having to remember to ask for it, so decide this every time — not only when someone thinks to mention an issue:
 
@@ -60,10 +61,16 @@ Every STOP below is a **failure**, so each ends its report with the *Final repor
 
 5. **Push branch**: Run `git push -u origin <branch>`.
 
-6. **Create PR**: Run `gh pr create --title "<inferred title>" --body "<pr body>"` with the title from step 3 and the body from step 4. Capture the PR URL from the output. Use whatever multi-line string quoting your shell needs (bash heredoc, PowerShell here-string, etc.).
+6. **Create PR**: Write the body from step 4 to a git-ignored scratch file (*Project-specific* names it) with the native `Write` tool, never a shell heredoc, then run `gh pr create --title "<inferred title>" --body-file <scratch file>` with the title from step 3. Passing the body as a file keeps the backticks and `$` in it out of the shell, where a double-quoted `--body` or an unquoted heredoc would expand them. Capture the PR URL from the output.
 
 7. **Output result**: First print step 4's outcome in whichever of its three forms applies — `Closes #<N> — <issue title>`; `No closing keyword: <reason>` (the branch carries no issue number; `#<N>` is a pull request; `#<N>` is closed); or `Closing keyword unverified: <gh stderr>` — so the invoker can see from the output alone what merging this PR will close, if anything.
 
     **Then close the report with the verdict on its own last line** — plain, at column 1, nothing else on that line and nothing after it. `RAISED pr=<url>`, naming the pull request this run opened, and only for a pull request this run actually opened. If no PR was opened, for any reason, the last line is `FAILED reason=<short reason>` and never the `RAISED` line, even when the report above quotes the URL of a PR that already exists.
 
     That line is the machine-readable verdict: `scripts/chain.sh` reads the last non-blank line of the report and nothing else, so anything written after it — a next-steps note, a fence — costs the run its verdict *after* a real pull request is already open, which is the worst moment to lose it. Decoration on the line itself is tolerated (one bullet, heading, numbered-item or blockquote marker, and a wrapping run of `*`, `_` or backticks), but the line must open with the verdict word: a bare URL in the prose above is deliberately not enough, because the commonest failure here — a PR already open for this branch — reports an error whose text contains a perfectly good PR URL. Two limits apply to the line, and both cost the verdict at that same worst moment: **the URL must be bare**, so write `pr=https://github.com/o/r/pull/9` and not a markdown autolink (`<…>`) or link (`[…](…)`); and **nothing else may share the line**, so a parenthetical such as `RAISED pr=<url> (draft, CI red)` is read as no verdict at all.
+
+## Project-specific
+
+The only section that changes from one repository to another.
+
+- **Scratch file (step 6)** — `.claude/scratch/raise-pr-body.md`. The `Write` tool creates the git-ignored `.claude/scratch/` directory if it is missing.

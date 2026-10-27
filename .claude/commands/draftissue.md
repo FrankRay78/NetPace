@@ -1,3 +1,8 @@
+---
+description: Turn an idea, a document, a backlog item or an existing issue into a needs-first GitHub issue, and raise it, ready for /reviewissue and then /build.
+argument-hint: "[idea | document path | issue URL | backlog <number>]"
+---
+
 # draftissue
 
 Turn an idea, a document or an existing issue into a needs-first GitHub issue, and raise it, ready for `/reviewissue` and then `/build`.
