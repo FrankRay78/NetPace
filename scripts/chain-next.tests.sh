@@ -37,8 +37,8 @@ unset CHAIN_NEXT_CLONE CHAIN_NEXT_STATE_DIR
 # and --label the runner asks for, so a runner that forgot to ask would see closed or unready ones.
 # An issue with no author was raised by the maintainer. Open pull requests live in prs.json;
 # blockers in blocked-<n>.json. The GraphQL lookup of who has written on an issue answers with
-# that author and the timeline nodes in comments-<n>.json, and a comments-fail-<n> file makes it
-# fail. A gh-fail file makes every
+# that author, always a User, and the timeline nodes in comments-<n>.json, and a comments-fail-<n>
+# file makes it fail; a comments-<n>.json that is not JSON is passed through as the reply. A gh-fail file makes every
 # call fail, as an outage would; gh-fail-<command> fails only that command (gh-fail-pr, gh-fail-api). Label and comment writes are applied to the stub's own state,
 # so a parked issue stays parked for the next firing.
 mkdir -p "$SB/bin"
@@ -69,8 +69,9 @@ case "$1 $2" in
       if [ -f "$STUB_DIR/comments-fail-$n" ]; then echo "gh: HTTP 502: Bad Gateway" >&2; exit 1; fi
       f="$STUB_DIR/comments-$n.json"
       [ -f "$f" ] || f=/dev/null
+      jq . "$f" >/dev/null 2>&1 || { cat "$f"; exit 0; }
       jq -n --argjson n "$n" --slurpfile i "$STUB_DIR/issues.json" --slurpfile c "$f" \
-        '{data: {repository: {issue: {author: {login: ($i[0][] | select(.number == $n) | .author // "FrankRay78")},
+        '{data: {repository: {issue: {author: {__typename: "User", login: ($i[0][] | select(.number == $n) | .author // "FrankRay78")},
           timelineItems: {pageInfo: {hasNextPage: false}, nodes: ($c[0] // [])}}}}}'
       exit $?
     fi
@@ -236,12 +237,14 @@ ok "and a real firing builds only the maintainer's, parking nothing" '[ "$RC" = 
 # // SCENARIO: An issue someone else has commented on is not built
 echo "An issue someone else has commented on is not built:"
 new_case
-issues '[{"number":4,"state":"OPEN","labels":["ready"]},{"number":6,"state":"OPEN","labels":["ready"]},{"number":7,"state":"OPEN","labels":["ready"]}]'
-echo '[{"author":{"login":"someone-else"}}]' > "$STUB_DIR/comments-4.json"
-echo '[{"deletedCommentAuthor":{"login":"someone-else"}}]' > "$STUB_DIR/comments-6.json"
-echo '[{"author":{"login":"claude"}},{"author":{"login":"FrankRay78"}},{"deletedCommentAuthor":{"login":"claude"}}]' > "$STUB_DIR/comments-7.json"
+issues '[{"number":4,"state":"OPEN","labels":["ready"]},{"number":5,"state":"OPEN","labels":["ready"]},{"number":6,"state":"OPEN","labels":["ready"]},{"number":7,"state":"OPEN","labels":["ready"]}]'
+echo '[{"author":{"__typename":"User","login":"someone-else"}}]' > "$STUB_DIR/comments-4.json"
+echo '[{"author":{"__typename":"User","login":"claude"}}]' > "$STUB_DIR/comments-5.json"
+echo '[{"deletedCommentAuthor":{"__typename":"User","login":"someone-else"}}]' > "$STUB_DIR/comments-6.json"
+echo '[{"author":{"__typename":"Bot","login":"claude"}},{"author":{"__typename":"User","login":"FrankRay78"}},{"deletedCommentAuthor":{"__typename":"Bot","login":"claude"}}]' > "$STUB_DIR/comments-7.json"
 fire --dry-run
 ok "issues with someone else's comment, live or deleted, are passed over for one only the maintainer and the bot wrote on" '[ "$RC" = 0 ] && grep -qF "would build #7" <<<"$OUTPUT" && grep -qF "skipped #4" <<<"$OUTPUT" && grep -qF "skipped #6" <<<"$OUTPUT"'
+ok "a person whose login matches the bot's is someone else too" 'grep -qF "skipped #5" <<<"$OUTPUT"'
 fire
 ok "and a real firing builds that one, parking nothing" '[ "$RC" = 0 ] && [ "$(chain_calls)" = 7 ] && [ "$(gh_writes)" = 0 ]'
 
