@@ -52,61 +52,14 @@ I am no longer the `Spectre.Console` CLI sub-system maintainer, but this project
 <br />
 
 
-## Getting Started
+## Installation
 
-### Any platform with the .NET SDK: install as a .NET tool
+* Windows: `winget install netpace`
+* macOS and Linux: `brew install FrankRay78/tap/netpace`
+* Any platform with the .NET 10 SDK: `dotnet tool install -g netpace`
+* Or download a binary from the [releases page](https://github.com/FrankRay78/NetPace/releases)
 
-If you have the [.NET 10 SDK](https://dotnet.microsoft.com/en-us/download/dotnet/10.0), NetPace installs in one line:
-
-```bash
-dotnet tool install -g netpace
-```
-
-`dotnet tool update -g netpace` moves you to the latest release, and `dnx netpace` runs it once without installing anything (it asks to confirm the download on first run; `dnx --yes netpace` skips the prompt in a script). On every platform it covers — Windows, Linux and macOS, x64 and ARM64 — you get the Native AOT binary, which starts without a .NET runtime. See the [User Guide](https://github.com/FrankRay78/NetPace/blob/main/USER_GUIDE.md#installing-netpace) for which platforms the tool package covers.
-
-### Windows: install with winget
-
-winget ships with current versions of Windows 10 and 11, so there is usually nothing to install first:
-
-```powershell
-winget install netpace
-```
-
-**The NetPace package is pending its first acceptance into the winget community repository.** Until it lands, this reports that no package matched; download a release binary below in the meantime.
-
-Open a new terminal afterwards and `netpace` is on your path — no archive to choose and nothing for you to edit. You get the native build for your machine's architecture (x64 or ARM64), which behaves exactly like the release binary of the same version.
-
-Move to each new release with `winget upgrade netpace`, or let `winget upgrade --all` pick NetPace up along with everything else. Remove it with `winget uninstall netpace`, after which `netpace` no longer resolves.
-
-To install a known version unattended, from a provisioning script, name the package exactly and pass winget's silent options:
-
-```powershell
-winget install --id FrankRay78.NetPace --exact --version <version> --silent --accept-package-agreements --accept-source-agreements
-```
-
-NetPace's Windows binaries are not code-signed, so Windows SmartScreen may warn about the executable the first time you run it.
-
-### macOS and Linux: install with Homebrew
-
-If you use [Homebrew](https://brew.sh/), NetPace installs in one line:
-
-```bash
-brew install FrankRay78/tap/netpace
-```
-
-`netpace` is on your path straight away, in the same terminal — no archive to choose and nothing for you to edit. You get the Native AOT build for your machine's platform and architecture (macOS or Linux, Intel or ARM64), which starts without a .NET runtime and behaves exactly like the release binary of the same version. On macOS it runs without you having to clear a Gatekeeper warning.
-
-Move to each new release with `brew upgrade netpace`, or let `brew upgrade` pick NetPace up along with everything else. Remove it with `brew uninstall netpace`, after which `netpace` is no longer on your path.
-
-### Any platform: download a release binary
-
-Each release contains precompiled binaries you can simply [download](https://github.com/FrankRay78/NetPace/releases), unzip and run. 
-
-Choose from Windows, Linux and macOS; standalone (large file but includes all dependencies), net10 (small file but requires [Microsoft .NET 10.0 runtime](https://dotnet.microsoft.com/en-us/download/dotnet/10.0)) to already be installed, or AOT compiled for bare metal execution. 
-
-Alternatively, clone this repository locally and build.
-
-Developed with Microsoft .NET 10.0 on Windows 10 using Visual Studio 2022 Community. Other modern environments should work fine.
+See [INSTALLATION.md](INSTALLATION.md) for platform notes and which build each route gives you.
 
 <br />
 

@@ -36,7 +36,7 @@ REPO="$(cd "$HERE/.." && pwd)"
 PROJECT="$REPO/src/NetPace.Console/NetPace.Console.csproj"
 
 # The RIDs the tool promises to cover. Each carries a Native AOT build in the release workflow, and
-# platforms outside this list are out of scope (USER_GUIDE.md).
+# platforms outside this list are out of scope (INSTALLATION.md).
 RIDS=(win-x64 win-arm64 linux-x64 linux-arm64 osx-x64 osx-arm64)
 
 VERSION=99.99.99
