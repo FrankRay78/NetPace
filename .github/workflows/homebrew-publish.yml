@@ -254,9 +254,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     # One push at a time, so two releases close together cannot race — one would be rejected as a
-    # non-fast-forward and raise a false failure issue. Set on this job, not the workflow, so only
-    # a run that is about to push can wait here: GitHub cancels a waiting entry when another
-    # arrives, and a cancelled job, unlike a cancelled run, still reaches report-failure.
+    # non-fast-forward and raise a false failure issue. Set on this job, not the workflow, so
+    # prereleases and failed builds never queue here. Any release run still can, including a
+    # retry that turns out to have nothing to push, and GitHub cancels a waiting entry when another
+    # arrives; a cancelled job, unlike a cancelled run, still reaches report-failure.
     concurrency:
       group: homebrew-tap-push
       cancel-in-progress: false

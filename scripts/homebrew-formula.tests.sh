@@ -279,7 +279,7 @@ echo "unreadable asset list:"
 # gh exiting zero with something that is not JSON. jq fails on unparseable input before any filter
 # runs, and without a diagnostic of its own it surfaces as a bare parse error with no mention of
 # the version. Asserted on the parse message and against the missing-archive one, because both end
-# in "nothing published": a reply jq can parse but that holds no assets reads as missing archives,
+# in "nothing published": an object that lists no assets reads as missing archives,
 # which the empty-release case above already covers.
 run "0.9.0" 'STUB_ASSETS=not json'
 ok "unparseable asset list → fails" '[ "$RC" != 0 ]'
