@@ -96,7 +96,7 @@ The installed command behaves exactly like the release binary of the same versio
 
 **Which platforms the tool package covers.** Windows, Linux and macOS, each on x64 and ARM64 (Intel and Apple silicon), get the Native AOT binary — built the same way as the `-aot` release download, so it starts without a .NET runtime. Anything outside those six — Alpine-style Linux among them — is not covered by the tool package; [download](https://github.com/FrankRay78/NetPace/releases) a standalone binary instead.
 
-Without the .NET SDK, Windows users can [install with winget](#installing-upgrading-and-uninstalling-on-windows-with-winget), and the [releases page](https://github.com/FrankRay78/NetPace/releases) carries binaries for every supported platform: unzip and run.
+Without the .NET SDK, Windows users can [install with winget](#installing-upgrading-and-uninstalling-on-windows-with-winget), macOS and Linux users can [install with Homebrew](#installing-upgrading-and-uninstalling-on-macos-and-linux-with-homebrew), and the [releases page](https://github.com/FrankRay78/NetPace/releases) carries binaries for every supported platform: unzip and run.
 
 ---
 
@@ -151,7 +151,50 @@ Drop `--version` to install the latest release. `winget uninstall --id FrankRay7
 
 NetPace's Windows binaries are not code-signed, so Windows SmartScreen may warn about the executable the first time it runs.
 
-On Linux and macOS, and on Windows if you would rather not use winget, [install the .NET tool](#installing-netpace) or [download a release binary](https://github.com/FrankRay78/NetPace/releases), unzip it and run it.
+On Linux and macOS, [install with Homebrew](#installing-upgrading-and-uninstalling-on-macos-and-linux-with-homebrew). On Windows, if you would rather not use winget, [install the .NET tool](#installing-netpace) or [download a release binary](https://github.com/FrankRay78/NetPace/releases), unzip it and run it.
+
+---
+
+## Installing, upgrading and uninstalling on macOS and Linux with Homebrew
+
+On macOS and Linux, [Homebrew](https://brew.sh/) installs NetPace in one command and keeps it current. You need no .NET SDK and no runtime.
+
+Install it:
+```bash
+brew install FrankRay78/tap/netpace
+```
+
+That one command adds NetPace's tap and installs the formula from it. `netpace` is on your path straight away, in the same terminal — Homebrew links the command into its own `bin` directory, which is already on your path, so there is nothing for you to edit and no new shell to open.
+
+Confirm what you got:
+```bash
+netpace --version
+```
+
+That reports the version of the release the formula was published from. The installed `netpace` is the Native AOT build for your machine's platform and architecture — macOS or Linux, Intel/x64 or ARM64 (Apple silicon included) — so it starts without a .NET runtime, and it takes the same options and produces the same output as the release binary of the same version. Everything else in this guide applies unchanged.
+
+On macOS, it runs straight away: Homebrew's downloads do not carry the quarantine flag that a browser download does, so there is no Gatekeeper warning to clear even though NetPace's macOS binaries are not signed or notarised.
+
+Move to the latest release:
+```bash
+brew upgrade netpace
+```
+
+Or pick NetPace up along with everything else you manage through Homebrew:
+```bash
+brew upgrade
+```
+
+Remove it, so `netpace` is no longer on your path:
+```bash
+brew uninstall netpace
+```
+
+`brew untap FrankRay78/tap` additionally forgets the tap, if you do not intend to reinstall.
+
+The tap carries only `MAJOR.MINOR.PATCH` releases, never release candidates, and one formula version at a time, so Homebrew installs the latest and `brew install netpace@<version>` is not offered. To pin a known version — in a provisioning script, say — [download a release binary](https://github.com/FrankRay78/NetPace/releases) or [install the .NET tool](#installing-netpace) with `--version`.
+
+On Windows, [install with winget](#installing-upgrading-and-uninstalling-on-windows-with-winget) instead.
 
 ---
 

@@ -86,6 +86,18 @@ winget install --id FrankRay78.NetPace --exact --version <version> --silent --ac
 
 NetPace's Windows binaries are not code-signed, so Windows SmartScreen may warn about the executable the first time you run it.
 
+### macOS and Linux: install with Homebrew
+
+If you use [Homebrew](https://brew.sh/), NetPace installs in one line:
+
+```bash
+brew install FrankRay78/tap/netpace
+```
+
+`netpace` is on your path straight away, in the same terminal — no archive to choose and nothing for you to edit. You get the Native AOT build for your machine's platform and architecture (macOS or Linux, Intel or ARM64), which starts without a .NET runtime and behaves exactly like the release binary of the same version. On macOS it runs without you having to clear a Gatekeeper warning.
+
+Move to each new release with `brew upgrade netpace`, or let `brew upgrade` pick NetPace up along with everything else. Remove it with `brew uninstall netpace`, after which `netpace` is no longer on your path.
+
 ### Any platform: download a release binary
 
 Each release contains precompiled binaries you can simply [download](https://github.com/FrankRay78/NetPace/releases), unzip and run. 
