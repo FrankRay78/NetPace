@@ -16,7 +16,7 @@ Read `CLAUDE.md` and `docs/constitution.md` for project context before proceedin
 
 ## Scope
 
-**In scope:** everything tracked under `src/`, `examples/`, `scripts/`, `docs/`, `resources/`, `docker/`, `.github/`, `.claude/`, and the root files (`CLAUDE.md`, `README.md`, `USER_GUIDE.md`, `.editorconfig`, `global.json`).
+**In scope:** everything tracked under `src/`, `examples/`, `scripts/`, `docs/`, `resources/`, `docker/`, `.github/`, `.claude/`, and the root files (`CLAUDE.md`, `README.md`, `INSTALLATION.md`, `USER_GUIDE.md`, `.editorconfig`, `global.json`).
 
 **Out of scope — do not report findings on these:**
 
@@ -75,7 +75,7 @@ Read `CLAUDE.md` and `docs/constitution.md` for project context before proceedin
    - **Shell test matrices** — does every `*.tests.sh` under `scripts/` and `.claude/hooks/` exercise the script it is named for, and does each script that has a matrix still match the cases the matrix asserts?
 
    **Lens 3 — Docs against code.** For each statement a document makes about behaviour, check the code or workflow does that. Report the divergence and both sides of it; **do not assume which side is right** — the lens cannot know whether the doc is stale or the code regressed, and saying so is more useful than guessing.
-   - `README.md` and `USER_GUIDE.md` against the real CLI: build it and compare the `--help` output with the documented snapshot; check every documented option, default and example still exists and behaves as described.
+   - `README.md`, `INSTALLATION.md` and `USER_GUIDE.md` against the real CLI: build it and compare the `--help` output with the documented snapshot; check every documented option, default and example still exists and behaves as described.
    - `resources/nuget/README.md` and `examples/ConsoleApp` against the public `NetPace.Core` API: does each sample still compile against the current types?
    - `docs/architecture/*.md` against the code they describe — settings names, defaults, and the stated reasons.
    - `docs/RELEASING.md` against `.github/workflows/release-binaries.yml` and `publish-nuget.yml`: the release matrix, naming convention, smoke-test and size-assertion contracts.

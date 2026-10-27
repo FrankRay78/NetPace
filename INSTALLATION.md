@@ -1,6 +1,6 @@
 # Installing NetPace
 
-Every route below installs the same `netpace` command, which takes the same options and produces the same output whichever way you got it. `netpace --version` reports the release it came from.
+Every packaged route below — winget, Homebrew, the .NET tool and the release binaries — installs the same `netpace` command, which takes the same options and produces the same output whichever way you got it. `netpace --version` reports the release it came from.
 
 ## Windows: winget
 
@@ -37,9 +37,9 @@ dotnet tool install -g netpace
 ```
 
 - `netpace` is on your path provided the .NET global tools directory (`~/.dotnet/tools`, or `%USERPROFILE%\.dotnet\tools` on Windows) is; `dotnet tool install` tells you if it is not.
-- `dotnet tool update -g netpace` moves to the latest release, and `dotnet tool install -g netpace --version <release>` pins any version from the [releases page](https://github.com/FrankRay78/NetPace/releases).
+- `dotnet tool update -g netpace` moves to the latest release, and `dotnet tool install -g netpace --version <release>` pins any release from 0.27.0 onward, the first to publish the tool package.
 - `dnx netpace` runs NetPace once without installing it. The first run asks you to confirm the download, so pass `--yes` where nothing can answer, such as a CI job: `dnx --yes netpace -- --json`.
-- **Platforms covered:** Windows, Linux and macOS, each on x64 and ARM64. All six get the Native AOT build, which needs no .NET runtime. Anything else — Alpine-style Linux among them — is not covered; use a standalone [release binary](#any-platform-release-binaries) instead.
+- **Platforms covered:** Windows, Linux and macOS, each on x64 and ARM64. All six get the Native AOT build, which needs no .NET runtime (on macOS, from 0.28.0). Anything else — Alpine-style Linux among them — is not covered, and no release binary targets it either; [build from source](#building-from-source) instead.
 
 ## Any platform: release binaries
 
@@ -62,3 +62,5 @@ git clone https://github.com/FrankRay78/NetPace.git
 cd NetPace
 dotnet build src
 ```
+
+A source build reports version `0.0.0`, so it cannot be mistaken for a release.
