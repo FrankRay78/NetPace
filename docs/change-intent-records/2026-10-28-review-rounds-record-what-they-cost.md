@@ -7,7 +7,7 @@
 **Constraints:**
 
 - A round that posted nothing — a failed run, or a follow-up the three-round cap refused — must leave the description untouched, so the footer records reviews rather than runs.
-- Only rounds run in GitHub Actions are measurable, so the footer says so; a round run by hand adds no row.
+- Only rounds run in GitHub Actions are measurable; a round run by hand adds no row.
 
 **Decisions:**
 

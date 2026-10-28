@@ -127,9 +127,9 @@ echo "The first review adds the footer:"
 new_case
 run
 ok "exits 0 and edits the description once" '[ "$RC" = 0 ] && [ "$(writes)" = 1 ]'
-ok "the description ends with a horizontal rule followed by the table, and the note last" \
+ok "the description ends with a horizontal rule followed by the table, the Total row last" \
   'grep -A 2 -xF -- "---" "$STUB_DIR/body.md" | grep -qF "| Round | Tokens | API cost |" &&
-   printf "%s" "$(now)" | tail -n 1 | grep -qi "github actions"'
+   printf "%s" "$(now)" | tail -n 1 | grep -q "^| Total |"'
 ok "the table is headed Tokens and API cost" \
   'grep -qF "| Tokens | API cost |" "$STUB_DIR/body.md"'
 ok "there is a PR Review row carrying the run's tokens and cost" \

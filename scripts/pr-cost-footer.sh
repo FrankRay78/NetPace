@@ -51,10 +51,9 @@
 set -euo pipefail
 
 # The footer's own marker. It sits above the horizontal rule rather than below it so the split
-# point is a line that renders as nothing, leaving the rendered description ending in the rule,
-# the table and the note under it.
+# point is a line that renders as nothing, leaving the rendered description ending in the rule
+# and the table.
 MARKER='<!-- pr-cost-footer -->'
-NOTE="<sub>Counts only review rounds run in GitHub Actions; a round run by hand adds no row. API cost is what these tokens would cost at Anthropic's published API prices — the review runs on a Claude subscription, so nothing was billed at that rate.</sub>"
 REVIEW_MARKER='<!-- review-pr -->'
 
 usage() { echo "usage: scripts/pr-cost-footer.sh <pull-request-number> <execution-file>" >&2; }
@@ -295,8 +294,8 @@ main() {
       printf '| %s | %s | %s |\n' "${row_name[i]}" \
         "$(fmt_tokens "${row_tokens[i]}")" "$(fmt_cost "${row_cents[i]}")"
     done
-    printf '| Total | %s | %s |\n\n%s\n' \
-      "$(total_cell fmt_tokens "${row_tokens[@]}")" "$(total_cell fmt_cost "${row_cents[@]}")" "$NOTE"
+    printf '| Total | %s | %s |\n' \
+      "$(total_cell fmt_tokens "${row_tokens[@]}")" "$(total_cell fmt_cost "${row_cents[@]}")"
   } > "$tmp"
 
   gh pr edit "$pr" --repo "$repo" --body-file "$tmp" >/dev/null </dev/null \
