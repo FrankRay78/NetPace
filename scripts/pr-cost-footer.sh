@@ -15,7 +15,10 @@
 # that did — and a follow-up refused by the three-round cap posts nothing by design. A round that
 # left no review is not a review round, and charging the pull request for it would make the
 # footer a record of runs rather than of reviews. The test is a `<!-- review-pr -->` review
-# against the head commit, which is the same marker /review-followup finds prior rounds by. That
+# against the head commit the calling workflow verified the review at, which is the same marker
+# /review-followup finds prior rounds by. That commit is passed in rather than read live: an
+# author pushing between the review posting and this step would otherwise move the head away from
+# the review, and the round would lose its row while the run stayed green. That
 # test cannot tell this run's review from one an earlier run left at the same commit, so on its own
 # it only rules out a head nobody has reviewed. The calling workflow's check — that the count of
 # marked reviews went up — is what rules out a re-dispatch that posted nothing.
@@ -46,7 +49,7 @@
 # .github/workflows/review-followup.yml, which share one concurrency group so that a first
 # review and a follow-up never rewrite the same description at once.
 #
-#   Usage:  scripts/pr-cost-footer.sh <pull-request-number> <execution-file>
+#   Usage:  scripts/pr-cost-footer.sh <pull-request-number> <execution-file> <head-commit>
 
 set -euo pipefail
 
@@ -56,7 +59,7 @@ set -euo pipefail
 MARKER='<!-- pr-cost-footer -->'
 REVIEW_MARKER='<!-- review-pr -->'
 
-usage() { echo "usage: scripts/pr-cost-footer.sh <pull-request-number> <execution-file>" >&2; }
+usage() { echo "usage: scripts/pr-cost-footer.sh <pull-request-number> <execution-file> <head-commit>" >&2; }
 say() { echo "pr-cost-footer: $*"; }
 die() { echo "pr-cost-footer: $*" >&2; exit 1; }
 
@@ -198,13 +201,13 @@ read_usage() {
 }
 
 main() {
-  local pr=${1:-} exec_file=${2:-} repo pr_json head body reviews want author
-  # Two arguments, always. The execution file need not exist — `unknown` is a real answer, and the
+  local pr=${1:-} exec_file=${2:-} head=${3:-} repo pr_json body reviews want author
+  # Three arguments, always. The execution file need not exist — `unknown` is a real answer, and the
   # review it belongs to has already posted — but the caller must still name it. This catches a
   # caller that omits the argument outright; a caller passing a quoted variable that expanded to
   # nothing, which is what a renamed action output looks like, satisfies it and records the round as
   # unknown. The `say` below is what makes that visible in the run.
-  [ "$#" -eq 2 ] || { usage; exit 1; }
+  [ "$#" -eq 3 ] || { usage; exit 1; }
   case "$pr" in
     '' | *[!0-9]*) usage; exit 1 ;;
   esac
@@ -214,12 +217,11 @@ main() {
   repo=${GH_REPO:-$(gh repo view --json nameWithOwner --jq .nameWithOwner)}
   [ -n "$repo" ] || die "could not tell which repository to work in; set GH_REPO to owner/name."
 
-  pr_json=$(gh pr view "$pr" --repo "$repo" --json body,headRefOid) \
-    || die "could not read pull request #$pr; its description is unchanged."
-  head=$(jq -r '.headRefOid' <<<"$pr_json") \
-    || die "GitHub's answer about pull request #$pr was unreadable; its description is unchanged."
   [ -n "$head" ] && [ "$head" != null ] \
-    || die "could not tell which commit is the head of pull request #$pr; its description is unchanged."
+    || die "no head commit was given for pull request #$pr; its description is unchanged."
+
+  pr_json=$(gh pr view "$pr" --repo "$repo" --json body) \
+    || die "could not read pull request #$pr; its description is unchanged."
   # Stripped of CRs: GitHub returns a description saved through the web UI with CRLF line endings,
   # and every line comparison the split makes below is exact.
   body=$(jq -r '.body // ""' <<<"$pr_json" | tr -d '\r') \

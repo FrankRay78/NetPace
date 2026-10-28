@@ -8,8 +8,9 @@
 # description is really edited and nothing is spent. Exits non-zero on any failure. Run it after
 # any edit to the script.
 #
-# The stub holds one pull request: its description in body.md and its head commit in head, the
-# reviews GitHub would list in reviews.json. A `gh pr edit` write is applied to body.md, so what
+# The stub holds one pull request: its description in body.md and its live head commit in head, the
+# reviews GitHub would list in reviews.json. The run itself names the head commit the workflow
+# verified, which is the one a round is looked for at. A `gh pr edit` write is applied to body.md, so what
 # the script did is read back from the description it changed rather than from its own output.
 # The stub runs the script's own `--jq` filter against reviews.json rather than one of its own, so
 # the filter deciding which reviews carry the marker is the one under test; the head-commit half of
@@ -98,8 +99,9 @@ new_case() {
 run_raw() {
   OUTPUT="$(GH_REPO=o/r PATH="$SB/bin:$PATH" bash "$SCRIPT" "$@" </dev/null 2>&1)"; RC=$?
 }
-# run — the ordinary call: pull request 5, against the case's execution file.
-run() { run_raw 5 "$STUB_DIR/exec.json"; }
+# run — the ordinary call: pull request 5, against the case's execution file, at the head commit
+# the workflow verified the review at.
+run() { run_raw 5 "$STUB_DIR/exec.json" HEADSHA; }
 
 now() { cat "$STUB_DIR/body.md"; }
 # cell <row> <1=tokens|2=cost> — one cell of the footer table, trimmed.
@@ -278,7 +280,7 @@ ok "an execution file that never reached a result is unknown" '[ "$(cell "PR Rev
 # The action is asked for its execution_file output; a run where it produced none passes an
 # empty path through, and the round must still be recorded rather than failing after the post.
 new_case
-run_raw 5 ''
+run_raw 5 '' HEADSHA
 ok "an execution file the action never produced is unknown, and the row is still written" \
   '[ "$RC" = 0 ] && [ "$(writes)" = 1 ] && [ "$(cell "PR Review" 1)" = unknown ]'
 
@@ -316,7 +318,10 @@ ok "no arguments exits 1 with usage, changing nothing" \
 run_raw 5
 ok "a pull request number with no execution file exits 1 with usage, changing nothing" \
   '[ "$RC" = 1 ] && grep -q usage <<<"$OUTPUT" && [ "$(writes)" = 0 ]'
-run_raw not-a-number "$STUB_DIR/exec.json"
+run_raw 5 "$STUB_DIR/exec.json"
+ok "no head commit exits 1 with usage, changing nothing" \
+  '[ "$RC" = 1 ] && grep -q usage <<<"$OUTPUT" && [ "$(writes)" = 0 ]'
+run_raw not-a-number "$STUB_DIR/exec.json" HEADSHA
 ok "a non-numeric pull request number exits 1 with usage, changing nothing" \
   '[ "$RC" = 1 ] && grep -q usage <<<"$OUTPUT" && [ "$(writes)" = 0 ]'
 ok "and the description is still the author's" '[ "$(now)" = "Closes #7." ]'
@@ -411,17 +416,24 @@ run
 ok "a commit id containing the head sha does not count as a review at the head" \
   '[ "$RC" = 0 ] && [ "$(writes)" = 0 ] && [ "$(now)" = "Closes #7." ]'
 
-echo "An answer that does not say which commit is the head fails loudly:"
+echo "A head commit that names no commit fails loudly:"
 new_case
-echo 'null' > "$STUB_DIR/head"
-run
+run_raw 5 "$STUB_DIR/exec.json" null
 ok "a null head commit exits non-zero, changing nothing" \
   '[ "$RC" != 0 ] && [ "$(writes)" = 0 ] && [ "$(now)" = "Closes #7." ]'
 new_case
-: > "$STUB_DIR/head"
-run
+run_raw 5 "$STUB_DIR/exec.json" ''
 ok "an empty head commit exits non-zero, changing nothing" \
   '[ "$RC" != 0 ] && [ "$(writes)" = 0 ]'
+
+# Regression: the script once looked for the round at the live head, so an author pushing between
+# the review posting and this step lost that round's row while the run stayed green.
+echo "A push during the run does not cost the round its row:"
+new_case
+echo 'NEWERSHA' > "$STUB_DIR/head"
+run
+ok "the round reviewed at the verified head still gets its row" \
+  '[ "$RC" = 0 ] && [ "$(writes)" = 1 ] && [ "$(cell "PR Review" 1)" = "1,234,567" ]'
 new_case
 touch "$STUB_DIR/gh-bad-json"
 run
@@ -440,5 +452,5 @@ echo "RESULT: $pass passed, $fail failed"
 # A floor, as scripts/traceability-check.tests.sh and scripts/homebrew-formula.tests.sh carry for
 # the same reason: dropping a whole block lowers the count while reporting zero failures and
 # exit 0 — a matrix that shrinks towards nothing and still reads green.
-[ "$pass" -ge 63 ] || { echo "FAIL: expected at least 63 assertions, ran $pass — did a block get dropped?" >&2; exit 1; }
+[ "$pass" -ge 65 ] || { echo "FAIL: expected at least 65 assertions, ran $pass — did a block get dropped?" >&2; exit 1; }
 [ "$fail" = 0 ]

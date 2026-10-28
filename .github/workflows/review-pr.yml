@@ -154,10 +154,11 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
           EXECUTION_FILE: ${{ steps.review.outputs.execution_file }}
+          HEAD_SHA: ${{ steps.pr.outputs.head }}
         # Main's copy, not the checkout's: the checkout is the PR head, which anyone with push
         # access — or a fork, on dispatch — could have written, and this step holds the job's
         # write token. A change to the script therefore takes effect on merge, as the command
         # files do. Written to a file rather than piped, so a failed `git show` fails the step.
         run: |
           git show origin/main:scripts/pr-cost-footer.sh > "$RUNNER_TEMP/pr-cost-footer.sh"
-          bash "$RUNNER_TEMP/pr-cost-footer.sh" "$PR_NUMBER" "$EXECUTION_FILE"
+          bash "$RUNNER_TEMP/pr-cost-footer.sh" "$PR_NUMBER" "$EXECUTION_FILE" "$HEAD_SHA"
