@@ -4,7 +4,8 @@ name: Review Followup
 # repository's pull requests. The round logic is single-sourced in
 # .claude/commands/review-followup.md; this workflow adds only the environmental deltas in the
 # prompt below. The label is removed when the run ends, successful or not, so adding it again
-# starts the next round — the label is the request, not the state.
+# starts the next round — the label is the request, not the state. The removal step is inside the
+# job, so a label the `if` below rejects is left where it is, for the maintainer to take off.
 # The action restores `.claude/` and CLAUDE.md from main before the agent runs (the PR head is
 # untrusted), so a change to the command file takes effect on merge, never on its own branch —
 # try one out beforehand by running /review-followup locally.
@@ -29,13 +30,20 @@ on:
 
 jobs:
   followup:
-    # Author-gated as review-pr.yml is, but on `sender` — the account that added the label —
+    # Author-gated as review-pr.yml is, but on `sender` too — the account that added the label —
     # because the repository is public and a label is a cheaper thing to apply than a pull
     # request is to raise. A fork's pull request is skipped outright: it gets no secrets on
     # `pull_request` anyway.
+    #
+    # Both logins are checked because they answer different questions. `sender` is who asked for
+    # the round; `pull_request.user` is whose branch is about to run, and this job checks that
+    # branch out and runs its copy of scripts/pr-cost-footer.sh with `pull-requests: write` and
+    # the Claude token. Gating on `sender` alone would have let any account with push access put
+    # its own script in front of those credentials by raising a same-repo pull request.
     if: >-
       github.event.label.name == 'review-followup' &&
       github.event.sender.login == 'FrankRay78' &&
+      github.event.pull_request.user.login == 'FrankRay78' &&
       github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     timeout-minutes: 60
@@ -60,7 +68,12 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          set -euo pipefail
           head=$(gh pr view "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" --json headRefOid --jq .headRefOid)
+          # Checked rather than passed on: an empty ref makes actions/checkout take the default
+          # branch, so the round would review, and post against, main.
+          [ -n "$head" ] && [ "$head" != null ] \
+            || { echo "::error::Could not tell which commit is the head of PR #$PR_NUMBER."; exit 1; }
           echo "head=$head" >> "$GITHUB_OUTPUT"
 
       # The PR head, not the merge ref `pull_request` checks out by default: inline comments are
@@ -79,6 +92,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          set -euo pipefail
           # The count is read from a file and gh's exit status checked, rather than piped straight
           # into awk: with no pipefail a failed query would reach awk as empty input and come out
           # as zero prior rounds, which is the one wrong answer that looks like a legitimate skip.
@@ -138,10 +152,14 @@ jobs:
           HEAD_SHA: ${{ steps.pr.outputs.head }}
           PRIOR: ${{ steps.guard.outputs.prior }}
         run: |
+          set -euo pipefail
           gh api --paginate "repos/$GITHUB_REPOSITORY/pulls/$PR_NUMBER/reviews" \
             --jq '.[] | [.commit_id, ((.body // "") | contains("<!-- review-pr -->"))] | @tsv' \
             > review-pr-reviews.tsv
           now=$(grep -cP '\ttrue$' review-pr-reviews.tsv || true)
+          # `|| true` covers grep's no-match exit 1; an unreadable file exits 2 and prints nothing,
+          # which would reach the comparison below as an empty string and a bare bash error.
+          [ -n "$now" ] || { echo "::error::Could not read back the reviews on PR #$PR_NUMBER."; exit 1; }
           if [ "$now" -le "$PRIOR" ]; then
             echo "::error::No new <!-- review-pr --> review on PR #$PR_NUMBER (still $now) — the follow-up round did not post."
             exit 1
@@ -171,4 +189,8 @@ jobs:
         if: always()
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh pr edit "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" --remove-label review-followup
+        # Swallowing the failure is right here, and only here: the label being gone already — the
+        # maintainer pulled it by hand mid-run — is the outcome this step wanted.
+        run: |
+          gh pr edit "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" --remove-label review-followup \
+            || echo "::notice::The review-followup label was already gone from PR #$PR_NUMBER."

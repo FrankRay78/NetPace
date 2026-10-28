@@ -15,7 +15,10 @@
 # that did — and a follow-up refused by the three-round cap posts nothing by design. A round that
 # left no review is not a review round, and charging the pull request for it would make the
 # footer a record of runs rather than of reviews. The test is a `<!-- review-pr -->` review
-# against the head commit, which is the same marker /review-followup finds prior rounds by.
+# against the head commit, which is the same marker /review-followup finds prior rounds by. That
+# test cannot tell this run's review from one an earlier run left at the same commit, so on its own
+# it only rules out a head nobody has reviewed. The calling workflow's check — that the count of
+# marked reviews went up — is what rules out a re-dispatch that posted nothing.
 #
 # WHY THE ROW NAME COMES FROM THE FOOTER AND NOT FROM THE ROUND. Counting the rows already in the
 # footer makes the next name a function of what is written down, so a re-dispatched first review
@@ -23,9 +26,14 @@
 # command reasons about (`/review-followup` step 2's cap) is about reviews posted; this is about
 # rows recorded, and the two are deliberately not the same question.
 #
-# WHAT IT NEVER TOUCHES. Everything above the marker is the author's, and is written back
-# unchanged bar trailing blank lines. Everything from the marker down belongs to this script and
-# is regenerated, which is what keeps a description from collecting two footers.
+# WHAT IT NEVER TOUCHES. Everything above the footer is the author's, and is written back unchanged
+# bar trailing blank lines and carriage returns. Everything from the footer down belongs to this
+# script and is regenerated, which is what keeps a description from collecting two footers. That
+# rests on two things, both of which cost a description its contents when they were missing: the
+# body is stripped of CRs before it is split, because GitHub hands back a description saved in the
+# web UI with CRLF endings and the marker line would then match nothing; and the footer is found by
+# the structure this script writes, not by the marker line alone, so an author who quotes the
+# marker keeps the text below it.
 #
 # UNKNOWN IS A REAL ANSWER. The run's totals come from the action's `execution_file`, whose shape
 # this script does not control. When it cannot be read, or carries no result message, or carries
@@ -43,8 +51,8 @@
 set -euo pipefail
 
 # The footer's own marker. It sits above the horizontal rule rather than below it so the split
-# point is a line that renders as nothing, leaving the rendered description ending in the rule
-# and the table.
+# point is a line that renders as nothing, leaving the rendered description ending in the rule,
+# the table and the note under it.
 MARKER='<!-- pr-cost-footer -->'
 NOTE="<sub>Counts only review rounds run in GitHub Actions; a round run by hand adds no row. API cost is what these tokens would cost at Anthropic's published API prices — the review runs on a Claude subscription, so nothing was billed at that rate.</sub>"
 REVIEW_MARKER='<!-- review-pr -->'
@@ -92,11 +100,56 @@ parse_cents() {
   local v=${1//,/}
   v=${v#\$}
   if [[ "$v" =~ ^[0-9]+\.[0-9][0-9]$ ]]; then
-    printf '%s' "$((${v%.*} * 100 + 10#${v#*.}))"
+    printf '%s' "$((10#${v%.*} * 100 + 10#${v#*.}))"
   else
     printf 'unknown'
   fi
 }
+
+# total_cell <formatter> <value…> — the Total row's cell for one column, formatted by <formatter>.
+#
+# A total that silently dropped an unknown round would read as the cost of the whole cycle, so it
+# carries what it could add and admits what it could not. The two columns are totalled
+# separately because their gaps are independent: a run can report its tokens and not its cost.
+total_cell() {
+  local fmt=$1 sum=0 known=0 missing=0 value
+  shift
+  for value in "$@"; do
+    # `10#` so a cell someone padded with a leading zero is read as decimal: bash reads `08` as
+    # octal and aborts the script mid-run with a bare arithmetic error and no footer written.
+    if [ "$value" = unknown ]; then missing=1; else sum=$((sum + 10#$value)); known=1; fi
+  done
+  if [ "$known" = 0 ]; then
+    printf 'unknown'
+  elif [ "$missing" = 1 ]; then
+    printf '%s + unknown' "$("$fmt" "$sum")"
+  else
+    "$fmt" "$sum"
+  fi
+}
+
+# The two halves of a description: everything before the footer is the author's, everything from
+# the footer down belongs to this script and is regenerated.
+#
+# The footer is identified by the shape this script writes it in — the marker line, a blank line,
+# then the horizontal rule — and the last such occurrence wins. Matching the bare marker line
+# instead meant a description that merely quoted the marker, in prose or inside a fenced block, was
+# split at the quotation: everything the author had written below it was replaced by the footer and
+# only GitHub's edit history still had it. A pull request documenting this footer is exactly the
+# body most likely to quote the marker. Each comparison is an exact line match, not a pattern, so
+# no metacharacter in a description can stand in for any of the three lines.
+split_body() {
+  awk -v m="$MARKER" -v mode="$1" '
+    { line[NR] = $0 }
+    END {
+      for (i = 1; i <= NR; i++)
+        if (line[i] == m && line[i + 1] == "" && line[i + 2] == "---") s = i
+      if (mode == "before") { for (i = 1; i < (s ? s : NR + 1); i++) print line[i] }
+      else { for (i = s + 1; s && i <= NR; i++) print line[i] }
+    }'
+}
+before_marker() { split_body before; }
+after_marker() { split_body after; }
 
 # read_usage <execution-file> — prints "<tokens>\t<cents>", either value `unknown`.
 #
@@ -104,40 +157,54 @@ parse_cents() {
 # `modelUsage` is preferred over `usage` because it is keyed by model, and a review run spends on
 # several — the orchestrator plus every specialist and verifier subagent it started — so summing
 # its entries is what makes a row cover the whole run rather than one model's share of it. Every
-# token the run was charged for counts, cache reads and cache writes included.
+# token the run was charged for counts, cache reads and cache writes included. Cost takes the
+# opposite precedence — the scalar `total_cost_usd` first, the per-model `costUSD` sum only as a
+# fallback — because that scalar is the run's own total, already covering every model, where the
+# token fields are per-model and have to be summed to reach the same scope. Cents are rounded, not
+# truncated, so a round is never reported a penny cheaper than it was.
+#
+# A file that never reached a result message needs no branch of its own: `$r` is then null, every
+# figure read out of it is null too, and both cells come out `unknown` by the same route as a
+# result message that carried no usage at all.
+#
+# `-s` so the filter runs exactly once whatever the file holds. Without it an empty or
+# whitespace-only file gives jq no input to run the filter on, so it printed nothing and exited 0 —
+# the one case the fallback below cannot catch — and `read` at the call site hit EOF and killed the
+# script under `set -e`, silently, after the review had already posted. It also means a file
+# holding one JSON document per line, the natural shape for a streamed agent log, is read whole
+# rather than answered once per line with only the first answer being read.
 read_usage() {
   local file=$1
   if [ ! -f "$file" ]; then
     printf 'unknown\tunknown\n'
     return
   fi
-  jq -r '
+  jq -s -r '
     def numsum(a): (a | map(select(type == "number"))) as $n
       | if ($n | length) == 0 then null else ($n | add) end;
-    def msgs: if type == "array" then .
-      elif (type == "object") and ((.messages | type) == "array") then .messages
-      else [.] end;
+    def msgs: [ .[] | if type == "array" then .[]
+      elif (type == "object") and ((.messages | type) == "array") then .messages[]
+      else . end ];
     (msgs | map(select((type == "object") and (.type == "result"))) | last) as $r
-    | if $r == null then "unknown\tunknown"
-      else
-        (if ($r.modelUsage | type) == "object" then $r.modelUsage else {} end) as $m
-        | numsum([$m | to_entries[] | .value
-            | (.inputTokens, .outputTokens, .cacheReadInputTokens, .cacheCreationInputTokens)]) as $mt
-        | numsum([$r.usage.input_tokens, $r.usage.output_tokens,
-                  $r.usage.cache_creation_input_tokens, $r.usage.cache_read_input_tokens]) as $ut
-        | (if ($r.total_cost_usd | type) == "number" then $r.total_cost_usd
-           else numsum([$m | to_entries[] | .value.costUSD]) end) as $cost
-        | (if $cost == null then "unknown" else (($cost * 100) | round) end) as $cents
-        | "\(($mt // $ut) // "unknown")\t\($cents)"
-      end
-  ' "$file" 2>/dev/null || printf 'unknown\tunknown\n'
+    | (if ($r.modelUsage | type) == "object" then $r.modelUsage else {} end) as $m
+    | numsum([$m | to_entries[] | .value
+        | (.inputTokens, .outputTokens, .cacheReadInputTokens, .cacheCreationInputTokens)]) as $mt
+    | numsum([$r.usage.input_tokens, $r.usage.output_tokens,
+              $r.usage.cache_creation_input_tokens, $r.usage.cache_read_input_tokens]) as $ut
+    | (if ($r.total_cost_usd | type) == "number" then $r.total_cost_usd
+       else numsum([$m | to_entries[] | .value.costUSD]) end) as $cost
+    | (if $cost == null then "unknown" else (($cost * 100) | round) end) as $cents
+    | "\(($mt // $ut) // "unknown")\t\($cents)"
+  ' "$file" || printf 'unknown\tunknown\n'
 }
 
 main() {
-  local pr=${1:-} exec_file=${2:-} repo pr_json head body author reviews want
-  # Two arguments, always. The execution file need not exist — `unknown` is a real answer, and
-  # the review it belongs to has already posted — but the caller must still name it, so a step
-  # wired up without it is caught here rather than silently recording every round as unknown.
+  local pr=${1:-} exec_file=${2:-} repo pr_json head body reviews want author
+  # Two arguments, always. The execution file need not exist — `unknown` is a real answer, and the
+  # review it belongs to has already posted — but the caller must still name it. This catches a
+  # caller that omits the argument outright; a caller passing a quoted variable that expanded to
+  # nothing, which is what a renamed action output looks like, satisfies it and records the round as
+  # unknown. The `say` below is what makes that visible in the run.
   [ "$#" -eq 2 ] || { usage; exit 1; }
   case "$pr" in
     '' | *[!0-9]*) usage; exit 1 ;;
@@ -154,35 +221,39 @@ main() {
     || die "GitHub's answer about pull request #$pr was unreadable; its description is unchanged."
   [ -n "$head" ] && [ "$head" != null ] \
     || die "could not tell which commit is the head of pull request #$pr; its description is unchanged."
-  body=$(jq -r '.body // ""' <<<"$pr_json") \
+  # Stripped of CRs: GitHub returns a description saved through the web UI with CRLF line endings,
+  # and every line comparison the split makes below is exact.
+  body=$(jq -r '.body // ""' <<<"$pr_json" | tr -d '\r') \
     || die "the description of pull request #$pr was unreadable; it is unchanged."
 
   reviews=$(gh api --paginate "repos/$repo/pulls/$pr/reviews" \
     --jq ".[] | [.commit_id, ((.body // \"\") | contains(\"$REVIEW_MARKER\"))] | @tsv") \
     || die "could not ask GitHub which reviews pull request #$pr carries; its description is unchanged."
-  want=$(printf '%s\t%s' "$head" true)
+  want="$head"$'\t'true
   if ! grep -qxF -- "$want" <<<"$reviews"; then
     say "no $REVIEW_MARKER review on pull request #$pr at $head — this run posted nothing, so no row is written."
     exit 0
   fi
 
-  # Everything before the marker is the author's; everything from it down is regenerated. The
-  # split is an exact line match, not a pattern, so nothing in a description can be mistaken for
-  # the marker by a metacharacter.
-  author=$(awk -v m="$MARKER" '$0 == m { exit } { print }' <<<"$body")
+  author=$(before_marker <<<"$body")
 
-  local -a ROW_NAME=() ROW_TOKENS=() ROW_CENTS=()
-  local line name tok cost rest
+  local line name tok cost rest i tmp
+  local -a row_name=() row_tokens=() row_cents=()
   while IFS= read -r line; do
     case "$line" in '|'*) ;; *) continue ;; esac
+    # `rest` is read and unused on purpose: it absorbs the row's trailing pipe, so that `cost`
+    # holds the cell rather than the cell plus the remainder of the line.
     IFS='|' read -r _ name tok cost rest <<<"$line"
     name=$(trim "${name:-}"); tok=$(trim "${tok:-}"); cost=$(trim "${cost:-}")
-    case "$name" in '' | Round | Total) continue ;; esac
-    if [[ "$name" =~ ^:?-+:?$ ]]; then continue; fi
-    ROW_NAME+=("$name")
-    ROW_TOKENS+=("$(parse_tokens "$tok")")
-    ROW_CENTS+=("$(parse_cents "$cost")")
-  done < <(awk -v m="$MARKER" 'f { print } $0 == m { f = 1 }' <<<"$body")
+    # The heading, the separator under it and the Total row are not rounds.
+    if [ -z "$name" ] || [ "$name" = Round ] || [ "$name" = Total ] \
+      || [[ "$name" =~ ^:?-+:?$ ]]; then
+      continue
+    fi
+    row_name+=("$name")
+    row_tokens+=("$(parse_tokens "$tok")")
+    row_cents+=("$(parse_cents "$cost")")
+  done < <(after_marker <<<"$body")
 
   # Both are re-checked here rather than trusted: read_usage reads a file whose shape this script
   # does not own, so anything that is not a plain whole number is `unknown`, never a guess.
@@ -190,48 +261,26 @@ main() {
   IFS=$'\t' read -r round_tokens round_cents < <(read_usage "$exec_file")
   [[ "$round_tokens" =~ ^[0-9]+$ ]] || round_tokens=unknown
   [[ "$round_cents" =~ ^[0-9]+$ ]] || round_cents=unknown
+  # An `unknown` row is a real answer, but it is also what a renamed action output and a changed
+  # execution-file shape both look like, and those are indistinguishable from the footer alone.
+  # Saying it here puts the gap in the run's own log, where it can be told apart from a round that
+  # genuinely reported nothing.
+  if [ "$round_tokens" = unknown ] || [ "$round_cents" = unknown ]; then
+    say "could not read this round's usage from '${exec_file:-}' — the row will say unknown."
+  fi
 
   # Row 1 is the review that runs when the pull request opens; every later row is a follow-up
-  # round, numbered from one as /review-followup numbers its own rounds.
-  if [ "${#ROW_NAME[@]}" -eq 0 ]; then
-    ROW_NAME+=("PR Review")
+  # round, numbered from one. These names count rows written, not the rounds /review-followup
+  # counts — it calls the first follow-up round 2, where its row here is `Review 1` — which is the
+  # distinction WHY THE ROW NAME COMES FROM THE FOOTER sets out above.
+  if [ "${#row_name[@]}" -eq 0 ]; then
+    row_name+=("PR Review")
   else
-    ROW_NAME+=("Review ${#ROW_NAME[@]}")
+    row_name+=("Review ${#row_name[@]}")
   fi
-  ROW_TOKENS+=("$round_tokens")
-  ROW_CENTS+=("$round_cents")
+  row_tokens+=("$round_tokens")
+  row_cents+=("$round_cents")
 
-  local total_tokens=0 total_cents=0 known_tokens=0 known_cents=0 i
-  for ((i = 0; i < ${#ROW_NAME[@]}; i++)); do
-    if [ "${ROW_TOKENS[i]}" != unknown ]; then
-      total_tokens=$((total_tokens + ROW_TOKENS[i]))
-      known_tokens=$((known_tokens + 1))
-    fi
-    if [ "${ROW_CENTS[i]}" != unknown ]; then
-      total_cents=$((total_cents + ROW_CENTS[i]))
-      known_cents=$((known_cents + 1))
-    fi
-  done
-
-  # A total that silently dropped an unknown round would read as the cost of the whole cycle, so
-  # it carries what it could add and admits what it could not.
-  local total_tokens_cell total_cost_cell
-  if [ "$known_tokens" -eq 0 ]; then
-    total_tokens_cell=unknown
-  elif [ "$known_tokens" -lt "${#ROW_NAME[@]}" ]; then
-    total_tokens_cell="$(fmt_tokens "$total_tokens") + unknown"
-  else
-    total_tokens_cell=$(fmt_tokens "$total_tokens")
-  fi
-  if [ "$known_cents" -eq 0 ]; then
-    total_cost_cell=unknown
-  elif [ "$known_cents" -lt "${#ROW_NAME[@]}" ]; then
-    total_cost_cell="$(fmt_cost "$total_cents") + unknown"
-  else
-    total_cost_cell=$(fmt_cost "$total_cents")
-  fi
-
-  local tmp
   tmp=$(mktemp)
   # shellcheck disable=SC2064
   trap "rm -f '$tmp'" EXIT
@@ -242,16 +291,17 @@ main() {
     if [ -n "$author" ]; then printf '%s\n\n' "$author"; fi
     printf '%s\n\n---\n\n' "$MARKER"
     printf '| Round | Tokens | API cost |\n| --- | --- | --- |\n'
-    for ((i = 0; i < ${#ROW_NAME[@]}; i++)); do
-      printf '| %s | %s | %s |\n' "${ROW_NAME[i]}" \
-        "$(fmt_tokens "${ROW_TOKENS[i]}")" "$(fmt_cost "${ROW_CENTS[i]}")"
+    for ((i = 0; i < ${#row_name[@]}; i++)); do
+      printf '| %s | %s | %s |\n' "${row_name[i]}" \
+        "$(fmt_tokens "${row_tokens[i]}")" "$(fmt_cost "${row_cents[i]}")"
     done
-    printf '| Total | %s | %s |\n\n%s\n' "$total_tokens_cell" "$total_cost_cell" "$NOTE"
+    printf '| Total | %s | %s |\n\n%s\n' \
+      "$(total_cell fmt_tokens "${row_tokens[@]}")" "$(total_cell fmt_cost "${row_cents[@]}")" "$NOTE"
   } > "$tmp"
 
   gh pr edit "$pr" --repo "$repo" --body-file "$tmp" >/dev/null </dev/null \
     || die "could not update the description of pull request #$pr; it is unchanged, and this round went unrecorded."
-  say "#$pr: recorded ${ROW_NAME[-1]} as $(fmt_tokens "$round_tokens") tokens, $(fmt_cost "$round_cents")."
+  say "#$pr: recorded ${row_name[-1]} as $(fmt_tokens "$round_tokens") tokens, $(fmt_cost "$round_cents")."
 }
 
 main "$@"
