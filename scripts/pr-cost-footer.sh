@@ -98,7 +98,7 @@ parse_cents() {
   fi
 }
 
-# read_usage <execution-file> — prints "<tokens>\t<cost-usd>", either value `unknown`.
+# read_usage <execution-file> — prints "<tokens>\t<cents>", either value `unknown`.
 #
 # The action writes the run's whole message list; its final result message carries the totals.
 # `modelUsage` is preferred over `usage` because it is keyed by model, and a review run spends on
@@ -127,16 +127,10 @@ read_usage() {
                   $r.usage.cache_creation_input_tokens, $r.usage.cache_read_input_tokens]) as $ut
         | (if ($r.total_cost_usd | type) == "number" then $r.total_cost_usd
            else numsum([$m | to_entries[] | .value.costUSD]) end) as $cost
-        | "\(($mt // $ut) // "unknown")\t\($cost // "unknown")"
+        | (if $cost == null then "unknown" else (($cost * 100) | round) end) as $cents
+        | "\(($mt // $ut) // "unknown")\t\($cents)"
       end
   ' "$file" 2>/dev/null || printf 'unknown\tunknown\n'
-}
-
-# Dollars as the execution file reports them, to whole cents. Rejects anything that is not a
-# plain number, so a null, a string or an exponent becomes `unknown` rather than 0.
-usd_to_cents() {
-  if [[ ! "$1" =~ ^[0-9]+(\.[0-9]+)?$ ]]; then printf 'unknown'; return; fi
-  awk -v v="$1" 'BEGIN { printf "%.0f", v * 100 }'
 }
 
 main() {
@@ -190,10 +184,12 @@ main() {
     ROW_CENTS+=("$(parse_cents "$cost")")
   done < <(awk -v m="$MARKER" 'f { print } $0 == m { f = 1 }' <<<"$body")
 
-  local round_tokens round_cost round_cents
-  IFS=$'\t' read -r round_tokens round_cost < <(read_usage "$exec_file")
+  # Both are re-checked here rather than trusted: read_usage reads a file whose shape this script
+  # does not own, so anything that is not a plain whole number is `unknown`, never a guess.
+  local round_tokens round_cents
+  IFS=$'\t' read -r round_tokens round_cents < <(read_usage "$exec_file")
   [[ "$round_tokens" =~ ^[0-9]+$ ]] || round_tokens=unknown
-  round_cents=$(usd_to_cents "$round_cost")
+  [[ "$round_cents" =~ ^[0-9]+$ ]] || round_cents=unknown
 
   # Row 1 is the review that runs when the pull request opens; every later row is a follow-up
   # round, numbered from one as /review-followup numbers its own rounds.
