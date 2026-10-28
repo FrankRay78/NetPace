@@ -7,6 +7,8 @@ argument-hint: "[PR number or URL] [--dry-run]"
 
 Run a follow-up round on a pull request already reviewed with `/review-pr`. It closes the loop with the author without the reviewer hand-writing replies: each open thread gets evaluated and answered, fixes get verified against the new commits, and only the new diff gets re-reviewed. Review must converge — this command never re-litigates the whole PR. Like `/review-pr`, it runs unattended from start to post and never stops for confirmation.
 
+The usual way to start a round is to add the `review-followup` label to the PR, which runs this command in CI (`.github/workflows/review-followup.yml`) and records what the round cost on the PR description. Running it here instead does the same review and adds no cost row.
+
 ## User Input
 
 ```text

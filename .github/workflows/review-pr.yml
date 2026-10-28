@@ -4,7 +4,9 @@ name: Review PR
 # raised — the chain's /raise-pr, /raise-pr by hand, or the GitHub UI. The review logic is
 # single-sourced in .claude/commands/review-pr.md; this workflow adds only the environmental
 # deltas in the prompt below. One review per PR: later pushes are not re-reviewed here, and
-# follow-up rounds run by hand with /review-followup.
+# follow-up rounds run from the `review-followup` label in .github/workflows/review-followup.yml.
+# Both workflows record what their round cost in a footer at the end of the PR description, and
+# share one concurrency group so they never rewrite it at the same time.
 # The action restores `.claude/` and CLAUDE.md from main before the agent runs (the PR head is
 # untrusted), so a change to the command file takes effect on merge, never on its own branch —
 # try one out beforehand by running /review-pr locally.
@@ -35,6 +37,8 @@ jobs:
     timeout-minutes: 60
     # A dispatch landing while the `opened` run is still going would otherwise post a second
     # review against the same commit. Queue rather than cancel, so no run dies mid-post.
+    # review-followup.yml shares this group name on purpose: it also rewrites the PR description's
+    # cost footer, and two runs that each read it before the other wrote would lose a row.
     concurrency:
       group: review-pr-${{ github.event.pull_request.number || inputs.pr_number }}
       cancel-in-progress: false
@@ -70,6 +74,7 @@ jobs:
       # app's, which refuses a workflow file that differs from main's copy — so a change to this
       # file runs on its own pull request, even though the command file it reads comes from main.
       - name: Run PR review
+        id: review
         uses: anthropics/claude-code-action@v1
         env:
           GH_TOKEN: ${{ github.token }}
@@ -103,3 +108,14 @@ jobs:
             echo "::error::No <!-- review-pr --> review on PR #$PR_NUMBER at $HEAD_SHA — the review did not post."
             exit 1
           fi
+
+      # Only after the review is known to have posted: a run that reviewed nothing has no cost to
+      # charge the pull request for, and a re-dispatch after a failed run would otherwise add a
+      # row for the failure. See scripts/pr-cost-footer.sh for why that rule is in the script as
+      # well as in this step's placement.
+      - name: Record what this round cost on the pull request
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          EXECUTION_FILE: ${{ steps.review.outputs.execution_file }}
+        run: bash scripts/pr-cost-footer.sh "$PR_NUMBER" "$EXECUTION_FILE"

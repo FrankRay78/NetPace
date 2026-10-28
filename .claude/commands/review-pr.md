@@ -123,4 +123,4 @@ Every subagent this command starts — triage, specialists, verifiers — follow
 
 10. **Post.** In `--dry-run` mode, print instead of posting and stop. Otherwise post inline findings and the summary as a single PR review via `gh api repos/{owner}/{repo}/pulls/<N>/reviews --input <file>` with `event: COMMENT`, `commit_id` set to `headRefOid`, the summary as `body`, and `comments[]` entries of `{path, line, side: "RIGHT", body}`. Write the JSON to `.claude/scratch/review-pr-<N>.json` first, so backticks and `$` pass through untouched. If the API rejects an inline position, move that finding's full text to the summary and post again rather than dropping it.
 
-11. **Report.** Print the PR URL, the recommendation, the tier and the no-human verdict, counts per severity, how many candidates verification rejected, and that follow-up rounds run via `/review-followup <N>`.
+11. **Report.** Print the PR URL, the recommendation, the tier and the no-human verdict, counts per severity, how many candidates verification rejected, and that the next round is started by adding the `review-followup` label to the PR, or by running `/review-followup <N>` locally.
