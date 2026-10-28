@@ -36,10 +36,9 @@ jobs:
     # `pull_request` anyway.
     #
     # Both logins are checked because they answer different questions. `sender` is who asked for
-    # the round; `pull_request.user` is whose branch is about to run, and this job checks that
-    # branch out and runs its copy of scripts/pr-cost-footer.sh with `pull-requests: write` and
-    # the Claude token. Gating on `sender` alone would have let any account with push access put
-    # its own script in front of those credentials by raising a same-repo pull request.
+    # the round; `pull_request.user` is whose pull request the round spends the subscription on.
+    # Neither decides what code runs: nothing from the checkout is executed, and the cost-footer
+    # step runs main's copy of its script.
     if: >-
       github.event.label.name == 'review-followup' &&
       github.event.sender.login == 'FrankRay78' &&
@@ -178,7 +177,10 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
           EXECUTION_FILE: ${{ steps.review.outputs.execution_file }}
-        run: bash scripts/pr-cost-footer.sh "$PR_NUMBER" "$EXECUTION_FILE"
+        # Main's copy, not the checkout's — see the same step in review-pr.yml.
+        run: |
+          git show origin/main:scripts/pr-cost-footer.sh > "$RUNNER_TEMP/pr-cost-footer.sh"
+          bash "$RUNNER_TEMP/pr-cost-footer.sh" "$PR_NUMBER" "$EXECUTION_FILE"
 
       # Always, and last. The label is a request to run, so it has to come off whichever way the
       # run went — a failed round that kept its label could never be retried by relabelling, and

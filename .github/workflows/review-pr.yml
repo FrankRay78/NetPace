@@ -16,7 +16,9 @@ on:
   pull_request:
     types: [opened, ready_for_review]
   # Re-runs a review, e.g. after a failed run. It still reads main's copy of the command file.
-  # workflow_dispatch already requires write permission, so it is self-gating.
+  # workflow_dispatch requires write permission, which gates who can start a run — not whose
+  # code runs: it reaches any PR, a fork's included. Nothing from the checkout is executed for
+  # that reason; the cost-footer step runs main's copy of its script.
   workflow_dispatch:
     inputs:
       pr_number:
@@ -152,4 +154,10 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
           EXECUTION_FILE: ${{ steps.review.outputs.execution_file }}
-        run: bash scripts/pr-cost-footer.sh "$PR_NUMBER" "$EXECUTION_FILE"
+        # Main's copy, not the checkout's: the checkout is the PR head, which anyone with push
+        # access — or a fork, on dispatch — could have written, and this step holds the job's
+        # write token. A change to the script therefore takes effect on merge, as the command
+        # files do. Written to a file rather than piped, so a failed `git show` fails the step.
+        run: |
+          git show origin/main:scripts/pr-cost-footer.sh > "$RUNNER_TEMP/pr-cost-footer.sh"
+          bash "$RUNNER_TEMP/pr-cost-footer.sh" "$PR_NUMBER" "$EXECUTION_FILE"
