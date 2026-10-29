@@ -174,6 +174,12 @@ public static class SpeedTestExtensions
 
     // The unrounded figure. FormatSpeedParts and GetBitsPerSecond both derive from it, so the
     // formatted and numeric values can never drift apart.
+    // Whether a measurement moved any bytes in any measurable time.
+    private static bool IsMeasured(long bytesProcessed, long elapsedMilliseconds)
+    {
+        return bytesProcessed > 0 && elapsedMilliseconds > 0;
+    }
+
     private static double CalculateBitsPerSecond(long bytesProcessed, long elapsedMilliseconds)
     {
         // Handle division by zero: no time elapsed means no speed measured
