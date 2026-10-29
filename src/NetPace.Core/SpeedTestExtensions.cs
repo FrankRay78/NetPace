@@ -30,7 +30,10 @@ public static class SpeedTestExtensions
     {
         ArgumentNullException.ThrowIfNull(result);
 
-        return FormatSpeed(result, unit, unitSystem, scale);
+        // A test in which every request failed measured nothing, so it reports no speed.
+        var measured = result.RequestsSucceeded == 0 ? result with { BytesProcessed = 0 } : result;
+
+        return FormatSpeed(measured, unit, unitSystem, scale);
     }
 
     /// <summary>
