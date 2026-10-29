@@ -7,6 +7,8 @@ argument-hint: "[PR number or URL] [--dry-run]"
 
 Run a follow-up round on a pull request already reviewed with `/review-pr`. It closes the loop with the author without the reviewer hand-writing replies: each open thread gets evaluated and answered, fixes get verified against the new commits, and only the new diff gets re-reviewed. Review must converge — this command never re-litigates the whole PR. Like `/review-pr`, it runs unattended from start to post and never stops for confirmation.
 
+The usual way to start a round is the CI trigger (see *Project-specific*), which runs this command in CI and records what the round cost on the PR description. Running it here instead does the same review and adds no cost row.
+
 ## User Input
 
 ```text
@@ -50,3 +52,7 @@ A PR number (`158`), `#158`, or a full PR URL; empty resolves the current branch
 8. **Post.** In `--dry-run`, print every reply, resolution and the summary, and stop. Otherwise post thread replies and resolutions first, then new inline findings and the summary as one review (`event: COMMENT`, `commit_id` set to `headRefOid`), as in `/review-pr`.
 
 9. **Report.** Print the PR URL, round number, thread outcome counts, new finding count, the recommendation, the tier and the no-human verdict, and — if everything is resolved and the recommendation is **Merge** — that approving and merging the PR is the maintainer's call in GitHub, not this command's.
+
+## Project-specific
+
+- **CI trigger:** adding the `review-followup` label to the PR runs this command in `.github/workflows/review-followup.yml`.

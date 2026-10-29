@@ -21,7 +21,8 @@ The generic "CI on PR" step **applies fully**:
 | `clear-workflow-labels.yml` — Clear Workflow Labels | pull_request `closed` → main | takes the issue-chain labels off every issue in this repository the merge closed |
 | `codeql.yml` — CodeQL | push/PR/weekly | security analysis (see the [supply-chain CIR](change-intent-records/2026-07-13-dependency-supply-chain-hardening.md)) |
 | `claude.yml` — Claude Code | `@claude` in an issue/PR comment by `FrankRay78` | on-demand agent help on an issue or PR |
-| `review-pr.yml` — Review PR | pull_request `opened`/`ready_for_review` by `FrankRay78`, or manual dispatch | **Review B**: runs `/review-pr` and posts it unattended |
+| `review-pr.yml` — Review PR | pull_request `opened`/`ready_for_review` by `FrankRay78`, or manual dispatch | **Review B**: runs `/review-pr` and posts it unattended, then records what the round cost on the PR |
+| `review-followup.yml` — Review Followup | `review-followup` label applied to a PR (labeller-gated) | runs `/review-followup` unattended for the next round, records what it cost, and removes the label — see below |
 | `reviewissue.yml` — Review Issue | `review` or `refine` label applied to an issue (labeller-gated), or manual dispatch | posts the issue gap analysis, or re-frames the questions that asked for help, unattended — see below |
 | `confirmissue.yml` — Confirm Issue | `confirm` label applied to an issue (labeller-gated), or manual dispatch | folds the answered review into the issue body unattended — see below |
 | `publish-nuget.yml` | tag push | publish `NetPace.Core` to NuGet |
@@ -29,7 +30,9 @@ The generic "CI on PR" step **applies fully**:
 | `publish-tool.yml` | semver tag push | publish the `NetPace` .NET tool package to NuGet |
 | `homebrew-publish.yml` — Publish Homebrew Tap | `release-binaries.yml` completing, or manual dispatch | render the `netpace` formula from the release, install it on three runners, then push it to the Homebrew tap |
 
-**Deviations from the generic Appendix.** Review B runs once, when the PR opens; a later push is not re-reviewed automatically, and follow-up rounds run by hand with `/review-followup`. There is no PR template and no `AGENTS.md` symlink.
+**Deviations from the generic Appendix.** Review B runs once, when the PR opens; a later push is not re-reviewed automatically, and a follow-up round is started deliberately, by adding the `review-followup` label to the PR. There is no PR template and no `AGENTS.md` symlink.
+
+**Every review round runs in CI, and says what it cost.** The first review runs on PR open; labelling `review-followup` runs the next round and the label comes off when the run ends, so adding it again starts the one after. The cap is unchanged at three rounds, and a label added past it, or on a PR with no first review yet, is a green run that posts nothing. Each round that posts adds a row — `PR Review`, then `Review 1`, `Review 2` — to a table at the foot of the PR description, with a `Total` row under it, so a merged PR carries the cost of reviewing it. The rows come from [`scripts/pr-cost-footer.sh`](../scripts/pr-cost-footer.sh); a round run by hand from `/review-pr` or `/review-followup` locally still works and adds no row. Rationale: the [cost-footer CIR](change-intent-records/2026-10-28-review-rounds-record-what-they-cost.md).
 
 **The whole pre-build issue gate runs in CI.** Every step is label-triggered, so an issue raised away from the desk can be reviewed, answered and confirmed without a checkout. Labelling `review` runs [`.claude/commands/reviewissue.md`](../.claude/commands/reviewissue.md) and leaves the gap analysis as a comment; the author answers it inline in the GitHub UI; where an answer asks for help rather than deciding, labelling `refine` runs step 6 of the same command and re-frames just those questions in place; labelling `confirm` then runs [`.claude/commands/confirmissue.md`](../.claude/commands/confirmissue.md), which folds the answers into the issue body and deletes the comment. Each workflow applies its command as written, keeping the logic single-sourced. Both commands still run locally.
 
