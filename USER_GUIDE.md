@@ -80,7 +80,7 @@ Three alternative formats are available instead:
 | Switch | Output |
 | --- | --- |
 | `--minimal` | The result as a single compact line. No live progress display. |
-| `--csv` | A single CSV row, always including a timestamp. `--csv-delimiter` chooses the separator. |
+| `--csv` | A single CSV row, always including a timestamp. |
 | `--json` | A JSON object. `--json-pretty` selects the same format and indents it for reading. |
 
 `--minimal`, `--csv` and `--json` are peers, and exactly one format may be selected. Passing two together is an error naming the conflict, so a stray or mistyped flag in a script fails loudly instead of quietly producing the wrong format. `--json-pretty` counts as selecting JSON, so `--json --json-pretty` is the one combination allowed — they are the same format, indented — while `--csv --json-pretty` and `--json-pretty --minimal` are conflicts like any other pair.
@@ -125,7 +125,7 @@ Timestamp,LatencyMilliseconds,DownloadSpeedBitsPerSecond,DownloadSucceeded,Downl
 
 A download or upload test that ran but failed entirely reports `0`, with its request counts beside it — see [Detecting failed measurements](#detecting-failed-measurements).
 
-`--csv-delimiter` chooses the separator, for a locale or a tool that wants something other than a comma.
+CSV output is always comma-separated — there is no option to choose another separator, so every log NetPace writes has one shape. A value that would otherwise disturb the row is written as CSV requires: a hostname or IP address containing a comma or a double quote is wrapped in double quotes, with any double quote of its own written twice, so a standard CSV reader hands back the original text and the row still has one field per column. A line break inside such a value is written as a space, so every record stays on one line.
 
 ### Numeric values in JSON
 
@@ -174,8 +174,6 @@ The timestamp has one fixed format per output mode. There is no option to change
 | `--csv`, `--json` (always present) | ISO 8601 local time to the second with its offset from UTC | `2026-10-16T08:21:17+01:00` |
 
 The offset is what makes the machine-readable timestamp one unambiguous instant, so results logged from machines in different time zones — or from one machine either side of a clock change — sort and compare directly, and any date parser reads them without being told the format. Where the local offset is zero, that is written `+00:00`. Terminal output leaves the offset out: you already know the zone you are sitting in.
-
-Because that timestamp is a CSV field like any other, `--csv-delimiter` refuses a character the timestamp itself contains — a digit, `-`, `T`, `:` or `+`. Such a delimiter would split the timestamp across two fields and leave the row with one more field than its header, so NetPace reports the clash and exits rather than writing a row no CSV reader can line up. `,`, `;` and tab are all unaffected.
 
 **NetPace output does not follow the machine's regional settings.** Every value reads the same way on every machine: speeds use `.` as the decimal separator with no digit grouping, and timestamps use the Gregorian calendar with ASCII digits. A result logged on a machine set to German, Thai or any other locale is byte-for-byte comparable with one logged next to it, and a comma-delimited CSV row can never gain a field from a decimal comma. `NetPace.Core` formats speeds the same way, so a library consumer reads the same text whatever culture its thread carries.
 
