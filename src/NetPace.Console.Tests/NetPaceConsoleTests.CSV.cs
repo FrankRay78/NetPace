@@ -1,4 +1,5 @@
-using System.Text.Json;
+﻿using System.Text.Json;
+using Microsoft.VisualBasic.FileIO;
 
 namespace NetPace.Console.Tests;
 
@@ -126,27 +127,6 @@ public sealed partial class NetPaceConsoleTests
             await Verify(result.Output);
         }
 
-        [InlineData(',')]
-        [InlineData(';')]
-        [InlineData('\t')]
-        [Theory]
-        public async Task Should_Perform_Speed_Test_With_CSV_Delimiter(char delimiter)
-        {
-            // Given
-            var services = new ServiceCollection();
-            services.AddSingleton<ISpeedTestService, SpeedTestStub>();
-            services.AddSingleton<IClock, ClockStub>();
-            services.AddSingleton<IWaiter, NoDelayStub>();
-            var host = GetCommandLineTestHost(services);
-
-            // When
-            var result = await host.RunAsync(["--csv", "--csv-delimiter", delimiter.ToString()]);
-
-            // Then
-            Assert.Equal(0, result.ExitCode);
-            await Verify(result.Output).UseParameters(delimiter);
-        }
-
         [Fact]
         public async Task Should_Perform_Speed_Test_With_CSV_No_Latency()
         {
@@ -238,33 +218,103 @@ public sealed partial class NetPaceConsoleTests
             await Verify(result.Output);
         }
 
-        [Theory]
-        [InlineData("+", "plus")]
-        [InlineData("-", "hyphen")]
-        [InlineData(":", "colon")]
-        [InlineData("T", "tee")]
-        [InlineData("0", "zero")]
-        public async Task Should_Reject_A_CSV_Delimiter_That_Occurs_In_The_Timestamp(string delimiter, string delimiterName)
+        [Fact]
+        public async Task Should_Escape_A_Csv_Hostname_Containing_A_Comma()
         {
-            // Given
-            var host = GetCommandLineTestHost(StubServices());
+            // SCENARIO: CSV hostname containing a comma is escaped
 
-            // When a delimiter is chosen that the fixed timestamp itself contains.
-            var result = await host.RunAsync(["--csv", "--csv-delimiter", delimiter]);
+            // Given a machine whose hostname carries a comma, which would otherwise add a field to
+            // the row.
+            const string hostname = "desk,top";
+            var services = StubServices();
+            services.AddSingleton<IClientInfoProvider>(new ClientInfoProviderStub { Hostname = hostname });
+            var host = GetCommandLineTestHost(services);
 
-            // Then the run is refused up front, naming the option, rather than writing a row whose
-            // timestamp is split across two fields.
-            Assert.NotEqual(0, result.ExitCode);
+            // When
+            var result = await host.RunAsync(["--csv"]);
 
-            // The snapshot is named for the delimiter in words: ":" is not a filename character on
-            // every platform, and sanitising it collides with the "-" case.
-            await Verify(result.Output).UseTextForParameters(delimiterName);
+            // Then a standard CSV reader sees one field per column and reads the hostname back whole.
+            Assert.Equal(0, result.ExitCode);
+            var records = CsvRecords(result.Output);
+            Assert.Equal(records[0].Length, records[1].Length);
+            Assert.Equal(hostname, Field(records, "Hostname"));
+        }
+
+        [Fact]
+        public async Task Should_Escape_A_Csv_Hostname_Containing_A_Double_Quote()
+        {
+            // SCENARIO: CSV hostname containing a double quote is escaped
+
+            // Given a machine whose hostname opens with a double quote, the character CSV quoting is
+            // itself written with, so an unescaped value would be read as a quoted field and lose it.
+            const string hostname = "\"desktop\"";
+            var services = StubServices();
+            services.AddSingleton<IClientInfoProvider>(new ClientInfoProviderStub { Hostname = hostname });
+            var host = GetCommandLineTestHost(services);
+
+            // When
+            var result = await host.RunAsync(["--csv"]);
+
+            // Then a standard CSV reader sees one field per column and reads the hostname back whole.
+            Assert.Equal(0, result.ExitCode);
+            var records = CsvRecords(result.Output);
+            Assert.Equal(records[0].Length, records[1].Length);
+            Assert.Equal(hostname, Field(records, "Hostname"));
+        }
+
+        [Fact]
+        public async Task Should_Escape_Every_Free_Text_Csv_Field_Carrying_A_Csv_Character()
+        {
+            // Given both free-text fields carrying a comma and a double quote at once.
+            const string ipAddress = "192.168.1.1,\"spare\"";
+            const string hostname = "desk,\"top\"";
+            var services = StubServices();
+            services.AddSingleton<IClientInfoProvider>(new ClientInfoProviderStub { IPAddress = ipAddress, Hostname = hostname });
+            var host = GetCommandLineTestHost(services);
+
+            // When
+            var result = await host.RunAsync(["--csv"]);
+
+            // Then both read back whole, and the row still lines up with its header.
+            Assert.Equal(0, result.ExitCode);
+            var records = CsvRecords(result.Output);
+            Assert.Equal(records[0].Length, records[1].Length);
+            Assert.Equal(ipAddress, Field(records, "IPAddress"));
+            Assert.Equal(hostname, Field(records, "Hostname"));
+        }
+
+        [Theory]
+        [InlineData("desk\r\ntop", "desk top")]
+        [InlineData("desk\ntop", "desk top")]
+        [InlineData("desk\rtop", "desk top")]
+        public async Task Should_Write_A_Line_Break_In_A_Csv_Value_As_A_Space(string hostname, string expected)
+        {
+            // Given a machine whose hostname carries a line break, which would otherwise break the
+            // record across two lines.
+            var services = StubServices();
+            services.AddSingleton<IClientInfoProvider>(new ClientInfoProviderStub { Hostname = hostname });
+            var host = GetCommandLineTestHost(services);
+
+            // When
+            var result = await host.RunAsync(["--csv"]);
+
+            // Then the whole result is still one header and one data row, and the line break reads
+            // back as a space.
+            Assert.Equal(0, result.ExitCode);
+            var records = CsvRecords(result.Output);
+            Assert.Equal(2, records.Length);
+            Assert.Equal(expected, Field(records, "Hostname"));
         }
 
         [Fact]
         public async Task Should_Report_Speed_And_Latency_As_Csv_Numbers()
         {
             // SCENARIO: CSV reports speed and latency as numbers in fixed units
+            // SCENARIO: CSV output without special characters is unchanged
+            //
+            // The second scenario is a preservation criterion: this snapshot is the comma-separated
+            // header and row NetPace already wrote for ordinary values, so escaping must leave it
+            // byte for byte alone.
 
             // Given a stub that measures 100 ms of latency, 1000 bytes downloaded in 1000 ms
             // (8,000 bits per second) and 7000 bytes uploaded in 3000 ms (18,666.67, rounded).
@@ -353,6 +403,40 @@ public sealed partial class NetPaceConsoleTests
             services.AddSingleton<IClock, ClockStub>();
             services.AddSingleton<IWaiter, NoDelayStub>();
             return services;
+        }
+
+        /// <summary>
+        /// Reads CSV output with the BCL's RFC 4180 reader, so a test asserts what a standard CSV
+        /// consumer recovers rather than the text NetPace happened to write.
+        /// </summary>
+        private static string[][] CsvRecords(string output)
+        {
+            using var reader = new StringReader(output);
+            using var parser = new TextFieldParser(reader)
+            {
+                TextFieldType = FieldType.Delimited,
+                HasFieldsEnclosedInQuotes = true
+            };
+            parser.SetDelimiters(",");
+
+            var records = new List<string[]>();
+            while (!parser.EndOfData)
+            {
+                records.Add(parser.ReadFields()!);
+            }
+
+            return [.. records];
+        }
+
+        /// <summary>
+        /// Reads the named column out of the single data row of parsed records, so a test names the
+        /// column it means rather than counting fields.
+        /// </summary>
+        private static string Field(string[][] records, string column)
+        {
+            var index = Array.IndexOf(records[0], column);
+            Assert.True(index >= 0, $"The CSV header does not carry a '{column}' column: {string.Join(',', records[0])}");
+            return records[1][index];
         }
 
         /// <summary>

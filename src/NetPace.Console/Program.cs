@@ -1,4 +1,4 @@
-using System.CommandLine;
+﻿using System.CommandLine;
 
 using Microsoft.Extensions.DependencyInjection;
 using NetPace.Console.Commands;
@@ -57,24 +57,6 @@ public static class Program
             Description = "Display output as a single CSV row (always includes timestamp).",
             DefaultValueFactory = _ => false
         };
-
-        var csvDelimiterOption = new Option<string>("--csv-delimiter")
-        {
-            Description = "Single character delimiter to use in CSV output.",
-            DefaultValueFactory = _ => ","
-        };
-        csvDelimiterOption.Validators.Add(result =>
-        {
-            var value = result.GetValueOrDefault<string>();
-            if (value != null && value.Length != 1)
-            {
-                result.AddError("--csv-delimiter must be a single character.");
-            }
-            else if (value != null && Timestamps.MachineReadableCharacters.Contains(value, StringComparison.Ordinal))
-            {
-                result.AddError($"--csv-delimiter cannot be '{value}'. The CSV timestamp contains that character, so it would split the timestamp across two fields. Use a delimiter such as ',' or ';'.");
-            }
-        });
 
         var jsonOption = new Option<bool>("--json")
         {
@@ -214,7 +196,6 @@ public static class Program
         command.Options.Add(countOption);
         command.Options.Add(delayOption);
         command.Options.Add(csvOption);
-        command.Options.Add(csvDelimiterOption);
         command.Options.Add(jsonOption);
         command.Options.Add(jsonPrettyOption);
         command.Options.Add(minimalOption);
@@ -248,7 +229,6 @@ public static class Program
                     Count = parseResult.GetValue(countOption),
                     Delay = parseResult.GetValue(delayOption),
                     CSV = parseResult.GetValue(csvOption),
-                    CSVDelimiter = (parseResult.GetValue(csvDelimiterOption) ?? ",")[0],
                     Json = parseResult.GetValue(jsonOption),
                     JsonPretty = parseResult.GetValue(jsonPrettyOption),
                     Minimal = parseResult.GetValue(minimalOption),
