@@ -31,7 +31,9 @@ internal sealed class OptionValueSet<T> where T : struct, Enum
     public string HelpList => $"<{string.Join(", ", _choices.Select(choice => choice.Spelling))}>";
 
     /// <summary>
-    /// The spelling the help uses for <paramref name="value"/>.
+    /// The spelling the help uses for <paramref name="value"/>, falling back to the enumeration
+    /// member's own name for a value the set does not list — so adding a member and forgetting its
+    /// spelling shows up in the help rather than failing at runtime.
     /// </summary>
     public string Spell(T value)
     {
