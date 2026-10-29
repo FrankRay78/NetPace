@@ -1,4 +1,4 @@
-﻿using System.Globalization;
+using System.Globalization;
 using NetPace.Console.Diagnostics;
 using NetPace.Core;
 

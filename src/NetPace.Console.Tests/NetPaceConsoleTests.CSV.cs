@@ -1,4 +1,4 @@
-﻿using System.Text.Json;
+using System.Text.Json;
 using Microsoft.VisualBasic.FileIO;
 
 namespace NetPace.Console.Tests;
