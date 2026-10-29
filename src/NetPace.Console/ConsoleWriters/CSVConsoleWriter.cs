@@ -81,6 +81,8 @@ public sealed class CSVConsoleWriter : IConsoleWriter
     /// text and the row keeps one field per column. A line break is written as a space rather than
     /// quoted, so every record stays on one line whatever the machine reports. Anything else — every
     /// number, the timestamp, and an ordinary hostname — is written exactly as it arrives.
+    /// Why the separator is fixed and why a line break is not quoted instead:
+    /// docs/change-intent-records/2026-10-29-csv-is-always-comma-separated.md.
     /// </summary>
     private static string ToField(string value)
     {
