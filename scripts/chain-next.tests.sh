@@ -110,6 +110,10 @@ if [ -n "$(git for-each-ref --format='%(refname)' "refs/heads/feature/$n-*")" ];
   echo "chain: [1/3] build — starting"
   echo "chain: FAILED at [1/3] build — feature/$n-work already exists"; exit 1
 fi
+if [ -f "$STUB_DIR/table-$n" ]; then
+  echo "chain: refused — the stage table has no usable row for verify; no stage was started."
+  exit 78
+fi
 if [ -f "$STUB_DIR/limit-$n" ]; then
   echo "chain: [1/3] build — starting"
   echo "chain: FAILED at [1/3] build — the Claude usage limit was reached — You've hit your session limit · resets 3:20pm (Europe/Berlin)"
@@ -360,6 +364,16 @@ git -C "$CLONE" checkout -q -b feature/8-work
 git -C "$CLONE" commit -q --allow-empty -m "killed mid-run"
 fire
 ok "an earlier run's leftover branch does not stop the next run" '[ "$RC" = 0 ] && grep -qF "pull/108" <<<"$OUTPUT" && [ -n "$(git -C "$CLONE" for-each-ref "refs/heads/attempt/8-*")" ]'
+
+echo "A broken stage table does not park the issue:"
+new_case
+issues '[{"number":8,"state":"OPEN","labels":["ready"]}]'
+touch "$STUB_DIR/table-8"
+fire
+ok "exits non-zero" '[ "$RC" != 0 ]'
+ok "the issue is not parked, so it is not blamed for the table" '[ "$(labels_of 8)" = "ready" ] && [ ! -f "$STUB_DIR/comment-8.txt" ]'
+ok "the runner's log names the stage table" 'grep -qF "stage table" <<<"$OUTPUT"'
+rm "$STUB_DIR/table-8"
 
 # // SCENARIO: Usage limit is named in the parked comment
 echo "Usage limit is named in the parked comment:"

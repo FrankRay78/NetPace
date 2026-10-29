@@ -50,6 +50,10 @@ usage() {
 # the same version skew park() already allows for in reading the closing line. A chain that does
 # not use the code parks exactly as it did before.
 CHAIN_USAGE_LIMIT_EXIT=75
+# chain.sh's STAGE_TABLE_EXIT, a literal for the same reason: the stage table could not answer a
+# stage, so nothing ran and the issue is not at fault. Parking it would blame it, and every later
+# firing would park the next issue the same way until the table was fixed.
+CHAIN_STAGE_TABLE_EXIT=78
 
 # The only accounts whose writing is built, as type and login: the maintainer and the bot that
 # posts reviews. The type matters because GraphQL names the bot `claude`, a login an unrelated
@@ -240,6 +244,9 @@ main() {
   if [ "$rc" = 0 ]; then
     say "#$n raised (log: $log)"
     exit 0
+  fi
+  if [ "$rc" = "$CHAIN_STAGE_TABLE_EXIT" ]; then
+    die "refused — the stage table could not answer every chain stage; #$n was not parked. Log: $log"
   fi
   park "$n" "$log" "$rc"
   exit 1
