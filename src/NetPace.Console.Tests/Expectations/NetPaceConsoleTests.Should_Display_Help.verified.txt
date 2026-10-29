@@ -21,7 +21,7 @@ OPTIONS:
         --delay                             Time between multiple speed tests (HH:MM:SS).                                                                                                      
         --csv                               Display output as a single CSV row (always includes timestamp).                                                                                    
         --no-csv-header                     Do not write the header row (CSV output only).                                                                                                     
-                                            A --file target that already holds rows is never sent the header.                                                                                  
+                                            An appended --file target that already holds rows is never sent the header.                                                                        
         --json                              Display output in Json format.                                                                                                                     
         --json-pretty                       Display output in Json format (pretty print).                                                                                                      
         --minimal                           Display the result as a single compact line.                                                                                                       

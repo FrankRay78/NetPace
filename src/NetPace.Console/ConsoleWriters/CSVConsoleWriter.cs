@@ -32,14 +32,15 @@ public sealed class CSVConsoleWriter : IConsoleWriter
         }
 
 
-        // Header row, emitted on the first iteration only, and only where the destination started
-        // empty: a log being appended to already carries the header its first run wrote, so writing
-        // it again would leave a header line between every pair of rows. Every column is present
-        // whichever tests ran, so a script can read by name or by position and an appended log
-        // keeps one shape.
+        // Header row, emitted on the first iteration of a run, and not at all where
+        // --no-csv-header asks for rows only. Which destinations receive it is settled below: one
+        // that already holds content is not sent the header, so a log appended to across runs does
+        // not gain a header line between every pair of rows. Every column is present whichever
+        // tests ran, so a script can read by name or by position and an appended log keeps one
+        // shape.
         if (initialSpeedTest && !settings.NoCSVHeader)
         {
-            var header = Record(
+            string header = Record(
                 "Timestamp",
                 "LatencyMilliseconds",
                 "DownloadSpeedBitsPerSecond",
@@ -51,7 +52,7 @@ public sealed class CSVConsoleWriter : IConsoleWriter
                 "IPAddress",
                 "Hostname");
 
-            foreach (var destination in HeaderDestinations(console))
+            foreach (IAnsiConsole destination in HeaderDestinations(console))
             {
                 destination.WriteLine(header);
             }
@@ -79,9 +80,8 @@ public sealed class CSVConsoleWriter : IConsoleWriter
 
     /// <summary>
     /// The destinations that should receive the header line. A composite console is unpacked so
-    /// each of its destinations is judged on its own — the terminal and a <c>--file</c> target
-    /// differ by exactly this line once the file already holds rows — and any destination that did
-    /// not start empty is left out. A console that is not a composite is its own only destination.
+    /// each of its destinations is judged on its own, and one that did not start empty is left out.
+    /// A console that is not a composite is its own only destination.
     /// </summary>
     private static IEnumerable<IAnsiConsole> HeaderDestinations(IAnsiConsole console)
     {
@@ -89,7 +89,7 @@ public sealed class CSVConsoleWriter : IConsoleWriter
             ? composite.Destinations
             : [console];
 
-        return destinations.Where(destination => destination is not IPersistentConsole { StartedEmpty: false });
+        return destinations.Where(destination => destination is not IPersistentConsole persistent || persistent.StartedEmpty);
     }
 
     /// <summary>

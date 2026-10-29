@@ -140,6 +140,9 @@ A run on a schedule that appends every result to one file should leave that file
 # From cron, every fifteen minutes
 netpace --csv --file /var/log/netpace.csv
 ```
+
+After two runs, `/var/log/netpace.csv` holds:
+
 ```
 Timestamp,LatencyMilliseconds,DownloadSpeedBitsPerSecond,DownloadSucceeded,DownloadFailed,UploadSpeedBitsPerSecond,UploadSucceeded,UploadFailed,IPAddress,Hostname
 1980-01-01T10:05:00+01:00,12,512600000,150,0,48200000,32,0,192.168.1.1,test-host
@@ -155,6 +158,8 @@ netpace --csv --no-csv-header >> ~/netpace.csv
 ```
 
 `--no-csv-header` leaves the header out of everything: the terminal, redirected or piped standard output, and a `--file` target even when it is new or empty, on every iteration of `--loop` and `--count`. It is accepted alongside the other formats and changes nothing there.
+
+**Start a new log if a run failed before it wrote a row.** NetPace decides to write the header by whether the target is empty, never by reading what is in it, so any content keeps the header out — including an error message from a run whose network was down, which is written to the log alongside the terminal. A log whose first line is an error rather than the column names will collect data rows under no header for as long as you keep appending to it. Move it aside and let the next run start a fresh one.
 
 **Start a new log after an upgrade that changes the columns.** While NetPace is below 1.0.0 the CSV columns may gain fields between releases, and nothing checks an existing log's header against the columns being written. Rows from a newer version appended to an older log sit under a header that no longer describes them. After an upgrade that changes the columns, move the old log aside and let NetPace start a fresh one.
 

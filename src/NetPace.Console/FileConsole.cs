@@ -20,8 +20,9 @@ public sealed class FileConsole : IAnsiConsole, IPersistentConsole, IDisposable
     /// <param name="filePath">The path to the output file.</param>
     /// <param name="fileMode">Determines whether to append to or overwrite the file.</param>
     /// <param name="startedEmpty">
-    /// Whether the file held no content when the run reached it. Read before the file is opened,
-    /// because opening it for append is itself about to add content.
+    /// Whether the file holds no content for this run to add to: empty or absent when the run
+    /// reached it, or any file in overwrite mode, where its previous content is replaced. Read
+    /// before the file is opened, because opening it for append is itself about to add content.
     /// </param>
     public FileConsole(string filePath, FileMode fileMode, bool startedEmpty)
     {

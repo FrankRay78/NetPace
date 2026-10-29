@@ -1,24 +1,19 @@
+using System.Text;
+
 namespace NetPace.Console.Tests;
 
 public sealed partial class NetPaceConsoleTests
 {
     public sealed class CSVHeader
     {
-        private static string NewTempFilePath() =>
-            Path.Join(Path.GetTempPath(), $"netpace-test-{Guid.NewGuid()}.csv");
+        private static CommandLineTestHost NewHost(bool incrementingClock = false) =>
+            NewHost(incrementingClock ? new IncrementingClockStub() : new ClockStub());
 
-        private static CommandLineTestHost NewHost(bool incrementingClock = false)
+        private static CommandLineTestHost NewHost(IClock clock)
         {
             var services = new ServiceCollection();
             services.AddSingleton<ISpeedTestService, SpeedTestStub>();
-            if (incrementingClock)
-            {
-                services.AddSingleton<IClock, IncrementingClockStub>();
-            }
-            else
-            {
-                services.AddSingleton<IClock, ClockStub>();
-            }
+            services.AddSingleton(clock);
             services.AddSingleton<IWaiter, NoDelayStub>();
             return GetCommandLineTestHost(services);
         }
@@ -28,28 +23,22 @@ public sealed partial class NetPaceConsoleTests
         public async Task Should_Keep_One_Header_When_Csv_Is_Appended_To_The_Same_File_Repeatedly()
         {
             // Given no log file exists
-            var testFile = NewTempFilePath();
+            using var log = new TempLogFile();
 
-            try
-            {
-                // When three runs each append a CSV result to it
-                for (var run = 0; run < 3; run++)
-                {
-                    var result = await NewHost().RunAsync(["--csv", "--file", testFile]);
-                    Assert.Equal(0, result.ExitCode);
-                }
+            // When three runs each append a CSV result to it. One clock is shared across the runs,
+            // so every row carries a different timestamp and the snapshot cannot be satisfied by
+            // one run's row written three times.
+            var clock = new IncrementingClockStub();
 
-                // Then the file holds one header line followed by three data rows
-                var fileContent = await System.IO.File.ReadAllTextAsync(testFile);
-                await Verify(fileContent);
-            }
-            finally
+            for (var run = 0; run < 3; run++)
             {
-                if (System.IO.File.Exists(testFile))
-                {
-                    System.IO.File.Delete(testFile);
-                }
+                var result = await NewHost(clock).RunAsync(["--csv", "--file", log.FilePath]);
+                Assert.Equal(0, result.ExitCode);
             }
+
+            // Then the file holds one header line followed by three data rows
+            var fileContent = await System.IO.File.ReadAllTextAsync(log.FilePath);
+            await Verify(fileContent);
         }
 
         // SCENARIO: Appending to an empty file writes the header
@@ -57,89 +46,56 @@ public sealed partial class NetPaceConsoleTests
         public async Task Should_Write_The_Header_When_Csv_Is_Appended_To_An_Empty_File()
         {
             // Given an empty log file exists
-            var testFile = NewTempFilePath();
+            using var log = new TempLogFile();
+            await System.IO.File.WriteAllTextAsync(log.FilePath, string.Empty);
 
-            try
-            {
-                await System.IO.File.WriteAllTextAsync(testFile, string.Empty);
+            // When a CSV result is appended to it
+            var result = await NewHost().RunAsync(["--csv", "--file", log.FilePath]);
 
-                // When a CSV result is appended to it
-                var result = await NewHost().RunAsync(["--csv", "--file", testFile]);
+            // Then the file holds the header line followed by one data row
+            Assert.Equal(0, result.ExitCode);
 
-                // Then the file holds the header line followed by one data row
-                Assert.Equal(0, result.ExitCode);
-
-                var fileContent = await System.IO.File.ReadAllTextAsync(testFile);
-                await Verify(fileContent);
-            }
-            finally
-            {
-                if (System.IO.File.Exists(testFile))
-                {
-                    System.IO.File.Delete(testFile);
-                }
-            }
+            var fileContent = await System.IO.File.ReadAllTextAsync(log.FilePath);
+            await Verify(fileContent);
         }
 
         // SCENARIO: Overwrite mode always starts with the header
         [Fact]
         public async Task Should_Start_With_The_Header_When_Csv_Overwrites_A_File_That_Has_Content()
         {
-            // Given a log file already holding a header and rows
-            var testFile = NewTempFilePath();
+            // Given a log file already holding content. Nothing reads what that content is, only
+            // whether there is any, so it does not need to be a well-formed log.
+            using var log = new TempLogFile();
+            await System.IO.File.WriteAllTextAsync(log.FilePath, "rows from an earlier run\n");
 
-            try
-            {
-                await System.IO.File.WriteAllTextAsync(
-                    testFile,
-                    "Timestamp,LatencyMilliseconds,DownloadSpeedBitsPerSecond,DownloadSucceeded,DownloadFailed,UploadSpeedBitsPerSecond,UploadSucceeded,UploadFailed,IPAddress,Hostname\n1970-01-01T00:00:00+00:00,1,1,1,0,1,1,0,10.0.0.1,old-host\n");
+            // When a CSV result overwrites it
+            var result = await NewHost().RunAsync(["--csv", "--file", log.FilePath, "--file-mode", "Overwrite"]);
 
-                // When a CSV result overwrites it
-                var result = await NewHost().RunAsync(["--csv", "--file", testFile, "--file-mode", "Overwrite"]);
+            // Then the file holds only the header line and the new data row
+            Assert.Equal(0, result.ExitCode);
 
-                // Then the file holds only the header line and the new data row
-                Assert.Equal(0, result.ExitCode);
-
-                var fileContent = await System.IO.File.ReadAllTextAsync(testFile);
-                await Verify(fileContent);
-            }
-            finally
-            {
-                if (System.IO.File.Exists(testFile))
-                {
-                    System.IO.File.Delete(testFile);
-                }
-            }
+            var fileContent = await System.IO.File.ReadAllTextAsync(log.FilePath);
+            await Verify(fileContent);
         }
 
         [Fact]
         public async Task Should_Keep_The_Header_On_The_Terminal_While_An_Appended_File_Does_Not_Repeat_It()
         {
             // Given a log file that already holds a header and a row from an earlier run
-            var testFile = NewTempFilePath();
+            using var log = new TempLogFile();
 
-            try
-            {
-                var first = await NewHost().RunAsync(["--csv", "--file", testFile]);
-                Assert.Equal(0, first.ExitCode);
+            var first = await NewHost().RunAsync(["--csv", "--file", log.FilePath]);
+            Assert.Equal(0, first.ExitCode);
 
-                // When a second run appends to it
-                var second = await NewHost().RunAsync(["--csv", "--file", testFile]);
+            // When a second run appends to it
+            var second = await NewHost().RunAsync(["--csv", "--file", log.FilePath]);
 
-                // Then the terminal still labels its columns, while the file gains a data row only
-                Assert.Equal(0, second.ExitCode);
-                await Verify(second.Output).UseTextForParameters("stdout");
+            // Then the terminal still labels its columns, while the file gains a data row only
+            Assert.Equal(0, second.ExitCode);
+            await Verify(second.Output).UseTextForParameters("stdout");
 
-                var fileContent = await System.IO.File.ReadAllTextAsync(testFile);
-                await Verify(fileContent).UseTextForParameters("file");
-            }
-            finally
-            {
-                if (System.IO.File.Exists(testFile))
-                {
-                    System.IO.File.Delete(testFile);
-                }
-            }
+            var fileContent = await System.IO.File.ReadAllTextAsync(log.FilePath);
+            await Verify(fileContent).UseTextForParameters("file");
         }
 
         // SCENARIO: No header on standard output
@@ -198,26 +154,16 @@ public sealed partial class NetPaceConsoleTests
         public async Task Should_Write_No_Header_To_A_New_File_When_The_Header_Is_Turned_Off()
         {
             // Given no log file exists
-            var testFile = NewTempFilePath();
+            using var log = new TempLogFile();
 
-            try
-            {
-                // When NetPace runs with --csv --no-csv-header --file
-                var result = await NewHost().RunAsync(["--csv", "--no-csv-header", "--file", testFile]);
+            // When NetPace runs with --csv --no-csv-header --file
+            var result = await NewHost().RunAsync(["--csv", "--no-csv-header", "--file", log.FilePath]);
 
-                // Then the file holds the data row and no header line
-                Assert.Equal(0, result.ExitCode);
+            // Then the file holds the data row and no header line
+            Assert.Equal(0, result.ExitCode);
 
-                var fileContent = await System.IO.File.ReadAllTextAsync(testFile);
-                await Verify(fileContent);
-            }
-            finally
-            {
-                if (System.IO.File.Exists(testFile))
-                {
-                    System.IO.File.Delete(testFile);
-                }
-            }
+            var fileContent = await System.IO.File.ReadAllTextAsync(log.FilePath);
+            await Verify(fileContent);
         }
 
         // SCENARIO: Standard output keeps its header by default
@@ -247,6 +193,93 @@ public sealed partial class NetPaceConsoleTests
             // Then the run is accepted and the output is unchanged
             Assert.Equal(0, result.ExitCode);
             await Verify(result.Output);
+        }
+
+        /// <summary>
+        /// A log file path unique to one test, deleted when that test finishes. Nothing is created
+        /// up front, so a test chooses for itself whether the path already holds content.
+        /// </summary>
+        [Fact]
+        public async Task Should_Write_The_Header_To_A_New_File_When_The_Terminal_Is_Quiet()
+        {
+            // Given no log file exists, and a run that prints nothing to the terminal
+            using var log = new TempLogFile();
+
+            // When a CSV result is written to the file
+            var result = await NewHost().RunAsync(["--quiet", "--csv", "--file", log.FilePath]);
+
+            // Then the file holds the header line followed by one data row
+            Assert.Equal(0, result.ExitCode);
+
+            var fileContent = await System.IO.File.ReadAllTextAsync(log.FilePath);
+            await Verify(fileContent);
+        }
+
+        [Fact]
+        public async Task Should_Not_Repeat_The_Header_In_A_Quiet_Appended_File()
+        {
+            // Given a log file that already holds a header and a row from an earlier quiet run
+            using var log = new TempLogFile();
+
+            var first = await NewHost().RunAsync(["--quiet", "--csv", "--file", log.FilePath]);
+            Assert.Equal(0, first.ExitCode);
+
+            // When a second quiet run appends to it
+            var second = await NewHost().RunAsync(["--quiet", "--csv", "--file", log.FilePath]);
+
+            // Then the file gains a data row only
+            Assert.Equal(0, second.ExitCode);
+
+            var fileContent = await System.IO.File.ReadAllTextAsync(log.FilePath);
+            await Verify(fileContent);
+        }
+
+        [Fact]
+        public async Task Should_Write_One_Header_When_A_Multi_Test_Run_Appends_To_A_File()
+        {
+            // Given no log file exists
+            using var log = new TempLogFile();
+
+            // When one run appends three results to it
+            var result = await NewHost(incrementingClock: true)
+                .RunAsync(["--csv", "--file", log.FilePath, "--count", "3"]);
+
+            // Then the file holds one header line followed by three data rows
+            Assert.Equal(0, result.ExitCode);
+
+            var fileContent = await System.IO.File.ReadAllTextAsync(log.FilePath);
+            await Verify(fileContent);
+        }
+
+        [Fact]
+        public async Task Should_Write_The_Header_When_The_Log_Holds_Nothing_But_A_Byte_Order_Mark()
+        {
+            // Given a log file that every reader shows as empty, which is what a run that opened
+            // the file and then ended before writing a row leaves behind
+            using var log = new TempLogFile();
+            await System.IO.File.WriteAllBytesAsync(log.FilePath, Encoding.UTF8.GetPreamble());
+
+            // When a CSV result is appended to it
+            var result = await NewHost().RunAsync(["--csv", "--file", log.FilePath]);
+
+            // Then the log gains the header, rather than collecting rows under none for good
+            Assert.Equal(0, result.ExitCode);
+
+            var fileContent = await System.IO.File.ReadAllTextAsync(log.FilePath);
+            await Verify(fileContent);
+        }
+
+        private sealed class TempLogFile : IDisposable
+        {
+            public string FilePath { get; } = Path.Join(Path.GetTempPath(), $"netpace-test-{Guid.NewGuid()}.csv");
+
+            public void Dispose()
+            {
+                if (System.IO.File.Exists(FilePath))
+                {
+                    System.IO.File.Delete(FilePath);
+                }
+            }
         }
     }
 }

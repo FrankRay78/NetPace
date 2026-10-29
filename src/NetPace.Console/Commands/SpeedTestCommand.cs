@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Text;
 using NetPace.Console.ConsoleWriters;
 using NetPace.Console.Diagnostics;
 using NetPace.Core;
@@ -74,9 +75,7 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
             {
                 // Add file output. Whether the target already holds content is read here, once per
                 // run and before the file is opened: a run that appends is itself about to add
-                // content, so asking any later would answer about this run's own output. A format
-                // carrying a header line uses it to leave the header out of a log it is appending
-                // to, so repeated runs collect under one header.
+                // content, so asking any later would answer about this run's own output.
                 consoles.Add(new FileConsole(settings.OutputFile, settings.FileModeValue, StartsEmpty(settings)));
             }
 
@@ -223,7 +222,22 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
         if (settings.FileModeValue == FileMode.Overwrite) return true;
 
         var file = new FileInfo(settings.OutputFile);
-        return !file.Exists || file.Length == 0;
+        if (!file.Exists) return true;
+
+        // A symlink reports the length of the path it stores, not of the file that will be written,
+        // so ask the file it resolves to. A link whose target has been rotated away is a new log.
+        // Resolving is only safe once the path is known to exist, because it throws otherwise.
+        if (file.ResolveLinkTarget(returnFinalTarget: true) is FileInfo target)
+        {
+            file = target;
+        }
+
+        // Too short to hold a row counts as empty, not as content. FileConsole opens the file with
+        // Encoding.UTF8, which writes a byte-order mark before anything else, so a run that ended
+        // before writing a row leaves a file that every reader shows as empty; a bare line ending
+        // from `echo > log.csv` is shorter still. Reading either as content would suppress the
+        // header on that log for good, which is the one outcome this check exists to prevent.
+        return !file.Exists || file.Length <= Encoding.UTF8.GetPreamble().Length;
     }
 
     /// <summary>

@@ -72,7 +72,7 @@ public static class Program
 
         var noCSVHeaderOption = new Option<bool>("--no-csv-header")
         {
-            Description = "Do not write the header row (CSV output only).\nA --file target that already holds rows is never sent the header.",
+            Description = "Do not write the header row (CSV output only).\nAn appended --file target that already holds rows is never sent the header.",
             DefaultValueFactory = _ => false
         };
 
