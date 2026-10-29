@@ -7,6 +7,8 @@ argument-hint: "[PR number or URL] [--dry-run]"
 
 Run a follow-up round on a pull request already reviewed with `/review-pr`. It closes the loop with the author without the reviewer hand-writing replies: each open thread gets evaluated and answered, fixes get verified against the new commits, and only the new diff gets re-reviewed. Review must converge — this command never re-litigates the whole PR. Like `/review-pr`, it runs unattended from start to post and never stops for confirmation.
 
+The usual way to start a round is the CI trigger (see *Project-specific*), which runs this command in CI and records what the round cost on the PR description. Running it here instead does the same review and adds no cost row.
+
 ## User Input
 
 ```text
@@ -39,14 +41,18 @@ A PR number (`158`), `#158`, or a full PR URL; empty resolves the current branch
 
 ### Re-review the delta only
 
-6. **New diff only.** Run the `/review-pr` specialist-and-verify pipeline (Phases 2–3) scoped strictly to the delta from step 4, running only the dimensions that delta actually touches — a delta of comment or doc fixes needs no security or contracts pass. Never repeat a finding already posted in any round, and never flag code untouched since the last review. Flag the class of any new bug so the author fixes every instance.
+6. **New diff only.** Run the `/review-pr` specialist-and-verify pipeline (Phases 2–3) scoped strictly to the delta from step 4, running only the dimensions that delta actually touches — a delta of comment or doc fixes needs no security or contracts pass. The call-chain dimension is decided the same way as in `/review-pr`: apply its two structural signals to this round's delta, and run the pass when both hold, or when the decision is not clear. This round runs no triage and emits no `CALL-CHAIN:` line, so `/review-pr`'s missing-line clause does not apply. Never repeat a finding already posted in any round, and never flag code untouched since the last review. Flag the class of any new bug so the author fixes every instance.
 
 ### Compose and post
 
-7. **Summary, recommendation, tier and verdict.** Compose a short round summary: the `<!-- review-pr -->` marker on its first line, a one-line header naming the PR and the round, the tier and verdict line in the wording `/review-pr` fixes with its reasons, the outcome of every prior-round finding by its number (Fixed / Justified-accepted / still open) — the record step 3 of the next round reads, any new verified findings (numbered continuing from the previous round's list), and an updated recommendation (**Merge** / **Merge after addressing** / **Do not merge**) under the same rules as `/review-pr`. Footer: `*Review assisted by Claude Code.*`
+7. **Summary, recommendation, tier and verdict.** Compose a short round summary: the `<!-- review-pr -->` marker on its first line, a one-line header naming the PR and the round, the tier and verdict line in the wording `/review-pr` fixes with its reasons, one line stating whether this round's call-chain pass ran and why as `/review-pr` states it, the outcome of every prior-round finding by its number (Fixed / Justified-accepted / still open) — the record step 3 of the next round reads, any new verified findings (numbered continuing from the previous round's list), and an updated recommendation (**Merge** / **Merge after addressing** / **Do not merge**) under the same rules as `/review-pr`. Footer: `*Review assisted by Claude Code.*`
 
    Carry the previous round's tier forward and re-decide it. Judge the tier and the always-a-person check on the **whole PR diff against the base at the current head**, not on the delta: step 6's finding hunt stays scoped to the new commits, but a commit that touches an always-a-person path, or that lifts the tier, changes the verdict for the whole PR. A finding counts as open until a round records it Fixed or Justified-accepted (step 3); a resolved thread alone does not close it. A still-open finding from any round blocks the verdict exactly as a new one does, and the **Pre-existing** exemption applies to both. The verdict applies to the current head commit. Where the tier or the verdict has moved since the last round, say so and why.
 
 8. **Post.** In `--dry-run`, print every reply, resolution and the summary, and stop. Otherwise post thread replies and resolutions first, then new inline findings and the summary as one review (`event: COMMENT`, `commit_id` set to `headRefOid`), as in `/review-pr`.
 
 9. **Report.** Print the PR URL, round number, thread outcome counts, new finding count, the recommendation, the tier and the no-human verdict, and — if everything is resolved and the recommendation is **Merge** — that approving and merging the PR is the maintainer's call in GitHub, not this command's.
+
+## Project-specific
+
+- **CI trigger:** adding the `review-followup` label to the PR runs this command in `.github/workflows/review-followup.yml`.

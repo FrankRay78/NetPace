@@ -1,4 +1,7 @@
 {
+  "attribution": {
+    "pr": ""
+  },
   "permissions": {
     "allow": [
       "Read(**)",
