@@ -6,7 +6,7 @@
 
 **Constraints:**
 
-- The command is intended to port unchanged into other repositories, so neither signal may lean on one repo's vocabulary.
+- The trigger and the specialist brief are intended to port unchanged into other repositories, so neither signal may lean on one repo's vocabulary.
 - The `CALL-CHAIN:` line is all the coordinator reads to decide the pass, so triage emits it whichever way the answer went.
 
 **Decisions:**
