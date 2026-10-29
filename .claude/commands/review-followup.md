@@ -41,7 +41,7 @@ A PR number (`158`), `#158`, or a full PR URL; empty resolves the current branch
 
 ### Re-review the delta only
 
-6. **New diff only.** Run the `/review-pr` specialist-and-verify pipeline (Phases 2–3) scoped strictly to the delta from step 4, running only the dimensions that delta actually touches — a delta of comment or doc fixes needs no security or contracts pass. The call-chain dimension is decided the same way as in `/review-pr`: apply its two structural signals to this round's delta, and run the pass when both hold, or when the decision is not clear. Never repeat a finding already posted in any round, and never flag code untouched since the last review. Flag the class of any new bug so the author fixes every instance.
+6. **New diff only.** Run the `/review-pr` specialist-and-verify pipeline (Phases 2–3) scoped strictly to the delta from step 4, running only the dimensions that delta actually touches — a delta of comment or doc fixes needs no security or contracts pass. The call-chain dimension is decided the same way as in `/review-pr`: apply its two structural signals to this round's delta, and run the pass when both hold, or when the decision is not clear. This round runs no triage and emits no `CALL-CHAIN:` line, so `/review-pr`'s missing-line clause does not apply. Never repeat a finding already posted in any round, and never flag code untouched since the last review. Flag the class of any new bug so the author fixes every instance.
 
 ### Compose and post
 
