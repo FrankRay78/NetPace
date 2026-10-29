@@ -54,6 +54,9 @@ RAISE_PR_LIMIT=${CHAIN_STAGE_TIMEOUT:-1800}
 # EX_TEMPFAIL — the failure that clears on its own — and collides with none of the codes the chain
 # already reports: timeout's 124, the shell's 125-127, and 137 for a stage killed by SIGKILL.
 USAGE_LIMIT_EXIT=75
+# And for a stage the stage table does not answer: the fault is in the table, not the issue being
+# built, so a runner must not park the issue for it. 78 is sysexits' EX_CONFIG.
+STAGE_TABLE_EXIT=78
 
 usage() {
   echo "usage: scripts/chain.sh [--dry-run] <issue>" >&2
@@ -100,9 +103,13 @@ stage_model_effort() {
   read -r _ model _ effort <<<"$flags"
   echo "${CHAIN_MODEL:-$model} $effort"
 }
-BUILD_MODEL_EFFORT=$(stage_model_effort build) || exit 1
-VERIFY_MODEL_EFFORT=$(stage_model_effort verify) || exit 1
-RAISE_PR_MODEL_EFFORT=$(stage_model_effort raise-pr) || exit 1
+table_refused() {
+  echo "chain: refused — the stage table has no usable row for $1; no stage was started." >&2
+  exit "$STAGE_TABLE_EXIT"
+}
+BUILD_MODEL_EFFORT=$(stage_model_effort build) || table_refused build
+VERIFY_MODEL_EFFORT=$(stage_model_effort verify) || table_refused verify
+RAISE_PR_MODEL_EFFORT=$(stage_model_effort raise-pr) || table_refused raise-pr
 
 # HOW A STAGE'S VERDICT IS READ: BY POSITION. The report's final non-blank line is the verdict,
 # and no other line of the report is read at all — so nothing the report quotes, in a code block,

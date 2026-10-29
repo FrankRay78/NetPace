@@ -149,6 +149,26 @@ reply 1 'READY branch=feature/270-x'; reply 2 'VERIFIED branch=feature/270-x'
 reply 3 'RAISED pr=https://github.com/o/r/pull/9'
 chain 270
 ok "with no override every stage takes its model and effort from the stage table" '[ "$RC" = 0 ] && flags_are 1 "$(table_model build)" "$(table_effort build)" && flags_are 2 "$(table_model verify)" "$(table_effort verify)" && flags_are 3 "$(table_model raise-pr)" "$(table_effort raise-pr)"'
+# fixture_chain <table> — a copy of the chain beside the lookup and a fixture table, for the cases
+# that need a table whose rows tell the stages apart, or one that is broken.
+fixture_chain() { FIXTURE="$SB/case$cases/fixture"; mkdir -p "$FIXTURE"; cp "$CHAIN" "$HERE/stage-flags.sh" "$FIXTURE/"; printf '%s' "$1" > "$FIXTURE/stage-models.tsv"; }
+new_case
+reply 1 'READY branch=feature/270-x'; reply 2 'VERIFIED branch=feature/270-x'
+reply 3 'RAISED pr=https://github.com/o/r/pull/9'
+fixture_chain $'build m-build low\nverify m-verify medium\nraise-pr m-raise high\n'
+CHAIN="$FIXTURE/chain.sh" chain 270
+ok "each stage takes its own row, not another stage's" '[ "$RC" = 0 ] && flags_are 1 m-build low && flags_are 2 m-verify medium && flags_are 3 m-raise high'
+echo "A stage the table does not answer stops the run before any stage:"
+new_case
+fixture_chain $'build m-build low\nraise-pr m-raise high\n'
+CHAIN="$FIXTURE/chain.sh" chain 270
+ok "no stage starts" '[ "$(calls)" = 0 ]'
+ok "exits with the chain's own stage-table code, so the runner does not blame the issue" '[ "$RC" = 78 ]'
+ok "and says the stage table is at fault" 'grep -qF "stage table" <<<"$OUTPUT"'
+new_case
+fixture_chain $'build m-build low\nraise-pr m-raise high\n'
+CHAIN_MODEL=test-model CHAIN="$FIXTURE/chain.sh" chain 270
+ok "a model override does not stand in for the missing row" '[ "$RC" = 78 ] && [ "$(calls)" = 0 ]'
 new_case
 reply 1 'READY branch=feature/270-x'
 chain "#270"

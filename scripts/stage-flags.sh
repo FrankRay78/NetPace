@@ -4,7 +4,7 @@
 #
 #   Usage:  scripts/stage-flags.sh <stage>      e.g. `--model opus --effort high`
 #
-# A stage with no row, a row missing its effort, or a stage written twice fails with nothing on
+# A stage with no row, a row without exactly a model and a known effort, or a stage written twice fails with nothing on
 # stdout, so a runner stops rather than start claude on whatever the default happens to be.
 # Tests: scripts/stage-flags.tests.sh.
 
@@ -23,4 +23,8 @@ if [ -z "$effort" ] || [ -n "$extra" ]; then
   echo "stage-flags: stage '$stage' in $TABLE needs exactly a model and an effort" >&2
   exit 1
 fi
+case "$effort" in low|medium|high|xhigh|max) ;; *)
+  echo "stage-flags: stage '$stage' in $TABLE has effort '$effort', not one of low, medium, high, xhigh, max" >&2
+  exit 1 ;;
+esac
 echo "--model $model --effort $effort"

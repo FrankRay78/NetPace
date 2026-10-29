@@ -46,6 +46,12 @@ ok "no stage named at all fails" '[ "$RC" != 0 ]'
 table $'build  opus\n'
 lookup build
 ok "a row with no effort fails rather than leave it to the default" '[ "$RC" != 0 ]'
+table $'build  opus  hgih\n'
+lookup build
+ok "an effort claude does not know fails rather than reach it" '[ "$RC" != 0 ] && [ -z "$(bash "$SB/t/stage-flags.sh" build 2>/dev/null)" ]'
+table $'build  opus  high  extra\n'
+lookup build
+ok "a row with a column too many fails" '[ "$RC" != 0 ]'
 table $'build  opus  high\nbuild  sonnet  low\n'
 lookup build
 ok "a stage written twice fails rather than pick one" '[ "$RC" != 0 ]'
@@ -65,6 +71,19 @@ ok "every stage a runner names has a row" '[ -z "$missing" ]'
 # lookup itself, whose usage line shows what it prints.
 OUTPUT=$(cd "$REPO" && git grep -nE -- "--(model|effort)[ =]+['\"]?[A-Za-z0-9]" -- .github/workflows 'scripts/*.sh' ':!*.tests.sh' ':!scripts/stage-flags.sh')
 ok "no runner names a model or effort of its own" '[ -z "$OUTPUT" ]'
+# A Claude step whose claude_args does not open with a looked-up output, or that reads an output
+# the lookup never writes, starts claude on the default model with nothing failing.
+unwired=
+for f in $(cd "$REPO" && git grep -l 'anthropics/claude-code-action' -- .github/workflows); do
+  steps=$(grep -c 'uses: anthropics/claude-code-action' "$REPO/$f")
+  wired=$(grep -cF "claude_args: '\${{ steps.model.outputs." "$REPO/$f")
+  [ "$steps" = "$wired" ] || unwired="$unwired $f"
+  for o in $(grep -oE 'steps\.model\.outputs\.[a-z]+' "$REPO/$f" | sed 's/.*\.//' | sort -u); do
+    grep -qF "echo \"$o=" "$REPO/$f" || unwired="$unwired $f:$o"
+  done
+done
+OUTPUT=$unwired
+ok "every Claude step in a workflow passes on a model its lookup wrote" '[ -z "$unwired" ]'
 
 echo ""
 echo "RESULT: $pass passed, $fail failed"

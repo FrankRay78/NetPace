@@ -84,18 +84,6 @@ jobs:
           ref: ${{ steps.pr.outputs.head }}
           fetch-depth: 0
 
-      # The model and effort come from the stage table, scripts/stage-models.tsv. A stage the
-      # table does not answer fails here, before claude starts on whatever the default is.
-      # Main's copy of both, not the checkout's, for the reason the cost step below gives: the PR
-      # head is not trusted, so a change to the table takes effect on merge, not on its own PR.
-      - name: Look up this stage's model
-        id: model
-        run: |
-          git show origin/main:scripts/stage-flags.sh > "$RUNNER_TEMP/stage-flags.sh"
-          git show origin/main:scripts/stage-models.tsv > "$RUNNER_TEMP/stage-models.tsv"
-          args=$(bash "$RUNNER_TEMP/stage-flags.sh" review-followup)
-          echo "args=$args" >> "$GITHUB_OUTPUT"
-
       # Rounds are counted the way the command counts them: reviews carrying the marker, however
       # they were posted — from CI as a bot, or by hand as a person.
       - name: Skip a round there is nothing to do
@@ -123,6 +111,19 @@ jobs:
             echo "::notice::PR #$PR_NUMBER has had $prior review rounds — the cap is reached, so nothing is posted. Three rounds means the disagreement is about direction, not defects: talk to the author."
             echo "skipped=true" >> "$GITHUB_OUTPUT"
           fi
+
+      # The model and effort come from the stage table, scripts/stage-models.tsv. A stage the
+      # table does not answer fails here, before claude starts on whatever the default is.
+      # Main's copy of both, not the checkout's, for the reason review-pr.yml's cost step gives: the PR
+      # head is not trusted, so a change to the table takes effect on merge, not on its own PR.
+      - name: Look up this stage's model
+        id: model
+        if: steps.guard.outputs.skipped != 'true'
+        run: |
+          git show origin/main:scripts/stage-flags.sh > "$RUNNER_TEMP/stage-flags.sh"
+          git show origin/main:scripts/stage-models.tsv > "$RUNNER_TEMP/stage-models.tsv"
+          args=$(bash "$RUNNER_TEMP/stage-flags.sh" review-followup)
+          echo "args=$args" >> "$GITHUB_OUTPUT"
 
       # `Bash(gh api:*)` is broader than the calls the command needs — it reaches any endpoint the
       # token can, and the allowlist cannot pin the method — but the command needs GraphQL for the
