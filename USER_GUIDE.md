@@ -251,13 +251,13 @@ netpace --profile large --connections 2
 
 That runs Large's payloads and Large's 1 GiB download cap, but never more than two transfers at once in either direction. Leave `--connections` out and the profile's own count applies, exactly as before: Tiny 1, Small 2, Medium 4, Large 16, Mega 32.
 
-The number is a **maximum**, not a target. A profile only has so many requests to make — Tiny makes a single download request — so a small profile can finish without ever reaching the maximum you asked for. To hold a particular load for the length of a run, pair `--connections` with `--profile medium` or larger.
+The number is a **maximum**, not a target. A profile only has so many requests to make — Tiny makes a single download request — so a small profile can finish without ever reaching the maximum you asked for. A profile needs at least as many requests as the count you ask for: on the download test that is 4 requests for Small, 10 for Medium, 60 for Large and 200 for Mega, so counts of 16 or 32 need Large or Mega to be reached at all.
 
 Reach for it when:
 
 - You are tuning your router's queue settings (SQM) and need every run to push the line the same way, so the before and after are comparable.
 - You want the speed of one ordinary file transfer: that is `--connections 1`.
-- You are on a fast link with a small data allowance — a higher connection count fills the line while a `small` or `medium` profile keeps the data used down.
+- You are on a fast link with a small data allowance — a higher connection count fills the line, and `--downloadsize` / `--uploadsize` keep the data used down. Use those caps rather than a smaller profile: `small` has only 4 download requests to make, so it cannot reach a high count however high you set it.
 
 > [!NOTE]\
 > More connections means more data in flight when a cap is reached. NetPace stops scheduling transfers and cancels those still running once the total-byte cap is hit, so the bytes actually transferred can overshoot the profile's cap (or `--downloadsize` / `--uploadsize`) by roughly what was in flight at that moment — and that overshoot grows with the connection count. On a metered connection, choose the profile and the connection count together.

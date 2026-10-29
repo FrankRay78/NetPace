@@ -179,7 +179,7 @@ total = (1+2+3+4+5+6) × UploadSizeIncrementKb × 1024 × UploadSizeIterations
 
 That is under the Medium profile's 25 MiB `UploadSizeMb` cap, so every request runs.
 
-Unlike download, this total is fully deterministic — NetPace generates the payloads itself, the OoklaServer simply sinks them. `UploadParallelTasks` only affects throughput, not the total transferred.
+Unlike download, this total is fully deterministic — NetPace generates the payloads itself, the OoklaServer simply sinks them. While the cap is not reached, as here, `UploadParallelTasks` only affects throughput, not the total transferred; once it is reached, §3 describes how parallelism raises the overshoot.
 
 ## 3. CLI surface
 

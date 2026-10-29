@@ -1,4 +1,5 @@
 using System.CommandLine;
+using System.Globalization;
 
 using Microsoft.Extensions.DependencyInjection;
 using NetPace.Console.Commands;
@@ -23,17 +24,10 @@ public static class Program
     internal const int MinimumConnections = 1;
 
     /// <summary>
-    /// The most connections <c>--connections</c> accepts. This is the largest count any profile
-    /// uses (Mega), which keeps NetPace a gentle guest on volunteer-run servers.
+    /// The most connections <c>--connections</c> accepts: never more than the heaviest profile
+    /// already asks for, which today is Mega's 32.
     /// </summary>
     internal const int MaximumConnections = 32;
-
-    /// <summary>
-    /// The <see cref="SpeedTestCommandSettings.Connections"/> value meaning "<c>--connections</c>
-    /// was not given", so the profile's own connection counts stand. Zero is outside the accepted
-    /// range, so no user-supplied value can collide with it.
-    /// </summary>
-    internal const int NoConnectionsOverride = 0;
 
     /// <summary>
     /// Create the RootCommand with System.CommandLine.
@@ -166,7 +160,7 @@ public static class Program
         // An Option<int> would answer "2.5" with a built-in parse failure that never mentions it.
         var connectionsOption = new Option<string>("--connections")
         {
-            Description = "Maximum transfers the download and upload tests each run at once (1-32).\nOverrides the --profile connection count; the profile's data caps still apply.\nA maximum, so a profile with fewer transfers to run than this will not reach it.",
+            Description = $"Maximum transfers the download and upload tests each run at once ({MinimumConnections}-{MaximumConnections}).\nOverrides the --profile connection count; the profile's data caps still apply.\nA maximum, so a profile with fewer transfers to run than this will not reach it.",
             DefaultValueFactory = _ => string.Empty
         };
         connectionsOption.Validators.Add(result =>
@@ -179,7 +173,7 @@ public static class Program
             }
 
             var value = result.GetValueOrDefault<string>();
-            if (!int.TryParse(value, out var connections) || connections < MinimumConnections || connections > MaximumConnections)
+            if (!TryParseConnections(value, out var connections) || connections < MinimumConnections || connections > MaximumConnections)
             {
                 result.AddError($"--connections must be a whole number from {MinimumConnections} to {MaximumConnections}, but was '{value}'.");
             }
@@ -303,7 +297,7 @@ public static class Program
                     Profile = parseResult.GetValue(profileOption),
                     DownloadSizeMb = parseResult.GetValue(downloadSizeOption),
                     UploadSizeMb = parseResult.GetValue(uploadSizeOption),
-                    Connections = int.TryParse(parseResult.GetValue(connectionsOption), out var connections) ? connections : NoConnectionsOverride,
+                    Connections = ParseConnections(parseResult.GetValue(connectionsOption)),
                     SpeedUnit = parseResult.GetValue(unitOption),
                     SpeedScale = parseResult.GetValue(unitScaleOption),
                     SpeedUnitSystem = parseResult.GetValue(unitSystemOption),
@@ -395,17 +389,33 @@ public static class Program
             };
         }
 
-        if (settings.Connections != NoConnectionsOverride)
+        if (settings.Connections is int connections)
         {
             ooklaSettings = ooklaSettings with
             {
-                DownloadTest = ooklaSettings.DownloadTest with { DownloadParallelTasks = settings.Connections },
-                UploadTest = ooklaSettings.UploadTest with { UploadParallelTasks = settings.Connections }
+                DownloadTest = ooklaSettings.DownloadTest with { DownloadParallelTasks = connections },
+                UploadTest = ooklaSettings.UploadTest with { UploadParallelTasks = connections }
             };
         }
 
         return ooklaSettings;
     }
+
+    /// <summary>
+    /// Parse a <c>--connections</c> value the way its validator does: digits only, culture
+    /// independent, so the accepted set is exactly the whole number the help text promises.
+    /// </summary>
+    private static bool TryParseConnections(string? value, out int connections) =>
+        int.TryParse(value, NumberStyles.None, CultureInfo.InvariantCulture, out connections);
+
+    /// <summary>
+    /// The requested connection count, or <c>null</c> when <c>--connections</c> was not given so
+    /// the profile's own counts stand. Absent is the only silent case: a value that is present but
+    /// will not parse means the validator never ran, and throwing beats reporting a speed for a
+    /// load nobody asked for.
+    /// </summary>
+    private static int? ParseConnections(string? value) =>
+        string.IsNullOrEmpty(value) ? null : int.Parse(value, NumberStyles.None, CultureInfo.InvariantCulture);
 
     /// <summary>
     /// Create the list servers command.

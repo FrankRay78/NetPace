@@ -84,10 +84,10 @@ public sealed class SpeedTestCommandSettings
     public required int UploadSizeMb { get; init; }
 
     /// <summary>
-    /// The maximum number of transfers the download and upload tests each run at once.
-    /// <see cref="Program.NoConnectionsOverride"/> leaves the profile's count in place.
+    /// The maximum number of transfers the download and upload tests each run at once, or
+    /// <c>null</c> to leave the profile's own count in place.
     /// </summary>
-    public required int Connections { get; init; }
+    public required int? Connections { get; init; }
 
     /// <summary>
     /// The speed unit.

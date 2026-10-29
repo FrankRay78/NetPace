@@ -51,6 +51,44 @@ public sealed partial class NetPaceConsoleTests
         Assert.Equal(1, accessor.Settings.UploadTest.UploadParallelTasks);
     }
 
+    [Theory]
+    [InlineData("1")]
+    [InlineData("32")]
+    public async Task Connections_AtEitherEndOfTheAcceptedRange_IsAccepted(string value)
+    {
+        // Given
+        var (services, accessor) = BuildServicesWithSettingsAccessor();
+        var host = GetCommandLineTestHost(services);
+
+        // When
+        var result = await host.RunAsync(["--connections", value]);
+
+        // Then both ends bind, so a range check written one off - rejecting its own boundary -
+        // fails here rather than only when a user tries the end of the documented range.
+        Assert.Equal(0, result.ExitCode);
+        Assert.Equal(int.Parse(value), accessor.Settings.DownloadTest.DownloadParallelTasks);
+        Assert.Equal(int.Parse(value), accessor.Settings.UploadTest.UploadParallelTasks);
+    }
+
+    [Fact]
+    public async Task Connections_WithExplicitSizeOverrides_LeavesBothCapsIntact()
+    {
+        // Given
+        var (services, accessor) = BuildServicesWithSettingsAccessor();
+        var host = GetCommandLineTestHost(services);
+
+        // When
+        var result = await host.RunAsync(["--profile", "large", "--connections", "2", "--downloadsize", "200", "--uploadsize", "60"]);
+
+        // Then the connection count and the user's own caps all survive together, so an override
+        // that rebuilt the test settings instead of amending them would be caught.
+        Assert.Equal(0, result.ExitCode);
+        Assert.Equal(2, accessor.Settings.DownloadTest.DownloadParallelTasks);
+        Assert.Equal(2, accessor.Settings.UploadTest.UploadParallelTasks);
+        Assert.Equal(200, accessor.Settings.DownloadTest.DownloadSizeMb);
+        Assert.Equal(60, accessor.Settings.UploadTest.UploadSizeMb);
+    }
+
     [Fact]
     public async Task NoConnectionsFlag_ProfileConnectionCountApplies()
     {
@@ -78,6 +116,7 @@ public sealed partial class NetPaceConsoleTests
     [InlineData("33", "above-range")]
     [InlineData("2.5", "fraction")]
     [InlineData("lots", "words")]
+    [InlineData("-1", "negative")]
     public async Task Connections_OutOfRangeOrNotAWholeNumber_IsRejectedBeforeAnyTestRuns(string value, string valueName)
     {
         // SCENARIO: An out-of-range connection count is rejected
@@ -93,8 +132,8 @@ public sealed partial class NetPaceConsoleTests
         // output, so a result line appearing would fail it.
         Assert.NotEqual(0, result.ExitCode);
 
-        // The snapshot is named for the rejected value in words: "2.5" and "0" are not equally
-        // safe filename characters across platforms.
+        // The snapshot is named for the rejected value in words, so the filename reads as the case
+        // it covers rather than as the raw value.
         await Verify(result.Output).UseTextForParameters(valueName);
     }
 
@@ -119,17 +158,38 @@ public sealed partial class NetPaceConsoleTests
     }
 
     [Fact]
-    public async Task Connections_AppliesToEveryRunUnderCount()
+    public async Task Connections_BindsAlongsideCount()
     {
         // Given
         var (services, accessor) = BuildServicesWithSettingsAccessor();
         var host = GetCommandLineTestHost(services);
 
-        // When — the settings are built once and handed to the provider for the whole invocation,
-        // so every run of a repeated test uses the same connection count.
+        // When
         var result = await host.RunAsync(["--connections", "3", "--count", "3", "--minimal"]);
 
-        // Then
+        // Then the two options parse together and the count binds. The accessor holds the settings
+        // built once for the whole invocation, so this does not observe the individual runs.
+        Assert.Equal(0, result.ExitCode);
+        Assert.Equal(3, accessor.Settings.DownloadTest.DownloadParallelTasks);
+        Assert.Equal(3, accessor.Settings.UploadTest.UploadParallelTasks);
+    }
+
+    [Fact]
+    public async Task Connections_BindsAlongsideLoop()
+    {
+        // Given a loop that cancels itself after two runs.
+        var cancellationTokenSource = new CancellationTokenSource();
+        var waiter = new SelfCancellingWaiter(2, cancellationTokenSource);
+
+        var (services, accessor) = BuildServicesWithSettingsAccessor();
+        services.AddSingleton<IWaiter>(waiter);
+        var host = GetCommandLineTestHost(services);
+
+        // When
+        var result = await host.RunAsync(["--connections", "3", "--loop", "--minimal"], cancellationTokenSource.Token);
+
+        // Then — --loop takes its own branch through the command, so the count has to be shown to
+        // survive it as well as --count.
         Assert.Equal(0, result.ExitCode);
         Assert.Equal(3, accessor.Settings.DownloadTest.DownloadParallelTasks);
         Assert.Equal(3, accessor.Settings.UploadTest.UploadParallelTasks);
