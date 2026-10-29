@@ -114,7 +114,7 @@ public static class Program
 
         var serverOption = new Option<string>("--server")
         {
-            Description = "The url of a specific speed test sever. \n'netpace servers -l' will return your nearest servers.",
+            Description = "The URL of a specific speed test server.\n'netpace servers -l' will return your nearest servers.",
             DefaultValueFactory = _ => string.Empty
         };
 
@@ -127,8 +127,9 @@ public static class Program
 
         var profileOption = new Option<Profile>("--profile")
         {
-            Description = "Profile bundle of payload settings (Tiny | Small | Medium | Large | Mega).",
-            DefaultValueFactory = _ => Profile.Medium
+            Description = $"Profile bundle of payload settings. {OptionValues.Profiles.HelpList}",
+            DefaultValueFactory = _ => Profile.Medium,
+            CustomParser = result => OptionValues.Profiles.Parse(result, "--profile")
         };
 
         var downloadSizeOption = new Option<int>("--downloadsize")
@@ -169,21 +170,24 @@ public static class Program
 
         var unitOption = new Option<SpeedUnit>("--unit")
         {
-            Description = "The speed unit. <BitsPerSecond, BytesPerSecond>\nApplies to the default and minimal output.",
-            DefaultValueFactory = _ => SpeedUnit.BitsPerSecond
+            Description = $"The speed unit. {OptionValues.Units.HelpList}\nApplies to the default and minimal output.",
+            DefaultValueFactory = _ => SpeedUnit.BitsPerSecond,
+            CustomParser = result => OptionValues.Units.Parse(result, "--unit")
         };
         unitOption.Aliases.Add("-u");
 
         var unitScaleOption = new Option<SpeedScale>("--unit-scale")
         {
-            Description = "The speed unit scale. <Auto, Base, Kilo, Mega, Giga, Tera, Peta>\nApplies to the default and minimal output.",
-            DefaultValueFactory = _ => SpeedScale.Auto
+            Description = $"The speed unit scale. {OptionValues.UnitScales.HelpList}\nApplies to the default and minimal output.",
+            DefaultValueFactory = _ => SpeedScale.Auto,
+            CustomParser = result => OptionValues.UnitScales.Parse(result, "--unit-scale")
         };
 
         var unitSystemOption = new Option<SpeedUnitSystem>("--unit-system")
         {
-            Description = "The speed unit system. <SI, IEC>\nApplies to the default and minimal output.\nSI steps up in powers of 1000 (KB, MB, GB), common in networking, while IEC uses powers of 1024 (KiB, MiB, GiB), standard in computing and storage.",
-            DefaultValueFactory = _ => SpeedUnitSystem.SI
+            Description = $"The speed unit system. {OptionValues.UnitSystems.HelpList}\nApplies to the default and minimal output.\nSI steps up in powers of 1000 (KB, MB, GB), common in networking, while IEC uses powers of 1024 (KiB, MiB, GiB), standard in computing and storage.",
+            DefaultValueFactory = _ => SpeedUnitSystem.SI,
+            CustomParser = result => OptionValues.UnitSystems.Parse(result, "--unit-system")
         };
 
         // --verbosity is retired, but stays registered so that a script still passing it gets a
@@ -209,8 +213,9 @@ public static class Program
 
         var fileModeOption = new Option<FileMode>("--file-mode")
         {
-            Description = "Determines file output behavior. <Append, Overwrite>",
-            DefaultValueFactory = _ => FileMode.Append
+            Description = $"Determines file output behavior. {OptionValues.FileModes.HelpList}",
+            DefaultValueFactory = _ => FileMode.Append,
+            CustomParser = result => OptionValues.FileModes.Parse(result, "--file-mode")
         };
 
         var quietOption = new Option<bool>("--quiet")
@@ -228,8 +233,9 @@ public static class Program
 
         var failOnOption = new Option<FailOn>("--fail-on")
         {
-            Description = "Exit with a non-zero code on a failed measurement. <None, Total, Partial>\nNone never affects the exit code; Total triggers when a test is all-failed;\nPartial triggers on any failed request. Fail-fast across --count and --loop.",
-            DefaultValueFactory = _ => FailOn.None
+            Description = $"Exit with a non-zero code on a failed measurement. {OptionValues.FailOnModes.HelpList}\nWith 'none' the exit code is never affected; 'total' triggers when a test is all-failed;\n'partial' triggers on any failed request. Fail-fast across --count and --loop.",
+            DefaultValueFactory = _ => FailOn.None,
+            CustomParser = result => OptionValues.FailOnModes.Parse(result, "--fail-on")
         };
 
         // Add options

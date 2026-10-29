@@ -44,7 +44,7 @@ public sealed partial class NetPaceConsoleTests
             var host = HostWith();
 
             // When the compact format is combined with timestamp, unit and scale selection.
-            var result = await host.RunAsync(["--minimal", "-t", "--unit", "BytesPerSecond", "--unit-scale", "Kilo", "--unit-system", "IEC"]);
+            var result = await host.RunAsync(["--minimal", "-t", "--unit", "bytes", "--unit-scale", "Kilo", "--unit-system", "IEC"]);
 
             // Then the single result line carries the timestamp and the chosen units.
             Assert.Equal(0, result.ExitCode);

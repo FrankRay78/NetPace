@@ -358,7 +358,7 @@ public sealed partial class NetPaceConsoleTests
             // unit switch set to something else.
             var defaultUnits = await GetCommandLineTestHost(StubServices()).RunAsync(["--csv"]);
             var switchedUnits = await GetCommandLineTestHost(StubServices()).RunAsync(
-                ["--csv", "--unit", "BytesPerSecond", "--unit-scale", "Mega", "--unit-system", "IEC"]);
+                ["--csv", "--unit", "bytes", "--unit-scale", "Mega", "--unit-system", "IEC"]);
 
             // Then the two outputs are the same.
             Assert.Equal(0, defaultUnits.ExitCode);

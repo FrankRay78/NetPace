@@ -1,0 +1,1 @@
+﻿Error: 'Truncate' is not a valid value for --file-mode. Valid values: <append, overwrite>.
