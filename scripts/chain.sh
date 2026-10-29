@@ -31,14 +31,15 @@
 # All five are checked before the first stage starts, so a missing one names itself.
 # Tests: scripts/chain.tests.sh.
 #
-# Overrides: CHAIN_MODEL selects the model every stage uses. CHAIN_STAGE_TIMEOUT (seconds)
-# replaces every stage's time limit.
+# Each stage's model and effort come from the stage table, scripts/stage-models.tsv.
+# Overrides: CHAIN_MODEL replaces every stage's model; the effort stays the table's.
+# CHAIN_STAGE_TIMEOUT (seconds) replaces every stage's time limit.
 
 # No -e: the `reply=$(...); rc=$?` dispatch below depends on a non-zero claude not killing the
 # script, so the stage can be reported by name instead of the run dying silently.
 set -uo pipefail
 
-CHAIN_MODEL="${CHAIN_MODEL:-claude-opus-5}"
+CHAIN_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # Per-stage time limits in seconds, conservative until tuned from real runs.
 BUILD_LIMIT=${CHAIN_STAGE_TIMEOUT:-7200}
@@ -89,6 +90,19 @@ if [ -n "${CHAIN_STAGE_TIMEOUT:-}" ]; then
     echo "chain: refused — CHAIN_STAGE_TIMEOUT=0 means no time limit, so a hung stage would never be reported; no stage was started." >&2; exit 1
   fi
 fi
+
+# stage_model_effort <stage> — the stage's model and effort, space-separated, from the stage table.
+# Every stage's is read here, before any stage starts, so a stage the table does not answer stops
+# the run with nothing done, and a stage that rewrites the table cannot change a later stage's.
+stage_model_effort() {
+  local flags model effort
+  flags=$(bash "$CHAIN_DIR/stage-flags.sh" "$1") || return 1
+  read -r _ model _ effort <<<"$flags"
+  echo "${CHAIN_MODEL:-$model} $effort"
+}
+BUILD_MODEL_EFFORT=$(stage_model_effort build) || exit 1
+VERIFY_MODEL_EFFORT=$(stage_model_effort verify) || exit 1
+RAISE_PR_MODEL_EFFORT=$(stage_model_effort raise-pr) || exit 1
 
 # HOW A STAGE'S VERDICT IS READ: BY POSITION. The report's final non-blank line is the verdict,
 # and no other line of the report is read at all — so nothing the report quotes, in a code block,
@@ -253,7 +267,7 @@ fail() {
   exit "${4:-1}"
 }
 
-# run_stage <position> <name> <prompt> <success verdict ERE> <limit>
+# run_stage <position> <name> <prompt> <success verdict ERE> <limit> <model and effort>
 # Prints the stage's report, and leaves the report text in $STAGE_RESULT, the normalised verdict
 # line in $STAGE_VERDICT and the session id in $STAGE_SESSION — globals: the caller reads the last
 # stage's verdict for the `chain: done` line, and fail() reads the session id to name the session
@@ -261,7 +275,8 @@ fail() {
 # neither a longer word merely ending in the verdict word (`UNVERIFIED branch=…`) nor a verdict
 # sharing its line with anything else (`VERIFIED branch=x, FAILED reason=…`) is that verdict.
 run_stage() {
-  local pos=$1 name=$2 prompt=$3 verdict=$4 limit=$5
+  local pos=$1 name=$2 prompt=$3 verdict=$4 limit=$5 model effort
+  read -r model effort <<<"$6"
   local reply rc reason reply_type is_error subtype started elapsed limit_reason
   # Cleared before the call, so a stage that fails before the parse below — a stall, a launch
   # failure, a reply that is not JSON — does not leave the previous stage's id in place and send
@@ -272,7 +287,7 @@ run_stage() {
   # call stalls on the terminal (both recorded in plugin-report.sh). The prompt stays quoted
   # because a variadic flag would otherwise eat its second word as a separate positional.
   started=$SECONDS
-  reply=$(timeout --kill-after=60 "$limit" claude -p "$prompt" --model "$CHAIN_MODEL" --output-format json --dangerously-skip-permissions </dev/null)
+  reply=$(timeout --kill-after=60 "$limit" claude -p "$prompt" --model "$model" --effort "$effort" --output-format json --dangerously-skip-permissions </dev/null)
   rc=$?
   elapsed=$((SECONDS - started))
   # 124 is timeout's own report that the limit was reached. 137 is the stage killed by SIGKILL,
@@ -389,9 +404,9 @@ fi
 # cannot change what the rest of the run does. Without the group the run carried on from its old
 # position in the new file and executed whatever text it landed in (#348).
 {
-  run_stage 1 build "/build $issue" "$READY_VERDICT" "$BUILD_LIMIT"
-  run_stage 2 verify /verify "$VERIFIED_VERDICT" "$VERIFY_LIMIT"
-  run_stage 3 raise-pr "/raise-pr $issue" "$PR_VERDICT" "$RAISE_PR_LIMIT"
+  run_stage 1 build "/build $issue" "$READY_VERDICT" "$BUILD_LIMIT" "$BUILD_MODEL_EFFORT"
+  run_stage 2 verify /verify "$VERIFIED_VERDICT" "$VERIFY_LIMIT" "$VERIFY_MODEL_EFFORT"
+  run_stage 3 raise-pr "/raise-pr $issue" "$PR_VERDICT" "$RAISE_PR_LIMIT" "$RAISE_PR_MODEL_EFFORT"
 
   # Re-matched rather than read out of run_stage's own match, so the URL reported is demonstrably
   # the one on the verdict line this script just accepted.

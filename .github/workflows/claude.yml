@@ -23,10 +23,19 @@ jobs:
         with:
           fetch-depth: 0
 
+      # The model and effort come from the stage table, scripts/stage-models.tsv. A stage the
+      # table does not answer fails here, before claude starts on whatever the default is.
+      - name: Look up this stage's model
+        id: model
+        run: |
+          args=$(bash scripts/stage-flags.sh claude-mention)
+          echo "args=$args" >> "$GITHUB_OUTPUT"
+
       - name: Run Claude Code
         id: claude
         uses: anthropics/claude-code-action@v1
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          claude_args: '${{ steps.model.outputs.args }}'
           additional_permissions: |
             actions: read
