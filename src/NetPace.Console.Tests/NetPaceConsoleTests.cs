@@ -19,6 +19,32 @@ public sealed partial class NetPaceConsoleTests
         return new CommandLineTestHost(serviceCollection, CommandLineTestHost.InteractiveTerminalWidth, interactive: true);
     }
 
+    /// <summary>
+    /// A host whose speed tester records the one call a run makes before measuring — server
+    /// discovery — so a test can assert the run never got that far. Shared by the tests that hold a
+    /// retired option closed.
+    /// </summary>
+    private static (CommandLineTestHost host, List<string> serviceCalls) HostRecordingMeasurements()
+    {
+        var serviceCalls = new List<string>();
+
+        var speedTester = new SpeedTestMock
+        {
+            GetServersAsyncFunc = _ =>
+            {
+                serviceCalls.Add(nameof(ISpeedTestService.GetServersAsync));
+                return Task.FromResult<IServer[]>([]);
+            }
+        };
+
+        var services = new ServiceCollection();
+        services.AddSingleton<ISpeedTestService>(speedTester);
+        services.AddSingleton<IClock, ClockStub>();
+        services.AddSingleton<IWaiter, NoDelayStub>();
+
+        return (new CommandLineTestHost(services), serviceCalls);
+    }
+
     [Fact]
     public async Task Should_Perform_Speed_Test()
     {

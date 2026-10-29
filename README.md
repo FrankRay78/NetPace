@@ -117,21 +117,21 @@ OPTIONS:
         --server                           The url of a specific speed test sever.
                                            'netpace servers -l' will return your nearest servers.
     -t, --timestamp                        Include a timestamp in the output.
-        --profile          Medium          Profile bundle of payload settings (Tiny | Small | Medium | Large | Mega).
+        --profile         Medium           Profile bundle of payload settings (Tiny | Small | Medium | Large | Mega).
         --downloadsize                     Stop the download test after this many megabytes (IEC MiB).
         --uploadsize                       Stop the upload test after this many megabytes (IEC MiB).
-    -u, --unit             BitsPerSecond   The speed unit. <BitsPerSecond, BytesPerSecond>
+    -u, --unit            BitsPerSecond    The speed unit. <BitsPerSecond, BytesPerSecond>
                                            Applies to the default and minimal output.
-        --unit-scale       Auto            The speed unit scale. <Auto, Base, Kilo, Mega, Giga, Tera, Peta>
+        --unit-scale      Auto             The speed unit scale. <Auto, Base, Kilo, Mega, Giga, Tera, Peta>
                                            Applies to the default and minimal output.
-        --unit-system      SI              The speed unit system. <SI, IEC>
+        --unit-system     SI               The speed unit system. <SI, IEC>
                                            Applies to the default and minimal output.
                                            SI steps up in powers of 1000 (KB, MB, GB), common in networking, 
                                            while IEC uses powers of 1024 (KiB, MiB, GiB), standard in computing and storage.
     -f, --file                             Write output to file.
-        --file-mode        Append          Determines file output behavior. <Append, Overwrite>
+        --file-mode       Append           Determines file output behavior. <Append, Overwrite>
     -q, --quiet                            Suppress all normal console output (file output still works).
-        --fail-on          None            Exit with a non-zero code on a failed measurement. <None, Total, Partial>
+        --fail-on         None             Exit with a non-zero code on a failed measurement. <None, Total, Partial>
                                            None never affects the exit code; Total triggers when a test is all-failed;
                                            Partial triggers on any failed request. Fail-fast across --count and --loop.
         --diagnostics                      Write per-request diagnostic detail about the run to the error stream.

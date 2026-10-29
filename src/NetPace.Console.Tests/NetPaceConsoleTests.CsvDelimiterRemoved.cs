@@ -8,32 +8,6 @@ public sealed partial class NetPaceConsoleTests
 {
     public sealed class CsvDelimiterRemoved
     {
-        /// <summary>
-        /// A host whose speed tester records the one call a run makes before measuring — server
-        /// discovery — so a test can assert the run never got that far. Every later delegate is left
-        /// unconfigured and throws, so a run that got past discovery could not pass quietly either.
-        /// </summary>
-        private static (CommandLineTestHost host, List<string> serviceCalls) HostRecordingMeasurements()
-        {
-            var serviceCalls = new List<string>();
-
-            var speedTester = new SpeedTestMock
-            {
-                GetServersAsyncFunc = _ =>
-                {
-                    serviceCalls.Add(nameof(ISpeedTestService.GetServersAsync));
-                    return Task.FromResult<IServer[]>([]);
-                }
-            };
-
-            var services = new ServiceCollection();
-            services.AddSingleton<ISpeedTestService>(speedTester);
-            services.AddSingleton<IClock, ClockStub>();
-            services.AddSingleton<IWaiter, NoDelayStub>();
-
-            return (new CommandLineTestHost(services), serviceCalls);
-        }
-
         [Theory]
         [InlineData(";")]
         [InlineData("\t")]
@@ -64,10 +38,11 @@ public sealed partial class NetPaceConsoleTests
             // When the option is passed bare, which a parse error must also catch.
             var result = await host.RunAsync(["--csv", "--csv-delimiter"]);
 
-            // Then
+            // Then nothing was measured, and the snapshot carries what the user is told. This is the
+            // suite's only snapshot of an unrecognised option, so it is what pins that rendering.
             Assert.Empty(serviceCalls);
             Assert.NotEqual(0, result.ExitCode);
-            Assert.Contains("--csv-delimiter", result.Output);
+            await Verify(result.Output);
         }
 
         [Fact]

@@ -71,7 +71,7 @@ public sealed class CSVConsoleWriter : IConsoleWriter
 
     /// <summary>
     /// Joins the fields of one CSV record with commas — the only separator CSV output uses — each
-    /// field escaped so a standard reader recovers it whole.
+    /// field escaped so a standard reader sees one field per column.
     /// </summary>
     private static string Record(params string[] fields) => string.Join(',', fields.Select(ToField));
 
@@ -86,16 +86,16 @@ public sealed class CSVConsoleWriter : IConsoleWriter
     /// </summary>
     private static string ToField(string value)
     {
-        var oneLine = value
+        string oneLine = value
             .Replace("\r\n", " ", StringComparison.Ordinal)
             .Replace('\r', ' ')
             .Replace('\n', ' ');
 
-        if (!oneLine.Contains(',', StringComparison.Ordinal) && !oneLine.Contains('"', StringComparison.Ordinal))
+        if (oneLine.Contains(',', StringComparison.Ordinal) || oneLine.Contains('"', StringComparison.Ordinal))
         {
-            return oneLine;
+            return $"\"{oneLine.Replace("\"", "\"\"", StringComparison.Ordinal)}\"";
         }
 
-        return $"\"{oneLine.Replace("\"", "\"\"", StringComparison.Ordinal)}\"";
+        return oneLine;
     }
 }
