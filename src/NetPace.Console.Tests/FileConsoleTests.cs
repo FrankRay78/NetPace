@@ -29,7 +29,7 @@ public sealed class FileConsoleTests : IDisposable
     public void Should_Strip_Markup_When_Writing_To_File()
     {
         // Given
-        using (var fileConsole = new FileConsole(_testFilePath, FileMode.Overwrite))
+        using (var fileConsole = new FileConsole(_testFilePath, FileMode.Overwrite, startedEmpty: true))
         {
             // When
             fileConsole.Write(new Markup("[red]Error:[/] Something went wrong"));
@@ -44,7 +44,7 @@ public sealed class FileConsoleTests : IDisposable
     public void WriteAnsi_DoesNotThrow_ForFileConsole()
     {
         // Given
-        using var fileConsole = new FileConsole(_testFilePath, FileMode.Overwrite);
+        using var fileConsole = new FileConsole(_testFilePath, FileMode.Overwrite, startedEmpty: true);
 
         // When / Then
         fileConsole.WriteAnsi(_ => { });
@@ -54,7 +54,7 @@ public sealed class FileConsoleTests : IDisposable
     public void Write_AfterDispose_DoesNotThrow()
     {
         // Given — simulates Spectre.Console's ProgressRefreshThread firing after disposal
-        var fileConsole = new FileConsole(_testFilePath, FileMode.Overwrite);
+        var fileConsole = new FileConsole(_testFilePath, FileMode.Overwrite, startedEmpty: true);
         fileConsole.Dispose();
 
         // When / Then

@@ -72,8 +72,12 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
 
             if (!string.IsNullOrWhiteSpace(settings.OutputFile))
             {
-                // Add file output.
-                consoles.Add(new FileConsole(settings.OutputFile, settings.FileModeValue));
+                // Add file output. Whether the target already holds content is read here, once per
+                // run and before the file is opened: a run that appends is itself about to add
+                // content, so asking any later would answer about this run's own output. A format
+                // carrying a header line uses it to leave the header out of a log it is appending
+                // to, so repeated runs collect under one header.
+                consoles.Add(new FileConsole(settings.OutputFile, settings.FileModeValue, StartsEmpty(settings)));
             }
 
             // Composite console based on output targets.
@@ -207,6 +211,19 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
                 disposable.Dispose();
             }
         }
+    }
+
+    /// <summary>
+    /// Whether the <c>--file</c> target holds nothing this run would be adding to: a path that does
+    /// not exist yet, one that exists and is empty, or any path in overwrite mode, where whatever
+    /// was there is replaced.
+    /// </summary>
+    private static bool StartsEmpty(SpeedTestCommandSettings settings)
+    {
+        if (settings.FileModeValue == FileMode.Overwrite) return true;
+
+        var file = new FileInfo(settings.OutputFile);
+        return !file.Exists || file.Length == 0;
     }
 
     /// <summary>

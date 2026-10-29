@@ -22,6 +22,13 @@ public sealed class CompositeAnsiConsole : IAnsiConsole, IDisposable
     }
 
     /// <summary>
+    /// The destinations this console writes to, in order. Exposed so a format that sends one line
+    /// to some destinations and withholds it from others — the CSV header line, which an appended
+    /// log already carries — can address each destination on its own.
+    /// </summary>
+    public IReadOnlyList<IAnsiConsole> Destinations => _consoles;
+
+    /// <summary>
     /// Disposes all inner consoles that implement IDisposable.
     /// </summary>
     public void Dispose()

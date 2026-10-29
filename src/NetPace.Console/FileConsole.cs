@@ -7,7 +7,7 @@ namespace NetPace.Console;
 /// An IAnsiConsole implementation that writes output only to a file.
 /// This is a single-purpose console for file output only.
 /// </summary>
-public sealed class FileConsole : IAnsiConsole, IDisposable
+public sealed class FileConsole : IAnsiConsole, IPersistentConsole, IDisposable
 {
     private readonly StreamWriter _fileWriter;
     private readonly IAnsiConsole _templateConsole;
@@ -19,10 +19,16 @@ public sealed class FileConsole : IAnsiConsole, IDisposable
     /// </summary>
     /// <param name="filePath">The path to the output file.</param>
     /// <param name="fileMode">Determines whether to append to or overwrite the file.</param>
-    public FileConsole(string filePath, FileMode fileMode)
+    /// <param name="startedEmpty">
+    /// Whether the file held no content when the run reached it. Read before the file is opened,
+    /// because opening it for append is itself about to add content.
+    /// </param>
+    public FileConsole(string filePath, FileMode fileMode, bool startedEmpty)
     {
         if (string.IsNullOrWhiteSpace(filePath))
             throw new ArgumentException("File path cannot be null or empty", nameof(filePath));
+
+        StartedEmpty = startedEmpty;
 
         _fileWriter = new StreamWriter(filePath, append: (fileMode == FileMode.Append), Encoding.UTF8) { AutoFlush = true };
 
@@ -37,6 +43,9 @@ public sealed class FileConsole : IAnsiConsole, IDisposable
 
         _templateConsole = AnsiConsole.Create(settings);
     }
+
+    /// <inheritdoc/>
+    public bool StartedEmpty { get; }
 
     /// <summary>
     /// Flushes and closes the file writer.

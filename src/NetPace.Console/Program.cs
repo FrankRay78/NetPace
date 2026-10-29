@@ -70,6 +70,12 @@ public static class Program
             DefaultValueFactory = _ => false
         };
 
+        var noCSVHeaderOption = new Option<bool>("--no-csv-header")
+        {
+            Description = "Do not write the header row (CSV output only).\nA --file target that already holds rows is never sent the header.",
+            DefaultValueFactory = _ => false
+        };
+
         var jsonOption = new Option<bool>("--json")
         {
             Description = "Display output in Json format.",
@@ -232,6 +238,7 @@ public static class Program
         command.Options.Add(countOption);
         command.Options.Add(delayOption);
         command.Options.Add(csvOption);
+        command.Options.Add(noCSVHeaderOption);
         command.Options.Add(jsonOption);
         command.Options.Add(jsonPrettyOption);
         command.Options.Add(minimalOption);
@@ -266,6 +273,7 @@ public static class Program
                     Count = parseResult.GetValue(countOption),
                     Delay = parseResult.GetValue(delayOption),
                     CSV = parseResult.GetValue(csvOption),
+                    NoCSVHeader = parseResult.GetValue(noCSVHeaderOption),
                     Json = parseResult.GetValue(jsonOption),
                     JsonPretty = parseResult.GetValue(jsonPrettyOption),
                     Minimal = parseResult.GetValue(minimalOption),

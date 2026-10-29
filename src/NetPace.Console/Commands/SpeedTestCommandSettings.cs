@@ -28,6 +28,11 @@ public sealed class SpeedTestCommandSettings
     public required bool CSV { get; init; }
 
     /// <summary>
+    /// Leave the header row out of CSV output entirely, whatever its destination.
+    /// </summary>
+    public required bool NoCSVHeader { get; init; }
+
+    /// <summary>
     /// Display output in Json format.
     /// </summary>
     public required bool Json { get; init; }

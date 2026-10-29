@@ -32,11 +32,14 @@ public sealed class CSVConsoleWriter : IConsoleWriter
         }
 
 
-        // Header row, emitted on the first iteration only. Every column is present whichever tests
-        // ran, so a script can read by name or by position and an appended log keeps one shape.
-        if (initialSpeedTest)
+        // Header row, emitted on the first iteration only, and only where the destination started
+        // empty: a log being appended to already carries the header its first run wrote, so writing
+        // it again would leave a header line between every pair of rows. Every column is present
+        // whichever tests ran, so a script can read by name or by position and an appended log
+        // keeps one shape.
+        if (initialSpeedTest && !settings.NoCSVHeader)
         {
-            console.WriteLine(Record(
+            var header = Record(
                 "Timestamp",
                 "LatencyMilliseconds",
                 "DownloadSpeedBitsPerSecond",
@@ -46,7 +49,12 @@ public sealed class CSVConsoleWriter : IConsoleWriter
                 "UploadSucceeded",
                 "UploadFailed",
                 "IPAddress",
-                "Hostname"));
+                "Hostname");
+
+            foreach (var destination in HeaderDestinations(console))
+            {
+                destination.WriteLine(header);
+            }
         }
 
         // Data row. Each measurement is a plain number in the unit its column names, so --unit,
@@ -67,6 +75,21 @@ public sealed class CSVConsoleWriter : IConsoleWriter
             clientInfoProvider.GetHostname()));
 
         return SpeedTestOutcome.Create(downloadResult, uploadResult);
+    }
+
+    /// <summary>
+    /// The destinations that should receive the header line. A composite console is unpacked so
+    /// each of its destinations is judged on its own — the terminal and a <c>--file</c> target
+    /// differ by exactly this line once the file already holds rows — and any destination that did
+    /// not start empty is left out. A console that is not a composite is its own only destination.
+    /// </summary>
+    private static IEnumerable<IAnsiConsole> HeaderDestinations(IAnsiConsole console)
+    {
+        IReadOnlyList<IAnsiConsole> destinations = console is CompositeAnsiConsole composite
+            ? composite.Destinations
+            : [console];
+
+        return destinations.Where(destination => destination is not IPersistentConsole { StartedEmpty: false });
     }
 
     /// <summary>
