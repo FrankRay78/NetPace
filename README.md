@@ -121,6 +121,9 @@ OPTIONS:
         --profile          Medium           Profile bundle of payload settings (Tiny | Small | Medium | Large | Mega).
         --downloadsize                      Stop the download test after this many megabytes (IEC MiB).
         --uploadsize                        Stop the upload test after this many megabytes (IEC MiB).
+        --connections                       Maximum transfers the download and upload tests each run at once (1-32).
+                                            Overrides the --profile connection count; the profile's data caps still apply.
+                                            A maximum, so a profile with fewer transfers to run than this will not reach it.
     -u, --unit             BitsPerSecond    The speed unit. <BitsPerSecond, BytesPerSecond>
                                             Applies to the default and minimal output.
         --unit-scale       Auto             The speed unit scale. <Auto, Base, Kilo, Mega, Giga, Tera, Peta>

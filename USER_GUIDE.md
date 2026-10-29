@@ -67,6 +67,11 @@ Limit download to 50 MiB and upload to 20 MiB (for low bandwidth connections):
 netpace --downloadsize 50 --uploadsize 20
 ```
 
+Run the test over a single connection, the way an ordinary file transfer behaves:  
+```bash
+netpace --connections 1
+```
+
 ---
 
 ## Choosing an output format
@@ -227,6 +232,35 @@ netpace --profile large --downloadsize 200
 > Mega returns short reads or errors, fall back to `--profile large`. See
 > [docs/architecture/download-upload-size-controls.md](https://github.com/FrankRay78/NetPace/blob/main/docs/architecture/download-upload-size-controls.md)
 > for the per-request payload tables and the fallback strategy.
+
+---
+
+## Choosing how many connections
+
+How hard a test pushes the line decides what it reads. A single connection may never fill a fast link, so the speed reads low. Many connections fill it, which is what a saturation test is for. `--connections <n>` lets you set that load yourself, as a whole number from 1 to 32:
+
+```bash
+netpace --connections 1
+```
+
+`--connections` overrides one part of the profile and nothing else. The profile still decides the per-request payload sizes, how many requests there are, and the total-byte caps:
+
+```bash
+netpace --profile large --connections 2
+```
+
+That runs Large's payloads and Large's 1 GiB download cap, but never more than two transfers at once in either direction. Leave `--connections` out and the profile's own count applies, exactly as before: Tiny 1, Small 2, Medium 4, Large 16, Mega 32.
+
+The number is a **maximum**, not a target. A profile only has so many requests to make — Tiny makes a single download request — so a small profile can finish without ever reaching the maximum you asked for. To hold a particular load for the length of a run, pair `--connections` with `--profile medium` or larger.
+
+Reach for it when:
+
+- You are tuning your router's queue settings (SQM) and need every run to push the line the same way, so the before and after are comparable.
+- You want the speed of one ordinary file transfer: that is `--connections 1`.
+- You are on a fast link with a small data allowance — a higher connection count fills the line while a `small` or `medium` profile keeps the data used down.
+
+> [!NOTE]\
+> More connections means more data in flight when a cap is reached. NetPace stops scheduling transfers and cancels those still running once the total-byte cap is hit, so the bytes actually transferred can overshoot the profile's cap (or `--downloadsize` / `--uploadsize`) by roughly what was in flight at that moment — and that overshoot grows with the connection count. On a metered connection, choose the profile and the connection count together.
 
 ---
 
