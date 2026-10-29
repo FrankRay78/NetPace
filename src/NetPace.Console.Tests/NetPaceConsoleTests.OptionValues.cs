@@ -1,5 +1,3 @@
-using NetPace.Console;
-
 namespace NetPace.Console.Tests;
 
 public sealed partial class NetPaceConsoleTests
@@ -49,6 +47,45 @@ public sealed partial class NetPaceConsoleTests
 
         // Then
         Assert.NotEqual(0, result.ExitCode);
+    }
+
+    public static TheoryData<string, string> EveryValueTheHelpLists()
+    {
+        var data = new TheoryData<string, string>();
+
+        Add("--profile", OptionValues.Profiles);
+        Add("--unit", OptionValues.Units);
+        Add("--unit-scale", OptionValues.UnitScales);
+        Add("--unit-system", OptionValues.UnitSystems);
+        Add("--file-mode", OptionValues.FileModes);
+        Add("--fail-on", OptionValues.FailOnModes);
+
+        return data;
+
+        void Add<T>(string option, OptionValueSet<T> set) where T : struct, Enum
+        {
+            foreach (T value in Enum.GetValues<T>())
+            {
+                data.Add(option, set.Spell(value));
+            }
+        }
+    }
+
+    [Theory]
+    [MemberData(nameof(EveryValueTheHelpLists))]
+    public async Task EveryValueTheHelpLists_IsAccepted(string option, string value)
+    {
+        // A value an option can take but the set does not spell arrives here as its enumeration
+        // member name, which the parser rejects — so a forgotten spelling fails rather than hiding.
+
+        // Given
+        var host = GetOptionValuesTestHost();
+
+        // When
+        var result = await host.RunAsync(["--minimal", option, value]);
+
+        // Then
+        Assert.Equal(0, result.ExitCode);
     }
 
     [InlineData("bits", "Bits", "BITS")]

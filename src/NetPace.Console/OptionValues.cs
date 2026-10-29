@@ -3,14 +3,16 @@ using NetPace.Core;
 namespace NetPace.Console;
 
 /// <summary>
-/// Every value a user can type for an option with a fixed set of choices, in one place. Values are
-/// lowercase, so what the help shows is what a user types, apart from the <c>SI</c> and <c>IEC</c>
-/// abbreviations.
+/// Every value a user can type for an option with a fixed set of choices, in one place. What the
+/// help shows is typeable verbatim, and a typed token matches in any case. The spellings are
+/// lowercase apart from the <c>SI</c> and <c>IEC</c> abbreviations, which are shown uppercase.
 /// </summary>
 /// <remarks>
-/// The spellings are a CLI concern, not a library one: <see cref="SpeedUnit"/> and the other
-/// enumerations keep their descriptive member names for <c>NetPace.Core</c> consumers, and this is
-/// where they meet the shorter words a command line wants.
+/// The spellings are a CLI concern, not a library one: <see cref="SpeedUnit"/>,
+/// <see cref="SpeedScale"/>, <see cref="SpeedUnitSystem"/> and <see cref="Profile"/> are published
+/// <c>NetPace.Core</c> members and keep their descriptive names for library consumers, who never
+/// see a command line. <see cref="FileMode"/> and <see cref="FailOn"/> are CLI-only and are listed
+/// here for the same reason as the rest — one place per option.
 /// </remarks>
 internal static class OptionValues
 {
