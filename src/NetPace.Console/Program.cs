@@ -18,6 +18,24 @@ public static class Program
     internal const string Description = "Network speed tester including server discovery, latency measurement, download and upload speed testing.";
 
     /// <summary>
+    /// The fewest connections <c>--connections</c> accepts: a single transfer at a time.
+    /// </summary>
+    internal const int MinimumConnections = 1;
+
+    /// <summary>
+    /// The most connections <c>--connections</c> accepts. This is the largest count any profile
+    /// uses (Mega), which keeps NetPace a gentle guest on volunteer-run servers.
+    /// </summary>
+    internal const int MaximumConnections = 32;
+
+    /// <summary>
+    /// The <see cref="SpeedTestCommandSettings.Connections"/> value meaning "<c>--connections</c>
+    /// was not given", so the profile's own connection counts stand. Zero is outside the accepted
+    /// range, so no user-supplied value can collide with it.
+    /// </summary>
+    internal const int NoConnectionsOverride = 0;
+
+    /// <summary>
     /// Create the RootCommand with System.CommandLine.
     /// </summary>
     /// <remarks>
@@ -143,6 +161,30 @@ public static class Program
             DefaultValueFactory = _ => int.MaxValue
         };
 
+        // Taken as a string rather than an Option<int> so that every rejected value - zero, above
+        // the ceiling, or not a whole number at all - lands on one message naming the valid range.
+        // An Option<int> would answer "2.5" with a built-in parse failure that never mentions it.
+        var connectionsOption = new Option<string>("--connections")
+        {
+            Description = "Maximum transfers the download and upload tests each run at once (1-32).\nOverrides the --profile connection count; the profile's data caps still apply.\nA maximum, so a profile with fewer transfers to run than this will not reach it.",
+            DefaultValueFactory = _ => string.Empty
+        };
+        connectionsOption.Validators.Add(result =>
+        {
+            // The validator also sees the implicit result the default value produces, which stands
+            // for "the profile decides" and is not a value the user asked to be checked.
+            if (result.Implicit)
+            {
+                return;
+            }
+
+            var value = result.GetValueOrDefault<string>();
+            if (!int.TryParse(value, out var connections) || connections < MinimumConnections || connections > MaximumConnections)
+            {
+                result.AddError($"--connections must be a whole number from {MinimumConnections} to {MaximumConnections}, but was '{value}'.");
+            }
+        });
+
         var unitOption = new Option<SpeedUnit>("--unit")
         {
             Description = "The speed unit. <BitsPerSecond, BytesPerSecond>\nApplies to the default and minimal output.",
@@ -226,6 +268,7 @@ public static class Program
         command.Options.Add(profileOption);
         command.Options.Add(downloadSizeOption);
         command.Options.Add(uploadSizeOption);
+        command.Options.Add(connectionsOption);
         command.Options.Add(unitOption);
         command.Options.Add(unitScaleOption);
         command.Options.Add(unitSystemOption);
@@ -260,6 +303,7 @@ public static class Program
                     Profile = parseResult.GetValue(profileOption),
                     DownloadSizeMb = parseResult.GetValue(downloadSizeOption),
                     UploadSizeMb = parseResult.GetValue(uploadSizeOption),
+                    Connections = int.TryParse(parseResult.GetValue(connectionsOption), out var connections) ? connections : NoConnectionsOverride,
                     SpeedUnit = parseResult.GetValue(unitOption),
                     SpeedScale = parseResult.GetValue(unitScaleOption),
                     SpeedUnitSystem = parseResult.GetValue(unitSystemOption),
@@ -328,7 +372,8 @@ public static class Program
     /// <summary>
     /// Build the <see cref="OoklaSpeedtestSettings"/> from the parsed CLI settings.
     /// Profile sets per-request shape and cap defaults; explicit --downloadsize / --uploadsize
-    /// override only the cap via with-expressions.
+    /// override only the cap via with-expressions, and --connections overrides only the number of
+    /// transfers each direction runs at once.
     /// </summary>
     internal static OoklaSpeedtestSettings BuildOoklaSettings(SpeedTestCommandSettings settings)
     {
@@ -347,6 +392,15 @@ public static class Program
             ooklaSettings = ooklaSettings with
             {
                 UploadTest = ooklaSettings.UploadTest with { UploadSizeMb = settings.UploadSizeMb }
+            };
+        }
+
+        if (settings.Connections != NoConnectionsOverride)
+        {
+            ooklaSettings = ooklaSettings with
+            {
+                DownloadTest = ooklaSettings.DownloadTest with { DownloadParallelTasks = settings.Connections },
+                UploadTest = ooklaSettings.UploadTest with { UploadParallelTasks = settings.Connections }
             };
         }
 
