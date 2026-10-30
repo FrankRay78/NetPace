@@ -92,11 +92,51 @@ Three alternative formats are available instead:
 
 `--minimal`, `--csv` and `--json` are written for a program to read, so they carry no line breaks beyond the ones their own format defines — one CSV record per line, and the indentation `--json-pretty` asks for. That holds however narrow the destination is: a pipe, a redirect, or a terminal window narrower than the line. Only the default terminal output wraps to fit the screen.
 
-Every format composes with skipping individual tests — `--no-latency` / `--no-download` / `--no-upload`. `--timestamp`, `--unit`, `--unit-scale` and `--unit-system` are narrower: they shape the default and minimal output only. CSV and JSON always carry a timestamp, and report their measurements as plain numbers in fixed units, so those options are accepted alongside `--csv`, `--json` and `--json-pretty` without an error and change nothing in the output — see [Numeric values in CSV](#numeric-values-in-csv) and [Numeric values in JSON](#numeric-values-in-json).
+Every format composes with skipping individual tests — `--no-latency` / `--no-download` / `--no-upload`. `--timestamp`, `--unit`, `--unit-scale` and `--unit-system` are narrower: they shape the default and minimal output only. `--device-id` and `--custom-field` are narrower the other way — they add fields to CSV and JSON only, and are described under [The fields CSV and JSON carry](#the-fields-csv-and-json-carry). CSV and JSON always carry a timestamp, and report their measurements as plain numbers in fixed units, so those options are accepted alongside `--csv`, `--json` and `--json-pretty` without an error and change nothing in the output — see [Numeric values in CSV](#numeric-values-in-csv) and [Numeric values in JSON](#numeric-values-in-json).
 
 Two further options decide whether and where the result appears, and both work with any format: `--quiet` suppresses the result entirely, and `--file` writes it to disk.
 
 `--diagnostics` is not a fifth format — it adds a second stream alongside whichever format you picked, leaving the result untouched. See [Diagnosing a failure with `--diagnostics`](#diagnosing-a-failure-with---diagnostics).
+
+### The fields CSV and JSON carry
+
+**CSV and JSON carry the same fields under the same names.** A field one of them records, the other records too, spelled identically, so a log in either format reads the same way and neither has to be interpreted against the other. Only the shape for something missing differs: CSV always has every built-in column and leaves the cell empty, while JSON leaves the field out.
+
+Every result in both formats says which server it was measured against — `ServerLocation`, `ServerSponsor` and `ServerUrl` — so a drop in speed part-way through a long log can be told apart from a change of server.
+
+#### A label for the machine: `--device-id`
+
+Collecting logs from several machines into one place needs every row to say which machine it came from, in a label you chose rather than a hostname or IP address that may change under you:
+
+```bash
+netpace --csv --device-id kitchen-pi
+```
+
+`DeviceId` then carries the label exactly as given. The CSV column is always there and holds an empty cell when you gave no label; the JSON field appears only when you did.
+
+#### Anything else worth recording: `--custom-field`
+
+`--custom-field key=value` records a pair of your own on every result — an ISP plan, a site name, a connection type — and may be given as many times as you like:
+
+```bash
+netpace --csv --custom-field site=home --custom-field plan=500M
+```
+
+In CSV each pair becomes one more column after every built-in column, in the order you gave them: the key names the column and the value fills the cell. In JSON the pairs are grouped in one `CustomFields` object, so a custom key can never replace a built-in field:
+
+```json
+{ "...": "...", "CustomFields": { "site": "home", "plan": "500M" } }
+```
+
+The value is everything after the first `=`, so it may contain `=` itself and may be empty. An argument with no `=`, or with nothing before the first one, is refused with a message naming the expected form, and nothing is measured.
+
+NetPace does not police the keys. A key spelled like a built-in field, or one you give twice, is recorded as given, and each format resolves that in its own shape: CSV writes a second column of that name, while JSON — which cannot hold one key twice — keeps the last value given. A repeated key therefore reads back differently from the two formats, so it is worth avoiding.
+
+Neither option reaches the default or minimal output. Both describe the run for a log rather than the measurement, and the default output already names the server; passing either alongside those formats is accepted without an error and changes nothing in what you see. A malformed `--custom-field` is still refused in every mode.
+
+#### When the columns change, start a new log
+
+`--file` appends by default, and NetPace does not read an existing file's header before adding to it. Changing `--device-id`, changing the set of `--custom-field` pairs, or upgrading to a NetPace that writes more columns of its own, therefore appends rows of a new shape under the old header line. **Start a new log whenever the columns change** — nothing stops you doing otherwise, and the result is a file no CSV reader can make sense of as a whole.
 
 ### Numeric values in CSV
 
@@ -112,20 +152,20 @@ CSV is read by spreadsheets, importers and logs, so every measurement is a plain
 netpace --csv
 ```
 ```
-Timestamp,LatencyMilliseconds,DownloadSpeedBitsPerSecond,DownloadSucceeded,DownloadFailed,UploadSpeedBitsPerSecond,UploadSucceeded,UploadFailed,IPAddress,Hostname
-1980-01-01T10:05:00+01:00,12,512600000,150,0,48200000,32,0,192.168.1.1,test-host
+Timestamp,LatencyMilliseconds,DownloadSpeedBitsPerSecond,DownloadSucceeded,DownloadFailed,UploadSpeedBitsPerSecond,UploadSucceeded,UploadFailed,IPAddress,Hostname,ServerLocation,ServerSponsor,ServerUrl,DeviceId
+1980-01-01T10:05:00+01:00,12,512600000,150,0,48200000,32,0,192.168.1.1,test-host,London,Foo Telecom,http://speedtest.foo.example:8080/speedtest/upload.php,
 ```
 
 **`--unit`, `--unit-scale` and `--unit-system` do not change CSV output at all.** They shape the default and minimal output only. That is what makes a CSV log safe to append to: under the default automatic scale a formatted speed can be `Kbps` on one run and `Mbps` on the next, so a file collecting rows over weeks would mix units in one column. The numbers never shift, so `--csv` works with `--count` and `--loop` whatever the unit options say, and the numbers match [the numeric fields in JSON](#numeric-values-in-json) for the same run.
 
-The header is the same ten columns in the same order on every run, whichever tests ran. A test you skipped with `--no-latency`, `--no-download` or `--no-upload` leaves its cells empty rather than dropping its columns, so a script reading by position is not moved along by a skipped test:
+The header is the same columns in the same order on every run, whichever tests ran: every built-in column, then one column per `--custom-field` pair. A test you skipped with `--no-latency`, `--no-download` or `--no-upload` leaves its cells empty rather than dropping its columns, so a script reading by position is not moved along by a skipped test:
 
 ```bash
 netpace --csv --no-upload
 ```
 ```
-Timestamp,LatencyMilliseconds,DownloadSpeedBitsPerSecond,DownloadSucceeded,DownloadFailed,UploadSpeedBitsPerSecond,UploadSucceeded,UploadFailed,IPAddress,Hostname
-1980-01-01T10:05:00+01:00,12,512600000,150,0,,,,192.168.1.1,test-host
+Timestamp,LatencyMilliseconds,DownloadSpeedBitsPerSecond,DownloadSucceeded,DownloadFailed,UploadSpeedBitsPerSecond,UploadSucceeded,UploadFailed,IPAddress,Hostname,ServerLocation,ServerSponsor,ServerUrl,DeviceId
+1980-01-01T10:05:00+01:00,12,512600000,150,0,,,,192.168.1.1,test-host,London,Foo Telecom,http://speedtest.foo.example:8080/speedtest/upload.php,
 ```
 
 A download or upload test that ran but failed entirely reports `0`, with its request counts beside it — see [Detecting failed measurements](#detecting-failed-measurements).
@@ -306,8 +346,8 @@ Latency: 24 ms, Download: 512.6 Mbps, Upload: 0 bps (32 of 32 requests failed)
 
 **CSV** — a `Succeeded` and `Failed` column sits next to each speed column, and a total failure reports a speed of `0` beside the counts that say so:
 ```
-Timestamp,LatencyMilliseconds,DownloadSpeedBitsPerSecond,DownloadSucceeded,DownloadFailed,UploadSpeedBitsPerSecond,UploadSucceeded,UploadFailed,IPAddress,Hostname
-1980-01-01T10:05:00+01:00,24,512600000,150,0,0,0,32,192.168.1.1,test-host
+Timestamp,LatencyMilliseconds,DownloadSpeedBitsPerSecond,DownloadSucceeded,DownloadFailed,UploadSpeedBitsPerSecond,UploadSucceeded,UploadFailed,IPAddress,Hostname,ServerLocation,ServerSponsor,ServerUrl,DeviceId
+1980-01-01T10:05:00+01:00,24,512600000,150,0,0,0,32,192.168.1.1,test-host,London,Foo Telecom,http://speedtest.foo.example:8080/speedtest/upload.php,
 ```
 
 **JSON** — each test that ran gains integer `…Succeeded` / `…Failed` fields alongside its speed. The schema keeps one shape: a total failure reports `0` with the counts beside it, exactly as the other formats do. Only a test you skipped (`--no-download`, `--no-upload`) omits its fields entirely:
