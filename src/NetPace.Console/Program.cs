@@ -1,4 +1,5 @@
 using System.CommandLine;
+using System.CommandLine.Parsing;
 using System.Globalization;
 
 using Microsoft.Extensions.DependencyInjection;
@@ -190,6 +191,33 @@ public static class Program
             CustomParser = result => OptionValues.UnitSystems.Parse(result, "--unit-system")
         };
 
+        var deviceIdOption = new Option<string>("--device-id")
+        {
+            Description = "Record a label for this machine in CSV and JSON output.\nThe CSV column is always present; the JSON field appears only when a label is given."
+        };
+
+        // Pinned rather than left to the default so that each occurrence takes exactly one
+        // key=value argument: a stray second word is then an unrecognised argument the user is told
+        // about, not a silently swallowed pair.
+        var customFieldOption = new Option<string[]>("--custom-field")
+        {
+            Description = $"Record a {CustomField.ExpectedForm} pair in CSV and JSON output.\nMay be given more than once, and is recorded in the order given.",
+            AllowMultipleArgumentsPerToken = false
+        };
+        // A validator, not a check at binding time, so a malformed pair fails the parse: the run
+        // stops before any test is performed in every output mode, including the ones that ignore
+        // custom fields altogether. A missing argument is already the parser's own error.
+        customFieldOption.Validators.Add(result =>
+        {
+            foreach (Token token in result.Tokens)
+            {
+                if (!CustomField.TryParse(token.Value, out _))
+                {
+                    result.AddError($"--custom-field '{token.Value}' is not in the form {CustomField.ExpectedForm}.");
+                }
+            }
+        });
+
         // --verbosity is retired, but stays registered so that a script still passing it gets a
         // message naming the removal rather than a generic unrecognised-option error. It takes an
         // optional string so that every former value - and no value at all - lands on the same
@@ -260,6 +288,8 @@ public static class Program
         command.Options.Add(unitOption);
         command.Options.Add(unitScaleOption);
         command.Options.Add(unitSystemOption);
+        command.Options.Add(deviceIdOption);
+        command.Options.Add(customFieldOption);
         command.Options.Add(verbosityOption);
         command.Options.Add(fileOption);
         command.Options.Add(fileModeOption);
@@ -299,7 +329,9 @@ public static class Program
                     FileModeValue = parseResult.GetValue(fileModeOption),
                     Quiet = parseResult.GetValue(quietOption),
                     FailOn = parseResult.GetValue(failOnOption),
-                    Diagnostics = parseResult.GetValue(diagnosticsOption)
+                    Diagnostics = parseResult.GetValue(diagnosticsOption),
+                    DeviceId = parseResult.GetValue(deviceIdOption),
+                    CustomFields = CustomField.ParseAll(parseResult.GetValue(customFieldOption))
                 };
 
                 // Validate settings

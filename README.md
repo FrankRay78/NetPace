@@ -133,6 +133,10 @@ OPTIONS:
                                       Applies to the default and minimal output.
                                       SI steps up in powers of 1000 (KB, MB, GB), common in networking, 
                                       while IEC uses powers of 1024 (KiB, MiB, GiB), standard in computing and storage.
+        --device-id                   Record a label for this machine in CSV and JSON output.
+                                      The CSV column is always present; the JSON field appears only when a label is given.
+        --custom-field                Record a key=value pair in CSV and JSON output.
+                                      May be given more than once, and is recorded in the order given.
     -f, --file                        Write output to file.
         --file-mode        append     Determines file output behavior. <append, overwrite>
     -q, --quiet                       Suppress all normal console output (file output still works).

@@ -90,4 +90,21 @@ public sealed record JsonResult
     /// Gets the hostname of the device running the speed test.
     /// </summary>
     public required string Hostname { get; init; }
+
+    /// <summary>
+    /// Gets the label the user gave this machine, or <see langword="null"/> when none was given, in
+    /// which case the field is left out — the shape JSON uses for what does not apply. A stable
+    /// label of the user's own, so logs merged from several machines group and filter by it however
+    /// a machine is renamed or readdressed.
+    /// </summary>
+    public string? DeviceId { get; init; }
+
+    // User-defined fields
+
+    /// <summary>
+    /// Gets the user-defined pairs recorded for this run, or <see langword="null"/> when none were
+    /// given, in which case the object is left out. Grouped in one object so a custom key can never
+    /// replace a built-in field, and a key given more than once keeps the last value given.
+    /// </summary>
+    public IReadOnlyDictionary<string, string>? CustomFields { get; init; }
 }

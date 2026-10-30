@@ -86,7 +86,9 @@ public sealed class SpeedTestStub : ISpeedTestService
     /// <inheritdoc/>
     public Task<LatencyTestResult> GetServerLatencyAsync(string serverUrl, IProgress<LatencyTestProgress> progress, CancellationToken cancellationToken = default)
     {
-        var server = new Server() { Location = "(Unknown)", Sponsor = "(Unknown)", Url = serverUrl };
+        // Matches what OoklaSpeedtest builds for a server named by URL: a sponsor of "(Unknown)"
+        // and no location, so a snapshot of this path records what the real client would report.
+        var server = new Server() { Sponsor = "(Unknown)", Url = serverUrl };
 
         return GetServerLatencyAsync(server, progress, cancellationToken);
     }
