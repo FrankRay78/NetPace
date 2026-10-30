@@ -45,9 +45,15 @@ internal sealed class OptionValueSet<T>(params (string Spelling, T Value)[] choi
     /// <paramref name="optionName"/>, listing the valid values exactly as the help lists them.
     /// </summary>
     /// <remarks>
+    /// No option NetPace ships allows its value to be omitted, so for those System.CommandLine's
+    /// own arity check refuses a missing value before this parser runs. The missing-token branch
+    /// guards an option that sets <c>ArgumentArity.ZeroOrOne</c>, which would otherwise index an
+    /// empty token list.
+    /// <para>
     /// The value returned after an error is read by nobody: <c>Program.RunAsync</c> returns on a
     /// non-empty <c>ParseResult.Errors</c> before invoking the command. It is not a sentinel —
     /// <c>default(T)</c> is a real choice for every set here, <see cref="FailOn.None"/> among them.
+    /// </para>
     /// </remarks>
     public T Parse(ArgumentResult result, string optionName)
     {

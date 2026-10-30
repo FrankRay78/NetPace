@@ -1,3 +1,5 @@
+using NetPace.Core.Clients.Ookla;
+
 namespace NetPace.Console.Tests;
 
 public sealed partial class NetPaceConsoleTests
@@ -86,6 +88,54 @@ public sealed partial class NetPaceConsoleTests
 
         // Then
         Assert.Equal(0, result.ExitCode);
+    }
+
+    [InlineData("tiny", Profile.Tiny)]
+    [InlineData("small", Profile.Small)]
+    [InlineData("medium", Profile.Medium)]
+    [InlineData("large", Profile.Large)]
+    [InlineData("mega", Profile.Mega)]
+    [Theory]
+    public async Task Profile_EachSpelling_BindsToItsProfile(string value, Profile profile)
+    {
+        // Given
+        var (services, accessor) = BuildServicesWithSettingsAccessor();
+        var host = GetCommandLineTestHost(services);
+
+        // When
+        var result = await host.RunAsync(["--profile", value]);
+
+        // Then — assert field-for-field (int[] DownloadSizes uses reference equality).
+        Assert.Equal(0, result.ExitCode);
+        var expected = new OoklaSpeedtestSettings(profile);
+        Assert.Equal(expected.DownloadTest.DownloadSizes, accessor.Settings.DownloadTest.DownloadSizes);
+        Assert.Equal(expected.DownloadTest.DownloadSizeIterations, accessor.Settings.DownloadTest.DownloadSizeIterations);
+        Assert.Equal(expected.DownloadTest.DownloadParallelTasks, accessor.Settings.DownloadTest.DownloadParallelTasks);
+        Assert.Equal(expected.DownloadTest.DownloadSizeMb, accessor.Settings.DownloadTest.DownloadSizeMb);
+        Assert.Equal(expected.UploadTest.UploadSizeIncrementKb, accessor.Settings.UploadTest.UploadSizeIncrementKb);
+        Assert.Equal(expected.UploadTest.UploadIncrements, accessor.Settings.UploadTest.UploadIncrements);
+        Assert.Equal(expected.UploadTest.UploadSizeIterations, accessor.Settings.UploadTest.UploadSizeIterations);
+        Assert.Equal(expected.UploadTest.UploadParallelTasks, accessor.Settings.UploadTest.UploadParallelTasks);
+        Assert.Equal(expected.UploadTest.UploadSizeMb, accessor.Settings.UploadTest.UploadSizeMb);
+    }
+
+    [InlineData("auto")]
+    [InlineData("base")]
+    [InlineData("giga")]
+    [InlineData("tera")]
+    [InlineData("peta")]
+    [Theory]
+    public async Task UnitScale_EachSpelling_ShowsSpeedsInItsScale(string value)
+    {
+        // Given
+        var host = GetOptionValuesTestHost();
+
+        // When
+        var result = await host.RunAsync(["--minimal", "--unit-scale", value]);
+
+        // Then — the snapshot shows the scale each spelling selects.
+        Assert.Equal(0, result.ExitCode);
+        await Verify(result.Output).UseParameters(value);
     }
 
     [InlineData("bits", "Bits", "BITS")]
