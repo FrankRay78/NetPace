@@ -195,22 +195,19 @@ public static class Program
             Description = "Record a label for this machine in CSV and JSON output.\nThe CSV column is always present; the JSON field appears only when a label is given."
         };
 
-        // Each occurrence takes one key=value argument, and the validator - not the binding - is
-        // what refuses a malformed one: a parse error stops the run in every output mode, including
-        // the ones that ignore custom fields, before any test is performed.
+        // Pinned rather than left to the default so that each occurrence takes exactly one
+        // key=value argument: a stray second word is then an unrecognised argument the user is told
+        // about, not a silently swallowed pair.
         var customFieldOption = new Option<string[]>("--custom-field")
         {
             Description = $"Record a {CustomField.ExpectedForm} pair in CSV and JSON output.\nMay be given more than once, and is recorded in the order given.",
             AllowMultipleArgumentsPerToken = false
         };
+        // A validator, not a check at binding time, so a malformed pair fails the parse: the run
+        // stops before any test is performed in every output mode, including the ones that ignore
+        // custom fields altogether. A missing argument is already the parser's own error.
         customFieldOption.Validators.Add(result =>
         {
-            if (result.Tokens.Count == 0)
-            {
-                result.AddError($"--custom-field requires a value in the form {CustomField.ExpectedForm}.");
-                return;
-            }
-
             foreach (var token in result.Tokens)
             {
                 if (!CustomField.TryParse(token.Value, out _))
