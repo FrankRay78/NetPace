@@ -36,6 +36,12 @@ public class VariableSpeedTester : ISpeedTestService
             // one test and must report the figure that test stands for.
             GetServerLatencyAsyncFunc = (server, _, _) => Task.FromResult(LatencyForCurrentTest(server)),
 
+            // A caller may name its own server instead of letting the tester choose one. The
+            // server is built as the real provider builds it — the URL asked for and the sponsor
+            // placeholder, with no location the caller never supplied.
+            GetServerLatencyByServerUrlAsyncFunc = (serverUrl, _, _) =>
+                Task.FromResult(LatencyForCurrentTest(new Server { Sponsor = "(Unknown)", Url = serverUrl })),
+
             GetDownloadSpeedAsyncFunc = (server, _, _) =>
             {
                 // Call 1: 31,250 bytes in 1 second = 250,000 bits/second = 0.25 Mbps
