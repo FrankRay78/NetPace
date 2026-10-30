@@ -3,10 +3,34 @@ using NetPace.Core.Clients.Ookla;
 namespace NetPace.Core.Clients.Testing;
 
 /// <summary>
-/// A stub implementation of <see cref="ISpeedTestService"/> for testing purposes.
+/// A stub implementation of <see cref="ISpeedTestService"/> that reports the same fixed figures
+/// every run, for testing purposes.
 /// </summary>
 /// <remarks>
+/// <para>
+/// The stub holds three servers, numbered 1 to 3 by their sponsor, and every figure it reports is
+/// that number multiplied out. A server it does not hold, including one named by a URL it does not
+/// match, counts as number 10.
+/// </para>
+/// <list type="bullet">
+/// <item><description>Latency is 100ms times the server number.</description></item>
+/// <item><description>A download is 1,000 bytes over 1 second times the server number, from 150 requests, none failed.</description></item>
+/// <item><description>An upload is 7,000 bytes over 3 seconds times the server number, from 32 requests, none failed.</description></item>
+/// <item><description>Screening wins the lowest-numbered candidate offered, at that server's latency.</description></item>
+/// </list>
+/// <para>
+/// So the figures are fixed but not uniform: a consumer comparing two servers sees two different
+/// speeds, and one measuring the same server twice sees the same speed.
+/// </para>
+/// <para>
+/// A latency probe reports progress at 25, 50, 75 and 100 percent, screening at 33, 66 and 100,
+/// and a transfer reports <see cref="SpeedTestProgressClimb"/> towards the result it goes on to
+/// return. Constructed with a delay, the stub pauses by that many milliseconds before each report,
+/// so a consumer can watch a stubbed measurement unfold rather than complete at once.
+/// </para>
+/// <para>
 /// The diagnostics overloads report nothing: the stub fabricates aggregate results rather than issuing requests, so there are no per-request diagnostics to report.
+/// </para>
 /// </remarks>
 public sealed class SpeedTestStub : ISpeedTestService
 {
@@ -25,8 +49,10 @@ public sealed class SpeedTestStub : ISpeedTestService
     public SpeedTestStub() { }
 
     /// <summary>
-    /// Constructs a new <see cref="SpeedTestStub"/> instance with a specified delay for progress updates.
+    /// Constructs a new <see cref="SpeedTestStub"/> instance that pauses by
+    /// <paramref name="delayMilliseconds"/> before each progress report.
     /// </summary>
+    /// <param name="delayMilliseconds">The pause before each progress report, in milliseconds.</param>
     public SpeedTestStub(int delayMilliseconds)
     {
         this.delayMilliseconds = delayMilliseconds;
@@ -102,15 +128,12 @@ public sealed class SpeedTestStub : ISpeedTestService
     /// <inheritdoc/>
     public Task<LatencyTestResult> GetFastestServerByLatencyAsync(IServer[] servers, IProgress<SpeedTestProgress> progress, CancellationToken cancellationToken = default)
     {
-        if (progress is not null)
-        {
-            Task.Delay(delayMilliseconds).Wait();
-            progress.Report(new SpeedTestProgress { PercentageComplete = 33 });
-            Task.Delay(delayMilliseconds).Wait();
-            progress.Report(new SpeedTestProgress { PercentageComplete = 66 });
-            Task.Delay(delayMilliseconds).Wait();
-            progress.Report(new SpeedTestProgress { PercentageComplete = 100 });
-        }
+        Task.Delay(delayMilliseconds).Wait();
+        progress.Report(new SpeedTestProgress { PercentageComplete = 33 });
+        Task.Delay(delayMilliseconds).Wait();
+        progress.Report(new SpeedTestProgress { PercentageComplete = 66 });
+        Task.Delay(delayMilliseconds).Wait();
+        progress.Report(new SpeedTestProgress { PercentageComplete = 100 });
 
         // Every candidate offered is screened and the lowest-numbered one wins. Callers screen a
         // single candidate through this method as well as a list, so the winner is taken from the
@@ -168,14 +191,9 @@ public sealed class SpeedTestStub : ISpeedTestService
     /// Reports progress towards <paramref name="result"/>, pausing by the configured delay before
     /// each report.
     /// </summary>
-    private void ReportClimbTo(SpeedTestResult result, IProgress<SpeedTestProgress>? progress)
+    private void ReportClimbTo(SpeedTestResult result, IProgress<SpeedTestProgress> progress)
     {
-        if (progress is null)
-        {
-            return;
-        }
-
-        foreach (var report in SpeedTestProgressClimb.Towards(result))
+        foreach (SpeedTestProgress report in SpeedTestProgressClimb.Towards(result))
         {
             Task.Delay(delayMilliseconds).Wait();
 

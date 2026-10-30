@@ -11,8 +11,26 @@ namespace NetPace.Core.Clients.Testing;
 /// Developers should used this service to test the fault tolerance of their application.
 /// </para>
 /// <para>
-/// Default behavior throws an exception when "Test Sponsor 2" is passed into
-/// the GetServerLatencyAsync method.
+/// Every figure comes from the service this one wraps — <see cref="SpeedTestStub"/> unless another
+/// is supplied — so the tester adds failures without changing what succeeds. Which calls fail is
+/// decided per server and per operation: by default, a latency probe to "Test Sponsor 2" fails,
+/// and nothing else does. A transfer to that same server succeeds, because the default fault is
+/// scoped to the one operation rather than to the server as a whole.
+/// </para>
+/// <para>
+/// Screening is itself a latency probe, so a server whose latency probe fails drops out of
+/// selection rather than being ranked, and a selection left with no reachable candidate fails
+/// instead of returning one it could not measure.
+/// </para>
+/// <para>
+/// A server named by URL is judged on the server the probe comes back with, not on the URL: the
+/// sponsor is only known once the wrapped service has answered. The stub names such a server with
+/// a placeholder sponsor, which the default fault does not match, so naming the unreachable
+/// server's URL succeeds.
+/// </para>
+/// <para>
+/// Listing servers never fails, so a consumer discovers the unreachable server and only finds out
+/// it is unreachable when it measures.
 /// </para>
 /// </remarks>
 public class FaultySpeedTester : ISpeedTestService
@@ -23,6 +41,12 @@ public class FaultySpeedTester : ISpeedTestService
     /// <summary>
     /// Constructs a new <see cref="FaultySpeedTester"/> instance.
     /// </summary>
+    /// <param name="inner">The service supplying the figures behind the failures. Defaults to a <see cref="SpeedTestStub"/>.</param>
+    /// <param name="isFaulted">
+    /// Decides whether a call fails, from the server's sponsor and the name of the operation being
+    /// called. A rule supplied here replaces the default entirely, so the default fault on
+    /// "Test Sponsor 2" no longer applies.
+    /// </param>
     public FaultySpeedTester(
         ISpeedTestService? inner = null,
         Func<string?, string, bool>? isFaulted = null)
