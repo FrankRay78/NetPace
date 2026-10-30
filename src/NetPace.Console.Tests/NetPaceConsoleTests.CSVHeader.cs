@@ -1,3 +1,4 @@
+using System.Runtime.Versioning;
 using System.Text;
 
 namespace NetPace.Console.Tests;
@@ -278,6 +279,80 @@ public sealed partial class NetPaceConsoleTests
             // Then the header is the log's first line, not one below a blank line
             Assert.Equal(0, result.ExitCode);
 
+            var fileContent = await System.IO.File.ReadAllTextAsync(log.FilePath);
+            await Verify(fileContent);
+        }
+
+        [Fact]
+        public async Task Should_Write_The_Header_On_The_First_Line_When_The_Log_Holds_A_Byte_Order_Mark_And_A_Windows_Line_Ending()
+        {
+            // Given a log file holding a byte-order mark and a Windows line ending, the longest file
+            // that still holds no row
+            using var log = new TempLogFile();
+            await System.IO.File.WriteAllBytesAsync(log.FilePath, [.. Encoding.UTF8.GetPreamble(), (byte)'\r', (byte)'\n']);
+
+            // When a CSV result is appended to it
+            var result = await NewHost().RunAsync(["--csv", "--file", log.FilePath]);
+
+            // Then the header is the log's first line
+            Assert.Equal(0, result.ExitCode);
+
+            var fileContent = await System.IO.File.ReadAllTextAsync(log.FilePath);
+            await Verify(fileContent);
+        }
+
+        [Fact]
+        public async Task Should_Write_The_Header_On_The_First_Line_When_The_Log_Holds_Only_A_Windows_Line_Ending()
+        {
+            // Given a log file holding nothing but the line ending `echo.>log.csv` leaves behind
+            using var log = new TempLogFile();
+            await System.IO.File.WriteAllTextAsync(log.FilePath, "\r\n");
+
+            // When a CSV result is appended to it
+            var result = await NewHost().RunAsync(["--csv", "--file", log.FilePath]);
+
+            // Then the header is the log's first line
+            Assert.Equal(0, result.ExitCode);
+
+            var fileContent = await System.IO.File.ReadAllTextAsync(log.FilePath);
+            await Verify(fileContent);
+        }
+
+        [Fact]
+        public async Task Should_Keep_A_Log_Of_Blank_Lines_Longer_Than_A_Byte_Order_Mark_And_A_Line_Ending()
+        {
+            // Given a log file of blank lines, one byte longer than the longest file that holds no row
+            using var log = new TempLogFile();
+            await System.IO.File.WriteAllTextAsync(log.FilePath, "\r\n\r\n\r\n");
+
+            // When a CSV result is appended to it
+            var result = await NewHost().RunAsync(["--csv", "--file", log.FilePath]);
+
+            // Then those lines are kept and the row is added beneath them, with no header
+            Assert.Equal(0, result.ExitCode);
+
+            var fileContent = await System.IO.File.ReadAllTextAsync(log.FilePath);
+            await Verify(fileContent);
+        }
+
+        [Fact]
+        [UnsupportedOSPlatform("windows")]
+        public async Task Should_Write_To_An_Empty_Log_That_Can_Be_Written_But_Not_Read()
+        {
+            // Given an empty log that NetPace may write to but not read, as one pre-created for a
+            // service account can be. File modes are a Unix permission model, so this fails loudly
+            // rather than skipping on Windows (Constitution §X).
+            using var log = new TempLogFile();
+            await System.IO.File.WriteAllTextAsync(log.FilePath, string.Empty);
+            System.IO.File.SetUnixFileMode(log.FilePath, UnixFileMode.UserWrite);
+
+            // When a CSV result is appended to it
+            var result = await NewHost().RunAsync(["--csv", "--file", log.FilePath]);
+
+            // Then the run succeeds and the log holds the header line followed by one data row
+            Assert.Equal(0, result.ExitCode);
+
+            System.IO.File.SetUnixFileMode(log.FilePath, UnixFileMode.UserRead | UnixFileMode.UserWrite);
             var fileContent = await System.IO.File.ReadAllTextAsync(log.FilePath);
             await Verify(fileContent);
         }

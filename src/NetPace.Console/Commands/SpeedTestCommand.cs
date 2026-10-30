@@ -232,7 +232,10 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
             file = target;
         }
 
-        if (!file.Exists) return true;
+        // Nothing to read means empty, and is answered without opening the file: a named pipe or a
+        // terminal reports no length and would block a read, and a log may be writable but not
+        // readable.
+        if (!file.Exists || file.Length == 0) return true;
 
         // A file holding only a byte-order mark and/or a line ending counts as empty, not as
         // content. FileConsole opens the file with Encoding.UTF8, which writes a byte-order mark
@@ -244,7 +247,19 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
         var preamble = Encoding.UTF8.GetPreamble();
         if (file.Length > preamble.Length + 2) return false;
 
-        ReadOnlySpan<byte> content = File.ReadAllBytes(file.FullName);
+        byte[] bytes;
+        try
+        {
+            bytes = File.ReadAllBytes(file.FullName);
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+            // A file that cannot be read is taken as content, so it is appended to and never
+            // replaced.
+            return false;
+        }
+
+        ReadOnlySpan<byte> content = bytes;
         if (content.StartsWith(preamble)) content = content[preamble.Length..];
 
         return content.IndexOfAnyExcept((byte)'\r', (byte)'\n') < 0;
