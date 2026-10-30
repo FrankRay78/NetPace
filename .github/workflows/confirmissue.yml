@@ -56,6 +56,14 @@ jobs:
         with:
           fetch-depth: 0
 
+      # The model and effort come from the stage table, scripts/stage-models.tsv. A stage the
+      # table does not answer fails here, before claude starts on whatever the default is.
+      - name: Look up this stage's model
+        id: model
+        run: |
+          args=$(bash scripts/stage-flags.sh confirmissue)
+          echo "args=$args" >> "$GITHUB_OUTPUT"
+
       # A workflow step, not a prompt instruction: a model can skip an instruction. Narrower than
       # the command's own "already confirmed" stop, which fires on the decisions section *or* the
       # label; this reads the label only. What it buys is not a green run — a genuinely confirmed
@@ -134,7 +142,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          claude_args: '--allowedTools "Read,Write,Bash(mkdir:*),Bash(jq:*),Bash(gh issue view:*),Bash(gh issue edit:*),Bash(gh api:*)"'
+          claude_args: '${{ steps.model.outputs.args }} --allowedTools "Read,Write,Bash(mkdir:*),Bash(jq:*),Bash(gh issue view:*),Bash(gh issue edit:*),Bash(gh api:*)"'
           prompt: |
             Confirm the answered pre-specification review for issue #${{ env.ISSUE_NUMBER }} in repository ${{ github.repository }}. The default branch is `main`.
 
