@@ -1,4 +1,5 @@
 using System.CommandLine;
+using System.CommandLine.Parsing;
 using System.Globalization;
 
 using Microsoft.Extensions.DependencyInjection;
@@ -208,7 +209,7 @@ public static class Program
         // custom fields altogether. A missing argument is already the parser's own error.
         customFieldOption.Validators.Add(result =>
         {
-            foreach (var token in result.Tokens)
+            foreach (Token token in result.Tokens)
             {
                 if (!CustomField.TryParse(token.Value, out _))
                 {

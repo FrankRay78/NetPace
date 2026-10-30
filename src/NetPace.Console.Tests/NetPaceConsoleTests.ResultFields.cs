@@ -63,7 +63,7 @@ public sealed partial class NetPaceConsoleTests
             // new built-in columns follow Hostname.
             Assert.Equal(0, result.ExitCode);
             string[][] records = CsvOutput.Records(result.Output);
-            Assert.Equal(OriginalCsvColumns, records[0].Take(OriginalCsvColumns.Length).ToArray());
+            Assert.Equal(OriginalCsvColumns, records[0].Take(OriginalCsvColumns.Length));
             Assert.Equal<string[]>(
                 ["ServerLocation", "ServerSponsor", "ServerUrl", "DeviceId"],
                 [.. records[0].Skip(OriginalCsvColumns.Length)]);
@@ -153,14 +153,14 @@ public sealed partial class NetPaceConsoleTests
             // Then they are grouped in one object, holding both pairs as given.
             Assert.Equal(0, result.ExitCode);
             using var document = JsonDocument.Parse(result.Output);
-            var customFields = document.RootElement.GetProperty("CustomFields");
+            JsonElement customFields = document.RootElement.GetProperty("CustomFields");
             Assert.Equal("home", customFields.GetProperty("site").GetString());
             Assert.Equal("500M", customFields.GetProperty("plan").GetString());
 
             // And every built-in field reads exactly as it does without them.
             var builtIn = await GetCommandLineTestHost(StubServices()).RunAsync(["--json"]);
             using var builtInDocument = JsonDocument.Parse(builtIn.Output);
-            foreach (var property in builtInDocument.RootElement.EnumerateObject())
+            foreach (JsonProperty property in builtInDocument.RootElement.EnumerateObject())
             {
                 Assert.Equal(property.Value.GetRawText(), document.RootElement.GetProperty(property.Name).GetRawText());
             }
@@ -287,7 +287,7 @@ public sealed partial class NetPaceConsoleTests
             // Then one pair is written, carrying the last value.
             Assert.Equal(0, result.ExitCode);
             using var document = JsonDocument.Parse(result.Output);
-            var customFields = document.RootElement.GetProperty("CustomFields");
+            JsonElement customFields = document.RootElement.GetProperty("CustomFields");
             Assert.Single(customFields.EnumerateObject());
             Assert.Equal("office", customFields.GetProperty("site").GetString());
         }
@@ -323,6 +323,114 @@ public sealed partial class NetPaceConsoleTests
             Assert.Equal(0, plain.ExitCode);
             Assert.Equal(0, labelled.ExitCode);
             Assert.Equal(plain.Output, labelled.Output);
+        }
+
+        [Fact]
+        public async Task Should_Carry_The_Same_Field_Names_In_Csv_As_In_Json()
+        {
+            // Given the same run reported in both machine-readable formats, with a device label so
+            // that neither format is leaving a built-in field out.
+            var csv = await GetCommandLineTestHost(StubServices()).RunAsync(["--csv", "--device-id", "kitchen-pi"]);
+            var json = await GetCommandLineTestHost(StubServices()).RunAsync(["--json", "--device-id", "kitchen-pi"]);
+
+            // Then the two carry exactly the same field names, so a field reaching only one of them
+            // fails here rather than reaching a user.
+            Assert.Equal(0, csv.ExitCode);
+            Assert.Equal(0, json.ExitCode);
+            using var document = JsonDocument.Parse(json.Output);
+            string[] jsonFields = [.. document.RootElement.EnumerateObject().Select(property => property.Name).Order()];
+            Assert.Equal<string[]>(jsonFields, [.. CsvOutput.Records(csv.Output)[0].Order()]);
+        }
+
+        [Theory]
+        [InlineData("plan=500M/mo, unlimited", "plan", "500M/mo, unlimited")]
+        [InlineData("note=he said \"ok\"", "note", "he said \"ok\"")]
+        [InlineData("a,b=c", "a,b", "c")]
+        public async Task Should_Recover_A_Custom_Field_From_Csv_Whatever_It_Carries(string argument, string key, string value)
+        {
+            // Given a custom field whose key or value carries a comma or a double quote - the
+            // characters that would otherwise break a row apart.
+            var result = await GetCommandLineTestHost(StubServices()).RunAsync(["--csv", "--custom-field", argument]);
+
+            // Then a standard CSV reader recovers both whole, and the row still lines up with its
+            // header.
+            Assert.Equal(0, result.ExitCode);
+            string[][] records = CsvOutput.Records(result.Output);
+            Assert.Equal(records[0].Length, records[1].Length);
+            Assert.Equal(key, records[0][^1]);
+            Assert.Equal(value, records[1][^1]);
+        }
+
+        [Fact]
+        public async Task Should_Recover_A_Device_Label_From_Csv_That_Carries_A_Comma()
+        {
+            // Given a device label carrying a comma and a double quote.
+            const string label = "kitchen, \"the pi\"";
+
+            // When a CSV run records it.
+            var result = await GetCommandLineTestHost(StubServices()).RunAsync(["--csv", "--device-id", label]);
+
+            // Then it reads back whole and the row still lines up with its header.
+            Assert.Equal(0, result.ExitCode);
+            string[][] records = CsvOutput.Records(result.Output);
+            Assert.Equal(records[0].Length, records[1].Length);
+            Assert.Equal(label, CsvOutput.Field(records, "DeviceId"));
+        }
+
+        [Fact]
+        public async Task Should_Write_An_Empty_Json_Device_Field_When_The_Label_Is_Empty()
+        {
+            // Given an empty device label, which is what --device-id "$DEVICE" sends when DEVICE is
+            // unset. An empty label is not the same as giving no label at all.
+            var csv = await GetCommandLineTestHost(StubServices()).RunAsync(["--csv", "--device-id", ""]);
+            var json = await GetCommandLineTestHost(StubServices()).RunAsync(["--json", "--device-id", ""]);
+
+            // Then JSON carries the field, empty, rather than leaving it out as it does for no
+            // label; CSV writes the same empty cell it writes for either.
+            Assert.Equal(0, csv.ExitCode);
+            Assert.Equal(0, json.ExitCode);
+            Assert.Equal(string.Empty, CsvOutput.Field(CsvOutput.Records(csv.Output), "DeviceId"));
+            using var document = JsonDocument.Parse(json.Output);
+            Assert.True(document.RootElement.TryGetProperty("DeviceId", out JsonElement deviceId));
+            Assert.Equal(string.Empty, deviceId.GetString());
+        }
+
+        [Fact]
+        public async Task Should_Write_The_Custom_Columns_Once_For_A_Log_Of_Several_Runs()
+        {
+            // Given three runs collected into one CSV log, each carrying two custom fields.
+            var result = await GetCommandLineTestHost(StubServices()).RunAsync(
+                ["--csv", "--count", "3", "--custom-field", "site=home", "--custom-field", "plan=500M"]);
+
+            // Then one header names the custom columns, and every row carries their values in the
+            // same positions - the alignment a log collected over time depends on.
+            Assert.Equal(0, result.ExitCode);
+            string[][] records = CsvOutput.Records(result.Output);
+            Assert.Equal(4, records.Length);
+            Assert.Equal<string[]>(["site", "plan"], [.. records[0].TakeLast(2)]);
+            foreach (string[] row in records.Skip(1))
+            {
+                Assert.Equal(records[0].Length, row.Length);
+                Assert.Equal<string[]>(["home", "500M"], [.. row.TakeLast(2)]);
+            }
+        }
+
+        [Fact]
+        public async Task Should_Reject_A_Custom_Key_That_Spans_More_Than_One_Line()
+        {
+            // Given a speed tester that records the one call a run makes before measuring.
+            var (host, serviceCalls) = HostRecordingMeasurements();
+
+            // When a custom field's key carries a line break. CSV writes a line break as a space to
+            // keep one record per line, so such a key would name one column in CSV and a different
+            // JSON property for the same pair.
+            var result = await host.RunAsync(["--csv", "--custom-field", "si\nte=home"]);
+
+            // Then the run stopped before it looked for a server, rather than recording one pair
+            // under two names.
+            Assert.Empty(serviceCalls);
+            Assert.NotEqual(0, result.ExitCode);
+            Assert.Contains("key=value", result.Output);
         }
 
         /// <summary>

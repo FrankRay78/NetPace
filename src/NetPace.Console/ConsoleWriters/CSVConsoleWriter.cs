@@ -35,10 +35,11 @@ public sealed class CSVConsoleWriter : IConsoleWriter
         // Header row, emitted on the first iteration of a run, and not at all where
         // --no-csv-header asks for rows only. Which destinations receive it is settled below: one
         // that already holds content is not sent the header, so a log appended to across runs does
-        // not gain a header line between every pair of rows. Every column is present whichever
-        // tests ran, so a script can read by name or by position and an appended log keeps one
-        // shape. The server and device columns follow Hostname, and any custom columns follow
-        // those, so the ten columns NetPace wrote before them keep their names, order and positions.
+        // not gain a header line between every pair of rows. Every built-in column is present
+        // whichever tests ran, so a script can read by name or by position. The server and device
+        // columns follow Hostname, and any custom columns follow those, so the ten columns NetPace
+        // wrote before them keep their names, order and positions. The custom columns are per
+        // invocation, so only the built-in prefix keeps one shape across runs.
         if (initialSpeedTest && !settings.NoCSVHeader)
         {
             string header = Record([

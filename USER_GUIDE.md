@@ -136,7 +136,7 @@ Neither option reaches the default or minimal output. Both describe the run for 
 
 #### When the columns change, start a new log
 
-`--file` appends by default, and NetPace does not read an existing file's header before adding to it. Changing `--device-id`, changing the set of `--custom-field` pairs, or upgrading to a NetPace that writes more columns of its own, therefore appends rows of a new shape under the old header line. **Start a new log whenever the columns change** — nothing stops you doing otherwise, and the result is a file no CSV reader can make sense of as a whole.
+`--file` appends by default, and every run writes its own header line, so an appended log already carries one header per run. Changing `--device-id`, changing the set of `--custom-field` pairs, or upgrading to a NetPace that writes more columns of its own therefore leaves the file holding headers that disagree with each other. **Start a new log whenever the columns change** — nothing stops you doing otherwise, and the result is a file no CSV reader can make sense of as a whole.
 
 ### Numeric values in CSV
 
@@ -158,7 +158,7 @@ Timestamp,LatencyMilliseconds,DownloadSpeedBitsPerSecond,DownloadSucceeded,Downl
 
 **`--unit`, `--unit-scale` and `--unit-system` do not change CSV output at all.** They shape the default and minimal output only. That is what makes a CSV log safe to append to: under the default automatic scale a formatted speed can be `Kbps` on one run and `Mbps` on the next, so a file collecting rows over weeks would mix units in one column. The numbers never shift, so `--csv` works with `--count` and `--loop` whatever the unit options say, and the numbers match [the numeric fields in JSON](#numeric-values-in-json) for the same run.
 
-The header is the same columns in the same order on every run, whichever tests ran: every built-in column, then one column per `--custom-field` pair. A test you skipped with `--no-latency`, `--no-download` or `--no-upload` leaves its cells empty rather than dropping its columns, so a script reading by position is not moved along by a skipped test:
+The built-in columns are the same columns in the same order on every run, whichever tests ran, with one column per `--custom-field` pair after them — so two runs given different custom fields do not share a header. A test you skipped with `--no-latency`, `--no-download` or `--no-upload` leaves its cells empty rather than dropping its columns, so a script reading by position is not moved along by a skipped test:
 
 ```bash
 netpace --csv --no-upload

@@ -1,3 +1,5 @@
+using System.Diagnostics.CodeAnalysis;
+
 namespace NetPace.Console;
 
 /// <summary>
@@ -35,21 +37,20 @@ public sealed record CustomField
     /// <summary>
     /// Reads one <c>key=value</c> argument. The key is everything before the first separator and
     /// the value everything after it, so a value may carry a separator of its own and may be empty.
+    /// The key must be a single line, because CSV writes a line break as a space: a key carrying one
+    /// would name a different column than the JSON property of the same pair, and the two formats
+    /// are meant to carry the same fields under the same names.
     /// </summary>
     /// <param name="argument">The argument as it arrived on the command line.</param>
     /// <param name="field">The field read, or <see langword="null"/> when the argument is not one.</param>
     /// <returns>
-    /// <see langword="true"/> when the argument carries a key and a value; <see langword="false"/>
-    /// when it holds no separator, or nothing before the first one.
+    /// <see langword="true"/> when the argument holds a separator with a non-empty single-line key
+    /// before it; <see langword="false"/> when it holds no separator, nothing before the first one,
+    /// or a key spanning more than one line.
     /// </returns>
-    public static bool TryParse(string? argument, out CustomField? field)
+    public static bool TryParse(string argument, [NotNullWhen(true)] out CustomField? field)
     {
         field = null;
-
-        if (argument is null)
-        {
-            return false;
-        }
 
         int separator = argument.IndexOf(Separator);
         if (separator <= 0)
@@ -57,9 +58,15 @@ public sealed record CustomField
             return false;
         }
 
+        string key = argument[..separator];
+        if (key.Contains('\r') || key.Contains('\n'))
+        {
+            return false;
+        }
+
         field = new CustomField
         {
-            Key = argument[..separator],
+            Key = key,
             Value = argument[(separator + 1)..]
         };
 
@@ -70,10 +77,14 @@ public sealed record CustomField
     /// Reads every <c>key=value</c> argument, keeping the order they were given in.
     /// </summary>
     /// <remarks>
-    /// An argument that is not a key and a value is left out, and none ever reaches here: the
-    /// <c>--custom-field</c> option's own validator fails the parse first, so the run stops with a
-    /// message naming the expected form before any test is performed.
+    /// Nothing is dropped. The <c>--custom-field</c> option's own validator fails the parse first,
+    /// so a malformed argument from the command line stops the run with a message naming the
+    /// expected form before any test is performed; one reaching here has bypassed that validation,
+    /// and is reported rather than silently left out.
     /// </remarks>
+    /// <exception cref="ArgumentException">
+    /// An argument is not in the form <c>key=value</c>.
+    /// </exception>
     public static IReadOnlyList<CustomField> ParseAll(IEnumerable<string>? arguments)
     {
         if (arguments is null)
@@ -84,10 +95,12 @@ public sealed record CustomField
         var fields = new List<CustomField>();
         foreach (string argument in arguments)
         {
-            if (TryParse(argument, out CustomField? field))
+            if (!TryParse(argument, out CustomField? field))
             {
-                fields.Add(field!);
+                throw new ArgumentException($"'{argument}' is not in the form {ExpectedForm}.", nameof(arguments));
             }
+
+            fields.Add(field);
         }
 
         return fields;
