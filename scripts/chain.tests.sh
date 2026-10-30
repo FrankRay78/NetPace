@@ -112,6 +112,12 @@ repo_state() { git -C "$REPO" rev-parse HEAD; git -C "$REPO" rev-parse --abbrev-
 # the call stall, and the `|` field separator is what makes a lost quote visible here.
 prompt_is() { call "$1" | grep -qF -- "-p|$2|"; }
 
+# Call n passes this model and this effort. table_model and table_effort read the stage table
+# through its own lookup, so a case asserts the table is honoured without restating what it says.
+flags_are() { call "$1" | grep -qF -- "--model|$2|" && call "$1" | grep -qF -- "--effort|$3|"; }
+table_model() { bash "$HERE/stage-flags.sh" "$1" | awk '{print $2}'; }
+table_effort() { bash "$HERE/stage-flags.sh" "$1" | awk '{print $4}'; }
+
 # The chain's closing message: its last two lines, after any stage report.
 closing() { printf '%s\n' "$OUTPUT" | tail -n 2; }
 # The single closing line, so an assertion cannot be satisfied by the echoed stage report.
@@ -134,6 +140,7 @@ ok "no stage is a study pass" '! grep -qF -- "/study" "$STUB_DIR/log"'
 ok "every stage counts itself out of three" '[ "$(grep -c "chain: \\[[0-9]*/3\\]" <<<"$OUTPUT")" = 6 ] && ! grep -q "chain: \\[[0-9]*/5\\]" <<<"$OUTPUT"'
 ok "every stage starts a fresh session" '! grep -qF -- "--resume|" "$STUB_DIR/log"'
 ok "every stage uses the one chosen model" '[ "$(grep -cF -- "--model|test-model|" "$STUB_DIR/log" 2>/dev/null)" = 3 ]'
+ok "and still its own effort from the stage table" 'flags_are 1 test-model "$(table_effort build)" && flags_are 2 test-model "$(table_effort verify)" && flags_are 3 test-model "$(table_effort raise-pr)"'
 ok "no stage is asked to prompt for permission" '[ "$(grep -cF -- "--dangerously-skip-permissions|" "$STUB_DIR/log" 2>/dev/null)" = 3 ]'
 ok "no stage can read the terminal" '[ ! -f "$STUB_DIR/stdin-leak" ]'
 ok "the closing line names the pull request that was raised" 'last_line | grep -qF "chain: done — https://github.com/o/r/pull/9"'
@@ -141,7 +148,27 @@ new_case
 reply 1 'READY branch=feature/270-x'; reply 2 'VERIFIED branch=feature/270-x'
 reply 3 'RAISED pr=https://github.com/o/r/pull/9'
 chain 270
-ok "with no override every stage still names the default model" '[ "$RC" = 0 ] && [ "$(grep -cF -- "--model|claude-opus-5|" "$STUB_DIR/log")" = 3 ]'
+ok "with no override every stage takes its model and effort from the stage table" '[ "$RC" = 0 ] && flags_are 1 "$(table_model build)" "$(table_effort build)" && flags_are 2 "$(table_model verify)" "$(table_effort verify)" && flags_are 3 "$(table_model raise-pr)" "$(table_effort raise-pr)"'
+# fixture_chain <table> — a copy of the chain beside the lookup and a fixture table, for the cases
+# that need a table whose rows tell the stages apart, or one that is broken.
+fixture_chain() { FIXTURE="$SB/case$cases/fixture"; mkdir -p "$FIXTURE"; cp "$CHAIN" "$HERE/stage-flags.sh" "$FIXTURE/"; printf '%s' "$1" > "$FIXTURE/stage-models.tsv"; }
+new_case
+reply 1 'READY branch=feature/270-x'; reply 2 'VERIFIED branch=feature/270-x'
+reply 3 'RAISED pr=https://github.com/o/r/pull/9'
+fixture_chain $'build m-build low\nverify m-verify medium\nraise-pr m-raise high\n'
+CHAIN="$FIXTURE/chain.sh" chain 270
+ok "each stage takes its own row, not another stage's" '[ "$RC" = 0 ] && flags_are 1 m-build low && flags_are 2 m-verify medium && flags_are 3 m-raise high'
+echo "A stage the table does not answer stops the run before any stage:"
+new_case
+fixture_chain $'build m-build low\nraise-pr m-raise high\n'
+CHAIN="$FIXTURE/chain.sh" chain 270
+ok "no stage starts" '[ "$(calls)" = 0 ]'
+ok "exits with the chain's own stage-table code, so the runner does not blame the issue" '[ "$RC" = 78 ]'
+ok "and says the stage table is at fault" 'grep -qF "stage table" <<<"$OUTPUT"'
+new_case
+fixture_chain $'build m-build low\nraise-pr m-raise high\n'
+CHAIN_MODEL=test-model CHAIN="$FIXTURE/chain.sh" chain 270
+ok "a model override does not stand in for the missing row" '[ "$RC" = 78 ] && [ "$(calls)" = 0 ]'
 new_case
 reply 1 'READY branch=feature/270-x'
 chain "#270"
@@ -702,7 +729,7 @@ ok "an empty override is no override" '[ "$RC" = 0 ] && [ "$(calls)" = 3 ]'
 # runs a copy, and its first stage overwrites that copy in place with nothing but `exit 97`.
 echo "A stage that rewrites the chain script does not derail the run:"
 new_case
-cp "$CHAIN" "$SB/case$cases/chain.sh"
+cp "$CHAIN" "$HERE/stage-flags.sh" "$HERE/stage-models.tsv" "$SB/case$cases/"
 cat > "$STUB_DIR/act-1" <<ACT
 for _ in \$(seq 1 4000); do echo 'exit 97'; done > "$SB/case$cases/chain.sh"
 ACT

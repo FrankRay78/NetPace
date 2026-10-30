@@ -30,7 +30,7 @@ Concrete substitutes for the generic builders in SKILL.md Phase 1, roughly faste
    dotnet run --project src/NetPace.Console -- --server http://localhost:18080/speedtest/upload.php --csv
    ./docker/ooklaserver/stop.sh     # tear down (docker compose down)
    ```
-   The Console `AssemblyName` is `netpace`. Output modes usable as a diff signal: `--csv`, `--csv-delimiter`, `--json`, `--json-pretty`.
+   The Console `AssemblyName` is `netpace`. Output modes usable as a diff signal: `--csv`, `--json`, `--json-pretty`, `--minimal`.
 
 6. **Direct curl probes against the Docker server** — isolate client-side vs server-side fault:
    ```bash

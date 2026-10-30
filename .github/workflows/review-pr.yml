@@ -69,6 +69,18 @@ jobs:
           ref: ${{ steps.pr.outputs.head }}
           fetch-depth: 0
 
+      # The model and effort come from the stage table, scripts/stage-models.tsv. A stage the
+      # table does not answer fails here, before claude starts on whatever the default is.
+      # Main's copy of both, not the checkout's, for the reason the cost step below gives: the PR
+      # head is not trusted, so a change to the table takes effect on merge, not on its own PR.
+      - name: Look up this stage's model
+        id: model
+        run: |
+          git show origin/main:scripts/stage-flags.sh > "$RUNNER_TEMP/stage-flags.sh"
+          git show origin/main:scripts/stage-models.tsv > "$RUNNER_TEMP/stage-models.tsv"
+          args=$(bash "$RUNNER_TEMP/stage-flags.sh" review-pr)
+          echo "args=$args" >> "$GITHUB_OUTPUT"
+
       # Counted before the action runs, so the check afterwards can require a *new* review rather
       # than merely one at the head commit. On `opened` this is always 0; on a re-dispatch of a
       # pull request that already carries a review it is not, and without the comparison a run
@@ -106,7 +118,7 @@ jobs:
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           github_token: ${{ github.token }}
-          claude_args: '--model opus --effort high --allowedTools "Read,Glob,Grep,Write,Agent,Bash(mkdir:*),Bash(git diff:*),Bash(git log:*),Bash(git show:*),Bash(git rev-parse:*),Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh issue view:*),Bash(gh api:*)"'
+          claude_args: '${{ steps.model.outputs.args }} --allowedTools "Read,Glob,Grep,Write,Agent,Bash(mkdir:*),Bash(git diff:*),Bash(git log:*),Bash(git show:*),Bash(git rev-parse:*),Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh issue view:*),Bash(gh api:*)"'
           prompt: |
             Review pull request #${{ env.PR_NUMBER }} in repository ${{ github.repository }}. The default branch is `main`.
 

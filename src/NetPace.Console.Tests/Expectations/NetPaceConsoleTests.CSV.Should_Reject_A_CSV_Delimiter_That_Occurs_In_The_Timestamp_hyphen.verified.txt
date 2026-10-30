@@ -1,1 +1,0 @@
-﻿Error: --csv-delimiter cannot be '-'. The CSV timestamp contains that character, so it would split the timestamp across two fields. Use a delimiter such as ',' or ';'.

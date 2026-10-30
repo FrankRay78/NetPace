@@ -28,15 +28,6 @@ internal static class Timestamps
     private const string MachineReadableFormat = "yyyy-MM-ddTHH:mm:sszzz";
 
     /// <summary>
-    /// Every character a machine-readable timestamp can contain: the digits, the date and time
-    /// separators, the <c>T</c> between them, and either sign of the UTC offset. The CSV writer
-    /// quotes nothing, so a delimiter drawn from this set would split the timestamp across two
-    /// fields and leave the row with one more field than its header — which is why
-    /// <c>--csv-delimiter</c> refuses them.
-    /// </summary>
-    internal const string MachineReadableCharacters = "0123456789-T:+";
-
-    /// <summary>
     /// Renders the instant for a person to read, as the default and minimal output do.
     /// </summary>
     internal static string ToHumanReadable(this DateTimeOffset value)

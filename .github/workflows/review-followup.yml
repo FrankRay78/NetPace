@@ -112,6 +112,19 @@ jobs:
             echo "skipped=true" >> "$GITHUB_OUTPUT"
           fi
 
+      # The model and effort come from the stage table, scripts/stage-models.tsv. A stage the
+      # table does not answer fails here, before claude starts on whatever the default is.
+      # Main's copy of both, not the checkout's, for the reason review-pr.yml's cost step gives: the PR
+      # head is not trusted, so a change to the table takes effect on merge, not on its own PR.
+      - name: Look up this stage's model
+        id: model
+        if: steps.guard.outputs.skipped != 'true'
+        run: |
+          git show origin/main:scripts/stage-flags.sh > "$RUNNER_TEMP/stage-flags.sh"
+          git show origin/main:scripts/stage-models.tsv > "$RUNNER_TEMP/stage-models.tsv"
+          args=$(bash "$RUNNER_TEMP/stage-flags.sh" review-followup)
+          echo "args=$args" >> "$GITHUB_OUTPUT"
+
       # `Bash(gh api:*)` is broader than the calls the command needs — it reaches any endpoint the
       # token can, and the allowlist cannot pin the method — but the command needs GraphQL for the
       # review threads and their resolve/unresolve mutations, and REST for the thread replies. The
@@ -128,7 +141,7 @@ jobs:
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           github_token: ${{ github.token }}
-          claude_args: '--model opus --effort high --allowedTools "Read,Glob,Grep,Write,Agent,Bash(mkdir:*),Bash(git diff:*),Bash(git log:*),Bash(git show:*),Bash(git rev-parse:*),Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh issue view:*),Bash(gh api:*)"'
+          claude_args: '${{ steps.model.outputs.args }} --allowedTools "Read,Glob,Grep,Write,Agent,Bash(mkdir:*),Bash(git diff:*),Bash(git log:*),Bash(git show:*),Bash(git rev-parse:*),Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh issue view:*),Bash(gh api:*)"'
           prompt: |
             Run a follow-up review round on pull request #${{ env.PR_NUMBER }} in repository ${{ github.repository }}. The default branch is `main`.
 

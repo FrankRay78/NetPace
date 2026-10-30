@@ -66,6 +66,16 @@ jobs:
         with:
           fetch-depth: 0
 
+      # The model and effort come from the stage table, scripts/stage-models.tsv. A stage the
+      # table does not answer fails here, before claude starts on whatever the default is.
+      - name: Look up this stage's model
+        id: model
+        run: |
+          review=$(bash scripts/stage-flags.sh reviewissue)
+          echo "review=$review" >> "$GITHUB_OUTPUT"
+          refine=$(bash scripts/stage-flags.sh reviewissue-refine)
+          echo "refine=$refine" >> "$GITHUB_OUTPUT"
+
       # Snapshot the issue rather than relying on the context the action injects. The
       # action sanitises injected content by stripping HTML comments, which would remove
       # the `<!-- speckit:review -->` sentinel this whole workflow keys on; and
@@ -151,7 +161,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          claude_args: '--allowedTools "Read,Glob,Grep,Write,Bash(gh issue comment:*),Bash(gh issue edit:*)"'
+          claude_args: '${{ steps.model.outputs.review }} --allowedTools "Read,Glob,Grep,Write,Bash(gh issue comment:*),Bash(gh issue edit:*)"'
           prompt: |
             Run the NetPace pre-specification review for issue #${{ env.ISSUE_NUMBER }} in repository ${{ github.repository }}. The default branch is `main`.
 
@@ -193,7 +203,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          claude_args: '--allowedTools "Read,Glob,Grep,Write,Bash(mkdir:*),Bash(gh api:*),Bash(gh issue edit:*)"'
+          claude_args: '${{ steps.model.outputs.refine }} --allowedTools "Read,Glob,Grep,Write,Bash(mkdir:*),Bash(gh api:*),Bash(gh issue edit:*)"'
           prompt: |
             Refine the pre-specification review on issue #${{ env.ISSUE_NUMBER }} in repository ${{ github.repository }}. The default branch is `main`.
 
