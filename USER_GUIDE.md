@@ -149,7 +149,7 @@ Timestamp,LatencyMilliseconds,DownloadSpeedBitsPerSecond,DownloadSucceeded,Downl
 1980-01-01T10:20:00+01:00,14,498300000,150,0,47100000,32,0,192.168.1.1,test-host
 ```
 
-The terminal is a fresh stream on every run, so it still labels its columns even when the file does not: the two destinations differ by exactly that one line. `--file-mode Overwrite` replaces the file rather than adding to it, so an overwritten log always starts with the header.
+The terminal is a fresh stream on every run, so it still labels its columns even when the file does not: the two destinations differ by exactly that one line. `--file-mode overwrite` replaces the file rather than adding to it, so an overwritten log always starts with the header.
 
 Redirecting with `>>` is different, because the shell opens the file and NetPace never sees it — an empty log and one holding a thousand rows look the same from inside NetPace. Turn the header off with `--no-csv-header` there, and write it yourself once if you want one:
 
