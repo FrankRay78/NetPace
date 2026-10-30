@@ -293,8 +293,13 @@ run_stage() {
   # The prompt must be the positional straight after -p, and stdin must be redirected, or the
   # call stalls on the terminal (both recorded in plugin-report.sh). The prompt stays quoted
   # because a variadic flag would otherwise eat its second word as a separate positional.
+  # A headless session waits only 10 minutes for its background subagents once its last turn
+  # ends, then stops them and returns that turn's text as the report — /verify's
+  # code-simplifier has run past it, ending the stage on a progress message with no verdict. The
+  # ceiling is lifted so a stage finishes its own work; the stage time limit stays the stall
+  # detector.
   started=$SECONDS
-  reply=$(timeout --kill-after=60 "$limit" claude -p "$prompt" --model "$model" --effort "$effort" --output-format json --dangerously-skip-permissions </dev/null)
+  reply=$(CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS=0 timeout --kill-after=60 "$limit" claude -p "$prompt" --model "$model" --effort "$effort" --output-format json --dangerously-skip-permissions </dev/null)
   rc=$?
   elapsed=$((SECONDS - started))
   # 124 is timeout's own report that the limit was reached. 137 is the stage killed by SIGKILL,
