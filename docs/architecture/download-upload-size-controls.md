@@ -179,17 +179,22 @@ total = (1+2+3+4+5+6) × UploadSizeIncrementKb × 1024 × UploadSizeIterations
 
 That is under the Medium profile's 25 MiB `UploadSizeMb` cap, so every request runs.
 
-Unlike download, this total is fully deterministic — NetPace generates the payloads itself, the OoklaServer simply sinks them. `UploadParallelTasks` only affects throughput, not the total transferred.
+Unlike download, this total is fully deterministic — NetPace generates the payloads itself, the OoklaServer simply sinks them. While the cap is not reached, as here, `UploadParallelTasks` only affects throughput, not the total transferred; once it is reached, §3 describes how parallelism raises the overshoot.
 
 ## 3. CLI surface
 
-[`Program.cs`](../../src/NetPace.Console/Program.cs) exposes one profile selector and two budget-cap overrides, wired into [`SpeedTestCommandSettings`](../../src/NetPace.Console/Commands/SpeedTestCommandSettings.cs):
+[`Program.cs`](../../src/NetPace.Console/Program.cs) exposes one profile selector, two budget-cap overrides and one parallelism override, wired into [`SpeedTestCommandSettings`](../../src/NetPace.Console/Commands/SpeedTestCommandSettings.cs):
 
 | Switch           | Property         | Default                | Effect                                                                                                                                  |
 | ---------------- | ---------------- | ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
 | `--profile`      | `Profile`        | `Medium`               | Sets per-request shape (`DownloadSizes`, iterations, parallel tasks) and total-byte cap defaults via `new OoklaSpeedtestSettings(p)`.    |
 | `--downloadsize` | `DownloadSizeMb` | (profile-supplied)     | Overrides the download cap via a `with`-expression. Does **not** change per-request file size — the profile remains authoritative for shape. |
 | `--uploadsize`   | `UploadSizeMb`   | (profile-supplied)     | Overrides the upload cap via a `with`-expression. Does **not** change per-request payload — the profile remains authoritative for shape.     |
+| `--connections`  | `Connections`    | (profile-supplied)     | Overrides `DownloadParallelTasks` **and** `UploadParallelTasks` together, via a `with`-expression. Accepts 1–32; outside that range, or not a whole number, the run is refused before any test starts. Leaves per-request shape and both caps alone. |
+
+`--connections` is a ceiling on concurrency, not a request count: the number of requests stays `DownloadSizes.Length × DownloadSizeIterations` (and `UploadIncrements × UploadSizeIterations`), so a profile with fewer requests than the requested count never reaches it — Tiny has one download request whatever `--connections` says. The ceiling of 32 is the largest count any profile uses (Mega).
+
+Because the cap check stops *scheduling* and cancels in-flight transfers rather than awaiting them (§2.1 step 3, §2.2 step 3), the bytes crossing the wire can exceed the cap by roughly what was in flight when it tripped — so raising `--connections` raises the possible overshoot. The counted bytes are unaffected: cancelled transfers contribute none.
 
 > **Important distinction:** `--downloadsize` / `--uploadsize` are **total-byte budget caps**, not per-request size controls. The per-request sizes (`DownloadSizes`, `UploadSizeIncrementKb`, etc.) are set by the chosen profile and are otherwise reachable only via the `NetPace.Core` library API, not the CLI.
 >
