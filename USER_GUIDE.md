@@ -257,7 +257,7 @@ Reach for it when:
 
 - You are tuning your router's queue settings (SQM) and need every run to push the line the same way, so the before and after are comparable.
 - You want the speed of one ordinary file transfer: that is `--connections 1`.
-- You are on a fast link with a small data allowance — a higher connection count fills the line, and `--downloadsize` / `--uploadsize` keep the data used down. Use those caps rather than a smaller profile: `small` has only 4 download requests to make, so it cannot reach a high count however high you set it.
+- You are on a fast link with a small data allowance — use Small or above with a count no higher than the profile's request count, such as `netpace --profile small --connections 4`. Small's whole download plan is only about 12 MiB, so it cannot overshoot by much whatever count you set. Avoid a high count on Large or Mega with a small `--downloadsize`: as the note below explains, that can move several times the cap.
 
 > [!NOTE]\
 > More connections means more data in flight when a cap is reached. NetPace stops scheduling transfers and cancels those still running once the total-byte cap is hit, so the bytes actually transferred can overshoot the profile's cap (or `--downloadsize` / `--uploadsize`) by roughly what was in flight at that moment — and that overshoot grows with the connection count. On a metered connection, choose the profile and the connection count together.
