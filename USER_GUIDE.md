@@ -85,7 +85,7 @@ Three alternative formats are available instead:
 | Switch | Output |
 | --- | --- |
 | `--minimal` | The result as a single compact line. No live progress display. |
-| `--csv` | A single CSV row, always including a timestamp. |
+| `--csv` | A single CSV row, always including a timestamp. `--no-csv-header` leaves the header row out — see [Collecting CSV in a log](#collecting-csv-in-a-log). |
 | `--json` | A JSON object. `--json-pretty` selects the same format and indents it for reading. |
 
 `--minimal`, `--csv` and `--json` are peers, and exactly one format may be selected. Passing two together is an error naming the conflict, so a stray or mistyped flag in a script fails loudly instead of quietly producing the wrong format. `--json-pretty` counts as selecting JSON, so `--json --json-pretty` is the one combination allowed — they are the same format, indented — while `--csv --json-pretty` and `--json-pretty --minimal` are conflicts like any other pair.
@@ -131,6 +131,37 @@ Timestamp,LatencyMilliseconds,DownloadSpeedBitsPerSecond,DownloadSucceeded,Downl
 A download or upload test that ran but failed entirely reports `0`, with its request counts beside it — see [Detecting failed measurements](#detecting-failed-measurements).
 
 CSV output is always comma-separated — there is no option to choose another separator, so every log NetPace writes has one shape. A value that would otherwise disturb the row is written as CSV requires: any field containing a comma or a double quote — a hostname or IP address, in practice — is wrapped in double quotes, with any double quote of its own written twice, so a standard CSV reader hands back the original text and the row still has one field per column. A line break inside any field is written as a space, so every record stays on one line.
+
+### Collecting CSV in a log
+
+A run on a schedule that appends every result to one file should leave that file with a single header line at the top and a data row for each run. `--file` does that with no extra option: it appends by default, and NetPace writes the header only when the target does not exist yet or is empty.
+
+```bash
+# From cron, every fifteen minutes
+netpace --csv --file /var/log/netpace.csv
+```
+
+After two runs, `/var/log/netpace.csv` holds:
+
+```
+Timestamp,LatencyMilliseconds,DownloadSpeedBitsPerSecond,DownloadSucceeded,DownloadFailed,UploadSpeedBitsPerSecond,UploadSucceeded,UploadFailed,IPAddress,Hostname
+1980-01-01T10:05:00+01:00,12,512600000,150,0,48200000,32,0,192.168.1.1,test-host
+1980-01-01T10:20:00+01:00,14,498300000,150,0,47100000,32,0,192.168.1.1,test-host
+```
+
+The terminal is a fresh stream on every run, so it still labels its columns even when the file does not: the two destinations differ by exactly that one line. `--file-mode Overwrite` replaces the file rather than adding to it, so an overwritten log always starts with the header.
+
+Redirecting with `>>` is different, because the shell opens the file and NetPace never sees it — an empty log and one holding a thousand rows look the same from inside NetPace. Turn the header off with `--no-csv-header` there, and write it yourself once if you want one:
+
+```bash
+netpace --csv --no-csv-header >> ~/netpace.csv
+```
+
+`--no-csv-header` leaves the header out of everything: the terminal, redirected or piped standard output, and a `--file` target even when it is new or empty, on every iteration of `--loop` and `--count`. It is accepted alongside the other formats and changes nothing there.
+
+**Start a new log if a run failed before it wrote a row.** NetPace decides to write the header by whether the target is empty, never by reading what is in it, so any content keeps the header out — including an error message from a run whose network was down, which is written to the log alongside the terminal. A log whose first line is an error rather than the column names will collect data rows under no header for as long as you keep appending to it. Move it aside and let the next run start a fresh one.
+
+**Start a new log after an upgrade that changes the columns.** While NetPace is below 1.0.0 the CSV columns may gain fields between releases, and nothing checks an existing log's header against the columns being written. Rows from a newer version appended to an older log sit under a header that no longer describes them. After an upgrade that changes the columns, move the old log aside and let NetPace start a fresh one.
 
 ### Numeric values in JSON
 

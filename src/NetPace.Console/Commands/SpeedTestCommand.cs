@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Text;
 using NetPace.Console.ConsoleWriters;
 using NetPace.Console.Diagnostics;
 using NetPace.Core;
@@ -72,8 +73,10 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
 
             if (!string.IsNullOrWhiteSpace(settings.OutputFile))
             {
-                // Add file output.
-                consoles.Add(new FileConsole(settings.OutputFile, settings.FileModeValue));
+                // Add file output. Whether the target already holds content is read here, once per
+                // run and before the file is opened: a run that appends is itself about to add
+                // content, so asking any later would answer about this run's own output.
+                consoles.Add(new FileConsole(settings.OutputFile, settings.FileModeValue, StartsEmpty(settings)));
             }
 
             // Composite console based on output targets.
@@ -207,6 +210,59 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
                 disposable.Dispose();
             }
         }
+    }
+
+    /// <summary>
+    /// Whether the <c>--file</c> target holds nothing this run would be adding to: a path that does
+    /// not exist yet, one that exists and is empty, or any path in overwrite mode, where whatever
+    /// was there is replaced.
+    /// </summary>
+    private static bool StartsEmpty(SpeedTestCommandSettings settings)
+    {
+        if (settings.FileModeValue == FileMode.Overwrite) return true;
+
+        var file = new FileInfo(settings.OutputFile);
+        if (!file.Exists) return true;
+
+        // A symlink reports the length of the path it stores, not of the file that will be written,
+        // so ask the file it resolves to. A link whose target has been rotated away is a new log.
+        // Resolving is only safe once the path is known to exist, because it throws otherwise.
+        if (file.ResolveLinkTarget(returnFinalTarget: true) is FileInfo target)
+        {
+            file = target;
+        }
+
+        // Nothing to read means empty, and is answered without opening the file: a named pipe or a
+        // terminal reports no length and would block a read, and a log may be writable but not
+        // readable.
+        if (!file.Exists || file.Length == 0) return true;
+
+        // A file holding only a byte-order mark and/or a line ending counts as empty, not as
+        // content. FileConsole opens the file with Encoding.UTF8, which writes a byte-order mark
+        // before anything else, so a run that ended before writing a row leaves a file that every
+        // reader shows as empty; `echo > log.csv` leaves a bare line ending. Reading either as
+        // content would suppress the header on that log for good, which is the one outcome this
+        // check exists to prevent. FileConsole replaces such a file rather than appending to it,
+        // so the header lands on the first line; anything else, however short, is kept.
+        var preamble = Encoding.UTF8.GetPreamble();
+        if (file.Length > preamble.Length + 2) return false;
+
+        byte[] bytes;
+        try
+        {
+            bytes = File.ReadAllBytes(file.FullName);
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+            // A file that cannot be read is taken as content, so it is appended to and never
+            // replaced.
+            return false;
+        }
+
+        ReadOnlySpan<byte> content = bytes;
+        if (content.StartsWith(preamble)) content = content[preamble.Length..];
+
+        return content.IndexOfAnyExcept((byte)'\r', (byte)'\n') < 0;
     }
 
     /// <summary>
