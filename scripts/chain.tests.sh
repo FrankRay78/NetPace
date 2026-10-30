@@ -22,7 +22,7 @@ CHAIN="$HERE/chain.sh"
 SB="$(mktemp -d)"
 trap 'rm -rf "$SB"' EXIT
 # A developer's ambient overrides would otherwise reach every case; the stall case sets its own.
-unset CHAIN_MODEL CHAIN_STAGE_TIMEOUT
+unset CHAIN_MODEL CHAIN_STAGE_TIMEOUT CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS
 
 # Anything on the chain's stdin that reaches the stub proves the stage's own `</dev/null` is
 # gone — the omission chain.sh records as making an unattended call stall on the terminal.
