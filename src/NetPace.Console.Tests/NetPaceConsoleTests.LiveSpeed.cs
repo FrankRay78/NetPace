@@ -49,7 +49,7 @@ public sealed partial class NetPaceConsoleTests
             var host = GetInteractiveCommandLineTestHost(services);
 
             // When
-            var result = await host.RunAsync(["--unit", "BytesPerSecond", "--unit-system", "IEC", "--unit-scale", "Mega"]);
+            var result = await host.RunAsync(["--unit", "bytes", "--unit-system", "IEC", "--unit-scale", "Mega"]);
 
             // Then the live figure carries the same unit and scale as the result line; the snapshot
             // carries which unit that was.

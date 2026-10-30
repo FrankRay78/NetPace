@@ -1,0 +1,1 @@
+﻿Latency: 100 ms, Download: 8000 bps, Upload: 18666.67 bps

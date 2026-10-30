@@ -57,7 +57,7 @@ public sealed partial class NetPaceConsoleTests
             // unit switch set to something else.
             var defaultUnits = await GetCommandLineTestHost(StubServices()).RunAsync(["--minimal"]);
             var switchedUnits = await GetCommandLineTestHost(StubServices()).RunAsync(
-                ["--minimal", "--unit", "BytesPerSecond", "--unit-scale", "Mega", "--unit-system", "IEC"]);
+                ["--minimal", "--unit", "bytes", "--unit-scale", "Mega", "--unit-system", "IEC"]);
 
             // Then neither run reports an error.
             Assert.Equal(0, defaultUnits.ExitCode);

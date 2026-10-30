@@ -1,0 +1,1 @@
+﻿Error: 'Everything' is not a valid value for --fail-on. Valid values: <none, total, partial>.

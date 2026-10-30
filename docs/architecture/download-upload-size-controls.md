@@ -187,7 +187,7 @@ Unlike download, this total is fully deterministic — NetPace generates the pay
 
 | Switch           | Property         | Default                | Effect                                                                                                                                  |
 | ---------------- | ---------------- | ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
-| `--profile`      | `Profile`        | `Medium`               | Sets per-request shape (`DownloadSizes`, iterations, parallel tasks) and total-byte cap defaults via `new OoklaSpeedtestSettings(p)`.    |
+| `--profile`      | `Profile`        | `medium`               | Sets per-request shape (`DownloadSizes`, iterations, parallel tasks) and total-byte cap defaults via `new OoklaSpeedtestSettings(p)`.    |
 | `--downloadsize` | `DownloadSizeMb` | (profile-supplied)     | Overrides the download cap via a `with`-expression. Does **not** change per-request file size — the profile remains authoritative for shape. |
 | `--uploadsize`   | `UploadSizeMb`   | (profile-supplied)     | Overrides the upload cap via a `with`-expression. Does **not** change per-request payload — the profile remains authoritative for shape.     |
 | `--connections`  | `Connections`    | (profile-supplied)     | Overrides `DownloadParallelTasks` **and** `UploadParallelTasks` together, via a `with`-expression. Accepts 1–32; outside that range, or not a whole number, the run is refused before any test starts. Leaves per-request shape and both caps alone. |

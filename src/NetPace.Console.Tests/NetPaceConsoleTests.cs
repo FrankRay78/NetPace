@@ -225,13 +225,15 @@ public sealed partial class NetPaceConsoleTests
         await Verify(result.Output).DisableRequireUniquePrefix();
     }
 
-    [InlineData(SpeedUnit.BytesPerSecond, SpeedUnitSystem.SI)]
-    [InlineData(SpeedUnit.BytesPerSecond, SpeedUnitSystem.IEC)]
-    [InlineData(SpeedUnit.BitsPerSecond, SpeedUnitSystem.SI)]
-    [InlineData(SpeedUnit.BitsPerSecond, SpeedUnitSystem.IEC)]
+    [InlineData("bytes", SpeedUnitSystem.SI)]
+    [InlineData("bytes", SpeedUnitSystem.IEC)]
+    [InlineData("bits", SpeedUnitSystem.SI)]
+    [InlineData("bits", SpeedUnitSystem.IEC)]
     [Theory]
-    public async Task Should_Perform_Speed_Test_With_Units(SpeedUnit unit, SpeedUnitSystem unitSystem)
+    public async Task Should_Perform_Speed_Test_With_Units(string unit, SpeedUnitSystem unitSystem)
     {
+        // SCENARIO: Unit accepts bits or bytes
+
         // Given
         var services = new ServiceCollection();
         services.AddSingleton<ISpeedTestService, SpeedTestStub>();
@@ -240,7 +242,7 @@ public sealed partial class NetPaceConsoleTests
         var host = GetCommandLineTestHost(services);
 
         // When
-        var result = await host.RunAsync(["--unit", unit.ToString(), "--unit-system", unitSystem.ToString()]);
+        var result = await host.RunAsync(["--unit", unit, "--unit-system", unitSystem.ToString()]);
 
         // Then
         Assert.Equal(0, result.ExitCode);
@@ -576,6 +578,8 @@ public sealed partial class NetPaceConsoleTests
     public async Task Should_Display_Help(string help)
     {
         // SCENARIO: Help shows the lowercase command name
+        // SCENARIO: Help shows option values in lowercase
+        // SCENARIO: Every choice list uses one notation
 
         // Given
         var services = new ServiceCollection();

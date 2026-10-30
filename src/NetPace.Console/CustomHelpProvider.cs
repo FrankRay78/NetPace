@@ -213,7 +213,7 @@ internal static class CustomHelpProvider
                 int intValue when intValue == 0 => "",
                 int intValue when intValue == 1 => "",
                 TimeSpan ts when ts == TimeSpan.Zero => "",
-                _ => defaultValue.ToString() ?? ""
+                _ => OptionValues.Spell(defaultValue)
             };
         }
         catch (Exception)

@@ -52,7 +52,7 @@ netpace --server https://speedtest.example.com/
 
 Show speeds in bytes/sec, using IEC units (KiB, MiB, GiB):  
 ```bash
-netpace --unit BytesPerSecond --unit-system IEC
+netpace --unit bytes --unit-system IEC
 ```
 
 Add a timestamp to the result:  
@@ -149,7 +149,7 @@ Timestamp,LatencyMilliseconds,DownloadSpeedBitsPerSecond,DownloadSucceeded,Downl
 1980-01-01T10:20:00+01:00,14,498300000,150,0,47100000,32,0,192.168.1.1,test-host
 ```
 
-The terminal is a fresh stream on every run, so it still labels its columns even when the file does not: the two destinations differ by exactly that one line. `--file-mode Overwrite` replaces the file rather than adding to it, so an overwritten log always starts with the header.
+The terminal is a fresh stream on every run, so it still labels its columns even when the file does not: the two destinations differ by exactly that one line. `--file-mode overwrite` replaces the file rather than adding to it, so an overwritten log always starts with the header.
 
 Redirecting with `>>` is different, because the shell opens the file and NetPace never sees it — an empty log and one holding a thousand rows look the same from inside NetPace. Turn the header off with `--no-csv-header` there, and write it yourself once if you want one:
 
@@ -231,20 +231,20 @@ The cap on screening exists to stop a single pathological server stalling a run:
 
 ## Choosing a profile
 
-The `--profile` flag bundles per-request payload sizes, parallelism, and a total-byte cap into one switch. Pick the profile that matches your link, and NetPace adapts the traffic shape to suit it. `Medium` is the default.
+The `--profile` flag bundles per-request payload sizes, parallelism, and a total-byte cap into one switch. Pick the profile that matches your link, and NetPace adapts the traffic shape to suit it. `medium` is the default.
 
 | Profile | Use it when… | Total per run (down + up, approx) |
 |---|---|---|
-| `Tiny`   | IoT / 10 MB-month plans — minimal traffic, single small request | ≤ 1 MiB (~245 KB + ~50 KB) |
-| `Small`  | Cellular / metered — small budget, modest parallelism | ≤ 12 MiB (~10 MiB + ~2 MiB) |
-| `Medium` | Typical home broadband — the default | ≤ 125 MiB (~100 MiB + ~25 MiB) |
-| `Large`  | Fibre / business — saturates gigabit links | ≤ 1.25 GiB (~1 GiB + ~256 MiB) |
-| `Mega`   | Inter-DC / 10 Gbps — saturates fibre, see warning below | ≤ 12 GiB (~10 GiB + ~2 GiB) |
+| `tiny`   | IoT / 10 MB-month plans — minimal traffic, single small request | ≤ 1 MiB (~245 KB + ~50 KB) |
+| `small`  | Cellular / metered — small budget, modest parallelism | ≤ 12 MiB (~10 MiB + ~2 MiB) |
+| `medium` | Typical home broadband — the default | ≤ 125 MiB (~100 MiB + ~25 MiB) |
+| `large`  | Fibre / business — saturates gigabit links | ≤ 1.25 GiB (~1 GiB + ~256 MiB) |
+| `mega`   | Inter-DC / 10 Gbps — saturates fibre, see warning below | ≤ 12 GiB (~10 GiB + ~2 GiB) |
 
 Decision guide:
 
 - Cellular or metered IoT? → `--profile small` (or `tiny` for the most miserly plans).
-- Most users / home broadband? → no flag needed (Medium default).
+- Most users / home broadband? → no flag needed (`medium` default).
 - Gigabit fibre or business link? → `--profile large`.
 - 10 Gbps inter-DC saturation? → `--profile mega`.
 
@@ -258,7 +258,7 @@ netpace --profile large --downloadsize 200
 > **`--profile mega` uses undocumented OoklaServer payloads** (`5000`, `6000`, `7000`)
 > which are not part of the historic Speedtest.net Flash-client array. The selected
 > server may not host them; future OoklaServer releases may break this profile. If
-> Mega returns short reads or errors, fall back to `--profile large`. See
+> `mega` returns short reads or errors, fall back to `--profile large`. See
 > [docs/architecture/download-upload-size-controls.md](https://github.com/FrankRay78/NetPace/blob/main/docs/architecture/download-upload-size-controls.md)
 > for the per-request payload tables and the fallback strategy.
 
@@ -365,9 +365,9 @@ If you want a failed measurement to fail the process, opt in with `--fail-on`:
 
 | Value | Exits non-zero when… |
 |---|---|
-| `None` | Never — measurement outcomes don't affect the exit code |
-| `Total` | A requested test is all-failed (no request succeeded) |
-| `Partial` | Any request in a requested test failed (strict; intended for pristine-run checks) |
+| `none` | Never — measurement outcomes don't affect the exit code |
+| `total` | A requested test is all-failed (no request succeeded) |
+| `partial` | Any request in a requested test failed (strict; intended for pristine-run checks) |
 
 A measurement that never ran at all — the network was down, or no server could be reached — counts as worse than an all-failed one, so it meets either threshold.
 
@@ -375,7 +375,7 @@ A measurement that never ran at all — the network was down, or no server could
 
 ```bash
 # Treat a totally-failed test as a failure
-netpace --fail-on Total
+netpace --fail-on total
 ```
 
 ---

@@ -1,0 +1,1 @@
+﻿Latency: 100 ms, Download: 0 Pbps, Upload: 0 Pbps
