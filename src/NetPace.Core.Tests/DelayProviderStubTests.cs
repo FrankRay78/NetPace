@@ -56,8 +56,7 @@ public sealed class DelayProviderStubTests
         using var source = new CancellationTokenSource();
         await source.CancelAsync();
 
-        // When, Then a consumer testing a cancelled run sees the pause abandoned, exactly as the
-        // real delay would abandon it.
+        // When, Then a consumer testing a cancelled run sees the pause abandoned.
         await Assert.ThrowsAsync<OperationCanceledException>(() => stub.DelayAsync(100, source.Token));
         Assert.Empty(stub.RequestedDelays);
     }

@@ -8,14 +8,16 @@ namespace NetPace.Core.Clients.Testing;
 /// </summary>
 /// <remarks>
 /// <para>
-/// The stub holds three servers, numbered 1 to 3 by their sponsor, and every figure it reports is
-/// that number multiplied out. A server it does not hold, including one named by a URL it does not
-/// match, counts as number 10.
+/// The stub holds three servers and recognises one by its URL; the trailing digit of the matched
+/// server's sponsor is the number its figures are built from. Anything whose URL the stub does not
+/// hold, including a server named by an unmatched URL, counts as number 10. The number scales only
+/// the elapsed time — the bytes and the request counts are the same for every server — so a
+/// higher-numbered server is slower, matching its higher latency.
 /// </para>
 /// <list type="bullet">
 /// <item><description>Latency is 100ms times the server number.</description></item>
-/// <item><description>A download is 1,000 bytes over 1 second times the server number, from 150 requests, none failed.</description></item>
-/// <item><description>An upload is 7,000 bytes over 3 seconds times the server number, from 32 requests, none failed.</description></item>
+/// <item><description>A download is always 1,000 bytes, taking 1 second times the server number — so 3 seconds for server 3 — from 150 requests, none failed.</description></item>
+/// <item><description>An upload is always 7,000 bytes, taking 3 seconds times the server number, from 32 requests, none failed.</description></item>
 /// <item><description>Screening wins the lowest-numbered candidate offered, at that server's latency.</description></item>
 /// </list>
 /// <para>
@@ -26,7 +28,8 @@ namespace NetPace.Core.Clients.Testing;
 /// A latency probe reports progress at 25, 50, 75 and 100 percent, screening at 33, 66 and 100,
 /// and a transfer reports <see cref="SpeedTestProgressClimb"/> towards the result it goes on to
 /// return. Constructed with a delay, the stub pauses by that many milliseconds before each report,
-/// so a consumer can watch a stubbed measurement unfold rather than complete at once.
+/// so a stubbed measurement unfolds rather than completing at once. The pause blocks the calling
+/// thread rather than yielding, so the reports are observable only off that thread.
 /// </para>
 /// <para>
 /// The diagnostics overloads report nothing: the stub fabricates aggregate results rather than issuing requests, so there are no per-request diagnostics to report.
@@ -128,6 +131,8 @@ public sealed class SpeedTestStub : ISpeedTestService
     /// <inheritdoc/>
     public Task<LatencyTestResult> GetFastestServerByLatencyAsync(IServer[] servers, IProgress<SpeedTestProgress> progress, CancellationToken cancellationToken = default)
     {
+        ArgumentNullException.ThrowIfNull(progress);
+
         Task.Delay(delayMilliseconds).Wait();
         progress.Report(new SpeedTestProgress { PercentageComplete = 33 });
         Task.Delay(delayMilliseconds).Wait();

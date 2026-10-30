@@ -8,7 +8,7 @@
 
 **Decisions:**
 
-- A double reports the same shape of server as the real provider. Rejected: leaving the stub's `(Unknown)` location, which costs nothing but shows consumers a value the library never produces.
+- A double reports the same shape of server as the real provider. Rejected: giving the variable tester's URL-named server a location the real provider never supplies.
 - Pin each double's exact figures. Rejected: asserting only that figures vary, which would pass against figures the console snapshots built on them no longer match.
 - `VariableSpeedTester` measures a URL-named server. Rejected: documenting its `NotImplementedException` as intended, leaving a published double that fails one of its interface's routes.
 

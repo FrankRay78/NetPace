@@ -32,6 +32,9 @@ namespace NetPace.Core.Clients.Testing;
 /// Listing servers never fails, so a consumer discovers the unreachable server and only finds out
 /// it is unreachable when it measures.
 /// </para>
+/// <para>
+/// Every failure the tester simulates surfaces as a plain <see cref="Exception"/>.
+/// </para>
 /// </remarks>
 public class FaultySpeedTester : ISpeedTestService
 {
@@ -44,8 +47,10 @@ public class FaultySpeedTester : ISpeedTestService
     /// <param name="inner">The service supplying the figures behind the failures. Defaults to a <see cref="SpeedTestStub"/>.</param>
     /// <param name="isFaulted">
     /// Decides whether a call fails, from the server's sponsor and the name of the operation being
-    /// called. A rule supplied here replaces the default entirely, so the default fault on
-    /// "Test Sponsor 2" no longer applies.
+    /// called. The operation is one of "GetServerLatencyAsync", "GetDownloadSpeedAsync" or
+    /// "GetUploadSpeedAsync"; screening asks as "GetServerLatencyAsync", so no rule is ever passed
+    /// "GetFastestServerByLatencyAsync". A rule supplied here replaces the default entirely, so the
+    /// default fault on "Test Sponsor 2" no longer applies.
     /// </param>
     public FaultySpeedTester(
         ISpeedTestService? inner = null,

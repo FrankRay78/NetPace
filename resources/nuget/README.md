@@ -64,7 +64,7 @@ See [ISpeedTestService](https://github.com/FrankRay78/NetPace/tree/main/src/NetP
 
 ### Testing Your Code
 
-NetPace.Core includes test implementations of `ISpeedTestService` so you can test your code without making real network calls. They are a supported part of the library: each double's documented behaviour is covered by its own tests, so code you build on one keeps working from release to release.
+NetPace.Core includes test doubles for the library's interfaces so you can test your code without making real network calls. They are a supported part of the library: each double's documented behaviour is covered by its own tests, so a release cannot change one of these figures without a test failing first.
 
 - **`SpeedTestStub`** - Simple stub returning fixed values with configurable delays
 - **`SpeedTestMock`** - Fully configurable mock with injectable delegate functions

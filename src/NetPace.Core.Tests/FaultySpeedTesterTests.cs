@@ -23,16 +23,17 @@ public sealed class FaultySpeedTesterTests
     };
 
     /// <summary>
-    /// Each way a caller can measure a transfer — operations the default behaviour leaves alone.
+    /// Each way a caller can measure a transfer — operations the default behaviour leaves alone —
+    /// paired with the figures the wrapped stub reports for the unreachable server.
     /// </summary>
-    public static TheoryData<string, Func<ISpeedTestService, IServer, Task<SpeedTestResult>>> TransferOverloads => new()
+    public static TheoryData<string, Func<ISpeedTestService, IServer, Task<SpeedTestResult>>, long, long> TransferOverloads => new()
     {
-        { "download: server", (tester, server) => tester.GetDownloadSpeedAsync(server) },
-        { "download: server, progress", (tester, server) => tester.GetDownloadSpeedAsync(server, new NullProgress<SpeedTestProgress>()) },
-        { "download: server, progress, diagnostics", (tester, server) => tester.GetDownloadSpeedAsync(server, null, null) },
-        { "upload: server", (tester, server) => tester.GetUploadSpeedAsync(server) },
-        { "upload: server, progress", (tester, server) => tester.GetUploadSpeedAsync(server, new NullProgress<SpeedTestProgress>()) },
-        { "upload: server, progress, diagnostics", (tester, server) => tester.GetUploadSpeedAsync(server, null, null) },
+        { "download: server", (tester, server) => tester.GetDownloadSpeedAsync(server), 1000, 2000 },
+        { "download: server, progress", (tester, server) => tester.GetDownloadSpeedAsync(server, new NullProgress<SpeedTestProgress>()), 1000, 2000 },
+        { "download: server, progress, diagnostics", (tester, server) => tester.GetDownloadSpeedAsync(server, null, null), 1000, 2000 },
+        { "upload: server", (tester, server) => tester.GetUploadSpeedAsync(server), 7000, 6000 },
+        { "upload: server, progress", (tester, server) => tester.GetUploadSpeedAsync(server, new NullProgress<SpeedTestProgress>()), 7000, 6000 },
+        { "upload: server, progress, diagnostics", (tester, server) => tester.GetUploadSpeedAsync(server, null, null), 7000, 6000 },
     };
 
     /// <summary>
@@ -80,7 +81,7 @@ public sealed class FaultySpeedTesterTests
         var unreachable = (await tester.GetServersAsync()).Single(server => server.Sponsor == FaultySponsor);
 
         // When, Then a consumer testing its own error handling sees the probe fail.
-        await Assert.ThrowsAnyAsync<Exception>(() => measure(tester, unreachable));
+        await Assert.ThrowsAsync<Exception>(() => measure(tester, unreachable));
     }
 
     [Theory]
@@ -102,7 +103,7 @@ public sealed class FaultySpeedTesterTests
 
     [Theory]
     [MemberData(nameof(TransferOverloads))]
-    public async Task ATransfer_ToTheUnreachableServer_Succeeds(string overload, Func<ISpeedTestService, IServer, Task<SpeedTestResult>> measure)
+    public async Task ATransfer_ToTheUnreachableServer_Succeeds(string overload, Func<ISpeedTestService, IServer, Task<SpeedTestResult>> measure, long expectedBytes, long expectedElapsed)
     {
         // Given the default behaviour, which fails only the latency probe.
         Assert.NotNull(overload);
@@ -112,9 +113,10 @@ public sealed class FaultySpeedTesterTests
         // When
         var result = await measure(tester, unreachable);
 
-        // Then a consumer that reaches a transfer at all gets a figure, because the default fault
-        // is scoped to one operation rather than to the server as a whole.
-        Assert.True(result.BytesProcessed > 0);
+        // Then a consumer that reaches a transfer at all gets the wrapped service's own figures,
+        // because the default fault is scoped to one operation rather than to the server as a whole.
+        Assert.Equal(expectedBytes, result.BytesProcessed);
+        Assert.Equal(expectedElapsed, result.ElapsedMilliseconds);
     }
 
     [Theory]
@@ -130,8 +132,8 @@ public sealed class FaultySpeedTesterTests
         var result = await screen(tester, servers);
 
         // Then a candidate the tester cannot probe drops out of selection rather than being
-        // ranked, so a consumer still gets a server.
-        Assert.NotEqual(FaultySponsor, result.Server.Sponsor);
+        // ranked, so the lowest-numbered reachable server wins.
+        Assert.Equal("Test Sponsor 1", result.Server.Sponsor);
     }
 
     [Theory]
@@ -145,7 +147,7 @@ public sealed class FaultySpeedTesterTests
 
         // When, Then a selection left with nothing reports that no servers are available rather
         // than returning the candidate it could not measure.
-        await Assert.ThrowsAnyAsync<Exception>(() => screen(tester, [unreachable]));
+        await Assert.ThrowsAsync<Exception>(() => screen(tester, [unreachable]));
     }
 
     [Theory]
@@ -198,7 +200,7 @@ public sealed class FaultySpeedTesterTests
 
         // When, Then the fault is applied to the server the probe came back with, so naming an
         // unreachable server by URL fails too.
-        await Assert.ThrowsAnyAsync<Exception>(() => measure(tester, NamedUrl));
+        await Assert.ThrowsAsync<Exception>(() => measure(tester, NamedUrl));
     }
 
     [Fact]
@@ -242,7 +244,7 @@ public sealed class FaultySpeedTesterTests
 
         // When, Then the rule replaces the default entirely: the download it names fails, and the
         // latency probe the default would have failed now succeeds.
-        await Assert.ThrowsAnyAsync<Exception>(() => tester.GetDownloadSpeedAsync(chosen));
+        await Assert.ThrowsAsync<Exception>(() => tester.GetDownloadSpeedAsync(chosen));
         var defaultFault = await tester.GetServerLatencyAsync(servers.Single(server => server.Sponsor == FaultySponsor));
         Assert.Equal(200, defaultFault.LatencyMilliseconds);
     }
@@ -259,7 +261,7 @@ public sealed class FaultySpeedTesterTests
         var result = await tester.GetFastestServerByLatencyAsync(servers);
 
         // Then screening is itself a latency probe, so the rule governs selection as well as
-        // measurement.
-        Assert.NotEqual("Test Sponsor 1", result.Server.Sponsor);
+        // measurement, and the next-lowest-numbered server wins.
+        Assert.Equal(FaultySponsor, result.Server.Sponsor);
     }
 }

@@ -54,10 +54,9 @@ public sealed class VariableSpeedTesterTests
         var elapsed = new List<long>();
         for (int run = 0; run < 4; run++)
         {
-            await tester.GetFastestServerByLatencyAsync(await tester.GetServersAsync());
-            var server = (await tester.GetServersAsync()).Single();
-            elapsed.Add((await tester.GetDownloadSpeedAsync(server)).ElapsedMilliseconds);
-            elapsed.Add((await tester.GetUploadSpeedAsync(server)).ElapsedMilliseconds);
+            var screened = await tester.GetFastestServerByLatencyAsync(await tester.GetServersAsync());
+            elapsed.Add((await tester.GetDownloadSpeedAsync(screened.Server)).ElapsedMilliseconds);
+            elapsed.Add((await tester.GetUploadSpeedAsync(screened.Server)).ElapsedMilliseconds);
         }
 
         // Then every figure is bytes over the same one second, so a consumer comparing two runs is
@@ -76,10 +75,9 @@ public sealed class VariableSpeedTesterTests
         var uploads = new List<int>();
         for (int run = 0; run < 4; run++)
         {
-            await tester.GetFastestServerByLatencyAsync(await tester.GetServersAsync());
-            var server = (await tester.GetServersAsync()).Single();
-            downloads.Add((await tester.GetDownloadSpeedAsync(server)).RequestsSucceeded);
-            uploads.Add((await tester.GetUploadSpeedAsync(server)).RequestsSucceeded);
+            var screened = await tester.GetFastestServerByLatencyAsync(await tester.GetServersAsync());
+            downloads.Add((await tester.GetDownloadSpeedAsync(screened.Server)).RequestsSucceeded);
+            uploads.Add((await tester.GetUploadSpeedAsync(screened.Server)).RequestsSucceeded);
         }
 
         // Then
@@ -97,10 +95,9 @@ public sealed class VariableSpeedTesterTests
         var failures = new List<int>();
         for (int run = 0; run < 4; run++)
         {
-            await tester.GetFastestServerByLatencyAsync(await tester.GetServersAsync());
-            var server = (await tester.GetServersAsync()).Single();
-            failures.Add((await tester.GetDownloadSpeedAsync(server)).RequestsFailed);
-            failures.Add((await tester.GetUploadSpeedAsync(server)).RequestsFailed);
+            var screened = await tester.GetFastestServerByLatencyAsync(await tester.GetServersAsync());
+            failures.Add((await tester.GetDownloadSpeedAsync(screened.Server)).RequestsFailed);
+            failures.Add((await tester.GetUploadSpeedAsync(screened.Server)).RequestsFailed);
         }
 
         // Then the tester varies the speed, never the success of the run.

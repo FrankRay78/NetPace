@@ -6,14 +6,15 @@ namespace NetPace.Core.Clients.Testing;
 /// </summary>
 /// <remarks>
 /// <para>
-/// One server is offered and it always wins, so the figures are the only thing that varies. A new
-/// test begins each time a caller screens the servers, and the figures follow this sequence: a
-/// slow run, a middling one, a fast one, and the middling one from then on.
+/// The tester offers one server, and screening always wins the first candidate it is given,
+/// whatever list that is, so the figures are the only thing that varies. A new test begins each
+/// time a caller screens the servers, and the figures follow this sequence: a slow run, a middling
+/// one, a fast one, and the middling one from then on.
 /// </para>
 /// <list type="bullet">
 /// <item><description>Latency: 75ms, 100ms, 150ms, then 100ms.</description></item>
-/// <item><description>Download: 31,250 bytes, 125,000, 343,750, then 125,000 — each over 1 second, so 0.25, 1.0, 2.75 then 1.0 Mbps.</description></item>
-/// <item><description>Upload: 62,500 bytes, 375,000, 166,250, then 375,000 — each over 1 second, so 0.5, 3.0, 1.33 then 3.0 Mbps.</description></item>
+/// <item><description>Download: 31,250 bytes, 125,000, 343,750, then 125,000 — each over 1 second, so 0.25, 1.0, 2.75 then 1.0 Mbps — from 40, 150, 400 then 150 requests, none failed.</description></item>
+/// <item><description>Upload: 62,500 bytes, 375,000, 166,250, then 375,000 — each over 1 second, so 0.5, 3.0, 1.33 then 3.0 Mbps — from 12, 64, 30 then 64 requests, none failed.</description></item>
 /// </list>
 /// <para>
 /// A caller screens the servers and then measures the winner, so both calls land within one test

@@ -394,7 +394,8 @@ public sealed class SpeedTestStubTests
         stopwatch.Stop();
 
         // Then a consumer can watch a stubbed probe unfold rather than complete instantly.
-        Assert.True(stopwatch.ElapsedMilliseconds >= DelayMilliseconds, $"expected at least {DelayMilliseconds}ms, took {stopwatch.ElapsedMilliseconds}ms");
+        const int Reports = 4;
+        Assert.True(stopwatch.ElapsedMilliseconds >= Reports * DelayMilliseconds, $"expected at least {Reports * DelayMilliseconds}ms across {Reports} reports, took {stopwatch.ElapsedMilliseconds}ms");
     }
 
     [Fact]
@@ -410,7 +411,8 @@ public sealed class SpeedTestStubTests
         stopwatch.Stop();
 
         // Then
-        Assert.True(stopwatch.ElapsedMilliseconds >= DelayMilliseconds, $"expected at least {DelayMilliseconds}ms, took {stopwatch.ElapsedMilliseconds}ms");
+        const int Reports = 4;
+        Assert.True(stopwatch.ElapsedMilliseconds >= Reports * DelayMilliseconds, $"expected at least {Reports * DelayMilliseconds}ms across {Reports} reports, took {stopwatch.ElapsedMilliseconds}ms");
     }
 
     [Fact]
@@ -426,7 +428,8 @@ public sealed class SpeedTestStubTests
         stopwatch.Stop();
 
         // Then
-        Assert.True(stopwatch.ElapsedMilliseconds >= DelayMilliseconds, $"expected at least {DelayMilliseconds}ms, took {stopwatch.ElapsedMilliseconds}ms");
+        const int Reports = 4;
+        Assert.True(stopwatch.ElapsedMilliseconds >= Reports * DelayMilliseconds, $"expected at least {Reports * DelayMilliseconds}ms across {Reports} reports, took {stopwatch.ElapsedMilliseconds}ms");
     }
 
     [Fact]
@@ -442,7 +445,8 @@ public sealed class SpeedTestStubTests
         stopwatch.Stop();
 
         // Then
-        Assert.True(stopwatch.ElapsedMilliseconds >= DelayMilliseconds, $"expected at least {DelayMilliseconds}ms, took {stopwatch.ElapsedMilliseconds}ms");
+        const int Reports = 3;
+        Assert.True(stopwatch.ElapsedMilliseconds >= Reports * DelayMilliseconds, $"expected at least {Reports * DelayMilliseconds}ms across {Reports} reports, took {stopwatch.ElapsedMilliseconds}ms");
     }
 
     [Fact]
@@ -453,9 +457,49 @@ public sealed class SpeedTestStubTests
         var servers = await stub.GetServersAsync();
 
         // When
-        var result = await stub.GetServerLatencyAsync(servers[0]);
+        var stopwatch = Stopwatch.StartNew();
+        await stub.GetServerLatencyAsync(servers[0]);
+        stopwatch.Stop();
 
-        // Then
-        Assert.Equal(100, result.LatencyMilliseconds);
+        // Then the probe does not pause, so a consumer's suite is not slowed by a stub it asked
+        // for no delay from.
+        Assert.True(stopwatch.ElapsedMilliseconds < DelayMilliseconds, $"expected no pause, took {stopwatch.ElapsedMilliseconds}ms");
+    }
+
+    [Fact]
+    public async Task TheDiagnosticsOverloads_WithAProgressReceiver_StillReportProgressToIt()
+    {
+        // Given a stub reached through the three-argument overloads, which a consumer uses when it
+        // wants diagnostics alongside progress.
+        var stub = new SpeedTestStub();
+        var servers = await stub.GetServersAsync();
+        var latencyReports = new List<int>();
+        var speedReports = new List<int>();
+        var latencyProgress = new SynchronousProgress<LatencyTestProgress>(progress => latencyReports.Add(progress.PercentageComplete));
+        var speedProgress = new SynchronousProgress<SpeedTestProgress>(progress => speedReports.Add(progress.PercentageComplete));
+
+        // When
+        await stub.GetServerLatencyAsync(servers[0], latencyProgress, null);
+        await stub.GetServerLatencyAsync(servers[0].Url, latencyProgress, null);
+        await stub.GetFastestServerByLatencyAsync(servers, speedProgress, null);
+        await stub.GetDownloadSpeedAsync(servers[0], speedProgress, null);
+        await stub.GetUploadSpeedAsync(servers[0], speedProgress, null);
+
+        // Then asking for diagnostics does not cost a consumer the progress it also asked for.
+        Assert.Equal([25, 50, 75, 100, 25, 50, 75, 100], latencyReports);
+        Assert.Equal([33, 66, 100, 25, 50, 75, 100, 25, 50, 75, 100], speedReports);
+    }
+
+    [Fact]
+    public async Task GetFastestServerByLatencyAsync_WithNoProgressReceiver_SaysWhichArgumentWasMissing()
+    {
+        // Given a consumer that passes no progress receiver to the overload that requires one.
+        var stub = new SpeedTestStub();
+        var servers = await stub.GetServersAsync();
+
+        // When, Then the stub names the argument rather than failing somewhere inside itself.
+        var exception = await Assert.ThrowsAsync<ArgumentNullException>(
+            () => stub.GetFastestServerByLatencyAsync(servers, null!));
+        Assert.Equal("progress", exception.ParamName);
     }
 }

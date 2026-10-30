@@ -22,82 +22,82 @@ public sealed class SpeedTestMockTests
     {
         {
             "GetServersAsync",
-            mock => Inject(mock, servers: Servers()),
+            InjectServers,
             async (mock, _, _) => await mock.GetServersAsync()
         },
         {
             "GetServerLatencyAsync(server)",
-            mock => Inject(mock, latency: Latency()),
+            InjectLatencyByServer,
             async (mock, _, _) => await mock.GetServerLatencyAsync(Anywhere)
         },
         {
             "GetServerLatencyAsync(server, progress)",
-            mock => Inject(mock, latency: Latency()),
+            InjectLatencyByServer,
             async (mock, latencyProgress, _) => await mock.GetServerLatencyAsync(Anywhere, latencyProgress)
         },
         {
             "GetServerLatencyAsync(server, progress, diagnostics)",
-            mock => Inject(mock, latency: Latency()),
+            InjectLatencyByServer,
             async (mock, latencyProgress, _) => await mock.GetServerLatencyAsync(Anywhere, latencyProgress, null)
         },
         {
             "GetServerLatencyAsync(url)",
-            mock => Inject(mock, latencyByUrl: Latency()),
+            InjectLatencyByUrl,
             async (mock, _, _) => await mock.GetServerLatencyAsync(NamedUrl)
         },
         {
             "GetServerLatencyAsync(url, progress)",
-            mock => Inject(mock, latencyByUrl: Latency()),
+            InjectLatencyByUrl,
             async (mock, latencyProgress, _) => await mock.GetServerLatencyAsync(NamedUrl, latencyProgress)
         },
         {
             "GetServerLatencyAsync(url, progress, diagnostics)",
-            mock => Inject(mock, latencyByUrl: Latency()),
+            InjectLatencyByUrl,
             async (mock, latencyProgress, _) => await mock.GetServerLatencyAsync(NamedUrl, latencyProgress, null)
         },
         {
             "GetFastestServerByLatencyAsync(servers)",
-            mock => Inject(mock, screening: Latency()),
+            InjectScreening,
             async (mock, _, _) => await mock.GetFastestServerByLatencyAsync([Anywhere])
         },
         {
             "GetFastestServerByLatencyAsync(servers, progress)",
-            mock => Inject(mock, screening: Latency()),
+            InjectScreening,
             async (mock, _, speedProgress) => await mock.GetFastestServerByLatencyAsync([Anywhere], speedProgress)
         },
         {
             "GetFastestServerByLatencyAsync(servers, progress, diagnostics)",
-            mock => Inject(mock, screening: Latency()),
+            InjectScreening,
             async (mock, _, speedProgress) => await mock.GetFastestServerByLatencyAsync([Anywhere], speedProgress, null)
         },
         {
             "GetDownloadSpeedAsync(server)",
-            mock => Inject(mock, download: Transfer()),
+            InjectDownload,
             async (mock, _, _) => await mock.GetDownloadSpeedAsync(Anywhere)
         },
         {
             "GetDownloadSpeedAsync(server, progress)",
-            mock => Inject(mock, download: Transfer()),
+            InjectDownload,
             async (mock, _, speedProgress) => await mock.GetDownloadSpeedAsync(Anywhere, speedProgress)
         },
         {
             "GetDownloadSpeedAsync(server, progress, diagnostics)",
-            mock => Inject(mock, download: Transfer()),
+            InjectDownload,
             async (mock, _, speedProgress) => await mock.GetDownloadSpeedAsync(Anywhere, speedProgress, null)
         },
         {
             "GetUploadSpeedAsync(server)",
-            mock => Inject(mock, upload: Transfer()),
+            InjectUpload,
             async (mock, _, _) => await mock.GetUploadSpeedAsync(Anywhere)
         },
         {
             "GetUploadSpeedAsync(server, progress)",
-            mock => Inject(mock, upload: Transfer()),
+            InjectUpload,
             async (mock, _, speedProgress) => await mock.GetUploadSpeedAsync(Anywhere, speedProgress)
         },
         {
             "GetUploadSpeedAsync(server, progress, diagnostics)",
-            mock => Inject(mock, upload: Transfer()),
+            InjectUpload,
             async (mock, _, speedProgress) => await mock.GetUploadSpeedAsync(Anywhere, speedProgress, null)
         },
     };
@@ -253,51 +253,49 @@ public sealed class SpeedTestMockTests
         Assert.Empty(diagnostics);
     }
 
-    /// <summary>
-    /// Injects a function for one operation, returning the result that function will produce so
-    /// the caller can assert the mock handed back that very object.
-    /// </summary>
-    private static object Inject(
-        SpeedTestMock mock,
-        IServer[]? servers = null,
-        LatencyTestResult? latency = null,
-        LatencyTestResult? latencyByUrl = null,
-        LatencyTestResult? screening = null,
-        SpeedTestResult? download = null,
-        SpeedTestResult? upload = null)
+    // Each injector configures one operation and returns the result its function will produce, so a
+    // test can assert the mock handed back that very object.
+
+    private static object InjectServers(SpeedTestMock mock)
     {
-        if (servers is not null)
-        {
-            mock.GetServersAsyncFunc = _ => Task.FromResult(servers);
-            return servers;
-        }
+        var servers = Servers();
+        mock.GetServersAsyncFunc = _ => Task.FromResult(servers);
+        return servers;
+    }
 
-        if (latency is not null)
-        {
-            mock.GetServerLatencyAsyncFunc = (_, _, _) => Task.FromResult(latency);
-            return latency;
-        }
+    private static object InjectLatencyByServer(SpeedTestMock mock)
+    {
+        var latency = Latency();
+        mock.GetServerLatencyAsyncFunc = (_, _, _) => Task.FromResult(latency);
+        return latency;
+    }
 
-        if (latencyByUrl is not null)
-        {
-            mock.GetServerLatencyByServerUrlAsyncFunc = (_, _, _) => Task.FromResult(latencyByUrl);
-            return latencyByUrl;
-        }
+    private static object InjectLatencyByUrl(SpeedTestMock mock)
+    {
+        var latency = Latency();
+        mock.GetServerLatencyByServerUrlAsyncFunc = (_, _, _) => Task.FromResult(latency);
+        return latency;
+    }
 
-        if (screening is not null)
-        {
-            mock.GetFastestServerByLatencyAsyncFunc = (_, _, _) => Task.FromResult(screening);
-            return screening;
-        }
+    private static object InjectScreening(SpeedTestMock mock)
+    {
+        var latency = Latency();
+        mock.GetFastestServerByLatencyAsyncFunc = (_, _, _) => Task.FromResult(latency);
+        return latency;
+    }
 
-        if (download is not null)
-        {
-            mock.GetDownloadSpeedAsyncFunc = (_, _, _) => Task.FromResult(download);
-            return download;
-        }
+    private static object InjectDownload(SpeedTestMock mock)
+    {
+        var download = Transfer();
+        mock.GetDownloadSpeedAsyncFunc = (_, _, _) => Task.FromResult(download);
+        return download;
+    }
 
-        mock.GetUploadSpeedAsyncFunc = (_, _, _) => Task.FromResult(upload!);
-        return upload!;
+    private static object InjectUpload(SpeedTestMock mock)
+    {
+        var upload = Transfer();
+        mock.GetUploadSpeedAsyncFunc = (_, _, _) => Task.FromResult(upload);
+        return upload;
     }
 
     /// <summary>
