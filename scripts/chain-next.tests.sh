@@ -309,6 +309,7 @@ ok "kept attempt branches are not" 'git -C "$CLONE" rev-parse -q --verify refs/h
 
 # // SCENARIO: A failing issue is parked and not retried
 # // SCENARIO: Other failures are parked as today
+# // SCENARIO: Failure reason reaches the parked issue
 echo "A failing issue is parked and not retried:"
 new_case
 issues '[{"number":8,"state":"OPEN","labels":["ready"]}]'
