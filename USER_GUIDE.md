@@ -136,7 +136,7 @@ Neither option reaches the default or minimal output. Both describe the run for 
 
 #### When the columns change, start a new log
 
-`--file` appends by default, and every run writes its own header line, so an appended log already carries one header per run. Changing `--device-id`, changing the set of `--custom-field` pairs, or upgrading to a NetPace that writes more columns of its own therefore leaves the file holding headers that disagree with each other. **Start a new log whenever the columns change** — nothing stops you doing otherwise, and the result is a file no CSV reader can make sense of as a whole.
+`--file` appends by default, and NetPace writes the header only into a log that is still empty (see [Collecting CSV in a log](#collecting-csv-in-a-log)), so an appended log keeps the header its first run wrote. Changing the set of `--custom-field` pairs, or upgrading to a NetPace that writes more columns of its own, therefore leaves later rows sitting under a header that no longer describes them, with nothing in the file to mark where the columns changed. Changing `--device-id` alone changes a cell, not a column. **Start a new log whenever the columns change** — nothing stops you doing otherwise, and the result is a file no CSV reader can make sense of as a whole.
 
 ### Numeric values in CSV
 
@@ -170,7 +170,7 @@ Timestamp,LatencyMilliseconds,DownloadSpeedBitsPerSecond,DownloadSucceeded,Downl
 
 A download or upload test that ran but failed entirely reports `0`, with its request counts beside it — see [Detecting failed measurements](#detecting-failed-measurements).
 
-CSV output is always comma-separated — there is no option to choose another separator, so every log NetPace writes has one shape. A value that would otherwise disturb the row is written as CSV requires: any field containing a comma or a double quote — a hostname or IP address, in practice — is wrapped in double quotes, with any double quote of its own written twice, so a standard CSV reader hands back the original text and the row still has one field per column. A line break inside any field is written as a space, so every record stays on one line.
+CSV output is always comma-separated — there is no option to choose another separator, so every log NetPace writes has one shape. A value that would otherwise disturb the row is written as CSV requires: any field containing a comma or a double quote — most often a server's sponsor or location name, a `--device-id` label or a `--custom-field` value — is wrapped in double quotes, with any double quote of its own written twice, so a standard CSV reader hands back the original text and the row still has one field per column. A line break inside any field is written as a space, so every record stays on one line.
 
 ### Collecting CSV in a log
 
@@ -184,9 +184,9 @@ netpace --csv --file /var/log/netpace.csv
 After two runs, `/var/log/netpace.csv` holds:
 
 ```
-Timestamp,LatencyMilliseconds,DownloadSpeedBitsPerSecond,DownloadSucceeded,DownloadFailed,UploadSpeedBitsPerSecond,UploadSucceeded,UploadFailed,IPAddress,Hostname
-1980-01-01T10:05:00+01:00,12,512600000,150,0,48200000,32,0,192.168.1.1,test-host
-1980-01-01T10:20:00+01:00,14,498300000,150,0,47100000,32,0,192.168.1.1,test-host
+Timestamp,LatencyMilliseconds,DownloadSpeedBitsPerSecond,DownloadSucceeded,DownloadFailed,UploadSpeedBitsPerSecond,UploadSucceeded,UploadFailed,IPAddress,Hostname,ServerLocation,ServerSponsor,ServerUrl,DeviceId
+1980-01-01T10:05:00+01:00,12,512600000,150,0,48200000,32,0,192.168.1.1,test-host,London,Foo Telecom,http://speedtest.foo.example:8080/speedtest/upload.php,
+1980-01-01T10:20:00+01:00,14,498300000,150,0,47100000,32,0,192.168.1.1,test-host,London,Foo Telecom,http://speedtest.foo.example:8080/speedtest/upload.php,
 ```
 
 The terminal is a fresh stream on every run, so it still labels its columns even when the file does not: the two destinations differ by exactly that one line. `--file-mode overwrite` replaces the file rather than adding to it, so an overwritten log always starts with the header.
