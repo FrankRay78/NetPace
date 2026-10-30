@@ -1,2 +1,2 @@
-﻿Timestamp,LatencyMilliseconds,DownloadSpeedBitsPerSecond,DownloadSucceeded,DownloadFailed,UploadSpeedBitsPerSecond,UploadSucceeded,UploadFailed,IPAddress,Hostname
-1980-01-01T10:05:00+01:00,24,8000,150,0,8000,32,0,192.168.1.1,test-host
+﻿Timestamp,LatencyMilliseconds,DownloadSpeedBitsPerSecond,DownloadSucceeded,DownloadFailed,UploadSpeedBitsPerSecond,UploadSucceeded,UploadFailed,IPAddress,Hostname,ServerLocation,ServerSponsor,ServerUrl,DeviceId
+1980-01-01T10:05:00+01:00,24,8000,150,0,8000,32,0,192.168.1.1,test-host,"Frankfurt am Main, Hessen, Bundesrepublik Deutschland, Western Europe, EMEA Region","Deutsche Telekom Technik Gesellschaft mit beschrankter Haftung, Frankfurt am Main",http://ffm.wsqm.telekom-dienste.de:8080/speedtest/upload-and-download-endpoint.php,

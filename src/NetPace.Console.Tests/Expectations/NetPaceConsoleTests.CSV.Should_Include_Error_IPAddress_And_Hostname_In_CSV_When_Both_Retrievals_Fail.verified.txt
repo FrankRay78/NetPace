@@ -1,2 +1,2 @@
-﻿Timestamp,LatencyMilliseconds,DownloadSpeedBitsPerSecond,DownloadSucceeded,DownloadFailed,UploadSpeedBitsPerSecond,UploadSucceeded,UploadFailed,IPAddress,Hostname
-1980-01-01T10:05:00+01:00,100,8000,150,0,18667,32,0,ERROR,ERROR
+﻿Timestamp,LatencyMilliseconds,DownloadSpeedBitsPerSecond,DownloadSucceeded,DownloadFailed,UploadSpeedBitsPerSecond,UploadSucceeded,UploadFailed,IPAddress,Hostname,ServerLocation,ServerSponsor,ServerUrl,DeviceId
+1980-01-01T10:05:00+01:00,100,8000,150,0,18667,32,0,ERROR,ERROR,Location 1,Test Sponsor 1,http://test1.com,

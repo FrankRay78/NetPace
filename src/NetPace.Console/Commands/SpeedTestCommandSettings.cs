@@ -133,6 +133,19 @@ public sealed class SpeedTestCommandSettings
     /// Write per-request diagnostic detail about the run to the error stream.
     /// </summary>
     public required bool Diagnostics { get; init; }
+
+    /// <summary>
+    /// The label for this machine recorded in CSV and JSON output, or <see langword="null"/> when
+    /// no label was given. Null and empty are distinct: CSV writes an empty cell for either, while
+    /// JSON leaves the field out only when no label was given at all.
+    /// </summary>
+    public required string? DeviceId { get; init; }
+
+    /// <summary>
+    /// The user-defined pairs recorded in CSV and JSON output, in the order they were given on the
+    /// command line. Empty when none were given.
+    /// </summary>
+    public required IReadOnlyList<CustomField> CustomFields { get; init; }
 }
 
 public static class SpeedTestCommandSettingsExtensions

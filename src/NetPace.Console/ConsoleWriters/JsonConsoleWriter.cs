@@ -48,7 +48,9 @@ public sealed class JsonConsoleWriter : IConsoleWriter
             UploadSucceeded = uploadResult?.RequestsSucceeded,
             UploadFailed = uploadResult?.RequestsFailed,
             IPAddress = clientInfoProvider.GetIPAddress(),
-            Hostname = clientInfoProvider.GetHostname()
+            Hostname = clientInfoProvider.GetHostname(),
+            DeviceId = settings.DeviceId,
+            CustomFields = GroupCustomFields(settings.CustomFields)
         };
 
         var typeInfo = settings.JsonPretty
@@ -59,5 +61,27 @@ public sealed class JsonConsoleWriter : IConsoleWriter
         console.WriteLine(jsonString);
 
         return SpeedTestOutcome.Create(downloadResult, uploadResult);
+    }
+
+    /// <summary>
+    /// Groups the custom fields into one object, so a custom key can never replace a built-in
+    /// field. A key given more than once keeps the last value, because a JSON object cannot hold it
+    /// twice; CSV, which can, writes every column as given. Returns <see langword="null"/> when
+    /// there are none, so the object is left out rather than written empty.
+    /// </summary>
+    private static Dictionary<string, string>? GroupCustomFields(IReadOnlyList<CustomField> customFields)
+    {
+        if (customFields.Count == 0)
+        {
+            return null;
+        }
+
+        var grouped = new Dictionary<string, string>(customFields.Count, StringComparer.Ordinal);
+        foreach (CustomField customField in customFields)
+        {
+            grouped[customField.Key] = customField.Value;
+        }
+
+        return grouped;
     }
 }

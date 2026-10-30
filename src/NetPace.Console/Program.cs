@@ -190,6 +190,36 @@ public static class Program
             CustomParser = result => OptionValues.UnitSystems.Parse(result, "--unit-system")
         };
 
+        var deviceIdOption = new Option<string>("--device-id")
+        {
+            Description = "Record a label for this machine in CSV and JSON output.\nThe CSV column is always present; the JSON field appears only when a label is given."
+        };
+
+        // Each occurrence takes one key=value argument, and the validator - not the binding - is
+        // what refuses a malformed one: a parse error stops the run in every output mode, including
+        // the ones that ignore custom fields, before any test is performed.
+        var customFieldOption = new Option<string[]>("--custom-field")
+        {
+            Description = $"Record a {CustomField.ExpectedForm} pair in CSV and JSON output.\nMay be given more than once, and is recorded in the order given.",
+            AllowMultipleArgumentsPerToken = false
+        };
+        customFieldOption.Validators.Add(result =>
+        {
+            if (result.Tokens.Count == 0)
+            {
+                result.AddError($"--custom-field requires a value in the form {CustomField.ExpectedForm}.");
+                return;
+            }
+
+            foreach (var token in result.Tokens)
+            {
+                if (!CustomField.TryParse(token.Value, out _))
+                {
+                    result.AddError($"--custom-field '{token.Value}' is not in the form {CustomField.ExpectedForm}.");
+                }
+            }
+        });
+
         // --verbosity is retired, but stays registered so that a script still passing it gets a
         // message naming the removal rather than a generic unrecognised-option error. It takes an
         // optional string so that every former value - and no value at all - lands on the same
@@ -260,6 +290,8 @@ public static class Program
         command.Options.Add(unitOption);
         command.Options.Add(unitScaleOption);
         command.Options.Add(unitSystemOption);
+        command.Options.Add(deviceIdOption);
+        command.Options.Add(customFieldOption);
         command.Options.Add(verbosityOption);
         command.Options.Add(fileOption);
         command.Options.Add(fileModeOption);
@@ -299,7 +331,9 @@ public static class Program
                     FileModeValue = parseResult.GetValue(fileModeOption),
                     Quiet = parseResult.GetValue(quietOption),
                     FailOn = parseResult.GetValue(failOnOption),
-                    Diagnostics = parseResult.GetValue(diagnosticsOption)
+                    Diagnostics = parseResult.GetValue(diagnosticsOption),
+                    DeviceId = parseResult.GetValue(deviceIdOption),
+                    CustomFields = CustomField.ParseAll(parseResult.GetValue(customFieldOption))
                 };
 
                 // Validate settings

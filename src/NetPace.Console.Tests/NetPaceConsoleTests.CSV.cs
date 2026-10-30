@@ -1,5 +1,4 @@
 using System.Text.Json;
-using Microsoft.VisualBasic.FileIO;
 
 namespace NetPace.Console.Tests;
 
@@ -235,9 +234,9 @@ public sealed partial class NetPaceConsoleTests
 
             // Then a standard CSV reader sees one field per column and reads the hostname back whole.
             Assert.Equal(0, result.ExitCode);
-            string[][] records = CsvRecords(result.Output);
+            string[][] records = CsvOutput.Records(result.Output);
             Assert.Equal(records[0].Length, records[1].Length);
-            Assert.Equal(hostname, Field(records, "Hostname"));
+            Assert.Equal(hostname, CsvOutput.Field(records, "Hostname"));
         }
 
         [Fact]
@@ -257,9 +256,9 @@ public sealed partial class NetPaceConsoleTests
 
             // Then a standard CSV reader sees one field per column and reads the hostname back whole.
             Assert.Equal(0, result.ExitCode);
-            string[][] records = CsvRecords(result.Output);
+            string[][] records = CsvOutput.Records(result.Output);
             Assert.Equal(records[0].Length, records[1].Length);
-            Assert.Equal(hostname, Field(records, "Hostname"));
+            Assert.Equal(hostname, CsvOutput.Field(records, "Hostname"));
         }
 
         [Fact]
@@ -277,10 +276,10 @@ public sealed partial class NetPaceConsoleTests
 
             // Then both read back whole, and the row still lines up with its header.
             Assert.Equal(0, result.ExitCode);
-            string[][] records = CsvRecords(result.Output);
+            string[][] records = CsvOutput.Records(result.Output);
             Assert.Equal(records[0].Length, records[1].Length);
-            Assert.Equal(ipAddress, Field(records, "IPAddress"));
-            Assert.Equal(hostname, Field(records, "Hostname"));
+            Assert.Equal(ipAddress, CsvOutput.Field(records, "IPAddress"));
+            Assert.Equal(hostname, CsvOutput.Field(records, "Hostname"));
         }
 
         [Theory]
@@ -302,9 +301,9 @@ public sealed partial class NetPaceConsoleTests
             // Then the whole result is still one header and one data row, and the line break reads
             // back as a space.
             Assert.Equal(0, result.ExitCode);
-            string[][] records = CsvRecords(result.Output);
+            string[][] records = CsvOutput.Records(result.Output);
             Assert.Equal(2, records.Length);
-            Assert.Equal(expected, Field(records, "Hostname"));
+            Assert.Equal(expected, CsvOutput.Field(records, "Hostname"));
         }
 
         [Fact]
@@ -340,12 +339,12 @@ public sealed partial class NetPaceConsoleTests
             // Then every numeric measurement agrees between the two.
             Assert.Equal(0, csv.ExitCode);
             Assert.Equal(0, json.ExitCode);
-            string[][] records = CsvRecords(csv.Output);
+            string[][] records = CsvOutput.Records(csv.Output);
             using var document = JsonDocument.Parse(json.Output);
             string[] numericColumns = ["LatencyMilliseconds", "DownloadSpeedBitsPerSecond", "UploadSpeedBitsPerSecond"];
             foreach (string column in numericColumns)
             {
-                Assert.Equal(document.RootElement.GetProperty(column).GetInt64().ToString(), Field(records, column));
+                Assert.Equal(document.RootElement.GetProperty(column).GetInt64().ToString(), CsvOutput.Field(records, column));
             }
         }
 
@@ -378,19 +377,19 @@ public sealed partial class NetPaceConsoleTests
             // Then both headers list the same columns in the same order.
             Assert.Equal(0, full.ExitCode);
             Assert.Equal(0, skipped.ExitCode);
-            string[][] fullRecords = CsvRecords(full.Output);
-            string[][] skippedRecords = CsvRecords(skipped.Output);
+            string[][] fullRecords = CsvOutput.Records(full.Output);
+            string[][] skippedRecords = CsvOutput.Records(skipped.Output);
             Assert.Equal(fullRecords[0], skippedRecords[0]);
 
             // And the row has a cell for every column, with the skipped test's cells left empty.
             Assert.Equal(skippedRecords[0].Length, skippedRecords[1].Length);
-            Assert.Equal(string.Empty, Field(skippedRecords, "UploadSpeedBitsPerSecond"));
-            Assert.Equal(string.Empty, Field(skippedRecords, "UploadSucceeded"));
-            Assert.Equal(string.Empty, Field(skippedRecords, "UploadFailed"));
+            Assert.Equal(string.Empty, CsvOutput.Field(skippedRecords, "UploadSpeedBitsPerSecond"));
+            Assert.Equal(string.Empty, CsvOutput.Field(skippedRecords, "UploadSucceeded"));
+            Assert.Equal(string.Empty, CsvOutput.Field(skippedRecords, "UploadFailed"));
 
             // And the tests that did run still report their measurements.
-            Assert.Equal("100", Field(skippedRecords, "LatencyMilliseconds"));
-            Assert.Equal("8000", Field(skippedRecords, "DownloadSpeedBitsPerSecond"));
+            Assert.Equal("100", CsvOutput.Field(skippedRecords, "LatencyMilliseconds"));
+            Assert.Equal("8000", CsvOutput.Field(skippedRecords, "DownloadSpeedBitsPerSecond"));
         }
 
         /// <summary>
@@ -404,43 +403,6 @@ public sealed partial class NetPaceConsoleTests
             services.AddSingleton<IClock, ClockStub>();
             services.AddSingleton<IWaiter, NoDelayStub>();
             return services;
-        }
-
-        /// <summary>
-        /// Reads CSV output with <c>TextFieldParser</c>, a quoted-field CSV reader from the shared
-        /// framework, so a test asserts what a standard CSV consumer recovers rather than the text
-        /// NetPace happened to write. Whitespace is kept: it trims inside quoted fields by default,
-        /// which would discard the space this writer substitutes for a line break.
-        /// </summary>
-        private static string[][] CsvRecords(string output)
-        {
-            using var reader = new StringReader(output);
-            using var parser = new TextFieldParser(reader)
-            {
-                TextFieldType = FieldType.Delimited,
-                HasFieldsEnclosedInQuotes = true,
-                TrimWhiteSpace = false
-            };
-            parser.SetDelimiters(",");
-
-            var records = new List<string[]>();
-            while (!parser.EndOfData)
-            {
-                records.Add(parser.ReadFields()!);
-            }
-
-            return [.. records];
-        }
-
-        /// <summary>
-        /// Reads the named column out of the single data row of parsed records, so a test names the
-        /// column it means rather than counting fields.
-        /// </summary>
-        private static string Field(string[][] records, string column)
-        {
-            int index = Array.IndexOf(records[0], column);
-            Assert.True(index >= 0, $"The CSV header does not carry a '{column}' column: {string.Join(',', records[0])}");
-            return records[1][index];
         }
     }
 }

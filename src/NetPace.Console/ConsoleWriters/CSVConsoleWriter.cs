@@ -37,10 +37,11 @@ public sealed class CSVConsoleWriter : IConsoleWriter
         // that already holds content is not sent the header, so a log appended to across runs does
         // not gain a header line between every pair of rows. Every column is present whichever
         // tests ran, so a script can read by name or by position and an appended log keeps one
-        // shape.
+        // shape. The server and device columns follow Hostname, and any custom columns follow
+        // those, so the ten columns NetPace wrote before them keep their names, order and positions.
         if (initialSpeedTest && !settings.NoCSVHeader)
         {
-            string header = Record(
+            string header = Record([
                 "Timestamp",
                 "LatencyMilliseconds",
                 "DownloadSpeedBitsPerSecond",
@@ -50,7 +51,12 @@ public sealed class CSVConsoleWriter : IConsoleWriter
                 "UploadSucceeded",
                 "UploadFailed",
                 "IPAddress",
-                "Hostname");
+                "Hostname",
+                "ServerLocation",
+                "ServerSponsor",
+                "ServerUrl",
+                "DeviceId",
+                .. settings.CustomFields.Select(field => field.Key)]);
 
             foreach (IAnsiConsole destination in HeaderDestinations(console))
             {
@@ -63,7 +69,9 @@ public sealed class CSVConsoleWriter : IConsoleWriter
         // within a run and across runs.
         // A test that did not run leaves its cells empty; one that ran and failed entirely reports
         // a speed of 0 beside the request counts that say so.
-        console.WriteLine(Record(
+        // The device label is empty when none was given, because every built-in column is present
+        // whatever the run was asked for.
+        console.WriteLine(Record([
             clock.Now.ToMachineReadable(),
             !settings.NoLatency ? fastest.LatencyMilliseconds.ToString(CultureInfo.InvariantCulture) : string.Empty,
             downloadResult?.GetBitsPerSecond().ToString(CultureInfo.InvariantCulture) ?? string.Empty,
@@ -73,7 +81,12 @@ public sealed class CSVConsoleWriter : IConsoleWriter
             uploadResult?.RequestsSucceeded.ToString(CultureInfo.InvariantCulture) ?? string.Empty,
             uploadResult?.RequestsFailed.ToString(CultureInfo.InvariantCulture) ?? string.Empty,
             clientInfoProvider.GetIPAddress(),
-            clientInfoProvider.GetHostname()));
+            clientInfoProvider.GetHostname(),
+            fastest.Server.Location,
+            fastest.Server.Sponsor,
+            fastest.Server.Url,
+            settings.DeviceId ?? string.Empty,
+            .. settings.CustomFields.Select(field => field.Value)]));
 
         return SpeedTestOutcome.Create(downloadResult, uploadResult);
     }

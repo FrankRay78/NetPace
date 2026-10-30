@@ -1,4 +1,4 @@
-﻿Timestamp,LatencyMilliseconds,DownloadSpeedBitsPerSecond,DownloadSucceeded,DownloadFailed,UploadSpeedBitsPerSecond,UploadSucceeded,UploadFailed,IPAddress,Hostname
-1980-01-01T10:05:00+01:00,75,250000,40,0,500000,12,0,192.168.1.1,test-host
-1980-01-01T10:05:05+01:00,100,1000000,150,0,3000000,64,0,192.168.1.1,test-host
-1980-01-01T10:05:10+01:00,150,2750000,400,0,1330000,30,0,192.168.1.1,test-host
+﻿Timestamp,LatencyMilliseconds,DownloadSpeedBitsPerSecond,DownloadSucceeded,DownloadFailed,UploadSpeedBitsPerSecond,UploadSucceeded,UploadFailed,IPAddress,Hostname,ServerLocation,ServerSponsor,ServerUrl,DeviceId
+1980-01-01T10:05:00+01:00,75,250000,40,0,500000,12,0,192.168.1.1,test-host,Test Location,Test Sponsor,http://test.com,
+1980-01-01T10:05:05+01:00,100,1000000,150,0,3000000,64,0,192.168.1.1,test-host,Test Location,Test Sponsor,http://test.com,
+1980-01-01T10:05:10+01:00,150,2750000,400,0,1330000,30,0,192.168.1.1,test-host,Test Location,Test Sponsor,http://test.com,
