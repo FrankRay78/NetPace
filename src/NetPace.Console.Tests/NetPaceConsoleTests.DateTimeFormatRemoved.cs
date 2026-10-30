@@ -8,32 +8,6 @@ public sealed partial class NetPaceConsoleTests
 {
     public sealed class DateTimeFormatRemoved
     {
-        /// <summary>
-        /// A host whose speed tester records the one call a run makes before measuring — server
-        /// discovery — so a test can assert the run never got that far. Every later delegate is left
-        /// unconfigured and throws, so a run that got past discovery could not pass quietly either.
-        /// </summary>
-        private static (CommandLineTestHost host, List<string> serviceCalls) HostRecordingMeasurements()
-        {
-            var serviceCalls = new List<string>();
-
-            var speedTester = new SpeedTestMock
-            {
-                GetServersAsyncFunc = _ =>
-                {
-                    serviceCalls.Add(nameof(ISpeedTestService.GetServersAsync));
-                    return Task.FromResult<IServer[]>([]);
-                }
-            };
-
-            var services = new ServiceCollection();
-            services.AddSingleton<ISpeedTestService>(speedTester);
-            services.AddSingleton<IClock, ClockStub>();
-            services.AddSingleton<IWaiter, NoDelayStub>();
-
-            return (new CommandLineTestHost(services), serviceCalls);
-        }
-
         [Theory]
         [InlineData("yyyy-MM-dd HH:mm:ss")]
         [InlineData("dd/MM/yyyy")]

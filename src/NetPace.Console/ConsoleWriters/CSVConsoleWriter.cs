@@ -36,7 +36,7 @@ public sealed class CSVConsoleWriter : IConsoleWriter
         // ran, so a script can read by name or by position and an appended log keeps one shape.
         if (initialSpeedTest)
         {
-            console.WriteLine(string.Join(settings.CSVDelimiter,
+            console.WriteLine(Record(
                 "Timestamp",
                 "LatencyMilliseconds",
                 "DownloadSpeedBitsPerSecond",
@@ -54,7 +54,7 @@ public sealed class CSVConsoleWriter : IConsoleWriter
         // within a run and across runs.
         // A test that did not run leaves its cells empty; one that ran and failed entirely reports
         // a speed of 0 beside the request counts that say so.
-        console.WriteLine(string.Join(settings.CSVDelimiter,
+        console.WriteLine(Record(
             clock.Now.ToMachineReadable(),
             !settings.NoLatency ? fastest.LatencyMilliseconds.ToString(CultureInfo.InvariantCulture) : string.Empty,
             downloadResult?.GetBitsPerSecond().ToString(CultureInfo.InvariantCulture) ?? string.Empty,
@@ -67,5 +67,35 @@ public sealed class CSVConsoleWriter : IConsoleWriter
             clientInfoProvider.GetHostname()));
 
         return SpeedTestOutcome.Create(downloadResult, uploadResult);
+    }
+
+    /// <summary>
+    /// Joins the fields of one CSV record with commas — the only separator CSV output uses — each
+    /// field escaped so a standard reader sees one field per column.
+    /// </summary>
+    private static string Record(params string[] fields) => string.Join(',', fields.Select(ToField));
+
+    /// <summary>
+    /// Writes a single value as a CSV field. A value holding a comma or a double quote is wrapped in
+    /// double quotes with any of its own doubled, as RFC 4180 asks, so a reader returns the original
+    /// text and the row keeps one field per column. A line break is written as a space rather than
+    /// quoted, so every record stays on one line whatever the machine reports. Anything else — every
+    /// number, the timestamp, and an ordinary hostname — is written exactly as it arrives.
+    /// Why the separator is fixed and why a line break is not quoted instead:
+    /// docs/change-intent-records/2026-10-29-csv-is-always-comma-separated.md.
+    /// </summary>
+    private static string ToField(string value)
+    {
+        string oneLine = value
+            .Replace("\r\n", " ", StringComparison.Ordinal)
+            .Replace('\r', ' ')
+            .Replace('\n', ' ');
+
+        if (oneLine.Contains(',', StringComparison.Ordinal) || oneLine.Contains('"', StringComparison.Ordinal))
+        {
+            return $"\"{oneLine.Replace("\"", "\"\"", StringComparison.Ordinal)}\"";
+        }
+
+        return oneLine;
     }
 }

@@ -28,11 +28,6 @@ public sealed class SpeedTestCommandSettings
     public required bool CSV { get; init; }
 
     /// <summary>
-    /// Single character delimiter to use in CSV output.
-    /// </summary>
-    public required char CSVDelimiter { get; init; }
-
-    /// <summary>
     /// Display output in Json format.
     /// </summary>
     public required bool Json { get; init; }
