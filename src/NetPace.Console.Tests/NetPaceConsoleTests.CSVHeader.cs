@@ -195,10 +195,6 @@ public sealed partial class NetPaceConsoleTests
             await Verify(result.Output);
         }
 
-        /// <summary>
-        /// A log file path unique to one test, deleted when that test finishes. Nothing is created
-        /// up front, so a test chooses for itself whether the path already holds content.
-        /// </summary>
         [Fact]
         public async Task Should_Write_The_Header_To_A_New_File_When_The_Terminal_Is_Quiet()
         {
@@ -269,6 +265,102 @@ public sealed partial class NetPaceConsoleTests
             await Verify(fileContent);
         }
 
+        [Fact]
+        public async Task Should_Write_The_Header_On_The_First_Line_When_The_Log_Holds_Only_A_Line_Ending()
+        {
+            // Given a log file holding nothing but the line ending `echo > log.csv` leaves behind
+            using var log = new TempLogFile();
+            await System.IO.File.WriteAllTextAsync(log.FilePath, "\n");
+
+            // When a CSV result is appended to it
+            var result = await NewHost().RunAsync(["--csv", "--file", log.FilePath]);
+
+            // Then the header is the log's first line, not one below a blank line
+            Assert.Equal(0, result.ExitCode);
+
+            var fileContent = await System.IO.File.ReadAllTextAsync(log.FilePath);
+            await Verify(fileContent);
+        }
+
+        [Fact]
+        public async Task Should_Keep_A_Short_Log_With_Content_When_Csv_Is_Appended()
+        {
+            // Given a log file whose content is shorter than a byte-order mark and a line ending
+            using var log = new TempLogFile();
+            await System.IO.File.WriteAllTextAsync(log.FilePath, "x\n");
+
+            // When a CSV result is appended to it
+            var result = await NewHost().RunAsync(["--csv", "--file", log.FilePath]);
+
+            // Then that content is kept and the row is added beneath it, with no header
+            Assert.Equal(0, result.ExitCode);
+
+            var fileContent = await System.IO.File.ReadAllTextAsync(log.FilePath);
+            await Verify(fileContent);
+        }
+
+        [Fact]
+        public async Task Should_Not_Repeat_The_Header_When_Appending_Through_A_Link_To_A_Log_With_Rows()
+        {
+            // Given a link to a log that already holds a header and a row
+            using var target = new TempLogFile();
+            using var link = new TempLogFile();
+
+            var first = await NewHost().RunAsync(["--csv", "--file", target.FilePath]);
+            Assert.Equal(0, first.ExitCode);
+            System.IO.File.CreateSymbolicLink(link.FilePath, target.FilePath);
+
+            // When a CSV result is appended through the link
+            var second = await NewHost().RunAsync(["--csv", "--file", link.FilePath]);
+
+            // Then the log gains a data row only
+            Assert.Equal(0, second.ExitCode);
+
+            var fileContent = await System.IO.File.ReadAllTextAsync(target.FilePath);
+            await Verify(fileContent);
+        }
+
+        [Fact]
+        public async Task Should_Write_The_Header_When_Appending_Through_A_Link_To_An_Empty_Log()
+        {
+            // Given a link to an empty log
+            using var target = new TempLogFile();
+            using var link = new TempLogFile();
+            await System.IO.File.WriteAllTextAsync(target.FilePath, string.Empty);
+            System.IO.File.CreateSymbolicLink(link.FilePath, target.FilePath);
+
+            // When a CSV result is appended through the link
+            var result = await NewHost().RunAsync(["--csv", "--file", link.FilePath]);
+
+            // Then the log holds the header line followed by one data row
+            Assert.Equal(0, result.ExitCode);
+
+            var fileContent = await System.IO.File.ReadAllTextAsync(target.FilePath);
+            await Verify(fileContent);
+        }
+
+        [Fact]
+        public async Task Should_Write_The_Header_When_Appending_Through_A_Link_Whose_Log_Is_Gone()
+        {
+            // Given a link whose log has been rotated away
+            using var target = new TempLogFile();
+            using var link = new TempLogFile();
+            System.IO.File.CreateSymbolicLink(link.FilePath, target.FilePath);
+
+            // When a CSV result is appended through the link
+            var result = await NewHost().RunAsync(["--csv", "--file", link.FilePath]);
+
+            // Then a fresh log starts with the header line followed by one data row
+            Assert.Equal(0, result.ExitCode);
+
+            var fileContent = await System.IO.File.ReadAllTextAsync(target.FilePath);
+            await Verify(fileContent);
+        }
+
+        /// <summary>
+        /// A log file path unique to one test, deleted when that test finishes. Nothing is created
+        /// up front, so a test chooses for itself whether the path already holds content.
+        /// </summary>
         private sealed class TempLogFile : IDisposable
         {
             public string FilePath { get; } = Path.Join(Path.GetTempPath(), $"netpace-test-{Guid.NewGuid()}.csv");

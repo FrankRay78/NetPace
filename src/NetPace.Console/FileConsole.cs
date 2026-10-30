@@ -23,6 +23,8 @@ public sealed class FileConsole : IAnsiConsole, IPersistentConsole, IDisposable
     /// Whether the file holds no content for this run to add to: empty or absent when the run
     /// reached it, or any file in overwrite mode, where its previous content is replaced. Read
     /// before the file is opened, because opening it for append is itself about to add content.
+    /// A file that started empty is replaced rather than appended to, so a stray byte-order mark
+    /// or line ending is not left above the first line written.
     /// </param>
     public FileConsole(string filePath, FileMode fileMode, bool startedEmpty)
     {
@@ -31,7 +33,7 @@ public sealed class FileConsole : IAnsiConsole, IPersistentConsole, IDisposable
 
         StartedEmpty = startedEmpty;
 
-        _fileWriter = new StreamWriter(filePath, append: (fileMode == FileMode.Append), Encoding.UTF8) { AutoFlush = true };
+        _fileWriter = new StreamWriter(filePath, append: (fileMode == FileMode.Append && !startedEmpty), Encoding.UTF8) { AutoFlush = true };
 
         // Create console settings for plain text output.
         var settings = new AnsiConsoleSettings

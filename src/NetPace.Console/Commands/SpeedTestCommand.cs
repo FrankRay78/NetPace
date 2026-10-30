@@ -232,12 +232,22 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
             file = target;
         }
 
-        // Too short to hold a row counts as empty, not as content. FileConsole opens the file with
-        // Encoding.UTF8, which writes a byte-order mark before anything else, so a run that ended
-        // before writing a row leaves a file that every reader shows as empty; a bare line ending
-        // from `echo > log.csv` is shorter still. Reading either as content would suppress the
-        // header on that log for good, which is the one outcome this check exists to prevent.
-        return !file.Exists || file.Length <= Encoding.UTF8.GetPreamble().Length;
+        if (!file.Exists) return true;
+
+        // A file holding only a byte-order mark and/or a line ending counts as empty, not as
+        // content. FileConsole opens the file with Encoding.UTF8, which writes a byte-order mark
+        // before anything else, so a run that ended before writing a row leaves a file that every
+        // reader shows as empty; `echo > log.csv` leaves a bare line ending. Reading either as
+        // content would suppress the header on that log for good, which is the one outcome this
+        // check exists to prevent. FileConsole replaces such a file rather than appending to it,
+        // so the header lands on the first line; anything else, however short, is kept.
+        var preamble = Encoding.UTF8.GetPreamble();
+        if (file.Length > preamble.Length + 2) return false;
+
+        ReadOnlySpan<byte> content = File.ReadAllBytes(file.FullName);
+        if (content.StartsWith(preamble)) content = content[preamble.Length..];
+
+        return content.IndexOfAnyExcept((byte)'\r', (byte)'\n') < 0;
     }
 
     /// <summary>
