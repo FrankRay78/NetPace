@@ -111,6 +111,52 @@ public sealed partial class OoklaSpeedtestTests
     }
 
     [Fact]
+    public async Task GetDownloadSpeedAsync_ACappedTransferTakingOneSecondOfTheSuppliedClock_ReportsThatSecondAsItReachesTheCap()
+    {
+        // Given a download capped at one megabyte, whose single request fills the cap in exactly one
+        // second of a clock the test moves itself. Every built-in profile caps a transfer, so a
+        // default run sends its final progress report as the cap is reached - a different report
+        // from the one an uncapped transfer ends on, and the one a live display shows last.
+        const int payloadBytes = 1024 * 1024;
+        var clock = new ControlledTimeProvider(ClockStart);
+
+        using var mockHttp = new MockHttpMessageHandler();
+        mockHttp.When("*")
+                .Respond(_ =>
+                {
+                    clock.Advance(TimeSpan.FromSeconds(1));
+                    return new HttpResponseMessage(HttpStatusCode.OK)
+                    {
+                        Content = new ByteArrayContent(new byte[payloadBytes])
+                    };
+                });
+
+        var settings = new OoklaSpeedtestSettings
+        {
+            DownloadTest = new()
+            {
+                DownloadSizes = [100],
+                DownloadSizeIterations = 1,
+                DownloadParallelTasks = 1,
+                DownloadSizeMb = 1
+            }
+        };
+
+        var speedtest = new OoklaSpeedtest(settings, mockHttp.ToHttpClient(), timeProviderOverride: clock);
+        var server = new Server { Url = "http://testserver.com/", Sponsor = "Sponsor", Location = "Location" };
+        var reports = new List<SpeedTestProgress>();
+
+        // When
+        var result = await speedtest.GetDownloadSpeedAsync(server, new SynchronousProgress<SpeedTestProgress>(reports.Add));
+
+        // Then the report that announces the cap carries that second, exactly.
+        result.ElapsedMilliseconds.ShouldBe(1000);
+        reports.ShouldNotBeEmpty();
+        reports[^1].PercentageComplete.ShouldBe(100);
+        reports[^1].ElapsedMilliseconds.ShouldBe(1000);
+    }
+
+    [Fact]
     public async Task GetUploadSpeedAsync_ATransferTakingOneSecondOfTheSuppliedClock_ReportsThoseBytesPerSecond()
     {
         // Given a single upload of a known size, which takes exactly one second of a clock the test
@@ -292,6 +338,160 @@ public sealed partial class OoklaSpeedtestTests
         record.Outcome.ShouldBe(RequestOutcome.Failed);
         record.ElapsedMilliseconds.ShouldBe(250);
     }
+
+    [Fact]
+    public async Task GetServerLatencyAsync_AProbeThatFailsAfterAKnownTimeOfTheSuppliedClock_RecordsThatTimeAgainstTheFailure()
+    {
+        // Given a latency probe that fails after 400 ms of a clock the test moves itself.
+        var clock = new ControlledTimeProvider(ClockStart);
+
+        using var mockHttp = new MockHttpMessageHandler();
+        mockHttp.When("*")
+                .Respond(_ =>
+                {
+                    clock.Advance(TimeSpan.FromMilliseconds(400));
+                    throw new HttpRequestException("connection reset");
+                });
+
+        var settings = new OoklaSpeedtestSettings
+        {
+            LatencyTest = new()
+            {
+                LatencyTestIterations = 1,
+                LatencyTestIntervalMilliseconds = 0
+            }
+        };
+
+        var speedtest = new OoklaSpeedtest(settings, mockHttp.ToHttpClient(), timeProviderOverride: clock);
+        var server = new Server { Url = "http://testserver.com/", Sponsor = "Sponsor", Location = "Location" };
+        var diagnostics = new List<RequestDiagnostic>();
+
+        // When
+        var exception = await Record.ExceptionAsync(() => speedtest.GetServerLatencyAsync(server, null, Collect(diagnostics)));
+
+        // Then the measurement still fails, and the failed probe's record carries the time it took.
+        exception.ShouldNotBeNull();
+        var record = diagnostics.ShouldHaveSingleItem();
+        record.Outcome.ShouldBe(RequestOutcome.Failed);
+        record.ElapsedMilliseconds.ShouldBe(400);
+    }
+
+    [Fact]
+    public async Task GetFastestServerByLatencyAsync_ACandidateThatFailsAfterAKnownTimeOfTheSuppliedClock_RecordsThatTimeAgainstTheFailure()
+    {
+        // Given the only candidate, whose screening request fails after 300 ms of a clock the test
+        // moves itself.
+        var clock = new ControlledTimeProvider(ClockStart);
+
+        using var mockHttp = new MockHttpMessageHandler();
+        mockHttp.When("*")
+                .Respond(_ =>
+                {
+                    clock.Advance(TimeSpan.FromMilliseconds(300));
+                    throw new HttpRequestException("connection reset");
+                });
+
+        var settings = new OoklaSpeedtestSettings
+        {
+            ServerDiscovery = new()
+            {
+                ScreeningRequestCount = 1
+            }
+        };
+
+        var speedtest = new OoklaSpeedtest(settings, mockHttp.ToHttpClient(), new DelayProviderStub(), clock);
+        var server = new Server { Url = "http://testserver.com/", Sponsor = "Sponsor", Location = "Location" };
+        var diagnostics = new List<RequestDiagnostic>();
+
+        // When
+        var exception = await Record.ExceptionAsync(
+            () => speedtest.GetFastestServerByLatencyAsync([server], null, Collect(diagnostics)).WaitAsync(HangGuard));
+
+        // Then the candidate is ranked out, and its record carries the time the request took.
+        exception.ShouldNotBeNull();
+        exception.Message.ShouldBe("No servers available");
+        var record = diagnostics.ShouldHaveSingleItem();
+        record.Outcome.ShouldBe(RequestOutcome.Failed);
+        record.ElapsedMilliseconds.ShouldBe(300);
+    }
+
+    [Fact]
+    public async Task GetUploadSpeedAsync_AnEndpointProbeAnsweringAfterAKnownTimeOfTheSuppliedClock_RecordsThatTimeAgainstTheProbe()
+    {
+        // Given an upload whose endpoint probe - the empty request that finds where uploads should
+        // go, made before the measured uploads - answers after 200 ms of a clock the test moves
+        // itself, and whose one measured upload takes a second.
+        var clock = new ControlledTimeProvider(ClockStart);
+        var requests = 0;
+
+        using var mockHttp = new MockHttpMessageHandler();
+        mockHttp.When("*")
+                .Respond(_ =>
+                {
+                    clock.Advance(++requests == 1 ? TimeSpan.FromMilliseconds(200) : TimeSpan.FromSeconds(1));
+                    return new HttpResponseMessage(HttpStatusCode.OK);
+                });
+
+        var speedtest = new OoklaSpeedtest(SingleUploadSettings(), mockHttp.ToHttpClient(), timeProviderOverride: clock);
+        var server = new Server { Url = "http://testserver.com/", Sponsor = "Sponsor", Location = "Location" };
+        var diagnostics = new List<RequestDiagnostic>();
+
+        // When
+        await speedtest.GetUploadSpeedAsync(server, null, Collect(diagnostics));
+
+        // Then the probe's record carries its 200 ms, and the measured upload's its second.
+        diagnostics.Select(d => (d.Sequence, d.Outcome, d.ElapsedMilliseconds))
+                   .ShouldBe([(1, RequestOutcome.Succeeded, 200L), (2, RequestOutcome.Succeeded, 1000L)]);
+    }
+
+    [Fact]
+    public async Task GetUploadSpeedAsync_AnEndpointProbeFailingAfterAKnownTimeOfTheSuppliedClock_RecordsThatTimeAgainstTheProbe()
+    {
+        // Given an upload whose endpoint probe fails after 300 ms of a clock the test moves itself.
+        // Probing is best-effort, so the measured upload still goes ahead, to the configured address.
+        var clock = new ControlledTimeProvider(ClockStart);
+        var requests = 0;
+
+        using var mockHttp = new MockHttpMessageHandler();
+        mockHttp.When("*")
+                .Respond(_ =>
+                {
+                    if (++requests == 1)
+                    {
+                        clock.Advance(TimeSpan.FromMilliseconds(300));
+                        throw new HttpRequestException("connection reset");
+                    }
+
+                    clock.Advance(TimeSpan.FromSeconds(1));
+                    return new HttpResponseMessage(HttpStatusCode.OK);
+                });
+
+        var speedtest = new OoklaSpeedtest(SingleUploadSettings(), mockHttp.ToHttpClient(), timeProviderOverride: clock);
+        var server = new Server { Url = "http://testserver.com/", Sponsor = "Sponsor", Location = "Location" };
+        var diagnostics = new List<RequestDiagnostic>();
+
+        // When
+        await speedtest.GetUploadSpeedAsync(server, null, Collect(diagnostics));
+
+        // Then the failed probe's record carries the time it took before failing.
+        diagnostics.Select(d => (d.Sequence, d.Outcome, d.ElapsedMilliseconds))
+                   .ShouldBe([(1, RequestOutcome.Failed, 300L), (2, RequestOutcome.Succeeded, 1000L)]);
+    }
+
+    /// <summary>
+    /// One measured upload, one request at a time, so each request's share of a controlled clock
+    /// is known.
+    /// </summary>
+    private static OoklaSpeedtestSettings SingleUploadSettings() => new()
+    {
+        UploadTest = new()
+        {
+            UploadSizeIncrementKb = 200,
+            UploadIncrements = 1,
+            UploadSizeIterations = 1,
+            UploadParallelTasks = 1
+        }
+    };
 
     [Fact]
     public async Task GetDownloadSpeedAsync_ASuppliedClockThatStepsBackwardsAsARequestFails_StillRecordsTheRequestsOwnFailure()
