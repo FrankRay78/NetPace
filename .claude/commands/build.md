@@ -9,8 +9,6 @@ Read `CLAUDE.md` for project context, and `CONVENTIONS.md` as *Repository conven
 
 `/build` is designed to run to completion **without prompting** once it has an issue number, so it can be driven back-to-back as well as invoked directly.
 
-Every step below is written to be repository-agnostic. Wherever a step needs the repository's tools, paths or rules, it says so and names the section of `CONVENTIONS.md` that supplies them (*Repository conventions*), so adopting this command elsewhere means writing that file and touching no step.
-
 **Stop-on-failure is global:** if any step fails — the tree is dirty, the issue is unbuildable as written, the RED tests do not fail, the suite will not go green — STOP at that step, report it, and do not run any later step. Never report READY over a red suite, an unimplemented acceptance criterion, or an uncommitted change.
 
 ---
@@ -43,7 +41,7 @@ The steps in this file are generic. What is particular to the repository they ru
 | `Change-intent records` | whether the project keeps them, and the convention step 9 runs |
 | `Hooks, scripts and plugins` | the hooks that enforce the bans step 5 names, and what a port must bring |
 
-A section under any other heading is read too, and applied where its text says. Where the file is missing, the command runs on its generic rules alone; where a heading is missing, that step runs on its generic rule alone. Either way the command completes. `CONVENTIONS.md` is read from the root of the repository this command runs in, and trusted as this command file is. The harness itself is not a repository convention: the verdict protocol, the chain scripts that read it and the sibling commands stay named in the steps, so whoever edits the protocol sees what consumes it.
+A section under any other heading is read too, and applied where its text says. Where the file or a heading is missing, the step concerned runs on its generic rule alone, and the final report names each heading not found. A step whose convention is the thing itself — the command to run, the file to write — has no generic rule, so where that heading is missing the command STOPS rather than invent one, with the reason `conventions missing: <heading>`. `CONVENTIONS.md` is read from the root of the repository this command runs in, and trusted as this command file is. The harness itself is not a repository convention: the verdict protocol, the chain scripts that read it and the sibling commands stay named in the steps, so whoever edits the protocol sees what consumes it.
 
 ---
 
@@ -128,7 +126,7 @@ Two named exceptions, because the project reserves them for discussion. `CONVENT
 **Close the report with the verdict as its last line** — one JSON object on one line, at column 1, nothing else on that line and nothing after it. Exactly one of:
 
 - `{"schema": 1, "outcome": "ready", "branch": "<branch>"}` — every criterion implemented, whole suite green, everything committed, tree clean.
-- `{"schema": 1, "outcome": "failed", "reason": "<short reason>"}` — you could not reach that state. Report the wall you actually hit, discovered by working: the criteria conflict, they do not determine the design, the change is larger than they describe. Do not fabricate `ready`.
+- `{"schema": 1, "outcome": "failed", "reason": "<short reason>"}` — you could not reach that state, including `conventions missing: <heading>` from *Repository conventions*. Report the wall you actually hit, discovered by working: the criteria conflict, they do not determine the design, the change is larger than they describe. Do not fabricate `ready`.
 
 The schema — its fields, what each outcome carries, and how it is read — is [`docs/verdict-schema.md`](../../docs/verdict-schema.md). `scripts/chain.sh` reads only what ends the report, so one more sentence or a closing pleasantry after the verdict costs the run its verdict and stops the chain; a code fence around the verdict is tolerated, anything after it is not. The upside of reading only the end: quoting either verdict *earlier* in the report — as RED evidence, in a code block, a list or a table — is free and cannot be mistaken for your own.
 

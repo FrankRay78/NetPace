@@ -8,8 +8,9 @@ name: Review PR
 # Both workflows record what their round cost in a footer at the end of the PR description, and
 # share one concurrency group so they never rewrite it at the same time.
 # The action restores `.claude/` and CLAUDE.md from the PR's base branch before the agent runs
-# (the PR head is untrusted), and a step below puts main's REVIEW.md in place, so a change to the
-# command file or the review criteria takes effect on merge, never on its own branch — try one out
+# (the PR head is untrusted), and a step below puts main's REVIEW.md and CONVENTIONS.md in place
+# — the restore does not reach what CLAUDE.md imports — so a change to the command file, the review
+# criteria or the conventions takes effect on merge, never on its own branch — try one out
 # beforehand by running /review-pr locally.
 # Rationale: docs/change-intent-records/2026-10-20-pr-review-runs-on-pr-open.md and
 # docs/change-intent-records/2026-10-31-review-criteria-live-in-review-md.md
@@ -83,26 +84,29 @@ jobs:
           args=$(bash "$RUNNER_TEMP/stage-flags.sh" review-pr)
           echo "args=$args" >> "$GITHUB_OUTPUT"
 
-      # The action restores `.claude/` and CLAUDE.md from the base branch, and nothing else, so the
-      # review criteria the command reads are put in place here from main's copy: the PR head's
-      # copy is the one the review must not judge by. Where main has no REVIEW.md the PR's is
-      # removed, so the review runs on the command's generic rules rather than on criteria the pull
-      # request wrote — said in the log, because the posted review is weaker then. The ref is
+      # The action restores `.claude/` and CLAUDE.md from the base branch, and nothing else — not
+      # the files CLAUDE.md imports — so the review criteria the command reads, and the conventions
+      # CLAUDE.md loads, are put in place here from main's copy: the PR head's copy is the one the
+      # review must not judge by. Where main has no such file the PR's is removed, so the review
+      # runs on the command's generic rules rather than on text the pull request wrote — said in
+      # the log, because the posted review is weaker then. The ref is
       # checked first and separately: `git cat-file -e` exits the same way for a missing ref as for
       # a missing path, so without the check a checkout with no origin/main would silently take the
       # "main has none" branch. The file is text the agent reads, as the command file is; nothing
       # from it is executed.
-      - name: Put main's review criteria in place
+      - name: Put main's review criteria and conventions in place
         run: |
           set -euo pipefail
           git rev-parse --verify -q 'origin/main^{commit}' > /dev/null \
             || { echo "::error::origin/main is not in this checkout, so the review criteria cannot be read from main."; exit 1; }
-          if git cat-file -e origin/main:REVIEW.md; then
-            git show origin/main:REVIEW.md > REVIEW.md
-          else
-            echo "::warning::main has no REVIEW.md — this review runs on the command's generic rules only."
-            rm -f REVIEW.md
-          fi
+          for file in REVIEW.md CONVENTIONS.md; do
+            if git cat-file -e "origin/main:$file" 2>/dev/null; then
+              git show "origin/main:$file" > "$file"
+            else
+              echo "::warning::main has no $file — this review runs on the command's generic rules for it."
+              rm -f "$file"
+            fi
+          done
 
       # Counted before the action runs, so the check afterwards can require a *new* review rather
       # than merely one at the head commit. On `opened` this is always 0; on a re-dispatch of a

@@ -25,7 +25,7 @@ The method in this file is generic. What is particular to the repository it audi
 | `Dependencies` | the dependency-controlled library whose dependencies are in scope |
 | `Public API and breaking changes` | the published library whose public surface lens 5 walks |
 
-A section under any other heading is read too, and applied where its text says. Where the file is missing, the command runs on its generic rules alone; where a heading is missing, that step runs on its generic rule alone. Either way the command completes. `CONVENTIONS.md` is read from the root of the repository this command runs in, and trusted as this command file is.
+A section under any other heading is read too, and applied where its text says. Where the file or a heading is missing, the step concerned runs on its generic rule alone, and the report to the user names each heading not found. A step whose convention is the thing itself — the file to write, the label to apply — has no generic rule, so where that heading is missing the command stops and names the heading rather than invent one. `CONVENTIONS.md` is read from the root of the repository this command runs in, and trusted as this command file is.
 
 ## Scope
 

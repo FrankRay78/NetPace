@@ -35,7 +35,7 @@
 #   In CI       .github/workflows/traceability.yml, on every pull request to main. The single
 #               point of enforcement, so it sees the branch's final state however it got there.
 #   Locally     bash scripts/traceability-check.sh [branch]
-#               Run it before raising a PR (CLAUDE.md), so a dropped marker is caught first.
+#               Run it before raising a PR (CONVENTIONS.md, Acceptance criteria), so a dropped marker is caught first.
 #
 # Both inputs are injectable, so a local run or a test can target any issue without renaming a
 # branch: the branch as `$1` or $TRACEABILITY_BRANCH, the repository as $TRACEABILITY_REPO.

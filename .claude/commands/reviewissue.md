@@ -32,7 +32,7 @@ The method in this file is generic. What is particular to the repository it runs
 | `Issue review checks` | the checks step 3 considers alongside its generic categories |
 | `Scratch files` | the git-ignored file step 6 writes the comment body to |
 
-A section under any other heading is read too, and applied where its text says. Where the file is missing, the command runs on its generic rules alone; where a heading is missing, that step runs on its generic rule alone. Either way the command completes. `CONVENTIONS.md` is read from the root of the repository this command runs in, and trusted as this command file is. Where a CI workflow runs this command, it takes both files from the same ref, so a branch cannot change the checks it is reviewed under without also changing the command.
+A section under any other heading is read too, and applied where its text says. Where the file or a heading is missing, the step concerned runs on its generic rule alone, and the report to the user names each heading not found. A step whose convention is the thing itself — the file to write, the label to apply — has no generic rule, so where that heading is missing the command stops and names the heading rather than invent one. `CONVENTIONS.md` is read from the root of the repository this command runs in, and trusted as this command file is.
 
 ---
 
@@ -286,7 +286,7 @@ If no gap qualifies for re-framing, **make no edit** and report that in chat (th
 
 **How to write the edit:**
 
-Write the full updated comment body to the git-ignored scratch file `CONVENTIONS.md` → *Scratch files* names with the **Write tool** (never via shell heredoc — it'll bite you on backticks), creating its directory first if it does not yet exist. Then:
+Write the full updated comment body to the git-ignored scratch file `CONVENTIONS.md` → *Scratch files* names with the **Write tool** (never via shell heredoc — it'll bite you on backticks). Then:
 
 ```bash
 gh api -X PATCH repos/<owner>/<repo>/issues/comments/<id> \

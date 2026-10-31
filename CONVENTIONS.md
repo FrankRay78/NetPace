@@ -26,7 +26,7 @@ Constitution §I (NON-NEGOTIABLE) states the rule, and it applies as written. It
 ## Acceptance criteria
 
 - **Outcomes, not mechanism** — constitution §IX (NON-NEGOTIABLE): a criterion or test describes what an outside observer can verify, and an interface contract a user, script or consumer touches directly counts as an outcome. `/draftissue` works the rule for drafting and [`docs/conventions/testing.md`](docs/conventions/testing.md) for test authoring.
-- **Scenario labels** — give each scenario a test will verify a `**Scenario: <name>**` label on its own line, with the Given / When / Then beneath it. `/build` writes a test carrying a matching `SCENARIO: <name>` marker, and `scripts/traceability-check.sh` fails the pull request if one is missing (constitution §VIII). Leave a scenario **unlabelled** when only an external tool or gate can check it — "the formatter passes", "the build is warning-free" — since a label would demand a test that should not exist (§I's configuration/tooling carve-out). The label must be a bare line of the body: one mid-sentence, in backticks or inside a code fence is not read as a label. The fence below is for presentation only:
+- **Scenario labels** — give each scenario a test will verify a `**Scenario: <name>**` label on its own line, with the Given / When / Then beneath it. `/build` writes a test carrying a matching `SCENARIO: <name>` marker, which the *Traceability* check below enforces. Leave a scenario **unlabelled** when only an external tool or gate can check it — "the formatter passes", "the build is warning-free" — since a label would demand a test that should not exist (§I's configuration/tooling carve-out). The label must be a bare line of the body: one mid-sentence, in backticks or inside a code fence is not read as a label. The fence below is for presentation only:
 
   ```
   **Scenario: Server list is screened before measuring**
@@ -69,7 +69,7 @@ This project keeps them. The convention is [`docs/conventions/change-intent-reco
 
 ## Scratch files
 
-`.claude/scratch/` is git-ignored. `/raise-pr` writes the pull request body to `.claude/scratch/raise-pr-body.md`; the `Write` tool creates the directory if it is missing. `/draftissue` writes the issue body to `.claude/scratch/gh-issue-body-<slug>.md`, where the slug is a short kebab-case form of the title, and `/reviewissue` writes the review comment to `.claude/scratch/reviewissue-body.md`; run `mkdir -p .claude/scratch` first if unsure it exists.
+`.claude/scratch/` is git-ignored. `/raise-pr` writes the pull request body to `.claude/scratch/raise-pr-body.md`; the `Write` tool creates the directory if it is missing. `/draftissue` writes the issue body to `.claude/scratch/gh-issue-body-<slug>.md`, where the slug is a short kebab-case form of the title, and `/reviewissue` writes the review comment to `.claude/scratch/reviewissue-body.md`.
 
 ## Pull requests
 
@@ -86,19 +86,19 @@ The `issue-link` check (`.github/workflows/pr-issue-link.yml`) fails any pull re
 What `/draftissue` considers when it looks for the requirements decisions a source leaves open:
 
 - **Library consumers** — `NetPace.Core` is published to NuGet. Where the feature has a library side, its consumers are users too: say whether the capability is offered to them, not only to the CLI.
-- **Output modes** — a result shown to the user must appear consistently in the default and minimal output, and respect `--unit-scale`. CSV and JSON are not formatted output: both carry plain numbers in fixed units that the unit options do not touch, and the numbers they report must agree with each other. Say which modes are in scope.
-- **CLI docs** — if the feature adds or changes a CLI option, updating the README `--help` snapshot and `USER_GUIDE.md` is part of the work; make it an acceptance criterion.
-- **Breaking changes** — while NetPace is below 1.0.0, a breaking change needs no approval, but the issue must state plainly what breaks and for whom (constitution §VII).
+- **Output modes** — a result shown to the user must follow the rule `CLAUDE.md` → *Units and Formatting* states for default, minimal, CSV and JSON output. Say which modes are in scope.
+- **CLI docs** — if the feature adds or changes a CLI option, the documentation *Documentation* names for one is part of the work; make it an acceptance criterion.
+- **Breaking changes** — under the stance *Public API and breaking changes* states, a breaking change needs no approval, but the issue must state plainly what breaks and for whom.
 
 ## Issue review checks
 
 What `/reviewissue` considers alongside its generic categories, under the same test: raise a gap only where the issue leaves the point open.
 
 - **Library first** — does the feature start in `NetPace.Core`, and does it change `ISpeedTestService`?
-- **Output modes** — does it look the same across default and minimal output, and does it respect `--unit-scale`? CSV and JSON carry plain numbers in fixed units, so the unit options do not reach either; check instead that their numbers agree with each other.
-- **CLI docs** — if it touches a CLI option, is updating the README `--help` snapshot and USER_GUIDE.md in scope?
+- **Output modes** — does it hold to the rule `CLAUDE.md` → *Units and Formatting* states for default, minimal, CSV and JSON output?
+- **CLI docs** — if it touches a CLI option, is the documentation *Documentation* names for one in scope?
 - **Acceptance criteria** — do they describe outcomes rather than mechanism (constitution §IX), and are the `**Scenario:**` labels right (§VIII)?
-- **AOT trimming** — is it safe for trimmed builds, with no runtime reflection?
+- **AOT trimming** — is it safe for trimmed builds (*Code quality*)?
 - **Server selection and measurement** — if it touches either, does `docs/architecture/server-screening-and-measurement.md` apply?
 
 ## Audit
@@ -111,7 +111,7 @@ What `/audit-codebase` reads about this repository.
 
   | Evidence | Command | Feeds |
   |---|---|---|
-  | Build and test result, coverage | `dotnet build src` then `dotnet tool exec -y dotnet-coverage@18.0.6 -- collect "dotnet test src --no-build" -f cobertura -o .claude/scratch/audit/coverage.cobertura.xml` — the `--no-build` is allowed here because the build it follows is the one it reuses | lenses 1, 2 |
+  | Build and test result, coverage | `dotnet build ./src` then `dotnet tool exec -y dotnet-coverage@18.0.6 -- collect "dotnet test ./src --no-build" -f cobertura -o .claude/scratch/audit/coverage.cobertura.xml` — the `--no-build` is safe here because it runs straight after the build it reuses; the `green-gate.sh` hook does not inspect a `dotnet test` nested inside `dotnet tool exec` | lenses 1, 2 |
   | Deprecated packages | `dotnet list src package --deprecated` | lens 1 |
   | Outdated packages | `dotnet list src package --outdated` | lens 1 |
   | Package licences | `dotnet tool exec -y nuget-license@4.0.18 -- -i src/NetPace.sln -t` | lens 1 |
@@ -123,7 +123,7 @@ What `/audit-codebase` reads about this repository.
 - **Rules to audit (lens 1)** — the principles of `docs/constitution.md`, concentrating on any amended inside the window:
   - **II (library-first)** — does `NetPace.Core` reference anything in `NetPace.Console`, or assume a console host (writing to the console, reading environment a library should be handed)? Does any provider-agnostic type (`Profile`, `SpeedUnit`, the result records) reach forward into a concrete provider under `Clients/`? Is any behaviour that belongs in the library implemented only in the console project?
   - **III (CLI)** — is each output format selected by its own switch, with exactly one selectable? Do error messages say what to do next? Does every command and option that exists appear in `--help`?
-  - **Units and formatting** — is a given measurement formatted identically across default and minimal output, including under `--unit-scale`? Trace one value through both and report any path that formats it separately. CSV and JSON are deliberately not among them: both carry plain numbers in fixed units that the unit options do not touch, so check only that their numbers agree with each other.
+  - **Units and formatting** — is a given measurement formatted identically across default and minimal output, including under `--unit-scale`? Trace one value through both and report any path that formats it separately. CSV and JSON are deliberately not among them (`CLAUDE.md` → *Units and Formatting*): check only that their numbers agree with each other.
   - **IV (cross-platform)** — hard-coded path separators, line endings, encodings, or platform APIs without a documented reason.
   - **V (quality)** — a public `NetPace.Core` member without XML documentation; a network operation that is not async or cannot be cancelled; an exception caught and discarded; a `#pragma warning disable` or `[SuppressMessage]` with no stated reason.
   - **VI (dependencies)** — from the deprecated, outdated and licence evidence: a `NetPace.Core` runtime dependency with no stated justification, any runtime dependency whose licence is not MIT, Apache 2.0 or BSD, and any deprecated package.
@@ -139,6 +139,6 @@ What `/audit-codebase` reads about this repository.
 
 What a port of the commands must bring, beyond the commands themselves.
 
-- **Hooks**, wired in `.claude/settings.json` — `.claude/hooks/green-gate.sh`, which denies a stale `--no-build`; `.claude/hooks/no-skipped-tests.sh`, which runs on every `git commit` and so can block any commit a command makes; and the `Bash(gh pr create:*)` `PreToolUse` hook that re-runs the build-and-test command when a pull request is created — which `/verify` weighs and does not rely on, since `/raise-pr` may not run for a long while, or at all.
+- **Hooks**, wired in `.claude/settings.json` — `.claude/hooks/green-gate.sh`, which denies a stale `--no-build`; `.claude/hooks/no-skipped-tests.sh`, which runs on every `git commit` and so can block any commit a command makes; `.claude/hooks/no-chmod.sh`, which refuses the executable-bit forms of `chmod` that stall an unattended run on a permission prompt; and the `Bash(gh pr create:*)` `PreToolUse` hook that re-runs the build-and-test command when a pull request is created — which `/verify` weighs and does not rely on, since `/raise-pr` may not run for a long while, or at all.
 - **Scripts** — `scripts/traceability-check.sh`. The chain scripts are part of the harness and named in the steps.
 - **Plugins** — `pr-review-toolkit`, which supplies every wave-1 reporter and the wave-2 `code-simplifier` in `/verify`. `/build` spawns no reviewer subagents.

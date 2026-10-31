@@ -14,8 +14,6 @@ Read `CLAUDE.md` for project context, and `CONVENTIONS.md` as *Repository conven
 
 Raising the pull request is deliberately **not** a step either. It is the one irreversible, outward-facing act in the chain: everything `/verify` does is safe to re-run, and pushing a branch and opening a PR is not. Keeping it a separate deliberate `/raise-pr` invocation is what makes the rest of the chain freely repeatable.
 
-Every step below is written to be repository-agnostic. Wherever a step needs the repository's tools, paths or rules, it says so and names the section of `CONVENTIONS.md` that supplies them (*Repository conventions*), so adopting this command elsewhere means writing that file and touching no step.
-
 **Stop-on-failure is global:** if any step fails — the tree is dirty, a suite run is not green, the format tool errors, a review subagent errors, a confirmed finding that must be fixed cannot be — STOP at that step, report it to the invoker, and do not run any later step. Every such report says what state the working tree is in: clean, or holding uncommitted edits, and whose they are.
 
 ## Repository conventions
@@ -28,7 +26,7 @@ The steps in this file are generic. What is particular to the repository they ru
 | `Commit messages` | the commit-message form steps 1a and 3 use |
 | `Hooks, scripts and plugins` | the pull-request hook step 1b weighs, the hooks that can block a commit, and the plugin the reviewers come from |
 
-How Review B runs is a review criterion, not a convention, so `REVIEW.md` → *Where it runs* names it. A section under any other heading is read too, and applied where its text says. Where the file is missing, the command runs on its generic rules alone; where a heading is missing, that step runs on its generic rule alone. Either way the command completes. `CONVENTIONS.md` is read from the root of the repository this command runs in, and trusted as this command file is. The harness itself is not a repository convention: the verdict protocol, the chain scripts that read it and the sibling commands stay named in the steps, so whoever edits the protocol sees what consumes it.
+How Review B runs is a review criterion, not a convention, so `REVIEW.md` → *Where it runs* names it. A section under any other heading is read too, and applied where its text says. Where the file or a heading is missing, the step concerned runs on its generic rule alone, and the final report names each heading not found. A step whose convention is the thing itself — the command to run, the file to write — has no generic rule, so where that heading is missing the command STOPS rather than invent one, with the reason `conventions missing: <heading>`. `CONVENTIONS.md` is read from the root of the repository this command runs in, and trusted as this command file is. The harness itself is not a repository convention: the verdict protocol, the chain scripts that read it and the sibling commands stay named in the steps, so whoever edits the protocol sees what consumes it.
 
 ## Steps
 
@@ -123,7 +121,7 @@ Report, in this order:
 - `{"schema": 1, "outcome": "verified", "branch": "<branch>"}` — on success.
 - `{"schema": 1, "outcome": "failed", "reason": "<short reason>"}` — on any failure.
 
-The schema — its fields, what each outcome carries, and how it is read — is [`docs/verdict-schema.md`](../../docs/verdict-schema.md). The fixed reasons this command emits are `formatting failed` (step 1a or step 3) and step 0's three precondition reasons. Anything else is a short reason of your own.
+The schema — its fields, what each outcome carries, and how it is read — is [`docs/verdict-schema.md`](../../docs/verdict-schema.md). The fixed reasons this command emits are `formatting failed` (step 1a or step 3), step 0's three precondition reasons and `conventions missing: <heading>` (*Repository conventions*). Anything else is a short reason of your own.
 
 What ends the report is the whole of what the chain reads, which is what makes it safe and what makes it strict:
 

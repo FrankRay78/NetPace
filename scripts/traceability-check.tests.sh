@@ -178,7 +178,7 @@ check feature/406-widget
 ok "an UNTRACKED marker does not count"            'failed && names "Widget hums when wound"'
 new_case
 # Staged and never committed. This case is the reason the scan reads HEAD rather than the working
-# tree: "committed test file" is the wording in §VIII, CLAUDE.md and testing.md.
+# tree: "committed test file" is the wording in §VIII, CONVENTIONS.md and testing.md.
 write_file "src/NetPace.Core.Tests/WidgetTests.cs" '// SCENARIO: Widget hums when wound'
 git -C "$REPO" add -A || setup_fail "stage 442"
 issue 442 '**Scenario: Widget hums when wound**'

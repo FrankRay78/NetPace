@@ -23,7 +23,7 @@ The steps in this file are generic. What is particular to the repository they ru
 | `Pull requests` | any check the repository runs on the issue link, which step 4's abstain turns red |
 | `Change-intent records` | where the records step 4 links from the body live |
 
-A section under any other heading is read too, and applied where its text says. Where the file is missing, the command runs on its generic rules alone; where a heading is missing, that step runs on its generic rule alone. Either way the command completes. `CONVENTIONS.md` is read from the root of the repository this command runs in, and trusted as this command file is. The harness itself is not a repository convention: the verdict protocol, the chain scripts that read it and the sibling commands stay named in the steps, so whoever edits the protocol sees what consumes it.
+A section under any other heading is read too, and applied where its text says. Where the file or a heading is missing, the step concerned runs on its generic rule alone, and the final report names each heading not found. A step whose convention is the thing itself — the command to run, the file to write — has no generic rule, so where that heading is missing the command STOPS rather than invent one, with the reason `conventions missing: <heading>`. `CONVENTIONS.md` is read from the root of the repository this command runs in, and trusted as this command file is. The harness itself is not a repository convention: the verdict protocol, the chain scripts that read it and the sibling commands stay named in the steps, so whoever edits the protocol sees what consumes it.
 
 ## Steps
 
