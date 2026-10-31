@@ -2,7 +2,7 @@
 description: Orchestrator that turns "implementation looks done" into a reviewed, test-green branch — runs the full suite first and hard-gates on it, then reviews the branch once, fixes the confirmed findings its rules table calls for, and commits them on a green re-run. Stops short of the pull request. Runs unattended, so it can drive a loop.
 ---
 
-Read the project context that *Project-specific* at the end of this file names, before proceeding.
+Read `CLAUDE.md` for project context, and `CONVENTIONS.md` as *Repository conventions* below says, before proceeding.
 
 `/verify` is the stage between `/build` and `/raise-pr`: it turns a feature branch into a **formatted, test-green, reviewed, fully-committed** branch with a clean working tree. It does not push, open a PR, or merge — `/raise-pr` owns all of that, and you run it yourself afterwards.
 
@@ -14,9 +14,21 @@ Read the project context that *Project-specific* at the end of this file names, 
 
 Raising the pull request is deliberately **not** a step either. It is the one irreversible, outward-facing act in the chain: everything `/verify` does is safe to re-run, and pushing a branch and opening a PR is not. Keeping it a separate deliberate `/raise-pr` invocation is what makes the rest of the chain freely repeatable.
 
-Every step below is written to be repository-agnostic. Wherever a step needs this repository's tools, paths or rules, it says so and *Project-specific* at the end of this file supplies them — that section is the only part to rewrite when adopting this command elsewhere. The harness itself is not a project binding: the verdict protocol, the chain scripts that read it and the sibling commands stay named in the steps, so whoever edits the protocol sees what consumes it.
+Every step below is written to be repository-agnostic. Wherever a step needs the repository's tools, paths or rules, it says so and names the section of `CONVENTIONS.md` that supplies them (*Repository conventions*), so adopting this command elsewhere means writing that file and touching no step.
 
 **Stop-on-failure is global:** if any step fails — the tree is dirty, a suite run is not green, the format tool errors, a review subagent errors, a confirmed finding that must be fixed cannot be — STOP at that step, report it to the invoker, and do not run any later step. Every such report says what state the working tree is in: clean, or holding uncommitted edits, and whose they are.
+
+## Repository conventions
+
+The steps in this file are generic. What is particular to the repository they run in — its formatter, its build-and-test command, its commit-message form, the hooks and plugins around it — lives in `CONVENTIONS.md` at the root of that repository, written as additions to the steps. Read it before step 0; each step then applies its own rule together with the section of `CONVENTIONS.md` under the matching heading, and where the two conflict, `CONVENTIONS.md` wins. The headings this command reads:
+
+| Heading | Supplies |
+|---|---|
+| `Build, test and format` | the formatter steps 1a and 3 run, and the build-and-test command steps 1b and 3 run |
+| `Commit messages` | the commit-message form steps 1a and 3 use |
+| `Hooks, scripts and plugins` | the pull-request hook step 1b weighs, the hooks that can block a commit, and the plugin the reviewers come from |
+
+How Review B runs is a review criterion, not a convention, so `REVIEW.md` → *Where it runs* names it. A section under any other heading is read too, and applied where its text says. Where the file is missing, the command runs on its generic rules alone; where a heading is missing, that step runs on its generic rule alone. Either way the command completes. `CONVENTIONS.md` is read from the root of the repository this command runs in, and trusted as this command file is. The harness itself is not a repository convention: the verdict protocol, the chain scripts that read it and the sibling commands stay named in the steps, so whoever edits the protocol sees what consumes it.
 
 ## Steps
 
@@ -31,15 +43,15 @@ Every step below is written to be repository-agnostic. Wherever a step needs thi
 
 1. **Format (1a), then the full test run (1b).**
 
-   **1a — Format the tree.** Run the project's formatter, exactly as *Project-specific* gives it.
+   **1a — Format the tree.** Run the project's formatter, exactly as `CONVENTIONS.md` → *Build, test and format* gives it.
 
    - Formatting runs **once here, and once more in step 3 if the review led to edits** — never per commit. It is cosmetic work at a cadence that already costs minutes. This pass exists to bring the branch as `/build` left it into line; step 3's exists because a review fix written after this pass would otherwise reach the pull request unformatted.
-   - **If formatting changed files, commit them now** — `git add -A` and a message in the same `Refs #<N>: <imperative>` form step 3 uses, e.g. `Refs #328: apply formatting` — *before* running the suite. This restores the clean working tree step 0 established, which is what keeps step 3's "anything in the tree is a review edit" invariant true. Do not carry format edits forward into the review commit; they are a separate concern and belong in their own commit.
+   - **If formatting changed files, commit them now** — `git add -A` and a message in the same `Refs #<N>: <imperative>` form step 3 uses (`CONVENTIONS.md` → *Commit messages*), e.g. `Refs #328: apply formatting` — *before* running the suite. This restores the clean working tree step 0 established, which is what keeps step 3's "anything in the tree is a review edit" invariant true. Do not carry format edits forward into the review commit; they are a separate concern and belong in their own commit.
    - **If formatting changed nothing, make no commit.** A branch already in format reaches step 2 with the commits `/build` left and no format commit.
    - A **non-zero exit** from the formatter is a real failure (bad workspace argument, unparseable source) ⇒ **STOP and report**, with the reason `formatting failed`. A clean run that merely rewrote files is not a failure — that is the tool doing its job, and the distinction is the exit code, not whether `git status` is dirty afterwards.
    - Formatting deliberately precedes 1b so that any change it makes is verified by the suite below, rather than landing after the gate has already passed.
 
-   **1b — Full test run (always).** Run the project's build-and-test command (*Project-specific*) — always, including docs-only branches. Do not add a skip path for docs-only branches: the suite is fast, and this is the first whole-suite gate after `/build`, whose run precedes formatting and review fixes. A hook *Project-specific* names re-runs the suite when the PR is created, but that hook fires inside a separately invoked `/raise-pr` that may not happen for a long while, or at all — so skipping here would leave a branch reported verified that no suite ever ran against.
+   **1b — Full test run (always).** Run the project's build-and-test command (`CONVENTIONS.md` → *Build, test and format*) — always, including docs-only branches. Do not add a skip path for docs-only branches: the suite is fast, and this is the first whole-suite gate after `/build`, whose run precedes formatting and review fixes. A hook `CONVENTIONS.md` → *Hooks, scripts and plugins* names re-runs the suite when the PR is created, but that hook fires inside a separately invoked `/raise-pr` that may not happen for a long while, or at all — so skipping here would leave a branch reported verified that no suite ever ran against.
    - Gate on the run's **exit code**, not on any stored marker.
    - **Not green ⇒ STOP:** report the failures to the invoker and do nothing else — no review subagents.
    - **Green ⇒ continue.**
@@ -94,7 +106,7 @@ Every step below is written to be repository-agnostic. Wherever a step needs thi
 ## The two reviews (Review A vs Review B)
 
 - **Review A** — steps 2 and 3, synchronous, in-`/verify`: the clean-context `pr-review-toolkit` subagents plus `/review-slop`, run once over the branch diff. Its findings drive the step-2 fixes, which step 3 commits — that is how the review shapes the branch before a PR is ever raised.
-- **Review B** — asynchronous, on the PR: `/review-pr`, which the project runs when the PR opens — *Project-specific* says how, and names any gate on it. It reads the whole PR diff, so it is what reads the commit step 3 made; it is handed none of Review A's findings, so it judges the branch on what it sees. It is therefore outside `/verify` entirely, and nothing here waits on it. Review B is for a human to read at merge; when you later run `/capture-learnings` at a supervised checkpoint, that command's own best-effort PR-review fetch picks it up then.
+- **Review B** — asynchronous, on the PR: `/review-pr`, which the project runs when the PR opens — `REVIEW.md` → *Where it runs* says how, and names any gate on it. It reads the whole PR diff, so it is what reads the commit step 3 made; it is handed none of Review A's findings, so it judges the branch on what it sees. It is therefore outside `/verify` entirely, and nothing here waits on it. Review B is for a human to read at merge; when you later run `/capture-learnings` at a supervised checkpoint, that command's own best-effort PR-review fetch picks it up then.
 
 ## Final report
 
@@ -120,39 +132,3 @@ What ends the report is the whole of what the chain reads, which is what makes i
 - **The verdict carries nothing but its fields.** `Verdict: {…}` is not a verdict, because the line must be the object and nothing else; neither is a success verdict with a hedge after it — `{…} (2 Important deferred)` is read as no verdict at all, not as a pass — nor one that carries a `reason`, which contradicts itself. A deferred finding belongs in the report above, not in the verdict.
 
 Never report verified over a red suite, a confirmed finding whose row in step 2's table is **Fix it** and that is still unresolved, or an uncommitted change.
-
-## Project-specific
-
-The only section that changes from one repository to another.
-
-### Project context
-
-`CLAUDE.md` at the repository root, which links `docs/constitution.md` and the convention documents under `docs/conventions/`.
-
-### Formatter (step 1a and step 3)
-
-```bash
-dotnet format ./src/NetPace.sln
-```
-
-**This is the bare command, deliberately — the same one CI runs** as `dotnet format ./src/NetPace.sln --verify-no-changes` ([dotnet.yml](../../.github/workflows/dotnet.yml)). It was previously the narrower `dotnet format style … && dotnet format whitespace …`, which can leave a tree that CI's check then rejects: a branch verified here would fail the format check on the pull request. Use CI's command, so what passes here is what passes there, whatever the gap between them turns out to be. The bare command also runs analyzer fixes, so read what it changed rather than assuming it only moved whitespace.
-
-The explicit `./src/NetPace.sln` argument is **required, not decorative**: `dotnet format` looks for a project or solution in the *current directory only*, and NetPace's solution is at `src/`, not the repo root. Omitting it fails with `Could not find a MSBuild project file or solution file`.
-
-### Build-and-test command (step 1b and step 3)
-
-`dotnet build ./src && dotnet test ./src`, run from the repository root. Both halves, in that order. Never `--no-build` — the `green-gate.sh` hook denies it when stale, and rightly.
-
-### Commit messages
-
-The constitution's *Git Workflow*: imperative mood, `Refs #<N>`, never a GitHub closing keyword.
-
-### Review B
-
-`/review-pr` is run by `.github/workflows/review-pr.yml` when the PR opens. It is author-gated (`review-pr.yml`), so it doesn't run on a PR a non-`FrankRay78` account opens.
-
-### What a port must bring
-
-- **Sibling commands** — `/build` and `/raise-pr`, the rest of the chain; `/review-slop`, run in wave 1; `/review-pr`, which is Review B; `/capture-learnings`, run later at a supervised checkpoint.
-- **Hooks** — the `Bash(gh pr create:*)` `PreToolUse` hook in `.claude/settings.json` that re-runs the build-and-test command, which step 1b weighs and does not rely on; `.claude/hooks/green-gate.sh`; and `.claude/hooks/no-skipped-tests.sh`, which runs on every `git commit` and so can block step 1a's or step 3's.
-- **Plugins** — `pr-review-toolkit`, which supplies every wave-1 reporter and the wave-2 `code-simplifier`.

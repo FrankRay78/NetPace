@@ -3,7 +3,7 @@ description: Raise a PR for the current feature branch — composes a PR body si
 argument-hint: "[issue number or URL]"
 ---
 
-Read `CLAUDE.md` for project context before proceeding.
+Read `CLAUDE.md` for project context, and `CONVENTIONS.md` as *Repository conventions* below says, before proceeding.
 
 ## User Input
 
@@ -12,6 +12,18 @@ $ARGUMENTS
 ```
 
 Optionally a GitHub issue number — bare (`248`), hashed (`#248`), or a full issue URL — naming the issue this PR closes. Empty is the normal case and is **not** a prompt: step 4 infers a candidate from the branch instead. `/raise-pr` never asks the invoker for anything, so it stays composable by an automated chain with no interactive gate.
+
+## Repository conventions
+
+The steps in this file are generic. What is particular to the repository they run in lives in `CONVENTIONS.md` at the root of that repository, written as additions to the steps; each step applies its own rule together with the section of `CONVENTIONS.md` under the matching heading, and where the two conflict, `CONVENTIONS.md` wins. The headings this command reads:
+
+| Heading | Supplies |
+|---|---|
+| `Scratch files` | the git-ignored file step 6 writes the body to |
+| `Pull requests` | any check the repository runs on the issue link, which step 4's abstain turns red |
+| `Change-intent records` | where the records step 4 links from the body live |
+
+A section under any other heading is read too, and applied where its text says. Where the file is missing, the command runs on its generic rules alone; where a heading is missing, that step runs on its generic rule alone. Either way the command completes. `CONVENTIONS.md` is read from the root of the repository this command runs in, and trusted as this command file is. The harness itself is not a repository convention: the verdict protocol, the chain scripts that read it and the sibling commands stay named in the steps, so whoever edits the protocol sees what consumes it.
 
 ## Steps
 
@@ -36,7 +48,7 @@ Every STOP below is a **failure**, so each ends its report with step 7's failure
      - **No issue** — the lookup settled the question. Either it exited 0 and the answer disqualifies the number (a pull request, an issue already `CLOSED`, or an issue in another repo), or it exited non-zero saying `Could not resolve to an issue or pull request`, which is GitHub definitively answering that nothing exists at `<N>`. Add no closing keyword. When it is a real but closed issue in *this* repo, still record `Refs #<N>` in **Related**: dropping the closing keyword is the safety property, dropping every trace of the link is collateral damage.
      - **Unverified** — the lookup could not answer at all: expired auth, no network, rate limit, `gh` missing. Add no closing keyword, and say the check could not run, quoting `gh`'s stderr. Read the stderr, not the exit code, to tell this from the case above — both exit non-zero, but `HTTP 401: Bad credentials` is a broken check while `Could not resolve to an issue or pull request` is an answer. Reporting a fixable auth failure as "no such issue" sends the invoker looking in the wrong place.
    - A non-zero `gh issue view` here is **not** a stop-on-failure condition for the calling chain — it is an abstain, reported rather than fatal. Compose the rest of the body and carry on.
-   - **An abstain is no longer free, and the report must say so.** The `issue-link` gate ([`pr-issue-link.yml`](../../.github/workflows/pr-issue-link.yml)) fails any pull request that GitHub says closes no open issue in this repo, so both outcomes above raise a PR whose `issue-link` check reports **red**. Still abstain rather than guess — a wrong `Closes` is worse than an absent one — but name the red check in the step 7 report so the invoker knows an edit is owed. The gate re-runs on `edited`, so fixing the body needs no new push.
+   - **An abstain is no longer free, and the report must say so.** Where the repository gates pull requests on an issue link (`CONVENTIONS.md` → *Pull requests* names the check), both outcomes above raise a PR whose check reports **red**. Still abstain rather than guess — a wrong `Closes` is worse than an absent one — but name the red check in the step 7 report so the invoker knows an edit is owed. Such a check re-runs when the body is edited, so fixing it needs no new push.
    - What this proves is bounded, and worth knowing: that `<N>` is an open issue in this repo, never that it is *this branch's* issue, and it can change state between here and merge. Restricting inference to the `/build` shape is what keeps that gap narrow.
    - The PR body is the *only* place a closing keyword belongs — never a commit message, which would close the issue as soon as it reached `main`, ahead of review.
    - Whichever way it lands, step 7 reports it.
@@ -53,7 +65,7 @@ Every STOP below is a **failure**, so each ends its report with step 7's failure
 
    - **Why** — motivation or context that isn't already obvious from commit messages. Skip for trivial PRs where the title is self-explanatory.
    - **What changes** — a short summary of observable changes. For single-theme PRs, 1–3 bullets. For multi-theme PRs, group by theme rather than by file. Describe *what* changed at a behaviour level, not which files were touched.
-   - **Non-obvious things a reviewer should know** — caveats, deliberate trade-offs, hidden invariants, anything in the diff that looks weird but is intentional. Omit if there are none. **Where the branch adds a change-intent record under `docs/change-intent-records/`, link it here and stop** — the record already holds the rejected alternatives and the reasoning, so restating them is the same words in two places. Add only what the record does not carry.
+   - **Non-obvious things a reviewer should know** — caveats, deliberate trade-offs, hidden invariants, anything in the diff that looks weird but is intentional. Omit if there are none. **Where the branch adds a change-intent record (`CONVENTIONS.md` → *Change-intent records* says where they live), link it here and stop** — the record already holds the rejected alternatives and the reasoning, so restating them is the same words in two places. Add only what the record does not carry.
    - **How to verify** — a markdown checklist of concrete actions a reviewer can perform. Derive items from what actually changed. Omit for pure-documentation PRs where there's nothing functional to exercise.
    - **Related** — the `Closes #<N>` (or `Refs #<N>`) line settled above, plus links to prior PRs or related issues that give context. This section always survives when step 4 settled a keyword, whatever the PR's size.
 
@@ -61,7 +73,7 @@ Every STOP below is a **failure**, so each ends its report with step 7's failure
 
 5. **Push branch**: Run `git push -u origin <branch>`.
 
-6. **Create PR**: Write the body from step 4 to a git-ignored scratch file (*Project-specific* names it) with the native `Write` tool, never a shell heredoc, then run `gh pr create --title "<inferred title>" --body-file <scratch file>` with the title from step 3. Passing the body as a file keeps the backticks and `$` in it out of the shell, where a double-quoted `--body` or an unquoted heredoc would expand them. Capture the PR URL from the output.
+6. **Create PR**: Write the body from step 4 to a git-ignored scratch file (`CONVENTIONS.md` → *Scratch files* names it) with the native `Write` tool, never a shell heredoc, then run `gh pr create --title "<inferred title>" --body-file <scratch file>` with the title from step 3. Passing the body as a file keeps the backticks and `$` in it out of the shell, where a double-quoted `--body` or an unquoted heredoc would expand them. Capture the PR URL from the output.
 
 7. **Output result**: First print step 4's outcome in whichever of its three forms applies — `Closes #<N> — <issue title>`; `No closing keyword: <reason>` (the branch carries no issue number; `#<N>` is a pull request; `#<N>` is closed); or `Closing keyword unverified: <gh stderr>` — so the invoker can see from the output alone what merging this PR will close, if anything.
 
@@ -71,9 +83,3 @@ Every STOP below is a **failure**, so each ends its report with step 7's failure
     - `{"schema": 1, "outcome": "failed", "reason": "<short reason>"}` — if no PR was opened, for any reason. Never the `raised` verdict then, even when the report above quotes the URL of a PR that already exists.
 
     The schema — its fields, what each outcome carries, and how it is read — is [`docs/verdict-schema.md`](../../docs/verdict-schema.md). That object is the machine-readable verdict: `scripts/chain.sh` reads only what ends the report, so anything written after it — a next-steps note — costs the run its verdict *after* a real pull request is already open, which is the worst moment to lose it; a code fence around the verdict is tolerated, a sentence after the fence is not. A URL in the prose above is deliberately not enough, because the commonest failure here — a PR already open for this branch — reports an error whose text contains a perfectly good PR URL; the chain reads the `pr` field and nothing else. Two limits apply, and both cost the verdict at that same worst moment: **the URL must be bare**, so write `"pr": "https://github.com/o/r/pull/9"` and not a markdown autolink (`<…>`) or link (`[…](…)`); and **nothing else may share the line**, so a parenthetical such as `{…} (draft, CI red)` is read as no verdict at all.
-
-## Project-specific
-
-The only section that changes from one repository to another.
-
-- **Scratch file (step 6)** — `.claude/scratch/raise-pr-body.md`. The `Write` tool creates the git-ignored `.claude/scratch/` directory if it is missing.

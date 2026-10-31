@@ -11,7 +11,7 @@ The audit is advisory: candidates are flagged with rationale, you pick which to 
 
 1. **Discover scope**: Build the list of files to audit:
    - `CLAUDE.md` (project root)
-   - Every relative-path link inside `CLAUDE.md` that resolves to a file in this repo (e.g. `docs/constitution.md`, `docs/conventions/*.md`, `docs/architecture/*.md`)
+   - Every file `CLAUDE.md` imports with `@`, and every relative-path link inside it that resolves to a file in this repo (e.g. `CONVENTIONS.md`, `docs/constitution.md`, `docs/conventions/*.md`, `docs/architecture/*.md`)
    - Every file under `.claude/memory/` (including `MEMORY.md`)
 
    Skip URLs and files outside the repo. Record the list — every later check runs against each file.
@@ -27,7 +27,7 @@ The audit is advisory: candidates are flagged with rationale, you pick which to 
    - Convention enforcement → 3–10 line real-codebase example
    - Memory `feedback_*.md` entries → rule + **Why:** + **How to apply:** structure
 
-   **Check 3 — Generic best practices**: Flag sections that read like generic software advice with no NetPace, C#, or repo-specific anchor. Generic advice doesn't change agent behaviour — propose deletion.
+   **Check 3 — Generic best practices**: Flag sections that read like generic software advice with no anchor in this repository, its language or its code. Generic advice doesn't change agent behaviour — propose deletion.
 
    **Check 4 — Stale references**: For every file path, function name, flag, or symbol named in the doc:
    - Verify the file/path still exists (`ls`)

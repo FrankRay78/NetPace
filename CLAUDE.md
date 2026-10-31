@@ -1,10 +1,11 @@
 @docs/constitution.md
+@CONVENTIONS.md
 
 # NetPace Development Guide
 
 ## Quick Reference
 
-This guide covers **HOW** (NetPace patterns, conventions, gotchas). The constitution covers **WHAT** and **WHY** (principles).
+This guide covers **HOW** (NetPace patterns, conventions, gotchas). The constitution covers **WHAT** and **WHY** (principles). `CONVENTIONS.md` holds what the harness commands apply that is particular to NetPace — build, test and format commands, test conventions, documentation obligations — and is imported above, so it is read with this file.
 
 ## Project Overview
 
@@ -15,14 +16,6 @@ NetPace is a cross-platform network speed testing CLI built with .NET 10.0, usin
 - `NetPace.Core` — Reusable library with `ISpeedTestService` interface (published to NuGet)
 
 **Stack:** .NET 10.0 · C# 14 · Spectre.Console · System.CommandLine · xUnit · Nullable reference types enabled
-
-## Testing
-
-Test file mirrors source (`OoklaSpeedtest.cs` → `OoklaSpeedtestTests.cs`).
-
-**Test in NetPace.Core:** all public APIs; speed calculations, unit conversions, server selection; happy paths, alternative configurations, and error scenarios (invalid input, network failures, timeouts).
-
-**Console output:** `await Verify(result.Output)`; snapshots live in `NetPace.Console.Tests/Expectations/*.verified.txt`. A test with no snapshot fails first — review the generated `.received.txt`, then rename it to `.verified.txt` to accept. Constitution → Testing Standards for when a targeted assert is right instead.
 
 ## NetPace-Specific Patterns
 
@@ -55,38 +48,25 @@ Speeds support SI (1000-based) and IEC (1024-based) unit systems, in bits or byt
 
 Paired rules — `Don't` X → `Do` Y instead:
 
-- **Constitution rules apply as written** → TDD, including the config/tooling carve-out where the real tool is the RED test (I); XML docs on public Core APIs (V); justified Core dependencies (VI); no skipped tests, enforced by the no-skipped-tests hook (X). **Pre-1.0 override**: while every released version is below 1.0.0, no breaking or public-API change to the CLI or to `NetPace.Core` needs prior discussion, approval, a deprecation period or a MAJOR/MINOR/PATCH classification (Constitution VII, *Pre-1.0 stance*) — state in the issue or PR what breaks and for whom, and carry on.
-- **Don't commit with failing tests or build warnings** → run `dotnet build src` and `dotnet test src` clean before committing.
+- **Constitution rules apply as written**, and `CONVENTIONS.md` says where each one bears on the work: TDD and its config/tooling carve-out (*Test-driven development*), the skipped-test ban (*Testing*), the traceability check (*Acceptance criteria*), justified Core dependencies (*Dependencies*), the pre-1.0 stance on breaking changes (*Public API and breaking changes*), and the build, test and documentation obligations a change owes (*Build, test and format*, *Documentation*).
 - **Don't leave commented-out code** → delete it; git remembers.
-- **Don't change a CLI option without updating user-facing docs** → README.md `--help` snapshot and USER_GUIDE.md need updating; design-doc cross-ref where applicable. (Per-release "what changed" notes are GitHub-auto-generated from merged PRs — no CHANGELOG.md to maintain.)
-- **Don't change `release-binaries.yml` (or other release-pipeline scope) without updating `docs/RELEASING.md`** → the release matrix, runner-per-RID rationale, naming convention, smoke-test contract, and size-assertion contract live there. Out-of-sync release docs make adding a new RID/variant cost extra. (Action-version bumps such as `actions/checkout@v4→v5` are exempt.)
-- **Don't introduce reflection-heavy or non-trim-safe code** → NetPace targets AOT-trimmable builds (Spectre.Console.Cli was replaced for this reason); avoid runtime reflection, keep types annotation-clean.
-- **Don't raise a PR without checking the issue's scenario labels trace to tests** → run `bash scripts/traceability-check.sh`. It reads the issue number off the branch and names any `**Scenario: X**` label with no `SCENARIO: X` marker in a **committed** test file (Constitution §VIII) — an uncommitted marker does not count. The `traceability` CI job runs the same script and is a required check in the `Main CI/CD` ruleset, so running it locally only moves the failure to before the push.
 - **Don't delete or rename a linked-to file or heading without re-running the link check** → run `bash scripts/link-check.sh`. It names every markdown link in a tracked `*.md`, and every bare `docs/change-intent-records/<name>.md` citation in any tracked text file, whose target no longer exists — the inbound pointers a deletion leaves in files nobody opens at the time. A link's `#heading` is matched against the target file's headings by GitHub's own slug, so retitling a heading fails the links into it, and a full `https://github.com/FrankRay78/NetPace/{blob,tree,raw}/main/<path>` link is checked against `<path>` in this branch, with nothing fetched. It reads the working tree, so it works midway through a deletion. Links inside fences or backticks are not checked; bare record citations are, wherever they appear. The `link-check` CI job runs it on every PR but is not a required check, so a failure does not block the merge.
 - **Don't make a throwaway script executable** → run it as `bash script.sh`, which needs no permission and does the same job. `Bash(chmod:*)` is on `permissions.ask`, so setting the executable bit stalls an interactive run until a human answers and is silently denied in a headless one — in the #265 A/B runs two reviewers each blocked well over an hour on exactly that call. `.claude/hooks/no-chmod.sh` refuses the executable-bit forms and names the alternative; to record the bit on a file you are committing, use `git add --chmod=+x <path>`.
-- **Don't hard-wrap markdown prose** → write one line per paragraph, bullet, and table row and let the viewer soft-wrap it; a fixed-column hard wrap reflows the whole block on a one-word edit and buries the real change in a noisy diff.
 - **Don't write an issue number outside a change-intent record** → in the codebase an issue number belongs only in `docs/change-intent-records/`, except in a regression test or acceptance criterion naming the bug it guards against (Constitution §IX's *Regression exception*, worked in `docs/conventions/testing.md`). The rule is about place, not meaning, so nobody has to weigh what a number was for. Why a rule exists stays as prose beside it, linking a record where one holds the decision. Pending work is described as the current state and tracked in an open issue, because a to-do in the codebase points at a thread that closes unnoticed. Outside the codebase, and unaffected: commit messages, branch names, PR and issue bodies (`Refs #<N>`, `Closes #<N>`), `.claude/memory/` entries (the number lets the incident be checked), and illustrative numbers in examples. Rationale: CIR [`2026-10-10-issue-numbers-live-in-records`](docs/change-intent-records/2026-10-10-issue-numbers-live-in-records.md).
 - **Don't frame a decision in implementation jargon** → when putting a choice to Frank (an `AskUserQuestion`, a spec tradeoff), lead with plain-language consequences — what it costs, what it unlocks — before the mechanism.
 - **Don't fold a second, unrelated mission into an in-flight branch** → ship the original branch with a documented known-issue and open a separate branch/issue for the new mission instead.
-- **Don't thread project specifics through a harness command's steps** → keep a `.claude/commands/` prompt's steps repository-agnostic and gather every NetPace binding (build/test/format commands, paths, test conventions, product and dependency rules, doc obligations, where the constitution states its rules, hooks and plugins a port needs) into one *Project-specific* section at the end, so a port rewrites that section and touches no step. The harness itself stays in the steps — the verdict protocol, `scripts/chain.sh`/`scripts/chain-next.sh` that read it, sibling command names, and failure reasons that name no project tool (`formatting failed`, not `dotnet format failed`) — because whoever edits the protocol must see what consumes it. `/draftissue`, `/build`, `/verify` are the worked examples; applies to new commands and to existing ones when next edited. `/review-pr`'s bindings are review criteria rather than tools and paths, so they live in `REVIEW.md` at the repository root, which `/review-pr` and `/review-followup` read as additions to their method under the headings the command documents (CIR [`2026-10-31-review-criteria-live-in-review-md`](docs/change-intent-records/2026-10-31-review-criteria-live-in-review-md.md)).
-
-## Quick Command Reference
-
-```bash
-dotnet build src
-dotnet test src
-dotnet test src --collect:"XPlat Code Coverage"
-```
+- **Don't thread project specifics through a harness command's steps** → keep a `.claude/commands/` prompt's steps repository-agnostic and put every NetPace binding (build/test/format commands, paths, test conventions, product and dependency rules, doc obligations, where the constitution states its rules, issue sources, hooks and plugins a port needs) in `CONVENTIONS.md` at the repository root, under a heading the command documents in its *Repository conventions* table, so the command reads each section as an addition to its own generic rule and a port writes that file and touches no step. The harness itself stays in the steps — the verdict protocol, `scripts/chain.sh`/`scripts/chain-next.sh` that read it, sibling command names, and failure reasons that name no project tool (`formatting failed`, not `dotnet format failed`) — because whoever edits the protocol must see what consumes it. References to the constitution, hooks and scripts left inside steps are the standing exception until the constitution is retired. `/review-pr`'s and `/review-followup`'s bindings are review criteria rather than tools and paths, so they live in `REVIEW.md` the same way (CIR [`2026-10-31-review-criteria-live-in-review-md`](docs/change-intent-records/2026-10-31-review-criteria-live-in-review-md.md)). Rationale for `CONVENTIONS.md`: CIR [`2026-10-31-commands-read-their-conventions-from-conventions-md`](docs/change-intent-records/2026-10-31-commands-read-their-conventions-from-conventions-md.md).
 
 ## Detailed References
 
 Load these on demand for the matching topic:
 
+- **Conventions** — `CONVENTIONS.md` — what the harness commands apply that is particular to NetPace: build, test and format commands, test conventions, documentation obligations, issue sources and concerns, the hooks and plugins a port needs. Edit it, not a `.claude/commands/` file, to change how NetPace builds, tests, documents or raises work.
 - **Review criteria** — `REVIEW.md` — what the PR review applies that is particular to NetPace: severities, high-risk areas, always-a-person paths, contracts. Edit it, not `.claude/commands/review-pr.md`, to change what the review holds NetPace to.
 - **C# Style** — `docs/conventions/csharp-style.md` — read before writing or reviewing any .cs file.
 - **Testing** — `docs/conventions/testing.md` — read before writing tests: outcome-not-mechanism assertions, what makes a good scenario, the integrity failure modes that pass while verifying nothing.
 - **Change Intent Records** — `docs/conventions/change-intent-records.md` — read when deciding whether a change warrants documenting intent.
-- **Release Pipeline** — `docs/RELEASING.md` — release matrix (RIDs × variants), naming convention, runner-per-RID rationale, smoke-test contract, size-assertion contract. Update whenever you touch `release-binaries.yml`.
+- **Release Pipeline** — `docs/RELEASING.md` — release matrix (RIDs × variants), naming convention, runner-per-RID rationale, smoke-test contract, size-assertion contract.
 - **Server Screening and Measurement** — `docs/architecture/server-screening-and-measurement.md` — read before changing server selection, the latency probe, or the settings that bound either; records why choosing and measuring are separate jobs and why the ceiling on choosing must stay.
 - **Ookla Download/Upload Sizing** — `docs/architecture/download-upload-size-controls.md` — how `OoklaSpeedtestSettings` shapes per-request sizing, iterations, and parallelism; what `--downloadsize`/`--uploadsize` actually cap (total-byte budget); Docker OoklaServer endpoints for local verification.
 
