@@ -14,7 +14,7 @@ Every stage command in the build chain — `/build`, `/verify` and `/raise-pr` �
 | `outcome` | string | always | What the stage concluded: `ready`, `verified`, `raised` or `failed`. Matched exactly, lowercase. |
 | `branch` | string | with `ready` and `verified` | The branch the stage left its work on. Non-empty, no whitespace. |
 | `pr` | string | with `raised` | The pull request this run opened, as a bare URL: `https://github.com/<owner>/<repo>/pull/<n>`. Not an autolink, not a markdown link, nothing after it. |
-| `reason` | string | with `failed` | Why the stage stopped, as one short line of prose. It is passed on unchanged, apart from outer whitespace. |
+| `reason` | string | with `failed` | Why the stage stopped, as one short line of prose. A reader passes it on with outer whitespace stripped and any line break or run of whitespace inside it flattened to one space, so it lands on one line; nothing else is changed. |
 
 Each command has one success outcome, and all three share the failure outcome:
 
@@ -39,10 +39,12 @@ A success verdict is written only for work the run did: `raised` names a pull re
 1. The text is not one JSON object — prose, malformed JSON, two objects, an array, the retired text verdict (`READY branch=…`), or an empty report: the stage has **no readable verdict**, and the reader says so rather than guessing.
 2. The object has no `schema`: no readable verdict, naming the missing version.
 3. The `schema` is a version the reader does not know: the stage fails with a reason **naming that version**. Nothing else in the verdict is read, not even a reason — a reader cannot know what the fields of a version it does not understand mean.
-4. The `outcome` is `failed`: the stage failed, with its `reason`. An empty or missing reason is reported as a failure with no reason, never as a dangling dash.
-5. The `outcome` is not the one this stage succeeds with: no readable verdict, naming the outcome found. Another stage's success, `unverified`, `Ready` — none is this stage's success.
-6. The success outcome's payload is missing, empty or the wrong shape — a `branch` with whitespace, a `pr` that is not a bare pull request URL: no readable verdict, naming the missing payload.
-7. Otherwise the stage succeeded, with its payload.
+4. The object has no `outcome`, or one that is not a string: no readable verdict.
+5. The `outcome` is `failed`: the stage failed, with its `reason`. An empty or missing reason is reported as a failure with no reason, never as a dangling dash.
+6. The `outcome` is not the one this stage succeeds with: no readable verdict, naming the outcome found. Another stage's success, `unverified`, `Ready` — none is this stage's success.
+7. The success outcome also carries a `reason`: no readable verdict — the verdict contradicts itself.
+8. The success outcome's payload is missing, empty or the wrong shape — a `branch` with whitespace, a `pr` that is not a bare pull request URL: no readable verdict, naming the missing payload.
+9. Otherwise the stage succeeded, with its payload.
 
 The two failure directions are not equal in cost, and the rules above fail safe in the cheap one: a false stop costs the rest of one run, a false success opens a pull request off unverified work.
 
