@@ -96,14 +96,18 @@ public sealed partial class OoklaSpeedtestTests
 
         var speedtest = new OoklaSpeedtest(settings, mockHttp.ToHttpClient(), timeProviderOverride: clock);
         var server = new Server { Url = "http://testserver.com/", Sponsor = "Sponsor", Location = "Location" };
+        var reports = new List<SpeedTestProgress>();
 
         // When
-        var result = await speedtest.GetDownloadSpeedAsync(server);
+        var result = await speedtest.GetDownloadSpeedAsync(server, new SynchronousProgress<SpeedTestProgress>(reports.Add));
 
-        // Then the reported speed is those bytes over that second, exactly.
+        // Then the reported speed is those bytes over that second, exactly - and so is the live
+        // figure a progress display computes its speed from.
         result.BytesProcessed.ShouldBe(payloadBytes);
         result.ElapsedMilliseconds.ShouldBe(1000);
         result.GetBitsPerSecond().ShouldBe(payloadBytes * 8L);
+        reports.ShouldNotBeEmpty();
+        reports[^1].ElapsedMilliseconds.ShouldBe(1000);
     }
 
     [Fact]
@@ -250,5 +254,92 @@ public sealed partial class OoklaSpeedtestTests
         // Then the clock is named as the cause, rather than a negative speed reaching the caller.
         exception.ShouldBeOfType<InvalidOperationException>();
         exception.Message.ShouldContain("negative elapsed time");
+    }
+
+    [Fact]
+    public async Task GetDownloadSpeedAsync_ARequestThatFailsAfterAKnownTimeOfTheSuppliedClock_RecordsThatTimeAgainstTheFailure()
+    {
+        // Given a download that fails after a quarter of a second of a clock the test moves itself.
+        var clock = new ControlledTimeProvider(ClockStart);
+
+        using var mockHttp = new MockHttpMessageHandler();
+        mockHttp.When("*")
+                .Respond(_ =>
+                {
+                    clock.Advance(TimeSpan.FromMilliseconds(250));
+                    throw new HttpRequestException("connection reset");
+                });
+
+        var settings = new OoklaSpeedtestSettings
+        {
+            DownloadTest = new()
+            {
+                DownloadSizes = [100],
+                DownloadSizeIterations = 1,
+                DownloadParallelTasks = 1
+            }
+        };
+
+        var speedtest = new OoklaSpeedtest(settings, mockHttp.ToHttpClient(), timeProviderOverride: clock);
+        var server = new Server { Url = "http://testserver.com/", Sponsor = "Sponsor", Location = "Location" };
+        var diagnostics = new List<RequestDiagnostic>();
+
+        // When
+        await speedtest.GetDownloadSpeedAsync(server, null, Collect(diagnostics));
+
+        // Then the failed request's record carries the time it took before failing.
+        var record = diagnostics.ShouldHaveSingleItem();
+        record.Outcome.ShouldBe(RequestOutcome.Failed);
+        record.ElapsedMilliseconds.ShouldBe(250);
+    }
+
+    [Fact]
+    public async Task GetDownloadSpeedAsync_ASuppliedClockThatStepsBackwardsAsARequestFails_StillRecordsTheRequestsOwnFailure()
+    {
+        // Given a second request that fails in transport while the clock steps back behind its
+        // start, so reading that request's duration also fails. The first request moves the clock
+        // on far enough that the step stays ahead of the transfer's own start: only the request's
+        // reading is negative, so its record is still written. The clock's fault must not
+        // overwrite what the request did: the record still reads as a failure, with the transport
+        // fault as its cause.
+        var clock = new ControlledTimeProvider(ClockStart);
+        var requests = 0;
+
+        using var mockHttp = new MockHttpMessageHandler();
+        mockHttp.When("*")
+                .Respond(_ =>
+                {
+                    if (++requests == 1)
+                    {
+                        clock.Advance(TimeSpan.FromSeconds(5));
+                        return new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent(new byte[16]) };
+                    }
+
+                    clock.Advance(TimeSpan.FromSeconds(-1));
+                    throw new HttpRequestException("connection reset");
+                });
+
+        var settings = new OoklaSpeedtestSettings
+        {
+            DownloadTest = new()
+            {
+                DownloadSizes = [100],
+                DownloadSizeIterations = 2,
+                DownloadParallelTasks = 1
+            }
+        };
+
+        var speedtest = new OoklaSpeedtest(settings, mockHttp.ToHttpClient(), timeProviderOverride: clock);
+        var server = new Server { Url = "http://testserver.com/", Sponsor = "Sponsor", Location = "Location" };
+        var diagnostics = new List<RequestDiagnostic>();
+
+        // When
+        var exception = await Record.ExceptionAsync(() => speedtest.GetDownloadSpeedAsync(server, null, Collect(diagnostics)));
+
+        // Then the clock is still named as the run's fault, and the request's record names its own.
+        exception.ShouldBeOfType<InvalidOperationException>();
+        diagnostics.Count.ShouldBe(2);
+        diagnostics[1].Outcome.ShouldBe(RequestOutcome.Failed);
+        diagnostics[1].FailureType.ShouldBe(nameof(HttpRequestException));
     }
 }

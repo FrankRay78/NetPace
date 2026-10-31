@@ -39,7 +39,7 @@ public sealed class OoklaSpeedtest : ISpeedTestService
     /// <param name="delayProviderOverride">A delay provider to use in place of real waiting.</param>
     /// <param name="timeProviderOverride">
     /// The clock every elapsed time is measured on - every <c>ElapsedMilliseconds</c> this class
-    /// reports, on a result or on a request diagnostic - as well as the
+    /// reports, on a result, a progress report or a request diagnostic - as well as the
     /// <see cref="RequestDiagnostic.StartedAt"/> stamp on each reported request. The system clock is
     /// used when omitted. Waiting is not measurement and stays on the system clock regardless: the
     /// screening ceiling, the per-request HTTP timeouts and the pause between latency probes, the
