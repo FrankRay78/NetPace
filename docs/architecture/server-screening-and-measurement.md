@@ -43,7 +43,7 @@ Abandoned is not forgotten, though: an abandoned candidate contributes no result
 
 `ScreeningRequestCount` sits beside the ceiling and sets how many requests each server is sent. The screening figure is the **fastest** of the requests that completed, not their average: screening has no warm-up, so the first request carries connection setup the link itself is not responsible for.
 
-The figure and the ceiling read different clocks, deliberately. How long a screening request took — like how long a latency probe or a transfer took — is measured on the time provider the caller passed to `OoklaSpeedtest`, so a caller that controls that clock gets exactly the figures it dictated. The ceiling above is not a measurement but a bound on how long to wait, and stays on the system clock along with the per-request HTTP timeouts and the pause between latency probes; a controlled clock that stood still would otherwise suspend them.
+The figure and the ceiling read different clocks, deliberately. How long a screening request took — like how long a latency probe or a transfer took — is measured on the time provider the caller passed to `OoklaSpeedtest`. Candidates are screened concurrently against that one clock, so a caller reading an exact figure off a clock it moves itself has to let one candidate finish before the next is answered; otherwise an advance made for one lands inside another's measurement. The ceiling above is not a measurement but a bound on how long to wait, and stays on the system clock along with the per-request HTTP timeouts; a controlled clock that stood still would otherwise suspend them.
 
 ## Once chosen, the server does not change
 

@@ -12,6 +12,7 @@
 **Decisions:**
 
 - `TimeProvider.GetTimestamp`/`GetElapsedTime` as the seam. Rejected: a NetPace-owned stopwatch abstraction — `TimeProvider` already carries a monotonic timestamp any consumer can substitute, and a second seam would need a second constructor parameter to inject it through.
+- A clock that reports a negative duration is rejected where it is read. Rejected: clamping to zero — a clamped zero reads as a real sub-millisecond transfer and the speed derived from it is silently wrong, where `Stopwatch` had made monotonicity free.
 - A hand-rolled controllable clock in the test project. Rejected: `Microsoft.Extensions.TimeProvider.Testing` — a package dependency for a twenty-line double whose only requirement is to move when a test tells it to.
 - Tests order concurrent screening responses behind a gate. Rejected: letting candidates race on one controlled clock — an advance made for one candidate lands inside another's measurement and neither figure is predictable.
 

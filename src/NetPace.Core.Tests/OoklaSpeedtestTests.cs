@@ -458,7 +458,8 @@ public sealed partial class OoklaSpeedtestTests
 
         // Given two reachable candidates screened against a clock the test moves itself: the
         // quicker takes 10 ms of it, the slower 50 ms. The slower candidate is answered only once
-        // the quicker has been screened - see RespondAfterAdvancing for why an order is needed.
+        // the quicker has been screened - see RespondAfterAdvancing in OoklaSpeedtestTests.ElapsedTime.cs
+        // for why an order is needed.
         const int quickerMilliseconds = 10;
         var clock = new ControlledTimeProvider(ClockStart);
         var quickerScreened = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -477,13 +478,20 @@ public sealed partial class OoklaSpeedtestTests
         var fastServer = new Server { Url = "http://fastserver.com/", Sponsor = "FastSponsor", Location = "FastLocation" };
         var slowServer = new Server { Url = "http://slowserver.com/", Sponsor = "SlowSponsor", Location = "SlowLocation" };
         var servers = new[] { slowServer, fastServer };
+        var diagnostics = new List<RequestDiagnostic>();
 
         // When
         var result = await speedtest.GetFastestServerByLatencyAsync(
             servers,
-            new SynchronousProgress<SpeedTestProgress>(_ => quickerScreened.TrySetResult()));
+            new SynchronousProgress<SpeedTestProgress>(_ => quickerScreened.TrySetResult()),
+            Collect(diagnostics));
 
-        // Then
+        // Then both candidates were actually screened - asserted, because a gate that never opened
+        // would leave the slower one abandoned at the ceiling and the comparison below unmade.
+        diagnostics.Select(d => d.Url).ShouldBe(
+            ["http://fastserver.com/latency.txt", "http://slowserver.com/latency.txt"],
+            ignoreOrder: true);
+
         result.ShouldNotBeNull();
         result.Server.ShouldBe(fastServer);
         result.LatencyMilliseconds.ShouldBe(quickerMilliseconds);

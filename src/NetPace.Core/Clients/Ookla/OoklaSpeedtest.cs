@@ -38,13 +38,23 @@ public sealed class OoklaSpeedtest : ISpeedTestService
     /// <param name="httpClientOverride">An HTTP client to use in place of the one this class would construct.</param>
     /// <param name="delayProviderOverride">A delay provider to use in place of real waiting.</param>
     /// <param name="timeProviderOverride">
-    /// The clock every measurement is taken against: the duration of each latency probe, of each
-    /// screening request and of a download or upload, as well as the
-    /// <see cref="RequestDiagnostic.StartedAt"/> stamp on each reported request. Supplying a clock
-    /// whose readings the caller controls therefore makes every reported figure exactly follow it.
-    /// The system clock is used when omitted. Waiting is not measurement and stays on the system
-    /// clock regardless: the screening ceiling, the per-request HTTP timeouts and the pause between
-    /// latency probes, the last of which <paramref name="delayProviderOverride"/> governs.
+    /// The clock every elapsed time is measured on - every <c>ElapsedMilliseconds</c> this class
+    /// reports, on a result or on a request diagnostic - as well as the
+    /// <see cref="RequestDiagnostic.StartedAt"/> stamp on each reported request. The system clock is
+    /// used when omitted. Waiting is not measurement and stays on the system clock regardless: the
+    /// screening ceiling, the per-request HTTP timeouts and the pause between latency probes, the
+    /// last of which <paramref name="delayProviderOverride"/> governs.
+    /// <para>
+    /// A clock supplied here must override <see cref="TimeProvider.GetTimestamp"/> and
+    /// <see cref="TimeProvider.TimestampFrequency"/>, not <see cref="TimeProvider.GetUtcNow"/>
+    /// alone: the base implementations of those two read the system stopwatch, so a provider that
+    /// overrides only <see cref="TimeProvider.GetUtcNow"/> yields controlled stamps beside
+    /// wall-clock durations, with nothing reporting the mismatch. It must also be monotonic, as
+    /// <see cref="TimeProvider.GetTimestamp"/> requires; a reading that goes backwards is rejected
+    /// rather than reported as a negative speed. Requests that overlap share whatever clock is
+    /// supplied, so a caller reading a per-request figure off a clock it advances itself needs one
+    /// request outstanding at a time.
+    /// </para>
     /// </param>
     public OoklaSpeedtest(OoklaSpeedtestSettings? speedtestSettings = null, HttpClient? httpClientOverride = null, IDelayProvider? delayProviderOverride = null, TimeProvider? timeProviderOverride = null)
     {
@@ -140,8 +150,9 @@ public sealed class OoklaSpeedtest : ISpeedTestService
             {
                 // The failure still surfaces to the caller - a latency measurement that cannot be
                 // taken is not a measurement. It is recorded first, so a diagnostic log names the
-                // cause of a run that ended here.
-                ReportRequestFailure(diagnostics, startedAt, sequence, latencyUrl, ElapsedMillisecondsSince(startTimestamp), e, cancellationToken);
+                // cause of a run that ended here, and the duration is frozen before that recording.
+                var failedElapsedMilliseconds = ElapsedMillisecondsSince(startTimestamp);
+                ReportRequestFailure(diagnostics, startedAt, sequence, latencyUrl, failedElapsedMilliseconds, e, cancellationToken);
                 throw;
             }
 
@@ -364,6 +375,10 @@ public sealed class OoklaSpeedtest : ISpeedTestService
                 // to the caller's and HttpClient.Timeout raises the same type again - so a Ctrl-C
                 // and a server that never answered would both read as "ceiling reached", each a
                 // statement about the wrong thing. Only the tokens say which actually happened.
+                //
+                // Frozen first, as the success path does: read inside the record below instead, the
+                // figure would carry the triage and failure-description work done in between.
+                var failedElapsedMilliseconds = ElapsedMillisecondsSince(startTimestamp);
                 var cancelledByCaller = e is OperationCanceledException && callerToken.IsCancellationRequested;
                 var abandonedAtCeiling = e is OperationCanceledException && !cancelledByCaller && ceilingToken.IsCancellationRequested;
                 var rankedOut = !cancelledByCaller && !abandonedAtCeiling;
@@ -392,7 +407,7 @@ public sealed class OoklaSpeedtest : ISpeedTestService
                         Url = latencyUrl,
                         Outcome = rankedOut ? RequestOutcome.Failed : RequestOutcome.Cancelled,
                         BytesProcessed = 0,
-                        ElapsedMilliseconds = ElapsedMillisecondsSince(startTimestamp),
+                        ElapsedMilliseconds = failedElapsedMilliseconds,
                         FailureReason = failureReason,
                         FailureType = rankedOut ? e.GetType().Name : null
                     });
@@ -611,15 +626,11 @@ public sealed class OoklaSpeedtest : ISpeedTestService
             }
             catch (Exception e)
             {
-                elapsedMilliseconds = requestStarted ? ElapsedMillisecondsSince(startTimestamp) : 0L;
+                // Captured before the clock is read. ElapsedMillisecondsSince calls into a
+                // caller-supplied provider, so it can throw; leaving failure unset until after it
+                // would let a clock fault classify a failed request as a success in the finally
+                // block below, and substitute itself for the transport error that actually happened.
                 failure = e;
-
-                // Genuine user cancellation (the caller's token) must propagate; it is not a
-                // per-request failure.
-                if (e is OperationCanceledException && cancellationToken.IsCancellationRequested)
-                {
-                    throw;
-                }
 
                 // A cancellation raised locally because the byte budget was reached is not a
                 // failure - the request is simply excluded. Any other exception (transport error,
@@ -643,9 +654,26 @@ public sealed class OoklaSpeedtest : ISpeedTestService
                 //
                 // This argument breaks if cts.Cancel() moves out of that lock, or if any counter
                 // update moves outside the gate.
-                if (!(e is OperationCanceledException && wasCancelledLocally))
+                //
+                // Genuine user cancellation (the caller's token) is not a per-request failure
+                // either; it is named here rather than left to the rethrow below, so that the
+                // classification is complete before the clock is read.
+                if (!(e is OperationCanceledException && (wasCancelledLocally || cancellationToken.IsCancellationRequested)))
                 {
                     requestFailed = true;
+                }
+
+                // Read after the classification above, which must not depend on a caller-supplied
+                // clock: ElapsedMillisecondsSince calls into one, so it can throw, and a request
+                // still unclassified at that point would be counted as a success by the finally
+                // block below. Read before the rethrow, so a cancelled request's record carries the
+                // duration it did reach.
+                elapsedMilliseconds = requestStarted ? ElapsedMillisecondsSince(startTimestamp) : 0L;
+
+                // Genuine user cancellation must propagate.
+                if (e is OperationCanceledException && cancellationToken.IsCancellationRequested)
+                {
+                    throw;
                 }
             }
             finally
@@ -781,8 +809,8 @@ public sealed class OoklaSpeedtest : ISpeedTestService
         // Wait for all tasks to complete.
         await Task.WhenAll(tasks);
 
-        // Read where the test actually ends, rather than inside the result below: anything between
-        // the two would be billed to the transfer.
+        // Read where the speed test actually ends, rather than inside the result below, so that
+        // anything later added between the two is not billed to the transfer.
         var testElapsedMilliseconds = ElapsedMillisecondsSince(testStartTimestamp);
 
         return new SpeedTestResult
@@ -997,8 +1025,25 @@ public sealed class OoklaSpeedtest : ISpeedTestService
     /// timeouts and the pause between latency probes are bounds on how long to wait, not
     /// measurements of how long something took.
     /// </remarks>
-    private long ElapsedMillisecondsSince(long startTimestamp) =>
-        (long)timeProvider.GetElapsedTime(startTimestamp).TotalMilliseconds;
+    /// <exception cref="InvalidOperationException">
+    /// The supplied time provider reported a negative duration.
+    /// </exception>
+    private long ElapsedMillisecondsSince(long startTimestamp)
+    {
+        var elapsed = timeProvider.GetElapsedTime(startTimestamp);
+
+        // Stopwatch was monotonic by construction; a caller-supplied clock is monotonic only by
+        // contract. Reported rather than clamped: a negative duration divides into a negative speed
+        // that reads as a real measurement, and a clamp to zero reads as a real sub-millisecond one.
+        if (elapsed < TimeSpan.Zero)
+        {
+            throw new InvalidOperationException(
+                $"The supplied {nameof(TimeProvider)} reported a negative elapsed time ({elapsed}). " +
+                $"{nameof(TimeProvider.GetTimestamp)} must be monotonic for a measurement to be taken against it.");
+        }
+
+        return (long)elapsed.TotalMilliseconds;
+    }
 
     private static HttpClient CreateHttpClient(bool useProxy, Uri? proxyAddress, NetworkCredential? proxyCredential)
     {
