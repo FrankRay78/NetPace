@@ -11,7 +11,7 @@ The audit is advisory: candidates are flagged with rationale, you pick which to 
 
 1. **Discover scope**: Build the list of files to audit:
    - `CLAUDE.md` (project root)
-   - Every file `CLAUDE.md` imports with `@`, and every relative-path link inside it that resolves to a file in this repo (e.g. `CONVENTIONS.md`, `docs/constitution.md`, `docs/conventions/*.md`, `docs/architecture/*.md`)
+   - Every file `CLAUDE.md` imports with `@`, and every relative-path link inside it that resolves to a file in this repo (e.g. `CONVENTIONS.md`, `docs/conventions/*.md`, `docs/architecture/*.md`)
    - Every file under `.claude/memory/` (including `MEMORY.md`)
 
    Skip URLs and files outside the repo. Record the list — every later check runs against each file.

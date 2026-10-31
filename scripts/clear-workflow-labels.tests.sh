@@ -17,7 +17,7 @@
 # The merged check lives in the script rather than in the workflow's `if:` so that it is provable
 # here. The one thing this matrix cannot reach is the trigger itself — that a merge into main
 # starts a run at all, and that a fork's pull request does not — because the tool that decides it
-# is GitHub Actions (Constitution §I, configuration/tooling).
+# is GitHub Actions (CONVENTIONS.md, Test-driven development, configuration/tooling).
 #
 #   Usage:  scripts/clear-workflow-labels.tests.sh
 

@@ -174,7 +174,7 @@ jobs:
             2. Step 4's link rules tell you to resolve the default branch with `gh repo view`. Do not — it is `main`, given above. Use it for the absolute GitHub links those rules require.
             3. Step 5 posts with a quoted heredoc. Instead, write the body to `ci-scratch/reviewissue-body.md` with the Write tool and post it with `gh issue comment <number> --repo <repo> --body-file ci-scratch/reviewissue-body.md`. Do not write it under `.claude/scratch/` — `.claude/` is write-protected in this headless run. The comment body is identical either way; a plain file argument is simply more predictable through the tool allowlist than a command substitution.
 
-            Ground the review in this checkout by actually reading files — `CLAUDE.md`, `docs/constitution.md`, the `src/` tree, `docs/`, the neighbouring code the issue would touch. The review must cite real paths and real conventions from this repository, not observations that would fit any codebase.
+            Ground the review in this checkout by actually reading files — `CLAUDE.md`, `CONVENTIONS.md`, the `src/` tree, `docs/`, the neighbouring code the issue would touch. The review must cite real paths and real conventions from this repository, not observations that would fit any codebase.
 
             Post exactly what the command specifies: no CI-specific footer, banner or warning of your own. After the comment posts successfully, remove the trigger label:
             `gh issue edit <number> --repo <repo> --remove-label review`
@@ -218,7 +218,7 @@ jobs:
 
             Resolve the review comment and its numeric id over REST — `gh api --paginate "repos/<owner>/<repo>/issues/<number>/comments"` — and read the comments posted after it from the same call, because step 6 tells you what to do with one an answer points at. That call is the authoritative comment list. If it shows no comment carrying `<!-- speckit:review -->`, stop and report that as an error rather than making no edit: the guard has already established that one exists, so its absence here means something is wrong, not that there is nothing to do.
 
-            Ground every new option, trade-off and worked example in this checkout by actually reading files — `CLAUDE.md`, `docs/constitution.md`, the `src/` tree, `docs/`, the neighbouring code the issue would touch. A re-framed question must cite real paths and real conventions from this repository, not observations that would fit any codebase.
+            Ground every new option, trade-off and worked example in this checkout by actually reading files — `CLAUDE.md`, `CONVENTIONS.md`, the `src/` tree, `docs/`, the neighbouring code the issue would touch. A re-framed question must cite real paths and real conventions from this repository, not observations that would fit any codebase.
 
             If no gap qualifies for re-framing, make no edit at all. That is a normal outcome, not a failure: say so and stop.
 

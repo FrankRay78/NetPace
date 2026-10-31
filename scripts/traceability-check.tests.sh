@@ -139,7 +139,7 @@ ok "the report names the issue it checked"         'names "#401"'
 new_case
 # Built with an escape rather than a literal newline: as a two-line single-quoted string, the
 # continuation would begin at column 0 with `//`, making this fixture a live marker in a committed
-# `*.tests.sh`. §VIII calls a marker that names no label worse than no marker at all.
+# `*.tests.sh`. The rule calls a marker that names no label worse than no marker at all.
 commit_file "src/NetPace.Core.Tests/WidgetTests.cs" $'// SCENARIO: Widget hums when wound\n// SCENARIO: Widget chimes on the hour'
 issue 402 '**Scenario: Widget hums when wound**
 
@@ -178,7 +178,7 @@ check feature/406-widget
 ok "an UNTRACKED marker does not count"            'failed && names "Widget hums when wound"'
 new_case
 # Staged and never committed. This case is the reason the scan reads HEAD rather than the working
-# tree: "committed test file" is the wording in §VIII, CONVENTIONS.md and testing.md.
+# tree: "committed test file" is the wording in CONVENTIONS.md and testing.md.
 write_file "src/NetPace.Core.Tests/WidgetTests.cs" '// SCENARIO: Widget hums when wound'
 git -C "$REPO" add -A || setup_fail "stage 442"
 issue 442 '**Scenario: Widget hums when wound**'
@@ -419,7 +419,7 @@ raw 439 'not json at all'
 check feature/439-widget
 ok "an unparseable reply fails closed"               'failed && names "could not parse"'
 new_case
-# A marker scan that cannot complete must not become a §VIII verdict: coming back short looks
+# A marker scan that cannot complete must not become a traceability verdict: coming back short looks
 # exactly like a missing marker, and would accuse the author of omitting one that is committed.
 # An unborn HEAD is the cheapest way to induce it.
 commit_file "src/NetPace.Core.Tests/WidgetTests.cs" '// SCENARIO: Widget hums when wound'

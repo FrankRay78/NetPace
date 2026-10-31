@@ -341,7 +341,7 @@ public sealed partial class NetPaceConsoleTests
         {
             // Given an empty log that NetPace may write to but not read, as one pre-created for a
             // service account can be. File modes are a Unix permission model, so this fails loudly
-            // rather than skipping on Windows (Constitution §X).
+            // rather than skipping on Windows (CONVENTIONS.md, Testing: no skipped tests).
             using var log = new TempLogFile();
             await System.IO.File.WriteAllTextAsync(log.FilePath, string.Empty);
             System.IO.File.SetUnixFileMode(log.FilePath, UnixFileMode.UserWrite);

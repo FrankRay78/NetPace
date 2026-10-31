@@ -2,8 +2,8 @@
 #
 # link-check.sh — every reference to a file in this repository resolves to a file that is there.
 #
-# Written for the change-intent records, which point at each other and are pointed at from the
-# constitution, the workflow docs, CLAUDE.md and two GitHub workflows. A record is a point-in-time
+# Written for the change-intent records, which point at each other and are pointed at from
+# CLAUDE.md, CONVENTIONS.md, the workflow docs and two GitHub workflows. A record is a point-in-time
 # document that is never updated, so pruning one leaves inbound pointers behind in places nobody
 # is reading at the time. This check is what makes that cost visible at the moment of the deletion
 # instead of months later. It covers the markdown links of every tracked `*.md` as well, which

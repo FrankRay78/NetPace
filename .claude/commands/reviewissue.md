@@ -143,7 +143,7 @@ Where the project runs as deployed services, also consider:
 
 **Commentary or gap?** The line is the *source* of the constraint, not its force. A fact already true of the codebase is commentary, however binding it turns out to be in practice. A choice only the author can make, or an obligation this issue would newly impose, is never commentary — record it as a numbered gap. A convention that already governs this area stays commentary even when this issue is the first work to trigger it; only an obligation with no prior basis in the codebase is a gap.
 
-**The bar a bullet must clear.** Commentary carries only what that reader would otherwise miss or get wrong. A bullet that restates a rule they already hold — `CLAUDE.md`, or a constitution or guide it links — or whose content amounts to "nothing to do here", does not appear at all. A short section is the normal outcome.
+**The bar a bullet must clear.** Commentary carries only what that reader would otherwise miss or get wrong. A bullet that restates a rule they already hold — `CLAUDE.md`, `CONVENTIONS.md`, or a guide they link — or whose content amounts to "nothing to do here", does not appear at all. A short section is the normal outcome.
 
 Write what survives as bullets, not questions:
 

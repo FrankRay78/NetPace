@@ -31,7 +31,7 @@
 # stray env var. Delete this block once the gate is trusted to make the ban absolute.
 #
 # Wired into .claude/settings.json as a PreToolUse(Bash) hook, so the gate arms
-# automatically on every `git commit`. Constitution §X makes the ban itself binding.
+# automatically on every `git commit`. CONVENTIONS.md (Testing, "No skipped tests") states the ban.
 
 set -uo pipefail
 
@@ -46,7 +46,7 @@ REPO_ROOT="${CLAUDE_PROJECT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && 
 # plus xUnit v3's conditional SkipUnless=/SkipWhen=. The argument alternative deliberately
 # matches a string OR an identifier ([Fact(Skip = GateReason)]), which is why it is a bare
 # `Skip…=` rather than something anchored to a quote: breadth here over-blocks (loud, fixable
-# by a rename) where narrowness would under-block (silent non-coverage — the thing §X exists
+# by a rename) where narrowness would under-block (silent non-coverage — the thing the ban exists
 # to prevent). Note `If` is a prefix of `IfNot`, so the IfNot alternative never decides a match;
 # it is kept for readability of intent.
 BANNED_RE='Skip\.(If|IfNot|Always|Unless)|Assert\.Skip|Skippable(Fact|Theory)|Skip(Unless|When)?[[:space:]]*=|SkipException'
@@ -61,7 +61,7 @@ BANNED_RE='Skip\.(If|IfNot|Always|Unless)|Assert\.Skip|Skippable(Fact|Theory)|Sk
 # bin/ and obj/ are excluded by grep during traversal (--exclude-dir), NOT by filtering its
 # output afterwards. An output filter tests the whole `path:lineno:content` line, so a banned
 # construct whose SOURCE TEXT mentions /bin/ or /obj/ would filter itself out and commit clean
-# — e.g. `Skip.If(!File.Exists("/bin/bash"), …)`, which is exactly the shape of skip §X most
+# — e.g. `Skip.If(!File.Exists("/bin/bash"), …)`, which is exactly the shape of skip the ban most
 # often has to stop (a runtime skip guarding a missing dependency, and dependency probes name
 # absolute paths).
 scan() {
@@ -84,9 +84,8 @@ trap 'rm -f "$SCAN_ERR"' EXIT
 # --check is deliberately ABOVE the override: an audit must never be silenceable by an env var.
 # NETPACE_ALLOW_SKIPS=1 is a local, per-commit emergency hatch for the interactive agent loop; if it
 # leaked into a CI environment it would turn this audit into a no-op that still reports green —
-# silent non-coverage dressed as a pass, which is precisely what §X exists to stop. The
-# Constitution scopes the override to "genuine emergencies, not routine bypass"; an unattended
-# runner is neither.
+# silent non-coverage dressed as a pass, which is precisely what the ban exists to stop. The
+# override is for genuine emergencies, not routine bypass; an unattended runner is neither.
 if [ "${1:-}" = "--check" ]; then
   # Fail closed if we cannot locate the tree to scan (a wrong REPO_ROOT must not read as clean).
   if [ ! -d "$REPO_ROOT/src" ]; then
@@ -163,7 +162,7 @@ cmd_flat="${cmd//\\$'\n'/ }"
 
 # Deliberately NOT narrowed to command-word position (issue #91 H7). A read-only command that
 # merely mentions the words — `grep -r "git commit" docs/` — is gated too, and that over-block is
-# accepted: it can only bite when src/ ALREADY holds a banned construct, i.e. when §X is
+# accepted: it can only bite when src/ ALREADY holds a banned construct, i.e. when the ban is
 # already violated and must be fixed regardless; in a clean tree it never fires. Parsing shell to
 # find the command-word (as stack-guard.sh does for its own, narrower job) would trade this
 # harmless over-block for the failure that actually matters — a parser gap missing a real commit
@@ -192,7 +191,7 @@ fi
 if [ -n "$hits" ]; then
   {
     echo "BLOCKED: commit would introduce/retain banned skipped-test constructs."
-    echo "Prohibited: the skip family (Skip.If/IfNot/Always/Unless, Assert.Skip, [Fact/Theory(Skip=…)], [SkippableFact/Theory], SkipException) — see Constitution §X."
+    echo "Prohibited: the skip family (Skip.If/IfNot/Always/Unless, Assert.Skip, [Fact/Theory(Skip=…)], [SkippableFact/Theory], SkipException) — see CONVENTIONS.md, Testing."
     echo "Fix: make the test fail loudly, exclude destructive suites by [Trait(\"Category\", …)], or document the untestable branch with a comment at the site."
     echo "Offending lines:"
     echo "$hits"
