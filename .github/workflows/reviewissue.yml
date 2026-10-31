@@ -5,9 +5,10 @@ name: Review Issue
 # command: the review logic is single-sourced in .claude/commands/reviewissue.md, and this workflow
 # adds the environmental deltas plus one behavioural override — the wrong-state guard below, which
 # clears the label and stops rather than guessing which label the author meant.
-# On the `issues` path the run uses the default branch's copy of both this file and the
-# command file, so a change there takes effect on merge, not on branch; a workflow_dispatch
-# run uses the ref it is dispatched against, and is always a review.
+# On the `issues` path the run uses the default branch's copy of this file, of the command
+# file and of the CONVENTIONS.md the command reads its checks from, so a change to any of them
+# takes effect on merge, not on branch; a workflow_dispatch run uses the ref it is dispatched
+# against for all three, and is always a review.
 # Rationale: docs/change-intent-records/2026-09-07-automated-prespec-review.md and
 #            docs/change-intent-records/2026-09-11-confirmed-decisions-replace-the-review.md.
 # The one-label-per-state model each trigger assumes: docs/agentic-workflow-NetPace.md,

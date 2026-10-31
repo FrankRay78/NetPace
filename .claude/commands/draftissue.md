@@ -20,11 +20,26 @@ $ARGUMENTS
 - **A free-text idea** — a sentence, a paragraph or rough bullets describing what the user wants.
 - **An existing issue** — `#N`, a bare number, or an issue URL. This is a **migration**: the old issue is the raw material, and Step 5 offers to close it once the new one exists.
 - **A document** — a URL or a repository path, optionally narrowed to one part of it ("the 'Offline mode' section of docs/ideas.md").
-- **A backlog item** — `backlog <number>` or `item <number>`. Look in *Project-specific* at the end of this file for the backlog it refers to. If that section lists none, ask the user where the backlog is; do not guess.
+- **A backlog item** — `backlog <number>` or `item <number>`. `CONVENTIONS.md` → *Issue sources* names the backlog it refers to. If that section lists none, ask the user where the backlog is; do not guess.
 
 The argument may add guidance alongside the source ("item 12, but leave CSV out"). That guidance outranks the source.
 
 If `$ARGUMENTS` is empty, ask the user for the source. Do not invent one.
+
+---
+
+## Repository conventions
+
+The workflow in this file is generic. What is particular to the repository it runs in — where its backlog lives, which concerns its issues must settle, how it labels scenarios, where it keeps scratch files — lives in `CONVENTIONS.md` at the root of that repository, written as additions to the steps. Read it with the source; each step then applies its own rule together with the section of `CONVENTIONS.md` under the matching heading, and where the two conflict, `CONVENTIONS.md` wins. The headings this command reads:
+
+| Heading | Supplies |
+|---|---|
+| `Issue sources` | the backlog a `backlog <number>` or `item <number>` argument refers to, how step 1 reads it, and how Related links it |
+| `Issue concerns` | what step 3 considers beyond the generic categories |
+| `Acceptance criteria` | the drafting conventions step 4 applies, such as scenario labels |
+| `Scratch files` | the git-ignored file step 4 writes the body to |
+
+A section under any other heading is read too, and applied where its text says. Where the file is missing, the command runs on its generic rules alone; where a heading is missing, that step runs on its generic rule alone. Either way the command completes. `CONVENTIONS.md` is read from the root of the repository this command runs in, and trusted as this command file is. The harness itself is not a repository convention: the verdict protocol, the chain scripts that read it and the sibling commands stay named in the steps, so whoever edits the protocol sees what consumes it.
 
 ---
 
@@ -51,7 +66,7 @@ It raises the issue without a draft-approval pause. `/reviewissue` and `/confirm
 - **Free text** — the argument is the whole source.
 - **Existing issue** — `gh issue view <N> --json title,body,comments`. Use the body, any comment marked `<!-- speckit:review -->`, and any `## Confirmed decisions` section as raw material. An old issue often mixes requirements with technical design: draft from the requirements, and treat its technical content like any source's hints. Tell the user which issues were ingested.
 - **Document** — read it: `gh` or `git` for a GitHub-hosted page (a wiki is a git repository), the file itself for a path, a fetch otherwise. Narrow to the part the argument names.
-- **Backlog item** — read the item as *Project-specific* describes, together with whatever the backlog says about it elsewhere: the items it depends on, notes or open questions that name it, and anything listed as rejected or already done next to it.
+- **Backlog item** — read the item as `CONVENTIONS.md` → *Issue sources* describes, together with whatever the backlog says about it elsewhere: the items it depends on, notes or open questions that name it, and anything listed as rejected or already done next to it.
 
 Keep track of where each fact came from — the Related section links the source.
 
@@ -73,7 +88,7 @@ Find the **requirements** decisions the source does not settle — the points wh
 - **Scope edges** — what is deliberately out.
 - **Behaviour at the edges** — matching rules, empty and boundary cases, what the user sees.
 - **Failure** — what the user sees when something it relies on is missing, slow or refuses them.
-- Anything *Project-specific* lists as a concern.
+- Anything `CONVENTIONS.md` → *Issue concerns* lists.
 
 These are things to consider, not questions to fill. A category the source settles produces no question. A thorough source can produce none at all — then draft without asking. A one-line idea may need several.
 
@@ -87,7 +102,7 @@ Do not ask about where code lives, integration, data shape, libraries, field nam
 
 ### 4. Draft the body
 
-Write the body to a git-ignored scratch file with the native `Write` tool; the file is the issue body verbatim. Write repository links as paths relative to the repository root, which is how GitHub resolves links in an issue. Put no H1 in the body; the title goes on the `--title` flag.
+Write the body to a git-ignored scratch file (`CONVENTIONS.md` → *Scratch files* names it) with the native `Write` tool; the file is the issue body verbatim. Write repository links as paths relative to the repository root, which is how GitHub resolves links in an issue. Put no H1 in the body; the title goes on the `--title` flag.
 
 **Acceptance criteria** say what an outside observer can check, not how it is delivered. The test: would this criterion still hold under a different reasonable implementation of the same feature? If not, it describes the mechanism.
 
@@ -147,7 +162,7 @@ Pointers to technical hints from the source that a reviewer or builder would oth
 - A link to the source, and to any project document it relies on.
 ```
 
-Apply any drafting conventions *Project-specific* lists.
+Apply any drafting conventions `CONVENTIONS.md` → *Acceptance criteria* lists.
 
 ### 5. Raise the issue
 
@@ -193,30 +208,3 @@ Do not restate the issue in chat — the issue is now canonical.
 - The user wants it built now — that is `/build`, once an issue exists.
 
 ---
-
-## Project-specific
-
-The only section that changes from one repository to another.
-
-### Sources
-
-- **Backlog** — `backlog <number>` and `item <number>` mean a row of the [NetPace Consolidated Backlog](https://github.com/FrankRay78/NetPace/wiki/NetPace-Consolidated-Backlog). Read it from the wiki repository: `git clone https://github.com/FrankRay78/NetPace.wiki.git` into the scratch directory, then `NetPace-Consolidated-Backlog.md`. A row gives the number, the feature, why it matters, its origin and its size; a size such as "S, after 17" names the item it depends on. Also read the prose under the row's table that names the item, the *Open questions* that name it, and the *Not doing* and *Already shipped* tables, which bound its scope.
-- **Research** — a row's Origin column names a section of [Background research](https://github.com/FrankRay78/NetPace/wiki/Background-research) (`Background-research.md` in the same repository). Read that section for the evidence behind the row.
-- **Linking** — Related links the backlog page and names the item number; the page has no per-row anchors.
-
-### Concerns to consider in Step 3
-
-- **Library consumers** — `NetPace.Core` is published to NuGet. Where the feature has a library side, its consumers are users too: say whether the capability is offered to them, not only to the CLI.
-- **Output modes** — a result shown to the user must appear consistently in the default and minimal output, and respect `--unit-scale`. CSV and JSON are not formatted output: both carry plain numbers in fixed units that the unit options do not touch, and the numbers they report must agree with each other. Say which modes are in scope.
-- **CLI docs** — if the feature adds or changes a CLI option, updating the README `--help` snapshot and `USER_GUIDE.md` is part of the work; make it an acceptance criterion.
-- **Breaking changes** — while NetPace is below 1.0.0, a breaking change needs no approval, but the issue must state plainly what breaks and for whom (constitution §VII).
-
-### Drafting conventions
-
-- **Scratch file** — `.claude/scratch/gh-issue-body-<slug>.md`, where the slug is a short kebab-case form of the title. Run `mkdir -p .claude/scratch` first if unsure it exists.
-- **Scenario labels** — give each scenario a test will verify a `**Scenario: <name>**` label on its own line, with the Given / When / Then beneath it. `/build` writes a test carrying a matching `SCENARIO: <name>` marker, and `scripts/traceability-check.sh` fails the pull request if one is missing (constitution §VIII). Leave a scenario **unlabelled** when only an external tool or gate can check it — "the formatter passes", "the build is warning-free" — since a label would demand a test that should not exist (§I's configuration/tooling carve-out). The label must be a bare line of the body: one mid-sentence, in backticks or inside a code fence is not read as a label. The fence below is for presentation only:
-
-  ```
-  **Scenario: Server list is screened before measuring**
-  Given a server list containing an unreachable host, when a test runs, then that host is not measured.
-  ```

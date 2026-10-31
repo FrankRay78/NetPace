@@ -71,7 +71,7 @@ Only Low is eligible for merge with no human review. Medium and High both mean m
 **Always a person.** A change touching any of these needs the maintainer whatever tier the rest of it would get, so it is never eligible, and the summary names the path responsible. Read the changed paths from `git diff --name-only origin/<baseRefName>...HEAD` in the checkout, never from step 1's `files`, which stops at 100 files without saying so:
 
 - the Claude harness — anything under `.claude/` — and `CLAUDE.md`
-- `REVIEW.md`, the criteria this review applies
+- `REVIEW.md`, the criteria this review applies, and `CONVENTIONS.md`, the conventions the other harness commands read
 - every path `REVIEW.md` → *Always a person* adds
 - any change to a contract a user or a consumer relies on, as the *Contracts* dimension defines one
 
@@ -155,4 +155,4 @@ Every subagent this command starts — triage, specialists, verifiers — follow
 
 10. **Post.** In `--dry-run` mode, print instead of posting and stop. Otherwise post inline findings and the summary as a single PR review via `gh api repos/{owner}/{repo}/pulls/<N>/reviews --input <file>` with `event: COMMENT`, `commit_id` set to `headRefOid`, the summary as `body`, and `comments[]` entries of `{path, line, side: "RIGHT", body}`. Write the JSON to `.claude/scratch/review-pr-<N>.json` first, so backticks and `$` pass through untouched. If the API rejects an inline position, move that finding's full text to the summary and post again rather than dropping it.
 
-11. **Report.** Print the PR URL, the recommendation, the tier and the no-human verdict, counts per severity, how many candidates verification rejected, and that the next round is started by `/review-followup`'s CI trigger (named in that command), or by running `/review-followup <N>` locally.
+11. **Report.** Print the PR URL, the recommendation, the tier and the no-human verdict, counts per severity, how many candidates verification rejected, and that the next round is started by `/review-followup`'s CI trigger (`REVIEW.md` → *Where it runs* names it), or by running `/review-followup <N>` locally.
