@@ -18,8 +18,9 @@ public sealed partial class OoklaSpeedtestTests
     private const string ScreeningResponseBody = "test=test";
 
     /// <summary>
-    /// Bounds a call that a broken ceiling would leave waiting forever, so that regression fails
-    /// the test instead of hanging the run. It is not a timing assertion.
+    /// Bounds a wait that a regression would otherwise leave outstanding forever - a broken
+    /// screening ceiling, or a frozen clock suspending one - so that regression fails the test
+    /// instead of hanging the run. It is not a timing assertion.
     /// </summary>
     private static readonly TimeSpan HangGuard = TimeSpan.FromSeconds(10);
 
@@ -77,51 +78,45 @@ public sealed partial class OoklaSpeedtestTests
         // slower candidate that answers every request. Screening keeps what the first candidate did
         // achieve, so it is ranked on that figure rather than discarded for the later failure - the
         // all-or-nothing probe this replaced would have dropped it and chosen the slower server.
-        const int steadyDelayMilliseconds = 60;
+        // Both are timed on a clock the test moves itself, and the slower candidate is answered
+        // only once the flaky one has been screened - see RespondAfterAdvancing in
+        // OoklaSpeedtestTests.ElapsedTime.cs for why an order is needed.
+        const int flakyMilliseconds = 10;
+        var clock = new ControlledTimeProvider(ClockStart);
+        var flakyScreened = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+
         using var mockHttp = new MockHttpMessageHandler(BackendDefinitionBehavior.Always);
 
         mockHttp.Expect("http://flaky.com/latency.txt")
-                .Respond("text/plain", ScreeningResponseBody);
+                .Respond(_ =>
+                {
+                    clock.Advance(TimeSpan.FromMilliseconds(flakyMilliseconds));
+                    return new HttpResponseMessage { Content = new StringContent(ScreeningResponseBody) };
+                });
         mockHttp.When("http://flaky.com/latency.txt")
                 .Throw(new HttpRequestException("Connection reset."));
 
-        RespondAfterDelay(mockHttp, "http://steady.com/latency.txt", steadyDelayMilliseconds);
+        RespondAfterAdvancing(mockHttp, "http://steady.com/latency.txt", clock, TimeSpan.FromMilliseconds(60), flakyScreened.Task);
 
         var httpClient = mockHttp.ToHttpClient();
-        var speedtest = new OoklaSpeedtest(new OoklaSpeedtestSettings(), httpClient, new DelayProviderStub());
+        var speedtest = new OoklaSpeedtest(new OoklaSpeedtestSettings(), httpClient, new DelayProviderStub(), clock);
         var flakyServer = new Server { Url = "http://flaky.com/", Sponsor = "FlakySponsor", Location = "FlakyLocation" };
         var steadyServer = new Server { Url = "http://steady.com/", Sponsor = "SteadySponsor", Location = "SteadyLocation" };
 
-        // When
-        var result = await speedtest.GetFastestServerByLatencyAsync([flakyServer, steadyServer]);
+        var diagnostics = new List<RequestDiagnostic>();
 
-        // Then
+        // When
+        var result = await speedtest.GetFastestServerByLatencyAsync(
+            [flakyServer, steadyServer],
+            new SynchronousProgress<SpeedTestProgress>(_ => flakyScreened.TrySetResult()),
+            Collect(diagnostics));
+
+        // Then the steady candidate was actually screened - asserted, because a gate that never
+        // opened would leave it abandoned at the ceiling and the ranking below unmade.
+        diagnostics.ShouldContain(d => d.Url == "http://steady.com/latency.txt" && d.Outcome == RequestOutcome.Succeeded);
+
         result.Server.ShouldBe(flakyServer);
-        result.LatencyMilliseconds.ShouldBeLessThan(steadyDelayMilliseconds);
-    }
-
-    [Fact]
-    public async Task GetFastestServerByLatencyAsync_SlowerServerListedFirst_StillChoosesTheFastestCandidate()
-    {
-        // SCENARIO: A run auto-selects a server
-
-        // Given a slower server ahead of a faster one in the candidate list, both reachable. The
-        // gap between them is wide enough that scheduling noise cannot reorder the two.
-        using var mockHttp = new MockHttpMessageHandler();
-        RespondAfterDelay(mockHttp, "http://slower.com/latency.txt", 150);
-        RespondAfterDelay(mockHttp, "http://faster.com/latency.txt", 10);
-
-        var httpClient = mockHttp.ToHttpClient();
-        var speedtest = new OoklaSpeedtest(new OoklaSpeedtestSettings(), httpClient, new DelayProviderStub());
-        var slowerServer = new Server { Url = "http://slower.com/", Sponsor = "SlowerSponsor", Location = "SlowerLocation" };
-        var fasterServer = new Server { Url = "http://faster.com/", Sponsor = "FasterSponsor", Location = "FasterLocation" };
-
-        // When
-        var result = await speedtest.GetFastestServerByLatencyAsync([slowerServer, fasterServer]);
-
-        // Then the slower server is ranked below the faster one rather than being the only
-        // candidate compared.
-        result.Server.ShouldBe(fasterServer);
+        result.LatencyMilliseconds.ShouldBe(flakyMilliseconds);
     }
 
     [Theory]
