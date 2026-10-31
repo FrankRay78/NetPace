@@ -80,13 +80,13 @@ public interface ISpeedTestService
     /// overall ceiling, and a server that is reachable but slow ranks lower rather than dropping
     /// out. A server is reachable when at least one of its screening requests completes inside the
     /// ceiling; only a server with no completed request drops out. The latency returned is
-    /// therefore a screening figure, and no jitter is measured at all - call
+    /// therefore a screening figure, and any jitter alongside it is not a measurement - call
     /// <see cref="GetServerLatencyAsync(IServer, CancellationToken)"/> on the winner for figures
     /// to report.
     /// </remarks>
     /// <param name="servers">An array of servers to screen.</param>
     /// <param name="cancellationToken">The token to allow the operation to be cancelled.</param>
-    /// <returns>The reachable server with the lowest screening latency, that latency in milliseconds, and a jitter of zero — screening keeps one figure per candidate, so it has no consecutive pair of round trips to measure unevenness from.</returns>
+    /// <returns>The reachable server with the lowest screening latency, and that latency in milliseconds.</returns>
     /// <exception cref="Exception">Thrown when no given server could be reached.</exception>
     /// <exception cref="ArgumentOutOfRangeException">Thrown when the provider is configured with a non-positive screening request count or screening ceiling.</exception>
     public Task<LatencyTestResult> GetFastestServerByLatencyAsync(IServer[] servers, CancellationToken cancellationToken = default);
@@ -99,14 +99,14 @@ public interface ISpeedTestService
     /// overall ceiling, and a server that is reachable but slow ranks lower rather than dropping
     /// out. A server is reachable when at least one of its screening requests completes inside the
     /// ceiling; only a server with no completed request drops out. The latency returned is
-    /// therefore a screening figure, and no jitter is measured at all - call
+    /// therefore a screening figure, and any jitter alongside it is not a measurement - call
     /// <see cref="GetServerLatencyAsync(IServer, CancellationToken)"/> on the winner for figures
     /// to report.
     /// </remarks>
     /// <param name="servers">An array of servers to screen.</param>
     /// <param name="progress">A progress reporter that receives server selection progress updates.</param>
     /// <param name="cancellationToken">The token to allow the operation to be cancelled.</param>
-    /// <returns>The reachable server with the lowest screening latency, that latency in milliseconds, and a jitter of zero — screening keeps one figure per candidate, so it has no consecutive pair of round trips to measure unevenness from.</returns>
+    /// <returns>The reachable server with the lowest screening latency, and that latency in milliseconds.</returns>
     /// <exception cref="Exception">Thrown when no given server could be reached.</exception>
     /// <exception cref="ArgumentOutOfRangeException">Thrown when the provider is configured with a non-positive screening request count or screening ceiling.</exception>
     public Task<LatencyTestResult> GetFastestServerByLatencyAsync(IServer[] servers, IProgress<SpeedTestProgress> progress, CancellationToken cancellationToken = default);
@@ -123,7 +123,7 @@ public interface ISpeedTestService
     /// <param name="progress">A progress reporter that receives server selection progress updates, or <see langword="null"/> for none.</param>
     /// <param name="diagnostics">A reporter that receives one <see cref="RequestDiagnostic"/> per screening request, or <see langword="null"/> for none.</param>
     /// <param name="cancellationToken">The token to allow the operation to be cancelled.</param>
-    /// <returns>The reachable server with the lowest screening latency, that latency in milliseconds, and a jitter of zero — screening keeps one figure per candidate, so it has no consecutive pair of round trips to measure unevenness from.</returns>
+    /// <returns>The reachable server with the lowest screening latency, and that latency in milliseconds.</returns>
     /// <exception cref="Exception">Thrown when no given server could be reached.</exception>
     /// <exception cref="ArgumentOutOfRangeException">Thrown when the provider is configured with a non-positive screening request count or screening ceiling.</exception>
     public Task<LatencyTestResult> GetFastestServerByLatencyAsync(IServer[] servers, IProgress<SpeedTestProgress>? progress, IProgress<RequestDiagnostic>? diagnostics, CancellationToken cancellationToken = default);

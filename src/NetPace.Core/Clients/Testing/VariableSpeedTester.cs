@@ -19,7 +19,7 @@ namespace NetPace.Core.Clients.Testing;
 /// </list>
 /// <para>
 /// A caller screens the servers and then measures the winner, so both calls land within one test
-/// and report that test's latency. Measuring without screening first reports the figure of the
+/// and report that test's latency and jitter. Measuring without screening first reports the figures of the
 /// test in progress, and before any screening that is the middling run.
 /// </para>
 /// </remarks>

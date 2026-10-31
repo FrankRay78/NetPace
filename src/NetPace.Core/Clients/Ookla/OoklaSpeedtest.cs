@@ -189,9 +189,9 @@ public sealed class OoklaSpeedtest : ISpeedTestService
 
     /// <summary>
     /// How uneven a run of probe times was: the mean of the absolute differences between
-    /// consecutive probes, in whole milliseconds, rounded to nearest so that a small but real
-    /// unevenness does not read as none. Fewer than two probes leaves no consecutive pair to
-    /// compare and reports zero.
+    /// consecutive probes, in whole milliseconds, rounded to nearest so that half a millisecond or
+    /// more does not read as none. Fewer than two probes leaves no consecutive pair to compare and
+    /// reports zero.
     /// </summary>
     /// <remarks>
     /// This is the interarrival-jitter family of RFC 3550, chosen over the standard deviation
@@ -453,8 +453,9 @@ public sealed class OoklaSpeedtest : ISpeedTestService
             }
         }
 
-        // Screening keeps one figure rather than a run of them, so there is no consecutive pair of
-        // round trips to compare and no unevenness is claimed on the strength of a single sample.
+        // Screening times each of its requests but keeps only the fastest, so no run of probe
+        // times survives to derive a jitter figure from. Reported as zero rather than measured
+        // from requests issued back to back for ranking.
         return fastestMilliseconds is null
             ? null
             : new LatencyTestResult { Server = server, LatencyMilliseconds = fastestMilliseconds.Value, JitterMilliseconds = 0 };

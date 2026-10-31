@@ -10,9 +10,9 @@ namespace NetPace.Core.Clients.Testing;
 /// <para>
 /// The stub holds three servers and recognises one by its URL; the trailing digit of the matched
 /// server's sponsor is the number its figures are built from. Anything whose URL the stub does not
-/// hold, including a server named by an unmatched URL, counts as number 10. The number scales only
-/// the elapsed time — the bytes and the request counts are the same for every server — so a
-/// higher-numbered server is slower, matching its higher latency.
+/// hold, including a server named by an unmatched URL, counts as number 10. The number scales the
+/// elapsed time and the jitter — the bytes and the request counts are the same for every server —
+/// so a higher-numbered server is slower and less steady, matching its higher latency.
 /// </para>
 /// <list type="bullet">
 /// <item><description>Latency is 100ms times the server number.</description></item>
@@ -39,16 +39,8 @@ namespace NetPace.Core.Clients.Testing;
 /// </remarks>
 public sealed class SpeedTestStub : ISpeedTestService
 {
-    /// <summary>
-    /// The latency a server reports per unit of its server number, so a higher-numbered server is
-    /// slower.
-    /// </summary>
+    // Per unit of server number, so a higher-numbered server is both slower and less steady.
     private const int LatencyMillisecondsPerServerNumber = 100;
-
-    /// <summary>
-    /// The jitter a server reports per unit of its server number, so a higher-numbered server is
-    /// both slower and less steady.
-    /// </summary>
     private const int JitterMillisecondsPerServerNumber = 10;
 
     private readonly IServer[] stubServers = new IServer[]

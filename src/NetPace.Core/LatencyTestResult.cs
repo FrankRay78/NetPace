@@ -11,9 +11,9 @@ namespace NetPace.Core;
 /// explicitly, and this type does not distinguish that from a measured zero.
 /// </para>
 /// <para>
-/// The same applies to <see cref="JitterMilliseconds"/>, and a measurement of fewer than two
-/// successful probes states it as zero: unevenness is a change from one round trip to the next, so
-/// a single probe has nothing to compare and reports no unevenness rather than no figure.
+/// The same applies to <see cref="JitterMilliseconds"/>, and a measurement of a single probe
+/// states it as zero: unevenness is a change from one round trip to the next, so a single probe
+/// has nothing to compare and reports no unevenness rather than no figure.
 /// </para>
 /// </remarks>
 public sealed record LatencyTestResult
@@ -30,11 +30,11 @@ public sealed record LatencyTestResult
 
     /// <summary>
     /// Gets the measured jitter to the server, in milliseconds: how uneven the round trips were,
-    /// as the mean of the absolute differences between consecutive successful probe times.
+    /// as the mean of the absolute differences between consecutive probe times.
     /// </summary>
     /// <remarks>
-    /// Probes that all return in the same time report zero, as does a measurement of fewer than
-    /// two successful probes, which has no consecutive pair to compare.
+    /// Probes that all return in the same time report zero, as does a measurement of a single
+    /// probe, which has no consecutive pair to compare.
     /// </remarks>
     public required long JitterMilliseconds { get; init; }
 }

@@ -26,44 +26,26 @@ public sealed class VariableSpeedTesterTests
     [Fact]
     public async Task ASequenceOfTests_EachRun_ReportsTheDocumentedFiguresForThatRun()
     {
+        // SCENARIO: Test doubles report jitter
+
         // Given a consumer running four successive speed tests, each screening a server and then
         // measuring latency, download and upload against it — the shape a repeated run takes.
         var tester = new VariableSpeedTester();
 
         // When
-        var runs = new List<(long Latency, long DownloadBytes, long UploadBytes)>();
+        var runs = new List<(long Latency, long Jitter, long DownloadBytes, long UploadBytes)>();
         for (int run = 0; run < 4; run++)
         {
             runs.Add(await RunOneTest(tester));
         }
 
         // Then the figures follow the sequence the tester documents: a slow run, a middling one, a
-        // fast one, and the middling one thereafter.
+        // fast one, and the middling one thereafter. The unevenness varies run to run alongside the
+        // latency, so a consumer can test a display or a threshold against a changing figure.
         Assert.Equal([75, 100, 150, 100], runs.Select(result => result.Latency));
+        Assert.Equal([5, 10, 20, 10], runs.Select(result => result.Jitter));
         Assert.Equal([31250, 125000, 343750, 125000], runs.Select(result => result.DownloadBytes));
         Assert.Equal([62500, 375000, 166250, 375000], runs.Select(result => result.UploadBytes));
-    }
-
-    [Fact]
-    public async Task ASequenceOfTests_EachRun_ReportsTheDocumentedJitterForThatRun()
-    {
-        // SCENARIO: Test doubles report jitter
-
-        // Given a consumer running four successive speed tests, each screening a server and then
-        // measuring the winner.
-        var tester = new VariableSpeedTester();
-
-        // When
-        var jitter = new List<long>();
-        for (int run = 0; run < 4; run++)
-        {
-            var screened = await tester.GetFastestServerByLatencyAsync(await tester.GetServersAsync());
-            jitter.Add((await tester.GetServerLatencyAsync(screened.Server)).JitterMilliseconds);
-        }
-
-        // Then the unevenness varies run to run as the latency does, so a consumer can test a
-        // display or a threshold against a changing figure.
-        Assert.Equal([5, 10, 20, 10], jitter);
     }
 
     [Fact]
@@ -254,7 +236,7 @@ public sealed class VariableSpeedTesterTests
     /// One speed test as a consumer runs it: screen the servers, then measure latency, download and
     /// upload against the winner.
     /// </summary>
-    private static async Task<(long Latency, long DownloadBytes, long UploadBytes)> RunOneTest(ISpeedTestService tester)
+    private static async Task<(long Latency, long Jitter, long DownloadBytes, long UploadBytes)> RunOneTest(ISpeedTestService tester)
     {
         var servers = await tester.GetServersAsync();
         var screened = await tester.GetFastestServerByLatencyAsync(servers);
@@ -262,6 +244,6 @@ public sealed class VariableSpeedTesterTests
         var download = await tester.GetDownloadSpeedAsync(screened.Server);
         var upload = await tester.GetUploadSpeedAsync(screened.Server);
 
-        return (latency.LatencyMilliseconds, download.BytesProcessed, upload.BytesProcessed);
+        return (latency.LatencyMilliseconds, latency.JitterMilliseconds, download.BytesProcessed, upload.BytesProcessed);
     }
 }

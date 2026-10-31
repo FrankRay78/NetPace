@@ -17,6 +17,13 @@ public sealed partial class OoklaSpeedtestTests
     private const string JitterServerUrl = "http://testserver.com/";
 
     /// <summary>
+    /// The server these tests measure, whose latency endpoint is <see cref="JitterProbeUrl"/>. Its
+    /// sponsor and location play no part in a jitter figure.
+    /// </summary>
+    private static Server JitterTestServer() =>
+        new() { Url = JitterServerUrl, Sponsor = "Sponsor", Location = "Location" };
+
+    /// <summary>
     /// Answers each successive request for <paramref name="url"/> after moving
     /// <paramref name="clock"/> on by the next duration in <paramref name="probeMilliseconds"/>,
     /// cycling once the list runs out. Latency probes are issued one at a time, so the order the
@@ -33,7 +40,7 @@ public sealed partial class OoklaSpeedtestTests
                     probe++;
                     clock.Advance(TimeSpan.FromMilliseconds(duration));
 
-                    return Task.FromResult(new HttpResponseMessage { Content = new StringContent(ScreeningResponseBody) });
+                    return new HttpResponseMessage { Content = new StringContent(ScreeningResponseBody) };
                 });
     }
 
@@ -68,7 +75,7 @@ public sealed partial class OoklaSpeedtestTests
         RespondAfterAdvancingInTurn(mockHttp, JitterProbeUrl, clock, 20, 50, 30, 40);
 
         var speedtest = LatencyProbingSpeedtest(mockHttp, clock, iterations: 4);
-        var server = new Server { Url = JitterServerUrl, Sponsor = "Sponsor", Location = "Location" };
+        var server = JitterTestServer();
 
         // When
         var result = await speedtest.GetServerLatencyAsync(server);
@@ -93,7 +100,7 @@ public sealed partial class OoklaSpeedtestTests
         RespondAfterAdvancingInTurn(mockHttp, JitterProbeUrl, clock, probeMilliseconds);
 
         var speedtest = LatencyProbingSpeedtest(mockHttp, clock, iterations: 5);
-        var server = new Server { Url = JitterServerUrl, Sponsor = "Sponsor", Location = "Location" };
+        var server = JitterTestServer();
 
         // When
         var result = await speedtest.GetServerLatencyAsync(server);
@@ -115,7 +122,7 @@ public sealed partial class OoklaSpeedtestTests
         RespondAfterAdvancingInTurn(mockHttp, JitterProbeUrl, clock, 10, 20, 10, 20);
 
         var speedtest = LatencyProbingSpeedtest(mockHttp, clock, iterations: 4);
-        var server = new Server { Url = JitterServerUrl, Sponsor = "Sponsor", Location = "Location" };
+        var server = JitterTestServer();
 
         // When
         var result = await speedtest.GetServerLatencyAsync(server);
@@ -138,7 +145,7 @@ public sealed partial class OoklaSpeedtestTests
         RespondAfterAdvancingInTurn(mockHttp, JitterProbeUrl, clock, 70);
 
         var speedtest = LatencyProbingSpeedtest(mockHttp, clock, iterations: 1);
-        var server = new Server { Url = JitterServerUrl, Sponsor = "Sponsor", Location = "Location" };
+        var server = JitterTestServer();
 
         // When
         var result = await speedtest.GetServerLatencyAsync(server);
@@ -161,7 +168,7 @@ public sealed partial class OoklaSpeedtestTests
         RespondAfterAdvancingInTurn(mockHttp, JitterProbeUrl, clock, 10, 11, 11);
 
         var speedtest = LatencyProbingSpeedtest(mockHttp, clock, iterations: 3);
-        var server = new Server { Url = JitterServerUrl, Sponsor = "Sponsor", Location = "Location" };
+        var server = JitterTestServer();
 
         // When
         var result = await speedtest.GetServerLatencyAsync(server);
@@ -173,30 +180,69 @@ public sealed partial class OoklaSpeedtestTests
     [Fact]
     public async Task GetFastestServerByLatencyAsync_AScreenedCandidate_ReportsNoJitter()
     {
-        // Given the only candidate, screened with a single request, so the winning figure rests on
-        // one round trip and has nothing to compare it against.
+        // Given the only candidate, screened at the default request count, with its requests
+        // taking 90, 70 and 80 ms of a clock the test moves itself. Screening times all three but
+        // keeps only the fastest, so no run of probe times survives for it to derive jitter from.
         var clock = new ControlledTimeProvider(ClockStart);
 
         using var mockHttp = new MockHttpMessageHandler();
-        RespondAfterAdvancingInTurn(mockHttp, JitterProbeUrl, clock, 90);
+        RespondAfterAdvancingInTurn(mockHttp, JitterProbeUrl, clock, 90, 70, 80);
 
-        var settings = new OoklaSpeedtestSettings
-        {
-            ServerDiscovery = new()
-            {
-                ScreeningRequestCount = 1
-            }
-        };
-
-        var speedtest = new OoklaSpeedtest(settings, mockHttp.ToHttpClient(), timeProviderOverride: clock);
-        var server = new Server { Url = JitterServerUrl, Sponsor = "Sponsor", Location = "Location" };
+        var speedtest = new OoklaSpeedtest(httpClientOverride: mockHttp.ToHttpClient(), timeProviderOverride: clock);
+        var server = JitterTestServer();
 
         // When
         var result = await speedtest.GetFastestServerByLatencyAsync([server]);
 
-        // Then the winner is reported at the figure screening measured, with no unevenness claimed
-        // on the strength of a single sample.
-        result.LatencyMilliseconds.ShouldBe(90);
+        // Then the winner is reported at the fastest figure screening saw, and reports no jitter
+        // even though it did make consecutive round trips.
+        result.LatencyMilliseconds.ShouldBe(70);
+        result.JitterMilliseconds.ShouldBe(0);
+    }
+
+    [Fact]
+    public async Task GetServerLatencyAsync_AMeasurementOfTwoProbes_ReportsTheChangeBetweenThem()
+    {
+        // SCENARIO: Jitter is the mean change between consecutive probes
+
+        // Given the fewest probes that make a consecutive pair at all, taking 10 and 30 ms of a
+        // clock the test moves itself.
+        var clock = new ControlledTimeProvider(ClockStart);
+
+        using var mockHttp = new MockHttpMessageHandler();
+        RespondAfterAdvancingInTurn(mockHttp, JitterProbeUrl, clock, 10, 30);
+
+        var speedtest = LatencyProbingSpeedtest(mockHttp, clock, iterations: 2);
+        var server = JitterTestServer();
+
+        // When
+        var result = await speedtest.GetServerLatencyAsync(server);
+
+        // Then the one change between them is the whole of the jitter, rather than the pair being
+        // treated as too few to compare.
+        result.LatencyMilliseconds.ShouldBe(20);
+        result.JitterMilliseconds.ShouldBe(20);
+    }
+
+    [Fact]
+    public async Task GetServerLatencyAsync_JitterOfAQuarterOfAMillisecond_ReportsNoJitter()
+    {
+        // Given five probes taking 10, 11, 11, 11 and 11 ms of a clock the test moves itself, so
+        // the changes between consecutive probes are 1, 0, 0 and 0 ms and the mean change is a
+        // quarter of a millisecond. Rounding to nearest is not rounding up: a single blip across a
+        // long run is not unevenness worth a whole millisecond.
+        var clock = new ControlledTimeProvider(ClockStart);
+
+        using var mockHttp = new MockHttpMessageHandler();
+        RespondAfterAdvancingInTurn(mockHttp, JitterProbeUrl, clock, 10, 11, 11, 11, 11);
+
+        var speedtest = LatencyProbingSpeedtest(mockHttp, clock, iterations: 5);
+        var server = JitterTestServer();
+
+        // When
+        var result = await speedtest.GetServerLatencyAsync(server);
+
+        // Then the figure rounds down to none.
         result.JitterMilliseconds.ShouldBe(0);
     }
 }
