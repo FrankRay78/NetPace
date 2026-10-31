@@ -1,5 +1,4 @@
 using System.Buffers;
-using System.Diagnostics;
 using System.IO;
 using System.Net;
 using System.Net.Http;
@@ -39,8 +38,13 @@ public sealed class OoklaSpeedtest : ISpeedTestService
     /// <param name="httpClientOverride">An HTTP client to use in place of the one this class would construct.</param>
     /// <param name="delayProviderOverride">A delay provider to use in place of real waiting.</param>
     /// <param name="timeProviderOverride">
-    /// The clock that stamps <see cref="RequestDiagnostic.StartedAt"/> on each reported request;
-    /// the system clock is used when omitted.
+    /// The clock every measurement is taken against: the duration of each latency probe, of each
+    /// screening request and of a download or upload, as well as the
+    /// <see cref="RequestDiagnostic.StartedAt"/> stamp on each reported request. Supplying a clock
+    /// whose readings the caller controls therefore makes every reported figure exactly follow it.
+    /// The system clock is used when omitted. Waiting is not measurement and stays on the system
+    /// clock regardless: the screening ceiling, the per-request HTTP timeouts and the pause between
+    /// latency probes, the last of which <paramref name="delayProviderOverride"/> governs.
     /// </param>
     public OoklaSpeedtest(OoklaSpeedtestSettings? speedtestSettings = null, HttpClient? httpClientOverride = null, IDelayProvider? delayProviderOverride = null, TimeProvider? timeProviderOverride = null)
     {
@@ -104,7 +108,6 @@ public sealed class OoklaSpeedtest : ISpeedTestService
 
         var latencyUrl = GetBaseUrl(server.Url) + LatencyFileName;
         var pings = new List<long>();
-        var stopwatch = new Stopwatch();
 
         var maxIterations = settings.LatencyTest.LatencyTestIterations;
         var intervalMilliseconds = settings.LatencyTest.LatencyTestIntervalMilliseconds;
@@ -123,36 +126,36 @@ public sealed class OoklaSpeedtest : ISpeedTestService
             // Stamped before the request leaves, so a record describes when the request started
             // rather than when the consumer happened to receive it.
             var startedAt = timeProvider.GetLocalNow().DateTime;
+            var startTimestamp = timeProvider.GetTimestamp();
             var sequence = iteration + 1;
 
             string testString;
+            long elapsedMilliseconds;
             try
             {
-                stopwatch.Restart();
                 testString = await httpClient.GetStringWithTimeoutAsync(latencyUrl, TimeSpan.FromMilliseconds(httpTimeoutMilliseconds), cancellationToken).ConfigureAwait(false);
-                stopwatch.Stop();
+                elapsedMilliseconds = ElapsedMillisecondsSince(startTimestamp);
             }
             catch (Exception e)
             {
                 // The failure still surfaces to the caller - a latency measurement that cannot be
                 // taken is not a measurement. It is recorded first, so a diagnostic log names the
                 // cause of a run that ended here.
-                stopwatch.Stop();
-                ReportRequestFailure(diagnostics, startedAt, sequence, latencyUrl, stopwatch.ElapsedMilliseconds, e, cancellationToken);
+                ReportRequestFailure(diagnostics, startedAt, sequence, latencyUrl, ElapsedMillisecondsSince(startTimestamp), e, cancellationToken);
                 throw;
             }
 
             if (!testString.StartsWith(LatencyResponsePrefix))
             {
                 var wrongServer = new InvalidOperationException("Server returned incorrect test string for latency.txt");
-                ReportRequestFailure(diagnostics, startedAt, sequence, latencyUrl, stopwatch.ElapsedMilliseconds, wrongServer, cancellationToken, Encoding.UTF8.GetByteCount(testString));
+                ReportRequestFailure(diagnostics, startedAt, sequence, latencyUrl, elapsedMilliseconds, wrongServer, cancellationToken, Encoding.UTF8.GetByteCount(testString));
                 throw wrongServer;
             }
 
-            ReportLatencyRequestSuccess(diagnostics, startedAt, sequence, latencyUrl, testString, stopwatch.ElapsedMilliseconds);
+            ReportLatencyRequestSuccess(diagnostics, startedAt, sequence, latencyUrl, testString, elapsedMilliseconds);
 
             // Record this ping time
-            pings.Add(stopwatch.ElapsedMilliseconds);
+            pings.Add(elapsedMilliseconds);
 
             // Report progress after each iteration
             var percentageComplete = (iteration + 1) * 100 / maxIterations;
@@ -308,7 +311,6 @@ public sealed class OoklaSpeedtest : ISpeedTestService
         }
 
         var latencyUrl = GetBaseUrl(server.Url) + LatencyFileName;
-        var stopwatch = new Stopwatch();
         long? fastestMilliseconds = null;
 
         for (var request = 0; request < settings.ServerDiscovery.ScreeningRequestCount; request++)
@@ -319,13 +321,13 @@ public sealed class OoklaSpeedtest : ISpeedTestService
             }
 
             var startedAt = timeProvider.GetLocalNow().DateTime;
+            var startTimestamp = timeProvider.GetTimestamp();
             var sequence = nextSequence();
 
             try
             {
-                stopwatch.Restart();
                 var testString = await httpClient.GetStringAsync(latencyUrl, ceilingToken).ConfigureAwait(false);
-                stopwatch.Stop();
+                var elapsedMilliseconds = ElapsedMillisecondsSince(startTimestamp);
 
                 if (!testString.StartsWith(LatencyResponsePrefix))
                 {
@@ -339,7 +341,7 @@ public sealed class OoklaSpeedtest : ISpeedTestService
                             Url = latencyUrl,
                             Outcome = RequestOutcome.Failed,
                             BytesProcessed = Encoding.UTF8.GetByteCount(testString),
-                            ElapsedMilliseconds = stopwatch.ElapsedMilliseconds,
+                            ElapsedMilliseconds = elapsedMilliseconds,
                             FailureReason = NotASpeedTestServer
                         });
                     }
@@ -347,11 +349,11 @@ public sealed class OoklaSpeedtest : ISpeedTestService
                     return null;
                 }
 
-                ReportLatencyRequestSuccess(diagnostics, startedAt, sequence, latencyUrl, testString, stopwatch.ElapsedMilliseconds);
+                ReportLatencyRequestSuccess(diagnostics, startedAt, sequence, latencyUrl, testString, elapsedMilliseconds);
 
-                if (fastestMilliseconds is null || stopwatch.ElapsedMilliseconds < fastestMilliseconds)
+                if (fastestMilliseconds is null || elapsedMilliseconds < fastestMilliseconds)
                 {
-                    fastestMilliseconds = stopwatch.ElapsedMilliseconds;
+                    fastestMilliseconds = elapsedMilliseconds;
                 }
             }
             catch (Exception e) when (e is HttpRequestException or IOException or OperationCanceledException)
@@ -362,7 +364,6 @@ public sealed class OoklaSpeedtest : ISpeedTestService
                 // to the caller's and HttpClient.Timeout raises the same type again - so a Ctrl-C
                 // and a server that never answered would both read as "ceiling reached", each a
                 // statement about the wrong thing. Only the tokens say which actually happened.
-                stopwatch.Stop();
                 var cancelledByCaller = e is OperationCanceledException && callerToken.IsCancellationRequested;
                 var abandonedAtCeiling = e is OperationCanceledException && !cancelledByCaller && ceilingToken.IsCancellationRequested;
                 var rankedOut = !cancelledByCaller && !abandonedAtCeiling;
@@ -391,7 +392,7 @@ public sealed class OoklaSpeedtest : ISpeedTestService
                         Url = latencyUrl,
                         Outcome = rankedOut ? RequestOutcome.Failed : RequestOutcome.Cancelled,
                         BytesProcessed = 0,
-                        ElapsedMilliseconds = stopwatch.ElapsedMilliseconds,
+                        ElapsedMilliseconds = ElapsedMillisecondsSince(startTimestamp),
                         FailureReason = failureReason,
                         FailureType = rankedOut ? e.GetType().Name : null
                     });
@@ -561,11 +562,10 @@ public sealed class OoklaSpeedtest : ISpeedTestService
         var failedCount = 0;
         var totalCount = testData.Count();
 
-        var timer = new Stopwatch();
         var throttler = new SemaphoreSlim(parallelTasks);
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
 
-        timer.Start();
+        var testStartTimestamp = timeProvider.GetTimestamp();
 
         // Create and execute tasks to process the test data in parallel.
         var sequenceIssued = sequenceOffset;
@@ -597,11 +597,12 @@ public sealed class OoklaSpeedtest : ISpeedTestService
 
                 sequence = Interlocked.Increment(ref sequenceIssued);
                 startedAt = timeProvider.GetLocalNow().DateTime;
-                startTimestamp = Stopwatch.GetTimestamp();
+                startTimestamp = timeProvider.GetTimestamp();
 
                 // Set last, so the flag never claims a start that the clock read above did not
                 // reach. Guarding on it while startTimestamp was still zero would time a request
-                // from the Stopwatch epoch and report the machine's uptime as its duration.
+                // from the clock's own epoch and report its whole elapsed reading as this
+                // request's duration.
                 requestStarted = true;
 
                 // Perform the work and retrieve the processed byte count.
@@ -681,7 +682,7 @@ public sealed class OoklaSpeedtest : ISpeedTestService
                                 {
                                     PercentageComplete = 100,
                                     BytesProcessed = totalBytesReturned,
-                                    ElapsedMilliseconds = timer.ElapsedMilliseconds
+                                    ElapsedMilliseconds = ElapsedMillisecondsSince(testStartTimestamp)
                                 });
                             }
                             else
@@ -706,7 +707,7 @@ public sealed class OoklaSpeedtest : ISpeedTestService
                                 {
                                     PercentageComplete = percentageComplete,
                                     BytesProcessed = totalBytesReturned,
-                                    ElapsedMilliseconds = timer.ElapsedMilliseconds
+                                    ElapsedMilliseconds = ElapsedMillisecondsSince(testStartTimestamp)
                                 });
                             }
                         }
@@ -779,12 +780,15 @@ public sealed class OoklaSpeedtest : ISpeedTestService
 
         // Wait for all tasks to complete.
         await Task.WhenAll(tasks);
-        timer.Stop();
+
+        // Read where the test actually ends, rather than inside the result below: anything between
+        // the two would be billed to the transfer.
+        var testElapsedMilliseconds = ElapsedMillisecondsSince(testStartTimestamp);
 
         return new SpeedTestResult
         {
             BytesProcessed = totalBytesReturned,
-            ElapsedMilliseconds = timer.ElapsedMilliseconds,
+            ElapsedMilliseconds = testElapsedMilliseconds,
             RequestsSucceeded = succeededCount,
             RequestsFailed = failedCount
         };
@@ -820,7 +824,7 @@ public sealed class OoklaSpeedtest : ISpeedTestService
         {
             var probeUrl = currentUrl;
             var startedAt = timeProvider.GetLocalNow().DateTime;
-            var startTimestamp = Stopwatch.GetTimestamp();
+            var startTimestamp = timeProvider.GetTimestamp();
             requestsIssued++;
 
             try
@@ -983,10 +987,18 @@ public sealed class OoklaSpeedtest : ISpeedTestService
     }
 
     /// <summary>
-    /// Milliseconds elapsed since a <see cref="Stopwatch.GetTimestamp"/> reading.
+    /// Milliseconds elapsed on this instance's time provider since a
+    /// <see cref="TimeProvider.GetTimestamp"/> reading from it.
     /// </summary>
-    private static long ElapsedMillisecondsSince(long startTimestamp) =>
-        (long)Stopwatch.GetElapsedTime(startTimestamp).TotalMilliseconds;
+    /// <remarks>
+    /// Every elapsed time the provider measures is read through here, so a caller that supplied a
+    /// time provider is supplying the clock each measurement is taken against. Waiting is a
+    /// separate concern and stays on the system clock: the screening ceiling, the per-request HTTP
+    /// timeouts and the pause between latency probes are bounds on how long to wait, not
+    /// measurements of how long something took.
+    /// </remarks>
+    private long ElapsedMillisecondsSince(long startTimestamp) =>
+        (long)timeProvider.GetElapsedTime(startTimestamp).TotalMilliseconds;
 
     private static HttpClient CreateHttpClient(bool useProxy, Uri? proxyAddress, NetworkCredential? proxyCredential)
     {

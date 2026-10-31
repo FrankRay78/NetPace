@@ -77,27 +77,39 @@ public sealed partial class OoklaSpeedtestTests
         // slower candidate that answers every request. Screening keeps what the first candidate did
         // achieve, so it is ranked on that figure rather than discarded for the later failure - the
         // all-or-nothing probe this replaced would have dropped it and chosen the slower server.
-        const int steadyDelayMilliseconds = 60;
+        // Both are timed on a clock the test moves itself, and the slower candidate is answered
+        // only once the flaky one has been screened - see RespondAfterAdvancing for why an order is
+        // needed.
+        const int flakyMilliseconds = 10;
+        var clock = new ControlledTimeProvider(ClockStart);
+        var flakyScreened = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+
         using var mockHttp = new MockHttpMessageHandler(BackendDefinitionBehavior.Always);
 
         mockHttp.Expect("http://flaky.com/latency.txt")
-                .Respond("text/plain", ScreeningResponseBody);
+                .Respond(_ =>
+                {
+                    clock.Advance(TimeSpan.FromMilliseconds(flakyMilliseconds));
+                    return Task.FromResult(new HttpResponseMessage { Content = new StringContent(ScreeningResponseBody) });
+                });
         mockHttp.When("http://flaky.com/latency.txt")
                 .Throw(new HttpRequestException("Connection reset."));
 
-        RespondAfterDelay(mockHttp, "http://steady.com/latency.txt", steadyDelayMilliseconds);
+        RespondAfterAdvancing(mockHttp, "http://steady.com/latency.txt", clock, TimeSpan.FromMilliseconds(60), flakyScreened.Task);
 
         var httpClient = mockHttp.ToHttpClient();
-        var speedtest = new OoklaSpeedtest(new OoklaSpeedtestSettings(), httpClient, new DelayProviderStub());
+        var speedtest = new OoklaSpeedtest(new OoklaSpeedtestSettings(), httpClient, new DelayProviderStub(), clock);
         var flakyServer = new Server { Url = "http://flaky.com/", Sponsor = "FlakySponsor", Location = "FlakyLocation" };
         var steadyServer = new Server { Url = "http://steady.com/", Sponsor = "SteadySponsor", Location = "SteadyLocation" };
 
         // When
-        var result = await speedtest.GetFastestServerByLatencyAsync([flakyServer, steadyServer]);
+        var result = await speedtest.GetFastestServerByLatencyAsync(
+            [flakyServer, steadyServer],
+            new SynchronousProgress<SpeedTestProgress>(_ => flakyScreened.TrySetResult()));
 
         // Then
         result.Server.ShouldBe(flakyServer);
-        result.LatencyMilliseconds.ShouldBeLessThan(steadyDelayMilliseconds);
+        result.LatencyMilliseconds.ShouldBe(flakyMilliseconds);
     }
 
     [Fact]

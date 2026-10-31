@@ -187,21 +187,18 @@ public sealed partial class OoklaSpeedtestTests
     }
 
     [Fact]
-    public async Task GetServerLatencyAsync_ShouldReturnLatency_WhenResponseIsValid_MultipleTestIterations()
+    public async Task GetServerLatencyAsync_ProbesTakingAKnownTimeOnTheSuppliedClock_ReportsExactlyThatLatency()
     {
-        // Given
-        const int pingDelay = 60;
+        // SCENARIO: Latency follows the supplied time provider
+
+        // Given ten probes that each take 60 ms of a clock the test moves itself. Nothing waits on
+        // the wall clock, so the average is the figure the clock reported rather than a reading of
+        // how long a loaded machine happened to take.
+        const int probeMilliseconds = 60;
+        var clock = new ControlledTimeProvider(ClockStart);
+
         using var mockHttp = new MockHttpMessageHandler();
-        mockHttp
-            .When("http://testserver.com/latency.txt")
-            .Respond(async _ =>
-            {
-                await Task.Delay(pingDelay);
-                return new HttpResponseMessage(HttpStatusCode.OK)
-                {
-                    Content = new StringContent("test=test")
-                };
-            });
+        RespondAfterAdvancing(mockHttp, "http://testserver.com/latency.txt", clock, TimeSpan.FromMilliseconds(probeMilliseconds));
 
         var httpClient = mockHttp.ToHttpClient();
         var settings = new OoklaSpeedtestSettings
@@ -213,7 +210,7 @@ public sealed partial class OoklaSpeedtestTests
             }
         };
 
-        var speedtest = new OoklaSpeedtest(settings, httpClient);
+        var speedtest = new OoklaSpeedtest(settings, httpClient, timeProviderOverride: clock);
         var server = new Server { Url = "http://testserver.com/", Sponsor = "Sponsor", Location = "Location" };
 
         // When
@@ -222,7 +219,7 @@ public sealed partial class OoklaSpeedtestTests
         // Then
         result.ShouldNotBeNull();
         result.Server.ShouldBe(server);
-        result.LatencyMilliseconds.ShouldBeInRange((long)(0.75 * pingDelay), (long)(pingDelay * 1.25)); // 25% lower and upper margin
+        result.LatencyMilliseconds.ShouldBe(probeMilliseconds);
     }
 
     [Fact]
@@ -455,48 +452,41 @@ public sealed partial class OoklaSpeedtestTests
     #region --- GetFastestServerByLatencyAsync ---
 
     [Fact]
-    public async Task GetFastestServerByLatencyAsync_ShouldReturnServerWithLowestLatency()
+    public async Task GetFastestServerByLatencyAsync_CandidatesScreenedOnTheSuppliedClock_ChoosesTheQuickerAndReportsItsExactTime()
     {
-        // Given
+        // SCENARIO: Screening follows the supplied time provider
+
+        // Given two reachable candidates screened against a clock the test moves itself: the
+        // quicker takes 10 ms of it, the slower 50 ms. The slower candidate is answered only once
+        // the quicker has been screened - see RespondAfterAdvancing for why an order is needed.
+        const int quickerMilliseconds = 10;
+        var clock = new ControlledTimeProvider(ClockStart);
+        var quickerScreened = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+
         using var mockHttp = new MockHttpMessageHandler();
-
-        // Fast server responds quickly
-        mockHttp.When("http://fastserver.com/latency.txt")
-                .Respond(async _ =>
-                {
-                    await Task.Delay(10);
-                    return new HttpResponseMessage { Content = new StringContent("test=test") };
-                });
-
-        // Slow server responds more slowly
-        mockHttp.When("http://slowserver.com/latency.txt")
-                .Respond(async _ =>
-                {
-                    await Task.Delay(50);
-                    return new HttpResponseMessage { Content = new StringContent("test=test") };
-                });
+        RespondAfterAdvancing(mockHttp, "http://fastserver.com/latency.txt", clock, TimeSpan.FromMilliseconds(quickerMilliseconds));
+        RespondAfterAdvancing(mockHttp, "http://slowserver.com/latency.txt", clock, TimeSpan.FromMilliseconds(50), quickerScreened.Task);
 
         var httpClient = mockHttp.ToHttpClient();
         var settings = new OoklaSpeedtestSettings
         {
-            LatencyTest = new()
-            {
-                LatencyTestIterations = 1,
-                LatencyTestIntervalMilliseconds = 0
-            }
+            ServerDiscovery = new() { ScreeningRequestCount = 1 }
         };
 
-        var speedtest = new OoklaSpeedtest(settings, httpClient);
+        var speedtest = new OoklaSpeedtest(settings, httpClient, new DelayProviderStub(), clock);
         var fastServer = new Server { Url = "http://fastserver.com/", Sponsor = "FastSponsor", Location = "FastLocation" };
         var slowServer = new Server { Url = "http://slowserver.com/", Sponsor = "SlowSponsor", Location = "SlowLocation" };
         var servers = new[] { slowServer, fastServer };
 
         // When
-        var result = await speedtest.GetFastestServerByLatencyAsync(servers);
+        var result = await speedtest.GetFastestServerByLatencyAsync(
+            servers,
+            new SynchronousProgress<SpeedTestProgress>(_ => quickerScreened.TrySetResult()));
 
         // Then
         result.ShouldNotBeNull();
         result.Server.ShouldBe(fastServer);
+        result.LatencyMilliseconds.ShouldBe(quickerMilliseconds);
     }
 
     [Fact]
