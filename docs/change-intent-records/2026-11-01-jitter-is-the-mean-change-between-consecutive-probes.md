@@ -7,7 +7,7 @@
 **Constraints:**
 
 - Every member of `LatencyTestResult` is `required`, so adding one breaks a consumer that constructs a result themselves. Pre-1.0, no deprecation period applies.
-- A jitter figure needs two consecutive round trips. Screening keeps only the fastest single request per candidate, so a screened winner reports zero and only measuring produces a figure — which is the split in `../architecture/server-screening-and-measurement.md` restated.
+- A jitter figure needs two consecutive round trips. Screening keeps only the fastest single request per candidate, so a screened winner reports zero and only measuring produces a figure — which is the split in [server screening and measurement](../architecture/server-screening-and-measurement.md) restated.
 
 **Decisions:**
 
