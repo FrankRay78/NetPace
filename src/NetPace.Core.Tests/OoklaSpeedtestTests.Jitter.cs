@@ -37,7 +37,11 @@ public sealed partial class OoklaSpeedtestTests
                 });
     }
 
-    private static OoklaSpeedtest LatencyProbe(MockHttpMessageHandler mockHttp, ControlledTimeProvider clock, int iterations)
+    /// <summary>
+    /// A provider that probes <paramref name="iterations"/> times with no wait between probes, so a
+    /// test controls how many round trips a measurement is derived from and nothing pauses.
+    /// </summary>
+    private static OoklaSpeedtest LatencyProbingSpeedtest(MockHttpMessageHandler mockHttp, ControlledTimeProvider clock, int iterations)
     {
         var settings = new OoklaSpeedtestSettings
         {
@@ -63,7 +67,7 @@ public sealed partial class OoklaSpeedtestTests
         using var mockHttp = new MockHttpMessageHandler();
         RespondAfterAdvancingInTurn(mockHttp, JitterProbeUrl, clock, 20, 50, 30, 40);
 
-        var speedtest = LatencyProbe(mockHttp, clock, iterations: 4);
+        var speedtest = LatencyProbingSpeedtest(mockHttp, clock, iterations: 4);
         var server = new Server { Url = JitterServerUrl, Sponsor = "Sponsor", Location = "Location" };
 
         // When
@@ -88,7 +92,7 @@ public sealed partial class OoklaSpeedtestTests
         using var mockHttp = new MockHttpMessageHandler();
         RespondAfterAdvancingInTurn(mockHttp, JitterProbeUrl, clock, probeMilliseconds);
 
-        var speedtest = LatencyProbe(mockHttp, clock, iterations: 5);
+        var speedtest = LatencyProbingSpeedtest(mockHttp, clock, iterations: 5);
         var server = new Server { Url = JitterServerUrl, Sponsor = "Sponsor", Location = "Location" };
 
         // When
@@ -110,7 +114,7 @@ public sealed partial class OoklaSpeedtestTests
         using var mockHttp = new MockHttpMessageHandler();
         RespondAfterAdvancingInTurn(mockHttp, JitterProbeUrl, clock, 10, 20, 10, 20);
 
-        var speedtest = LatencyProbe(mockHttp, clock, iterations: 4);
+        var speedtest = LatencyProbingSpeedtest(mockHttp, clock, iterations: 4);
         var server = new Server { Url = JitterServerUrl, Sponsor = "Sponsor", Location = "Location" };
 
         // When
@@ -133,7 +137,7 @@ public sealed partial class OoklaSpeedtestTests
         using var mockHttp = new MockHttpMessageHandler();
         RespondAfterAdvancingInTurn(mockHttp, JitterProbeUrl, clock, 70);
 
-        var speedtest = LatencyProbe(mockHttp, clock, iterations: 1);
+        var speedtest = LatencyProbingSpeedtest(mockHttp, clock, iterations: 1);
         var server = new Server { Url = JitterServerUrl, Sponsor = "Sponsor", Location = "Location" };
 
         // When
@@ -156,7 +160,7 @@ public sealed partial class OoklaSpeedtestTests
         using var mockHttp = new MockHttpMessageHandler();
         RespondAfterAdvancingInTurn(mockHttp, JitterProbeUrl, clock, 10, 11, 11);
 
-        var speedtest = LatencyProbe(mockHttp, clock, iterations: 3);
+        var speedtest = LatencyProbingSpeedtest(mockHttp, clock, iterations: 3);
         var server = new Server { Url = JitterServerUrl, Sponsor = "Sponsor", Location = "Location" };
 
         // When
