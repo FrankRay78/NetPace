@@ -39,7 +39,7 @@ The workflow in this file is generic. What is particular to the repository it ru
 | `Acceptance criteria` | the drafting conventions step 4 applies, such as scenario labels |
 | `Scratch files` | the git-ignored file step 4 writes the body to |
 
-A section under any other heading is read too, and applied where its text says. Where the file is missing, the command runs on its generic rules alone; where a heading is missing, that step runs on its generic rule alone. Either way the command completes. `CONVENTIONS.md` is read from the root of the repository this command runs in, and trusted as this command file is. The harness itself is not a repository convention: the verdict protocol, the chain scripts that read it and the sibling commands stay named in the steps, so whoever edits the protocol sees what consumes it.
+A section under any other heading is read too, and applied where its text says. Where the file or a heading is missing, the step concerned runs on its generic rule alone, and the report to the user names each heading not found. A step whose convention is the thing itself — the file to write, the label to apply — has no generic rule, so where that heading is missing the command stops and names the heading rather than invent one. `CONVENTIONS.md` is read from the root of the repository this command runs in, and trusted as this command file is.
 
 ---
 

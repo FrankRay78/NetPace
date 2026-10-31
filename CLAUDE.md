@@ -5,7 +5,7 @@
 
 ## Quick Reference
 
-This guide covers **HOW** (NetPace patterns, conventions, gotchas). The constitution covers **WHAT** and **WHY** (principles). `CONVENTIONS.md` holds what the harness commands apply that is particular to NetPace — build, test and format commands, test conventions, documentation obligations — and is imported above, so it is read with this file.
+This guide covers **HOW** (NetPace patterns, conventions, gotchas). The constitution covers **WHAT** and **WHY** (principles). `CONVENTIONS.md`, imported above, holds what the harness commands apply that is particular to NetPace, so every session loads it with this file. A `Read` of this file does not follow the import; open `CONVENTIONS.md` itself when a command names a section of it.
 
 ## Project Overview
 
@@ -48,7 +48,7 @@ Speeds support SI (1000-based) and IEC (1024-based) unit systems, in bits or byt
 
 Paired rules — `Don't` X → `Do` Y instead:
 
-- **Constitution rules apply as written**, and `CONVENTIONS.md` says where each one bears on the work: TDD and its config/tooling carve-out (*Test-driven development*), the skipped-test ban (*Testing*), the traceability check (*Acceptance criteria*), justified Core dependencies (*Dependencies*), the pre-1.0 stance on breaking changes (*Public API and breaking changes*), and the build, test and documentation obligations a change owes (*Build, test and format*, *Documentation*).
+- **Constitution rules apply as written**, and `CONVENTIONS.md` says where each one bears on the work: TDD and its config/tooling carve-out (*Test-driven development*), the skipped-test ban (*Testing*), the traceability check (*Acceptance criteria*), justified Core dependencies (*Dependencies*), the pre-1.0 stance on breaking changes (*Public API and breaking changes*), and the build, test, code-quality and documentation obligations a change owes (*Build, test and format*, *Code quality*, *Documentation*).
 - **Don't leave commented-out code** → delete it; git remembers.
 - **Don't delete or rename a linked-to file or heading without re-running the link check** → run `bash scripts/link-check.sh`. It names every markdown link in a tracked `*.md`, and every bare `docs/change-intent-records/<name>.md` citation in any tracked text file, whose target no longer exists — the inbound pointers a deletion leaves in files nobody opens at the time. A link's `#heading` is matched against the target file's headings by GitHub's own slug, so retitling a heading fails the links into it, and a full `https://github.com/FrankRay78/NetPace/{blob,tree,raw}/main/<path>` link is checked against `<path>` in this branch, with nothing fetched. It reads the working tree, so it works midway through a deletion. Links inside fences or backticks are not checked; bare record citations are, wherever they appear. The `link-check` CI job runs it on every PR but is not a required check, so a failure does not block the merge.
 - **Don't make a throwaway script executable** → run it as `bash script.sh`, which needs no permission and does the same job. `Bash(chmod:*)` is on `permissions.ask`, so setting the executable bit stalls an interactive run until a human answers and is silently denied in a headless one — in the #265 A/B runs two reviewers each blocked well over an hour on exactly that call. `.claude/hooks/no-chmod.sh` refuses the executable-bit forms and names the alternative; to record the bit on a file you are committing, use `git add --chmod=+x <path>`.
@@ -61,7 +61,7 @@ Paired rules — `Don't` X → `Do` Y instead:
 
 Load these on demand for the matching topic:
 
-- **Conventions** — `CONVENTIONS.md` — what the harness commands apply that is particular to NetPace: build, test and format commands, test conventions, documentation obligations, issue sources and concerns, the hooks and plugins a port needs. Edit it, not a `.claude/commands/` file, to change how NetPace builds, tests, documents or raises work.
+- **Conventions** — `CONVENTIONS.md` — already loaded by the import above: build, test and format commands, test conventions, documentation obligations, issue sources and concerns, the hooks and plugins a port needs. Edit it, not a `.claude/commands/` file, to change how NetPace builds, tests, documents or raises work.
 - **Review criteria** — `REVIEW.md` — what the PR review applies that is particular to NetPace: severities, high-risk areas, always-a-person paths, contracts. Edit it, not `.claude/commands/review-pr.md`, to change what the review holds NetPace to.
 - **C# Style** — `docs/conventions/csharp-style.md` — read before writing or reviewing any .cs file.
 - **Testing** — `docs/conventions/testing.md` — read before writing tests: outcome-not-mechanism assertions, what makes a good scenario, the integrity failure modes that pass while verifying nothing.

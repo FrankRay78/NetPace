@@ -150,7 +150,7 @@ jobs:
       # Claude Code refuses agent writes under `.claude/scratch/`, whatever `--allowedTools` says —
       # the same refusal confirmissue.yml routes round (decision 12 of
       # docs/change-intent-records/2026-09-26-automated-prespec-confirmation.md). Left unnamed,
-      # the only path the command file offers is `.claude/scratch/`: a local headless run was
+      # the only path the command's conventions offer is `.claude/scratch/`: a local headless run was
       # refused there and posted only by improvising another path. On #239 the agent step exited
       # green having posted nothing — presumed to be the same refusal without the recovery — and
       # only the verify step below turned the run red. The shell steps here stay on
@@ -214,7 +214,7 @@ jobs:
 
             1. The fetch and mode detection in the resolve-and-detect step (step 1 at the time of writing) are already done. This issue carries a review comment and no `ready` label, or the run would have stopped before reaching you. So this is a refine run: go straight to step 6. Do no gap analysis and post no new comment.
             2. Step 4's link rules tell you to resolve the default branch with `gh repo view`. Do not — it is `main`, given above. Use it for the absolute GitHub links those rules require.
-            3. Step 6 writes the updated comment body to `.claude/scratch/reviewissue-body.md`. Write it to `ci-scratch/reviewissue-body.md` instead — `.claude/` is write-protected in this headless run. Run `mkdir -p ci-scratch` first, then PATCH with `gh api -X PATCH repos/<owner>/<repo>/issues/comments/<id> -F body=@ci-scratch/reviewissue-body.md`.
+            3. Step 6 writes the updated comment body to the scratch file `CONVENTIONS.md` → *Scratch files* names, under `.claude/scratch/`. Write it to `ci-scratch/reviewissue-body.md` instead — `.claude/` is write-protected in this headless run. Run `mkdir -p ci-scratch` first, then PATCH with `gh api -X PATCH repos/<owner>/<repo>/issues/comments/<id> -F body=@ci-scratch/reviewissue-body.md`.
 
             Resolve the review comment and its numeric id over REST — `gh api --paginate "repos/<owner>/<repo>/issues/<number>/comments"` — and read the comments posted after it from the same call, because step 6 tells you what to do with one an answer points at. That call is the authoritative comment list. If it shows no comment carrying `<!-- speckit:review -->`, stop and report that as an error rather than making no edit: the guard has already established that one exists, so its absence here means something is wrong, not that there is nothing to do.
 

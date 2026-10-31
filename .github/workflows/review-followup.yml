@@ -113,22 +113,24 @@ jobs:
             echo "skipped=true" >> "$GITHUB_OUTPUT"
           fi
 
-      # Main's copy of the review criteria, as in review-pr.yml, whose step says why the ref is
-      # checked first: the action restores only `.claude/` and CLAUDE.md, and the PR head's copy is
-      # the one a round must not judge by. Where main has none the PR's is removed, so the round
-      # runs on the command's generic rules.
-      - name: Put main's review criteria in place
+      # Main's copy of the review criteria and of the conventions CLAUDE.md imports, as in
+      # review-pr.yml, whose step says why the ref is checked first: the action restores only
+      # `.claude/` and CLAUDE.md, and the PR head's copy is the one a round must not judge by. Where
+      # main has none the PR's is removed, so the round runs on the command's generic rules.
+      - name: Put main's review criteria and conventions in place
         if: steps.guard.outputs.skipped != 'true'
         run: |
           set -euo pipefail
           git rev-parse --verify -q 'origin/main^{commit}' > /dev/null \
             || { echo "::error::origin/main is not in this checkout, so the review criteria cannot be read from main."; exit 1; }
-          if git cat-file -e origin/main:REVIEW.md; then
-            git show origin/main:REVIEW.md > REVIEW.md
-          else
-            echo "::warning::main has no REVIEW.md — this round runs on the command's generic rules only."
-            rm -f REVIEW.md
-          fi
+          for file in REVIEW.md CONVENTIONS.md; do
+            if git cat-file -e "origin/main:$file" 2>/dev/null; then
+              git show "origin/main:$file" > "$file"
+            else
+              echo "::warning::main has no $file — this round runs on the command's generic rules for it."
+              rm -f "$file"
+            fi
+          done
 
       # The model and effort come from the stage table, scripts/stage-models.tsv. A stage the
       # table does not answer fails here, before claude starts on whatever the default is.

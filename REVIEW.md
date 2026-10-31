@@ -33,7 +33,7 @@ What a user, a script or a `NetPace.Core` consumer touches directly: a CLI optio
 
 ## Context to load
 
-`CLAUDE.md` and `docs/constitution.md` always, and the convention docs `CLAUDE.md` points to for the layers the PR touches: `docs/conventions/csharp-style.md` for `.cs` files, `docs/conventions/testing.md` for tests.
+`CLAUDE.md`, `CONVENTIONS.md` and `docs/constitution.md` always, and the convention docs `CLAUDE.md` points to for the layers the PR touches: `docs/conventions/csharp-style.md` for `.cs` files, `docs/conventions/testing.md` for tests.
 
 ## Change map
 

@@ -3,7 +3,7 @@
 > This document elaborates Section IX (Behavioural Specification) of the constitution and must remain consistent with it.
 
 **Scope**: How to author a test so it verifies the acceptance criterion rather than the implementation that happens to satisfy it
-**Extends**: `CLAUDE.md` (read that first for the essential testing patterns — file naming, what to test in `NetPace.Core`, console snapshots)
+**Extends**: `CONVENTIONS.md` → *Testing* (read that first for the essential testing patterns — file naming, what to test in `NetPace.Core`, console snapshots)
 **Audience**: Read before writing tests, and when reviewing tests someone else wrote
 
 ---
@@ -27,7 +27,7 @@ A test's assertions must describe an outcome an outside observer can verify, not
 
 That list is the constitution's §IX enumeration, written for *acceptance criteria*; read at the test layer it is a guide to the independence test above, not a literal ban. The constitution's Testing Standards separately permit a targeted assertion on a single observable fact — an exit code, or one specific line present or absent — and NetPace's suite relies on that. The question to ask is always whether the assertion pins something the acceptance criterion promised, or something the implementation merely happened to choose. An interface contract the criterion names (§IX) — a JSON or CSV field, an option name, an exit code — is something it promised, so the test asserts it exactly and that is not mechanism.
 
-Note the interaction with NetPace's console-snapshot rule (`CLAUDE.md` → Testing): a snapshot of composed console output is not a mechanism assertion. The snapshot *is* the user-visible contract, which is precisely the observable outcome. What this section rules out is hand-picking an internal rendering detail — a Spectre widget type, a column width — and asserting on that instead.
+Note the interaction with NetPace's console-snapshot rule (`CONVENTIONS.md` → *Testing*): a snapshot of composed console output is not a mechanism assertion. The snapshot *is* the user-visible contract, which is precisely the observable outcome. What this section rules out is hand-picking an internal rendering detail — a Spectre widget type, a column width — and asserting on that instead.
 
 A test that ends in a snapshot does not also assert on text the snapshot already shows, present or absent. `Assert.Contains`, `Assert.DoesNotContain` or `TryGetProperty` checks ahead of a `Verify` restate part of the snapshot, so they catch nothing the snapshot would miss and leave two places to update when the output changes. Keep the facts a snapshot cannot hold, such as the exit code or the equality of two runs, and let the snapshot carry everything about what the output says.
 
