@@ -45,6 +45,28 @@ public sealed class VariableSpeedTesterTests
     }
 
     [Fact]
+    public async Task ASequenceOfTests_EachRun_ReportsTheDocumentedJitterForThatRun()
+    {
+        // SCENARIO: Test doubles report jitter
+
+        // Given a consumer running four successive speed tests, each screening a server and then
+        // measuring the winner.
+        var tester = new VariableSpeedTester();
+
+        // When
+        var jitter = new List<long>();
+        for (int run = 0; run < 4; run++)
+        {
+            var screened = await tester.GetFastestServerByLatencyAsync(await tester.GetServersAsync());
+            jitter.Add((await tester.GetServerLatencyAsync(screened.Server)).JitterMilliseconds);
+        }
+
+        // Then the unevenness varies run to run as the latency does, so a consumer can test a
+        // display or a threshold against a changing figure.
+        Assert.Equal([5, 10, 20, 10], jitter);
+    }
+
+    [Fact]
     public async Task ASequenceOfTests_EachRun_MeasuresOverOneSecond()
     {
         // Given

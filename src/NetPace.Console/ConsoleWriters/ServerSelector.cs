@@ -53,7 +53,7 @@ internal static class ServerSelector
                 var firstServer = servers.First();
                 return new ServerSelection
                 {
-                    Result = new LatencyTestResult { Server = firstServer, LatencyMilliseconds = 0 },
+                    Result = new LatencyTestResult { Server = firstServer, LatencyMilliseconds = 0, JitterMilliseconds = 0 },
                     Route = ServerSelection.FirstInListRoute
                 };
             }
@@ -63,7 +63,7 @@ internal static class ServerSelector
                 var server = new Server() { Sponsor = "(Unknown)", Url = settings.ServerUrl };
                 return new ServerSelection
                 {
-                    Result = new LatencyTestResult { Server = server, LatencyMilliseconds = 0 },
+                    Result = new LatencyTestResult { Server = server, LatencyMilliseconds = 0, JitterMilliseconds = 0 },
                     Route = ServerSelection.SpecifiedRoute
                 };
             }

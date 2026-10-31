@@ -13,6 +13,7 @@ namespace NetPace.Core.Clients.Testing;
 /// </para>
 /// <list type="bullet">
 /// <item><description>Latency: 75ms, 100ms, 150ms, then 100ms.</description></item>
+/// <item><description>Jitter: 5ms, 10ms, 20ms, then 10ms — beside the latency of the same run.</description></item>
 /// <item><description>Download: 31,250 bytes, 125,000, 343,750, then 125,000 — each over 1 second, so 0.25, 1.0, 2.75 then 1.0 Mbps — from 40, 150, 400 then 150 requests, none failed.</description></item>
 /// <item><description>Upload: 62,500 bytes, 375,000, 166,250, then 375,000 — each over 1 second, so 0.5, 3.0, 1.33 then 3.0 Mbps — from 12, 64, 30 then 64 requests, none failed.</description></item>
 /// </list>
@@ -97,23 +98,24 @@ public class VariableSpeedTester : ISpeedTestService
     }
 
     /// <summary>
-    /// The latency the current speed test stands for, whether it is being screened or measured.
+    /// The latency and jitter the current speed test stands for, whether it is being screened or
+    /// measured.
     /// </summary>
     private LatencyTestResult LatencyForCurrentTest(IServer server)
     {
-        // Call 1: 75ms
-        // Call 2: 100ms
-        // Call 3: 150ms
-        // Call 4+: 100ms
+        // Call 1: 75ms latency, 5ms jitter
+        // Call 2: 100ms latency, 10ms jitter
+        // Call 3: 150ms latency, 20ms jitter
+        // Call 4+: 100ms latency, 10ms jitter
 
-        long latencyMilliseconds = callCount switch
+        (long latencyMilliseconds, long jitterMilliseconds) = callCount switch
         {
-            1 => 75,
-            3 => 150,
-            _ => 100
+            1 => (75L, 5L),
+            3 => (150L, 20L),
+            _ => (100L, 10L)
         };
 
-        return new LatencyTestResult { Server = server, LatencyMilliseconds = latencyMilliseconds };
+        return new LatencyTestResult { Server = server, LatencyMilliseconds = latencyMilliseconds, JitterMilliseconds = jitterMilliseconds };
     }
 
     /// <inheritdoc/>

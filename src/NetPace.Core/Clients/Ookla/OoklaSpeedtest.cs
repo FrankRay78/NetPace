@@ -176,14 +176,44 @@ public sealed class OoklaSpeedtest : ISpeedTestService
             });
         }
 
-        // Calculate the average server latency.
+        // Calculate the average server latency, and how uneven the probes behind it were.
         var latencyResult = new LatencyTestResult
         {
             Server = server,
-            LatencyMilliseconds = (long)pings.Average()
+            LatencyMilliseconds = (long)pings.Average(),
+            JitterMilliseconds = CalculateJitterMilliseconds(pings)
         };
 
         return latencyResult;
+    }
+
+    /// <summary>
+    /// How uneven a run of probe times was: the mean of the absolute differences between
+    /// consecutive probes, in whole milliseconds, rounded to nearest so that a small but real
+    /// unevenness does not read as none. Fewer than two probes leaves no consecutive pair to
+    /// compare and reports zero.
+    /// </summary>
+    /// <remarks>
+    /// This is the interarrival-jitter family of RFC 3550, chosen over the standard deviation
+    /// because it measures the change from one reply to the next — what a caller on the line
+    /// hears — rather than the spread of the probes around their average. It is the one definition
+    /// of jitter in NetPace, so a figure measured under load stays comparable with an idle one.
+    /// </remarks>
+    private static long CalculateJitterMilliseconds(IReadOnlyList<long> probeMilliseconds)
+    {
+        if (probeMilliseconds.Count < 2)
+        {
+            return 0;
+        }
+
+        long totalChange = 0;
+        for (var probe = 1; probe < probeMilliseconds.Count; probe++)
+        {
+            totalChange += Math.Abs(probeMilliseconds[probe] - probeMilliseconds[probe - 1]);
+        }
+
+        var meanChange = (double)totalChange / (probeMilliseconds.Count - 1);
+        return (long)Math.Round(meanChange, MidpointRounding.AwayFromZero);
     }
 
     /// <inheritdoc/>
@@ -423,9 +453,11 @@ public sealed class OoklaSpeedtest : ISpeedTestService
             }
         }
 
+        // Screening keeps one figure rather than a run of them, so there is no consecutive pair of
+        // round trips to compare and no unevenness is claimed on the strength of a single sample.
         return fastestMilliseconds is null
             ? null
-            : new LatencyTestResult { Server = server, LatencyMilliseconds = fastestMilliseconds.Value };
+            : new LatencyTestResult { Server = server, LatencyMilliseconds = fastestMilliseconds.Value, JitterMilliseconds = 0 };
     }
 
     /// <inheritdoc/>
