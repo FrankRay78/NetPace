@@ -3,10 +3,38 @@ using NetPace.Core.Clients.Ookla;
 namespace NetPace.Core.Clients.Testing;
 
 /// <summary>
-/// A stub implementation of <see cref="ISpeedTestService"/> for testing purposes.
+/// A stub implementation of <see cref="ISpeedTestService"/> that reports the same fixed figures
+/// every run, for testing purposes.
 /// </summary>
 /// <remarks>
+/// <para>
+/// The stub holds three servers and recognises one by its URL; the trailing digit of the matched
+/// server's sponsor is the number its figures are built from. Anything whose URL the stub does not
+/// hold, including a server named by an unmatched URL, counts as number 10. The number scales only
+/// the elapsed time — the bytes and the request counts are the same for every server — so a
+/// higher-numbered server is slower, matching its higher latency.
+/// </para>
+/// <list type="bullet">
+/// <item><description>Latency is 100ms times the server number.</description></item>
+/// <item><description>A download is always 1,000 bytes, taking 1 second times the server number — so 3 seconds for server 3 — from 150 requests, none failed.</description></item>
+/// <item><description>An upload is always 7,000 bytes, taking 3 seconds times the server number, from 32 requests, none failed.</description></item>
+/// <item><description>Screening wins the lowest-numbered candidate offered, at that server's latency.</description></item>
+/// </list>
+/// <para>
+/// So the figures are fixed but not uniform: a consumer comparing two servers sees two different
+/// speeds, and one measuring the same server twice sees the same speed.
+/// </para>
+/// <para>
+/// A latency probe reports progress at 25, 50, 75 and 100 percent, screening at 33, 66 and 100,
+/// and a transfer reports <see cref="SpeedTestProgressClimb"/> towards the result it goes on to
+/// return. Constructed with a delay, the stub pauses by that many milliseconds before each report,
+/// so a stubbed measurement unfolds rather than completing at once. The pause blocks the calling
+/// thread rather than yielding, so the reports are observable only off that thread. A null progress
+/// receiver is treated as none, as the real provider treats it.
+/// </para>
+/// <para>
 /// The diagnostics overloads report nothing: the stub fabricates aggregate results rather than issuing requests, so there are no per-request diagnostics to report.
+/// </para>
 /// </remarks>
 public sealed class SpeedTestStub : ISpeedTestService
 {
@@ -25,8 +53,10 @@ public sealed class SpeedTestStub : ISpeedTestService
     public SpeedTestStub() { }
 
     /// <summary>
-    /// Constructs a new <see cref="SpeedTestStub"/> instance with a specified delay for progress updates.
+    /// Constructs a new <see cref="SpeedTestStub"/> instance that pauses by
+    /// <paramref name="delayMilliseconds"/> before each progress report.
     /// </summary>
+    /// <param name="delayMilliseconds">The pause before each progress report, in milliseconds.</param>
     public SpeedTestStub(int delayMilliseconds)
     {
         this.delayMilliseconds = delayMilliseconds;
@@ -55,8 +85,10 @@ public sealed class SpeedTestStub : ISpeedTestService
     }
 
     /// <inheritdoc/>
-    public Task<LatencyTestResult> GetServerLatencyAsync(IServer server, IProgress<LatencyTestProgress> progress, CancellationToken cancellationToken = default)
+    public Task<LatencyTestResult> GetServerLatencyAsync(IServer server, IProgress<LatencyTestProgress>? progress, CancellationToken cancellationToken = default)
     {
+        progress ??= new NullProgress<LatencyTestProgress>();
+
         Task.Delay(delayMilliseconds).Wait();
         progress.Report(new LatencyTestProgress { PercentageComplete = 25 });
         Task.Delay(delayMilliseconds).Wait();
@@ -84,7 +116,7 @@ public sealed class SpeedTestStub : ISpeedTestService
     }
 
     /// <inheritdoc/>
-    public Task<LatencyTestResult> GetServerLatencyAsync(string serverUrl, IProgress<LatencyTestProgress> progress, CancellationToken cancellationToken = default)
+    public Task<LatencyTestResult> GetServerLatencyAsync(string serverUrl, IProgress<LatencyTestProgress>? progress, CancellationToken cancellationToken = default)
     {
         // Matches what OoklaSpeedtest builds for a server named by URL: a sponsor of "(Unknown)"
         // and no location, so a snapshot of this path records what the real client would report.
@@ -100,17 +132,16 @@ public sealed class SpeedTestStub : ISpeedTestService
     }
 
     /// <inheritdoc/>
-    public Task<LatencyTestResult> GetFastestServerByLatencyAsync(IServer[] servers, IProgress<SpeedTestProgress> progress, CancellationToken cancellationToken = default)
+    public Task<LatencyTestResult> GetFastestServerByLatencyAsync(IServer[] servers, IProgress<SpeedTestProgress>? progress, CancellationToken cancellationToken = default)
     {
-        if (progress is not null)
-        {
-            Task.Delay(delayMilliseconds).Wait();
-            progress.Report(new SpeedTestProgress { PercentageComplete = 33 });
-            Task.Delay(delayMilliseconds).Wait();
-            progress.Report(new SpeedTestProgress { PercentageComplete = 66 });
-            Task.Delay(delayMilliseconds).Wait();
-            progress.Report(new SpeedTestProgress { PercentageComplete = 100 });
-        }
+        progress ??= new NullProgress<SpeedTestProgress>();
+
+        Task.Delay(delayMilliseconds).Wait();
+        progress.Report(new SpeedTestProgress { PercentageComplete = 33 });
+        Task.Delay(delayMilliseconds).Wait();
+        progress.Report(new SpeedTestProgress { PercentageComplete = 66 });
+        Task.Delay(delayMilliseconds).Wait();
+        progress.Report(new SpeedTestProgress { PercentageComplete = 100 });
 
         // Every candidate offered is screened and the lowest-numbered one wins. Callers screen a
         // single candidate through this method as well as a list, so the winner is taken from the
@@ -135,13 +166,13 @@ public sealed class SpeedTestStub : ISpeedTestService
     }
 
     /// <inheritdoc/>
-    public Task<SpeedTestResult> GetDownloadSpeedAsync(IServer server, IProgress<SpeedTestProgress> progress, CancellationToken cancellationToken = default)
+    public Task<SpeedTestResult> GetDownloadSpeedAsync(IServer server, IProgress<SpeedTestProgress>? progress, CancellationToken cancellationToken = default)
     {
         var serverID = GetServerID(server.Url);
 
         var result = new SpeedTestResult() { BytesProcessed = 1000, ElapsedMilliseconds = 1000 * serverID, RequestsSucceeded = 150, RequestsFailed = 0 };
 
-        ReportClimbTo(result, progress);
+        ReportClimbTo(result, progress ?? new NullProgress<SpeedTestProgress>());
 
         return Task.FromResult(result);
     }
@@ -153,13 +184,13 @@ public sealed class SpeedTestStub : ISpeedTestService
     }
 
     /// <inheritdoc/>
-    public Task<SpeedTestResult> GetUploadSpeedAsync(IServer server, IProgress<SpeedTestProgress> progress, CancellationToken cancellationToken = default)
+    public Task<SpeedTestResult> GetUploadSpeedAsync(IServer server, IProgress<SpeedTestProgress>? progress, CancellationToken cancellationToken = default)
     {
         var serverID = GetServerID(server.Url);
 
         var result = new SpeedTestResult() { BytesProcessed = 7000, ElapsedMilliseconds = 3000 * serverID, RequestsSucceeded = 32, RequestsFailed = 0 };
 
-        ReportClimbTo(result, progress);
+        ReportClimbTo(result, progress ?? new NullProgress<SpeedTestProgress>());
 
         return Task.FromResult(result);
     }
@@ -168,14 +199,9 @@ public sealed class SpeedTestStub : ISpeedTestService
     /// Reports progress towards <paramref name="result"/>, pausing by the configured delay before
     /// each report.
     /// </summary>
-    private void ReportClimbTo(SpeedTestResult result, IProgress<SpeedTestProgress>? progress)
+    private void ReportClimbTo(SpeedTestResult result, IProgress<SpeedTestProgress> progress)
     {
-        if (progress is null)
-        {
-            return;
-        }
-
-        foreach (var report in SpeedTestProgressClimb.Towards(result))
+        foreach (SpeedTestProgress report in SpeedTestProgressClimb.Towards(result))
         {
             Task.Delay(delayMilliseconds).Wait();
 

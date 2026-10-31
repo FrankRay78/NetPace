@@ -64,11 +64,12 @@ See [ISpeedTestService](https://github.com/FrankRay78/NetPace/tree/main/src/NetP
 
 ### Testing Your Code
 
-NetPace.Core includes test implementations of `ISpeedTestService` so you can test your code without making real network calls:
+NetPace.Core includes test doubles for the library's interfaces so you can test your code without making real network calls. They are a supported part of the library: each double's documented behaviour is covered by its own tests, so a release cannot change one of these figures without a test failing first.
 
 - **`SpeedTestStub`** - Simple stub returning fixed values with configurable delays
 - **`SpeedTestMock`** - Fully configurable mock with injectable delegate functions
 - **`VariableSpeedTester`** - Returns different speeds on each call (simulates variable network conditions)
 - **`FaultySpeedTester`** - Simulates network failures and timeouts (for testing error handling)
+- **`DelayProviderStub`** - Stands in for `IDelayProvider`, recording the pauses your code asked for instead of waiting them out
 
 See the implementations in [NetPace.Core.Clients.Testing](https://github.com/FrankRay78/NetPace/tree/main/src/NetPace.Core/Clients/Testing) and their usage throughout the solution.
