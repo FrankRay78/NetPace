@@ -219,13 +219,17 @@ public sealed partial class OoklaSpeedtestTests
     [Fact]
     public async Task GetDownloadSpeedAsync_WithAnInjectedClock_StampsWhenEachRequestStarted()
     {
-        // Given a clock that starts at a known instant and advances a second per read.
-        var clock = new DeterministicTimeProvider(new DateTimeOffset(1980, 1, 1, 10, 5, 0, TimeSpan.Zero), TimeSpan.FromSeconds(1));
+        // Given a clock that starts at a known instant and moves on a second per request answered.
+        var clock = new ControlledTimeProvider(new DateTimeOffset(1980, 1, 1, 10, 5, 0, TimeSpan.Zero));
 
         using var mockHttp = new MockHttpMessageHandler();
-        mockHttp.When("*").Respond(_ => new HttpResponseMessage(HttpStatusCode.OK)
+        mockHttp.When("*").Respond(_ =>
         {
-            Content = new ByteArrayContent(new byte[16])
+            clock.Advance(TimeSpan.FromSeconds(1));
+            return new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new ByteArrayContent(new byte[16])
+            };
         });
 
         var settings = new OoklaSpeedtestSettings
