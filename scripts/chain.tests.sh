@@ -114,7 +114,8 @@ LIMIT_EXIT=75
 # see stdin-data above. Sets OUTPUT (stdout and stderr) and RC, which every assertion reads.
 chain() { OUTPUT="$(cd "$REPO" && PATH="$SB/bin:$PATH" bash "$CHAIN" "$@" <"$SB/stdin-data" 2>&1)"; RC=$?; }
 
-# grep -c '' rather than `wc -l`, whose output is right-padded on BSD/macOS (cross-platform, CONVENTIONS.md → Code quality).
+# grep -c '' rather than `wc -l`, whose output is right-padded on BSD/macOS (cross-platform:
+# CONVENTIONS.md, Code quality).
 calls() { if [ -f "$STUB_DIR/log" ]; then grep -c '' "$STUB_DIR/log"; else echo 0; fi; }
 call() { sed -n "$1p" "$STUB_DIR/log" 2>/dev/null; }
 repo_state() { git -C "$REPO" rev-parse HEAD; git -C "$REPO" rev-parse --abbrev-ref HEAD; git -C "$REPO" status --porcelain; }

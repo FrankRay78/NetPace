@@ -15,8 +15,8 @@ public partial class SpeedTestResultTests
     [Fact]
     public void SpeedTestResult_EveryReportedValue_MustBeStatedAtConstruction()
     {
-        // Mechanism-pinned under the regression exception (CONVENTIONS.md, Acceptance criteria): PR #222 shipped
-        // VariableSpeedTester reporting 0.25 Mbps against zero requests attempted, from a
+        // Mechanism-pinned under the regression exception (CONVENTIONS.md, Acceptance criteria):
+        // PR #222 shipped VariableSpeedTester reporting 0.25 Mbps against zero requests attempted, from a
         // zero-defaulted placeholder result. `required` has no runtime enforcement, so the
         // metadata the compiler emits is the only instrument available in-suite.
 

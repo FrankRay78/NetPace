@@ -7,9 +7,9 @@
 # block near the end drives the second mode through CLI arguments instead, and the wiring block
 # reads `.claude/settings.json`. Exits non-zero on any failure. Run it after any edit to the hook.
 #
-# The matrix is the gate's RED-GREEN evidence (CONVENTIONS.md, Test-driven development, configuration/tooling): it is
-# the real tool that decides whether the matcher blocks what it must and waves through what it
-# must not, and it runs in CI via shell-tests.yml.
+# The matrix is the gate's RED-GREEN evidence (CONVENTIONS.md, Test-driven development,
+# configuration/tooling): it is the real tool that decides whether the matcher blocks what it
+# must and waves through what it must not, and it runs in CI via shell-tests.yml.
 #
 #   Usage:  bash .claude/hooks/no-chmod.tests.sh
 

@@ -4,7 +4,7 @@
 
 ## Quick Reference
 
-This guide covers NetPace's product principles, patterns and gotchas. `CONVENTIONS.md`, imported above, holds the rules of the codebase and what the harness commands apply that is particular to NetPace, so every session loads it with this file; `REVIEW.md` holds what the pull request review checks. The three do not overlap, and none overrides another. A `Read` of this file does not follow the import; open `CONVENTIONS.md` itself when a command names a section of it.
+This guide covers NetPace's product principles, patterns and gotchas. `CONVENTIONS.md`, imported above, holds the rules of the codebase and what the harness commands apply that is particular to NetPace, so every session loads it with this file; `REVIEW.md` holds what the pull request review checks. Each rule has one home among the three, and none overrides another. A `Read` of this file does not follow the import; open `CONVENTIONS.md` itself when a command names a section of it.
 
 ## Project Overview
 
@@ -20,7 +20,7 @@ NetPace is a cross-platform network speed testing CLI built with .NET 10.0, usin
 
 - **Library-first** — every feature starts as part of the `NetPace.Core` library before any CLI implementation. The library is self-contained, independently testable and documented; it has no dependency on the Console application and is usable in any context — console, web API, GUI, tests. A library has a clear purpose, never an organisational one, and interfaces are preferred over concrete implementations for abstraction and testability. Consumers can use `NetPace.Core` from NuGet without any CLI dependency.
 - **CLI excellence** — the command line follows the [CLI Guidelines (clig.dev)](https://clig.dev/) strictly, with one exception while NetPace is pre-1.0 (`CONVENTIONS.md` → *Public API and breaking changes*): clig.dev's advice to warn users before changing or removing an option does not apply, because there is no deprecation period. A removed or renamed option should fail with a message saying it was removed, where that is simple to do — a preference, never a requirement — and the exception lapses when 1.0.0 is tagged. All console output and interaction goes through Spectre.Console; `--help` and `--version` are supported; error messages are clear and give actionable guidance; the default behaviour works for most users without flags.
-- **Output formats** — default, minimal, CSV and JSON, for people and for scripts. Each format is selected by one switch of its own, and exactly one may be selected: a format selector is not a level on a scale, and the two are never conflated in a single option. What the formats carry is under *Units and Formatting* below.
+- **Output formats** — default, minimal, CSV and JSON, for scripting as well as reading. Each format is selected by one switch of its own, and exactly one may be selected: a format selector is not a level on a scale, and the two are never conflated in a single option. What the formats carry is under *Units and Formatting* below.
 - **Cross-platform** — NetPace runs on Windows, Linux and macOS; the codebase rule is under `CONVENTIONS.md` → *Code quality*.
 - **Versioning** — releases follow semantic versioning, with a pre-1.0 stance that lifts the breaking-change obligations until 1.0.0 is tagged: `CONVENTIONS.md` → *Public API and breaking changes*.
 
@@ -55,7 +55,7 @@ Speeds support SI (1000-based) and IEC (1024-based) unit systems, in bits or byt
 
 Paired rules — `Don't` X → `Do` Y instead:
 
-- **The rules in `CONVENTIONS.md` apply as written**, each under the heading that names its concern: TDD and its config/tooling carve-out (*Test-driven development*), test conventions and the skipped-test ban (*Testing*), outcome-not-mechanism criteria and the traceability check (*Acceptance criteria*), code standards, cross-platform and trim safety (*Code quality*), justified Core dependencies (*Dependencies*), versioning and the pre-1.0 stance (*Public API and breaking changes*), and the build, test and documentation obligations a change owes (*Build, test and format*, *Documentation*).
+- **The rules in `CONVENTIONS.md` apply as written**, under the heading that names each concern.
 - **Don't leave commented-out code** → delete it; git remembers.
 - **Don't delete or rename a linked-to file or heading without re-running the link check** → run `bash scripts/link-check.sh`. It names every markdown link in a tracked `*.md`, and every bare `docs/change-intent-records/<name>.md` citation in any tracked text file, whose target no longer exists — the inbound pointers a deletion leaves in files nobody opens at the time. A link's `#heading` is matched against the target file's headings by GitHub's own slug, so retitling a heading fails the links into it, and a full `https://github.com/FrankRay78/NetPace/{blob,tree,raw}/main/<path>` link is checked against `<path>` in this branch, with nothing fetched. It reads the working tree, so it works midway through a deletion. Links inside fences or backticks are not checked; bare record citations are, wherever they appear. The `link-check` CI job runs it on every PR but is not a required check, so a failure does not block the merge.
 - **Don't make a throwaway script executable** → run it as `bash script.sh`, which needs no permission and does the same job. `Bash(chmod:*)` is on `permissions.ask`, so setting the executable bit stalls an interactive run until a human answers and is silently denied in a headless one — in the #265 A/B runs two reviewers each blocked well over an hour on exactly that call. `.claude/hooks/no-chmod.sh` refuses the executable-bit forms and names the alternative; to record the bit on a file you are committing, use `git add --chmod=+x <path>`.
@@ -68,7 +68,7 @@ Paired rules — `Don't` X → `Do` Y instead:
 
 Load these on demand for the matching topic:
 
-- **Conventions** — `CONVENTIONS.md` — already loaded by the import above: build, test and format commands, test conventions, documentation obligations, issue sources and concerns, the hooks and plugins a port needs. Edit it, not a `.claude/commands/` file, to change how NetPace builds, tests, documents or raises work.
+- **Conventions** — `CONVENTIONS.md` — already loaded by the import above: the rules of the codebase (TDD, testing, acceptance criteria, code quality, dependencies, versioning, commits) and the build, test, format, documentation and issue bindings the commands read, with the hooks and plugins a port needs. Edit it, not a `.claude/commands/` file, to change how NetPace builds, tests, documents or raises work.
 - **Review criteria** — `REVIEW.md` — what the PR review applies that is particular to NetPace: severities, high-risk areas, always-a-person paths, contracts. Edit it, not `.claude/commands/review-pr.md`, to change what the review holds NetPace to.
 - **C# Style** — `docs/conventions/csharp-style.md` — read before writing or reviewing any .cs file.
 - **Testing** — `docs/conventions/testing.md` — read before writing tests: outcome-not-mechanism assertions, what makes a good scenario, the integrity failure modes that pass while verifying nothing.

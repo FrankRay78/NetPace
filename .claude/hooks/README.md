@@ -10,7 +10,7 @@ NetPace keeps both production and `*.Tests` projects under `src/`, so the filesy
 
 ## `no-skipped-tests.sh` — skip-family ban (`CONVENTIONS.md` → *Testing*)
 
-PreToolUse(Bash) gate that blocks a `git commit` while any banned skipped-test construct exists under `src/`: `Skip.If/IfNot/Always/Unless`, `Assert.Skip`, `[Fact/Theory(Skip=…)]`, `[SkippableFact/Theory]`, `SkipException`, and xUnit v3's `SkipUnless=`/`SkipWhen=`. Also exposes `--check` for CI/manual scans (the audit ignores the override, so a leaked env var can never silence it). Fails **closed** once a command is classified as a commit — a gate that can't scan must not read as clean — and waves every non-commit Bash call straight through. Override: `NETPACE_ALLOW_SKIPS=1` (announced on stderr). Promotes Constitution §X into a gate rather than a rule the agent must remember.
+PreToolUse(Bash) gate that blocks a `git commit` while any banned skipped-test construct exists under `src/`: `Skip.If/IfNot/Always/Unless`, `Assert.Skip`, `[Fact/Theory(Skip=…)]`, `[SkippableFact/Theory]`, `SkipException`, and xUnit v3's `SkipUnless=`/`SkipWhen=`. Also exposes `--check` for CI/manual scans (the audit ignores the override, so a leaked env var can never silence it). Fails **closed** once a command is classified as a commit — a gate that can't scan must not read as clean — and waves every non-commit Bash call straight through. Override: `NETPACE_ALLOW_SKIPS=1` (announced on stderr). Promotes the no-skipped-tests rule (`CONVENTIONS.md` → *Testing*) into a gate rather than a rule the agent must remember.
 
 ```bash
 .claude/hooks/no-skipped-tests.sh --check          # scan src/, exit 1 on any banned construct

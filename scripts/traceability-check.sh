@@ -237,9 +237,10 @@ if [ -n "$missing" ]; then
     printf 'traceability-check: FAIL — issue #%s has labelled scenarios with no matching marker in a committed test file:\n' "$ISSUE"
     printf '%s' "$missing" | sed 's/^/  - /'
     printf '\n'
-    printf "CONVENTIONS.md, Acceptance criteria: give each one a test carrying 'SCENARIO: <name>' in the test file's own\n"
-    printf 'comment syntax, matching the label character for character. If a label names a scenario no\n'
-    printf 'test should verify — one an external tool or gate decides — remove the label from the issue.\n'
+    printf "CONVENTIONS.md, Acceptance criteria: give each one a test carrying 'SCENARIO: <name>' in\n"
+    printf 'the test file'"'"'s own comment syntax, matching the label character for character. If a label\n'
+    printf 'names a scenario no test should verify — one an external tool or gate decides — remove the\n'
+    printf 'label from the issue.\n'
     printf 'Scanned %s marker(s) in committed test files.\n' "$scanned"
     printf 'Issue: %s\n' "$URL"
   } >&2

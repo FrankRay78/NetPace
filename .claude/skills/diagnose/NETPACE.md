@@ -93,7 +93,7 @@ If the only reachable seam is at the wrong layer (a Console snapshot for a Core 
 
 Before the fix is "done":
 - `dotnet build src` succeeds with **zero warnings** (`CONVENTIONS.md` → *Code quality*); no `[Fact(Skip)]`, no `NotImplementedException` stubs.
-- If the fix touches a **public `NetPace.Core` API**, it ships to NuGet consumers — it needs `///` XML docs and prior approval (CLAUDE.md); it is not done until both are handled. **Pre-1.0 override**: while every released version is below 1.0.0, the approval half does not apply — say what breaks and for whom (`CONVENTIONS.md` → *Public API and breaking changes*). The XML docs (`CONVENTIONS.md` → *Documentation*) are still required.
+- If the fix touches a **public `NetPace.Core` API**, it ships to NuGet consumers — it needs `///` XML docs (`CONVENTIONS.md` → *Documentation*). While every released version is below 1.0.0 it needs no approval: say what breaks and for whom (`CONVENTIONS.md` → *Public API and breaking changes*).
 - Keep the change **AOT-trim-safe** — no runtime reflection (Spectre.Console.Cli was removed for exactly this).
 
 ---
