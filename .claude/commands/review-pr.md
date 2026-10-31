@@ -7,7 +7,7 @@ argument-hint: "[PR number or URL] [--dry-run]"
 
 Review an open pull request in depth and post the results back to the PR: a summary comment with a triage map, a risk tier, a verdict on whether the PR could merge with no human review, and a merge recommendation, plus one inline review comment per verified finding. Designed for large PRs spanning several layers in code the reviewer may not know.
 
-`.github/workflows/review-pr.yml` runs this command on every pull request `FrankRay78` opens, so a run there posts as the workflow's bot. Run by hand, it posts under the invoker's own `gh` account. Either way it runs unattended from start to post: it never stops for confirmation, and it posts whoever authored the PR. Run it on your strongest available model — a missed bug costs more than the review tokens.
+Where a CI workflow runs this command (`REVIEW.md` → *Where it runs* names it), a run there posts as the workflow's bot. Run by hand, it posts under the invoker's own `gh` account. Either way it runs unattended from start to post: it never stops for confirmation, and it posts whoever authored the PR. Run it on your strongest available model — a missed bug costs more than the review tokens.
 
 ## User Input
 
@@ -21,19 +21,39 @@ Flags, anywhere in the arguments:
 
 - `--dry-run` — run everything but post nothing; print exactly what would have been posted. Use for calibrating noise.
 
+## Repository criteria
+
+The method in this file is generic. What is particular to the repository under review — which rules count as mandatory, which areas are high-risk, which paths always need a person, what its users and consumers rely on, which documents to load — lives in `REVIEW.md` at the root of the repository this command runs in, written as additions to the method. Step 3 reads it; every part of the method below then applies its own rule together with the section of `REVIEW.md` under the matching heading, and where the two conflict, `REVIEW.md` wins. The headings understood are the method's own parts:
+
+| Heading | Extends |
+|---|---|
+| `Where it runs` | the note above: which CI workflow runs the command, and as whom |
+| `Severity` | *Review contract* — what else counts as Critical, Major or Minor here |
+| `What not to flag` | *Review contract* — the checks CI already gates, and what this repository has settled |
+| `Risk tier` | *Risk tier and human review* — the areas that make a change High, and what is never Low |
+| `Always a person` | *Risk tier and human review* — the paths this repository adds to the list |
+| `Contracts` | the *Contracts* dimension — what a user, script or consumer touches, and the docs a change to one must update |
+| `Context to load` | step 3 — the documents to read, and for which layers |
+| `Change map` | step 4 — the areas to group changed files by |
+| `Tests` | the *Tests* dimension — the test conventions a finding is judged against |
+
+A section under any other heading is read too, and applied where its text says. Where the file is missing, the review runs on the method alone; where a heading is missing, that part of the method runs on its generic rule alone. Either way the review completes.
+
+`REVIEW.md` is trusted the way this command file is: read from the repository the command runs in, never from the pull request's checkout or worktree, and in CI the workflow puts `main`'s copy in place before the agent starts — removing the pull request's copy where `main` has none — so a pull request cannot weaken the rules it is reviewed against. A change to `REVIEW.md` is itself never eligible for merge with no human review (*Always a person*).
+
 ## Review contract
 
 **Severity**
 
 - **Critical** — wrong results, data loss, a crash on a supported path, a security hole, or a broken gate (a CI check or hook that passes when it should fail). Blocks merge.
-- **Major** — a real defect on a less common path, a missing test for new behaviour, a breach of a constitution MUST, or an unstated breaking change. Should be fixed before merge.
+- **Major** — a real defect on a less common path, a missing test for new behaviour, a breach of a rule the repository states as mandatory (`REVIEW.md` → *Severity* names where), or an unstated breaking change. Should be fixed before merge.
 - **Minor** — worth fixing, but merging without it does no harm.
 
 **What not to flag**
 
 - Formatting and style the formatter or `.editorconfig` already settles.
-- Anything a required CI check already gates (build, tests, traceability, issue link), unless the check itself is what the PR breaks.
-- Breaking changes as such. While NetPace is pre-1.0 they need no approval or deprecation period (Constitution VII). Flag only a PR that does not state what breaks and for whom.
+- Anything a required CI check already gates (`REVIEW.md` → *What not to flag* lists them), unless the check itself is what the PR breaks.
+- Whatever else `REVIEW.md` → *What not to flag* says this repository has settled.
 - Preferences with no consequence a reader could name.
 
 ## Risk tier and human review
@@ -42,20 +62,18 @@ Every review states a risk tier and a yes-or-no verdict on whether the PR could 
 
 **Tier** — one of:
 
-- **Low** — docs, tests or mechanical changes only (renames, moved files, generated code, lockfiles). A changed snapshot is never Low: a snapshot is a user-visible contract, and a changed one means the output changed.
-- **Medium** — anything that is neither Low nor High: real logic, or a changed snapshot.
-- **High** — logic in server selection or measurement, security-sensitive code, or a change large enough to span several layers.
+- **Low** — docs, tests or mechanical changes only (renames, moved files, generated code, lockfiles), except a kind of change `REVIEW.md` → *Risk tier* says is never Low.
+- **Medium** — anything that is neither Low nor High: real logic.
+- **High** — security-sensitive code, a change large enough to span several layers, or logic in the areas `REVIEW.md` → *Risk tier* names as high-risk.
 
 Only Low is eligible for merge with no human review. Medium and High both mean maintainer review; High marks the changes that most deserve a careful read.
 
 **Always a person.** A change touching any of these needs the maintainer whatever tier the rest of it would get, so it is never eligible, and the summary names the path responsible. Read the changed paths from `git diff --name-only origin/<baseRefName>...HEAD` in the checkout, never from step 1's `files`, which stops at 100 files without saying so:
 
-- anything under `.github/` or `scripts/`
-- the release and publish pipeline, including `docs/RELEASING.md`
 - the Claude harness — anything under `.claude/` — and `CLAUDE.md`
-- `docs/constitution.md`
-- `src/Directory.Packages.props`, and package-reference changes in project files
-- any change to a contract a user or a consumer relies on: a CLI option, an exit code, a CSV or JSON field, a public `NetPace.Core` member
+- `REVIEW.md`, the criteria this review applies
+- every path `REVIEW.md` → *Always a person* adds
+- any change to a contract a user or a consumer relies on, as the *Contracts* dimension defines one
 
 **The second look.** Even where the areas touched suggest Low, ask whether this particular change still deserves a person. Lift Low to Medium where it does, and say why.
 
@@ -84,11 +102,11 @@ Every subagent this command starts — triage, specialists, verifiers — follow
 
 2. **Check out the code.** A deep review reads the diff against the whole repository, not in isolation. If the current checkout's `HEAD` is already the PR's `headRefOid` (as it is in CI), review it in place. Otherwise never disturb the invoker's working tree: `git fetch origin pull/<N>/head`, then `git worktree add --detach .claude/scratch/review-pr-<N> FETCH_HEAD`, and review there — both run from the repository root, so neither needs a `cd`. Remove the worktree (`git worktree remove --force .claude/scratch/review-pr-<N>`) when the review completes or aborts.
 
-3. **Load the context.** In the checkout, read `CLAUDE.md`, `docs/constitution.md` and the convention docs `CLAUDE.md` points to for the layers the PR touches (`docs/conventions/csharp-style.md` for `.cs` files, `docs/conventions/testing.md` for tests). Read the issue the PR body closes or references (`Closes #<N>`, `Refs #<N>`) for intent.
+3. **Load the context.** Read `REVIEW.md` from the root of the repository this command runs in (*Repository criteria*), not from the checkout. Then, in the checkout, read `CLAUDE.md` and the documents `REVIEW.md` → *Context to load* names for the layers the PR touches. Read the issue the PR body closes or references (`Closes #<N>`, `Refs #<N>`) for intent.
 
 ### Phase 1 — Triage map
 
-4. **Map the change.** Delegate to a subagent (model: haiku — this is mechanical): group the changed files by area (`NetPace.Core` library, `NetPace.Console` CLI, tests and snapshots, CI workflows and scripts, the Claude harness under `.claude/`, docs), and flag which groups contain real logic changes versus renames, generated code and lockfiles. The map goes in the summary comment — it helps every reviewer of the PR, not just this one.
+4. **Map the change.** Delegate to a subagent (model: haiku — this is mechanical): group the changed files by area — the areas `REVIEW.md` → *Change map* lists, or the ones the repository's layout shows where it lists none — and flag which groups contain real logic changes versus renames, generated code and lockfiles. The map goes in the summary comment — it helps every reviewer of the PR, not just this one.
 
    Then decide the **call-chain flag**, and end the output with the fixed line below. Set it to yes only when **both** these signals hold for at least one changed unit — a class, module, type, interface or top-level function, whatever the language's named unit is:
 
@@ -107,9 +125,9 @@ Every subagent this command starts — triage, specialists, verifiers — follow
 
    - **Correctness** — logic errors, off-by-ones, null/empty handling, concurrency, cancellation, error paths, silent failures (swallowed exceptions, missing timeouts/retries, catch blocks that hide errors). For CI workflows and scripts: steps that report green when the thing they guard did not happen.
    - **Security** — injection (including untrusted PR or issue text reaching a shell or a prompt in a workflow), workflow permissions and secrets, sensitive data in logs or output.
-   - **Contracts** — anything a user, script or `NetPace.Core` consumer touches: CLI options, exit codes, CSV/JSON fields, public library members. A change to one must be stated in the PR body with who it breaks, and a changed CLI option must update `README.md` and `USER_GUIDE.md`. Also reflection-heavy or non-trim-safe code, since NetPace targets AOT-trimmed builds.
-   - **Tests** — do tests exercise the new behaviour and its edge cases, or only the happy path? Tests that mock away the system under test, assert mechanism rather than outcome (Constitution IX), or hand-roll string matching where console output belongs in a snapshot.
-   - **Conventions and intent** — adherence to `CLAUDE.md`, the constitution and the patterns in touched files, and anywhere the PR body, linked issue or tests disagree with what the diff actually does.
+   - **Contracts** — anything a user, a script or a library consumer touches directly; `REVIEW.md` → *Contracts* names what that is here, and the user-facing docs a change to one must update. A change to a contract must be stated in the PR body with who it breaks.
+   - **Tests** — do tests exercise the new behaviour and its edge cases, or only the happy path? Tests that mock away the system under test, assert mechanism rather than outcome, or break the test conventions `REVIEW.md` → *Tests* states.
+   - **Conventions and intent** — adherence to `CLAUDE.md`, the documents step 3 loaded and the patterns in touched files, and anywhere the PR body, linked issue or tests disagree with what the diff actually does.
    - **Call chain** — launched on Phase 1's call-chain flag, not on the triage map (see the launch rule below). Give it the unit(s) the `CALL-CHAIN:` line names — or, where the line names none or no line exists, as in `/review-followup`, have it identify the changed units from the diff itself — and have it: (a) state what behaviour a caller could observe changing — values returned or their shape, errors raised, swallowed or newly possible, side effects such as writes, emitted messages and outbound calls, state kept between calls, how often, when or in what order something runs, latency — deciding from the code which of those apply; (b) find the dependents, including implementors and anywhere the unit is wired in by registration, configuration or convention rather than a direct call, judging from the codebase which mechanisms it uses; (c) follow each dependent upward to the first point where control enters from outside the code under review — a request or route handler, a message or queue consumer, a scheduled or background job, a CLI command, or, for a library, a public member consumers call — and stop there, identifying from the code itself what counts as one here; (d) for each entry point reached, say whether the change is observable in its output, its error behaviour, its call volume to downstream systems or its latency. A chain that never reaches an entry point is not a candidate; if the references turn out to be comments or same-named unrelated symbols, it returns none. Like every other dimension it does not verify its own findings — Phase 3 does.
 
    **The launch rule.** Read the `CALL-CHAIN:` line before starting this phase. Launch the call-chain pass when it says `YES` or `UNCLEAR`, and launch it too when the line is missing or malformed: a spurious launch costs one subagent run and Phase 3 filters weak candidates, where a wrong skip is a silent gap nobody sees. Skip it only on a well-formed `NO`.
