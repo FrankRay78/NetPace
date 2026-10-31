@@ -1,7 +1,8 @@
 name: Traceability
 
-# Enforces the scenario-label → test-marker rule (CONVENTIONS.md, Acceptance criteria): every `**Scenario: X**` label on the issue
-# a branch implements must have a matching `SCENARIO: X` marker in a committed test file.
+# Enforces the scenario-label → test-marker rule (CONVENTIONS.md, Acceptance criteria): every
+# `**Scenario: X**` label on the issue a branch implements must have a matching `SCENARIO: X`
+# marker in a committed test file.
 #
 # Pre-merge, and only here. A PR passes through several stages that each touch the tests — build
 # writes the markers, verify refactors, a human edits — and this job sees the branch's final state

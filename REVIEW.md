@@ -8,7 +8,7 @@ NetPace's additions to the review method in [`/review-pr`](.claude/commands/revi
 
 ## Severity
 
-- **Major** includes a breach of a rule `CONVENTIONS.md` states or of a product principle `CLAUDE.md` → *Product Principles* states.
+- **Major** includes a breach of a codebase rule in `CONVENTIONS.md` → *Test-driven development*, *Testing*, *Acceptance criteria*, *Code quality*, *Dependencies*, *Public API and breaking changes* or *Commit messages*, or of a product principle `CLAUDE.md` → *Product Principles* states.
 
 ## What not to flag
 

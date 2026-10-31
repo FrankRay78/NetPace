@@ -11,7 +11,7 @@
 | I Test-Driven Development, with the configuration/tooling carve-out | `CONVENTIONS.md` → *Test-driven development* |
 | II Library-First Architecture | `CLAUDE.md` → *Product Principles*, Library-first |
 | III CLI Excellence, incl. one switch per output format and the pre-1.0 clig.dev exception | `CLAUDE.md` → *Product Principles*, CLI excellence and Output formats; "a review must not raise the absence of a removal message" → `REVIEW.md` → *What not to flag* |
-| IV Cross-Platform Compatibility | `CONVENTIONS.md` → *Code quality*, Cross-platform |
+| IV Cross-Platform Compatibility | `CONVENTIONS.md` → *Code quality*, Cross-platform; `CLAUDE.md` → *Product Principles* points at it |
 | V Code Quality Standards | `CONVENTIONS.md` → *Code quality*, Standards |
 | VI Minimal Dependencies, incl. the licence rule | `CONVENTIONS.md` → *Dependencies* |
 | VII Semantic Versioning and the pre-1.0 stance | `CONVENTIONS.md` → *Public API and breaking changes* |
@@ -20,7 +20,7 @@
 | X No Skipped Tests | `CONVENTIONS.md` → *Testing*, No skipped tests |
 | Git Workflow | `CONVENTIONS.md` → *Commit messages* |
 | Testing Standards, incl. the snapshot rule and the do-not-test list | `CONVENTIONS.md` → *Testing* |
-| Authority clause, the NON-NEGOTIABLE / MUST NEVER framing, §VII's "overrides any rule elsewhere", §IX's lockstep clause, every Rationale paragraph | Framing and history, dropped; the records hold the history |
+| Authority clause, the NON-NEGOTIABLE / MUST NEVER framing, §VII's "overrides any rule elsewhere", §IX's lockstep clause, every Rationale paragraph | Framing and history, dropped; the records hold the history. Two rationale sentences stay as rule text (library consumers need no CLI dependency; a copyleft dependency propagates), and the lockstep duty lives on in `/capture-learnings` and the `docs/conventions/` blockquotes |
 
 **Decisions:**
 

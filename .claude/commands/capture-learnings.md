@@ -90,7 +90,7 @@ The order of preference for where a learning lands: **fix the rule that misfired
 
    **Amend rule** — show the exact before/after for the offending line and apply on approval. An amendment to a rule in `CONVENTIONS.md` also reviews the guides under `docs/conventions/` that elaborate it and updates them in lockstep.
 
-   **Deterministic** — these change how the harness or test suite behaves, so **propose, then apply only on explicit approval**; never silently edit `settings.json`. For a hook, permission, or env change, invoke the `update-config` skill with the concrete rule. For a code-shape or invariant rule, add the test following `CLAUDE.md` and the constitution's Testing Standards — including a RED run proving it fails on the violation.
+   **Deterministic** — these change how the harness or test suite behaves, so **propose, then apply only on explicit approval**; never silently edit `settings.json`. For a hook, permission, or env change, invoke the `update-config` skill with the concrete rule. For a code-shape or invariant rule, add the test following `CONVENTIONS.md` → *Testing* and *Test-driven development* — including a RED run proving it fails on the violation.
 
    **Memory** — write (or update) a file in `.claude/memory/`:
 
