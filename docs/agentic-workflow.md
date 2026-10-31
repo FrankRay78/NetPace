@@ -274,7 +274,7 @@ The trainer's job is to make next week's agent better than this week's:
 
 ## Documentation Hierarchy
 
-- Tier 1: GOVERNANCE → constitution / principles (supersedes all else)
+- Tier 1: RULES → the project's stated rules and principles, each in one place (`CONVENTIONS.md`, `REVIEW.md` or equivalent)
 - Tier 2: IMPLEMENTATION → `CLAUDE.md` / `AGENTS.md` (essential patterns + signposts)
 - Tier 3: DETAILED REFERENCES → `docs/…` deep guidance and/or a memory corpus
 
@@ -307,7 +307,7 @@ The kinds of files a project adds to make this workflow operational (names illus
 - **skills / sub-agents** — simplifier, verifier, a `diagnose` skill (a reproduce → minimise → hypothesise → instrument → fix → regression-test loop for hard bugs), and any stack-orchestration script.
 
 ### Governance
-- **constitution** — project governance, supersedes other guides. Kept with the project docs, and loaded into every agent session.
+- **rules files** — the project's stated rules (`CONVENTIONS.md`, `REVIEW.md` or equivalent), each rule in one place. Kept at the repository root, and loaded into every agent session.
 
 ### CI / SCM integration
 - **CI workflow** — build + test on PRs (full suite or deterministic subset; see enforcement).

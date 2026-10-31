@@ -43,13 +43,13 @@ The order of preference for where a learning lands: **fix the rule that misfired
 
    **Discarded work** — `git log <default>..HEAD --oneline --reverse`, looking for revert pairs and commits a later commit undoes. Each pair is a design decision made and unmade; the learning is what would have avoided the round trip.
 
-   **Corroboration** — `git diff <default>...HEAD --name-status` for renames and moves, and any edits to `CLAUDE.md` or `docs/constitution.md`. A chat signal backed by a rework commit is higher confidence than either alone.
+   **Corroboration** — `git diff <default>...HEAD --name-status` for renames and moves, and any edits to `CLAUDE.md`, `CONVENTIONS.md` or `REVIEW.md`. A chat signal backed by a rework commit is higher confidence than either alone.
 
    When `has_branch_context` is false, skip this lens; the highest Confidence reachable in step 6 is then `Medium (chat only)`.
 
 4. **Lens C — interpretation**: Apply these two questions to everything Lens A and Lens B surfaced. They produce the highest-value findings, and neither is visible in a raw transcript.
 
-   **Rule collision** — did an *existing written rule* (`CLAUDE.md`, the constitution, an existing memory) produce the wrong answer here? If Claude followed a documented rule and the user overrode it, the defect is in the rule, not in Claude's recall. Adding a memory to counteract a miscalibrated rule leaves two conflicting instructions in context; amending the rule removes the conflict. Look for this explicitly — it is the most valuable finding the command can produce.
+   **Rule collision** — did an *existing written rule* (`CLAUDE.md`, `CONVENTIONS.md`, `REVIEW.md`, an existing memory) produce the wrong answer here? If Claude followed a documented rule and the user overrode it, the defect is in the rule, not in Claude's recall. Adding a memory to counteract a miscalibrated rule leaves two conflicting instructions in context; amending the rule removes the conflict. Look for this explicitly — it is the most valuable finding the command can produce.
 
    **Who caught it** — for each defect found on the branch, ask who found it and how. A defect a human found *by eye* is a hole in the automated net, and names the mechanism that should have caught it. Watch especially for defects the test suite had **encoded** rather than caught: a wrong value baked into a snapshot or fixture passes forever.
 
@@ -57,7 +57,7 @@ The order of preference for where a learning lands: **fix the rule that misfired
 
 5. **Triage each signal by where it belongs**: four destinations, in order of preference.
 
-   - **Amend an existing rule** — a documented rule misfired, is stale, or contradicts observed practice. Fix `CLAUDE.md`, the constitution, or the existing memory. Preferred over everything else: it removes a wrong instruction instead of adding a competing one.
+   - **Amend an existing rule** — a documented rule misfired, is stale, or contradicts observed practice. Fix `CLAUDE.md`, `CONVENTIONS.md`, `REVIEW.md`, or the existing memory. Preferred over everything else: it removes a wrong instruction instead of adding a competing one.
    - **Deterministic mechanism** — a mechanically checkable rule (a path must or must not exist, a command must run before/after X, a file must match a shape, a value must be set, an invariant must hold). Automated behaviours ("whenever X, do Y") *require* a hook in `settings.json` — the harness executes those, not Claude, so a memory entry cannot fulfil them; the `update-config` skill wires hooks, permissions, and env. A recurring code-shape or data-invariant violation → an architectural or unit test.
    - **Memory entry** — judgment, taste, or context ("prefer X when Y", "explain tradeoffs plainly"), and standing project facts. No mechanism captures these; forcing them into a hook is worse. A **structural decision** (a shape not yet factored out, surfaced by Lens B's churn/sibling check) defaults here too — as `.claude/memory/project_*.md` — unless it turns out to be a fix to a stale documented rule, in which case route it to Amend rule instead.
    - **Both** — a checkable rule with non-obvious rationale: the mechanism enforces the *what*, a short memory records the *why*.
@@ -84,11 +84,11 @@ The order of preference for where a learning lands: **fix the rule that misfired
 
 8. **Check for duplicates — and for invalidation**: For each approved candidate, grep `.claude/memory/` for related terms; if a closely related memory exists, *update* it rather than creating a near-twin.
 
-   Then run the reverse check: did anything this session make an **existing** memory or documented rule stale, wrong, or redundant? A memory superseded by a constitution rule, or one describing code that no longer exists, should be amended or deleted. Carrying a wrong memory is worse than carrying none.
+   Then run the reverse check: did anything this session make an **existing** memory or documented rule stale, wrong, or redundant? A memory superseded by a rule in `CONVENTIONS.md`, or one describing code that no longer exists, should be amended or deleted. Carrying a wrong memory is worse than carrying none.
 
 9. **Write approved learnings**:
 
-   **Amend rule** — show the exact before/after for the offending line and apply on approval. An amendment to `docs/constitution.md` also reviews the downstream documents that restate the rule (`CLAUDE.md`, `docs/conventions/`) and updates them in lockstep.
+   **Amend rule** — show the exact before/after for the offending line and apply on approval. An amendment to a rule in `CONVENTIONS.md` also reviews the guides under `docs/conventions/` that elaborate it and updates them in lockstep.
 
    **Deterministic** — these change how the harness or test suite behaves, so **propose, then apply only on explicit approval**; never silently edit `settings.json`. For a hook, permission, or env change, invoke the `update-config` skill with the concrete rule. For a code-shape or invariant rule, add the test following `CLAUDE.md` and the constitution's Testing Standards — including a RED run proving it fails on the violation.
 

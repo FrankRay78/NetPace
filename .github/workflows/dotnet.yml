@@ -27,7 +27,7 @@ jobs:
       # The command users type is the console project's AssemblyName, and until this step the only thing that
       # read the produced program's name was release-binaries.yml — which is tag-triggered, so a regression to
       # AssemblyName shipped a green pull request and failed during a release, after the tag existed. Gating it
-      # here makes the invariant repeatable on every pull request (Constitution I, configuration/tooling).
+      # here makes the invariant repeatable on every pull request (CONVENTIONS.md, Test-driven development, configuration/tooling).
       run: |
         set -euo pipefail
         apphost="src/NetPace.Console/bin/Debug/net10.0/netpace"

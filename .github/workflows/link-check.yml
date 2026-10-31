@@ -7,7 +7,7 @@ name: Link Check
 # verdict depends on this branch's files and not on any third-party site being reachable.
 #
 # Pre-merge, and only here. A branch that deletes or renames a linked-to file or heading leaves its
-# inbound pointers in places nobody opens at the time: the constitution, a workflow comment, another
+# inbound pointers in places nobody opens at the time: CONVENTIONS.md, a workflow comment, another
 # record. This job is where that shows up while the change is still a pull request.
 #
 # Deliberately its own workflow rather than a job in dotnet.yml or shell-tests.yml: the job name

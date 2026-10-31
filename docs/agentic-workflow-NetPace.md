@@ -135,7 +135,7 @@ The explicit solution argument is **required**: `dotnet format` only looks in th
 Follows the generic *build stage*. NetPace's specifics:
 
 - **Branch:** `feature/<N>-<short-slug>`, cut from `origin/main`. `/raise-pr`, `/verify`, `scripts/traceability-check.sh` and `scripts/chain-next.sh` all read the issue number from this pattern.
-- **Commits:** `Refs #<N>: …` in the imperative mood (constitution, *Git Workflow*). The failing tests are committed with the implementation that turns them green, never on their own.
+- **Commits:** `Refs #<N>: …` in the imperative mood (`CONVENTIONS.md` → *Commit messages*). The failing tests are committed with the implementation that turns them green, never on their own.
 - **Suite:** as in *The gates, concretely*.
 - **Docs it must update** (`CONVENTIONS.md` → *Documentation*): `///` XML docs on any new or changed public `NetPace.Core` API; the README.md `--help` snapshot and USER_GUIDE.md for a changed CLI option; `docs/RELEASING.md` for a release-pipeline change.
 - **Change-Intent Record:** not a documentation obligation, and most changes get none. `/build` runs the decision table in [`conventions/change-intent-records.md`](conventions/change-intent-records.md) and writes a record only where a `→ CIR` row applies and no `→ No CIR` row does, naming the warranting row in the commit and its final report — or reporting that none was warranted. Where a record exists, `/raise-pr` links it from the pull request body instead of repeating its reasoning.
@@ -152,7 +152,7 @@ Follows the generic *verify gate*. NetPace's specifics:
 Follows the generic *codebase audit* periodic task. NetPace's specifics:
 
 - **Argument:** a tag or commit that starts the "what changed" window, normally the last release tag. With none, the command asks and stops.
-- **Lenses:** constitutional conformance, test-suite integrity, docs against code, harness consistency, and dead code and duplication.
+- **Lenses:** conformance to the stated rules, test-suite integrity, docs against code, harness consistency, and dead code and duplication.
 - **Evidence gathered first:** the build and suite with coverage (`dotnet-coverage`), `dotnet list package --deprecated` and `--outdated`, `nuget-license`, Roslynator's unused-symbol search and `jscpd`. The four that are not part of the SDK run one-shot at a pinned version (`dotnet tool exec`, `npx`), so the command adds no tool manifest. A tool that cannot run is named in the report rather than stopping the audit.
 - **Output:** one issue labelled `housekeeping`, never `ready`, `review` or `confirm`, so neither the chain runner nor the issue-review workflows pick it up.
 - **Not covered:** security and mutation testing ([`audit-codebase.md`](../.claude/commands/audit-codebase.md) says why).
@@ -287,7 +287,7 @@ Install status is deliberately **not** recorded in any doc: it is per-box and ma
 
 ## Related
 
-- [constitution.md](constitution.md) — governance; supersedes this file and the generic guide alike.
+- [CONVENTIONS.md](../CONVENTIONS.md) — the rules of the codebase and what the harness commands apply here; [REVIEW.md](../REVIEW.md) — what the pull request review checks.
 - [RELEASING.md](RELEASING.md) — the release matrix and its contracts.
 - [conventions/change-intent-records.md](conventions/change-intent-records.md) — when a change warrants a CIR; [conventions/csharp-style.md](conventions/csharp-style.md) — C# style.
 - [../.claude/hooks/README.md](../.claude/hooks/README.md) — per-hook documentation.

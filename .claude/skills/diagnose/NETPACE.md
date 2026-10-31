@@ -82,9 +82,9 @@ Provider-agnostic types in `NetPace.Core` (`SpeedUnit`, `SpeedScale`, `SpeedUnit
 
 ---
 
-## Phase 5 — Regression test before the fix (NON-NEGOTIABLE)
+## Phase 5 — Regression test before the fix
 
-Constitution Principle I makes TDD non-negotiable: write the failing regression test, watch it RED, apply the fix, watch it GREEN, then refactor. The **correct seam** (SKILL.md Phase 5) maps to the project:
+`CONVENTIONS.md` → *Test-driven development* states the TDD rule: write the failing regression test, watch it RED, apply the fix, watch it GREEN, then refactor. The **correct seam** (SKILL.md Phase 5) maps to the project:
 
 - **Core bug** → a test in `src/NetPace.Core.Tests/` using MockHttp against a fixture that reproduces the real call pattern. Mirror the source file (`OoklaSpeedtest.cs` → `OoklaSpeedtestTests.cs`, split into partial facet files for large classes).
 - **Console output bug** → a Verify test in `src/NetPace.Console.Tests/` via `CommandLineTestHost` + DI stubs. The new `.verified.txt` is the regression lock; review its `.received.txt` before accepting.
@@ -92,8 +92,8 @@ Constitution Principle I makes TDD non-negotiable: write the failing regression 
 If the only reachable seam is at the wrong layer (a Console snapshot for a Core calculation bug), that shallow seat gives false confidence — note it as the finding per SKILL.md Phase 5.
 
 Before the fix is "done":
-- `dotnet build src` succeeds with **zero warnings** (constitution V); no `[Fact(Skip)]`, no `NotImplementedException` stubs.
-- If the fix touches a **public `NetPace.Core` API**, it ships to NuGet consumers — it needs `///` XML docs and prior approval (CLAUDE.md); it is not done until both are handled. **Pre-1.0 override**: while every released version is below 1.0.0, the approval half does not apply — say what breaks and for whom (Constitution VII, *Pre-1.0 stance*). The XML docs are Principle V and still required.
+- `dotnet build src` succeeds with **zero warnings** (`CONVENTIONS.md` → *Code quality*); no `[Fact(Skip)]`, no `NotImplementedException` stubs.
+- If the fix touches a **public `NetPace.Core` API**, it ships to NuGet consumers — it needs `///` XML docs and prior approval (CLAUDE.md); it is not done until both are handled. **Pre-1.0 override**: while every released version is below 1.0.0, the approval half does not apply — say what breaks and for whom (`CONVENTIONS.md` → *Public API and breaking changes*). The XML docs (`CONVENTIONS.md` → *Documentation*) are still required.
 - Keep the change **AOT-trim-safe** — no runtime reflection (Spectre.Console.Cli was removed for exactly this).
 
 ---
