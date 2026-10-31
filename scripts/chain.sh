@@ -221,6 +221,12 @@ read_verdict() {
   case $line in '{'*) STAGE_VERDICT=$line ;; esac
 }
 
+# verdict_string <field> — the verdict's <field> when it is a JSON string, and nothing otherwise, so
+# a number, object or null in a field the chain reads is treated as that field missing.
+verdict_string() {
+  jq -r --arg f "$1" 'if (.[$f] | type) == "string" then .[$f] else empty end' <<<"$STAGE_VERDICT"
+}
+
 # stage_verdict <position> <name> <success outcome> — read $STAGE_VERDICT as the verdict, leaving the
 # payload the stage reported in $STAGE_PAYLOAD, or stop the run with the reason the verdict gives or
 # the reason it cannot be read. Every refusal that is not the stage's own reason, and not an unknown
@@ -245,15 +251,17 @@ stage_verdict() {
   if [ "$schema" != "$VERDICT_SCHEMA" ]; then
     fail "$pos" "$name" "the verdict has schema version $schema, which this chain does not read"
   fi
-  outcome=$(jq -r 'if (.outcome | type) == "string" then .outcome else empty end' <<<"$STAGE_VERDICT")
+  outcome=$(verdict_string outcome)
   if [ -z "$outcome" ]; then
     fail "$pos" "$name" "no readable verdict — the verdict names no outcome"
   fi
   # Failure is read before success only so the stage's own reason is what the closing line
   # reports; the outcome is one string, so no ordering could read both.
   if [ "$outcome" = failed ]; then
-    reason=$(jq -r 'if (.reason | type) == "string" then .reason else empty end' <<<"$STAGE_VERDICT" \
-      | sed -E -e 's/^[[:space:]]+//' -e 's/[[:space:]]+$//')
+    # The reason lands on the one closing line chain-next.sh reads, so a line break inside the JSON
+    # string — legal, and a plausible thing to write — is flattened to a space with the rest of the
+    # whitespace runs, rather than cutting the parked reason off at its first line.
+    reason=$(verdict_string reason | tr -s '[:space:]' ' ' | sed -E -e 's/^ //' -e 's/ $//')
     # A failure with no reason is a malformed report, but the stage still failed. Say so, rather
     # than closing with a dangling dash that reads like the reason was lost in transit.
     fail "$pos" "$name" "${reason:-the stage reported a failure with no reason}"
@@ -268,11 +276,11 @@ stage_verdict() {
   # branch or an opened pull request, and must not read as a verdict for whatever the reader assumes.
   case $success in
     raised)
-      STAGE_PAYLOAD=$(jq -r 'if (.pr | type) == "string" then .pr else empty end' <<<"$STAGE_VERDICT")
+      STAGE_PAYLOAD=$(verdict_string pr)
       [[ $STAGE_PAYLOAD =~ $PR_URL ]] \
         || fail "$pos" "$name" "no readable verdict — the raised verdict names no pull request URL" ;;
     *)
-      STAGE_PAYLOAD=$(jq -r 'if (.branch | type) == "string" then .branch else empty end' <<<"$STAGE_VERDICT")
+      STAGE_PAYLOAD=$(verdict_string branch)
       [[ $STAGE_PAYLOAD =~ ^[^[:space:]]+$ ]] \
         || fail "$pos" "$name" "no readable verdict — the $success verdict names no branch" ;;
   esac

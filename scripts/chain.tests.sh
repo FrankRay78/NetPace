@@ -189,8 +189,7 @@ ok "an issue written #270 is the same issue" 'prompt_is 1 "/build 270"'
 # broken shape names itself. Inline code and a code fence are the likely two; a fence that closes
 # the report is read as holding the verdict, because the verdict is whatever ends the report and a
 # fence around it does not move it. The failure verdict gets the same treatment below; this is the
-# direction whose own scenario is "a stage that reported success is never stopped because of text
-# it quotes".
+# direction where the cost of a missed shape is a healthy stage stopped over its own verdict.
 for ok_verdict in \
   "$(ready)" \
   "\`$(ready)\`" \
@@ -491,7 +490,7 @@ ok "a feature branch is still told what would run" '[ "$RC" = 0 ] && [ "$(calls)
 
 # SCENARIO: A decorated failure verdict still stops the run
 echo "A decorated failure verdict still stops the run:"
-# The decoration a model has been seen to wrap a verdict in: a heading, bold, a hyphen and a plus
+# The decoration the chain tolerates around a verdict: a heading, bold, a hyphen and a plus
 # bullet, a numbered item, backticks, underscores, a blockquote, outer whitespace and a code fence —
 # each ending the report, which is the only part the chain reads. Each must stop the run AND yield
 # the bare reason, so the assertion pins the whole closing line rather than just the exit code.
@@ -631,10 +630,10 @@ reply 2 'The review: the branch reached '"$(verified)"' in every respect but one
 chain 270
 ok "a failure verdict last is a failure however the report reads above it" '[ "$RC" = 1 ] && [ "$(calls)" = 2 ] && closing | grep -qxF "chain: FAILED at [2/3] verify — a confirmed Blocker could not be fixed"'
 # The report shapes that used to pass a failed /verify through to a raised pull request, in their
-# JSON form: a verdict that hedges on its own line, prose that names the success word, and a
-# success verdict that also carries a reason — the one contradiction JSON lets a stage write inside
-# the object itself, so it is refused rather than read as the success half. None is a readable
-# verdict, so each stops the run instead of starting /raise-pr.
+# JSON form plus the retired text hedge: a verdict that hedges on its own line, prose that names the
+# success word, and a success verdict that also carries a reason — the one contradiction JSON lets a
+# stage write inside the object itself, so it is refused rather than read as the success half. None
+# is a readable verdict, so each stops the run instead of starting /raise-pr.
 for shaped in \
   "Verdict: $(verified)" \
   "$(verified) — except the suite is red, so this is NOT a pass." \
@@ -708,6 +707,11 @@ for indented in "    $(ready)" $'\t'"$(ready)"; do
   chain 270
   ok "an indented verdict is a quotation, not a verdict" '[ "$RC" = 1 ] && [ "$(calls)" = 1 ] && closing | grep -q "no readable verdict"'
 done
+# One marker comes off, not a stack: a bullet inside a blockquote is a quotation of a list item.
+new_case
+reply 1 "Built it."$'\n\n'"> - $(ready)"
+chain 270
+ok "a stacked marker is not stripped" '[ "$RC" = 1 ] && [ "$(calls)" = 1 ] && closing | grep -q "no readable verdict"'
 # A verdict pretty-printed over several lines with no fence around it. The prompts ask for one line,
 # and the fence is the only shape that extends the verdict over more than one — pinned so the limit
 # is known rather than discovered.
@@ -743,7 +747,13 @@ ok "a whitespace-only reason is reported as missing, with no dangling dash" '[ "
 new_case
 reply 1 $'Something went wrong.\n'"$(failed '  suite red  ')"
 chain 270
-ok "outer whitespace on the reason is stripped, and nothing else is" '[ "$RC" = 1 ] && closing | grep -qxF "chain: FAILED at [1/3] build — suite red"'
+ok "outer whitespace on the reason is stripped" '[ "$RC" = 1 ] && closing | grep -qxF "chain: FAILED at [1/3] build — suite red"'
+# A line break inside the JSON string is legal, and chain-next.sh parks the issue with the one line
+# the closing message occupies, so the break is flattened rather than cutting the reason short.
+new_case
+reply 1 "$(failed $'formatting failed:\n- Foo.cs\n  - Bar.cs')"
+chain 270
+ok "a multi-line reason reaches the closing line whole, on one line" '[ "$RC" = 1 ] && closing | grep -qxF "chain: FAILED at [1/3] build — formatting failed: - Foo.cs - Bar.cs"'
 new_case
 reply 1 $'Formatting failed.\n'"$(failed 'the tool that failed is `dotnet format`')"
 chain 270
