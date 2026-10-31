@@ -9,6 +9,12 @@ public sealed class SpeedTestStubTests
 {
     private const int DelayMilliseconds = 20;
 
+    // Task.Delay fires on the runtime's coarse timer, so one pause can end a fraction of a millisecond
+    // short by the Stopwatch's clock, and ElapsedMilliseconds truncates it to a whole millisecond less.
+    // A millisecond per pause absorbs that and still fails a stub that pauses once instead of before
+    // every report.
+    private const int TimerSlackMilliseconds = 1;
+
     /// <summary>
     /// Each way a caller can ask the stub for the latency of a server it already holds.
     /// </summary>
@@ -395,7 +401,7 @@ public sealed class SpeedTestStubTests
 
         // Then a consumer can watch a stubbed probe unfold rather than complete instantly.
         const int Reports = 4;
-        Assert.True(stopwatch.ElapsedMilliseconds >= Reports * DelayMilliseconds, $"expected at least {Reports * DelayMilliseconds}ms across {Reports} reports, took {stopwatch.ElapsedMilliseconds}ms");
+        Assert.True(stopwatch.ElapsedMilliseconds >= Reports * (DelayMilliseconds - TimerSlackMilliseconds), $"expected at least {Reports * (DelayMilliseconds - TimerSlackMilliseconds)}ms across {Reports} reports, took {stopwatch.ElapsedMilliseconds}ms");
     }
 
     [Fact]
@@ -412,7 +418,7 @@ public sealed class SpeedTestStubTests
 
         // Then
         const int Reports = 4;
-        Assert.True(stopwatch.ElapsedMilliseconds >= Reports * DelayMilliseconds, $"expected at least {Reports * DelayMilliseconds}ms across {Reports} reports, took {stopwatch.ElapsedMilliseconds}ms");
+        Assert.True(stopwatch.ElapsedMilliseconds >= Reports * (DelayMilliseconds - TimerSlackMilliseconds), $"expected at least {Reports * (DelayMilliseconds - TimerSlackMilliseconds)}ms across {Reports} reports, took {stopwatch.ElapsedMilliseconds}ms");
     }
 
     [Fact]
@@ -429,7 +435,7 @@ public sealed class SpeedTestStubTests
 
         // Then
         const int Reports = 4;
-        Assert.True(stopwatch.ElapsedMilliseconds >= Reports * DelayMilliseconds, $"expected at least {Reports * DelayMilliseconds}ms across {Reports} reports, took {stopwatch.ElapsedMilliseconds}ms");
+        Assert.True(stopwatch.ElapsedMilliseconds >= Reports * (DelayMilliseconds - TimerSlackMilliseconds), $"expected at least {Reports * (DelayMilliseconds - TimerSlackMilliseconds)}ms across {Reports} reports, took {stopwatch.ElapsedMilliseconds}ms");
     }
 
     [Fact]
@@ -446,7 +452,7 @@ public sealed class SpeedTestStubTests
 
         // Then
         const int Reports = 3;
-        Assert.True(stopwatch.ElapsedMilliseconds >= Reports * DelayMilliseconds, $"expected at least {Reports * DelayMilliseconds}ms across {Reports} reports, took {stopwatch.ElapsedMilliseconds}ms");
+        Assert.True(stopwatch.ElapsedMilliseconds >= Reports * (DelayMilliseconds - TimerSlackMilliseconds), $"expected at least {Reports * (DelayMilliseconds - TimerSlackMilliseconds)}ms across {Reports} reports, took {stopwatch.ElapsedMilliseconds}ms");
     }
 
     [Fact]
