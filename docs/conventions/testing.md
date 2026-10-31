@@ -93,6 +93,14 @@ This verifies that the mocking library works. Mock the *collaborator* (network, 
 
 The test calls a method whose body is still `throw new NotImplementedException()`, or a class generated as a scaffold during the RED phase. The test may well be failing honestly, but if it passes, the implementation it claims to cover does not exist.
 
+### Several sites proven by one mutation
+
+A test added to pin existing behaviour has no natural RED phase, so the evidence is a mutation: break the code, watch the test fail, restore it. Breaking several sites at once and seeing one failure proves only that one of them is pinned — the rest can still be reverted with the suite green. Mutate each site on its own and run the full suite each time, and survey every sibling site before writing a test, not only the ones a review named: the sweep before shows which sites survive, and the sweep after shows each is caught by the test written for it.
+
+### Wall-clock lower bound with no timer slack
+
+A test that measures how long something took belongs on a controlled clock: `OoklaSpeedtest` takes its elapsed time from the time provider it is given. Where the real pause is itself the behaviour under test — a double that waits before each report — a lower bound of exactly *pauses × delay* fails intermittently: `Task.Delay` fires on the runtime's coarse timer, so a pause can end a fraction of a millisecond short by the `Stopwatch`, and `ElapsedMilliseconds` truncates that to a whole millisecond less. Allow a millisecond per pause, and keep the floor high enough that a version making fewer pauses still fails.
+
 ---
 
 ## Scenario traceability

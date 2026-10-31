@@ -9,7 +9,7 @@
 - [Scratch and staging files belong in .claude/scratch/](feedback_scratch_file_location.md) — gitignored; not /tmp, not ~/.claude/, not a top-level .scratch/
 - [Provider-agnostic types must not depend on concrete providers](project_dependency_direction.md) — Profile, SpeedUnit, etc. never reach forward into provider types; bridge lives on the provider side
 - [Verify-snapshot tests count as coverage in NetPace.Console.Tests](feedback_console_output_snapshot_coverage.md) — check Expectations/*.verified.txt before reporting an output mode as untested
-- [Read source before designing fixes](feedback_read_source_before_designing.md) — read the source before designing a fix; verify a handed-down issue/spec diagnosis against HEAD before implementing
+- [Read source before designing fixes](feedback_read_source_before_designing.md) — read the source before designing a fix; verify a handed-down issue/spec/review diagnosis against HEAD before implementing
 - [Trust only a fresh, rebuilt, unpiped test run](feedback_trusting_a_test_run.md) — re-run after the last edit, no stale `--no-build`, never pipe a run you trust; read Passed!/Failed!
 - [Decompose quantified claims — no flattering multipliers](feedback_plain_language_decisions.md) — name what an estimate is made of instead of a headline multiplier
 - [Be decisive when the evidence has already earned it](feedback_decisiveness_over_hedging.md) — state the verdict the gates already support; build within a decision already made rather than re-litigating it
