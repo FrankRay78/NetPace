@@ -491,15 +491,25 @@ public sealed class SpeedTestStubTests
     }
 
     [Fact]
-    public async Task GetFastestServerByLatencyAsync_WithNoProgressReceiver_SaysWhichArgumentWasMissing()
+    public async Task TheProgressOverloads_WithANullProgressReceiver_ReportTheirResultsAsTheRealProviderDoes()
     {
-        // Given a consumer that passes no progress receiver to the overload that requires one.
+        // Given a consumer that passes null where a progress receiver goes, which the real
+        // provider treats as no receiver at all.
         var stub = new SpeedTestStub();
         var servers = await stub.GetServersAsync();
 
-        // When, Then the stub names the argument rather than failing somewhere inside itself.
-        var exception = await Assert.ThrowsAsync<ArgumentNullException>(
-            () => stub.GetFastestServerByLatencyAsync(servers, null!));
-        Assert.Equal("progress", exception.ParamName);
+        // When
+        var latency = await stub.GetServerLatencyAsync(servers[0], (IProgress<LatencyTestProgress>?)null);
+        var byUrl = await stub.GetServerLatencyAsync("http://test1.com", (IProgress<LatencyTestProgress>?)null);
+        var screened = await stub.GetFastestServerByLatencyAsync(servers, (IProgress<SpeedTestProgress>?)null);
+        var download = await stub.GetDownloadSpeedAsync(servers[0], (IProgress<SpeedTestProgress>?)null);
+        var upload = await stub.GetUploadSpeedAsync(servers[0], (IProgress<SpeedTestProgress>?)null);
+
+        // Then the stub stands in for the provider here too, rather than failing where it would not.
+        Assert.Equal(100, latency.LatencyMilliseconds);
+        Assert.Equal(100, byUrl.LatencyMilliseconds);
+        Assert.Equal(100, screened.LatencyMilliseconds);
+        Assert.Equal(1000, download.BytesProcessed);
+        Assert.Equal(7000, upload.BytesProcessed);
     }
 }
