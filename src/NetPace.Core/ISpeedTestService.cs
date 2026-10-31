@@ -23,7 +23,7 @@ public interface ISpeedTestService
     /// </summary>
     /// <param name="server">The server to measure latency against.</param>
     /// <param name="cancellationToken">The token to allow the operation to be cancelled.</param>
-    /// <returns>The server and its latency in milliseconds.</returns>
+    /// <returns>The server, and its latency and jitter in milliseconds.</returns>
     public Task<LatencyTestResult> GetServerLatencyAsync(IServer server, CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -32,7 +32,7 @@ public interface ISpeedTestService
     /// <param name="server">The server to measure latency against.</param>
     /// <param name="progress">A progress reporter that receives latency test progress updates.</param>
     /// <param name="cancellationToken">The token to allow the operation to be cancelled.</param>
-    /// <returns>The server and its latency in milliseconds.</returns>
+    /// <returns>The server, and its latency and jitter in milliseconds.</returns>
     public Task<LatencyTestResult> GetServerLatencyAsync(IServer server, IProgress<LatencyTestProgress> progress, CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -42,7 +42,7 @@ public interface ISpeedTestService
     /// <param name="progress">A progress reporter that receives latency test progress updates, or <see langword="null"/> for none.</param>
     /// <param name="diagnostics">A reporter that receives one <see cref="RequestDiagnostic"/> per request, or <see langword="null"/> for none.</param>
     /// <param name="cancellationToken">The token to allow the operation to be cancelled.</param>
-    /// <returns>The server and its latency in milliseconds.</returns>
+    /// <returns>The server, and its latency and jitter in milliseconds.</returns>
     public Task<LatencyTestResult> GetServerLatencyAsync(IServer server, IProgress<LatencyTestProgress>? progress, IProgress<RequestDiagnostic>? diagnostics, CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -50,7 +50,7 @@ public interface ISpeedTestService
     /// </summary>
     /// <param name="serverUrl">The server to measure latency against.</param>
     /// <param name="cancellationToken">The token to allow the operation to be cancelled.</param>
-    /// <returns>The server and its latency in milliseconds.</returns>
+    /// <returns>The server, and its latency and jitter in milliseconds.</returns>
     public Task<LatencyTestResult> GetServerLatencyAsync(string serverUrl, CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -59,7 +59,7 @@ public interface ISpeedTestService
     /// <param name="serverUrl">The server URL to measure latency against.</param>
     /// <param name="progress">A progress reporter that receives latency test progress updates.</param>
     /// <param name="cancellationToken">The token to allow the operation to be cancelled.</param>
-    /// <returns>The server and its latency in milliseconds.</returns>
+    /// <returns>The server, and its latency and jitter in milliseconds.</returns>
     public Task<LatencyTestResult> GetServerLatencyAsync(string serverUrl, IProgress<LatencyTestProgress> progress, CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -69,7 +69,7 @@ public interface ISpeedTestService
     /// <param name="progress">A progress reporter that receives latency test progress updates, or <see langword="null"/> for none.</param>
     /// <param name="diagnostics">A reporter that receives one <see cref="RequestDiagnostic"/> per request, or <see langword="null"/> for none.</param>
     /// <param name="cancellationToken">The token to allow the operation to be cancelled.</param>
-    /// <returns>The server and its latency in milliseconds.</returns>
+    /// <returns>The server, and its latency and jitter in milliseconds.</returns>
     public Task<LatencyTestResult> GetServerLatencyAsync(string serverUrl, IProgress<LatencyTestProgress>? progress, IProgress<RequestDiagnostic>? diagnostics, CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -80,8 +80,9 @@ public interface ISpeedTestService
     /// overall ceiling, and a server that is reachable but slow ranks lower rather than dropping
     /// out. A server is reachable when at least one of its screening requests completes inside the
     /// ceiling; only a server with no completed request drops out. The latency returned is
-    /// therefore a screening figure - call <see cref="GetServerLatencyAsync(IServer, CancellationToken)"/>
-    /// on the winner for a figure to report.
+    /// therefore a screening figure, and any jitter alongside it is not a measurement - call
+    /// <see cref="GetServerLatencyAsync(IServer, CancellationToken)"/> on the winner for figures
+    /// to report.
     /// </remarks>
     /// <param name="servers">An array of servers to screen.</param>
     /// <param name="cancellationToken">The token to allow the operation to be cancelled.</param>
@@ -98,8 +99,9 @@ public interface ISpeedTestService
     /// overall ceiling, and a server that is reachable but slow ranks lower rather than dropping
     /// out. A server is reachable when at least one of its screening requests completes inside the
     /// ceiling; only a server with no completed request drops out. The latency returned is
-    /// therefore a screening figure - call <see cref="GetServerLatencyAsync(IServer, CancellationToken)"/>
-    /// on the winner for a figure to report.
+    /// therefore a screening figure, and any jitter alongside it is not a measurement - call
+    /// <see cref="GetServerLatencyAsync(IServer, CancellationToken)"/> on the winner for figures
+    /// to report.
     /// </remarks>
     /// <param name="servers">An array of servers to screen.</param>
     /// <param name="progress">A progress reporter that receives server selection progress updates.</param>

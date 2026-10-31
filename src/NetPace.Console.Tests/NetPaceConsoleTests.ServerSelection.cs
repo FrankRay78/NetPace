@@ -37,9 +37,9 @@ public sealed partial class NetPaceConsoleTests
             {
                 GetServersAsyncFunc = _ => Task.FromResult<IServer[]>([discoveredServers[0]]),
                 GetFastestServerByLatencyAsyncFunc = (servers, _, _) =>
-                    Task.FromResult(new LatencyTestResult { Server = servers[0], LatencyMilliseconds = 5 }),
+                    Task.FromResult(new LatencyTestResult { Server = servers[0], LatencyMilliseconds = 5, JitterMilliseconds = 0 }),
                 GetServerLatencyAsyncFunc = (server, _, _) =>
-                    Task.FromResult(new LatencyTestResult { Server = server, LatencyMilliseconds = 42 }),
+                    Task.FromResult(new LatencyTestResult { Server = server, LatencyMilliseconds = 42, JitterMilliseconds = 4 }),
                 GetDownloadSpeedAsyncFunc = (_, _, _) =>
                     Task.FromResult(new SpeedTestResult { BytesProcessed = 1000, ElapsedMilliseconds = 1000, RequestsSucceeded = 150, RequestsFailed = 0 }),
                 GetUploadSpeedAsyncFunc = (_, _, _) =>
@@ -71,7 +71,7 @@ public sealed partial class NetPaceConsoleTests
             {
                 GetServersAsyncFunc = _ => Task.FromResult(discoveredServers),
                 GetFastestServerByLatencyAsyncFunc = (servers, _, _) =>
-                    Task.FromResult(new LatencyTestResult { Server = servers[0], LatencyMilliseconds = 5 }),
+                    Task.FromResult(new LatencyTestResult { Server = servers[0], LatencyMilliseconds = 5, JitterMilliseconds = 0 }),
                 GetServerLatencyAsyncFunc = (_, _, _) =>
                     throw new Exception("Server returned incorrect test string for latency.txt"),
             };
@@ -117,10 +117,10 @@ public sealed partial class NetPaceConsoleTests
                         throw new Exception("No servers available");
                     }
 
-                    return Task.FromResult(new LatencyTestResult { Server = ranked[0].candidate, LatencyMilliseconds = ranked[0].latency!.Value });
+                    return Task.FromResult(new LatencyTestResult { Server = ranked[0].candidate, LatencyMilliseconds = ranked[0].latency!.Value, JitterMilliseconds = 0 });
                 },
                 GetServerLatencyAsyncFunc = (server, _, _) =>
-                    Task.FromResult(new LatencyTestResult { Server = server, LatencyMilliseconds = 999 }),
+                    Task.FromResult(new LatencyTestResult { Server = server, LatencyMilliseconds = 999, JitterMilliseconds = 9 }),
             };
 
             var services = new ServiceCollection();
@@ -181,7 +181,7 @@ public sealed partial class NetPaceConsoleTests
 
                     await allServersAsked.Task.WaitAsync(TimeSpan.FromSeconds(5), cancellationToken);
 
-                    return new LatencyTestResult { Server = servers[0], LatencyMilliseconds = Array.IndexOf(discoveredServers, servers[0]) + 71 };
+                    return new LatencyTestResult { Server = servers[0], LatencyMilliseconds = Array.IndexOf(discoveredServers, servers[0]) + 71, JitterMilliseconds = 0 };
                 },
             };
 
