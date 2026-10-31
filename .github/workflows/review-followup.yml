@@ -7,8 +7,9 @@ name: Review Followup
 # starts the next round — the label is the request, not the state. The removal step is inside the
 # job, so a label the `if` below rejects is left where it is, for the maintainer to take off.
 # The action restores `.claude/` and CLAUDE.md from main before the agent runs (the PR head is
-# untrusted), so a change to the command file takes effect on merge, never on its own branch —
-# try one out beforehand by running /review-followup locally.
+# untrusted), and a step below does the same for REVIEW.md, so a change to the command file or
+# the review criteria takes effect on merge, never on its own branch — try one out beforehand by
+# running /review-followup locally.
 #
 # WHY THE LABEL AND NOT A PUSH. A follow-up round stays something the maintainer chooses to
 # start, once the author has actually responded; re-reviewing on every push is what
@@ -110,6 +111,19 @@ jobs:
           elif [ "$prior" -ge 3 ]; then
             echo "::notice::PR #$PR_NUMBER has had $prior review rounds — the cap is reached, so nothing is posted. Three rounds means the disagreement is about direction, not defects: talk to the author."
             echo "skipped=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      # Main's copy of the review criteria, as in review-pr.yml: the action restores no file at the
+      # repository root, and the PR head's copy is the one thing a round must not judge by. Where
+      # main has none the PR's is removed, so the round runs on the command's generic rules.
+      - name: Read the review criteria from main
+        if: steps.guard.outputs.skipped != 'true'
+        run: |
+          set -euo pipefail
+          if git cat-file -e origin/main:REVIEW.md 2>/dev/null; then
+            git show origin/main:REVIEW.md > REVIEW.md
+          else
+            rm -f REVIEW.md
           fi
 
       # The model and effort come from the stage table, scripts/stage-models.tsv. A stage the

@@ -8,9 +8,11 @@ name: Review PR
 # Both workflows record what their round cost in a footer at the end of the PR description, and
 # share one concurrency group so they never rewrite it at the same time.
 # The action restores `.claude/` and CLAUDE.md from main before the agent runs (the PR head is
-# untrusted), so a change to the command file takes effect on merge, never on its own branch —
-# try one out beforehand by running /review-pr locally.
-# Rationale: docs/change-intent-records/2026-10-20-pr-review-runs-on-pr-open.md
+# untrusted), and a step below does the same for REVIEW.md, so a change to the command file or
+# the review criteria takes effect on merge, never on its own branch — try one out beforehand by
+# running /review-pr locally.
+# Rationale: docs/change-intent-records/2026-10-20-pr-review-runs-on-pr-open.md and
+# docs/change-intent-records/2026-10-31-review-criteria-live-in-review-md.md
 
 on:
   pull_request:
@@ -80,6 +82,21 @@ jobs:
           git show origin/main:scripts/stage-models.tsv > "$RUNNER_TEMP/stage-models.tsv"
           args=$(bash "$RUNNER_TEMP/stage-flags.sh" review-pr)
           echo "args=$args" >> "$GITHUB_OUTPUT"
+
+      # The action restores `.claude/` and CLAUDE.md from main, but no file at the repository root,
+      # so the review criteria the command reads are put in place here from main's copy: the PR
+      # head's copy is the one thing a pull request must not be reviewed against. Where main has
+      # no REVIEW.md the PR's is removed, so the review runs on the command's generic rules rather
+      # than on criteria the pull request wrote. The file is text the agent reads, as the command
+      # file is; nothing from it is executed.
+      - name: Read the review criteria from main
+        run: |
+          set -euo pipefail
+          if git cat-file -e origin/main:REVIEW.md 2>/dev/null; then
+            git show origin/main:REVIEW.md > REVIEW.md
+          else
+            rm -f REVIEW.md
+          fi
 
       # Counted before the action runs, so the check afterwards can require a *new* review rather
       # than merely one at the head commit. On `opened` this is always 0; on a re-dispatch of a
