@@ -22,7 +22,7 @@ CHAIN="$HERE/chain.sh"
 SB="$(mktemp -d)"
 trap 'rm -rf "$SB"' EXIT
 # A developer's ambient overrides would otherwise reach every case; the stall case sets its own.
-unset CHAIN_MODEL CHAIN_STAGE_TIMEOUT
+unset CHAIN_MODEL CHAIN_STAGE_TIMEOUT CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS
 
 # Anything on the chain's stdin that reaches the stub proves the stage's own `</dev/null` is
 # gone — the omission chain.sh records as making an unattended call stall on the terminal.
@@ -38,10 +38,12 @@ printf 'this must never reach a stage\n' > "$SB/stdin-data"
 # commits and working-tree state a real stage would have left behind. An rc-<n> file is the exit
 # code call n ends with *after* writing its reply, which is how claude ends a turn an API error
 # stopped: the reply is there and names the error, and the process still exits non-zero.
+# Each call also records the background-wait ceiling it was started with, to bg-wait.
 mkdir -p "$SB/bin"
 cat > "$SB/bin/claude" <<'STUB'
 #!/usr/bin/env bash
 { for a in "$@"; do printf '%s|' "$a"; done; printf '\n'; } >> "$STUB_DIR/log"
+printf '%s\n' "${CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS-unset}" >> "$STUB_DIR/bg-wait"
 if IFS= read -r -t 0.1 _ <&0 2>/dev/null; then printf 'leaked\n' >> "$STUB_DIR/stdin-leak"; fi
 n=$(grep -c '' "$STUB_DIR/log")
 if [ -f "$STUB_DIR/act-$n" ]; then bash "$STUB_DIR/act-$n" || exit 1; fi
@@ -142,6 +144,7 @@ ok "every stage starts a fresh session" '! grep -qF -- "--resume|" "$STUB_DIR/lo
 ok "every stage uses the one chosen model" '[ "$(grep -cF -- "--model|test-model|" "$STUB_DIR/log" 2>/dev/null)" = 3 ]'
 ok "and still its own effort from the stage table" 'flags_are 1 test-model "$(table_effort build)" && flags_are 2 test-model "$(table_effort verify)" && flags_are 3 test-model "$(table_effort raise-pr)"'
 ok "no stage is asked to prompt for permission" '[ "$(grep -cF -- "--dangerously-skip-permissions|" "$STUB_DIR/log" 2>/dev/null)" = 3 ]'
+ok "every stage waits for its own background agents however long they run" '[ "$(grep -cx 0 "$STUB_DIR/bg-wait" 2>/dev/null)" = 3 ]'
 ok "no stage can read the terminal" '[ ! -f "$STUB_DIR/stdin-leak" ]'
 ok "the closing line names the pull request that was raised" 'last_line | grep -qF "chain: done — https://github.com/o/r/pull/9"'
 new_case
