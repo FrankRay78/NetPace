@@ -6,10 +6,10 @@ name: Review Followup
 # prompt below. The label is removed when the run ends, successful or not, so adding it again
 # starts the next round — the label is the request, not the state. The removal step is inside the
 # job, so a label the `if` below rejects is left where it is, for the maintainer to take off.
-# The action restores `.claude/` and CLAUDE.md from main before the agent runs (the PR head is
-# untrusted), and a step below does the same for REVIEW.md, so a change to the command file or
-# the review criteria takes effect on merge, never on its own branch — try one out beforehand by
-# running /review-followup locally.
+# The action restores `.claude/` and CLAUDE.md from the PR's base branch before the agent runs
+# (the PR head is untrusted), and a step below puts main's REVIEW.md in place, so a change to the
+# command file or the review criteria takes effect on merge, never on its own branch — try one out
+# beforehand by running /review-followup locally.
 #
 # WHY THE LABEL AND NOT A PUSH. A follow-up round stays something the maintainer chooses to
 # start, once the author has actually responded; re-reviewing on every push is what
@@ -113,16 +113,20 @@ jobs:
             echo "skipped=true" >> "$GITHUB_OUTPUT"
           fi
 
-      # Main's copy of the review criteria, as in review-pr.yml: the action restores no file at the
-      # repository root, and the PR head's copy is the one thing a round must not judge by. Where
-      # main has none the PR's is removed, so the round runs on the command's generic rules.
-      - name: Read the review criteria from main
+      # Main's copy of the review criteria, as in review-pr.yml, whose step says why the ref is
+      # checked first: the action restores only `.claude/` and CLAUDE.md, and the PR head's copy is
+      # the one a round must not judge by. Where main has none the PR's is removed, so the round
+      # runs on the command's generic rules.
+      - name: Put main's review criteria in place
         if: steps.guard.outputs.skipped != 'true'
         run: |
           set -euo pipefail
-          if git cat-file -e origin/main:REVIEW.md 2>/dev/null; then
+          git rev-parse --verify -q 'origin/main^{commit}' > /dev/null \
+            || { echo "::error::origin/main is not in this checkout, so the review criteria cannot be read from main."; exit 1; }
+          if git cat-file -e origin/main:REVIEW.md; then
             git show origin/main:REVIEW.md > REVIEW.md
           else
+            echo "::warning::main has no REVIEW.md — this round runs on the command's generic rules only."
             rm -f REVIEW.md
           fi
 

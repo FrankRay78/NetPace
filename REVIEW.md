@@ -12,7 +12,7 @@ NetPace's additions to the review method in [`/review-pr`](.claude/commands/revi
 
 ## What not to flag
 
-- Anything a required CI check already gates here — build, tests, traceability (`scripts/traceability-check.sh`), issue link — unless the check itself is what the PR breaks.
+- Anything a CI check already gates here — build and tests, traceability (`scripts/traceability-check.sh`), issue link — unless the check itself is what the PR breaks. Build and traceability are required checks in the `Main CI/CD` ruleset; `issue-link` runs on every pull request but does not block the merge.
 - Breaking changes as such. While NetPace is pre-1.0 they need no approval or deprecation period (Constitution VII, *Pre-1.0 stance*). Flag only a PR that does not state what breaks and for whom.
 
 ## Risk tier
@@ -29,11 +29,11 @@ NetPace's additions to the review method in [`/review-pr`](.claude/commands/revi
 
 ## Contracts
 
-What a user, a script or a `NetPace.Core` consumer touches directly: a CLI option, an exit code, a CSV or JSON field, a public `NetPace.Core` member. A changed CLI option must update `README.md`'s `--help` snapshot and `USER_GUIDE.md`. NetPace targets AOT-trimmed builds, so reflection-heavy or non-trim-safe code is a contracts finding.
+What a user, a script or a `NetPace.Core` consumer touches directly: a CLI option, an exit code, a CSV or JSON field, a public `NetPace.Core` member. A changed CLI option must update `README.md`, including its `--help` snapshot, and `USER_GUIDE.md`. Also flag reflection-heavy or non-trim-safe code, since NetPace targets AOT-trimmed builds: a finding, not a contract change.
 
 ## Context to load
 
-`CLAUDE.md` and `docs/constitution.md` always; `docs/conventions/csharp-style.md` where the PR touches `.cs` files; `docs/conventions/testing.md` where it touches tests. The constitution is the source of the MUSTs *Severity* counts as Major.
+`CLAUDE.md` and `docs/constitution.md` always, and the convention docs `CLAUDE.md` points to for the layers the PR touches: `docs/conventions/csharp-style.md` for `.cs` files, `docs/conventions/testing.md` for tests.
 
 ## Change map
 
@@ -41,4 +41,4 @@ The areas to group changed files by: the `NetPace.Core` library, the `NetPace.Co
 
 ## Tests
 
-A test that asserts mechanism rather than outcome breaches Constitution IX. Console output belongs in a Verify snapshot, never in hand-rolled string matching (`CLAUDE.md`, *Testing*). No test may be skipped (Constitution X).
+A test that asserts mechanism rather than outcome breaches Constitution IX. Console output belongs in a Verify snapshot, never in hand-rolled string matching (Constitution, *Testing Standards*). No test may be skipped (Constitution X).

@@ -23,7 +23,7 @@ Flags, anywhere in the arguments:
 
 ## Repository criteria
 
-The method in this file is generic. What is particular to the repository under review — which rules count as mandatory, which areas are high-risk, which paths always need a person, what its users and consumers rely on, which documents to load — lives in `REVIEW.md` at the root of the repository this command runs in, written as additions to the method. Step 3 reads it; every part of the method below then applies its own rule together with the section of `REVIEW.md` under the matching heading, and where the two conflict, `REVIEW.md` wins. The headings understood are the method's own parts:
+The method in this file is generic. What is particular to the repository under review — which rules count as mandatory, which areas are high-risk, which paths always need a person, what its users and consumers rely on, which documents to load — lives in `REVIEW.md` at the root of the repository this command runs in, written as additions to the method. Step 3 reads it; every part of the method then applies its own rule together with the section of `REVIEW.md` under the matching heading, and where the two conflict, `REVIEW.md` wins. The headings understood are the method's own parts:
 
 | Heading | Extends |
 |---|---|
@@ -39,7 +39,7 @@ The method in this file is generic. What is particular to the repository under r
 
 A section under any other heading is read too, and applied where its text says. Where the file is missing, the review runs on the method alone; where a heading is missing, that part of the method runs on its generic rule alone. Either way the review completes.
 
-`REVIEW.md` is trusted the way this command file is: read from the repository the command runs in, never from the pull request's checkout or worktree, and in CI the workflow puts `main`'s copy in place before the agent starts — removing the pull request's copy where `main` has none — so a pull request cannot weaken the rules it is reviewed against. A change to `REVIEW.md` is itself never eligible for merge with no human review (*Always a person*).
+`REVIEW.md` is trusted the way this command file is: read from the root of the repository this command runs in, never from a worktree made for the review. In CI that root is the checkout, where the workflow has put `main`'s copy before the agent starts — removing the pull request's copy where `main` has none — so a pull request cannot weaken the rules it is reviewed against. A run by hand reads its own checkout's copy, trusted as its command file is. A change to `REVIEW.md` is itself never eligible for merge with no human review (*Always a person*).
 
 ## Review contract
 
@@ -102,7 +102,7 @@ Every subagent this command starts — triage, specialists, verifiers — follow
 
 2. **Check out the code.** A deep review reads the diff against the whole repository, not in isolation. If the current checkout's `HEAD` is already the PR's `headRefOid` (as it is in CI), review it in place. Otherwise never disturb the invoker's working tree: `git fetch origin pull/<N>/head`, then `git worktree add --detach .claude/scratch/review-pr-<N> FETCH_HEAD`, and review there — both run from the repository root, so neither needs a `cd`. Remove the worktree (`git worktree remove --force .claude/scratch/review-pr-<N>`) when the review completes or aborts.
 
-3. **Load the context.** Read `REVIEW.md` from the root of the repository this command runs in (*Repository criteria*), not from the checkout. Then, in the checkout, read `CLAUDE.md` and the documents `REVIEW.md` → *Context to load* names for the layers the PR touches. Read the issue the PR body closes or references (`Closes #<N>`, `Refs #<N>`) for intent.
+3. **Load the context.** Read `REVIEW.md` from the root of the repository this command runs in (*Repository criteria*) — in CI the checkout root, holding `main`'s copy; for a worktree review, the invoker's repository, not the worktree. Where there is none, say so in the summary's reasons for the tier and verdict, so a review run on the method alone reads as one. Then, in the checkout, read `CLAUDE.md` and the documents `REVIEW.md` → *Context to load* names for the layers the PR touches. Read the issue the PR body closes or references (`Closes #<N>`, `Refs #<N>`) for intent.
 
 ### Phase 1 — Triage map
 

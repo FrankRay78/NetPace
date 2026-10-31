@@ -82,7 +82,7 @@ dotnet test src --collect:"XPlat Code Coverage"
 
 Load these on demand for the matching topic:
 
-- **Review criteria** — `REVIEW.md` — what the PR review applies that is particular to NetPace: severities, high-risk areas, always-a-person paths, contracts. Edit it, not `.claude/commands/review-pr.md`, to change how NetPace is reviewed.
+- **Review criteria** — `REVIEW.md` — what the PR review applies that is particular to NetPace: severities, high-risk areas, always-a-person paths, contracts. Edit it, not `.claude/commands/review-pr.md`, to change what the review holds NetPace to.
 - **C# Style** — `docs/conventions/csharp-style.md` — read before writing or reviewing any .cs file.
 - **Testing** — `docs/conventions/testing.md` — read before writing tests: outcome-not-mechanism assertions, what makes a good scenario, the integrity failure modes that pass while verifying nothing.
 - **Change Intent Records** — `docs/conventions/change-intent-records.md` — read when deciding whether a change warrants documenting intent.
