@@ -141,15 +141,22 @@ keep_attempts() {
 }
 
 # update_gaffer — the plugin clone at its origin's latest main, by fast-forward only. Unlike
-# reset_clone this touches nothing it did not fetch: a clone on another branch, or one whose main
-# has diverged, stops the firing and says so, because a headless run must use the gaffer main
+# reset_clone this touches nothing it did not fetch: a clone on another branch, with local commits,
+# or with uncommitted or untracked files, stops the firing and says so, because a headless run must use the gaffer main
 # holds now and a clone that cannot be brought there is a fault to look at, not one to force past.
 update_gaffer() {
-  local branch
+  local branch dirty
   git -C "$GAFFER" fetch -q origin main || die "could not fetch gaffer's origin in $GAFFER; nothing was run."
   branch=$(git -C "$GAFFER" rev-parse --abbrev-ref HEAD 2>/dev/null) || die "could not read the branch of $GAFFER; nothing was run."
   [ "$branch" = main ] || die "refused — $GAFFER has $branch checked out, not main; nothing was run."
-  git -C "$GAFFER" merge -q --ff-only FETCH_HEAD || die "could not fast-forward $GAFFER to gaffer's main — it has local commits or edits; nothing was run."
+  # Checked before the merge, because a fast-forward succeeds over all three: untracked files
+  # (a new command file --plugin-dir would load), uncommitted edits the incoming commits do not
+  # touch, and local commits when origin's main has not moved ("Already up to date").
+  dirty=$(git -C "$GAFFER" status --porcelain) || die "could not read the state of $GAFFER; nothing was run."
+  [ -z "$dirty" ] || die "refused — $GAFFER has uncommitted or untracked files; nothing was run."
+  git -C "$GAFFER" merge-base --is-ancestor HEAD FETCH_HEAD \
+    || die "refused — $GAFFER has local commits gaffer's main does not; nothing was run."
+  git -C "$GAFFER" merge -q --ff-only FETCH_HEAD || die "could not fast-forward $GAFFER to gaffer's main; nothing was run."
 }
 
 # reset_clone — the latest main: no local change, no untracked or ignored file, and no local

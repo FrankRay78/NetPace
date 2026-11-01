@@ -14,4 +14,4 @@ NetPace's harness commands come from the [gaffer](https://github.com/FrankRay78/
 
 ## Constraints the code will not make obvious
 
-A verdict-schema bump lands in `chain.sh` before the writers change in gaffer, because the chain reads whatever `main` holds the next firing. The `extraKnownMarketplaces` entry makes Claude Code fetch gaffer when the project is opened and trusted, so a fresh clone needs no install step; CI loads it again by clone, and loading the same plugin twice is tolerated.
+A verdict-schema bump lands in `chain.sh` before the writers change in gaffer, because the chain reads whatever `main` holds the next firing. The `extraKnownMarketplaces` entry makes Claude Code fetch gaffer's marketplace when the project is opened and trusted, and `enabledPlugins` enables it, but neither installs it: each machine runs `claude plugin install gaffer@gaffer-claude` once, after which every clone offers the commands; CI loads it again by clone, and loading the same plugin twice is tolerated.

@@ -67,6 +67,11 @@ jobs:
           set -euo pipefail
           git clone -q --depth 1 --branch main https://github.com/FrankRay78/gaffer-claude.git "$RUNNER_TEMP/gaffer"
           echo "gaffer $(git -C "$RUNNER_TEMP/gaffer" rev-parse HEAD)"
+          # Read-only before the agent starts: --add-dir makes the clone a working directory the
+          # agent's Write reaches, and the plugin's hook runs from it on every Bash call, so a
+          # writable clone would let text the agent was handed get a script run with this job's
+          # token. The agent's allowlist has no way to lift the mode back.
+          chmod -R a-w "$RUNNER_TEMP/gaffer"
           echo "dir=$RUNNER_TEMP/gaffer" >> "$GITHUB_OUTPUT"
 
       # The model and effort come from the stage table, scripts/stage-models.tsv. A stage the

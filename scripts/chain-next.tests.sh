@@ -532,7 +532,7 @@ echo local-edit > "$GAFFER/CHANGE.md"; commit_all "$GAFFER" "a local commit nobo
 advance_gaffer "plugin v2"
 local_head="$(git -C "$GAFFER" rev-parse HEAD)"
 fire
-ok "a plugin clone that cannot be fast-forwarded stops the firing" '[ "$RC" != 0 ] && grep -qF "fast-forward" <<<"$OUTPUT" && [ -z "$(chain_calls)" ]'
+ok "a plugin clone whose main has diverged stops the firing" '[ "$RC" != 0 ] && grep -qF "local commits" <<<"$OUTPUT" && [ -z "$(chain_calls)" ]'
 ok "and loses nothing: the local commit is still its head" '[ "$(git -C "$GAFFER" rev-parse HEAD)" = "$local_head" ]'
 ok "and the issue is not parked" '[ "$(gh_writes)" = 0 ] && [ "$(labels_of 5)" = ready ]'
 new_case
@@ -540,6 +540,25 @@ issues '[{"number":5,"state":"OPEN","labels":["ready"]}]'
 git -C "$GAFFER" checkout -q -b experiment
 fire
 ok "a plugin clone on another branch stops the firing, naming the branch" '[ "$RC" != 0 ] && grep -qF experiment <<<"$OUTPUT" && [ -z "$(chain_calls)" ] && [ "$(gh_writes)" = 0 ]'
+new_case
+issues '[{"number":5,"state":"OPEN","labels":["ready"]}]'
+echo local-commit > "$GAFFER/CHANGE.md"; commit_all "$GAFFER" "a local commit, origin unmoved"
+local_head="$(git -C "$GAFFER" rev-parse HEAD)"
+fire
+ok "a plugin clone with local commits stops the firing even when origin has not moved" '[ "$RC" != 0 ] && grep -qF "local commits" <<<"$OUTPUT" && [ -z "$(chain_calls)" ] && [ "$(gh_writes)" = 0 ]'
+ok "and its local commit is still its head" '[ "$(git -C "$GAFFER" rev-parse HEAD)" = "$local_head" ]'
+new_case
+issues '[{"number":5,"state":"OPEN","labels":["ready"]}]'
+echo "an edit" >> "$GAFFER/.claude-plugin/plugin.json"
+advance_gaffer "plugin v2"
+fire
+ok "a plugin clone with an uncommitted edit the update would not touch stops the firing" '[ "$RC" != 0 ] && grep -qF "uncommitted or untracked" <<<"$OUTPUT" && [ -z "$(chain_calls)" ] && [ "$(gh_writes)" = 0 ]'
+ok "and the edit is kept" 'grep -qF "an edit" "$GAFFER/.claude-plugin/plugin.json"'
+new_case
+issues '[{"number":5,"state":"OPEN","labels":["ready"]}]'
+mkdir -p "$GAFFER/commands"; echo "# planted" > "$GAFFER/commands/planted.md"
+fire
+ok "a plugin clone with an untracked file stops the firing" '[ "$RC" != 0 ] && grep -qF "uncommitted or untracked" <<<"$OUTPUT" && [ -z "$(chain_calls)" ] && [ "$(gh_writes)" = 0 ]'
 echo "A missing plugin clone is a machine fault, not the issue's:"
 new_case
 issues '[{"number":5,"state":"OPEN","labels":["ready"]}]'
