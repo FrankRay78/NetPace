@@ -1,22 +1,24 @@
-# The chain runner: one firing of scripts/chain-next.sh. Started by netpace-chain-next.timer.
+# The chain runner: one firing of gaffer's chain/chain-next.sh against NetPace's settings file.
+# Started by netpace-chain-next.timer.
 #
-# Copy to ~/.config/systemd/user/ and edit the four machine-specific lines below
-# (CHAIN_NEXT_CLONE, CHAIN_NEXT_GAFFER, PATH and the ExecStart path) to match the build machine:
-# user units start with a minimal environment, so PATH must name where claude, dotnet, gh, jq,
-# git, flock and timeout live.
+# Copy to ~/.config/systemd/user/ and edit the machine-specific lines below (the two clone paths
+# in ExecStartPre and ExecStart, and PATH) to match the build machine: user units start with a
+# minimal environment, so PATH must name where claude, dotnet, gh, jq, git, flock and timeout live.
 
 [Unit]
 Description=NetPace chain runner: build the next ready issue to a pull request
 
 [Service]
 Type=oneshot
-Environment=CHAIN_NEXT_CLONE=%h/Repos/NetPace-runner
-# The runner's clone of the gaffer plugin, fast-forwarded to gaffer's main before each run; the
-# chain loads its stages from it.
-Environment=CHAIN_NEXT_GAFFER=%h/Repos/gaffer-runner
 Environment=PATH=%h/.local/bin:%h/.dotnet:%h/.dotnet/tools:/usr/local/bin:/usr/bin:/bin
 Environment=DOTNET_CLI_TELEMETRY_OPTOUT=1
-# The script runs from the clone it resets; it is written to survive that (see its header).
-ExecStart=/bin/bash %h/Repos/NetPace-runner/scripts/chain-next.sh
-# A chain run takes the better part of an hour, and chain.sh bounds each stage itself.
+# The runner's clone of gaffer, brought to gaffer's main before each firing. The runner itself
+# never updates it, and refuses to run from it when it is not plainly main (another branch, local
+# edits or commits), so a failure here stops the firing before anything is selected.
+ExecStartPre=/usr/bin/git -C %h/Repos/gaffer-runner pull -q --ff-only
+# gaffer's runner, handed NetPace's settings from the runner's clone of this repository: the clone
+# to reset, the writers whose issues it may build, each stage's model and effort, and the
+# permissions opt-in (.gaffer/chain.json).
+ExecStart=/bin/bash %h/Repos/gaffer-runner/chain/chain-next.sh %h/Repos/NetPace-runner/.gaffer/chain.json
+# A chain run takes the better part of an hour, and the chain bounds each stage itself.
 TimeoutStartSec=infinity

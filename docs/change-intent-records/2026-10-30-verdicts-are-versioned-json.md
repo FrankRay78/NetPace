@@ -2,7 +2,7 @@
 
 **Intent:** Make the verdict that `/build`, `/verify` and `/raise-pr` end on an explicit, versioned contract stated once, so it can cross a repository boundary when the commands become a plugin, and so fields can be added without breaking what reads it. Refs #476.
 
-**Behaviour:** gaffer's [`docs/verdict-schema.md`](https://github.com/FrankRay78/gaffer-claude/blob/main/docs/verdict-schema.md), where it moved with the commands; read by [`scripts/chain.sh`](../../scripts/chain.sh).
+**Behaviour:** gaffer's [`docs/verdict-schema.md`](https://github.com/FrankRay78/gaffer-claude/blob/main/docs/verdict-schema.md), where it moved with the commands; read by gaffer's [`chain/chain.sh`](https://github.com/FrankRay78/gaffer-claude/blob/main/chain/chain.sh), which moved there too.
 
 **Constraints:** Position stays the verdict's identity ([2026-10-09](2026-10-09-verdict-read-by-position.md) is not overturned): only the end of the report is read, and the old text verdict is not accepted alongside the new one.
 

@@ -136,7 +136,7 @@ The explicit solution argument is **required**: `dotnet format` only looks in th
 
 Follows the generic *build stage*. NetPace's specifics:
 
-- **Branch:** `feature/<N>-<short-slug>`, cut from `origin/main`. `/gaffer:raise-pr`, `/gaffer:verify`, `scripts/traceability-check.sh` and `scripts/chain-next.sh` all read the issue number from this pattern.
+- **Branch:** `feature/<N>-<short-slug>`, cut from `origin/main`. `/gaffer:raise-pr`, `/gaffer:verify`, `scripts/traceability-check.sh` and gaffer's chain runner all read the issue number from this pattern.
 - **Commits:** `Refs #<N>: …` in the imperative mood (`CONVENTIONS.md` → *Commit messages*). The failing tests are committed with the implementation that turns them green, never on their own.
 - **Suite:** as in *The gates, concretely*.
 - **Docs it must update** (`CONVENTIONS.md` → *Documentation*): `///` XML docs on any new or changed public `NetPace.Core` API; the README.md `--help` snapshot and USER_GUIDE.md for a changed CLI option; `docs/RELEASING.md` for a release-pipeline change.
@@ -171,110 +171,7 @@ The mechanism is in the generic *Permissions and unattended runs*. NetPace's rul
 
 ## Chain
 
-The generic *Running the stages end to end* and *A scheduled runner* say what a chain and a runner must do; the plugin ships neither, so both are NetPace's. This section is the runbook for its two scripts: how each is invoked, configured, operated and tested.
-
-Why `scripts/chain.sh` opens the PR without a pause: generic *Running the stages end to end*. Why it no longer studies: [CIR](change-intent-records/2026-10-09-study-removed.md).
-
-### The chain script
-
-[`scripts/chain.sh`](../scripts/chain.sh) runs the three stages for one issue.
-
-- **Invocation.** `scripts/chain.sh <issue>` (bare or `#`-prefixed). `scripts/chain.sh --dry-run <issue>` lists the three stages — `/gaffer:build`, `/gaffer:verify` and `/gaffer:raise-pr` — the command each would send and the plugin clone it would load, and runs nothing — no git command, no model.
-- **Prerequisites.** `git`, `claude`, `gh`, `jq` and `timeout` on PATH; `claude` and `gh` signed in; a clean checkout of `main`; a clone of the [gaffer](https://github.com/FrankRay78/gaffer-claude) plugin at `CHAIN_GAFFER` (default `~/Repos/gaffer-runner`), which the chain loads every stage from with `--plugin-dir` so a headless run never depends on the copy installed on the machine. The chain checks the five tools, that an issue was named, the clean tree, `main`, that `CHAIN_STAGE_TIMEOUT`, if set to a value, is a whole number **above zero** — zero reaches `timeout` as *no limit*, switching off the stage's only stall detector — that the plugin clone exists, and that the stage table answers all three stages, refusing with exit code 78 for either of the last two, which the runner does not park an issue for; `/gaffer:build` checks the fetch, unpushed commits and the issue.
-- **Configuration.** Each stage takes its model and reasoning effort from the stage table, [`scripts/stage-models.tsv`](../scripts/stage-models.tsv), the one place every unattended runner — this chain and the Claude workflows — reads them from; `CHAIN_MODEL` overrides every stage's model, and the effort stays the table's. `CHAIN_GAFFER` names the plugin clone; the chain reads it and never updates it — the runner does, before each firing. Per-stage time limits are build 2h, verify 2h, raise-pr 30m; `CHAIN_STAGE_TIMEOUT` (seconds) overrides all three, for tuning from real runs, and is refused at zero. Verify's 2h is sized from a measured run: on a measured branch of about 2,400 added lines, the review and its fixes took about 40 minutes from start to commit. The limit is the stage's only stall detector, so it is left at roughly three times that and no more.
-- **When a stage fails.** The closing message names the stage, its position (`[2/3]`) and the reason: the stage's own `reason` from its failure verdict, `the stage reported a failure with no reason`, `no readable verdict — <what was wrong with the end of the report>`, `the verdict has schema version <v>, which this chain does not read`, `claude reported an error`, `reply was not JSON`, `reply was not a JSON object`, `claude exited with <code>`, `the stage could not be launched (exit <code>)`, `killed (exit 137) after <n>s, before its <n>s time limit`, or `stalled — exceeded <n>s`. Its second line gives `claude --resume <id>` for the failed stage, if the reply carried an id; otherwise it says to reopen the most recent headless session for the repo. Diagnose there, then run the remaining stages by hand, in order.
-- **When the usage limit stops a stage.** A stage the account's own Claude usage limit cut off is not a fault in the issue, and the chain reports it as its own thing: the reason is `the Claude usage limit was reached — <the reply's own message>`, which carries the reset time in the reader's timezone (`You've hit your session limit · resets 3:20pm (Europe/Berlin)`) quoted verbatim and unconverted, or `the Claude usage limit was reached; the reply gave no reset time` when the reply carried no message. The chain exits **75** rather than 1, so [`chain-next.sh`](../scripts/chain-next.sh) can tell that stop from every other failure without reading the prose. It is recognised from the reply's typed `api_error` field alone — claude sets that to `usage_limit_reached` only when the account's own limit refused the request, and no other refusal sharing its `rate_limit` error sets it. Never from the report text, for the same reason the verdict is read by position: a report that quotes a limit message it merely read about is not a stage the limit stopped. The check runs before the exit code is dispatched on, because the limit leaves an ordinary exit 1 behind: before this, a limit stop was parked saying only `claude exited with 1`, and its cause had to be dug out of the session transcript by hand.
-- **What the stopped run left behind.** Immediately *before* those two lines the chain prints the commits the current branch holds over `main` — or that it holds none — and whether the working tree has uncommitted changes. That is the state to read before continuing by hand: a stage killed at its time limit leaves no report of its own, and a stage stopped part-way can leave commits or uncommitted edits behind. The lines are `git log`/`git status` output and change nothing. They sit before those two lines so the closing lines stay the last thing in the output, where [`chain.tests.sh`](../scripts/chain.tests.sh) and a reader both look for them; the parked-issue comment carries the stage and reason only, not this state.
-- **Reading the verdict.** The verdict is the JSON object [gaffer's `docs/verdict-schema.md`](https://github.com/FrankRay78/gaffer-claude/blob/main/docs/verdict-schema.md) describes, read from **what ends the report** — the last non-blank line, or the body of a code fence that closes the report — and nothing else in the report is read. Whatever a report quotes above that — RED evidence in a fence, a failure verdict a reviewer raised, a success verdict named mid-sentence — changes nothing, in either direction. All three prompts therefore end on their verdict, bare on one line, and say that a fence around it is tolerated and a sentence after it is not.
-
-  Around the object the chain strips **one** leading heading, blockquote, bullet or numbered-item marker — one, not a stack — a run of `*`, `_` or backticks that *wraps* the line, trailing whitespace, a trailing carriage return, and an indent of **up to three spaces** — four spaces, or a tab, is markdown's indented code block, and stripping those indiscriminately would let a quotation indent itself into position, the one way a quotation could otherwise fake being last; `jq` forgives leading whitespace, so the bare line is also required to open with the object's own brace. A fenced verdict is read from the whole fence body, so a fence holding more than the one object is unreadable rather than read for its last line.
-
-  What is left must be one JSON object, and the schema version is read before anything else: a version this chain does not know stops the run naming it, without reading a reason or a payload out of a shape it does not understand. Then the outcome — `failed` with its reason, or exactly this stage's success outcome with its payload — and fields the chain does not know are ignored. So `Verdict: {…}`, `{…} (2 Important deferred)`, a bare pull-request URL, an outcome of `unverified` or of another stage's success, a success verdict carrying a `reason`, a `branch` that is empty or holds whitespace, a `pr` that is not a bare pull request URL, and the retired text verdicts are all **not** verdicts. Anything the chain cannot read stops the run as `no readable verdict — <what was wrong>`, reported distinctly from a stage that failed with a reason, and never retried: a false stop costs the rest of one run, where a false success opens a pull request off unverified work.
-
-  Why position, and the alternatives weighed and rejected — a stricter prose scan, and a channel outside the prose — are in [CIR 2026-10-09](change-intent-records/2026-10-09-verdict-read-by-position.md); why the verdict became a versioned object, and why a fence that closes the report now counts, in [CIR 2026-10-30](change-intent-records/2026-10-30-verdicts-are-versioned-json.md).
-- **Tests.** [`scripts/chain.tests.sh`](../scripts/chain.tests.sh) covers order, the plugin clone each stage is loaded from and the refusal without one, malformed and errored replies (including one that is valid JSON but not an object), failure, stall, a stage killed from outside before its limit, refusals, dry run and a stage that rewrites the chain script mid-run, against a stub `claude` in throwaway repos, leaving your checkout untouched. Verdict reading has a case per shape: quoted verdicts in fences, lists, tables, quotations and sentences above a healthy verdict or above closing prose; each decoration a verdict has been seen wrapped in, fences included; an unknown schema version, a version written as a string, and fields the chain does not know on a success and on a failure; the retired text verdicts; the hedged shapes that used to pass a failed `/gaffer:verify` through to a pull request; a missing, empty or malformed payload for each outcome; and the reason surviving a CRLF report, outer whitespace, quotes and backslashes, and a backtick-wrapped line. A usage-limit stop has cases of its own: the exit code and the quoted reset wording, a limit reply carrying no message, a healthy report and a failing one that each merely quote the limit wording, and a stage that exits non-zero with no limit in its reply. [`scripts/stage-flags.tests.sh`](../scripts/stage-flags.tests.sh) covers the stage table's lookup and checks that every chain stage and Claude workflow reads its model from the table. Run both after any edit to the chain or the table.
-
-Manual checks, with a real model:
-
-- **Reopening a failed stage's session.** From a clean `main`, force a stall with `CHAIN_STAGE_TIMEOUT=60 scripts/chain.sh <issue>`. Expect `chain: FAILED at [1/3] build — stalled — exceeded 60s`, exit 1, no later stage, and a second line saying no session id was captured (a stalled stage never reports one). `claude --resume`, picking the most recent headless session, should open the stalled `/gaffer:build`. Remove any branch it left.
-- **A full run** against a small ready issue: `scripts/chain.sh <issue>` from a clean `main`. Expect three `ok` lines in order, `chain: done — <pull request URL>`, exit 0, no prompt at any point, and a clean working tree.
-
-### The chain runner
-
-[`scripts/chain-next.sh`](../scripts/chain-next.sh) runs on the build VPS, fired every 15 minutes by a systemd user timer, with lingering already enabled for the build user. The shipped unit files in [`scripts/systemd/`](../scripts/systemd/) work there unedited. `ready` is the only opt-in, so confirming an issue queues it, unless someone other than the maintainer or the review bot raised it or has commented on it. There is no separate queue label. It supersedes the dispatcher proposed in #266.
-
-How NetPace meets the generic runner rules:
-
-- **One run at a time.** systemd never starts an active service twice, and the runner also holds a `flock` lock, so running the script directly cannot overlap the timer's run either.
-- **A clean start.** The clone is forced onto `origin/main` and cleaned with `git clean -fdx`, which takes `bin/`, `obj/` and `.claude/scratch/` with it. The runner refuses any directory not marked `chain-next.dedicated`. Before that, the runner's clone of the gaffer plugin is fast-forwarded to gaffer's `main` and its commit logged, so the chain's stages come from the gaffer `main` holds now; that update is never destructive — a plugin clone on another branch, with local commits, or with uncommitted or untracked files stops the firing once the issue is selected but before the runner's clone is reset or the chain starts, and so parks nothing.
-- **Tracker.** GitHub, read through `gh`; "blocking issue" means GitHub's native issue dependencies.
-- **Only issues nobody else has written on.** The repository is public, so anyone can post a comment shaped like a review, which a confirmation would fold into the body. The runner skips, and names, any issue raised by or commented on by an account other than the maintainer and the review bot. A comment counts even after it is deleted, because GitHub records the author of a comment someone else deleted. Contributors still raise issues and comment freely; the maintainer builds those issues by hand.
-- **Report mode.** `scripts/chain-next.sh --dry-run`.
-- **What a parked comment says.** The failed stage and its position, the reason from the chain's closing line, the log path, the kept `attempt/<N>-*` branch, any branch pushed without a pull request, and a closing line saying that removing the `parked` label builds the issue again from scratch. Where the chain exited **75** — its code for a stage the Claude usage limit cut off — that closing line says instead that nothing on the issue needs looking at, and to remove the label once the limit has reset. The runner reads the exit code and not the reason, because the chain already decided the question from the reply's typed error field, where the reason is prose a report could have quoted. The runner's own `#<N> parked` line names the limit the same way, since it carries the same reason.
-
-**Prerequisites** on the build machine: everything `scripts/chain.sh` needs (`git`, `claude`, `gh`, `jq`, `timeout`, `claude` and `gh` signed in non-interactively, and the gaffer clone from the setup below), plus `dotnet`, `flock` (util-linux) and systemd with lingering enabled for the build user (`loginctl enable-linger`), so the timer survives logout and reboot.
-
-**One-time setup:**
-
-1. Clone the repository somewhere used only by the runner, with a full `git clone` rather than a worktree. Mark it as the runner's:
-
-   ```bash
-   git clone https://github.com/FrankRay78/NetPace.git ~/Repos/NetPace-runner
-   git -C ~/Repos/NetPace-runner config chain-next.dedicated true
-   ```
-
-   If the build user has no global `user.name` and `user.email`, set them in this clone with `git -C ~/Repos/NetPace-runner config user.name "<name>"` and the same for `user.email`.
-2. Clone the gaffer plugin beside it, for the runner alone. The runner fast-forwards this clone to gaffer's `main` before each firing and the chain loads every stage from it, so nobody edits it by hand — a local commit stops the firing rather than being lost:
-
-   ```bash
-   git clone https://github.com/FrankRay78/gaffer-claude.git ~/Repos/gaffer-runner
-   ```
-
-3. Create the `parked` label once: `gh label create parked --description "The chain runner stopped on this issue; remove to retry"`.
-4. Check what the first firing would build. This only reads GitHub, so it also confirms `gh` access and that both clones are where the runner expects, and it changes nothing:
-
-   ```bash
-   bash ~/Repos/NetPace-runner/scripts/chain-next.sh --dry-run
-   ```
-
-   Set `CHAIN_NEXT_CLONE` and `CHAIN_NEXT_GAFFER` first if the clones are not at the default paths. The issue it names is built, and a real pull request opened, as soon as the timer is enabled in the next step.
-5. Install the schedule. Copy the unit files:
-
-   ```bash
-   mkdir -p ~/.config/systemd/user
-   cp ~/Repos/NetPace-runner/scripts/systemd/netpace-chain-next.{service,timer} ~/.config/systemd/user/
-   ```
-
-   Check four lines in the copied service: `CHAIN_NEXT_CLONE`, `CHAIN_NEXT_GAFFER`, the `ExecStart` path and `PATH`. User units start with a minimal environment, so `PATH` must name where `claude`, `dotnet`, `gh`, `jq`, `git`, `flock` and `timeout` live. The shipped values suit clones at `~/Repos/NetPace-runner` and `~/Repos/gaffer-runner` with those tools in `~/.local/bin`, `~/.dotnet` or `/usr/bin`. Then start it:
-
-   ```bash
-   systemctl --user daemon-reload
-   systemctl --user enable --now netpace-chain-next.timer
-   ```
-
-**Configuration.** `CHAIN_NEXT_CLONE` is the dedicated clone (default `~/Repos/NetPace-runner`). `CHAIN_NEXT_GAFFER` is the runner's clone of the gaffer plugin (default `~/Repos/gaffer-runner`), handed to the chain as `CHAIN_GAFFER`. `CHAIN_NEXT_STATE_DIR` holds `logs/` and the lock, outside the clone so the clean cannot delete them (default `${XDG_STATE_HOME:-~/.local/state}/netpace-chain`). `CHAIN_MODEL` and `CHAIN_STAGE_TIMEOUT` pass through to the chain.
-
-**Operating it:**
-
-| To | Run |
-|---|---|
-| Start (and on every boot) | `systemctl --user enable --now netpace-chain-next.timer` |
-| Pause (a run in progress finishes) | `systemctl --user stop netpace-chain-next.timer` |
-| Stop a run in progress too (the issue is not parked) | `systemctl --user stop netpace-chain-next.service` |
-| Resume | `systemctl --user start netpace-chain-next.timer` |
-| Fire once now | `systemctl --user start --no-block netpace-chain-next.service` |
-| See status and the next firing | `systemctl --user status netpace-chain-next.service` and `systemctl --user list-timers netpace-chain-next.timer` |
-| Read the runner's own output | `journalctl --user -u netpace-chain-next.service` |
-| Read one run's full chain output | `logs/<N>-<timestamp>.log` in the state directory (see *Configuration*) |
-| Retry a parked issue | Remove its `parked` label; the next firing picks it up |
-| Finish a parked attempt instead of rebuilding it | Retrying starts from scratch and discards the kept `attempt/<N>-<timestamp>` branch, even when only a later stage failed. To keep it, fetch it into a worktree of your own checkout under the branch name the build stage reported (`git fetch ~/Repos/NetPace-runner attempt/<N>-<timestamp>:<branch>`), rebase it onto `main`, and run each stage the chain did not finish as `claude -p "/gaffer:<stage>" --plugin-dir ~/Repos/gaffer-runner` with that stage's model and effort from the stage table and `CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS=0`, as `chain.sh` does. Leave `parked` on until the pull request is open, or the next firing rebuilds the issue alongside |
-
-**Tests.** [`scripts/chain-next.tests.sh`](../scripts/chain-next.tests.sh) covers selection (closed, not-ready, parked, blocked and already-raised issues, and issues someone else raised or commented on), report mode, a clean start after a previous run, the plugin clone brought up to date before a firing (and a clone that cannot be fast-forwarded, is on another branch or is missing, each stopping the firing with nothing parked), a reset that rewrites the runner's own source, parking and un-parking (including a usage-limit stop, whose comment names the limit, its reset wording and the label as the only thing to remove), kept attempt branches (including one whose pushed twin was removed, and one that cannot be set aside), overlapping firings, back-to-back runs, fail-closed queries (each lookup failing on its own, the lookup of who wrote on an issue included), machine faults that park nothing and the dedicated-clone guard. It uses a stub `gh` and a stub `chain.sh` in throwaway repositories, so no model or GitHub call is made. Run it after any edit to the runner.
-
-Manual checks, on the build machine:
-
-- **Report against the real repository.** `scripts/chain-next.sh --dry-run` names the lowest-numbered eligible issue, matching what `gh issue list --label ready` and the issues' blockers, linked pull requests, authors and commenters show, and leaves the clone, labels and comments unchanged.
-- **The installed timer.** After `enable --now`, `systemctl --user list-timers` shows the next firing, and `journalctl --user -u netpace-chain-next.service` shows `chain-next: nothing eligible.` (or a run) after it fires.
+The chain is gaffer's: [`chain/chain.sh`](https://github.com/FrankRay78/gaffer-claude/blob/main/chain/chain.sh) runs the three stages for one issue and [`chain/chain-next.sh`](https://github.com/FrankRay78/gaffer-claude/blob/main/chain/chain-next.sh) picks the next ready issue from a timer, both documented in gaffer's [`docs/chain.md`](https://github.com/FrankRay78/gaffer-claude/blob/main/docs/chain.md) — selection, the reset, parking, the verdict reading, the usage-limit stop and the permissions opt-in. NetPace schedules it: a systemd user timer on the build VPS fires [`scripts/systemd/netpace-chain-next.service`](../scripts/systemd/netpace-chain-next.service) every 15 minutes, which fast-forwards the runner's clone of gaffer at `~/Repos/gaffer-runner` to gaffer's `main` and runs its `chain-next.sh` against [`.gaffer/chain.json`](../.gaffer/chain.json) in the runner's dedicated clone at `~/Repos/NetPace-runner` (a full clone marked `chain-next.dedicated`). That file is NetPace's whole configuration of the chain: the clone, the writers whose issues the runner may build (the maintainer and the review bot — anyone else's issue is built by hand), each stage's model and effort, and `skip_permissions: true`, the opt-in the headless stages need under NetPace's permission rules, which is contained by the dedicated clone on a machine set aside for the runner. The unit's `PATH` names where `claude`, `dotnet`, `gh`, `jq`, `git`, `flock` and `timeout` live, lingering is enabled for the build user, and logs and the lock sit under `~/.local/state/gaffer-chain/NetPace-runner/`. The unit files in [`scripts/systemd/`](../scripts/systemd/) are the setup; gaffer's chain doc has the operating table. Why the chain opens the PR without a pause: gaffer's workflow guide, *Running the chain*; why it no longer studies: [CIR](change-intent-records/2026-10-09-study-removed.md).
 
 ## Token / context tooling
 
