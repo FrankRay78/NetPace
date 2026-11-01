@@ -142,10 +142,6 @@ What `/gaffer:audit-codebase` reads about this repository.
 - **Dead code (lens 5)** — the Roslynator list reports members that a source generator consumes as unused: the `JsonSerializerContext` subclasses in `NetPace.Console` are the known case.
 - **Issue label** — `housekeeping`.
 
-## Diagnose
-
-NetPace's feedback-loop builders for `/gaffer:diagnose` — the test filter, the Verify snapshot loop, MockHttp replay, the local Docker OoklaServer and its endpoints, the repo shape and the gotchas that waste a reproduction attempt — are in [`docs/conventions/diagnose.md`](docs/conventions/diagnose.md). Read it before Phase 1.
-
 ## Hooks, scripts and plugins
 
 What this repository wires in beside the plugin.
