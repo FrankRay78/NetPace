@@ -192,7 +192,7 @@ jobs:
             Post exactly what the command specifies: no CI-specific footer, banner or warning of your own. After the comment posts successfully, remove the trigger label:
             `gh issue edit <number> --repo <repo> --remove-label review`
 
-            Do not edit the issue body — folding answers into it is the author's deliberate `/confirmissue` step.
+            Do not edit the issue body — folding answers into it is the author's deliberate `/gaffer:confirmissue` step.
 
       # The refine mode of the same command. It rewrites the existing comment and posts nothing, so
       # it needs `gh api` for the PATCH and the numeric comment id, which the GraphQL-backed

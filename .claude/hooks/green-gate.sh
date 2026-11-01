@@ -9,7 +9,7 @@
 #
 # SCOPE. This gate does exactly one thing: deny a `dotnet test --no-build` that would run a
 # stale or absent test assembly. The "tests are green" guarantee lives elsewhere — a whole-suite
-# run inside `/verify`, plus the `gh pr create` PreToolUse hook that re-runs it at `/raise-pr`
+# run inside `/gaffer:verify`, plus the `gh pr create` PreToolUse hook that re-runs it at `/gaffer:raise-pr`
 # time — not in this hook.
 #
 # DESIGN RULE: fail OPEN. Any missing tool, unparseable input, or internal error exits

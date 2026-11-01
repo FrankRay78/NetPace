@@ -1,10 +1,10 @@
 # Review criteria
 
-NetPace's additions to the review method in [`/review-pr`](.claude/commands/review-pr.md) and [`/review-followup`](.claude/commands/review-followup.md). The commands hold the method — severities, tiers, dimensions, verification, the verdict — and read this file for what is particular to this repository. Each section sits under the heading of the part of the method it extends, as the command's *Repository criteria* table lists them, and where a section and the method conflict, this file wins. In CI the review reads `main`'s copy of this file, never the pull request's, so a change here takes effect on merge, and is itself a change that always needs the maintainer.
+NetPace's additions to the review method in the [gaffer](https://github.com/FrankRay78/gaffer-claude) plugin's [`/gaffer:review-pr`](https://github.com/FrankRay78/gaffer-claude/blob/main/commands/review-pr.md) and [`/gaffer:review-followup`](https://github.com/FrankRay78/gaffer-claude/blob/main/commands/review-followup.md). The commands hold the method — severities, tiers, dimensions, verification, the verdict — and run on the plugin's default `REVIEW.md`; each section here is read together with the default section of the same heading, the part of the method it extends, as the command's *Repository criteria* table lists them, and where the two conflict, this file wins. A change to a command is reviewed in gaffer, not here. In CI the review reads `main`'s copy of this file, never the pull request's, so a change here takes effect on merge, and is itself a change that always needs the maintainer.
 
 ## Where it runs
 
-`.github/workflows/review-pr.yml` runs `/review-pr` on every pull request `FrankRay78` opens, posting as the workflow's bot. Adding the `review-followup` label runs `/review-followup` in `.github/workflows/review-followup.yml`. Both put `main`'s copy of this file in place before the agent starts.
+`.github/workflows/review-pr.yml` runs `/gaffer:review-pr` on every pull request `FrankRay78` opens, posting as the workflow's bot. Adding the `review-followup` label runs `/gaffer:review-followup` in `.github/workflows/review-followup.yml`. Both put `main`'s copy of this file in place before the agent starts.
 
 ## Severity
 

@@ -20,7 +20,7 @@
 # and because the reverse direction would false-fail on every clean branch. "A marker must not be
 # invented" is the other half of the rule and stays a judgement call for review.
 #
-# SCOPE — one issue, read off the branch. The `<prefix>/<N>-<slug>` shape `/build` produces gives
+# SCOPE — one issue, read off the branch. The `<prefix>/<N>-<slug>` shape `/gaffer:build` produces gives
 # the number, exactly as /raise-pr already parses it. A branch carrying no number has
 # nothing to check and passes: a pull request raised outside the issue flow is valid.
 #

@@ -2,9 +2,9 @@
 #
 # plugin-report.sh — read-only report on the harness tooling this repo declares.
 #
-# Covers four tools: read-once, context-mode and rtk (the token/context tooling named in
-# docs/agentic-workflow.md) plus pr-review-toolkit, which supplies the reviewer agents /verify
-# calls. Detailed descriptions and install commands for the first three live in
+# Covers five tools: read-once, context-mode and rtk (the token/context tooling named in
+# docs/agentic-workflow-NetPace.md), pr-review-toolkit, which supplies the reviewer agents
+# /gaffer:verify calls, and gaffer, which supplies the harness commands themselves. Detailed descriptions and install commands for the first three live in
 # docs/wsl-claude-sandbox.md, step 7.
 #
 # WHY. Those tools are traced through this repo by several mechanisms — `Bash(rtk …)` and
@@ -238,6 +238,16 @@ plugin_enabled 'pr-review-toolkit@claude-plugins-official'; pr_en=$?
 pr_reach=$NA   # agents are resolved by the harness at session start; nothing to probe here
 line pr-review-toolkit "$(yn $pr_decl)" "$(yn $pr_inst)" "$(yn $pr_en)" "$(yn $pr_reach)"
 
+# gaffer — supplies the /gaffer: commands. `installed` reads the user-level registry, so a box
+# that gets the plugin only through this repo's settings (extraKnownMarketplaces + enabledPlugins,
+# fetched when the project is opened) reports declared and enabled but not installed; that is
+# the honest answer, not a fault.
+declared_in_repo 'gaffer@gaffer-claude'; gf_decl=$?
+plugin_installed 'gaffer@gaffer-claude'; gf_inst=$?
+plugin_enabled 'gaffer@gaffer-claude'; gf_en=$?
+gf_reach=$NA   # commands are resolved by the harness at session start; nothing to probe here
+line gaffer "$(yn $gf_decl)" "$(yn $gf_inst)" "$(yn $gf_en)" "$(yn $gf_reach)"
+
 # --- CONFIG -----------------------------------------------------------------------
 echo
 echo "== CONFIG =="
@@ -437,3 +447,4 @@ else
   cm_counters_row
 fi
 echo "pr-review-toolkit: n/a — exposes no counters"
+echo "gaffer: n/a — exposes no counters"

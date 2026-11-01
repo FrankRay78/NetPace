@@ -4,7 +4,7 @@
 
 **Supersedes:** [`2026-10-29-review-pr-keeps-its-bindings-in-place`](2026-10-29-review-pr-keeps-its-bindings-in-place.md) — its decision that the bindings stay in the rules that use them; and [`2026-10-20-pr-review-runs-on-pr-open`](2026-10-20-pr-review-runs-on-pr-open.md) — its decision that the review contract is inlined in `review-pr.md` rather than kept in a separate `REVIEW.md`.
 
-**Behaviour:** [`REVIEW.md`](../../REVIEW.md), read as [`.claude/commands/review-pr.md`](../../.claude/commands/review-pr.md)'s *Repository criteria* says; `.github/workflows/review-pr.yml` and `review-followup.yml` put `main`'s copy in place before the agent runs.
+**Behaviour:** [`REVIEW.md`](../../REVIEW.md), read as [`.claude/commands/review-pr.md`](https://github.com/FrankRay78/gaffer-claude/blob/main/commands/review-pr.md)'s *Repository criteria* says; `.github/workflows/review-pr.yml` and `review-followup.yml` put `main`'s copy in place before the agent runs.
 
 **Constraints:** The 2026-10-29 record's concern stands — a rule read away from the examples that calibrate it — so each section of `REVIEW.md` sits under the heading of the method's part it extends, the command's heading table names the pairing, and a reviewer reads rule and examples together. The restore is a workflow step, and a workflow file runs from the pull request's own head, so a pull request that edits `.github/` could remove it; the author gate on both workflows is the guard against that, as it already was for the model table and the cost script.
 

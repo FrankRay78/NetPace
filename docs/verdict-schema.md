@@ -1,6 +1,6 @@
 # The verdict schema
 
-Every stage command in the build chain — `/build`, `/verify` and `/raise-pr` — ends its report with a verdict: one JSON object, the last thing in the report, saying whether the stage succeeded and what it produced. The human-readable report sits above it. The verdict is the contract between the commands and whatever drives them — today [`scripts/chain.sh`](../scripts/chain.sh), which starts the next stage only on a success verdict and stops on anything else. This file is the one place the schema is stated: the commands show the verdict they write and the workflow docs say how it is read, and both point here for the fields.
+Every stage command in the build chain — `/gaffer:build`, `/gaffer:verify` and `/gaffer:raise-pr` — ends its report with a verdict: one JSON object, the last thing in the report, saying whether the stage succeeded and what it produced. The human-readable report sits above it. The verdict is the contract between the commands and whatever drives them — today [`scripts/chain.sh`](../scripts/chain.sh), which starts the next stage only on a success verdict and stops on anything else. This file is the one place the schema is stated: the commands show the verdict they write and the workflow docs say how it is read, and both point here for the fields.
 
 ## Version 1
 
@@ -20,9 +20,9 @@ Each command has one success outcome, and all three share the failure outcome:
 
 | Command | Success | Failure |
 |---|---|---|
-| `/build` | `{"schema": 1, "outcome": "ready", "branch": "<branch>"}` | `{"schema": 1, "outcome": "failed", "reason": "<short reason>"}` |
-| `/verify` | `{"schema": 1, "outcome": "verified", "branch": "<branch>"}` | `{"schema": 1, "outcome": "failed", "reason": "<short reason>"}` |
-| `/raise-pr` | `{"schema": 1, "outcome": "raised", "pr": "<url>"}` | `{"schema": 1, "outcome": "failed", "reason": "<short reason>"}` |
+| `/gaffer:build` | `{"schema": 1, "outcome": "ready", "branch": "<branch>"}` | `{"schema": 1, "outcome": "failed", "reason": "<short reason>"}` |
+| `/gaffer:verify` | `{"schema": 1, "outcome": "verified", "branch": "<branch>"}` | `{"schema": 1, "outcome": "failed", "reason": "<short reason>"}` |
+| `/gaffer:raise-pr` | `{"schema": 1, "outcome": "raised", "pr": "<url>"}` | `{"schema": 1, "outcome": "failed", "reason": "<short reason>"}` |
 
 A success verdict is written only for work the run did: `raised` names a pull request this run opened, `ready` and `verified` describe a suite this run saw pass. A success verdict that also carries a `reason` contradicts itself and is not read as a success.
 
