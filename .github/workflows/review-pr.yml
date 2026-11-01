@@ -1,17 +1,18 @@
 name: Review PR
 
 # Runs the multi-pass PR review on every pull request FrankRay78 opens, whichever way it was
-# raised — the chain's /raise-pr, /raise-pr by hand, or the GitHub UI. The review logic is
-# single-sourced in .claude/commands/review-pr.md; this workflow adds only the environmental
-# deltas in the prompt below. One review per PR: later pushes are not re-reviewed here, and
-# follow-up rounds run from the `review-followup` label in .github/workflows/review-followup.yml.
-# Both workflows record what their round cost in a footer at the end of the PR description, and
-# share one concurrency group so they never rewrite it at the same time.
+# raised — the chain's /gaffer:raise-pr, by hand, or the GitHub UI. The review logic is
+# single-sourced in the gaffer plugin's review-pr command, loaded from gaffer's main by a step
+# below; this workflow adds only the environmental deltas in the prompt. One review per PR: later
+# pushes are not re-reviewed here, and follow-up rounds run from the `review-followup` label in
+# .github/workflows/review-followup.yml. Both workflows record what their round cost in a footer at
+# the end of the PR description, and share one concurrency group so they never rewrite it at the
+# same time.
 # The action restores `.claude/` and CLAUDE.md from the PR's base branch before the agent runs
 # (the PR head is untrusted), and a step below puts main's REVIEW.md and CONVENTIONS.md in place
-# — the restore does not reach what CLAUDE.md imports — so a change to the command file, the review
-# criteria or the conventions takes effect on merge, never on its own branch — try one out
-# beforehand by running /review-pr locally.
+# — the restore does not reach what CLAUDE.md imports — so a change to the review criteria or the
+# conventions takes effect on merge, never on its own branch, and a change to the command itself on
+# its merge in gaffer — try one out beforehand by running /gaffer:review-pr locally.
 # Rationale: docs/change-intent-records/2026-10-20-pr-review-runs-on-pr-open.md and
 # docs/change-intent-records/2026-10-31-review-criteria-live-in-review-md.md
 
@@ -108,6 +109,20 @@ jobs:
             fi
           done
 
+      # The command comes from the gaffer plugin, loaded from its main: a fresh clone per job, the
+      # URL and ref written here, and the commit printed so the log says which gaffer ran. Nothing
+      # in the checkout can choose it — not a settings file, not a ref read from the pull request.
+      # The action passes the clone to claude as --plugin-dir, and --add-dir lets the agent read the
+      # command and the defaults from outside the workspace, which a headless run otherwise denies.
+      # The repository is public, so the clone needs no token.
+      - name: Load gaffer from its main
+        id: gaffer
+        run: |
+          set -euo pipefail
+          git clone -q --depth 1 --branch main https://github.com/FrankRay78/gaffer-claude.git "$RUNNER_TEMP/gaffer"
+          echo "gaffer $(git -C "$RUNNER_TEMP/gaffer" rev-parse HEAD)"
+          echo "dir=$RUNNER_TEMP/gaffer" >> "$GITHUB_OUTPUT"
+
       # Counted before the action runs, so the check afterwards can require a *new* review rather
       # than merely one at the head commit. On `opened` this is always 0; on a re-dispatch of a
       # pull request that already carries a review it is not, and without the comparison a run
@@ -145,11 +160,11 @@ jobs:
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           github_token: ${{ github.token }}
-          claude_args: '${{ steps.model.outputs.args }} --allowedTools "Read,Glob,Grep,Write,Agent,Bash(mkdir:*),Bash(git diff:*),Bash(git log:*),Bash(git show:*),Bash(git rev-parse:*),Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh issue view:*),Bash(gh api:*)"'
+          claude_args: '${{ steps.model.outputs.args }} --plugin-dir ${{ steps.gaffer.outputs.dir }} --add-dir ${{ steps.gaffer.outputs.dir }} --allowedTools "Read,Glob,Grep,Write,Agent,Bash(mkdir:*),Bash(git diff:*),Bash(git log:*),Bash(git show:*),Bash(git rev-parse:*),Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh issue view:*),Bash(gh api:*)"'
           prompt: |
             Review pull request #${{ env.PR_NUMBER }} in repository ${{ github.repository }}. The default branch is `main`.
 
-            Read `.claude/commands/review-pr.md` and apply it to this PR as written. Do not restate, summarise or reinvent the review logic — that file is the single source of truth for it. Exactly two deltas apply, and nothing else changes:
+            Read `${{ steps.gaffer.outputs.dir }}/commands/review-pr.md` — the gaffer plugin's `/gaffer:review-pr` command — and apply it to this PR as written. Do not restate, summarise or reinvent the review logic — that file is the single source of truth for it. Where it says `${CLAUDE_PLUGIN_ROOT}`, it means `${{ steps.gaffer.outputs.dir }}`. Exactly two deltas apply, and nothing else changes:
 
             1. The checkout is already at the PR head (`${{ steps.pr.outputs.head }}`), so step 2 reviews in place. Do not create a worktree.
             2. Step 10 writes the review JSON to `.claude/scratch/`. Write it to `ci-scratch/review-pr-${{ env.PR_NUMBER }}.json` instead — `.claude/` is write-protected in this headless run. Run `mkdir -p ci-scratch` first.

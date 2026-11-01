@@ -2,9 +2,11 @@
 #
 # chain.sh — carry one GitHub issue from a clean main to an open pull request, unattended.
 #
-# Runs /build, /verify, /raise-pr for the named issue, each as its own headless `claude -p`
-# process, starting a stage only after the previous one reported its own success verdict at the
-# end of its report. Every stage starts a fresh session and inherits no context. The first
+# Runs the gaffer plugin's /gaffer:build, /gaffer:verify and /gaffer:raise-pr for the named issue,
+# each as its own headless `claude -p` process, starting a stage only after the previous one
+# reported its own success verdict at the end of its report. The plugin is loaded from a local
+# clone of gaffer's main named by CHAIN_GAFFER, never from whatever copy happens to be installed
+# on the machine, so every stage in one run comes from one known commit. Every stage starts a fresh session and inherits no context. The first
 # stage that fails — a failure verdict, a verdict the chain cannot read, a non-zero exit, or a
 # stall past its time limit — stops the run, and the closing line names the stage, its position
 # and the reason.
@@ -27,13 +29,15 @@
 # Every stage runs with --dangerously-skip-permissions, so a call an `ask` rule would have
 # stopped is instead denied silently: a stage can carry on degraded and still report success.
 #
-# Prerequisites: git, claude, gh, jq and timeout on PATH; claude and gh signed in; a clean main.
-# All five are checked before the first stage starts, so a missing one names itself.
-# Tests: scripts/chain.tests.sh.
+# Prerequisites: git, claude, gh, jq and timeout on PATH; claude and gh signed in; a clean main;
+# a clone of the gaffer plugin (https://github.com/FrankRay78/gaffer-claude) at CHAIN_GAFFER,
+# default ~/Repos/gaffer-runner. All are checked before the first stage starts, so a missing one
+# names itself. Tests: scripts/chain.tests.sh.
 #
 # Each stage's model and effort come from the stage table, scripts/stage-models.tsv.
 # Overrides: CHAIN_MODEL replaces every stage's model; the effort stays the table's.
-# CHAIN_STAGE_TIMEOUT (seconds) replaces every stage's time limit.
+# CHAIN_STAGE_TIMEOUT (seconds) replaces every stage's time limit. CHAIN_GAFFER names the plugin
+# clone; the chain reads it and never updates it — scripts/chain-next.sh does that before a firing.
 
 # No -e: the `reply=$(...); rc=$?` dispatch below depends on a non-zero claude not killing the
 # script, so the stage can be reported by name instead of the run dying silently.
@@ -54,9 +58,14 @@ RAISE_PR_LIMIT=${CHAIN_STAGE_TIMEOUT:-1800}
 # EX_TEMPFAIL — the failure that clears on its own — and collides with none of the codes the chain
 # already reports: timeout's 124, the shell's 125-127, and 137 for a stage killed by SIGKILL.
 USAGE_LIMIT_EXIT=75
-# And for a stage the stage table does not answer: the fault is in the table, not the issue being
-# built, so a runner must not park the issue for it. 78 is sysexits' EX_CONFIG.
-STAGE_TABLE_EXIT=78
+# And for a fault in the chain's own configuration — a stage the stage table does not answer, or a
+# plugin clone that is not there: the fault is not in the issue being built, so a runner must not
+# park the issue for it. 78 is sysexits' EX_CONFIG.
+CONFIG_EXIT=78
+
+# The clone of the gaffer plugin the stages are loaded from. Its manifest is the one file that
+# makes a directory a plugin, so that is what is checked for.
+GAFFER=${CHAIN_GAFFER:-$HOME/Repos/gaffer-runner}
 
 usage() {
   echo "usage: scripts/chain.sh [--dry-run] <issue>" >&2
@@ -73,10 +82,18 @@ case "$issue" in ''|*[!0-9]*) usage; exit 1 ;; esac
 # Report mode reaches no git or claude command, so it cannot change anything.
 if [ "$dry_run" = 1 ]; then
   echo "chain: dry run for issue #$issue — nothing will be run"
-  echo "  1. build: /build $issue"
-  echo "  2. verify: /verify"
-  echo "  3. raise-pr: /raise-pr $issue"
+  echo "  1. build: /gaffer:build $issue"
+  echo "  2. verify: /gaffer:verify"
+  echo "  3. raise-pr: /gaffer:raise-pr $issue"
+  echo "  plugin: $GAFFER"
   exit 0
+fi
+
+# The plugin clone, before the stage table: a stage started without it would fail on an unknown
+# command after a session had been spent, blaming the issue for a clone that was never made.
+if [ ! -f "$GAFFER/.claude-plugin/plugin.json" ]; then
+  echo "chain: refused — the gaffer plugin clone $GAFFER does not exist; clone https://github.com/FrankRay78/gaffer-claude.git there, or set CHAIN_GAFFER to where it is. No stage was started." >&2
+  exit "$CONFIG_EXIT"
 fi
 
 # An override that is not a whole number reaches `timeout` as a bad argument, which would surface
@@ -105,7 +122,7 @@ stage_model_effort() {
 }
 table_refused() {
   echo "chain: refused — the stage table has no usable row for $1; no stage was started." >&2
-  exit "$STAGE_TABLE_EXIT"
+  exit "$CONFIG_EXIT"
 }
 BUILD_MODEL_EFFORT=$(stage_model_effort build) || table_refused build
 VERIFY_MODEL_EFFORT=$(stage_model_effort verify) || table_refused verify
@@ -150,10 +167,12 @@ RAISE_PR_MODEL_EFFORT=$(stage_model_effort raise-pr) || table_refused raise-pr
 # position is meant to prevent. jq tolerates leading whitespace, so the bare line must open with
 # the object's own brace once the three spaces are gone.
 
-# The verdicts this script reads are written by the stage prompts: .claude/commands/build.md
-# (ready), verify.md (verified) and raise-pr.md (raised), and all three write failed. Their shape
-# is docs/verdict-schema.md's, and this is the one version of it this script reads. A change to
-# the schema is a change to what those prompts tell the model to write, and the reverse.
+# The verdicts this script reads are written by the gaffer plugin's stage commands: build (ready),
+# verify (verified) and raise-pr (raised), and all three write failed. Their shape is the one
+# gaffer's docs/verdict-schema.md states, mirrored in docs/verdict-schema.md here, and this is the
+# one version of it this script reads. A change to the schema is a change to what those prompts
+# tell the model to write, and the reverse; the chain tracks gaffer's main, so a reader change
+# lands here before the writer change lands there.
 VERDICT_SCHEMA=1
 
 # One leading markdown marker, with its whitespace. `-`, `*` and `+` count as a bullet only when
@@ -385,9 +404,10 @@ run_stage() {
   # ends, then stops them and returns that turn's text as the report — /verify's
   # code-simplifier has run past it, ending the stage on a progress message with no verdict. The
   # ceiling is lifted so a stage finishes its own work; the stage time limit stays the stall
-  # detector.
+  # detector. --plugin-dir loads the gaffer clone checked above, so the /gaffer: command the prompt
+  # names resolves to that clone's copy whatever else is installed on the machine.
   started=$SECONDS
-  reply=$(CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS=0 timeout --kill-after=60 "$limit" claude -p "$prompt" --model "$model" --effort "$effort" --output-format json --dangerously-skip-permissions </dev/null)
+  reply=$(CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS=0 timeout --kill-after=60 "$limit" claude -p "$prompt" --plugin-dir "$GAFFER" --model "$model" --effort "$effort" --output-format json --dangerously-skip-permissions </dev/null)
   rc=$?
   elapsed=$((SECONDS - started))
   # 124 is timeout's own report that the limit was reached. 137 is the stage killed by SIGKILL,
@@ -492,9 +512,9 @@ fi
 # cannot change what the rest of the run does. Without the group the run carried on from its old
 # position in the new file and executed whatever text it landed in (#348).
 {
-  run_stage 1 build "/build $issue" ready "$BUILD_LIMIT" "$BUILD_MODEL_EFFORT"
-  run_stage 2 verify /verify verified "$VERIFY_LIMIT" "$VERIFY_MODEL_EFFORT"
-  run_stage 3 raise-pr "/raise-pr $issue" raised "$RAISE_PR_LIMIT" "$RAISE_PR_MODEL_EFFORT"
+  run_stage 1 build "/gaffer:build $issue" ready "$BUILD_LIMIT" "$BUILD_MODEL_EFFORT"
+  run_stage 2 verify /gaffer:verify verified "$VERIFY_LIMIT" "$VERIFY_MODEL_EFFORT"
+  run_stage 3 raise-pr "/gaffer:raise-pr $issue" raised "$RAISE_PR_LIMIT" "$RAISE_PR_MODEL_EFFORT"
 
   # The payload the last stage's verdict was accepted on, so the URL reported is demonstrably the
   # one this script just checked against the pull request shape.

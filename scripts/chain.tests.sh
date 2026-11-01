@@ -24,6 +24,13 @@ trap 'rm -rf "$SB"' EXIT
 # A developer's ambient overrides would otherwise reach every case; the stall case sets its own.
 unset CHAIN_MODEL CHAIN_STAGE_TIMEOUT CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS
 
+# The gaffer plugin clone the chain loads its stages from: a directory carrying the one file that
+# makes it a plugin. Every case points the chain at this one; the missing-clone case points it
+# elsewhere.
+mkdir -p "$SB/gaffer/.claude-plugin"
+echo '{"name": "gaffer"}' > "$SB/gaffer/.claude-plugin/plugin.json"
+export CHAIN_GAFFER="$SB/gaffer"
+
 # Anything on the chain's stdin that reaches the stub proves the stage's own `</dev/null` is
 # gone — the omission chain.sh records as making an unattended call stall on the terminal.
 printf 'this must never reach a stage\n' > "$SB/stdin-data"
@@ -139,6 +146,7 @@ last_line() { printf '%s\n' "$OUTPUT" | tail -n 1; }
 # SCENARIO: One issue to a pull request
 # SCENARIO: Chain runs build, verify and raise-pr with no study pass
 # SCENARIO: Chain reads a structured success verdict
+# SCENARIO: The chain runs the plugin's stages
 echo "One issue to a pull request:"
 new_case
 reply 1 $'Built.\nEverything committed.\n'"$(ready)"
@@ -147,7 +155,9 @@ reply 3 $'Related work: https://github.com/o/r/pull/1\n'"$(raised)"
 CHAIN_MODEL=test-model chain 270
 ok "exits 0" '[ "$RC" = 0 ]'
 ok "exactly three stages started" '[ "$(calls)" = 3 ]'
-ok "stages in order: build, verify, raise-pr" 'prompt_is 1 "/build 270" && prompt_is 2 "/verify" && prompt_is 3 "/raise-pr 270"'
+ok "stages in order: build, verify, raise-pr, as the plugin's commands" 'prompt_is 1 "/gaffer:build 270" && prompt_is 2 "/gaffer:verify" && prompt_is 3 "/gaffer:raise-pr 270"'
+ok "no stage runs an in-repo command" '! grep -qE -- "-p\|/(build|verify|raise-pr)" "$STUB_DIR/log"'
+ok "every stage loads the plugin from the gaffer clone" '[ "$(grep -cF -- "--plugin-dir|$CHAIN_GAFFER|" "$STUB_DIR/log" 2>/dev/null)" = 3 ]'
 ok "no stage is a study pass" '! grep -qF -- "/study" "$STUB_DIR/log"'
 # Six lines, because each stage prints both a "— starting" and an "— ok" line. The negative
 # half is what a stray `[n/5]` left in a message would fail on.
@@ -185,7 +195,20 @@ ok "a model override does not stand in for the missing row" '[ "$RC" = 78 ] && [
 new_case
 reply 1 "$(ready)"
 chain "#270"
-ok "an issue written #270 is the same issue" 'prompt_is 1 "/build 270"'
+ok "an issue written #270 is the same issue" 'prompt_is 1 "/gaffer:build 270"'
+# SCENARIO: The chain refuses without the plugin clone
+echo "The chain refuses without the plugin clone:"
+new_case
+before="$(repo_state)"
+CHAIN_GAFFER="$SB/no-such-clone" chain 270
+ok "no stage starts" '[ "$(calls)" = 0 ]'
+ok "exits with the chain's own configuration code, so the runner does not blame the issue" '[ "$RC" = 78 ]'
+ok "and names the missing clone" 'grep -qF "$SB/no-such-clone" <<<"$OUTPUT" && grep -q "gaffer" <<<"$OUTPUT"'
+ok "nothing changed" '[ "$(repo_state)" = "$before" ]'
+new_case
+mkdir -p "$SB/not-a-plugin"
+CHAIN_GAFFER="$SB/not-a-plugin" chain 270
+ok "a directory with no plugin manifest is not a clone either" '[ "$RC" = 78 ] && [ "$(calls)" = 0 ]'
 # Each decoration a model wraps a JSON verdict in, one shape per case rather than bundled, so a
 # broken shape names itself. Inline code and a code fence are the likely two; a fence that closes
 # the report is read as holding the verdict, because the verdict is whatever ends the report and a
@@ -475,7 +498,8 @@ new_case
 before="$(repo_state)"
 chain --dry-run 270
 ok "exits 0" '[ "$RC" = 0 ]'
-ok "lists the three commands in run order" '[ "$(grep -oE "/(build|study|verify|raise-pr)( 270)?" <<<"$OUTPUT" | paste -sd,)" = "/build 270,/verify,/raise-pr 270" ]'
+ok "lists the three plugin commands in run order" '[ "$(grep -oE "/(gaffer:)?(build|study|verify|raise-pr)( 270)?" <<<"$OUTPUT" | paste -sd,)" = "/gaffer:build 270,/gaffer:verify,/gaffer:raise-pr 270" ]'
+ok "and names the plugin clone it would load" 'grep -qF "$CHAIN_GAFFER" <<<"$OUTPUT"'
 ok "no stage started" '[ "$(calls)" = 0 ]'
 ok "branch, commits and working tree untouched" '[ "$(repo_state)" = "$before" ]'
 new_case

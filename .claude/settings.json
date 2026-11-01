@@ -109,9 +109,18 @@
       }
     ]
   },
+  "extraKnownMarketplaces": {
+    "gaffer-claude": {
+      "source": {
+        "source": "github",
+        "repo": "FrankRay78/gaffer-claude"
+      }
+    }
+  },
   "enabledPlugins": {
     "pr-review-toolkit@claude-plugins-official": true,
-    "context-mode@context-mode": true
+    "context-mode@context-mode": true,
+    "gaffer@gaffer-claude": true
   },
   "preferredNotifChannel": "terminal_bell",
   "cleanupPeriodDays": 90,

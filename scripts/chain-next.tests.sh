@@ -30,7 +30,7 @@ RUNNER="$HERE/chain-next.sh"
 SB="$(mktemp -d)"
 trap 'kill $(jobs -p) 2>/dev/null; rm -rf "$SB"' EXIT
 # A developer's ambient overrides would otherwise reach every case.
-unset CHAIN_NEXT_CLONE CHAIN_NEXT_STATE_DIR
+unset CHAIN_NEXT_CLONE CHAIN_NEXT_STATE_DIR CHAIN_NEXT_GAFFER CHAIN_GAFFER
 
 # The stub gh. One log line per invocation, arguments separated by `|`. Issues live in
 # issues.json as [{number, state, labels:[names], author?}] and are filtered by whatever --state
@@ -101,7 +101,9 @@ cat > "$SB/stub-chain.sh" <<'STUB'
 n=$1
 echo "$n" >> "$STUB_DIR/chain-log"
 k=$(grep -c '' "$STUB_DIR/chain-log")
-{ echo "branch=$(git rev-parse --abbrev-ref HEAD)"; echo "head=$(git rev-parse HEAD)"; echo "status=$(git status --porcelain --ignored | paste -sd,)"; } > "$STUB_DIR/start-$k"
+# The plugin clone the chain was handed, and the commit it held when the chain started.
+{ echo "branch=$(git rev-parse --abbrev-ref HEAD)"; echo "head=$(git rev-parse HEAD)"; echo "status=$(git status --porcelain --ignored | paste -sd,)";
+  echo "gaffer=${CHAIN_GAFFER-unset}"; echo "gaffer_head=$(git -C "${CHAIN_GAFFER:-/nonexistent}" rev-parse HEAD 2>/dev/null)"; } > "$STUB_DIR/start-$k"
 if [ -f "$STUB_DIR/chain-sleep" ]; then sleep "$(cat "$STUB_DIR/chain-sleep")"; fi
 if [ -n "$(git status --porcelain)" ] || [ "$(git rev-parse --abbrev-ref HEAD)" != main ]; then
   echo "chain: refused — not a clean main"; exit 1
@@ -147,13 +149,22 @@ commit_all() { git -C "$1" add -A && git -C "$1" -c user.name=t -c user.email=t@
 
 # A fresh case: a bare origin whose main carries the runner under test and the stub chain; the
 # runner's dedicated clone of it, marked as such; an interactive clone that must never change;
+# a bare origin standing in for the gaffer plugin's repository, with the runner's clone of it;
 # and empty stub and state directories.
 new_case() {
   cases=$((cases+1))
   local d="$SB/case$cases"
   export STUB_DIR="$d/stub"
   ORIGIN="$d/origin.git"; SEED="$d/seed"; CLONE="$d/runner"; OTHER="$d/interactive"; STATE="$d/state"
-  mkdir -p "$STUB_DIR" "$SEED/scripts"
+  GAFFER_ORIGIN="$d/gaffer-origin.git"; GAFFER_SEED="$d/gaffer-seed"; GAFFER="$d/gaffer"
+  mkdir -p "$STUB_DIR" "$SEED/scripts" "$GAFFER_SEED/.claude-plugin"
+  git init -q --bare -b main "$GAFFER_ORIGIN"
+  git init -q -b main "$GAFFER_SEED"
+  git -C "$GAFFER_SEED" remote add origin "$GAFFER_ORIGIN"
+  echo '{"name": "gaffer"}' > "$GAFFER_SEED/.claude-plugin/plugin.json"
+  commit_all "$GAFFER_SEED" "plugin v1"
+  git -C "$GAFFER_SEED" push -q origin main
+  git clone -q "$GAFFER_ORIGIN" "$GAFFER"
   echo '[]' > "$STUB_DIR/issues.json"
   git init -q --bare -b main "$ORIGIN"
   git init -q -b main "$SEED"
@@ -178,8 +189,11 @@ unpark() { jq --argjson n "$1" 'map(if .number == $n then .labels -= ["parked"] 
 # fire [args…] — one firing of the runner, run as the systemd unit runs it: the clone's own copy,
 # from outside the clone. Sets OUTPUT (stdout and stderr) and RC, which every assertion reads.
 fire() {
-  OUTPUT="$(cd "$SB" && CHAIN_NEXT_CLONE="$CLONE" CHAIN_NEXT_STATE_DIR="$STATE" PATH="$SB/bin:$PATH" bash "$CLONE/scripts/chain-next.sh" "$@" </dev/null 2>&1)"; RC=$?
+  OUTPUT="$(cd "$SB" && CHAIN_NEXT_CLONE="$CLONE" CHAIN_NEXT_GAFFER="$GAFFER" CHAIN_NEXT_STATE_DIR="$STATE" PATH="$SB/bin:$PATH" bash "$CLONE/scripts/chain-next.sh" "$@" </dev/null 2>&1)"; RC=$?
 }
+# advance_gaffer <message> — a new commit on the plugin origin's main, as a merge there would make.
+advance_gaffer() { echo "$1" > "$GAFFER_SEED/CHANGE.md"; commit_all "$GAFFER_SEED" "$1"; git -C "$GAFFER_SEED" push -q origin main; }
+gaffer_origin_main() { git -C "$GAFFER_ORIGIN" rev-parse main; }
 
 chain_calls() { if [ -f "$STUB_DIR/chain-log" ]; then paste -sd, "$STUB_DIR/chain-log"; fi; }
 gh_writes() { { grep -E '^issue\|(edit|comment)\|' "$STUB_DIR/gh-log" 2>/dev/null || true; } | grep -c ''; }
@@ -400,7 +414,7 @@ echo "Overlapping triggers do not start a second run:"
 new_case
 issues '[{"number":20,"state":"OPEN","labels":["ready"]},{"number":21,"state":"OPEN","labels":["ready"]}]'
 echo 3 > "$STUB_DIR/chain-sleep"
-( cd "$SB" && CHAIN_NEXT_CLONE="$CLONE" CHAIN_NEXT_STATE_DIR="$STATE" PATH="$SB/bin:$PATH" bash "$CLONE/scripts/chain-next.sh" </dev/null > "$SB/first.out" 2>&1; echo $? > "$SB/first.rc" ) &
+( cd "$SB" && CHAIN_NEXT_CLONE="$CLONE" CHAIN_NEXT_GAFFER="$GAFFER" CHAIN_NEXT_STATE_DIR="$STATE" PATH="$SB/bin:$PATH" bash "$CLONE/scripts/chain-next.sh" </dev/null > "$SB/first.out" 2>&1; echo $? > "$SB/first.rc" ) &
 first=$!
 for _ in $(seq 1 50); do [ -f "$STUB_DIR/chain-log" ] && break; sleep 0.1; done
 during="$(checkout_state "$CLONE")"
@@ -495,6 +509,44 @@ echo "Wrong invocation is refused:"
 new_case
 fire --bogus
 ok "an unknown argument exits 1 with usage, starting nothing" '[ "$RC" = 1 ] && grep -q usage <<<"$OUTPUT" && [ -z "$(chain_calls)" ]'
+
+# SCENARIO: The runner brings the plugin clone up to date before a firing
+echo "The plugin clone is brought up to date before a firing:"
+new_case
+issues '[{"number":5,"state":"OPEN","labels":["ready"]}]'
+advance_gaffer "plugin v2"
+before="$(git -C "$GAFFER" rev-parse HEAD)"
+fire
+ok "the firing builds the issue" '[ "$RC" = 0 ] && [ "$(chain_calls)" = 5 ]'
+ok "the chain was handed the runner's plugin clone" '[ "$(start_of 1 gaffer)" = "$GAFFER" ]'
+ok "and that clone held gaffer's latest main when the chain started" '[ "$(start_of 1 gaffer_head)" = "$(gaffer_origin_main)" ] && [ "$(start_of 1 gaffer_head)" != "$before" ]'
+ok "the runner's own output names the plugin commit" 'grep -qF "gaffer at $(git -C "$GAFFER_ORIGIN" rev-parse --short main)" <<<"$OUTPUT"'
+new_case
+issues '[{"number":5,"state":"OPEN","labels":["ready"]}]'
+advance_gaffer "plugin v2"
+fire --dry-run
+ok "report mode leaves the plugin clone where it was" '[ "$RC" = 0 ] && [ "$(git -C "$GAFFER" rev-parse HEAD)" != "$(gaffer_origin_main)" ]'
+new_case
+issues '[{"number":5,"state":"OPEN","labels":["ready"]}]'
+echo local-edit > "$GAFFER/CHANGE.md"; commit_all "$GAFFER" "a local commit nobody should lose"
+advance_gaffer "plugin v2"
+local_head="$(git -C "$GAFFER" rev-parse HEAD)"
+fire
+ok "a plugin clone that cannot be fast-forwarded stops the firing" '[ "$RC" != 0 ] && grep -qF "fast-forward" <<<"$OUTPUT" && [ -z "$(chain_calls)" ]'
+ok "and loses nothing: the local commit is still its head" '[ "$(git -C "$GAFFER" rev-parse HEAD)" = "$local_head" ]'
+ok "and the issue is not parked" '[ "$(gh_writes)" = 0 ] && [ "$(labels_of 5)" = ready ]'
+new_case
+issues '[{"number":5,"state":"OPEN","labels":["ready"]}]'
+git -C "$GAFFER" checkout -q -b experiment
+fire
+ok "a plugin clone on another branch stops the firing, naming the branch" '[ "$RC" != 0 ] && grep -qF experiment <<<"$OUTPUT" && [ -z "$(chain_calls)" ] && [ "$(gh_writes)" = 0 ]'
+echo "A missing plugin clone is a machine fault, not the issue's:"
+new_case
+issues '[{"number":5,"state":"OPEN","labels":["ready"]}]'
+OUTPUT="$(cd "$SB" && CHAIN_NEXT_CLONE="$CLONE" CHAIN_NEXT_GAFFER="$SB/case$cases/no-such-gaffer" CHAIN_NEXT_STATE_DIR="$STATE" PATH="$SB/bin:$PATH" bash "$CLONE/scripts/chain-next.sh" </dev/null 2>&1)"; RC=$?
+ok "the firing refuses, naming the missing clone" '[ "$RC" != 0 ] && grep -qF "no-such-gaffer" <<<"$OUTPUT"'
+ok "before selecting anything: no chain, no label, no comment" '[ -z "$(chain_calls)" ] && [ "$(gh_writes)" = 0 ] && [ "$(labels_of 5)" = ready ]'
+ok "and the runner's clone is untouched" '[ ! -e "$STATE" ] || [ -z "$(ls "$STATE/logs" 2>/dev/null)" ]'
 
 echo ""
 echo "RESULT: $pass passed, $fail failed"
