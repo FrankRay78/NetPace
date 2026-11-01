@@ -4,8 +4,10 @@
 #
 # Each firing picks the lowest-numbered eligible issue — open, labelled `ready`, not `parked`,
 # with no open pull request linked to it, no open blocking issue, and no sign of anyone but the
-# maintainer and the review bot having written on it — resets the runner's own
-# dedicated clone to the latest main, and runs scripts/chain.sh against it there. It ends with
+# maintainer and the review bot having written on it — brings the runner's clone of the gaffer
+# plugin up to date with gaffer's main, resets the runner's own dedicated clone of this repository
+# to the latest main, and runs scripts/chain.sh against the issue there, with the chain loading its
+# stages from that plugin clone. It ends with
 # either an open pull request (chain.sh's last stage) or the issue labelled `parked` with a
 # comment naming the failed stage, the log and the kept branch. Where the chain's own exit code
 # says a stage was cut off by the account's Claude usage limit, that comment says so instead and
@@ -30,7 +32,11 @@
 # scripts/chain-next.tests.sh.
 #
 # Overrides: CHAIN_NEXT_CLONE is the dedicated clone (default ~/Repos/NetPace-runner).
-# CHAIN_NEXT_STATE_DIR holds logs/ and the lock (default ${XDG_STATE_HOME:-~/.local/state}/netpace-chain).
+# CHAIN_NEXT_GAFFER is the runner's clone of the gaffer plugin (default ~/Repos/gaffer-runner),
+# fast-forwarded to its origin's main before each run and handed to the chain as CHAIN_GAFFER; the
+# update is never destructive, so a clone someone has edited stops the firing rather than losing
+# the edit. CHAIN_NEXT_STATE_DIR holds logs/ and the lock (default
+# ${XDG_STATE_HOME:-~/.local/state}/netpace-chain).
 #
 # The whole body is one function, called on the last line. The reset rewrites this very file
 # when main has changed it, and bash reads a script as it runs, so without that the rest of the
@@ -50,10 +56,11 @@ usage() {
 # the same version skew park() already allows for in reading the closing line. A chain that does
 # not use the code parks exactly as it did before.
 CHAIN_USAGE_LIMIT_EXIT=75
-# chain.sh's STAGE_TABLE_EXIT, a literal for the same reason: the stage table could not answer a
-# stage, so nothing ran and the issue is not at fault. Parking it would blame it, and every later
-# firing would park the next issue the same way until the table was fixed.
-CHAIN_STAGE_TABLE_EXIT=78
+# chain.sh's CONFIG_EXIT, a literal for the same reason: the chain's own configuration — the stage
+# table, or the plugin clone — could not be read, so nothing ran and the issue is not at fault.
+# Parking it would blame it, and every later firing would park the next issue the same way until
+# the configuration was fixed.
+CHAIN_CONFIG_EXIT=78
 
 # The only accounts whose writing is built, as type and login: the maintainer and the bot that
 # posts reviews. The type matters because GraphQL names the bot `claude`, a login an unrelated
@@ -133,6 +140,25 @@ keep_attempts() {
   done
 }
 
+# update_gaffer — the plugin clone at its origin's latest main, by fast-forward only. Unlike
+# reset_clone this touches nothing it did not fetch: a clone on another branch, with local commits,
+# or with uncommitted or untracked files, stops the firing and says so, because a headless run must use the gaffer main
+# holds now and a clone that cannot be brought there is a fault to look at, not one to force past.
+update_gaffer() {
+  local branch dirty
+  git -C "$GAFFER" fetch -q origin main || die "could not fetch gaffer's origin in $GAFFER; nothing was run."
+  branch=$(git -C "$GAFFER" rev-parse --abbrev-ref HEAD 2>/dev/null) || die "could not read the branch of $GAFFER; nothing was run."
+  [ "$branch" = main ] || die "refused — $GAFFER has $branch checked out, not main; nothing was run."
+  # Checked before the merge, because a fast-forward succeeds over all three: untracked files
+  # (a new command file --plugin-dir would load), uncommitted edits the incoming commits do not
+  # touch, and local commits when origin's main has not moved ("Already up to date").
+  dirty=$(git -C "$GAFFER" status --porcelain) || die "could not read the state of $GAFFER; nothing was run."
+  [ -z "$dirty" ] || die "refused — $GAFFER has uncommitted or untracked files; nothing was run."
+  git -C "$GAFFER" merge-base --is-ancestor HEAD FETCH_HEAD \
+    || die "refused — $GAFFER has local commits gaffer's main does not; nothing was run."
+  git -C "$GAFFER" merge -q --ff-only FETCH_HEAD || die "could not fast-forward $GAFFER to gaffer's main; nothing was run."
+}
+
 # reset_clone — the latest main: no local change, no untracked or ignored file, and no local
 # feature branch whose upstream is gone (merged and deleted on GitHub). attempt/* branches stay,
 # even when a pushed twin they still track has been removed by hand.
@@ -196,6 +222,7 @@ main() {
   if [ $# -ne 0 ]; then usage; exit 1; fi
 
   CLONE=${CHAIN_NEXT_CLONE:-$HOME/Repos/NetPace-runner}
+  GAFFER=${CHAIN_NEXT_GAFFER:-$HOME/Repos/gaffer-runner}
   STATE=${CHAIN_NEXT_STATE_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/netpace-chain}
 
   for tool in git gh jq flock claude timeout; do
@@ -215,6 +242,12 @@ main() {
     die "refused — $CLONE is not the runner's dedicated clone (a full clone marked with \`git config chain-next.dedicated true\`); nothing was changed."
   fi
 
+  # The plugin clone, checked here rather than left to the chain: the chain exits its configuration
+  # code for a missing clone and the issue is not parked, but that is after an issue was selected
+  # and the runner's clone reset. A machine fault is reported before anything is chosen.
+  [ -f "$GAFFER/.claude-plugin/plugin.json" ] \
+    || die "refused — the gaffer plugin clone $GAFFER does not exist; clone https://github.com/FrankRay78/gaffer-claude.git there, or set CHAIN_NEXT_GAFFER to where it is. Nothing was run."
+
   if [ "$dry_run" = 1 ]; then
     n=$(select_issue) || exit 1
     if [ -n "$n" ]; then say "would build #$n"; else say "nothing eligible — the next firing would do nothing"; fi
@@ -233,20 +266,24 @@ main() {
 
   STAMP=$(date -u +%Y%m%dT%H%M%SZ)
   say "building #$n in $CLONE"
+  # The plugin first, so the chain that runs is the gaffer main holds now, as the repository is.
+  update_gaffer
+  say "gaffer at $(git -C "$GAFFER" rev-parse --short HEAD) in $GAFFER"
   reset_clone
   attempts=$(keep_attempts "$n") || die "could not set aside an earlier attempt at #$n; nothing was run."
   for kept in $attempts; do say "kept an earlier attempt at #$n as $kept"; done
   log=$(free_name "$STATE/logs/$n-$STAMP" log_exists).log
-  # Started from the freshly reset main, so it is the chain.sh main holds now. Its stdin is
-  # /dev/null and its descriptor 9 is closed, so no stage can hold the lock after the firing ends.
-  bash scripts/chain.sh "$n" </dev/null 9>&- 2>&1 | tee "$log"
+  # Started from the freshly reset main, so it is the chain.sh main holds now, loading its stages
+  # from the plugin clone just brought up to date. Its stdin is /dev/null and its descriptor 9 is
+  # closed, so no stage can hold the lock after the firing ends.
+  CHAIN_GAFFER="$GAFFER" bash scripts/chain.sh "$n" </dev/null 9>&- 2>&1 | tee "$log"
   rc=${PIPESTATUS[0]}
   if [ "$rc" = 0 ]; then
     say "#$n raised (log: $log)"
     exit 0
   fi
-  if [ "$rc" = "$CHAIN_STAGE_TABLE_EXIT" ]; then
-    die "refused — the stage table could not answer every chain stage; #$n was not parked. Log: $log"
+  if [ "$rc" = "$CHAIN_CONFIG_EXIT" ]; then
+    die "refused — the chain stopped on its own configuration (the stage table or the plugin clone; see the log), so #$n was not parked. Log: $log"
   fi
   park "$n" "$log" "$rc"
   exit 1

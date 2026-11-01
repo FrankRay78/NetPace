@@ -2,7 +2,7 @@
 
 **Intent:** Hand whoever picks up a confirmed issue the decisions, not the deliberation that produced them. `/confirmissue` deletes the review comment once it has folded the answers into `## Confirmed decisions`, and the "this issue has been through the gate" signal moves off the comment's existence and onto the `ready` label.
 
-**Behaviour:** [`.claude/commands/confirmissue.md`](../../.claude/commands/confirmissue.md), whose step 7 carries the ordering and the read-back that gate the deletion; `docs/agentic-workflow-NetPace.md` → *The whole pre-build issue gate runs in CI*.
+**Behaviour:** [`.claude/commands/confirmissue.md`](https://github.com/FrankRay78/gaffer-claude/blob/main/commands/confirmissue.md), whose step 7 carries the ordering and the read-back that gate the deletion; `docs/agentic-workflow-NetPace.md` → *The whole pre-build issue gate runs in CI*.
 
 **Constraints:** Deletion is irreversible and silent — GitHub sends no notification and offers no undo — so the body patch must be confirmed landed, and `ready` applied, before the comment goes.
 

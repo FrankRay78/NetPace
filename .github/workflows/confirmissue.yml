@@ -2,12 +2,13 @@ name: Confirm Issue
 
 # Folds an answered pre-specification review into the issue body when an issue is labelled
 # `confirm`, closing the pre-spec gate from the same place the answers were written.
-# The confirmation logic is single-sourced in .claude/commands/confirmissue.md; this
-# workflow adds the environmental deltas plus the two things a prompt cannot be trusted with —
-# the already-confirmed guard below, and the post-condition check that decides the run's colour.
-# On the `issues` path the run uses the default branch's copy of both this file and the command
-# file, so a change there takes effect on merge, not on branch; a workflow_dispatch run uses the
-# ref it is dispatched against.
+# The confirmation logic is single-sourced in the gaffer plugin's confirmissue command, loaded
+# from gaffer's main by a step below; this workflow adds the environmental deltas plus the two
+# things a prompt cannot be trusted with — the already-confirmed guard below, and the
+# post-condition check that decides the run's colour.
+# On the `issues` path the run uses the default branch's copy of this file, so a change here takes
+# effect on merge, not on branch, and a change to the command on its merge in gaffer; a
+# workflow_dispatch run uses the ref it is dispatched against.
 # Rationale: docs/change-intent-records/2026-09-26-automated-prespec-confirmation.md
 
 on:
@@ -55,6 +56,23 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+
+      # The command comes from the gaffer plugin, loaded from its main: a fresh clone per job, the
+      # URL and ref written here, and the commit printed so the log says which gaffer ran. The
+      # action passes the clone to claude as --plugin-dir, and --add-dir lets the agent read the
+      # command and the defaults from outside the workspace, which a headless run otherwise denies.
+      - name: Load gaffer from its main
+        id: gaffer
+        run: |
+          set -euo pipefail
+          git clone -q --depth 1 --branch main https://github.com/FrankRay78/gaffer-claude.git "$RUNNER_TEMP/gaffer"
+          echo "gaffer $(git -C "$RUNNER_TEMP/gaffer" rev-parse HEAD)"
+          # Read-only before the agent starts: --add-dir makes the clone a working directory the
+          # agent's Write reaches, and the plugin's hook runs from it on every Bash call, so a
+          # writable clone would let text the agent was handed get a script run with this job's
+          # token. The agent's allowlist has no way to lift the mode back.
+          chmod -R a-w "$RUNNER_TEMP/gaffer"
+          echo "dir=$RUNNER_TEMP/gaffer" >> "$GITHUB_OUTPUT"
 
       # The model and effort come from the stage table, scripts/stage-models.tsv. A stage the
       # table does not answer fails here, before claude starts on whatever the default is.
@@ -142,11 +160,11 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          claude_args: '${{ steps.model.outputs.args }} --allowedTools "Read,Write,Bash(mkdir:*),Bash(jq:*),Bash(gh issue view:*),Bash(gh issue edit:*),Bash(gh api:*)"'
+          claude_args: '${{ steps.model.outputs.args }} --plugin-dir ${{ steps.gaffer.outputs.dir }} --add-dir ${{ steps.gaffer.outputs.dir }} --allowedTools "Read,Write,Bash(mkdir:*),Bash(jq:*),Bash(gh issue view:*),Bash(gh issue edit:*),Bash(gh api:*)"'
           prompt: |
             Confirm the answered pre-specification review for issue #${{ env.ISSUE_NUMBER }} in repository ${{ github.repository }}. The default branch is `main`.
 
-            Read `.claude/commands/confirmissue.md` and apply it to this issue as written. Do not restate, summarise or reinvent the confirmation logic — that file is the single source of truth for it. Exactly three deltas apply, and nothing else changes:
+            Read `${{ steps.gaffer.outputs.dir }}/commands/confirmissue.md` — the gaffer plugin's `/gaffer:confirmissue` command — and apply it to this issue as written. Do not restate, summarise or reinvent the confirmation logic — that file is the single source of truth for it. Where it says `${CLAUDE_PLUGIN_ROOT}`, it means `${{ steps.gaffer.outputs.dir }}`. Exactly three deltas apply, and nothing else changes:
 
             1. The link rules that tell you to resolve the default branch with `gh repo view` (step 5 at the time of writing). Do not — it is `main`, given above. Use it for the absolute GitHub links those rules require.
             2. Instead of writing the *Output to the user* report to chat, write it to `${{ env.REPORT_FILE }}` with the Write tool, as GitHub-flavoured markdown. Write that file on every path, including every hard-stop: it is the only thing the operator sees, because this run posts no comment on the issue. On a stop, name the gap numbers and titles that still need attention, exactly as the command's report rules require. Run `mkdir -p ci-scratch` first.

@@ -1,16 +1,16 @@
 # Testing Guide
 
-> This document elaborates Section IX (Behavioural Specification) of the constitution and must remain consistent with it.
+> This document elaborates the *Acceptance criteria* rules in `CONVENTIONS.md` and must remain consistent with them.
 
 **Scope**: How to author a test so it verifies the acceptance criterion rather than the implementation that happens to satisfy it
-**Extends**: `CLAUDE.md` (read that first for the essential testing patterns — file naming, what to test in `NetPace.Core`, console snapshots)
+**Extends**: `CONVENTIONS.md` → *Testing* (read that first for the essential testing patterns — file naming, what to test in `NetPace.Core`, console snapshots)
 **Audience**: Read before writing tests, and when reviewing tests someone else wrote
 
 ---
 
 ## Tests verify outcome, not mechanism
 
-A test's assertions must describe an outcome an outside observer can verify, not the specific mechanism the implementation chose to deliver it. This is the test-layer expression of Principle IX (Behavioural Specification) in [the constitution](../constitution.md).
+A test's assertions must describe an outcome an outside observer can verify, not the specific mechanism the implementation chose to deliver it. This is the test-layer expression of the outcome-not-mechanism rule in [`CONVENTIONS.md` → *Acceptance criteria*](../../CONVENTIONS.md#acceptance-criteria).
 
 **The independence test**: would this test still pass under a different reasonable implementation of the same acceptance criterion? If no, the test is pinning mechanism, not outcome — rewrite it before relying on it.
 
@@ -25,9 +25,9 @@ A test's assertions must describe an outcome an outside observer can verify, not
 
 **Do not assert against**: CSS classes, DOM IDs or element types, animation specifics, font names/weights/colours, and pixel measurements; HTTP methods, endpoint paths, and status codes; response/payload schemas (JSON keys, field names); database tables, collections, columns, or indexes; algorithm or protocol choices (hash functions, signature schemes, encryption modes); framework or library picks; storage technology; specific URLs or ports; timing values (Ns / Nms) and polling cadences; exact error message strings; and log line formats or log levels. These are implementation choices — a test that pins one converts a free choice into a contract.
 
-That list is the constitution's §IX enumeration, written for *acceptance criteria*; read at the test layer it is a guide to the independence test above, not a literal ban. The constitution's Testing Standards separately permit a targeted assertion on a single observable fact — an exit code, or one specific line present or absent — and NetPace's suite relies on that. The question to ask is always whether the assertion pins something the acceptance criterion promised, or something the implementation merely happened to choose. An interface contract the criterion names (§IX) — a JSON or CSV field, an option name, an exit code — is something it promised, so the test asserts it exactly and that is not mechanism.
+That list, from `CONVENTIONS.md` → *Acceptance criteria*, was written for criteria; read at the test layer it is a guide to the independence test above, not a literal ban. `CONVENTIONS.md` → *Testing* separately permits a targeted assertion on a single observable fact — an exit code, or one specific line present or absent — and NetPace's suite relies on that. The question to ask is always whether the assertion pins something the acceptance criterion promised, or something the implementation merely happened to choose. An interface contract the criterion names — a JSON or CSV field, an option name, an exit code — is something it promised, so the test asserts it exactly and that is not mechanism.
 
-Note the interaction with NetPace's console-snapshot rule (`CLAUDE.md` → Testing): a snapshot of composed console output is not a mechanism assertion. The snapshot *is* the user-visible contract, which is precisely the observable outcome. What this section rules out is hand-picking an internal rendering detail — a Spectre widget type, a column width — and asserting on that instead.
+Note the interaction with NetPace's console-snapshot rule (`CONVENTIONS.md` → *Testing*): a snapshot of composed console output is not a mechanism assertion. The snapshot *is* the user-visible contract, which is precisely the observable outcome. What this section rules out is hand-picking an internal rendering detail — a Spectre widget type, a column width — and asserting on that instead.
 
 A test that ends in a snapshot does not also assert on text the snapshot already shows, present or absent. `Assert.Contains`, `Assert.DoesNotContain` or `TryGetProperty` checks ahead of a `Verify` restate part of the snapshot, so they catch nothing the snapshot would miss and leave two places to update when the output changes. Keep the facts a snapshot cannot hold, such as the exit code or the equality of two runs, and let the snapshot carry everything about what the output says.
 
@@ -105,8 +105,8 @@ A test that measures how long something took belongs on a controlled clock: `Ook
 
 ## Scenario traceability
 
-Where the GitHub issue being built carries a `**Scenario: X**` label, at least one test must carry a `SCENARIO: X` marker naming it exactly — `// SCENARIO: X` in a C# test, `# SCENARIO: X` in a `*.tests.sh` matrix. Constitution §VIII is the rule; the short version is that the name matches character-for-character, any mix of `/` and `#` comment characters may precede it, the label is optional, and a marker that names no label is worse than no marker at all because it looks like a traceability key and traces nothing. Whitespace at the two ends is trimmed on both sides before comparing, so only the *internal* spacing of the name is load-bearing.
+Where the GitHub issue being built carries a `**Scenario: X**` label, at least one test must carry a `SCENARIO: X` marker naming it exactly — `// SCENARIO: X` in a C# test, `# SCENARIO: X` in a `*.tests.sh` matrix. `CONVENTIONS.md` → *Acceptance criteria* is the rule; the short version is that the name matches character-for-character, any mix of `/` and `#` comment characters may precede it, the label is optional, and a marker that names no label is worse than no marker at all because it looks like a traceability key and traces nothing. Whitespace at the two ends is trimmed on both sides before comparing, so only the *internal* spacing of the name is load-bearing.
 
-The label must be a line of its own in the issue body, outside any code fence. A `**Scenario: X**` written mid-sentence, in backticks, or inside a fenced block is deliberately not read — those describe the convention rather than declaring a scenario — so the worked examples in §VIII and `/draftissue` are shown fenced for presentation and must not be copied into an issue with their fences.
+The label must be a line of its own in the issue body, outside any code fence. A `**Scenario: X**` written mid-sentence, in backticks, or inside a fenced block is deliberately not read — those describe the convention rather than declaring a scenario — so the worked examples in `CONVENTIONS.md` → *Acceptance criteria* and `/gaffer:draftissue` are shown fenced for presentation and must not be copied into an issue with their fences.
 
 Run `bash scripts/traceability-check.sh` before raising a PR: it reads the issue number off the branch and names any label whose marker is missing. The `traceability` CI job runs the same script on every PR and is a required check, so a dropped marker blocks the merge; the local run catches it before pushing. It reads **committed** test files only — a marker that is merely written, or written and staged, does not count — and it ignores docs, including this one, which restates the rule and must never be what satisfies it.

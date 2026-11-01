@@ -2,10 +2,12 @@
 #
 # chain.sh — carry one GitHub issue from a clean main to an open pull request, unattended.
 #
-# Runs /build, /verify, /raise-pr for the named issue, each as its own headless `claude -p`
-# process, starting a stage only after the previous one reported its own success verdict on the
-# last line of its report. Every stage starts a fresh session and inherits no context. The first
-# stage that fails — a FAILED verdict, a verdict the chain cannot read, a non-zero exit, or a
+# Runs the gaffer plugin's /gaffer:build, /gaffer:verify and /gaffer:raise-pr for the named issue,
+# each as its own headless `claude -p` process, starting a stage only after the previous one
+# reported its own success verdict at the end of its report. The plugin is loaded from a local
+# clone of gaffer's main named by CHAIN_GAFFER, never from whatever copy happens to be installed
+# on the machine, so every stage in one run comes from one known commit. Every stage starts a fresh session and inherits no context. The first
+# stage that fails — a failure verdict, a verdict the chain cannot read, a non-zero exit, or a
 # stall past its time limit — stops the run, and the closing line names the stage, its position
 # and the reason.
 #
@@ -27,13 +29,15 @@
 # Every stage runs with --dangerously-skip-permissions, so a call an `ask` rule would have
 # stopped is instead denied silently: a stage can carry on degraded and still report success.
 #
-# Prerequisites: git, claude, gh, jq and timeout on PATH; claude and gh signed in; a clean main.
-# All five are checked before the first stage starts, so a missing one names itself.
-# Tests: scripts/chain.tests.sh.
+# Prerequisites: git, claude, gh, jq and timeout on PATH; claude and gh signed in; a clean main;
+# a clone of the gaffer plugin (https://github.com/FrankRay78/gaffer-claude) at CHAIN_GAFFER,
+# default ~/Repos/gaffer-runner. All are checked before the first stage starts, so a missing one
+# names itself. Tests: scripts/chain.tests.sh.
 #
 # Each stage's model and effort come from the stage table, scripts/stage-models.tsv.
 # Overrides: CHAIN_MODEL replaces every stage's model; the effort stays the table's.
-# CHAIN_STAGE_TIMEOUT (seconds) replaces every stage's time limit.
+# CHAIN_STAGE_TIMEOUT (seconds) replaces every stage's time limit. CHAIN_GAFFER names the plugin
+# clone; the chain reads it and never updates it — scripts/chain-next.sh does that before a firing.
 
 # No -e: the `reply=$(...); rc=$?` dispatch below depends on a non-zero claude not killing the
 # script, so the stage can be reported by name instead of the run dying silently.
@@ -54,9 +58,14 @@ RAISE_PR_LIMIT=${CHAIN_STAGE_TIMEOUT:-1800}
 # EX_TEMPFAIL — the failure that clears on its own — and collides with none of the codes the chain
 # already reports: timeout's 124, the shell's 125-127, and 137 for a stage killed by SIGKILL.
 USAGE_LIMIT_EXIT=75
-# And for a stage the stage table does not answer: the fault is in the table, not the issue being
-# built, so a runner must not park the issue for it. 78 is sysexits' EX_CONFIG.
-STAGE_TABLE_EXIT=78
+# And for a fault in the chain's own configuration — a stage the stage table does not answer, or a
+# plugin clone that is not there: the fault is not in the issue being built, so a runner must not
+# park the issue for it. 78 is sysexits' EX_CONFIG.
+CONFIG_EXIT=78
+
+# The clone of the gaffer plugin the stages are loaded from. Its manifest is the one file that
+# makes a directory a plugin, so that is what is checked for.
+GAFFER=${CHAIN_GAFFER:-$HOME/Repos/gaffer-runner}
 
 usage() {
   echo "usage: scripts/chain.sh [--dry-run] <issue>" >&2
@@ -73,10 +82,18 @@ case "$issue" in ''|*[!0-9]*) usage; exit 1 ;; esac
 # Report mode reaches no git or claude command, so it cannot change anything.
 if [ "$dry_run" = 1 ]; then
   echo "chain: dry run for issue #$issue — nothing will be run"
-  echo "  1. build: /build $issue"
-  echo "  2. verify: /verify"
-  echo "  3. raise-pr: /raise-pr $issue"
+  echo "  1. build: /gaffer:build $issue"
+  echo "  2. verify: /gaffer:verify"
+  echo "  3. raise-pr: /gaffer:raise-pr $issue"
+  echo "  plugin: $GAFFER"
   exit 0
+fi
+
+# The plugin clone, before the stage table: a stage started without it would fail on an unknown
+# command after a session had been spent, blaming the issue for a clone that was never made.
+if [ ! -f "$GAFFER/.claude-plugin/plugin.json" ]; then
+  echo "chain: refused — the gaffer plugin clone $GAFFER does not exist; clone https://github.com/FrankRay78/gaffer-claude.git there, or set CHAIN_GAFFER to where it is. No stage was started." >&2
+  exit "$CONFIG_EXIT"
 fi
 
 # An override that is not a whole number reaches `timeout` as a bad argument, which would surface
@@ -105,97 +122,189 @@ stage_model_effort() {
 }
 table_refused() {
   echo "chain: refused — the stage table has no usable row for $1; no stage was started." >&2
-  exit "$STAGE_TABLE_EXIT"
+  exit "$CONFIG_EXIT"
 }
 BUILD_MODEL_EFFORT=$(stage_model_effort build) || table_refused build
 VERIFY_MODEL_EFFORT=$(stage_model_effort verify) || table_refused verify
 RAISE_PR_MODEL_EFFORT=$(stage_model_effort raise-pr) || table_refused raise-pr
 
-# HOW A STAGE'S VERDICT IS READ: BY POSITION. The report's final non-blank line is the verdict,
-# and no other line of the report is read at all — so nothing the report quotes, in a code block,
-# a list, a table or a quotation, can be taken for the stage's own decision. Before #345 the chain
-# scanned the whole report for verdict-shaped prose, and that reading was wrong in both directions:
-# #333's own run was stopped at a /build that had succeeded, over a failure verdict the report
-# showed as RED evidence inside a code block; and, the dangerous direction, a failed /verify whose
-# report also carried a success-shaped phrase was read as a success and carried through to a real
-# pull request. Every added pattern brought its own exceptions, and dropping fenced blocks before
-# the scan was tried and reverted (#333, dd1cdfe/d2addd8) because an unclosed fence hid correctly
-# written verdicts. Position cannot be faked by anything the report quotes, and it removes pattern
+# HOW A STAGE'S VERDICT IS READ: BY POSITION. The verdict is whatever ENDS the report — the final
+# non-blank line, or the fenced block that closes the report — and no other part of the report is
+# read at all, so nothing the report quotes above it, in a code block, a list, a table or a
+# quotation, can be taken for the stage's own decision. Before #345 the chain scanned the whole
+# report for verdict-shaped prose, and that reading was wrong in both directions: #333's own run
+# was stopped at a /build that had succeeded, over a failure verdict the report showed as RED
+# evidence inside a code block; and, the dangerous direction, a failed /verify whose report also
+# carried a success-shaped phrase was read as a success and carried through to a real pull request.
+# Every added pattern brought its own exceptions, and dropping fenced blocks before the scan was
+# tried and reverted (#333, dd1cdfe/d2addd8) because an unclosed fence hid correctly written
+# verdicts. Position cannot be faked by anything the report quotes, and it removes pattern
 # tolerance instead of adding to it.
 #
-# The one tolerance kept is decoration ON that line, because the verdict is written by a model and
-# prompts asking for a plain line do not always get one: one leading heading, blockquote, bullet or
-# numbered-item marker — one, not a stack of them — and a run of `*`, `_` or backticks wrapping the
-# verdict. #242 was a verified branch parked over ``## VERIFIED `branch=…` ``. Anything else — a
-# verdict fenced, buried mid-sentence, or sharing its line with anything else at all — is no
-# verdict, and the run stops saying so rather than guessing. That is the cheap direction to be
-# wrong in: a false stop costs the rest of one run, a false success opens a pull request off
-# unverified work.
+# WHAT IT READS THERE: one JSON object, the verdict gaffer's docs/verdict-schema.md states — a schema
+# version, an outcome, and that outcome's payload. The version is checked before anything else is
+# read, and one this script does not know stops the run naming it, so a verdict the chain cannot
+# read is never guessed at. Fields it does not know are ignored, so a prompt can add to the verdict
+# without a change here. The text verdict this replaced (`READY branch=…` and its kin) is prose to
+# this script and is reported as no verdict: the prompts and the chain changed together.
 #
-# Two consequences of that last clause, both of which cost a false success before they were closed:
-# the success patterns are anchored at BOTH ends with a non-empty payload, so a line that opens with
-# the verdict word and then contradicts itself (`VERIFIED branch=x, FAILED reason=suite red`, or
-# `VERIFIED branch=x — except the suite is red`) is not a success. Anchoring only the start left the
-# failure test — which matches `^FAILED` and so cannot see a `FAILED` mid-line — unable to catch it.
-# And only up to three leading spaces are stripped, because four spaces or a tab open markdown's
-# other kind of code block: stripping those indiscriminately let an indented block quoting a success
-# verdict sit last and be read as the stage's own, which is precisely what position is meant to
-# prevent.
+# The one tolerance kept is decoration AROUND the object, because the verdict is written by a model
+# and prompts asking for a bare line do not always get one: one leading heading, blockquote, bullet
+# or numbered-item marker — one, not a stack of them — a run of `*`, `_` or backticks wrapping the
+# line, an indent of up to three spaces, and a code fence around the object when that fence closes
+# the report. #242 was a verified branch parked over a heading and backticks on a text verdict.
+# Anything else — a verdict buried mid-sentence, sharing its line with anything else, or followed by
+# anything but blank lines — is not a JSON object, so it is no verdict, and the run stops saying so
+# rather than guessing. That is the cheap direction to be wrong in: a false stop costs the rest of
+# one run, a false success opens a pull request off unverified work.
+#
+# Two consequences of that last clause, both of which cost a false success on the text verdict this
+# replaced: a success verdict that also carries a reason contradicts itself and is not a success —
+# the JSON shape of `VERIFIED branch=x, FAILED reason=suite red`, the hedge that once passed the
+# gate. And only up to three leading spaces are stripped, because four spaces or a tab open
+# markdown's other kind of code block: stripping those indiscriminately let an indented block
+# quoting a success verdict sit last and be read as the stage's own, which is precisely what
+# position is meant to prevent. jq tolerates leading whitespace, so the bare line must open with
+# the object's own brace once the three spaces are gone.
 
-# The verdict lines these patterns read are written by the stage prompts: .claude/commands/build.md
-# (READY), verify.md (VERIFIED) and raise-pr.md (RAISED), and all three emit FAILED. A change to a
-# pattern here is a change to what those prompts must tell the model to write, and the reverse.
+# The verdicts this script reads are written by the gaffer plugin's stage commands: build (ready),
+# verify (verified) and raise-pr (raised), and all three write failed. Their shape is the one
+# gaffer's docs/verdict-schema.md states — the one statement of it; NetPace keeps no copy — and this is the
+# one version of it this script reads. A change to the schema is a change to what those prompts
+# tell the model to write, and the reverse; the chain tracks gaffer's main, so a reader change
+# lands here before the writer change lands there.
+VERDICT_SCHEMA=1
 
 # One leading markdown marker, with its whitespace. `-`, `*` and `+` count as a bullet only when
 # whitespace follows, so the `**` opening a bold verdict is not read as one and left half-stripped.
 VERDICT_MARKER='^(#+[[:space:]]+|>[[:space:]]*|[-+*][[:space:]]+|[0-9]+[.)][[:space:]]+)'
 # A run of emphasis characters opening the verdict line.
 VERDICT_EMPHASIS='^([*_`]+)'
-# A stage's own failure verdict, and its reason. Whitespace and punctuation are tolerated between
-# the two words, which is where a model's markup lands. Unanchored at the end, unlike the three
-# success patterns below: the reason is free prose and runs to the end of the line by definition.
-FAIL_VERDICT='^FAILED[^[:alnum:]]*reason=(.*)$'
-# The two success verdicts whose payload is a single token. Anchored at both ends, and the payload
-# must be non-empty: `VERIFIED branch=` is a truncated report, not a verified branch, and anything
-# after the payload means the line is not just the verdict.
-READY_VERDICT='^READY[^[:alnum:]]*branch=[^[:space:]]+$'
-VERIFIED_VERDICT='^VERIFIED[^[:alnum:]]*branch=[^[:space:]]+$'
-# raise-pr's verdict. Unlike the other two the payload is a URL, so the pattern carries that URL's
-# shape and the line must still open with the verdict: a bare URL is not a verdict, because the
-# commonest failure at that stage — a pull request already open for the branch — reports an error
-# whose text contains a perfectly good pull request URL. The URL must be bare: a markdown autolink
-# (`<…>`) or link (`[…](…)`) around it is not read, and raise-pr.md says so.
-PR_VERDICT='^RAISED[^[:alnum:]]*pr=(https://github\.com/[^[:space:]]+/pull/[0-9]+)[^[:alnum:]]*$'
+# A code fence, after up to three spaces of indent. The opening fence may carry an info string
+# (```json); the closing one carries nothing.
+FENCE_OPEN='^ {0,3}(`{3,}|~{3,})[[:space:]]*[[:alnum:]_-]*[[:space:]]*$'
+FENCE_CLOSE='^ {0,3}(`{3,}|~{3,})[[:space:]]*$'
+# raise-pr's payload: a bare pull request URL and nothing around it. The commonest failure at that
+# stage — a pull request already open for the branch — reports an error whose text contains a
+# perfectly good pull request URL, which is why the URL is read from the verdict's own field and
+# never from the prose. A markdown autolink (`<…>`) or link (`[…](…)`) around it is not read, and
+# raise-pr.md says so.
+PR_URL='^https://github\.com/[^[:space:]]+/pull/[0-9]+$'
 
-# read_verdict <report> — the report's verdict line, normalised, left in $STAGE_VERDICT. Empty when
-# the report has no non-blank line at all, which is no verdict like any other unreadable line.
+# read_verdict <report> — the text that ends the report, left in $STAGE_VERDICT: the final
+# non-blank line with its decoration stripped, or the body of the fenced block that closes the
+# report. Empty when the report has no non-blank line at all, or ends on a closing fence nothing
+# opened — no verdict, like any other unreadable ending. Whether the text IS a verdict is decided
+# by stage_verdict below; this only chooses which text is read.
 read_verdict() {
-  local line='' l open
-  # The final non-blank line. The carriage-return strip is belt-and-braces rather than load-bearing
-  # — `[[:space:]]` already covers \r both in the blank test below and in the trailing-space strip —
-  # but it keeps the \r off the reason at the point the line is chosen, where it is easiest to see.
+  local -a lines=()
+  local l n i line open
+  # The carriage-return strip is belt-and-braces rather than load-bearing — `[[:space:]]` already
+  # covers \r in the blank test below and in the trailing-space strip — but it keeps the \r off the
+  # verdict at the point the lines are read, where it is easiest to see.
   while IFS= read -r l || [ -n "$l" ]; do
-    l=${l%$'\r'}
-    case $l in *[![:space:]]*) line=$l ;; esac
+    lines+=("${l%$'\r'}")
   done <<<"$1"
+  n=${#lines[@]}
+  while [ "$n" -gt 0 ] && [[ ! ${lines[n-1]} =~ [^[:space:]] ]]; do n=$((n-1)); done
+  STAGE_VERDICT=''
+  [ "$n" -gt 0 ] || return 0
+  if [[ ${lines[n-1]} =~ $FENCE_CLOSE ]]; then
+    # The fence that closes the report. Its whole body is the verdict, so a block holding more than
+    # the one object is unreadable rather than read for the last line in it.
+    for ((i = n - 2; i >= 0; i--)); do
+      if [[ ${lines[i]} =~ $FENCE_OPEN ]]; then
+        STAGE_VERDICT=$(printf '%s\n' "${lines[@]:i+1:n-i-2}")
+        return 0
+      fi
+    done
+    return 0
+  fi
   # Up to three leading spaces only: four, or a tab, is markdown's indented code block, and a
   # quotation that can be indented into position is a quotation that can fake being the verdict.
-  line=$(sed -E -e 's/^ {0,3}//' -e "s/$VERDICT_MARKER//" -e 's/[[:space:]]+$//' <<<"$line")
+  line=$(sed -E -e 's/^ {0,3}//' -e "s/$VERDICT_MARKER//" -e 's/[[:space:]]+$//' <<<"${lines[n-1]}")
   if [[ $line =~ $VERDICT_EMPHASIS ]]; then
     open=${BASH_REMATCH[1]}
     line=${line#"$open"}
-    # The closing run is stripped only when the same run closes the line that it opened, so a
-    # reason ending in a backtick keeps it — including under a balanced wrap, where the run strips
-    # the wrapper's backtick and leaves the reason's. The one shape that loses a character is an
-    # unbalanced wrap, where the single trailing backtick is both at once; telling those apart
-    # needs a markdown parser, and the reason still arrives.
+    # The closing run is stripped only when the same run closes the line that it opened. The
+    # object's own last character is always its closing brace, so a reason ending in a backtick
+    # is inside the object and never confused with the wrapper.
     line=${line%"$open"}
     # The marker strip above ran before the emphasis run was removed, so re-strip the space a
-    # shape like `** FAILED reason=…**` leaves behind — otherwise the line is unreadable and the
-    # stage's own reason is lost with it.
+    # shape like `** {…}**` leaves behind — otherwise the line is unreadable and the stage's own
+    # reason is lost with it.
     line=${line#"${line%%[![:space:]]*}"}
   fi
-  STAGE_VERDICT=$line
+  # The indent rule above is only a rule if the leftover whitespace is not forgiven here: jq reads
+  # an object past any amount of leading whitespace, so a four-space indent would otherwise pass.
+  case $line in '{'*) STAGE_VERDICT=$line ;; esac
+}
+
+# verdict_string <field> — the verdict's <field> when it is a JSON string, and nothing otherwise, so
+# a number, object or null in a field the chain reads is treated as that field missing.
+verdict_string() {
+  jq -r --arg f "$1" 'if (.[$f] | type) == "string" then .[$f] else empty end' <<<"$STAGE_VERDICT"
+}
+
+# stage_verdict <position> <name> <success outcome> — read $STAGE_VERDICT as the verdict, leaving the
+# payload the stage reported in $STAGE_PAYLOAD, or stop the run with the reason the verdict gives or
+# the reason it cannot be read. Every refusal that is not the stage's own reason, and not an unknown
+# schema version, is reported as `no readable verdict` with what was wrong after the dash: the two
+# send whoever reads the closing line to different places — the stage's own work, or the way it
+# wrote its report. A verdict the chain cannot read is never retried and never guessed at.
+stage_verdict() {
+  local pos=$1 name=$2 success=$3 verdict_type schema outcome reason
+  # One JSON object and nothing else: two objects, an array, a string, prose, the old text
+  # verdict and an empty report all stop here. `jq -e` exits 4 on no input, which covers the empty
+  # case without a test of its own.
+  verdict_type=$(jq -e -r 'type' 2>/dev/null <<<"$STAGE_VERDICT") || verdict_type=''
+  if [ "$verdict_type" != object ]; then
+    fail "$pos" "$name" "no readable verdict — the report does not end with a JSON verdict"
+  fi
+  # The version before anything else, printed as the JSON it was written as, so a version written
+  # as a string shows its quotes in the closing line rather than passing as the number it is not.
+  schema=$(jq -r 'if .schema == null then empty else (.schema | tojson) end' <<<"$STAGE_VERDICT")
+  if [ -z "$schema" ]; then
+    fail "$pos" "$name" "no readable verdict — the JSON ending the report carries no schema version"
+  fi
+  if [ "$schema" != "$VERDICT_SCHEMA" ]; then
+    fail "$pos" "$name" "the verdict has schema version $schema, which this chain does not read"
+  fi
+  outcome=$(verdict_string outcome)
+  if [ -z "$outcome" ]; then
+    fail "$pos" "$name" "no readable verdict — the verdict names no outcome"
+  fi
+  # Failure is read before success only so the stage's own reason is what the closing line
+  # reports; the outcome is one string, so no ordering could read both.
+  if [ "$outcome" = failed ]; then
+    # The reason lands on the one closing line chain-next.sh reads, so a line break inside the JSON
+    # string — legal, and a plausible thing to write — is flattened to a space with the rest of the
+    # whitespace runs, rather than cutting the parked reason off at its first line.
+    reason=$(verdict_string reason | tr -s '[:space:]' ' ' | sed -E -e 's/^ //' -e 's/ $//')
+    # A failure with no reason is a malformed report, but the stage still failed. Say so, rather
+    # than closing with a dangling dash that reads like the reason was lost in transit.
+    fail "$pos" "$name" "${reason:-the stage reported a failure with no reason}"
+  fi
+  if [ "$outcome" != "$success" ]; then
+    # Printed as the JSON it was written as, as the version is: the raw string can carry a line
+    # break, and a second line shaped like a closing line would be what chain-next.sh parks on.
+    fail "$pos" "$name" "no readable verdict — the verdict's outcome is $(jq -r '.outcome | tojson' <<<"$STAGE_VERDICT"), not \"$success\" or \"failed\""
+  fi
+  if [ "$(jq -r 'has("reason")' <<<"$STAGE_VERDICT")" = true ]; then
+    fail "$pos" "$name" "no readable verdict — a $success verdict that also carries a reason contradicts itself"
+  fi
+  # The payload, and its shape. An empty or missing one is a truncated report, not a verified
+  # branch or an opened pull request, and must not read as a verdict for whatever the reader assumes.
+  case $success in
+    raised)
+      STAGE_PAYLOAD=$(verdict_string pr)
+      [[ $STAGE_PAYLOAD =~ $PR_URL ]] \
+        || fail "$pos" "$name" "no readable verdict — the raised verdict names no pull request URL" ;;
+    *)
+      STAGE_PAYLOAD=$(verdict_string branch)
+      [[ $STAGE_PAYLOAD =~ ^[^[:space:]]+$ ]] \
+        || fail "$pos" "$name" "no readable verdict — the $success verdict names no branch" ;;
+  esac
 }
 
 # usage_limit_reason <reply> — the reason line for a stage the account's usage limit stopped, or
@@ -274,17 +383,17 @@ fail() {
   exit "${4:-1}"
 }
 
-# run_stage <position> <name> <prompt> <success verdict ERE> <limit> <model and effort>
-# Prints the stage's report, and leaves the report text in $STAGE_RESULT, the normalised verdict
-# line in $STAGE_VERDICT and the session id in $STAGE_SESSION — globals: the caller reads the last
-# stage's verdict for the `chain: done` line, and fail() reads the session id to name the session
-# to reopen. The success ERE is matched against the verdict line alone, anchored at both ends, so
-# neither a longer word merely ending in the verdict word (`UNVERIFIED branch=…`) nor a verdict
-# sharing its line with anything else (`VERIFIED branch=x, FAILED reason=…`) is that verdict.
+# run_stage <position> <name> <prompt> <success outcome> <limit> <model and effort>
+# Prints the stage's report, and leaves the report text in $STAGE_RESULT, the verdict text in
+# $STAGE_VERDICT, the payload it carried in $STAGE_PAYLOAD and the session id in $STAGE_SESSION —
+# globals: the caller reads the last stage's payload for the `chain: done` line, and fail() reads
+# the session id to name the session to reopen. The success outcome is matched against the
+# verdict's outcome field exactly, so neither another stage's success nor a word merely containing
+# the outcome (`unverified`) is that verdict.
 run_stage() {
-  local pos=$1 name=$2 prompt=$3 verdict=$4 limit=$5 model effort
+  local pos=$1 name=$2 prompt=$3 success=$4 limit=$5 model effort
   read -r model effort <<<"$6"
-  local reply rc reason reply_type is_error subtype started elapsed limit_reason
+  local reply rc reply_type is_error subtype started elapsed limit_reason
   # Cleared before the call, so a stage that fails before the parse below — a stall, a launch
   # failure, a reply that is not JSON — does not leave the previous stage's id in place and send
   # the reader to an already-finished session. Empty is the "no session id was captured" fallback.
@@ -297,9 +406,10 @@ run_stage() {
   # ends, then stops them and returns that turn's text as the report — /verify's
   # code-simplifier has run past it, ending the stage on a progress message with no verdict. The
   # ceiling is lifted so a stage finishes its own work; the stage time limit stays the stall
-  # detector.
+  # detector. --plugin-dir loads the gaffer clone checked above, so the /gaffer: command the prompt
+  # names resolves to that clone's copy whatever else is installed on the machine.
   started=$SECONDS
-  reply=$(CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS=0 timeout --kill-after=60 "$limit" claude -p "$prompt" --model "$model" --effort "$effort" --output-format json --dangerously-skip-permissions </dev/null)
+  reply=$(CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS=0 timeout --kill-after=60 "$limit" claude -p "$prompt" --plugin-dir "$GAFFER" --model "$model" --effort "$effort" --output-format json --dangerously-skip-permissions </dev/null)
   rc=$?
   elapsed=$((SECONDS - started))
   # 124 is timeout's own report that the limit was reached. 137 is the stage killed by SIGKILL,
@@ -360,23 +470,11 @@ run_stage() {
   if [ "$is_error" = true ]; then
     fail "$pos" "$name" "claude reported an error${subtype:+ ($subtype)} — ${STAGE_RESULT:-no detail}"
   fi
-  # The verdict, read by position — see the block above read_verdict. What stops a failed stage
-  # starting the next one is position, not this test order: `^FAILED` and the three success patterns
-  # are mutually exclusive on one normalised line, so neither ordering could read both. Failure is
-  # tested first only so the stage's own reason is what the closing line reports.
+  # The verdict, read by position — see the block above read_verdict — and then as the JSON it is.
+  # Anything but this stage's success outcome with its payload stops the run inside stage_verdict,
+  # with the stage's own reason where it gave one.
   read_verdict "$STAGE_RESULT"
-  if [[ $STAGE_VERDICT =~ $FAIL_VERDICT ]]; then
-    reason=$(sed -E -e 's/^[[:space:]]+//' -e 's/[[:space:]]+$//' <<<"${BASH_REMATCH[1]}")
-    # A bare `FAILED reason=` is a malformed report, but the stage still failed. Say so, rather
-    # than closing with a dangling dash that reads like the reason was lost in transit.
-    fail "$pos" "$name" "${reason:-the stage reported a failure with no reason}"
-  fi
-  # Neither verdict readable: the run stops, and says that rather than naming a reason it does not
-  # have. Reported distinctly from a stage that failed with a reason, because they send whoever
-  # reads the closing line to different places — the stage's own work, or the way it wrote its
-  # report. A verdict the chain cannot read is never retried and never guessed at.
-  [[ $STAGE_VERDICT =~ $verdict ]] \
-    || fail "$pos" "$name" "no readable verdict — the last line of the report is not a verdict"
+  stage_verdict "$pos" "$name" "$success"
   echo "chain: [$pos/3] $name — ok"
 }
 
@@ -416,14 +514,12 @@ fi
 # cannot change what the rest of the run does. Without the group the run carried on from its old
 # position in the new file and executed whatever text it landed in (#348).
 {
-  run_stage 1 build "/build $issue" "$READY_VERDICT" "$BUILD_LIMIT" "$BUILD_MODEL_EFFORT"
-  run_stage 2 verify /verify "$VERIFIED_VERDICT" "$VERIFY_LIMIT" "$VERIFY_MODEL_EFFORT"
-  run_stage 3 raise-pr "/raise-pr $issue" "$PR_VERDICT" "$RAISE_PR_LIMIT" "$RAISE_PR_MODEL_EFFORT"
+  run_stage 1 build "/gaffer:build $issue" ready "$BUILD_LIMIT" "$BUILD_MODEL_EFFORT"
+  run_stage 2 verify /gaffer:verify verified "$VERIFY_LIMIT" "$VERIFY_MODEL_EFFORT"
+  run_stage 3 raise-pr "/gaffer:raise-pr $issue" raised "$RAISE_PR_LIMIT" "$RAISE_PR_MODEL_EFFORT"
 
-  # Re-matched rather than read out of run_stage's own match, so the URL reported is demonstrably
-  # the one on the verdict line this script just accepted.
-  pr_url=''
-  [[ $STAGE_VERDICT =~ $PR_VERDICT ]] && pr_url=${BASH_REMATCH[1]}
-  echo "chain: done — $pr_url"
+  # The payload the last stage's verdict was accepted on, so the URL reported is demonstrably the
+  # one this script just checked against the pull request shape.
+  echo "chain: done — $STAGE_PAYLOAD"
   exit 0
 }
