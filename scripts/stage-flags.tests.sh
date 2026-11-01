@@ -67,8 +67,8 @@ OUTPUT=$missing
 ok "every stage a runner names has a row" '[ -z "$missing" ]'
 # A model or effort written as a literal value anywhere a runner is written is an answer the table
 # does not give; a flag whose value is a variable is the runner passing the table's answer on. The
-# test matrices are left out, as their stubs record the flags the chain passed, and so is the
-# lookup itself, whose usage line shows what it prints.
+# test matrices are left out, as their fixtures name models of their own, and so is the lookup
+# itself, whose usage line shows what it prints.
 OUTPUT=$(cd "$REPO" && git grep -nE -- "--(model|effort)[ =]+['\"]?[A-Za-z0-9]" -- .github/workflows 'scripts/*.sh' ':!*.tests.sh' ':!scripts/stage-flags.sh')
 ok "no runner names a model or effort of its own" '[ -z "$OUTPUT" ]'
 # A Claude step whose claude_args does not open with a looked-up output, or that reads an output
