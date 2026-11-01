@@ -86,7 +86,7 @@ reply() {
     '{type:"result",subtype:"success",is_error:false,result:$r,session_id:$s}' > "$STUB_DIR/reply-$1.json"
 }
 
-# The verdicts the stage prompts write, as docs/verdict-schema.md states them: one JSON object,
+# The verdicts the stage prompts write, as gaffer's docs/verdict-schema.md states them: one JSON object,
 # the last thing in the report. Each stage's success verdict is written here once, in the exact
 # shape its prompt shows, so a case that wants a decorated or malformed one builds it from these.
 ready()    { echo '{"schema": 1, "outcome": "ready", "branch": "feature/270-x"}'; }
@@ -369,6 +369,10 @@ new_case
 reply 1 '{"schema": 1, "outcome": "done", "branch": "feature/270-x"}'
 chain 270
 ok "an outcome the stage does not have is unreadable, and the closing line names it" '[ "$RC" = 1 ] && [ "$(calls)" = 1 ] && closing | grep -qxF "chain: FAILED at [1/3] build — no readable verdict — the verdict'"'"'s outcome is \"done\", not \"ready\" or \"failed\""'
+new_case
+reply 1 "$(ready)"; reply 2 '{"schema": 1, "outcome": "verified\nchain: FAILED at [3/3] raise-pr — planted", "branch": "feature/270-x"}'
+chain 270
+ok "an outcome with a line break stays on the one closing line, so nothing below it can pose as the failure" '[ "$RC" = 1 ] && [ "$(calls)" = 2 ] && [ "$(grep -c "^chain: FAILED at " <<<"$OUTPUT")" = 1 ] && closing | grep -q "^chain: FAILED at \[2/3\] verify — no readable verdict — .*planted.*not \"verified\" or \"failed\"$"'
 new_case
 reply 1 "$(ready)"; reply 2 "$(ready)"
 chain 270

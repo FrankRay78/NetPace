@@ -29,7 +29,7 @@ NetPace's additions to the review method in the [gaffer](https://github.com/Fran
 
 ## Contracts
 
-What a user, a script or a `NetPace.Core` consumer touches directly: a CLI option, an exit code, a CSV or JSON field, a public `NetPace.Core` member. A changed CLI option must update `README.md`, including its `--help` snapshot, and `USER_GUIDE.md`. Also flag reflection-heavy or non-trim-safe code, since NetPace targets AOT-trimmed builds: a finding, not a contract change.
+What a user, a script or a `NetPace.Core` consumer touches directly: a CLI option, an exit code, a CSV or JSON field, a public `NetPace.Core` member. A changed contract must update the documents `CONVENTIONS.md` → *Documentation* names for it. Code that breaks `CONVENTIONS.md` → *Code quality* → *Trim and AOT safety* is a finding, not a contract change.
 
 ## Context to load
 

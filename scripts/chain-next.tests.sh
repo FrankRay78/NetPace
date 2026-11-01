@@ -528,7 +528,9 @@ fire --dry-run
 ok "report mode leaves the plugin clone where it was" '[ "$RC" = 0 ] && [ "$(git -C "$GAFFER" rev-parse HEAD)" != "$(gaffer_origin_main)" ]'
 new_case
 issues '[{"number":5,"state":"OPEN","labels":["ready"]}]'
-echo local-edit > "$GAFFER/CHANGE.md"; commit_all "$GAFFER" "a local commit nobody should lose"
+# The local commit touches a file the incoming one does not, so a plain merge would succeed with
+# a merge commit: only the fast-forward rule refuses this clone.
+echo local-edit > "$GAFFER/LOCAL.md"; commit_all "$GAFFER" "a local commit nobody should lose"
 advance_gaffer "plugin v2"
 local_head="$(git -C "$GAFFER" rev-parse HEAD)"
 fire
@@ -565,7 +567,16 @@ issues '[{"number":5,"state":"OPEN","labels":["ready"]}]'
 OUTPUT="$(cd "$SB" && CHAIN_NEXT_CLONE="$CLONE" CHAIN_NEXT_GAFFER="$SB/case$cases/no-such-gaffer" CHAIN_NEXT_STATE_DIR="$STATE" PATH="$SB/bin:$PATH" bash "$CLONE/scripts/chain-next.sh" </dev/null 2>&1)"; RC=$?
 ok "the firing refuses, naming the missing clone" '[ "$RC" != 0 ] && grep -qF "no-such-gaffer" <<<"$OUTPUT"'
 ok "before selecting anything: no chain, no label, no comment" '[ -z "$(chain_calls)" ] && [ "$(gh_writes)" = 0 ] && [ "$(labels_of 5)" = ready ]'
-ok "and the runner's clone is untouched" '[ ! -e "$STATE" ] || [ -z "$(ls "$STATE/logs" 2>/dev/null)" ]'
+ok "and the tracker was not even queried" '! grep -q "^issue|list|" "$STUB_DIR/gh-log" 2>/dev/null'
+ok "and no state was created" '[ ! -e "$STATE" ]'
+ok "and the runner's clone is untouched" '[ "$(git -C "$CLONE" rev-parse HEAD)" = "$(git -C "$ORIGIN" rev-parse main)" ] && [ -z "$(git -C "$CLONE" status --porcelain)" ]'
+echo "A plugin clone whose origin cannot be fetched stops the firing:"
+new_case
+issues '[{"number":5,"state":"OPEN","labels":["ready"]}]'
+mv "$GAFFER_ORIGIN" "$GAFFER_ORIGIN.gone"
+fire
+ok "the firing refuses, saying the fetch failed" '[ "$RC" != 0 ] && grep -qF "could not fetch gaffer" <<<"$OUTPUT"'
+ok "and nothing ran or was parked" '[ -z "$(chain_calls)" ] && [ "$(gh_writes)" = 0 ] && [ "$(labels_of 5)" = ready ]'
 
 echo ""
 echo "RESULT: $pass passed, $fail failed"

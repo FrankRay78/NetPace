@@ -4,7 +4,7 @@
 
 ## Intent
 
-NetPace's harness commands come from the [gaffer](https://github.com/FrankRay78/gaffer-claude) plugin: the project settings declare its marketplace and enable it, `scripts/chain.sh` starts its stages as `/gaffer:build`, `/gaffer:verify` and `/gaffer:raise-pr` with the plugin loaded from a clone the runner fast-forwards to gaffer's `main` before each firing, and the four Claude CI workflows clone gaffer's `main` per job and read the command from that clone. Nothing headless depends on whatever copy is installed on a machine, and nothing in a pull request's head can choose which gaffer reviews it.
+NetPace's harness commands come from the [gaffer](https://github.com/FrankRay78/gaffer-claude) plugin: the project settings declare its marketplace and enable it, `scripts/chain.sh` starts its stages as `/gaffer:build`, `/gaffer:verify` and `/gaffer:raise-pr` with the plugin loaded from a clone the runner fast-forwards to gaffer's `main` before each firing, and the four Claude CI workflows clone gaffer's `main` per job and read the command from that clone. Nothing headless depends on whatever copy is installed on a machine, and nothing in the checkout can choose which gaffer reviews a pull request — except the workflow file itself: `review-pr` and `review-followup` run on `pull_request`, for which GitHub runs the workflow file from the pull request, so a pull request that edits the clone step chooses the gaffer, and the prompt, for its own review.
 
 ## Alternatives rejected
 

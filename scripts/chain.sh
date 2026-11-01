@@ -141,7 +141,7 @@ RAISE_PR_MODEL_EFFORT=$(stage_model_effort raise-pr) || table_refused raise-pr
 # verdicts. Position cannot be faked by anything the report quotes, and it removes pattern
 # tolerance instead of adding to it.
 #
-# WHAT IT READS THERE: one JSON object, the verdict docs/verdict-schema.md states — a schema
+# WHAT IT READS THERE: one JSON object, the verdict gaffer's docs/verdict-schema.md states — a schema
 # version, an outcome, and that outcome's payload. The version is checked before anything else is
 # read, and one this script does not know stops the run naming it, so a verdict the chain cannot
 # read is never guessed at. Fields it does not know are ignored, so a prompt can add to the verdict
@@ -169,7 +169,7 @@ RAISE_PR_MODEL_EFFORT=$(stage_model_effort raise-pr) || table_refused raise-pr
 
 # The verdicts this script reads are written by the gaffer plugin's stage commands: build (ready),
 # verify (verified) and raise-pr (raised), and all three write failed. Their shape is the one
-# gaffer's docs/verdict-schema.md states, mirrored in docs/verdict-schema.md here, and this is the
+# gaffer's docs/verdict-schema.md states — the one statement of it; NetPace keeps no copy — and this is the
 # one version of it this script reads. A change to the schema is a change to what those prompts
 # tell the model to write, and the reverse; the chain tracks gaffer's main, so a reader change
 # lands here before the writer change lands there.
@@ -286,7 +286,9 @@ stage_verdict() {
     fail "$pos" "$name" "${reason:-the stage reported a failure with no reason}"
   fi
   if [ "$outcome" != "$success" ]; then
-    fail "$pos" "$name" "no readable verdict — the verdict's outcome is \"$outcome\", not \"$success\" or \"failed\""
+    # Printed as the JSON it was written as, as the version is: the raw string can carry a line
+    # break, and a second line shaped like a closing line would be what chain-next.sh parks on.
+    fail "$pos" "$name" "no readable verdict — the verdict's outcome is $(jq -r '.outcome | tojson' <<<"$STAGE_VERDICT"), not \"$success\" or \"failed\""
   fi
   if [ "$(jq -r 'has("reason")' <<<"$STAGE_VERDICT")" = true ]; then
     fail "$pos" "$name" "no readable verdict — a $success verdict that also carries a reason contradicts itself"
