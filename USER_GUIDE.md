@@ -98,6 +98,12 @@ Two further options decide whether and where the result appears, and both work w
 
 `--diagnostics` is not a fifth format — it adds a second stream alongside whichever format you picked, leaving the result untouched. See [Diagnosing a failure with `--diagnostics`](#diagnosing-a-failure-with---diagnostics).
 
+### What `--file` writes
+
+`--file` writes **UTF-8 text with no byte-order mark**, in every format and in both `--file-mode` settings. The file holds the same bytes the same run puts on standard output, so `netpace --json --file results.json` and `netpace --json > results.json` leave you with the same file: a strict JSON parser reads it as it stands, and `cut`, `awk` and `head` see the CSV header's first column name as the first field of the first line.
+
+**Opening a CSV result in a spreadsheet:** import it rather than double-clicking it. In Excel, use *Data → From Text/CSV* and choose **UTF-8** as the file origin. Without a byte-order mark to tip it off, a double-clicked file may be read as a legacy code page instead, which garbles non-ASCII text such as an accented server sponsor or location name. LibreOffice Calc asks for the character set on open, where UTF-8 is the default.
+
 ### The fields CSV and JSON carry
 
 **CSV and JSON carry the same fields under the same names.** A field one of them records, the other records too, spelled identically, so a log in either format reads the same way and neither has to be interpreted against the other. Only the shape for something missing differs: CSV always has every built-in column and leaves the cell empty, while JSON leaves the field out.

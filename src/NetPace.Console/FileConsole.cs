@@ -37,7 +37,9 @@ public sealed class FileConsole : IAnsiConsole, IPersistentConsole, IDisposable
         // UTF-8 with no byte-order mark, so the file holds the same bytes the same output has on
         // standard output: a strict JSON parser rejects a document behind a byte-order mark, and
         // Unix text tools read one as part of the first field. Encoding.UTF8 emits one, so it is
-        // not what this writer is given.
+        // not what this writer is given. Why no option asks for one, and what that costs a
+        // spreadsheet user, is in
+        // docs/change-intent-records/2026-11-02-file-output-carries-no-byte-order-mark.md.
         _fileWriter = new StreamWriter(filePath, append: (fileMode == FileMode.Append && !startedEmpty), new UTF8Encoding(encoderShouldEmitUTF8Identifier: false)) { AutoFlush = true };
 
         // Create console settings for plain text output.
