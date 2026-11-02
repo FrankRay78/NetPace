@@ -1,0 +1,10 @@
+{
+  "clone": "~/Repos/NetPace-runner",
+  "writers": ["User:FrankRay78", "Bot:claude"],
+  "stages": {
+    "build": { "model": "claude-opus-5", "effort": "high" },
+    "verify": { "model": "claude-opus-5", "effort": "high" },
+    "raise-pr": { "model": "claude-opus-5", "effort": "medium" }
+  },
+  "skip_permissions": true
+}

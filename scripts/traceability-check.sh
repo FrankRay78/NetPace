@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 #
-# traceability-check.sh — Constitution §VIII enforcement (issue #319).
+# traceability-check.sh — enforces the scenario-label → test-marker rule (CONVENTIONS.md,
+# Acceptance criteria).
 #
-# §VIII makes a scenario LABEL on a GitHub issue the traceability key that links an acceptance
+# The rule makes a scenario LABEL on a GitHub issue the traceability key that links an acceptance
 # criterion to the test that verifies it:
 #
 #     issue   **Scenario: Server list is screened before measuring**
@@ -17,9 +18,9 @@
 # The direction matters and is deliberate. Label → marker only: a marker no label names is not a
 # violation here, because a scenario can legitimately be covered by a test that already existed,
 # and because the reverse direction would false-fail on every clean branch. "A marker must not be
-# invented" is the other half of §VIII and stays a judgement call for review.
+# invented" is the other half of the rule and stays a judgement call for review.
 #
-# SCOPE — one issue, read off the branch. The `<prefix>/<N>-<slug>` shape `/build` produces gives
+# SCOPE — one issue, read off the branch. The `<prefix>/<N>-<slug>` shape `/gaffer:build` produces gives
 # the number, exactly as /raise-pr already parses it. A branch carrying no number has
 # nothing to check and passes: a pull request raised outside the issue flow is valid.
 #
@@ -35,7 +36,7 @@
 #   In CI       .github/workflows/traceability.yml, on every pull request to main. The single
 #               point of enforcement, so it sees the branch's final state however it got there.
 #   Locally     bash scripts/traceability-check.sh [branch]
-#               Run it before raising a PR (CLAUDE.md), so a dropped marker is caught first.
+#               Run it before raising a PR (CONVENTIONS.md, Acceptance criteria), so a dropped marker is caught first.
 #
 # Both inputs are injectable, so a local run or a test can target any issue without renaming a
 # branch: the branch as `$1` or $TRACEABILITY_BRANCH, the repository as $TRACEABILITY_REPO.
@@ -117,7 +118,7 @@ esac
 
 # --- the labels -------------------------------------------------------------------
 # A label is a whole line that opens with `**Scenario:` and closes with `**`. Fenced blocks are
-# dropped first and inline code never matches the line anchor, so neither counts: §VIII itself
+# dropped first and inline code never matches the line anchor, so neither counts: the rule itself
 # carries a fenced example, and this issue's own body quotes the syntax in backticks — both
 # describe the convention rather than declaring a scenario.
 # Read one stage at a time, each checked, rather than as one pipeline. A pipeline cannot be
@@ -163,7 +164,7 @@ case $? in
 esac
 
 if [ -z "$RAW_LABELS" ]; then
-  say "issue #$ISSUE carries no '**Scenario:**' labels — nothing to check. Labels are optional under §VIII."
+  say "issue #$ISSUE carries no '**Scenario:**' labels — nothing to check. Labels are optional (CONVENTIONS.md, Acceptance criteria)."
   exit 0
 fi
 
@@ -176,7 +177,7 @@ LABELS="$(printf '%s\n' "$RAW_LABELS" \
 # Committed test files only, in two shapes: any `*.tests.sh`, and `*.cs` inside a `*Tests*`
 # project directly under src/. Scanning `HEAD` rather than the working tree is what makes
 # "committed" true: a file that is `git add`ed and never committed is not what merges. Production
-# code and docs are excluded: docs/conventions/testing.md restates the §VIII rule verbatim, so a
+# code and docs are excluded: docs/conventions/testing.md restates the rule verbatim, so a
 # docs-wide scan would let the rule's own description satisfy it.
 #
 # `:(glob)` on the first pathspec is load-bearing: it stops `*` at a `/`, which is what pins the
@@ -205,7 +206,7 @@ SCAN_RC=$?
 
 # Any error at all means the marker set is incomplete, so there is no verdict to render. The exit
 # status alone is not enough: an unreadable tracked file makes `git grep` print `error: failed to
-# stat …` and still exit 0, silently omitting that file's markers — which would surface as a §VIII
+# stat …` and still exit 0, silently omitting that file's markers — which would surface as a traceability
 # violation against a marker that is sitting right there.
 [ -s "$TMP/grep-err" ] \
   && die "the scan of the committed test files reported an error, so the marker set is incomplete and no verdict is possible: $(tr '\n' ' ' < "$TMP/grep-err")"
@@ -236,9 +237,10 @@ if [ -n "$missing" ]; then
     printf 'traceability-check: FAIL — issue #%s has labelled scenarios with no matching marker in a committed test file:\n' "$ISSUE"
     printf '%s' "$missing" | sed 's/^/  - /'
     printf '\n'
-    printf "Constitution §VIII: give each one a test carrying 'SCENARIO: <name>' in the test file's own\n"
-    printf 'comment syntax, matching the label character for character. If a label names a scenario no\n'
-    printf 'test should verify — one an external tool or gate decides — remove the label from the issue.\n'
+    printf "CONVENTIONS.md, Acceptance criteria: give each one a test carrying 'SCENARIO: <name>' in\n"
+    printf 'the test file'"'"'s own comment syntax, matching the label character for character. If a label\n'
+    printf 'names a scenario no test should verify — one an external tool or gate decides — remove the\n'
+    printf 'label from the issue.\n'
     printf 'Scanned %s marker(s) in committed test files.\n' "$scanned"
     printf 'Issue: %s\n' "$URL"
   } >&2

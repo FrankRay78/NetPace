@@ -4,13 +4,13 @@ description: For LLM-consumed prompt files, repeat short rules inline rather tha
 type: feedback
 ---
 
-When editing the `.md` prompt files under `.claude/commands/` (and similar prompts loaded as slash commands), prefer **locality over DRY**:
+When editing slash-command prompt files — the gaffer plugin's `commands/*.md`, which NetPace's commands now are, or any prompt loaded as a slash command — prefer **locality over DRY**:
 
 - Each prompt file should state the rules it needs **inline** and self-contained.
 - Avoid central "canonical spec" sections referenced via "see X for full rules" pointers, unless the rule is genuinely complex (multi-paragraph, sub-grammar, etc.).
 - For a 3-line rule, three short inline copies in three files is fine — even preferable.
 
-Also avoid **defensive over-specification** of cases the controlled producer can't emit. Where the prompts write both ends of a convention — `/draftissue` an issue's `**Scenario:**` label, `/build` the test's matching `SCENARIO:` marker — defending a reader against `/* SCENARIO: */`, NBSP, NFD-normalised text, etc. is YAGNI because nothing on that path produces them. Accepting the comment shapes the repo's test files genuinely use (`// `, `# // `, `# `) is not defensive: those exist.
+Also avoid **defensive over-specification** of cases the controlled producer can't emit. Where the prompts write both ends of a convention — `/gaffer:draftissue` an issue's `**Scenario:**` label, `/gaffer:build` the test's matching `SCENARIO:` marker — defending a reader against `/* SCENARIO: */`, NBSP, NFD-normalised text, etc. is YAGNI because nothing on that path produces them. Accepting the comment shapes the repo's test files genuinely use (`// `, `# // `, `# `) is not defensive: those exist.
 
 **Why:** when a slash command runs, the LLM loads only that command's prompt — not other prompts it might cross-reference. Locality means the rule is in front of the agent at the moment it acts. Centralisation requires the agent to chase a link, which it may skip if the inline statement looks complete. The DRY win (single source of truth, no drift risk) only pays off when the rule is large enough that paraphrases would actually drift.
 

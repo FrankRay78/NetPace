@@ -3,8 +3,8 @@
 # pr-cost-footer.sh — record one review round's token usage and API cost in a footer at the end
 # of a pull request's description.
 #
-# `/review-pr` runs on the strongest model at high effort and fans out specialist and verifier
-# subagents; `/review-followup` adds up to two more rounds. None of that spend showed anywhere,
+# `/gaffer:review-pr` runs on the strongest model at high effort and fans out specialist and verifier
+# subagents; `/gaffer:review-followup` adds up to two more rounds. None of that spend showed anywhere,
 # so the cost of reviewing a pull request could not be read off the pull request, nor compared
 # between pull requests to judge whether a change to the review rules paid for itself. This adds
 # one row per round to a table at the foot of the description, and keeps a Total row under it, so
@@ -26,7 +26,7 @@
 # WHY THE ROW NAME COMES FROM THE FOOTER AND NOT FROM THE ROUND. Counting the rows already in the
 # footer makes the next name a function of what is written down, so a re-dispatched first review
 # or a repeated follow-up adds the next row rather than overwriting one. The round number the
-# command reasons about (`/review-followup` step 2's cap) is about reviews posted; this is about
+# command reasons about (`/gaffer:review-followup` step 2's cap) is about reviews posted; this is about
 # rows recorded, and the two are deliberately not the same question.
 #
 # WHAT IT NEVER TOUCHES. Everything above the footer is the author's, and is written back unchanged

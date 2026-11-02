@@ -10,7 +10,7 @@
 
 Change Intent Records capture the **why** behind non-obvious decisions made during development. They complement code comments (which explain "how") by documenting the reasoning, alternatives considered, and constraints that led to a particular implementation choice.
 
-A record is also the one place in the codebase where a GitHub issue number belongs. The only exception is a regression test or acceptance criterion naming the bug it guards against (Constitution §IX's *Regression exception*, worked in [`testing.md`](testing.md)). Everywhere else the reasoning stays as prose and the number goes, because an issue thread cited for its reasoning is standing in for a record that was never written — write the record and link that instead.
+A record is also the one place in the codebase where a GitHub issue number belongs. The only exception is a regression test or acceptance criterion naming the bug it guards against (the regression exception in `CONVENTIONS.md` → *Acceptance criteria*, worked in [`testing.md`](testing.md)). Everywhere else the reasoning stays as prose and the number goes, because an issue thread cited for its reasoning is standing in for a record that was never written — write the record and link that instead.
 
 **Decision table** — does this change need a CIR?
 
@@ -24,7 +24,7 @@ A record is also the one place in the codebase where a GitHub issue number belon
 | Obvious or standard implementation with no real alternative? | | ✅ |
 | Temporary workaround you expect to remove? | | ✅ (a code comment describing the current state, with the removal tracked in an open issue) |
 | Reasoning already recorded in the issue's confirmed decisions, and the change constrains no public API, interface contract or dependency direction? | | ✅ (link the issue from the commit message or the pull request body rather than restating it) |
-| Change only to documentation written for the project's readers, such as README.md or USER_GUIDE.md? | | ✅ (command prompts, conventions, the constitution and workflows direct future work and are not covered by this row) |
+| Change only to documentation written for the project's readers, such as README.md or USER_GUIDE.md? | | ✅ (command prompts, conventions and workflows direct future work and are not covered by this row) |
 
 Write a record when a `→ CIR` row applies **and** no `→ No CIR` row does. Most changes need none.
 
