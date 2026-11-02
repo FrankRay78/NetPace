@@ -348,6 +348,25 @@ public sealed partial class NetPaceConsoleTests
             Assert.Contains(Theme.NameList, help, StringComparison.Ordinal);
         }
 
+        [InlineData("default")]
+        [InlineData("plain")]
+        [InlineData("green")]
+        [Theory]
+        public async Task AnError_InEveryTheme_ReadsAsAnErrorWithoutTellingColoursApart(string name)
+        {
+            // Given a theme, and a run asked for two output formats at once
+            Theme.TryParse(name, out var theme);
+            var host = StaticScreenHost(SpeedTestServices(Chosen(theme)));
+
+            // When
+            var result = await host.RunAsync(["--csv", "--json"]);
+
+            // Then the failure is marked by a word, so it survives being read with the colours
+            // stripped out — which is what a reader who cannot tell them apart is doing.
+            Assert.Equal(1, result.ExitCode);
+            Assert.Contains("Error:", AnsiSnapshot.WithoutStyling(result.Output), StringComparison.Ordinal);
+        }
+
         /// <summary>
         /// A service collection whose download stops part-way through, leaving the progress bar with
         /// a finished part and a remaining part.
