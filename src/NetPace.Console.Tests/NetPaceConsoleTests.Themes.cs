@@ -17,6 +17,12 @@ public sealed partial class NetPaceConsoleTests
     public sealed class Themes
     {
         /// <summary>
+        /// The arguments that draw the screen a theory row names, where a speed test is the run
+        /// with no arguments at all.
+        /// </summary>
+        private static string[] ArgumentsFor(string screen) => screen == "speed test" ? [] : screen.Split(' ');
+
+        /// <summary>
         /// A colour-recording host for the live speed-test screen: interactive, so the progress
         /// bars render, and colour-capable, so their colours are captured.
         /// </summary>
@@ -24,8 +30,8 @@ public sealed partial class NetPaceConsoleTests
             new(services, CommandLineTestHost.InteractiveTerminalWidth, interactive: true, recordColour: true);
 
         /// <summary>
-        /// A colour-recording host for a screen with no live display — the server list and the help
-        /// screen — at the width a redirected run sees.
+        /// A colour-recording host for a non-interactive run, where no live display renders, at the
+        /// width a redirected run sees.
         /// </summary>
         private static CommandLineTestHost StaticScreenHost(IServiceCollection services) =>
             new(services, CommandLineTestHost.RedirectedWidth, recordColour: true);
@@ -165,7 +171,7 @@ public sealed partial class NetPaceConsoleTests
             // SCENARIO: Chosen theme applies to every command
 
             // Given
-            string[] args = screen == "speed test" ? [] : screen.Split(' ');
+            string[] args = ArgumentsFor(screen);
 
             // When the same screen is drawn in each theme
             var asDefault = await Draw(args, Theme.Default);
@@ -198,7 +204,7 @@ public sealed partial class NetPaceConsoleTests
             // SCENARIO: Plain theme shows no colour
 
             // Given
-            string[] args = screen == "speed test" ? [] : screen.Split(' ');
+            string[] args = ArgumentsFor(screen);
             var host = StaticScreenHost(SpeedTestServices(FromEnvironment(("NETPACE_THEME", "plain"))));
 
             // When
@@ -221,11 +227,27 @@ public sealed partial class NetPaceConsoleTests
             // When
             var result = await host.RunAsync(["--no-upload"]);
 
-            // Then the bar is drawn without colour,
+            // Then the bar is drawn without colour, and the two parts of it are still told apart.
             Assert.Equal(0, result.ExitCode);
-            Assert.False(AnsiSnapshot.CarriesStyling(result.Output));
+            await Verify(AnsiSnapshot.Readable(result.Output));
+        }
 
-            // and the two parts of it are still told apart.
+        [Fact]
+        public async Task PartlyFinishedProgressBar_UnderTheGreenTheme_IsDrawnInGreen()
+        {
+            // SCENARIO: Chosen theme applies to every command
+
+            // Given a download that stops part-way, so the bar has both a done and a remaining part
+            // and the running percentage is still short of the end
+            var host = SpeedTestHost(PartWayDownloadServices(Chosen(Theme.Green)));
+
+            // When
+            var result = await host.RunAsync(["--no-upload"]);
+
+            // Then the slots only a part-finished bar reaches — the transferred part, the part still
+            // to come, the running percentage and the spinner — are drawn in the theme. The finished
+            // bars in the other green snapshots reach none of these.
+            Assert.Equal(0, result.ExitCode);
             await Verify(AnsiSnapshot.Readable(result.Output));
         }
 
@@ -240,9 +262,8 @@ public sealed partial class NetPaceConsoleTests
             // When
             var result = await host.RunAsync([]);
 
-            // Then the run completes in the default theme,
+            // Then the run completes,
             Assert.Equal(0, result.ExitCode);
-            Assert.False(AnsiSnapshot.CarriesStyling(result.NoticeOutput));
 
             // and the user is told what was not understood and what they could have typed.
             Assert.Contains("halloween", result.NoticeOutput, StringComparison.Ordinal);
@@ -274,8 +295,31 @@ public sealed partial class NetPaceConsoleTests
             Assert.DoesNotContain("halloween", result.Output, StringComparison.Ordinal);
         }
 
+        [InlineData("--help")]
+        [InlineData("-h")]
+        [InlineData("--version")]
+        [InlineData("-v")]
+        [Theory]
+        public async Task UnrecognisedThemeName_OnARunThatNeverParsesOptions_IsStillReported(string screen)
+        {
+            // SCENARIO: Unknown theme name
+
+            // Given a command that returns before any option is parsed
+            var host = StaticScreenHost(SpeedTestServices(FromEnvironment(("NETPACE_THEME", "halloween"))));
+
+            // When
+            var result = await host.RunAsync([screen]);
+
+            // Then the typo is still reported, so it is heard whichever command the user ran.
+            Assert.Equal(0, result.ExitCode);
+            Assert.Contains("halloween", result.NoticeOutput, StringComparison.Ordinal);
+        }
+
         [InlineData("--quiet")]
         [InlineData("-q")]
+        [InlineData("--quiet=true")]
+        [InlineData("--quiet:true")]
+        [InlineData("-q=true")]
         [Theory]
         public async Task UnrecognisedThemeName_UnderAQuietRun_SaysNothing(string quiet)
         {
@@ -290,6 +334,24 @@ public sealed partial class NetPaceConsoleTests
             // Then
             Assert.Equal(0, result.ExitCode);
             Assert.Equal(string.Empty, result.NoticeOutput);
+        }
+
+        [Fact]
+        public async Task UnrecognisedThemeName_WhenNoColourIsAsked_NamesThePlainThemeItActuallyDrew()
+        {
+            // SCENARIO: Unknown theme name
+
+            // Given a typo'd theme name and NO_COLOR, which outranks it
+            var host = SpeedTestHost(SpeedTestServices(FromEnvironment(("NETPACE_THEME", "halloween"), ("NO_COLOR", "1"))));
+
+            // When
+            var result = await host.RunAsync([]);
+
+            // Then the notice names the theme the run settled on rather than assuming the default,
+            // so it does not send the user looking for colour that was never going to appear.
+            Assert.Equal(0, result.ExitCode);
+            Assert.Contains($"the {Theme.Plain.Name} theme", result.NoticeOutput, StringComparison.Ordinal);
+            Assert.DoesNotContain($"the {Theme.Default.Name} theme", result.NoticeOutput, StringComparison.Ordinal);
         }
 
         [Fact]
@@ -346,6 +408,30 @@ public sealed partial class NetPaceConsoleTests
             var help = AnsiSnapshot.WithoutStyling(result.Output);
             Assert.Contains("NETPACE_THEME", help, StringComparison.Ordinal);
             Assert.Contains(Theme.NameList, help, StringComparison.Ordinal);
+        }
+
+        [InlineData("--csv --json")]
+        [InlineData("--definitely-not-an-option")]
+        [Theory]
+        public async Task AnError_UnderTheGreenTheme_IsDrawnInTheThemesColours(string screen)
+        {
+            // Given a run that fails, drawn in each theme
+            var asDefault = await Draw(ArgumentsFor(screen), Theme.Default);
+            var asGreen = await Draw(ArgumentsFor(screen), Theme.Green);
+
+            // Then the theme reaches the error line — a colour hard-coded at the point of writing
+            // would leave these two identical,
+            Assert.NotEqual(asDefault, asGreen);
+
+            // and changes only how it is drawn, never what it says.
+            Assert.Equal(AnsiSnapshot.WithoutStyling(asDefault), AnsiSnapshot.WithoutStyling(asGreen));
+
+            async Task<string> Draw(string[] arguments, Theme theme)
+            {
+                var result = await StaticScreenHost(SpeedTestServices(Chosen(theme))).RunAsync(arguments);
+                Assert.Equal(1, result.ExitCode);
+                return AnsiSnapshot.Readable(result.Output);
+            }
         }
 
         [InlineData("default")]

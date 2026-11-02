@@ -37,8 +37,9 @@ public sealed class ListServersCommand(IAnsiConsole console, ISpeedTestService s
     }
 
     /// <summary>
-    /// Tells the user how to stop a listing that keeps going. Drawn in the theme, with the key
-    /// itself picked out so it reads at a glance.
+    /// Tells the user how to interrupt a listing that takes a while — both the live listing and
+    /// the latency scan before a static one. Drawn in the theme, with the key picked out wherever
+    /// the theme has a colour for it.
     /// </summary>
     private void WriteExitHint() =>
         console.WriteStyledLine(("Press ", Style.Plain), ("CTRL+C", theme.Hint), (" to exit.", Style.Plain));

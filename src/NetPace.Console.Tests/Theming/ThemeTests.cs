@@ -1,3 +1,4 @@
+using System.Reflection;
 using NetPace.Console.Theming;
 using Spectre.Console;
 using Spectre.Console.Testing;
@@ -41,7 +42,7 @@ public sealed class ThemeTests
     [InlineData("halloween")]
     [InlineData(" green ")]
     [Theory]
-    public void TryParse_AnameNoThemeCarries_FallsBackToTheDefaultTheme(string requested)
+    public void TryParse_ANameNoThemeCarries_FallsBackToTheDefaultTheme(string requested)
     {
         // Given, When
         var recognised = Theme.TryParse(requested, out var theme);
@@ -59,11 +60,26 @@ public sealed class ThemeTests
 
         // Then every name offered to the user is one TryParse accepts, and none is missing.
         Assert.Equal(["default", "plain", "green"], names);
-        foreach (var name in names)
+        foreach (string name in names)
         {
             Assert.True(Theme.TryParse(name, out _));
+            Assert.Equal(name.ToLowerInvariant(), name);
         }
-        Assert.Equal($"<{string.Join(", ", names)}>", Theme.NameList);
+        Assert.Equal(names.Length, names.Distinct().Count());
+        Assert.Equal("<default, plain, green>", Theme.NameList);
+    }
+
+    [Fact]
+    public void Styles_ListsEveryStyleSlotTheThemeDeclares()
+    {
+        // Given the style slots the type declares, counted without reading the hand-written list
+        int declared = typeof(Theme)
+            .GetProperties(BindingFlags.Public | BindingFlags.Instance)
+            .Count(property => property.PropertyType == typeof(Style));
+
+        // Then the list the two whole-theme sweeps read covers all of them. Without this, a slot
+        // added to the type and forgotten here would drop out of both sweeps and neither would fail.
+        Assert.Equal(declared, Theme.Default.Styles.Count);
     }
 
     [Fact]
@@ -93,7 +109,6 @@ public sealed class ThemeTests
         // Then no element is left at the default theme's colour, so the difference shows on every
         // line rather than only on the elements that happened to be easy to change.
         Assert.NotEqual(@default.Banner, green.Banner);
-        Assert.Equal(green.Styles.Count, @default.Styles.Count);
         for (var slot = 0; slot < green.Styles.Count; slot++)
         {
             Assert.NotEqual(@default.Styles[slot], green.Styles[slot]);

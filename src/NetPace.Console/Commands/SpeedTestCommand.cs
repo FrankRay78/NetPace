@@ -108,7 +108,7 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
                     }
                     catch (Exception e)
                     {
-                        WriteError(console, e.Message);
+                        console.WriteErrorLine(theme, e.Message);
 
                         if (FailOnRequested(settings)) return 1;
                     }
@@ -153,7 +153,7 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
                     }
                     catch (Exception e)
                     {
-                        WriteError(console, e.Message);
+                        console.WriteErrorLine(theme, e.Message);
 
                         if (FailOnRequested(settings)) return 1;
                     }
@@ -196,7 +196,7 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
                 }
                 catch (Exception e)
                 {
-                    WriteError(console, e.Message);
+                    console.WriteErrorLine(theme, e.Message);
 
                     if (FailOnRequested(settings)) return 1;
                 }
@@ -289,12 +289,6 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
         {
         }
     }
-
-    /// <summary>
-    /// Writes an error message to the console.
-    /// </summary>
-    private void WriteError(IAnsiConsole console, string message) =>
-        console.WriteStyledLine(("Error:", theme.Error), (" ", Style.Plain), (message, Style.Plain));
 
     /// <summary>
     /// Whether an exception reflects NetPace's own health rather than a network condition.

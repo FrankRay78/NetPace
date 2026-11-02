@@ -1,6 +1,5 @@
 using System.CommandLine;
 using System.Reflection;
-
 using NetPace.Console.Theming;
 
 namespace NetPace.Console;
@@ -10,6 +9,12 @@ namespace NetPace.Console;
 /// </summary>
 internal static class CustomHelpProvider
 {
+    /// <summary>
+    /// An empty grid cell. A <see cref="Text"/> rather than <c>""</c> because the rest of a row is
+    /// built from renderables, and a grid row takes one kind or the other, never a mix.
+    /// </summary>
+    private static Text Blank => new(string.Empty);
+
     /// <summary>
     /// Render help for the root command.
     /// </summary>
@@ -204,12 +209,6 @@ internal static class CustomHelpProvider
         console.Write(grid);
         console.WriteLine();
     }
-
-    /// <summary>
-    /// An empty grid cell. A <see cref="Text"/> rather than <c>""</c> because the rest of a row is
-    /// built from renderables, and a grid row takes one kind or the other, never a mix.
-    /// </summary>
-    private static Text Blank => new(string.Empty);
 
     private static string GetDefaultValue(Option option)
     {

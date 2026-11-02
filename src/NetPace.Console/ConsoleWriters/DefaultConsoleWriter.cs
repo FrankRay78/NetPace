@@ -135,13 +135,29 @@ public sealed class DefaultConsoleWriter(Theme theme) : IConsoleWriter
 
         // Display speed test result. What each figure measures and the figure itself are drawn
         // separately, so a theme can tell the two apart.
-        WriteResultLine(console,
-        [
-            settings.IncludeTimestamp ? (null, clock.Now.ToHumanReadable()) : null,
-            !settings.NoLatency ? ("Latency:", $"{fastest.LatencyMilliseconds.ToString(CultureInfo.InvariantCulture)} ms") : null,
-            downloadResult is not null ? ("Download:", $"{downloadResult.GetSpeedString(settings.SpeedUnit, settings.SpeedUnitSystem, settings.SpeedScale)}{downloadResult.GetFailureAnnotation()}") : null,
-            uploadResult is not null ? ("Upload:", $"{uploadResult.GetSpeedString(settings.SpeedUnit, settings.SpeedUnitSystem, settings.SpeedScale)}{uploadResult.GetFailureAnnotation()}") : null
-        ]);
+        var figures = new List<(string? Label, string Value)>();
+
+        if (settings.IncludeTimestamp)
+        {
+            figures.Add((null, clock.Now.ToHumanReadable()));
+        }
+
+        if (!settings.NoLatency)
+        {
+            figures.Add(("Latency:", $"{fastest.LatencyMilliseconds.ToString(CultureInfo.InvariantCulture)} ms"));
+        }
+
+        if (downloadResult is not null)
+        {
+            figures.Add(("Download:", $"{downloadResult.GetSpeedString(settings.SpeedUnit, settings.SpeedUnitSystem, settings.SpeedScale)}{downloadResult.GetFailureAnnotation()}"));
+        }
+
+        if (uploadResult is not null)
+        {
+            figures.Add(("Upload:", $"{uploadResult.GetSpeedString(settings.SpeedUnit, settings.SpeedUnitSystem, settings.SpeedScale)}{uploadResult.GetFailureAnnotation()}"));
+        }
+
+        WriteResultLine(console, figures);
 
 
         console.WriteLine("\nTry 'netpace --help' for more information.");
@@ -151,14 +167,14 @@ public sealed class DefaultConsoleWriter(Theme theme) : IConsoleWriter
 
     /// <summary>
     /// Writes the result line: the figures that were measured, comma separated, each one preceded
-    /// by what it measures where it has a name. A <c>null</c> entry is a test that did not run and
-    /// is left out, so the line never reports a zero for a measurement nobody asked for.
+    /// by what it measures where it has a name. A test that did not run contributes no figure, so
+    /// the line never reports a zero for a measurement nobody asked for.
     /// </summary>
-    private void WriteResultLine(IAnsiConsole console, IEnumerable<(string? Label, string Value)?> figures)
+    private void WriteResultLine(IAnsiConsole console, IEnumerable<(string? Label, string Value)> figures)
     {
         var runs = new List<(string, Style)>();
 
-        foreach (var (label, value) in figures.OfType<(string? Label, string Value)>())
+        foreach ((string? label, string value) in figures)
         {
             if (string.IsNullOrEmpty(value)) continue;
 

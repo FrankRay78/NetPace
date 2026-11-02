@@ -8,7 +8,7 @@
 
 - Spectre.Console 0.57.1 does not read `NO_COLOR`, so NetPace reads it or nobody does.
 - Spectre's progress bar tells its finished part from its remaining part by colour, and falls back to blank space for the remainder only when the console reports no colour support.
-- Every element NetPace colours has a slot on `Theme` and is listed in `Theme.Styles`. Two tests read that list; a slot added outside it is covered by neither.
+- Every element NetPace colours has a slot on `Theme`. Every style slot is listed in `Theme.Styles`, which two tests read; the banner is a colour rather than a style, so it sits outside that list and is asserted on separately.
 
 **Decisions:**
 

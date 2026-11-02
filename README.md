@@ -85,7 +85,7 @@ Prefer a different look? Set `NETPACE_THEME` once — `default` (NetPace's own c
 export NETPACE_THEME=green
 ```
 
-`NO_COLOR` outranks it, and machine-readable output (`--csv`, `--json`, `--file`) is the same whatever the theme. See the [User Guide](https://github.com/FrankRay78/NetPace/blob/main/USER_GUIDE.md#choosing-a-colour-theme) for the detail.
+`NO_COLOR` outranks it, and output meant for another program to parse is the same whatever the theme. See the [User Guide](https://github.com/FrankRay78/NetPace/blob/main/USER_GUIDE.md#choosing-a-colour-theme) for the detail.
 
 For common scenarios and advanced usage (such as scripting, restricting payload size, choosing a traffic profile, or customising output), see the [User Guide](https://github.com/FrankRay78/NetPace/blob/main/USER_GUIDE.md).
 

@@ -1,7 +1,7 @@
 namespace NetPace.Console.Theming;
 
 /// <summary>
-/// The colours and emphasis NetPace draws one human-readable screen in.
+/// The colours and emphasis NetPace draws its human-readable screens in.
 /// </summary>
 /// <remarks>
 /// A theme is a standing preference rather than a per-run choice, so it is chosen through the
@@ -26,7 +26,15 @@ public sealed record Theme
     /// Whether this theme draws nothing in colour at all, so <see cref="ApplyTo"/> takes colour
     /// away from the console rather than relying on every slot being left unset.
     /// </summary>
-    public required bool SuppressesColour { get; init; }
+    /// <remarks>
+    /// Read off the slots rather than stated alongside them, so it cannot disagree with them. A
+    /// theme that said it suppressed colour while colouring a slot would have that colour taken
+    /// away by <see cref="ApplyTo"/>; one that said it did not while colouring nothing would draw
+    /// the progress bar as a single unbroken run of glyphs, which is the failure
+    /// <see cref="ApplyTo"/> exists to prevent.
+    /// </remarks>
+    public bool SuppressesColour =>
+        Banner == Color.Default && Styles.All(style => style.Foreground == Color.Default && style.Background == Color.Default);
 
     /// <summary>
     /// The NetPace lettering at the top of the help screen. A colour rather than a style, because
@@ -56,8 +64,9 @@ public sealed record Theme
     public required Style Hint { get; init; }
 
     /// <summary>
-    /// The word that marks a message as a failure. Each theme picks its own colour, because the
-    /// word itself is what makes a failure recognisable — never the colour alone.
+    /// The word that marks a message as a failure. Each theme may colour this differently, and
+    /// <see cref="Plain"/> not at all, because the word itself is what makes a failure
+    /// recognisable — never the colour alone.
     /// </summary>
     public required Style Error { get; init; }
 
@@ -70,7 +79,7 @@ public sealed record Theme
     /// <summary>What a figure on the result line measures — Latency, Download, Upload.</summary>
     public required Style ResultLabel { get; init; }
 
-    /// <summary>A measured figure on the result line.</summary>
+    /// <summary>A value on the result line — a measured figure, or the timestamp.</summary>
     public required Style ResultValue { get; init; }
 
     /// <summary>The lines a table is drawn with.</summary>
@@ -99,9 +108,12 @@ public sealed record Theme
     /// rather than one named property at a time.
     /// </summary>
     /// <remarks>
-    /// A slot added above belongs here too. Two tests read this list — one asserting that the plain
-    /// theme leaves every slot unstyled, the other that the green theme moves every slot off the
-    /// default theme's value — so a slot left out of it is a slot neither test covers.
+    /// Every <see cref="Style"/> slot added above belongs here too; <see cref="Banner"/> is a
+    /// <see cref="Color"/> and so cannot be, and is asserted on separately by the same two tests. A
+    /// test pins this list against the <see cref="Style"/> properties the type declares, so a slot
+    /// left out of it fails rather than quietly going uncovered. Two tests read the list — one
+    /// asserting that the plain theme leaves every slot unstyled, the other that the green theme
+    /// moves every slot off the default theme's value.
     /// </remarks>
     public IReadOnlyList<Style> Styles =>
     [
@@ -137,7 +149,6 @@ public sealed record Theme
     public static Theme Default { get; } = new()
     {
         Name = "default",
-        SuppressesColour = false,
         Banner = Color.Gold1,
         Heading = new Style(foreground: Color.Yellow, decoration: Decoration.Bold),
         Placeholder = new Style(foreground: Color.Grey),
@@ -168,7 +179,6 @@ public sealed record Theme
     public static Theme Plain { get; } = new()
     {
         Name = "plain",
-        SuppressesColour = true,
         Banner = Color.Default,
         Heading = Style.Plain,
         Placeholder = Style.Plain,
@@ -204,7 +214,6 @@ public sealed record Theme
     public static Theme Green { get; } = new()
     {
         Name = "green",
-        SuppressesColour = false,
         Banner = Color.Green4,
         Heading = new Style(foreground: Color.Green4, decoration: Decoration.Bold),
         Placeholder = new Style(foreground: Color.DarkSeaGreen4),
@@ -256,16 +265,12 @@ public sealed record Theme
 
         if (string.IsNullOrEmpty(requested)) return true;
 
-        foreach (var candidate in All)
-        {
-            if (string.Equals(candidate.Name, requested, StringComparison.OrdinalIgnoreCase))
-            {
-                theme = candidate;
-                return true;
-            }
-        }
+        Theme? named = All.FirstOrDefault(candidate => string.Equals(candidate.Name, requested, StringComparison.OrdinalIgnoreCase));
 
-        return false;
+        if (named is null) return false;
+
+        theme = named;
+        return true;
     }
 
     /// <summary>

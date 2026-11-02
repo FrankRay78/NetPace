@@ -378,7 +378,7 @@ public static class Program
             {
                 // Usage/configuration errors and operational failures are reported to the console.
                 var console = serviceProvider.GetRequiredService<IAnsiConsole>();
-                WriteError(console, theme, ex.Message);
+                console.WriteErrorLine(theme, ex.Message);
                 return 1;
             }
         }));
@@ -491,7 +491,7 @@ public static class Program
             catch (Exception ex)
             {
                 var ansiConsole = serviceProvider.GetRequiredService<IAnsiConsole>();
-                WriteError(ansiConsole, theme, ex.Message);
+                ansiConsole.WriteErrorLine(theme, ex.Message);
                 return 1;
             }
         });
@@ -619,20 +619,13 @@ public static class Program
         {
             foreach (var error in parseResult.Errors)
             {
-                WriteError(ansiConsole, selection.Theme, error.Message);
+                ansiConsole.WriteErrorLine(selection.Theme, error.Message);
             }
             return 1;
         }
 
         return await parseResult.InvokeAsync(cancellationToken: cancellationToken);
     }
-
-    /// <summary>
-    /// Writes an error to the console, marked by the word rather than by its colour, so it reads as
-    /// an error in every theme and with no colour at all.
-    /// </summary>
-    private static void WriteError(IAnsiConsole console, Theme theme, string message) =>
-        console.WriteStyledLine(("Error:", theme.Error), (" ", Style.Plain), (message, Style.Plain));
 
     /// <summary>
     /// Tells the user, once per run, that the theme they asked for does not exist and which ones
@@ -642,14 +635,40 @@ public static class Program
     /// Written before any option is parsed, because <c>--help</c> and <c>--version</c> both return
     /// without parsing and a user who typo'd the variable should hear about it whichever command
     /// they ran. That is also why <c>--quiet</c> is read off the arguments here: a run told to say
-    /// nothing says nothing, and the parsed value does not exist yet.
+    /// nothing says nothing, and the parsed value does not exist yet. Reading it by hand means the
+    /// spellings below have to cover every form the parser accepts for a boolean option, not just
+    /// the bare flag.
     /// </remarks>
     private static void ReportUnrecognisedTheme(IServiceProvider serviceProvider, string[] args, ThemeSelection selection)
     {
         if (selection.UnrecognisedValue is not { } requested) return;
-        if (args.Contains("--quiet") || args.Contains("-q")) return;
+        if (args.Any(AsksForQuiet)) return;
 
+        // The theme is named from what the run settled on rather than assumed to be the default:
+        // NO_COLOR outranks the variable, so an unreadable name can still end in the plain theme.
         serviceProvider.GetRequiredService<NoticeOutput>().Writer.WriteLine(
-            $"{EnvironmentThemeProvider.ThemeVariable} is set to '{requested}', which is not a theme. Using the default theme. Valid themes: {Theme.NameList}.");
+            $"{EnvironmentThemeProvider.ThemeVariable} is set to '{requested}', which is not a theme. Using the {selection.Theme.Name} theme. Valid themes: {Theme.NameList}.");
+    }
+
+    /// <summary>
+    /// Whether <paramref name="arg"/> is a request for a quiet run, in any spelling
+    /// System.CommandLine accepts for a boolean option — bare, or with a value after <c>=</c> or
+    /// <c>:</c>. An explicit <c>false</c> is not a request for quiet.
+    /// </summary>
+    private static bool AsksForQuiet(string arg)
+    {
+        string[] names = ["--quiet", "-q"];
+
+        foreach (string name in names)
+        {
+            if (arg == name) return true;
+
+            if (arg.StartsWith($"{name}=", StringComparison.Ordinal) || arg.StartsWith($"{name}:", StringComparison.Ordinal))
+            {
+                return !bool.TryParse(arg[(name.Length + 1)..], out bool asked) || asked;
+            }
+        }
+
+        return false;
     }
 }

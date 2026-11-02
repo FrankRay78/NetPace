@@ -17,16 +17,6 @@ public interface IThemeProvider
 }
 
 /// <summary>
-/// The theme a run settled on, and the value it could not make sense of on the way there.
-/// </summary>
-/// <param name="Theme">The theme to draw in. Always a real theme, whatever the user typed.</param>
-/// <param name="UnrecognisedValue">
-/// What the user asked for when it named no theme, so the run can say so; <c>null</c> when they
-/// asked for nothing, or for something that exists.
-/// </param>
-public sealed record ThemeSelection(Theme Theme, string? UnrecognisedValue);
-
-/// <summary>
 /// Reads the theme from the environment.
 /// </summary>
 /// <remarks>
@@ -48,7 +38,7 @@ public sealed class EnvironmentThemeProvider : IThemeProvider
     /// <summary>The variable a user sets to ask every program for no colour.</summary>
     public const string NoColourVariable = "NO_COLOR";
 
-    private readonly Func<string, string?> readVariable;
+    private readonly Func<string, string?> _readVariable;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="EnvironmentThemeProvider"/> class, reading the
@@ -65,16 +55,16 @@ public sealed class EnvironmentThemeProvider : IThemeProvider
     /// <param name="readVariable">Answers with the value of the named variable, or <c>null</c> when it is not set.</param>
     internal EnvironmentThemeProvider(Func<string, string?> readVariable)
     {
-        this.readVariable = readVariable;
+        _readVariable = readVariable;
     }
 
     /// <inheritdoc />
     public ThemeSelection Resolve()
     {
-        var requested = readVariable(ThemeVariable);
+        var requested = _readVariable(ThemeVariable);
         var recognised = Theme.TryParse(requested, out var theme);
 
-        if (!string.IsNullOrEmpty(readVariable(NoColourVariable)))
+        if (!string.IsNullOrEmpty(_readVariable(NoColourVariable)))
         {
             theme = Theme.Plain;
         }

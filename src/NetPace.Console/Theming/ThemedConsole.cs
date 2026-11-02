@@ -31,4 +31,14 @@ internal static class ThemedConsole
         console.Write(line);
         console.WriteLine();
     }
+
+    /// <summary>
+    /// Writes an error message, marked by the word rather than by its colour, so it reads as an
+    /// error in every theme and with no colour at all.
+    /// </summary>
+    /// <param name="console">The console to write to.</param>
+    /// <param name="theme">The colours and emphasis to draw in.</param>
+    /// <param name="message">What went wrong, in the words the user should read.</param>
+    public static void WriteErrorLine(this IAnsiConsole console, Theme theme, string message) =>
+        console.WriteStyledLine(("Error:", theme.Error), (" ", Style.Plain), (message, Style.Plain));
 }
