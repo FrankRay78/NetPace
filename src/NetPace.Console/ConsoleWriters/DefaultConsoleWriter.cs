@@ -1,11 +1,21 @@
 using System.Globalization;
 using NetPace.Console.ConsoleWriters;
 using NetPace.Console.Diagnostics;
+using NetPace.Console.Theming;
 using NetPace.Core;
 
 namespace NetPace.Console.ConsoleWriters;
 
-public sealed class DefaultConsoleWriter : IConsoleWriter
+/// <summary>
+/// The screen a person watches while a speed test runs, drawn in <paramref name="theme"/>.
+/// </summary>
+/// <remarks>
+/// The only writer that takes a theme: the machine-readable writers produce records another program
+/// parses, and <c>--minimal</c> is a single compact line that has never been coloured, so none of
+/// them has an appearance to choose.
+/// </remarks>
+/// <param name="theme">The colours and emphasis to draw in.</param>
+public sealed class DefaultConsoleWriter(Theme theme) : IConsoleWriter
 {
     /// <inheritdoc/>
     public bool MachineReadable => false;
@@ -18,7 +28,7 @@ public sealed class DefaultConsoleWriter : IConsoleWriter
             .AutoClear(true)
             .Columns(
             [
-                new SpinnerColumn(),
+                new SpinnerColumn { Style = theme.Spinner },
                 new TaskDescriptionColumn(),
             ])
             .StartAsync(async progress =>
@@ -38,8 +48,8 @@ public sealed class DefaultConsoleWriter : IConsoleWriter
 
         // Display server latency.
         console.WriteLine("");
-        console.WriteLine($"{fastest.Server.Sponsor}", new Style(foreground: Color.Yellow, decoration: Decoration.Bold));
-        console.WriteLine($"{fastest.Server.Url}");
+        console.WriteLine($"{fastest.Server.Sponsor}", theme.ServerName);
+        console.WriteLine($"{fastest.Server.Url}", theme.ServerUrl);
 
         if (!console.Profile.Capabilities.Interactive)
         {
@@ -64,8 +74,13 @@ public sealed class DefaultConsoleWriter : IConsoleWriter
                 .Columns(
                 [
                     new TaskDescriptionColumn(),
-                    new ProgressBarColumn(),
-                    new PercentageColumn(),
+                    new ProgressBarColumn
+                    {
+                        CompletedStyle = theme.ProgressComplete,
+                        FinishedStyle = theme.ProgressFinished,
+                        RemainingStyle = theme.ProgressRemaining
+                    },
+                    new PercentageColumn { Style = theme.Percentage, CompletedStyle = theme.PercentageComplete },
                     liveSpeed,
                 ])
                 .StartAsync(async progress =>
@@ -118,19 +133,47 @@ public sealed class DefaultConsoleWriter : IConsoleWriter
         }
 
 
-        // Display speed test result.
-        console.WriteLine(string.Join(", ", new[]
-        {
-            settings.IncludeTimestamp ? clock.Now.ToHumanReadable() : null,
-            !settings.NoLatency ? $"Latency: {fastest.LatencyMilliseconds.ToString(CultureInfo.InvariantCulture)} ms" : null,
-            downloadResult is not null ? $"Download: {downloadResult.GetSpeedString(settings.SpeedUnit, settings.SpeedUnitSystem, settings.SpeedScale)}{downloadResult.GetFailureAnnotation()}" : null,
-            uploadResult is not null ? $"Upload: {uploadResult.GetSpeedString(settings.SpeedUnit, settings.SpeedUnitSystem, settings.SpeedScale)}{uploadResult.GetFailureAnnotation()}" : null
-        }.Where(s => !string.IsNullOrEmpty(s))));
+        // Display speed test result. What each figure measures and the figure itself are drawn
+        // separately, so a theme can tell the two apart.
+        WriteResultLine(console,
+        [
+            settings.IncludeTimestamp ? (null, clock.Now.ToHumanReadable()) : null,
+            !settings.NoLatency ? ("Latency:", $"{fastest.LatencyMilliseconds.ToString(CultureInfo.InvariantCulture)} ms") : null,
+            downloadResult is not null ? ("Download:", $"{downloadResult.GetSpeedString(settings.SpeedUnit, settings.SpeedUnitSystem, settings.SpeedScale)}{downloadResult.GetFailureAnnotation()}") : null,
+            uploadResult is not null ? ("Upload:", $"{uploadResult.GetSpeedString(settings.SpeedUnit, settings.SpeedUnitSystem, settings.SpeedScale)}{uploadResult.GetFailureAnnotation()}") : null
+        ]);
 
 
         console.WriteLine("\nTry 'netpace --help' for more information.");
 
         return SpeedTestOutcome.Create(downloadResult, uploadResult);
+    }
+
+    /// <summary>
+    /// Writes the result line: the figures that were measured, comma separated, each one preceded
+    /// by what it measures where it has a name. A <c>null</c> entry is a test that did not run and
+    /// is left out, so the line never reports a zero for a measurement nobody asked for.
+    /// </summary>
+    private void WriteResultLine(IAnsiConsole console, IEnumerable<(string? Label, string Value)?> figures)
+    {
+        var runs = new List<(string, Style)>();
+
+        foreach (var (label, value) in figures.OfType<(string? Label, string Value)>())
+        {
+            if (string.IsNullOrEmpty(value)) continue;
+
+            if (runs.Count > 0) runs.Add((", ", Style.Plain));
+
+            if (label is not null)
+            {
+                runs.Add((label, theme.ResultLabel));
+                runs.Add((" ", Style.Plain));
+            }
+
+            runs.Add((value, theme.ResultValue));
+        }
+
+        console.WriteStyledLine([.. runs]);
     }
 
     private sealed class SyncProgress<T>(Action<T> handler) : IProgress<T>

@@ -2,11 +2,12 @@ using System.Globalization;
 using System.Text;
 using NetPace.Console.ConsoleWriters;
 using NetPace.Console.Diagnostics;
+using NetPace.Console.Theming;
 using NetPace.Core;
 
 namespace NetPace.Console.Commands;
 
-public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService speedTestClient, IClock clock, IClientInfoProvider clientInfoProvider, IDiagnosticRecorder recorder, IWaiter waiter)
+public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService speedTestClient, IClock clock, IClientInfoProvider clientInfoProvider, IDiagnosticRecorder recorder, IWaiter waiter, Theme theme)
 {
     /// <summary>
     /// Executes the speed test command using the provided settings.
@@ -43,7 +44,7 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
             { CSV: true } => new CSVConsoleWriter(),
             { Json: true } or { JsonPretty: true } => new JsonConsoleWriter(),
             { Minimal: true } => new MinimalConsoleWriter(),
-            _ => new DefaultConsoleWriter()
+            _ => new DefaultConsoleWriter(theme)
         };
 
         if (writer.MachineReadable)
@@ -292,10 +293,8 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
     /// <summary>
     /// Writes an error message to the console.
     /// </summary>
-    private static void WriteError(IAnsiConsole console, string message)
-    {
-        console.Markup($"[red]Error:[/] {message.EscapeMarkup()}\n");
-    }
+    private void WriteError(IAnsiConsole console, string message) =>
+        console.WriteStyledLine(("Error:", theme.Error), (" ", Style.Plain), (message, Style.Plain));
 
     /// <summary>
     /// Whether an exception reflects NetPace's own health rather than a network condition.

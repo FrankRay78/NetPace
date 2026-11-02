@@ -1,6 +1,9 @@
 using System.CommandLine;
 using System.Reflection;
 
+using NetPace.Console.Theming;
+using Spectre.Console.Rendering;
+
 namespace NetPace.Console;
 
 /// <summary>
@@ -11,72 +14,79 @@ internal static class CustomHelpProvider
     /// <summary>
     /// Render help for the root command.
     /// </summary>
-    public static void RenderHelp(IAnsiConsole console, RootCommand command)
+    public static void RenderHelp(IAnsiConsole console, RootCommand command, Theme theme)
     {
-        RenderHeader(console);
-        RenderDescription(console, command);
-        RenderUsage(console, command);
-        RenderOptions(console, command);
-        RenderSubcommands(console, command);
-        RenderFooter(console);
+        RenderHeader(console, theme);
+        RenderDescription(console, command, theme);
+        RenderUsage(console, command, theme);
+        RenderOptions(console, command, theme);
+        RenderSubcommands(console, command, theme);
+        RenderEnvironment(console, theme);
+        RenderFooter(console, theme);
     }
 
     /// <summary>
     /// Render help for a subcommand.
     /// </summary>
-    public static void RenderHelp(IAnsiConsole console, Command command)
+    public static void RenderHelp(IAnsiConsole console, Command command, Theme theme)
     {
-        RenderHeader(console);
-        RenderDescription(console, command);
-        RenderUsage(console, command);
-        RenderOptions(console, command);
-        RenderFooter(console);
+        RenderHeader(console, theme);
+        RenderDescription(console, command, theme);
+        RenderUsage(console, command, theme);
+        RenderOptions(console, command, theme);
+        RenderFooter(console, theme);
     }
 
-    private static void RenderHeader(IAnsiConsole console)
+    private static void RenderHeader(IAnsiConsole console, Theme theme)
     {
         var font = LoadEmbeddedFont("slant.flf");
         var figlet = new FigletText(font, "NetPace")
             .LeftJustified()
-            .Color(Color.Gold1);
+            .Color(theme.Banner);
 
         console.WriteLine();
         console.Write(figlet);
         console.WriteLine();
     }
 
-    private static void RenderDescription(IAnsiConsole console, Command command)
+    private static void RenderDescription(IAnsiConsole console, Command command, Theme theme)
     {
         if (!string.IsNullOrWhiteSpace(command.Description))
         {
-            console.MarkupLine("[bold yellow]DESCRIPTION:[/]");
+            console.WriteLine("DESCRIPTION:", theme.Heading);
             console.WriteLine(command.Description);
             console.WriteLine();
         }
     }
 
-    private static void RenderUsage(IAnsiConsole console, Command command)
+    private static void RenderUsage(IAnsiConsole console, Command command, Theme theme)
     {
-        console.MarkupLine("[bold yellow]USAGE:[/]");
+        console.WriteLine("USAGE:", theme.Heading);
         if (command is RootCommand)
         {
-            console.MarkupLine("    netpace [grey][[OPTIONS]][/] [cyan][[COMMAND]][/]");
+            console.WriteStyledLine(
+                ("    netpace ", Style.Plain),
+                ("[OPTIONS]", theme.Placeholder),
+                (" ", Style.Plain),
+                ("[COMMAND]", theme.CommandName));
         }
         else
         {
-            console.MarkupLine($"    netpace {command.Name} [grey][[OPTIONS]][/]");
+            console.WriteStyledLine(
+                ($"    netpace {command.Name} ", Style.Plain),
+                ("[OPTIONS]", theme.Placeholder));
         }
         console.WriteLine();
     }
 
-    private static void RenderOptions(IAnsiConsole console, Command command)
+    private static void RenderOptions(IAnsiConsole console, Command command, Theme theme)
     {
         if (command.Options.Count == 0)
         {
             return;
         }
 
-        console.MarkupLine("[bold yellow]OPTIONS:[/]");
+        console.WriteLine("OPTIONS:", theme.Heading);
 
         // Add options in a specific order: --help first, then the rest in the order they were added
         var sortedOptions = command.Options.ToList();
@@ -122,7 +132,7 @@ internal static class CustomHelpProvider
         // Add header row if we have defaults
         if (hasDefaults)
         {
-            grid.AddRow("", "[lime]DEFAULT[/]", "");
+            grid.AddRow(Blank, new Text("DEFAULT", theme.DefaultColumnHeading), Blank);
         }
 
         foreach (var option in sortedOptions)
@@ -171,23 +181,23 @@ internal static class CustomHelpProvider
             if (hasDefaults)
             {
                 // First line
-                grid.AddRow($"[silver]{displayName}[/]", $"[bold]{defaultValue}[/]", descriptionLines[0]);
+                grid.AddRow(new Text(displayName, theme.OptionName), new Text(defaultValue, theme.DefaultValue), new Text(descriptionLines[0]));
 
                 // Subsequent lines (empty option and default columns, just description)
                 for (int i = 1; i < descriptionLines.Length; i++)
                 {
-                    grid.AddRow("", "", descriptionLines[i]);
+                    grid.AddRow(Blank, Blank, new Text(descriptionLines[i]));
                 }
             }
             else
             {
                 // First line (no default column)
-                grid.AddRow($"[silver]{displayName}[/]", descriptionLines[0]);
+                grid.AddRow(new Text(displayName, theme.OptionName), new Text(descriptionLines[0]));
 
                 // Subsequent lines
                 for (int i = 1; i < descriptionLines.Length; i++)
                 {
-                    grid.AddRow("", descriptionLines[i]);
+                    grid.AddRow(Blank, new Text(descriptionLines[i]));
                 }
             }
         }
@@ -195,6 +205,12 @@ internal static class CustomHelpProvider
         console.Write(grid);
         console.WriteLine();
     }
+
+    /// <summary>
+    /// An empty grid cell. A <see cref="Text"/> rather than <c>""</c> because the rest of a row is
+    /// built from renderables, and a grid row takes one kind or the other, never a mix.
+    /// </summary>
+    private static Text Blank => new(string.Empty);
 
     private static string GetDefaultValue(Option option)
     {
@@ -222,30 +238,49 @@ internal static class CustomHelpProvider
         }
     }
 
-    private static void RenderSubcommands(IAnsiConsole console, RootCommand command)
+    private static void RenderSubcommands(IAnsiConsole console, RootCommand command, Theme theme)
     {
         if (command.Subcommands.Count == 0)
         {
             return;
         }
 
-        console.MarkupLine("[bold yellow]COMMANDS:[/]");
+        console.WriteLine("COMMANDS:", theme.Heading);
 
         foreach (var subcommand in command.Subcommands.OrderBy(c => c.Name))
         {
             var description = subcommand.Description ?? "";
-            console.Write("    ");
-            console.MarkupLine($"[cyan]{subcommand.Name,-11}[/]{description}");
+            console.WriteStyledLine(
+                ("    ", Style.Plain),
+                ($"{subcommand.Name,-11}", theme.CommandName),
+                (description, Style.Plain));
         }
 
         console.WriteLine();
     }
 
-    private static void RenderFooter(IAnsiConsole console)
+    /// <summary>
+    /// The variables a user can set to change how NetPace behaves across every run.
+    /// </summary>
+    /// <remarks>
+    /// Root help only. A variable is not a property of one command, and repeating the section under
+    /// every subcommand would say the same thing in more places.
+    /// </remarks>
+    private static void RenderEnvironment(IAnsiConsole console, Theme theme)
+    {
+        console.WriteLine("ENVIRONMENT:", theme.Heading);
+        console.WriteStyledLine(
+            ("    ", Style.Plain),
+            (EnvironmentThemeProvider.ThemeVariable, theme.OptionName),
+            ($"  Colour theme to draw in. {Theme.NameList}", Style.Plain));
+        console.WriteLine();
+    }
+
+    private static void RenderFooter(IAnsiConsole console, Theme theme)
     {
         const string userGuideUrl = "https://github.com/FrankRay78/NetPace/blob/main/USER_GUIDE.md";
 
-        console.MarkupLine($"[bold yellow]SEE ALSO:[/]");
+        console.WriteLine("SEE ALSO:", theme.Heading);
         console.MarkupLine($"    [link={userGuideUrl}]{userGuideUrl}[/]");
     }
 

@@ -1,0 +1,385 @@
+using NetPace.Console.Tests.Theming;
+using NetPace.Console.Theming;
+
+namespace NetPace.Console.Tests;
+
+public sealed partial class NetPaceConsoleTests
+{
+    /// <summary>
+    /// What a chosen theme changes about the screens a person reads, and what it must leave alone.
+    /// </summary>
+    /// <remarks>
+    /// These are the only snapshots in the suite recorded with colour. Every other snapshot runs
+    /// through a colourless console, so it records NetPace's wording and holds still when a colour
+    /// moves; the snapshots here are the opposite, and exist to make a colour change visible in a
+    /// diff.
+    /// </remarks>
+    public sealed class Themes
+    {
+        /// <summary>
+        /// A colour-recording host for the live speed-test screen: interactive, so the progress
+        /// bars render, and colour-capable, so their colours are captured.
+        /// </summary>
+        private static CommandLineTestHost SpeedTestHost(IServiceCollection services) =>
+            new(services, CommandLineTestHost.InteractiveTerminalWidth, interactive: true, recordColour: true);
+
+        /// <summary>
+        /// A colour-recording host for a screen with no live display — the server list and the help
+        /// screen — at the width a redirected run sees.
+        /// </summary>
+        private static CommandLineTestHost StaticScreenHost(IServiceCollection services) =>
+            new(services, CommandLineTestHost.RedirectedWidth, recordColour: true);
+
+        private static ServiceCollection SpeedTestServices(IThemeProvider themeProvider)
+        {
+            var services = new ServiceCollection();
+            services.AddSingleton<ISpeedTestService, SpeedTestStub>();
+            services.AddSingleton<IClock, ClockStub>();
+            services.AddSingleton<IWaiter, NoDelayStub>();
+            services.AddSingleton(themeProvider);
+            return services;
+        }
+
+        private static ServiceCollection ServerListServices(IThemeProvider themeProvider)
+        {
+            var services = new ServiceCollection();
+            services.AddSingleton<ISpeedTestService, SpeedTestStub>();
+            services.AddSingleton(themeProvider);
+            return services;
+        }
+
+        /// <summary>
+        /// A run whose environment holds the variables given here and nothing else, so what the
+        /// user set reaches the run without the suite's own environment being touched.
+        /// </summary>
+        private static IThemeProvider FromEnvironment(params (string Name, string Value)[] variables) =>
+            new EnvironmentThemeProvider(name => variables.Where(v => v.Name == name).Select(v => v.Value).FirstOrDefault());
+
+        private static IThemeProvider Chosen(Theme theme) => new FixedThemeProvider(theme);
+
+        [Fact]
+        public async Task SpeedTest_WithNoThemeChosen_IsDrawnInTodaysColours()
+        {
+            // SCENARIO: Unset theme keeps today's look
+
+            // Given
+            var host = SpeedTestHost(SpeedTestServices(FromEnvironment()));
+
+            // When
+            var result = await host.RunAsync([]);
+
+            // Then
+            Assert.Equal(0, result.ExitCode);
+            await Verify(AnsiSnapshot.Readable(result.Output));
+        }
+
+        [Fact]
+        public async Task ServerList_WithNoThemeChosen_IsDrawnInTodaysColours()
+        {
+            // SCENARIO: Unset theme keeps today's look
+
+            // Given
+            var host = StaticScreenHost(ServerListServices(FromEnvironment()));
+
+            // When
+            var result = await host.RunAsync(["servers", "--fastest"]);
+
+            // Then
+            Assert.Equal(0, result.ExitCode);
+            await Verify(AnsiSnapshot.Readable(result.Output));
+        }
+
+        [Fact]
+        public async Task HelpScreen_WithNoThemeChosen_IsDrawnInTodaysColours()
+        {
+            // SCENARIO: Unset theme keeps today's look
+
+            // Given
+            var host = StaticScreenHost(SpeedTestServices(FromEnvironment()));
+
+            // When
+            var result = await host.RunAsync(["--help"]);
+
+            // Then
+            Assert.Equal(0, result.ExitCode);
+            await Verify(AnsiSnapshot.Readable(result.Output));
+        }
+
+        [Fact]
+        public async Task SpeedTest_UnderTheGreenTheme_IsDrawnInGreen()
+        {
+            // SCENARIO: Chosen theme applies to every command
+
+            // Given
+            var host = SpeedTestHost(SpeedTestServices(FromEnvironment(("NETPACE_THEME", "green"))));
+
+            // When
+            var result = await host.RunAsync([]);
+
+            // Then
+            Assert.Equal(0, result.ExitCode);
+            await Verify(AnsiSnapshot.Readable(result.Output));
+        }
+
+        [Fact]
+        public async Task ServerList_UnderTheGreenTheme_IsDrawnInGreen()
+        {
+            // SCENARIO: Chosen theme applies to every command
+
+            // Given
+            var host = StaticScreenHost(ServerListServices(FromEnvironment(("NETPACE_THEME", "green"))));
+
+            // When
+            var result = await host.RunAsync(["servers", "--fastest"]);
+
+            // Then
+            Assert.Equal(0, result.ExitCode);
+            await Verify(AnsiSnapshot.Readable(result.Output));
+        }
+
+        [Fact]
+        public async Task HelpScreen_UnderTheGreenTheme_IsDrawnInGreen()
+        {
+            // SCENARIO: Chosen theme applies to every command
+
+            // Given
+            var host = StaticScreenHost(SpeedTestServices(FromEnvironment(("NETPACE_THEME", "green"))));
+
+            // When
+            var result = await host.RunAsync(["--help"]);
+
+            // Then
+            Assert.Equal(0, result.ExitCode);
+            await Verify(AnsiSnapshot.Readable(result.Output));
+        }
+
+        [InlineData("speed test")]
+        [InlineData("servers")]
+        [InlineData("servers --latency")]
+        [InlineData("servers --fastest")]
+        [InlineData("--help")]
+        [InlineData("servers --help")]
+        [Theory]
+        public async Task EveryScreen_UnderTheGreenTheme_ChangesColourAndNothingElse(string screen)
+        {
+            // SCENARIO: Chosen theme applies to every command
+
+            // Given
+            string[] args = screen == "speed test" ? [] : screen.Split(' ');
+
+            // When the same screen is drawn in each theme
+            var asDefault = await Draw(args, Theme.Default);
+            var asGreen = await Draw(args, Theme.Green);
+
+            // Then the theme reaches this screen,
+            Assert.NotEqual(asDefault, asGreen);
+
+            // and changes only how it is drawn, never what it says.
+            Assert.Equal(AnsiSnapshot.WithoutStyling(asDefault), AnsiSnapshot.WithoutStyling(asGreen));
+
+            async Task<string> Draw(string[] arguments, Theme theme)
+            {
+                var services = SpeedTestServices(Chosen(theme));
+                var result = await StaticScreenHost(services).RunAsync(arguments);
+                Assert.Equal(0, result.ExitCode);
+                return AnsiSnapshot.Readable(result.Output);
+            }
+        }
+
+        [InlineData("speed test")]
+        [InlineData("servers")]
+        [InlineData("servers --latency")]
+        [InlineData("servers --fastest")]
+        [InlineData("--help")]
+        [InlineData("servers --help")]
+        [Theory]
+        public async Task EveryScreen_UnderThePlainTheme_CarriesNoColourOrEmphasis(string screen)
+        {
+            // SCENARIO: Plain theme shows no colour
+
+            // Given
+            string[] args = screen == "speed test" ? [] : screen.Split(' ');
+            var host = StaticScreenHost(SpeedTestServices(FromEnvironment(("NETPACE_THEME", "plain"))));
+
+            // When
+            var result = await host.RunAsync(args);
+
+            // Then
+            Assert.Equal(0, result.ExitCode);
+            Assert.False(AnsiSnapshot.CarriesStyling(result.Output));
+        }
+
+        [Fact]
+        public async Task PartlyFinishedProgressBar_UnderThePlainTheme_StillShowsWhatIsDoneAndWhatRemains()
+        {
+            // SCENARIO: Plain theme shows no colour
+
+            // Given a download that stops part-way, so the bar has both a done and a remaining part
+            var services = PartWayDownloadServices(FromEnvironment(("NETPACE_THEME", "plain")));
+            var host = SpeedTestHost(services);
+
+            // When
+            var result = await host.RunAsync(["--no-upload"]);
+
+            // Then the bar is drawn without colour,
+            Assert.Equal(0, result.ExitCode);
+            Assert.False(AnsiSnapshot.CarriesStyling(result.Output));
+
+            // and the two parts of it are still told apart.
+            await Verify(AnsiSnapshot.Readable(result.Output));
+        }
+
+        [Fact]
+        public async Task UnrecognisedThemeName_RunsAnywayAndNamesTheThemesThatExist()
+        {
+            // SCENARIO: Unknown theme name
+
+            // Given
+            var host = SpeedTestHost(SpeedTestServices(FromEnvironment(("NETPACE_THEME", "halloween"))));
+
+            // When
+            var result = await host.RunAsync([]);
+
+            // Then the run completes in the default theme,
+            Assert.Equal(0, result.ExitCode);
+            Assert.False(AnsiSnapshot.CarriesStyling(result.NoticeOutput));
+
+            // and the user is told what was not understood and what they could have typed.
+            Assert.Contains("halloween", result.NoticeOutput, StringComparison.Ordinal);
+            Assert.Contains("NETPACE_THEME", result.NoticeOutput, StringComparison.Ordinal);
+            foreach (var name in Theme.All.Select(theme => theme.Name))
+            {
+                Assert.Contains(name, result.NoticeOutput, StringComparison.Ordinal);
+            }
+
+            // The notice is a word to the user, never part of the result.
+            Assert.DoesNotContain("halloween", result.Output, StringComparison.Ordinal);
+        }
+
+        [InlineData("--csv")]
+        [InlineData("--json")]
+        [Theory]
+        public async Task UnrecognisedThemeName_StaysOutOfMachineReadableOutput(string format)
+        {
+            // SCENARIO: Unknown theme name
+
+            // Given
+            var host = StaticScreenHost(SpeedTestServices(FromEnvironment(("NETPACE_THEME", "halloween"))));
+
+            // When
+            var result = await host.RunAsync([format]);
+
+            // Then
+            Assert.Equal(0, result.ExitCode);
+            Assert.DoesNotContain("halloween", result.Output, StringComparison.Ordinal);
+        }
+
+        [InlineData("--quiet")]
+        [InlineData("-q")]
+        [Theory]
+        public async Task UnrecognisedThemeName_UnderAQuietRun_SaysNothing(string quiet)
+        {
+            // SCENARIO: Unknown theme name
+
+            // Given
+            var host = StaticScreenHost(SpeedTestServices(FromEnvironment(("NETPACE_THEME", "halloween"))));
+
+            // When
+            var result = await host.RunAsync([quiet]);
+
+            // Then
+            Assert.Equal(0, result.ExitCode);
+            Assert.Equal(string.Empty, result.NoticeOutput);
+        }
+
+        [Fact]
+        public async Task GreenTheme_WhenTheUserAsksForNoColour_AddsNoColour()
+        {
+            // SCENARIO: NO_COLOR outranks the theme
+
+            // Given
+            var themeProvider = FromEnvironment(("NETPACE_THEME", "green"), ("NO_COLOR", "1"));
+            var host = SpeedTestHost(SpeedTestServices(themeProvider));
+
+            // When
+            var result = await host.RunAsync([]);
+
+            // Then
+            Assert.Equal(0, result.ExitCode);
+            Assert.False(AnsiSnapshot.CarriesStyling(result.Output));
+        }
+
+        [InlineData("--csv")]
+        [InlineData("--json")]
+        [InlineData("--json-pretty")]
+        [InlineData("--minimal")]
+        [Theory]
+        public async Task MachineReadableOutput_IsTheSameWhateverTheThemeIs(string format)
+        {
+            // SCENARIO: Machine-readable output ignores the theme
+
+            // Given, When
+            var outputs = new List<string>();
+            foreach (var theme in Theme.All)
+            {
+                var host = StaticScreenHost(SpeedTestServices(Chosen(theme)));
+                var result = await host.RunAsync([format, "--timestamp"]);
+                Assert.Equal(0, result.ExitCode);
+                outputs.Add(result.Output);
+            }
+
+            // Then
+            Assert.All(outputs, output => Assert.Equal(outputs[0], output));
+        }
+
+        [Fact]
+        public async Task HelpScreen_TellsTheUserAboutTheThemeVariable()
+        {
+            // Given
+            var host = StaticScreenHost(SpeedTestServices(FromEnvironment()));
+
+            // When
+            var result = await host.RunAsync(["--help"]);
+
+            // Then
+            Assert.Equal(0, result.ExitCode);
+            var help = AnsiSnapshot.WithoutStyling(result.Output);
+            Assert.Contains("NETPACE_THEME", help, StringComparison.Ordinal);
+            Assert.Contains(Theme.NameList, help, StringComparison.Ordinal);
+        }
+
+        /// <summary>
+        /// A service collection whose download stops part-way through, leaving the progress bar with
+        /// a finished part and a remaining part.
+        /// </summary>
+        private static ServiceCollection PartWayDownloadServices(IThemeProvider themeProvider)
+        {
+            var result = new SpeedTestResult
+            {
+                BytesProcessed = 1000,
+                ElapsedMilliseconds = 1000,
+                RequestsSucceeded = 1,
+                RequestsFailed = 0
+            };
+
+            var speedTester = new SpeedTestMock
+            {
+                GetServersAsyncFunc = _ => Task.FromResult<IServer[]>([new Server { Url = "http://test1.com", Sponsor = "Test Sponsor 1", Location = "Location 1" }]),
+                GetFastestServerByLatencyAsyncFunc = (servers, _, _) => Task.FromResult(new LatencyTestResult { Server = servers[0], LatencyMilliseconds = 100 }),
+                GetServerLatencyAsyncFunc = (server, _, _) => Task.FromResult(new LatencyTestResult { Server = server, LatencyMilliseconds = 100 }),
+                GetDownloadSpeedAsyncFunc = (_, progress, _) =>
+                {
+                    progress?.Report(new SpeedTestProgress { PercentageComplete = 40, BytesProcessed = 400, ElapsedMilliseconds = 400 });
+                    return Task.FromResult(result);
+                }
+            };
+
+            var services = new ServiceCollection();
+            services.AddSingleton<ISpeedTestService>(speedTester);
+            services.AddSingleton<IClock, ClockStub>();
+            services.AddSingleton<IWaiter, NoDelayStub>();
+            services.AddSingleton(themeProvider);
+            return services;
+        }
+    }
+}

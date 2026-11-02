@@ -6,6 +6,7 @@ using Microsoft.Extensions.DependencyInjection;
 using NetPace.Console.Commands;
 using NetPace.Console.ConsoleWriters;
 using NetPace.Console.Diagnostics;
+using NetPace.Console.Theming;
 using NetPace.Core;
 using NetPace.Core.Clients.Ookla;
 using Spectre.Console;
@@ -36,7 +37,7 @@ public static class Program
     /// <remarks>
     /// Extracted here so the testing project can reuse the production configuration.
     /// </remarks>
-    internal static RootCommand CreateRootCommand(IServiceProvider serviceProvider, string[] args)
+    internal static RootCommand CreateRootCommand(IServiceProvider serviceProvider, string[] args, Theme theme)
     {
         var command = new RootCommand(Description);
 
@@ -370,20 +371,20 @@ public static class Program
                 recorder.Record("run.invocation", ("args", string.Join(' ', args)));
 
                 // Create and execute command
-                var command = new SpeedTestCommand(ansiConsole, speedTestService, clock, clientInfoProvider, recorder, waiter);
+                var command = new SpeedTestCommand(ansiConsole, speedTestService, clock, clientInfoProvider, recorder, waiter, theme);
                 return await command.ExecuteAsync(settings, cancellationToken);
             }
             catch (Exception ex)
             {
                 // Usage/configuration errors and operational failures are reported to the console.
                 var console = serviceProvider.GetRequiredService<IAnsiConsole>();
-                console.MarkupLine($"[red]Error:[/] {ex.Message.EscapeMarkup()}");
+                WriteError(console, theme, ex.Message);
                 return 1;
             }
         }));
 
         // Add list servers command
-        var listServersCommand = CreateListServersCommand(serviceProvider);
+        var listServersCommand = CreateListServersCommand(serviceProvider, theme);
         command.Subcommands.Add(listServersCommand);
 
         return command;
@@ -446,7 +447,7 @@ public static class Program
     /// <summary>
     /// Create the list servers command.
     /// </summary>
-    private static Command CreateListServersCommand(IServiceProvider serviceProvider)
+    private static Command CreateListServersCommand(IServiceProvider serviceProvider, Theme theme)
     {
         var command = new Command("servers", "Show the nearest speed test servers.");
 
@@ -484,13 +485,13 @@ public static class Program
                 var speedTestService = serviceProvider.GetRequiredService<ISpeedTestService>();
 
                 // Create and execute command
-                var command = new ListServersCommand(ansiConsole, speedTestService);
+                var command = new ListServersCommand(ansiConsole, speedTestService, theme);
                 return await command.ExecuteAsync(settings, cancellationToken);
             }
             catch (Exception ex)
             {
                 var ansiConsole = serviceProvider.GetRequiredService<IAnsiConsole>();
-                ansiConsole.MarkupLine($"[red]Error:[/] {ex.Message.EscapeMarkup()}");
+                WriteError(ansiConsole, theme, ex.Message);
                 return 1;
             }
         });
@@ -508,6 +509,14 @@ public static class Program
 
         // Register AnsiConsole (standard output).
         services.AddSingleton(AnsiConsole.Console);
+
+        // The theme comes from the environment in every run, --test included: a theme is the one
+        // thing about a run a stub would make harder to look at rather than easier.
+        services.AddSingleton<IThemeProvider, EnvironmentThemeProvider>();
+
+        // A word to the user about how the run was asked for goes to the error stream, so it never
+        // lands in the middle of a result another program is reading.
+        services.AddSingleton(new NoticeOutput(System.Console.Error));
 
         // Needed by both stacks: the root command populates the accessor after option binding,
         // before it knows which ISpeedTestService is in play.
@@ -568,7 +577,14 @@ public static class Program
     internal static async Task<int> RunAsync(IServiceProvider serviceProvider, string[] args, CancellationToken cancellationToken = default)
     {
         var ansiConsole = serviceProvider.GetRequiredService<IAnsiConsole>();
-        var rootCommand = CreateRootCommand(serviceProvider, args);
+
+        // Settled before anything is drawn, because --help is rendered below without the options
+        // ever being parsed, and a theme that arrived later would not reach it.
+        var selection = serviceProvider.GetRequiredService<IThemeProvider>().Resolve();
+        selection.Theme.ApplyTo(ansiConsole);
+        ReportUnrecognisedTheme(serviceProvider, args, selection);
+
+        var rootCommand = CreateRootCommand(serviceProvider, args, selection.Theme);
 
         // Check for version request before parsing
         if (args.Length > 0 && (args[0] is "-v" or "--version"))
@@ -580,7 +596,7 @@ public static class Program
         // Check for help request before parsing
         if (args.Length > 0 && (args[0] is "-h" or "--help" or "-?"))
         {
-            CustomHelpProvider.RenderHelp(ansiConsole, rootCommand);
+            CustomHelpProvider.RenderHelp(ansiConsole, rootCommand, selection.Theme);
             return 0;
         }
 
@@ -591,7 +607,7 @@ public static class Program
             var subcommand = rootCommand.Subcommands.FirstOrDefault(c => c.Name == subcommandName);
             if (subcommand != null)
             {
-                CustomHelpProvider.RenderHelp(ansiConsole, subcommand);
+                CustomHelpProvider.RenderHelp(ansiConsole, subcommand, selection.Theme);
                 return 0;
             }
         }
@@ -603,11 +619,37 @@ public static class Program
         {
             foreach (var error in parseResult.Errors)
             {
-                ansiConsole.MarkupLine($"[red]Error:[/] {error.Message.EscapeMarkup()}");
+                WriteError(ansiConsole, selection.Theme, error.Message);
             }
             return 1;
         }
 
         return await parseResult.InvokeAsync(cancellationToken: cancellationToken);
+    }
+
+    /// <summary>
+    /// Writes an error to the console, marked by the word rather than by its colour, so it reads as
+    /// an error in every theme and with no colour at all.
+    /// </summary>
+    private static void WriteError(IAnsiConsole console, Theme theme, string message) =>
+        console.WriteStyledLine(("Error:", theme.Error), (" ", Style.Plain), (message, Style.Plain));
+
+    /// <summary>
+    /// Tells the user, once per run, that the theme they asked for does not exist and which ones
+    /// do. Nothing is written when the value named a theme, or named nothing.
+    /// </summary>
+    /// <remarks>
+    /// Written before any option is parsed, because <c>--help</c> and <c>--version</c> both return
+    /// without parsing and a user who typo'd the variable should hear about it whichever command
+    /// they ran. That is also why <c>--quiet</c> is read off the arguments here: a run told to say
+    /// nothing says nothing, and the parsed value does not exist yet.
+    /// </remarks>
+    private static void ReportUnrecognisedTheme(IServiceProvider serviceProvider, string[] args, ThemeSelection selection)
+    {
+        if (selection.UnrecognisedValue is not { } requested) return;
+        if (args.Contains("--quiet") || args.Contains("-q")) return;
+
+        serviceProvider.GetRequiredService<NoticeOutput>().Writer.WriteLine(
+            $"{EnvironmentThemeProvider.ThemeVariable} is set to '{requested}', which is not a theme. Using the default theme. Valid themes: {Theme.NameList}.");
     }
 }
