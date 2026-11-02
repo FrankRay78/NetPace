@@ -4,14 +4,19 @@
 # One-time setup on the build machine: clone gaffer for the runner alone
 # (`git clone https://github.com/FrankRay78/gaffer-claude.git ~/Repos/gaffer-runner`), clone this
 # repository as a full clone marked `git config chain-next.dedicated true` at ~/Repos/NetPace-runner
-# with a git identity, and copy both unit files to ~/.config/systemd/user/. Then edit the
-# machine-specific values to match the machine: the two clone paths below (in ExecStartPre and
-# ExecStart) and PATH here, and "clone" in .gaffer/chain.json, which is the directory the runner
-# checks, resets and builds in. User units start with a minimal environment, so PATH must name
-# where claude, dotnet, gh, jq, git, flock and timeout live. The settings file is read from the
-# runner's clone, so that clone must already hold it: on first install, `git -C
-# ~/Repos/NetPace-runner fetch origin && git -C ~/Repos/NetPace-runner checkout -f -B main
-# origin/main` before the first firing.
+# with a git identity, enable lingering so the timer runs after logout and at boot
+# (`loginctl enable-linger "$USER"`), and copy both unit files to ~/.config/systemd/user/. Then edit
+# the machine-specific values in this file to match the machine: the two clone paths below (in
+# ExecStartPre and ExecStart) and PATH. User units start with a minimal environment, so PATH must
+# name where claude, dotnet, gh, jq, git, flock and timeout live. "clone" in .gaffer/chain.json is
+# the directory the runner checks, resets and builds in, and it changes only by a commit to main,
+# which then applies to every machine: an edit made in the runner's clone is thrown away by the
+# checkout below and by the runner's own reset. The state path in ExecStartPre is gaffer's default
+# for this clone, ~/.local/state/gaffer-chain/<the clone's directory name>, so it follows the
+# clone's directory name and must be changed with it, or the lock below guards nothing. The
+# settings file is read from the runner's clone, so that clone must already hold it: on first
+# install, `git -C ~/Repos/NetPace-runner fetch origin && git -C ~/Repos/NetPace-runner checkout -f
+# -B main origin/main` before the first firing.
 
 [Unit]
 Description=NetPace chain runner: build the next ready issue to a pull request

@@ -13,7 +13,7 @@
 
 **Decisions:**
 
-- Rejected keeping the settings on the machine: committed, a change to the writers or the permissions opt-in is reviewed. The runner reads the file from its clone as the previous firing left it — `main` as of then — so a change takes effect one firing after it merges, and the clone must hold the file before the first firing (the unit header says how).
-- Rejected a NetPace test of the settings file: the tool that reads it is gaffer's runner, which refuses a key it does not know, a wrongly shaped value, and a missing clone or writers list; a stage left out falls back to gaffer's default by design, as a hand run falls back to the session's model.
+- Rejected keeping the settings on the machine: committed, a change to the writers or the permissions opt-in reaches `main` through a reviewed pull request. The runner reads the file from its clone as the last building firing left it — that issue's feature branch, or its `attempt/` branch after a park, since a firing that finds nothing eligible resets nothing — so a merged change reaches selection only after a later building firing has reset the clone, and the clone must hold the file before the first firing (the unit header says how).
+- Rejected a NetPace test of the settings file: the tool that reads it is gaffer's runner, which refuses an unknown top-level key, an unknown `labels` key or stage name, a wrongly shaped value, and a missing clone or writers list; a stage left out, or a misspelt `model` or `effort` key inside one, falls back to gaffer's default by design, as a hand run falls back to the session's model.
 
 **Date:** 2026-11-01
