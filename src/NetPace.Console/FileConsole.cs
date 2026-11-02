@@ -23,8 +23,9 @@ public sealed class FileConsole : IAnsiConsole, IPersistentConsole, IDisposable
     /// Whether the file holds no content for this run to add to: empty or absent when the run
     /// reached it, or any file in overwrite mode, where its previous content is replaced. Read
     /// before the file is opened, because opening it for append is itself about to add content.
-    /// A file that started empty is replaced rather than appended to, so a stray byte-order mark
-    /// or line ending is not left above the first line written.
+    /// A file that started empty is replaced rather than appended to, so a stray line ending, or a
+    /// byte-order mark an earlier version of NetPace wrote, is not left above the first line
+    /// written.
     /// </param>
     public FileConsole(string filePath, FileMode fileMode, bool startedEmpty)
     {
@@ -33,7 +34,11 @@ public sealed class FileConsole : IAnsiConsole, IPersistentConsole, IDisposable
 
         StartedEmpty = startedEmpty;
 
-        _fileWriter = new StreamWriter(filePath, append: (fileMode == FileMode.Append && !startedEmpty), Encoding.UTF8) { AutoFlush = true };
+        // UTF-8 with no byte-order mark, so the file holds the same bytes the same output has on
+        // standard output: a strict JSON parser rejects a document behind a byte-order mark, and
+        // Unix text tools read one as part of the first field. Encoding.UTF8 emits one, so it is
+        // not what this writer is given.
+        _fileWriter = new StreamWriter(filePath, append: (fileMode == FileMode.Append && !startedEmpty), new UTF8Encoding(encoderShouldEmitUTF8Identifier: false)) { AutoFlush = true };
 
         // Create console settings for plain text output.
         var settings = new AnsiConsoleSettings
