@@ -11,7 +11,7 @@
 - [Verify-snapshot tests count as coverage in NetPace.Console.Tests](feedback_console_output_snapshot_coverage.md) — check Expectations/*.verified.txt before reporting an output mode as untested
 - [Read source before designing fixes](feedback_read_source_before_designing.md) — read the source before designing a fix; verify a handed-down issue/spec/review diagnosis against HEAD before implementing
 - [Trust only a fresh, rebuilt, unpiped test run](feedback_trusting_a_test_run.md) — re-run after the last edit, no stale `--no-build`, never pipe a run you trust; read Passed!/Failed!
-- [Decompose quantified claims — no flattering multipliers](feedback_plain_language_decisions.md) — name what an estimate is made of instead of a headline multiplier
+- [Plain consequences first; decompose quantified claims](feedback_plain_language_decisions.md) — lead a decision with cost and payoff before mechanism; no headline multipliers
 - [Be decisive when the evidence has already earned it](feedback_decisiveness_over_hedging.md) — state the verdict the gates already support; build within a decision already made rather than re-litigating it
 - [Present several decisions one per turn](feedback_one_decision_per_turn.md) — one decision per message, explained from what happens today; write the answers up together at the end
 - [When the guard outgrows the fix, surface it as a decision](feedback_guard_outgrows_the_fix.md) — verification scaffolding bigger than the change means the wrong mechanism; ask before building

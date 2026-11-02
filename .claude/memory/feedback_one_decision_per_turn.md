@@ -8,4 +8,4 @@ When a conversation leaves Frank with several decisions to make, present them on
 
 **Why:** Six open items delivered in one message on #268 went undecided; stepped through one at a time, every item was settled and two recommendations were reversed. The first of them was explained further before being answered, which a batched message leaves no room for. The same approach then settled the decisions behind #331.
 
-**How to apply:** One decision per message, in plain consequences before any mechanism (CLAUDE.md: "Don't frame a decision in implementation jargon"). See [[feedback_plain_language_decisions]] for how to put a quantified cost, and [[feedback_decisiveness_over_hedging]] for whether the choice is genuinely open enough to put at all.
+**How to apply:** One decision per message, in plain consequences before any mechanism. See [[feedback_plain_language_decisions]] for that framing and how to put a quantified cost, and [[feedback_decisiveness_over_hedging]] for whether the choice is genuinely open enough to put at all.
