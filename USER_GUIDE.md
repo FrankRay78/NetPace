@@ -333,6 +333,30 @@ Reach for it when:
 
 ---
 
+## Choosing a colour theme
+
+A theme is a standing preference rather than a per-run choice, so you set it once with the `NETPACE_THEME` environment variable — in your shell profile, say — and every command picks it up:
+
+```bash
+export NETPACE_THEME=green
+```
+
+| Theme | What it looks like |
+|---|---|
+| `default` | NetPace's own colours. What you get when `NETPACE_THEME` is unset or empty. |
+| `plain` | No colour and no bold anywhere. A progress bar still shows how much is done, by how far its glyphs reach. |
+| `green` | A green-led look, in mid-tone greens chosen to read on a light terminal as well as a dark one. |
+
+Names are matched without regard to case, so `GREEN` and `green` are the same request. Set the variable to something that is not a theme and NetPace says so on the error stream, then carries on in the default theme — the run is never stopped by a typo. `--quiet` suppresses that notice along with everything else.
+
+The theme reaches every screen a person reads: the speed test, `servers` in all its forms, and `--help`. It never reaches output another program parses — `--csv`, `--json` and `--file` are byte-for-byte the same whatever the theme is, and `--minimal` has no colour to change.
+
+Colour never carries meaning on its own in any theme. A failure is marked by the word `Error:`, so it reads as a failure even where you cannot tell the colours apart or have turned colour off entirely.
+
+If you have set `NO_COLOR` — the [convention](https://no-color.org/) for asking every program on the machine to stop colouring its output — that wins, and NetPace draws the `plain` theme whatever `NETPACE_THEME` says.
+
+---
+
 ## Detecting failed measurements
 
 A speed test runs many small requests in parallel and reports the aggregate throughput. If some of those requests fail (a dropped connection, a TLS error, a timeout, or a server that rejects the transfer), NetPace does **not** silently treat them as zero-speed data — it counts them, so you can tell a genuinely slow link from a server that isn't transferring at all. When *every* request in a test fails, the speed reads zero, and the counts tell you it was a total failure rather than a 0 bps link.
