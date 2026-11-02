@@ -100,7 +100,9 @@ Two further options decide whether and where the result appears, and both work w
 
 ### What `--file` writes
 
-`--file` writes **UTF-8 text with no byte-order mark**, in every format and in both `--file-mode` settings. The file holds the same bytes the same run puts on standard output, so `netpace --json --file results.json` and `netpace --json > results.json` leave you with the same file: a strict JSON parser reads it as it stands, and `cut`, `awk` and `head` see the CSV header's first column name as the first field of the first line.
+`--file` writes **UTF-8 text with no byte-order mark**, in every format and in both `--file-mode` settings. Nothing is written in front of the content, so a `--json` file starts at its opening brace and a `--csv` file starts at its first column name: a single run's JSON file is read as it stands by a strict parser, and `cut`, `awk` and `head` see that first column name as the first field of the first line.
+
+A log an earlier version of NetPace started keeps the byte-order mark it already has, because appending does not rewrite the start of a file. Start a new log if you want one without it.
 
 **Opening a CSV result in a spreadsheet:** import it rather than double-clicking it. In Excel, use *Data → From Text/CSV* and choose **UTF-8** as the file origin. Without a byte-order mark to tip it off, a double-clicked file may be read as a legacy code page instead, which garbles non-ASCII text such as an accented server sponsor or location name. LibreOffice Calc asks for the character set on open, where UTF-8 is the default.
 

@@ -15,6 +15,12 @@ public sealed partial class NetPaceConsoleTests
     {
         private static readonly byte[] Utf8ByteOrderMark = Encoding.UTF8.GetPreamble();
 
+        /// <summary>UTF-8 as a file is written: no byte-order mark in front of the content.</summary>
+        private static readonly UTF8Encoding Utf8NoByteOrderMark = new(encoderShouldEmitUTF8Identifier: false);
+
+        /// <summary>UTF-8 that refuses to decode a byte sequence that is not valid UTF-8.</summary>
+        private static readonly UTF8Encoding StrictUtf8 = new(encoderShouldEmitUTF8Identifier: false, throwOnInvalidBytes: true);
+
         // SCENARIO: A JSON result written to a file parses as strict JSON
         [Fact]
         public async Task Json_WrittenToANewFile_IsReadByAStrictJsonParser()
@@ -104,6 +110,8 @@ public sealed partial class NetPaceConsoleTests
         [InlineData("--csv", "Append")]
         [InlineData("--json", "Overwrite")]
         [InlineData("--json", "Append")]
+        [InlineData("--json-pretty", "Overwrite")]
+        [InlineData("--json-pretty", "Append")]
         public async Task EveryFormat_WrittenToANewFile_LeavesNoByteOrderMark(string? formatSwitch, string fileMode)
         {
             // Given a path nothing has written to yet
@@ -128,6 +136,31 @@ public sealed partial class NetPaceConsoleTests
         }
 
         [Fact]
+        public async Task Csv_AppendedToALogHoldingOnlyAByteOrderMark_LeavesNoByteOrderMark()
+        {
+            // Given a log holding nothing but a byte-order mark, which is what an older NetPace
+            // left when a run ended before writing a row
+            var file = NewFilePath();
+
+            try
+            {
+                await System.IO.File.WriteAllBytesAsync(file, Utf8ByteOrderMark);
+
+                // When a run appends its result
+                var (_, bytes) = await RunToFileAsync(file, ["--csv", "--file-mode", "Append"]);
+
+                // Then the stale mark is gone: such a log counts as holding nothing, so it is
+                // replaced rather than appended to. Read back as text the mark is invisible, which
+                // is why this reads the bytes.
+                AssertNoByteOrderMark(bytes);
+            }
+            finally
+            {
+                Delete(file);
+            }
+        }
+
+        [Fact]
         public async Task Csv_AppendedToALogWithRows_AddsNoByteOrderMark()
         {
             // Given a log that already holds content, so this run appends to it rather than
@@ -141,8 +174,9 @@ public sealed partial class NetPaceConsoleTests
                 // When a run appends its result
                 var (_, bytes) = await RunToFileAsync(file, ["--csv", "--file-mode", "Append"]);
 
-                // Then nothing in the file is a byte-order mark — not above the appended content,
-                // and not anywhere else in it
+                // Then the appended content adds no byte-order mark of its own. A mark the file
+                // already carries is left alone by design, which is why the log seeded here has
+                // none.
                 AssertNoByteOrderMark(bytes);
             }
             finally
@@ -150,12 +184,6 @@ public sealed partial class NetPaceConsoleTests
                 Delete(file);
             }
         }
-
-        /// <summary>UTF-8 as a file is written: no byte-order mark in front of the content.</summary>
-        private static UTF8Encoding Utf8NoByteOrderMark => new(encoderShouldEmitUTF8Identifier: false);
-
-        /// <summary>UTF-8 that refuses to decode a byte sequence that is not valid UTF-8.</summary>
-        private static UTF8Encoding StrictUtf8 => new(encoderShouldEmitUTF8Identifier: false, throwOnInvalidBytes: true);
 
         private static string NewFilePath() =>
             Path.Join(Path.GetTempPath(), $"netpace-file-encoding-{Guid.NewGuid()}.txt");
@@ -188,7 +216,7 @@ public sealed partial class NetPaceConsoleTests
 
         private static void AssertNoByteOrderMark(byte[] bytes)
         {
-            var at = ((ReadOnlySpan<byte>)bytes).IndexOf(Utf8ByteOrderMark.AsSpan());
+            int at = bytes.AsSpan().IndexOf(Utf8ByteOrderMark);
 
             Assert.True(at < 0, $"A UTF-8 byte-order mark is present at byte {at} of {bytes.Length}.");
         }
