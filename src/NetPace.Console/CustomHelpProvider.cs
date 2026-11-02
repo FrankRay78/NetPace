@@ -2,7 +2,6 @@ using System.CommandLine;
 using System.Reflection;
 
 using NetPace.Console.Theming;
-using Spectre.Console.Rendering;
 
 namespace NetPace.Console;
 

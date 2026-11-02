@@ -1,5 +1,3 @@
-using Spectre.Console.Rendering;
-
 namespace NetPace.Console.Theming;
 
 /// <summary>
@@ -20,25 +18,17 @@ internal static class ThemedConsole
     /// <param name="runs">The text to write, each run with the style to draw it in.</param>
     public static void WriteStyledLine(this IAnsiConsole console, params (string Text, Style Style)[] runs)
     {
-        console.Write(Compose(runs));
-        console.WriteLine();
-    }
-
-    /// <summary>
-    /// The runs as one renderable, so whatever wraps it sees the whole line.
-    /// </summary>
-    public static IRenderable Compose(params (string Text, Style Style)[] runs)
-    {
-        var paragraph = new Paragraph();
+        var line = new Paragraph();
 
         foreach (var (text, style) in runs)
         {
             if (text.Length > 0)
             {
-                paragraph.Append(text, style);
+                line.Append(text, style);
             }
         }
 
-        return paragraph;
+        console.Write(line);
+        console.WriteLine();
     }
 }
