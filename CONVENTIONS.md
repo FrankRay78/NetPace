@@ -58,7 +58,7 @@ Every line of production code is written in response to a failing test, in the R
 
 ## Commit messages
 
-Work on feature branches (`feature/your-feature-name`); commit frequently, especially before refactoring. Messages are clear and concise, in the imperative mood, and reference the issue where applicable as `Refs #<N>: …` — never a GitHub closing keyword (`Fix`/`Fixes`/`Close`/`Closes`/`Resolve`/`Resolves` `#<N>`), which closes the issue the moment the commit reaches `main`, before review. The pull request body's `Closes #<N>` is the only place that should close an issue.
+Work on feature branches named `feature/<N>-<short-slug>` after the issue, the shape `scripts/traceability-check.sh` reads the issue number from; commit frequently, especially before refactoring. Messages are clear and concise, in the imperative mood, and reference the issue where applicable as `Refs #<N>: …` — never a GitHub closing keyword (`Fix`/`Fixes`/`Close`/`Closes`/`Resolve`/`Resolves` `#<N>`), which closes the issue the moment the commit reaches `main`, before review. The pull request body's `Closes #<N>` is the only place that should close an issue.
 
 ## Documentation
 

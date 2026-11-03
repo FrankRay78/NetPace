@@ -118,13 +118,13 @@ jobs:
       # else on the issue changes, and the run finishes green. Which state is wrong depends on
       # the mode — `review` wants no review yet, `refine` wants one already posted — and both
       # want an issue that is not `ready`. A reviewed issue and a confirmed one leave different
-      # traces: `ready` is the done-marker once /confirmissue has folded the answers into the
+      # traces: `ready` is the done-marker once /gaffer:confirmissue has folded the answers into the
       # body and deleted the review; the sentinel still marks a review posted but not yet
       # confirmed, and confirmations predating that deletion. `ready` is checked first because it
       # is one call against the paginated comment fetch below, which is paginated because
       # `gh issue view --json comments` returns a bounded page and a sentinel past it would be
       # invisible. Both reads are live, not from the previous step's snapshot: a local
-      # /confirmissue is a second writer here, and a stale label paired with a live
+      # /gaffer:confirmissue is a second writer here, and a stale label paired with a live
       # comment read would see neither marker on an issue confirmed between the two, and
       # post over its decisions. The label read is assigned outside an `if` because inside
       # one errexit is suppressed, making a gh or jq failure indistinguishable from "label
@@ -250,7 +250,7 @@ jobs:
       # the "GitHub's failed-run notification is the alert" contract would never fire on
       # the failures most likely to actually happen. Checking the sentinel rather than
       # merely "a comment exists" also catches a comment posted without the marker, which
-      # /confirmissue would not find.
+      # /gaffer:confirmissue would not find.
       # `needs answers` is applied here, not left to the model: the command file's
       # instruction to add it was skipped on the first CI run that carried it (#296),
       # and a verified post is the one point where the label is known to be true.
@@ -282,7 +282,7 @@ jobs:
       # The sentinel and the body are checked because the model rewrites the whole comment in one
       # PATCH, over a long list of byte-for-byte invariants in step 6 — the sentinel, every gap
       # number, every answer line. Losing the sentinel strands the author's answers where
-      # /confirmissue can no longer find them, and that is now a green skip there rather than a
+      # /gaffer:confirmissue can no longer find them, and that is now a green skip there rather than a
       # red run, so this is the only place it gets caught.
       - name: Verify the refine left the review intact and cleared the label
         if: steps.guard.outputs.wrong_state != 'true' && env.MODE == 'refine'
