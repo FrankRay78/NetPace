@@ -349,6 +349,7 @@ public static class Program
                 var clock = serviceProvider.GetRequiredService<IClock>();
                 var clientInfoProvider = serviceProvider.GetRequiredService<IClientInfoProvider>();
                 var waiter = serviceProvider.GetRequiredService<IWaiter>();
+                var liveDisplayRefresh = serviceProvider.GetRequiredService<ILiveDisplayRefresh>();
 
                 // Switched off, nothing is recorded and nothing is written - so no call site
                 // downstream has to ask whether diagnostics are on.
@@ -370,7 +371,7 @@ public static class Program
                 recorder.Record("run.invocation", ("args", string.Join(' ', args)));
 
                 // Create and execute command
-                var command = new SpeedTestCommand(ansiConsole, speedTestService, clock, clientInfoProvider, recorder, waiter);
+                var command = new SpeedTestCommand(ansiConsole, speedTestService, clock, clientInfoProvider, recorder, waiter, liveDisplayRefresh);
                 return await command.ExecuteAsync(settings, cancellationToken);
             }
             catch (Exception ex)
@@ -526,6 +527,7 @@ public static class Program
             services.AddSingleton<IEnvironmentInfoProvider, EnvironmentInfoProviderStub>();
             services.AddSingleton<IDiagnosticClock, IncrementingDiagnosticClockStub>();
             services.AddSingleton<IWaiter, NoDelayStub>();
+            services.AddSingleton<ILiveDisplayRefresh, LiveDisplayRefresh>();
         }
         else
         {
@@ -535,6 +537,7 @@ public static class Program
             services.AddSingleton<IEnvironmentInfoProvider, EnvironmentInfoProvider>();
             services.AddSingleton<IDiagnosticClock, DiagnosticClock>();
             services.AddSingleton<IWaiter, Waiter>();
+            services.AddSingleton<ILiveDisplayRefresh, LiveDisplayRefresh>();
         }
 
         await using var serviceProvider = services.BuildServiceProvider();

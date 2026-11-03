@@ -158,6 +158,55 @@ public sealed partial class NetPaceConsoleTests
             await Verify(result.Output);
         }
 
+        [Fact]
+        public async Task Should_Show_The_Same_Screen_When_A_Measurement_Outlasts_The_Displays_Refresh_Interval()
+        {
+            // Given the same measurement run twice: once instantly, and once taking several times
+            // Spectre.Console's own redraw interval to finish.
+            // Regression: issue #490 - the live display redrew itself while a slow measurement was
+            // in flight, stacking an extra frame into the capture, so the snapshots in this file
+            // failed about once per full-suite run and parked the branch at the suite gate.
+
+            // When
+            var instant = await MeasureWithPause(TimeSpan.Zero);
+            var slow = await MeasureWithPause(TimeSpan.FromMilliseconds(250));
+
+            // Then the screen the user is left with is the one the instant run produced, and it
+            // still carries the live figure, so the two are not equal by rendering nothing.
+            Assert.Equal(0, instant.ExitCode);
+            Assert.Equal(0, slow.ExitCode);
+            Assert.Equal(instant.Output, slow.Output);
+            Assert.Equal(FigureOnResultLine("Download", slow.Output), FigureBeside("Downloading", slow.Output));
+        }
+
+        /// <summary>
+        /// Runs one interactive speed test whose download and upload each take
+        /// <paramref name="pause"/> to complete, so a test can hold a measurement open past the
+        /// display's refresh interval without depending on how fast the machine is.
+        /// </summary>
+        private static async Task<TestResult> MeasureWithPause(TimeSpan pause)
+        {
+            SpeedTestResult Slowly(SpeedTestResult result)
+            {
+                Thread.Sleep(pause);
+                return result;
+            }
+
+            var service = new ScriptedSpeedTester
+            {
+                ReportsProgress = true,
+                DownloadFactory = _ => Slowly(Measured(bytes: 125_000, elapsedMilliseconds: 1000)),
+                UploadFactory = _ => Slowly(Measured(bytes: 62_500, elapsedMilliseconds: 1000)),
+            };
+
+            var services = new ServiceCollection();
+            services.AddSingleton<ISpeedTestService>(service);
+            services.AddSingleton<IClock, ClockStub>();
+            services.AddSingleton<IWaiter, NoDelayStub>();
+
+            return await GetInteractiveCommandLineTestHost(services).RunAsync([]);
+        }
+
         private static SpeedTestResult Measured(long bytes, long elapsedMilliseconds) =>
             new() { BytesProcessed = bytes, ElapsedMilliseconds = elapsedMilliseconds, RequestsSucceeded = 1, RequestsFailed = 0 };
 

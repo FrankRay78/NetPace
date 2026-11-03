@@ -5,7 +5,15 @@ using NetPace.Core;
 
 namespace NetPace.Console.ConsoleWriters;
 
-public sealed class DefaultConsoleWriter : IConsoleWriter
+/// <summary>
+/// The default human-readable output: a live spinner while the server is chosen, a progress bar
+/// per measurement with the speed beside it, and the result line.
+/// </summary>
+/// <param name="liveDisplayRefresh">
+/// Where the live displays' frames come from. Both displays are built on it, so a run whose
+/// measurement outlasts the refresh interval leaves the same screen as an instant one.
+/// </param>
+public sealed class DefaultConsoleWriter(ILiveDisplayRefresh liveDisplayRefresh) : IConsoleWriter
 {
     /// <inheritdoc/>
     public bool MachineReadable => false;
@@ -16,6 +24,7 @@ public sealed class DefaultConsoleWriter : IConsoleWriter
         // Get the server to use for speed testing.
         var fastest = await console.Progress()
             .AutoClear(true)
+            .AutoRefresh(liveDisplayRefresh.AutoRefresh)
             .Columns(
             [
                 new SpinnerColumn(),
@@ -61,6 +70,7 @@ public sealed class DefaultConsoleWriter : IConsoleWriter
 
             await console.Progress()
                 .AutoClear(false)
+                .AutoRefresh(liveDisplayRefresh.AutoRefresh)
                 .Columns(
                 [
                     new TaskDescriptionColumn(),
