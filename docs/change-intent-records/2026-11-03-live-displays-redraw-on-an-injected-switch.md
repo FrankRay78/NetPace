@@ -8,7 +8,7 @@
 
 **Constraints:**
 
-- Spectre.Console 0.57.1 redraws a progress display from a thread of its own, started by `AutoRefresh`, and takes no `TimeProvider` — so the issue's preferred seam, a time provider the fixture owns, cannot reach it.
+- Spectre.Console 0.57.1 redraws a progress display from a thread of its own, started by `AutoRefresh`, and that thread reads no `TimeProvider` — the one `Progress` accepts never reaches the frames, and `console.Progress()` passes none. So the issue's preferred seam, a time provider the fixture owns, cannot reach it.
 - A spinner frame is picked from the `deltaTime` the renderer measures, so one redraw too many changes the screen.
 - Production must go on redrawing mid-measurement.
 

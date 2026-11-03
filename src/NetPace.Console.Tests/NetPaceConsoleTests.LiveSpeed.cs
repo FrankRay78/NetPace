@@ -163,40 +163,48 @@ public sealed partial class NetPaceConsoleTests
         {
             // Given the same measurement run twice: once instantly, and once taking several times
             // Spectre.Console's own redraw interval to finish.
-            // Regression: issue #490 - the live display redrew itself while a slow measurement was
-            // in flight, stacking an extra frame into the capture, so the snapshots in this file
-            // failed about once per full-suite run and parked the branch at the suite gate.
+            // Regression: issue #490 - the live displays redrew themselves while a slow measurement
+            // was in flight, stacking an extra frame into the capture, so the snapshots in this file
+            // failed intermittently.
 
             // When
             var instant = await MeasureWithPause(TimeSpan.Zero);
-            var slow = await MeasureWithPause(TimeSpan.FromMilliseconds(250));
+            var slow = await MeasureWithPause(AcrossTheRefreshInterval);
 
             // Then the screen the user is left with is the one the instant run produced, and it
-            // still carries the live figure, so the two are not equal by rendering nothing.
+            // still carries both live figures, so the two are not equal by rendering nothing.
             Assert.Equal(0, instant.ExitCode);
             Assert.Equal(0, slow.ExitCode);
             Assert.Equal(instant.Output, slow.Output);
             Assert.Equal(FigureOnResultLine("Download", slow.Output), FigureBeside("Downloading", slow.Output));
+            Assert.Equal(FigureOnResultLine("Upload", slow.Output), FigureBeside("Uploading", slow.Output));
         }
 
         /// <summary>
-        /// Runs one interactive speed test whose download and upload each take
-        /// <paramref name="pause"/> to complete, so a test can hold a measurement open past the
-        /// display's refresh interval without depending on how fast the machine is.
+        /// Long enough to outlast a live display's redraw interval - 100 ms in Spectre.Console
+        /// 0.57.1 - so a paused phase crosses it whatever the machine's speed.
+        /// </summary>
+        private static readonly TimeSpan AcrossTheRefreshInterval = TimeSpan.FromMilliseconds(250);
+
+        /// <summary>
+        /// Runs one interactive speed test whose server selection, download and upload each take
+        /// <paramref name="pause"/> to complete, so a test can hold both live displays open past
+        /// their refresh interval without depending on how fast the machine is.
         /// </summary>
         private static async Task<TestResult> MeasureWithPause(TimeSpan pause)
         {
-            SpeedTestResult Slowly(SpeedTestResult result)
+            SpeedTestResult MeasuredSlowly(long bytes)
             {
                 Thread.Sleep(pause);
-                return result;
+                return Measured(bytes, elapsedMilliseconds: 1000);
             }
 
             var service = new ScriptedSpeedTester
             {
                 ReportsProgress = true,
-                DownloadFactory = _ => Slowly(Measured(bytes: 125_000, elapsedMilliseconds: 1000)),
-                UploadFactory = _ => Slowly(Measured(bytes: 62_500, elapsedMilliseconds: 1000)),
+                ServerSelectionPause = pause,
+                DownloadFactory = _ => MeasuredSlowly(bytes: 125_000),
+                UploadFactory = _ => MeasuredSlowly(bytes: 62_500),
             };
 
             var services = new ServiceCollection();

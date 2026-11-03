@@ -518,6 +518,10 @@ public static class Program
         // line, whatever the terminal width, and whatever --quiet or --file were set to.
         services.AddSingleton(new DiagnosticOutput(System.Console.Error));
 
+        // Needed by both stacks: a person running either one wants the live displays to redraw as
+        // the measurement goes. Only the test host turns that off, so a capture holds one frame.
+        services.AddSingleton<ILiveDisplayRefresh, LiveDisplayRefresh>();
+
         if (args != null && args.Contains("--test"))
         {
             // Executes NetPace against stub service implementations.
@@ -527,7 +531,6 @@ public static class Program
             services.AddSingleton<IEnvironmentInfoProvider, EnvironmentInfoProviderStub>();
             services.AddSingleton<IDiagnosticClock, IncrementingDiagnosticClockStub>();
             services.AddSingleton<IWaiter, NoDelayStub>();
-            services.AddSingleton<ILiveDisplayRefresh, LiveDisplayRefresh>();
         }
         else
         {
@@ -537,7 +540,6 @@ public static class Program
             services.AddSingleton<IEnvironmentInfoProvider, EnvironmentInfoProvider>();
             services.AddSingleton<IDiagnosticClock, DiagnosticClock>();
             services.AddSingleton<IWaiter, Waiter>();
-            services.AddSingleton<ILiveDisplayRefresh, LiveDisplayRefresh>();
         }
 
         await using var serviceProvider = services.BuildServiceProvider();
