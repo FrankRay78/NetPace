@@ -6,7 +6,7 @@
 
 **Constraints:** The two failure directions cost differently — a false stop costs the rest of one run done by hand, a false success opens a pull request off unverified work.
 
-**Decisions:** Both alternatives the delta doc names as weighed and rejected:
+**Decisions:** Two alternatives were weighed and rejected:
 
 - *Rejected: a channel outside the prose* — a file, or structured output each stage writes. More robust, and it would leave the report free text, but it is a much larger change and would still need a fail-safe for a stage that records nothing. Revisit only if decoration on the last line turns out not to be the whole problem.
 - *Rejected: a stricter prose scan.* Counting only an undecorated verdict at the start of a line is cheaper, and makes a decorated verdict a safe stop, but it still cannot tell a stage's own plain verdict from a plain one the report quotes. Position cannot be faked by a quotation, so both failure directions go away together.
