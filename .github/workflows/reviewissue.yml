@@ -12,8 +12,21 @@ name: Review Issue
 # the ref it is dispatched against for the two, and is always a review.
 # Rationale: docs/change-intent-records/2026-09-07-automated-prespec-review.md and
 #            docs/change-intent-records/2026-09-11-confirmed-decisions-replace-the-review.md.
-# The one-label-per-state model each trigger assumes: docs/agentic-workflow-NetPace.md,
-# "One label per issue state" and "The labels are the state".
+#
+# The issue gate: one label per issue state, shared by this workflow and confirmissue.yml.
+#   No review yet                                 -> `review`  posts the gap analysis
+#   Review posted, answers not yet written        -> none      answer the questions first
+#   Review posted, an answer asks for help        -> `refine`  re-frames only those questions
+#   Review posted, answers concrete               -> `confirm` folds them into the body, sets `ready`
+#   `ready`                                       -> none      nothing left to do
+# A label applied in any other state is a wrong-state trigger: it changes nothing, removes itself,
+# and finishes green. Two states go red with the label left on instead, both for `confirm`: a
+# `ready` issue that still carries a review comment (a half-confirmed issue needing manual
+# repair), and answers still unanswered or hedging. A green run always removes the label that triggered it,
+# so a trigger label still on the issue means its run did not complete; `needs answers` stays on through
+# a refine. clear-workflow-labels.yml takes the labels off every issue a merge closes. A label
+# applied by any account other than the gated one starts no run at all. To re-review a confirmed
+# issue, remove `ready` and delete any review comment still on the thread.
 
 on:
   issues:

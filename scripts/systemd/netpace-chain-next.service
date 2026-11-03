@@ -17,6 +17,17 @@
 # settings file is read from the runner's clone, so that clone must already hold it: on first
 # install, `git -C ~/Repos/NetPace-runner fetch origin && git -C ~/Repos/NetPace-runner checkout -f
 # -B main origin/main` before the first firing.
+#
+# Operating it:
+#   Start (and on every boot)        systemctl --user enable --now netpace-chain-next.timer
+#   Pause (a run in progress ends)   systemctl --user stop netpace-chain-next.timer
+#   Stop a run too (not parked)      systemctl --user stop netpace-chain-next.service
+#   Fire once now                    systemctl --user start --no-block netpace-chain-next.service
+#   Status, next firing              systemctl --user status netpace-chain-next.service
+#                                    systemctl --user list-timers netpace-chain-next.timer
+#   The runner's own output          journalctl --user -u netpace-chain-next.service
+#   One run's full chain output      ~/.local/state/gaffer-chain/NetPace-runner/logs/<N>-<timestamp>.log
+#   Retry or finish a parked issue   gaffer's docs/chain.md, "Setting it up"
 
 [Unit]
 Description=NetPace chain runner: build the next ready issue to a pull request
