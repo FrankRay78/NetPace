@@ -2,7 +2,7 @@
 
 **Intent:** Stop `/raise-pr` stalling at its push step, and stop `chmod` being a hard block with no approval path.
 
-**Behaviour:** `.claude/settings.json`; `docs/agentic-workflow-NetPace.md` → *Permissions* for the rule changes, and the generic *Permissions and unattended runs* for how an `ask` rule behaves interactively versus headless.
+**Behaviour:** `.claude/settings.json`; `CONVENTIONS.md` → *Hooks, scripts and plugins* for the `chmod` rule as the `no-chmod` hook's backstop, and gaffer's [`docs/unattended.md`](https://github.com/FrankRay78/gaffer-claude/blob/main/docs/unattended.md) for how an `ask` rule behaves interactively versus headless.
 
 **Decisions:**
 

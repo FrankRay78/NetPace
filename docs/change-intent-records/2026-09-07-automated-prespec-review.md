@@ -2,7 +2,7 @@
 
 **Intent:** Take the one step in the issue gate whose cost is the *wait* — `/reviewissue`, which carries the codebase-grounding pass — off the developer machine, so an issue raised away from the desk has its gap analysis waiting rather than requested.
 
-**Behaviour:** [`.github/workflows/reviewissue.yml`](../../.github/workflows/reviewissue.yml), and `docs/agentic-workflow-NetPace.md` → *The whole pre-build issue gate runs in CI*.
+**Behaviour:** [`.github/workflows/reviewissue.yml`](../../.github/workflows/reviewissue.yml), whose header carries the one-label-per-state model the gate runs on.
 
 **Decisions:**
 

@@ -10,6 +10,7 @@
 
 - The chain's three stages left `scripts/stage-models.tsv`; their model and effort are the `stages` key of `.gaffer/chain.json`. The table still binds the CI workflows.
 - Updating the gaffer clone is the unit's `ExecStartPre`, not the runner's: the runner refuses an edited or diverged checkout and never changes it.
+- `skip_permissions: true` is set. Of gaffer's conditions for that opt-in, NetPace meets the dedicated clone and the machine set aside for the runner; the `gh` and `claude` sign-ins on that machine are the maintainer's own, not credentials scoped to what the chain pushes and comments on, which is the residual exposure.
 
 **Decisions:**
 
