@@ -14,7 +14,7 @@ name: Review Followup
 #
 # WHY THE LABEL AND NOT A PUSH. A follow-up round stays something the maintainer chooses to
 # start, once the author has actually responded; re-reviewing on every push is what
-# /review-followup exists to avoid.
+# /gaffer:review-followup exists to avoid.
 #
 # WHY THE CAP IS CHECKED HERE TOO. The command refuses a fourth round itself (step 2), and that
 # refusal posts nothing — which the verify step below would otherwise report as a failed run. The
@@ -215,7 +215,7 @@ jobs:
             exit 1
           fi
           if ! grep -qP "^$HEAD_SHA\ttrue$" review-pr-reviews.tsv; then
-            echo "::error::The follow-up round on PR #$PR_NUMBER posted no review against $HEAD_SHA — /review-followup and the cost footer both find rounds by the head commit."
+            echo "::error::The follow-up round on PR #$PR_NUMBER posted no review against $HEAD_SHA — /gaffer:review-followup and the cost footer both find rounds by the head commit."
             exit 1
           fi
 

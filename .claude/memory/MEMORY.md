@@ -3,7 +3,6 @@
 
 - [A handed-down plan's tactics are suggestions — its outcomes are not](feedback_prescribed_tactics_are_suggestions.md) — distinguish prescribed *outcome* from prescribed *tactic*; prefer the simpler equivalent
 - [Challenge speculative numeric tolerances in test plans](feedback_speccheck_numeric_tolerance.md) — exact equality by default; only add tolerance when the operation actually introduces FP error
-- [Prompts favour locality over DRY](feedback_prompts_locality_over_dry.md) — inline short rules in each slash-command prompt; skip canonical-section + cross-refs and defensive specs for cases the generator can't produce
 - [Docs describe current codebase only — no forward references](feedback_docs_no_forward_references.md) — push back on task plans that mandate doc sections about unimplemented features tracked only by open issues
 - [After adding or removing a rule, sweep for what it touches](feedback_grep_after_simplifying.md) — grep for a removed concept repo-wide; reconcile a new prompt rule with older rules and re-run paths
 - [Scratch and staging files belong in .claude/scratch/](feedback_scratch_file_location.md) — gitignored; not /tmp, not ~/.claude/, not a top-level .scratch/

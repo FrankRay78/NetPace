@@ -180,7 +180,7 @@ jobs:
       # never posted would otherwise be a green run. Both halves are asserted: that the marked
       # review count went *up*, which a re-dispatch finding only the previous run's review would
       # fail, and that a marked review stands against this exact head commit, which catches a
-      # review posted without the marker that /review-followup and the cost footer would not find.
+      # review posted without the marker that /gaffer:review-followup and the cost footer would not find.
       - name: Verify the review posted
         env:
           GH_TOKEN: ${{ github.token }}
