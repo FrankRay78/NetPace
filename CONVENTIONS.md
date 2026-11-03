@@ -116,7 +116,7 @@ What `/gaffer:reviewissue` considers alongside its generic categories, under the
 
 What `/gaffer:audit-codebase` reads about this repository.
 
-- **Scope** — everything tracked under `src/`, `examples/`, `scripts/`, `docs/`, `resources/`, `docker/`, `.github/`, `.claude/`, and the root files (`CLAUDE.md`, `CONVENTIONS.md`, `REVIEW.md`, `README.md`, `INSTALLATION.md`, `USER_GUIDE.md`, `.editorconfig`, `global.json`). Security is out of scope: CI already fails on a dependency with a known advisory (`.github/workflows/dotnet.yml`) and runs CodeQL.
+- **Scope** — everything tracked under `src/`, `examples/`, `scripts/`, `docs/`, `resources/`, `docker/`, `.github/`, `.claude/`, and the root files (`CLAUDE.md`, `CONVENTIONS.md`, `REVIEW.md`, `README.md`, `INSTALLATION.md`, `USER_GUIDE.md`, `.editorconfig`, `global.json`). Security is out of scope: CI already fails on a dependency with a known advisory (`.github/workflows/dotnet.yml`), and static security analysis was retired as finding nothing in a CLI with no web or server surface (CIR [`2026-11-03-codeql-removed`](docs/change-intent-records/2026-11-03-codeql-removed.md)).
 - **Dependencies are in scope** — `NetPace.Core` is published to NuGet, so its dependencies become its consumers' dependencies (*Dependencies*). A deprecated or outdated package, an unjustified `NetPace.Core` dependency, or a non-permissive licence is a finding. Distinguish runtime dependencies from test-only and benchmark-only ones; the licence rule binds the first.
 - **Evidence** — the tools that already decide a question, run from the repository root:
 
