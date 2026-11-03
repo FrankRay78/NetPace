@@ -20,9 +20,9 @@ name: Review Issue
 #   Review posted, answers concrete               -> `confirm` folds them into the body, sets `ready`
 #   `ready`                                       -> none      nothing left to do
 # A label applied in any other state is a wrong-state trigger: it changes nothing, removes itself,
-# and finishes green. Two states go red with the label left on instead: `ready` on an issue that
-# still carries a review comment (a half-confirmed issue needing manual repair), and `confirm` on
-# answers still unanswered or hedging. A green run always removes the label that triggered it, so a
+# and finishes green. Two states go red with the label left on instead, both for `confirm`: a
+# `ready` issue that still carries a review comment (a half-confirmed issue needing manual
+# repair), and answers still unanswered or hedging. A green run always removes the label that
 # trigger label still on the issue means its run did not complete; `needs answers` stays on through
 # a refine. clear-workflow-labels.yml takes the labels off every issue a merge closes. A label
 # applied by any account other than the gated one starts no run at all. To re-review a confirmed
