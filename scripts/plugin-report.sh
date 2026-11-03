@@ -2,10 +2,9 @@
 #
 # plugin-report.sh — read-only report on the harness tooling this repo declares.
 #
-# Covers five tools: read-once, context-mode and rtk (the token/context tooling named in
-# docs/agentic-workflow-NetPace.md), pr-review-toolkit, which supplies the reviewer agents
-# /gaffer:verify calls, and gaffer, which supplies the harness commands themselves. Detailed descriptions and install commands for the first three live in
-# docs/wsl-claude-sandbox.md, step 7.
+# Covers five tools: read-once, context-mode and rtk (the token/context tooling), pr-review-toolkit,
+# which supplies the reviewer agents /gaffer:verify calls, and gaffer, which supplies the harness
+# commands themselves. /install-harness-tooling installs whichever of the first three is missing.
 #
 # WHY. Those tools are traced through this repo by several mechanisms — `Bash(rtk …)` and
 # `mcp__plugin_context-mode_context-mode__*` allow-entries in .claude/settings.json, an
@@ -118,13 +117,14 @@ probe_verdict() {
   esac
 }
 
-# Does this repo reference the tool at all — in harness config, or in the workflow docs that
-# describe it? Applied to all four rows so the column means one thing throughout: read-once is
-# named only in docs (no config anywhere references it), and the column says so uniformly
-# rather than meaning "in settings" on some rows and "in settings or docs" on others.
+# Does this repo reference the tool at all — in harness config, or in the docs and commands that
+# describe it? Applied to every row so the column means one thing throughout: read-once is named
+# only in /install-harness-tooling and docs (no config anywhere references it), and the column
+# says so uniformly rather than meaning "in settings" on some rows and "in settings or docs" on
+# others.
 declared_in_repo() {
   { [ -f "$SETTINGS" ] && grep -q -- "$1" "$SETTINGS" 2>/dev/null; } && return "$YES"
-  grep -rq -- "$1" "$ROOT/docs" 2>/dev/null && return "$YES"
+  grep -rq -- "$1" "$ROOT/docs" "$ROOT/.claude/commands" 2>/dev/null && return "$YES"
   return "$NO"
 }
 

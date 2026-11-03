@@ -2,7 +2,7 @@
 
 **Intent:** Close the issue gate from the same place the answers were written. `/reviewissue` already ran unattended on a label, and the answers are typed into the GitHub UI — but folding them in still needed a checkout. Labelling an issue `confirm` now runs `/confirmissue` in CI, so the whole gate happens on github.com.
 
-**Behaviour:** [`.github/workflows/confirmissue.yml`](../../.github/workflows/confirmissue.yml), whose comments carry the decisions; `docs/agentic-workflow-NetPace.md` → *The whole pre-build issue gate runs in CI* for the gate as a whole.
+**Behaviour:** [`.github/workflows/confirmissue.yml`](../../.github/workflows/confirmissue.yml), whose comments carry the decisions; the header of [`.github/workflows/reviewissue.yml`](../../.github/workflows/reviewissue.yml) for the label states across the gate as a whole.
 
 **Known residuals** — the ones no workflow comment carries:
 

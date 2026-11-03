@@ -18,4 +18,8 @@
 # correctness requirement, not a preference.
 *.sh text eol=lf
 
+# Without it, a Windows checkout with core.autocrlf=true gets a CRLF working tree and
+# `dotnet format whitespace` reports every line it touches. A working tree created before this
+# attribute needs a one-time refresh: re-clone, or `git rm --cached -r . && git reset --hard` on a
+# clean tree.
 *.cs text eol=lf

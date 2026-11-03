@@ -2,7 +2,7 @@
 
 **Intent:** Stop the chain mistaking what a stage's report *quotes* for what the stage *decided* — in both directions (#345).
 
-**Behaviour:** [`docs/agentic-workflow-NetPace.md`](../agentic-workflow-NetPace.md) → *Reading the verdict*, which also says what decoration is tolerated on that line.
+**Behaviour:** gaffer's [`docs/verdict-schema.md`](https://github.com/FrankRay78/gaffer-claude/blob/main/docs/verdict-schema.md), where the verdict reading now lives.
 
 **Constraints:** The two failure directions cost differently — a false stop costs the rest of one run done by hand, a false success opens a pull request off unverified work.
 
