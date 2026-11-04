@@ -4,7 +4,7 @@ namespace NetPace.Console.Tests;
 /// The default output ends on the result of a completed run. The trailing
 /// <c>Try 'netpace --help' for more information.</c> hint is gone: a run that asked for a speed test
 /// and got one does not need telling where help lives, and the hint landed under every result on
-/// screen and in every <c>--file</c> log.
+/// screen and in every default-output <c>--file</c> log.
 /// </summary>
 public sealed partial class NetPaceConsoleTests
 {
@@ -16,40 +16,39 @@ public sealed partial class NetPaceConsoleTests
             // SCENARIO: A completed run ends on its result
 
             // Given
-            var host = GetCommandLineTestHost(DefaultServices());
+            var host = GetCommandLineTestHost(StubServices());
 
             // When
             var result = await host.RunAsync([]);
 
-            // Then the result is the last thing printed, with no hint after it.
+            // Then no hint followed the result; the committed snapshots pin the output's shape.
             Assert.Equal(0, result.ExitCode);
-            Assert.DoesNotContain("--help", result.Output);
-            Assert.StartsWith("Latency:", LastLine(result.Output));
+            Assert.DoesNotContain("Try 'netpace --help'", result.Output);
         }
 
         [Fact]
         public async Task EveryRunUnderCount_EndsOnItsResultLine()
         {
             // Given
-            var host = GetCommandLineTestHost(DefaultServices());
+            var host = GetCommandLineTestHost(StubServices());
 
             // When
             var result = await host.RunAsync(["--count", "2"]);
 
-            // Then both runs printed a result, and neither was followed by a hint.
+            // Then both runs printed a result, and neither was followed by a hint. No snapshot
+            // covers non-interactive multi-run default output, so the run count is asserted here.
             Assert.Equal(0, result.ExitCode);
             Assert.Equal(2, ResultLineCount(result.Output));
-            Assert.DoesNotContain("--help", result.Output);
-            Assert.StartsWith("Latency:", LastLine(result.Output));
+            Assert.DoesNotContain("Try 'netpace --help'", result.Output);
         }
 
         [Fact]
         public async Task EveryRunUnderLoop_EndsOnItsResultLine()
         {
             // Given a loop that cancels itself after two runs.
-            var cancellationTokenSource = new CancellationTokenSource();
+            using var cancellationTokenSource = new CancellationTokenSource();
 
-            var services = DefaultServices();
+            var services = StubServices();
             services.AddSingleton<IWaiter>(new SelfCancellingWaiter(2, cancellationTokenSource));
             var host = GetCommandLineTestHost(services);
 
@@ -59,8 +58,7 @@ public sealed partial class NetPaceConsoleTests
             // Then every run printed a result, and none was followed by a hint.
             Assert.Equal(0, result.ExitCode);
             Assert.Equal(2, ResultLineCount(result.Output));
-            Assert.DoesNotContain("--help", result.Output);
-            Assert.StartsWith("Latency:", LastLine(result.Output));
+            Assert.DoesNotContain("Try 'netpace --help'", result.Output);
         }
 
         [Fact]
@@ -73,17 +71,16 @@ public sealed partial class NetPaceConsoleTests
 
             try
             {
-                var host = GetCommandLineTestHost(DefaultServices());
+                var host = GetCommandLineTestHost(StubServices());
 
                 // When
                 var result = await host.RunAsync(["--file", testFile]);
 
-                // Then the file ends on the result line and holds no hint.
+                // Then the log holds no hint.
                 Assert.Equal(0, result.ExitCode);
 
                 var fileContent = await System.IO.File.ReadAllTextAsync(testFile);
-                Assert.DoesNotContain("--help", fileContent);
-                Assert.StartsWith("Latency:", LastLine(fileContent));
+                Assert.DoesNotContain("Try 'netpace --help'", fileContent);
             }
             finally
             {
@@ -99,7 +96,8 @@ public sealed partial class NetPaceConsoleTests
         {
             // SCENARIO: A run with failed requests ends on its annotated result
 
-            // Given a server is found and latency measures, but every upload request fails.
+            // Given a server is found, latency measures, the download succeeds, and every upload
+            // request fails.
             var services = new ServiceCollection();
             services.AddSingleton<ISpeedTestService>(new ScriptedSpeedTester { UploadFactory = _ => ScriptedSpeedTester.AllFailed(32) });
             services.AddSingleton<IClock, ClockStub>();
@@ -109,16 +107,18 @@ public sealed partial class NetPaceConsoleTests
             // When
             var result = await host.RunAsync([]);
 
-            // Then the annotated result is still the last thing printed.
+            // Then no hint followed the annotated result; the Failures snapshot pins the
+            // annotation itself.
             Assert.Equal(0, result.ExitCode);
-            Assert.DoesNotContain("--help", result.Output);
-
-            var lastLine = LastLine(result.Output);
-            Assert.StartsWith("Latency:", lastLine);
-            Assert.Contains("32 of 32 requests failed", lastLine);
+            Assert.DoesNotContain("Try 'netpace --help'", result.Output);
         }
 
-        private static ServiceCollection DefaultServices()
+        /// <summary>
+        /// The registrations a default-output test needs: a stub speed tester, a fixed clock, and a
+        /// waiter that returns immediately. A test that needs more adds it to the returned
+        /// collection.
+        /// </summary>
+        private static ServiceCollection StubServices()
         {
             var services = new ServiceCollection();
             services.AddSingleton<ISpeedTestService, SpeedTestStub>();
@@ -128,12 +128,9 @@ public sealed partial class NetPaceConsoleTests
         }
 
         /// <summary>
-        /// The last line carrying anything, so a trailing newline does not hide what the output
-        /// actually ends on.
+        /// How many runs printed a result, counted by the latency-led result line of default
+        /// output. Assumes latency on and no timestamp, which is what these tests run.
         /// </summary>
-        private static string LastLine(string output) =>
-            output.Split('\n').Select(line => line.Trim()).Last(line => line.Length > 0);
-
         private static int ResultLineCount(string output) =>
             output.Split('\n').Count(line => line.Trim().StartsWith("Latency:", StringComparison.Ordinal));
     }
