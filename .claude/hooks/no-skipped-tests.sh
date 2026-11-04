@@ -30,8 +30,14 @@
 # It applies to HOOK MODE ONLY — `--check` ignores it, so an audit can never be silenced by a
 # stray env var. Delete this block once the gate is trusted to make the ban absolute.
 #
-# Wired into .claude/settings.json as a PreToolUse(Bash) hook, so the gate arms
-# automatically on every `git commit`. CONVENTIONS.md (Testing, "No skipped tests") states the ban.
+# Wired into .claude/settings.json as a PreToolUse(Bash) hook carrying `if: Bash(git commit:*)`,
+# so the harness filters the call before this script is reached and the script never sees most
+# Bash calls at all. What that filter covers was measured, not assumed: it decomposes a compound
+# command, so `cd somewhere && git commit -m x` reaches the gate; it does not match on a mention,
+# so `grep -r "git commit" docs/` does not; and it is a command-word prefix match, so
+# `git -C <path> commit` slips past it — a known gap, left as it stands because this gate's own
+# classification does not depend on the filter being tight (see the pre-filter below).
+# CONVENTIONS.md (Testing, "No skipped tests") states the ban.
 
 set -uo pipefail
 
@@ -115,11 +121,15 @@ fi
 
 # Hook mode: read the PreToolUse JSON on stdin and gate ONLY `git commit`.
 #
-# Classify the command as a commit BEFORE requiring jq or the src/ tree. This hook fires on
-# every Bash call, so a fail-closed dependency check placed ahead of the classification would
-# block unrelated commands (`ls`, `cat`, even `apt install jq`) on any box without jq — a
-# bootstrap deadlock on a fresh machine. The fail-closed guards below therefore apply only once
-# we know this is a commit; a non-commit Bash call is always waved straight through.
+# Classify the command as a commit BEFORE requiring jq or the src/ tree, and do not lean on the
+# `if: Bash(git commit:*)` filter in .claude/settings.json to have done it. That filter is the
+# harness's, it is configuration this script cannot see, and a run that loses or widens it — a
+# settings edit, a `--check`-less manual invocation, a port to another repo — would hand this
+# script arbitrary Bash calls. So the script classifies for itself, and a fail-closed dependency
+# check placed ahead of that classification would block unrelated commands (`ls`, `cat`, even
+# `apt install jq`) on any box without jq — a bootstrap deadlock on a fresh machine. The
+# fail-closed guards below therefore apply only once we know this is a commit; a non-commit Bash
+# call is always waved straight through.
 input="$(cat)"
 
 # Cheap pre-filter: if the raw payload cannot even contain a `git commit`, there is nothing to
@@ -160,13 +170,14 @@ cmd="$(printf '%s' "$input" | jq -r '.tool_input.command // empty')"
 # grep -q already matches a `git commit` sitting on any single line of a multi-line script.)
 cmd_flat="${cmd//\\$'\n'/ }"
 
-# Deliberately NOT narrowed to command-word position (issue #91 H7). A read-only command that
-# merely mentions the words — `grep -r "git commit" docs/` — is gated too, and that over-block is
-# accepted: it can only bite when src/ ALREADY holds a banned construct, i.e. when the ban is
-# already violated and must be fixed regardless; in a clean tree it never fires. Parsing shell to
-# find the command-word (as stack-guard.sh does for its own, narrower job) would trade this
-# harmless over-block for the failure that actually matters — a parser gap missing a real commit
-# and letting a skip land silently.
+# Deliberately NOT narrowed to command-word position. A read-only command that merely mentions
+# the words — `grep -r "git commit" docs/` — is gated too, and that over-block is accepted: it can
+# only bite when src/ ALREADY holds a banned construct, i.e. when the ban is already violated and
+# must be fixed regardless; in a clean tree it never fires. Parsing shell to find the command-word
+# would trade this harmless over-block for the failure that actually matters — a parser gap
+# missing a real commit and letting a skip land silently. (In practice the harness's
+# `if: Bash(git commit:*)` filter spares the mention case before this script is reached, so the
+# over-block is rarely seen; the breadth stays because this classification must hold on its own.)
 if [ "$tool" != "Bash" ] || ! printf '%s' "$cmd_flat" | grep -qE '\bgit\b.*\bcommit\b'; then
   exit 0
 fi
