@@ -61,7 +61,7 @@ public sealed class DiagnosticSpeedTester : ISpeedTestService
             Report(diagnostics, sequence, LatencyUrl, RequestOutcome.Succeeded, bytes: 9, durationMilliseconds: 24);
         }
 
-        return Task.FromResult(new LatencyTestResult { Server = server, LatencyMilliseconds = 24, JitterMilliseconds = 3 });
+        return Task.FromResult(new LatencyTestResult { Server = server, LatencyMilliseconds = 24, JitterMilliseconds = 0 });
     }
 
     /// <inheritdoc />
