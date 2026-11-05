@@ -1,0 +1,10 @@
+﻿
+\e[38;5;9m┌──────────────────┬─────────────────────┬────────────────────────────┐\e[0m
+\e[38;5;9m│\e[0m Location         \e[38;5;9m│\e[0m Sponsor             \e[38;5;9m│\e[0m Url                        \e[38;5;9m│\e[0m
+\e[38;5;9m├──────────────────┼─────────────────────┼────────────────────────────┤\e[0m
+\e[38;5;9m│\e[0m Bracketed [Town] \e[38;5;9m│\e[0m Example [Fibre]     \e[38;5;9m│\e[0m http://[2001:db8::1]:8080/ \e[38;5;9m│\e[0m
+\e[38;5;9m│\e[0m Doubled Town     \e[38;5;9m│\e[0m Example [[Fibre]]   \e[38;5;9m│\e[0m http://doubled.example/    \e[38;5;9m│\e[0m
+\e[38;5;9m│\e[0m Emoji Town       \e[38;5;9m│\e[0m :fire: Networks     \e[38;5;9m│\e[0m http://emoji.example/      \e[38;5;9m│\e[0m
+\e[38;5;9m│\e[0m Styling Town     \e[38;5;9m│\e[0m [bold]              \e[38;5;9m│\e[0m http://styling.example/    \e[38;5;9m│\e[0m
+\e[38;5;9m│\e[0m Tagged Town      \e[38;5;9m│\e[0m [bold]Fast[/] Fibre \e[38;5;9m│\e[0m http://tagged.example/     \e[38;5;9m│\e[0m
+\e[38;5;9m└──────────────────┴─────────────────────┴────────────────────────────┘\e[0m

@@ -1,0 +1,10 @@
+﻿
+┌──────────────────┬─────────────────────┬────────────────────────────┐
+│ Location         │ Sponsor             │ Url                        │
+├──────────────────┼─────────────────────┼────────────────────────────┤
+│ Bracketed [Town] │ Example [Fibre]     │ http://[2001:db8::1]:8080/ │
+│ Doubled Town     │ Example [[Fibre]]   │ http://doubled.example/    │
+│ Emoji Town       │ :fire: Networks     │ http://emoji.example/      │
+│ Styling Town     │ [bold]              │ http://styling.example/    │
+│ Tagged Town      │ [bold]Fast[/] Fibre │ http://tagged.example/     │
+└──────────────────┴─────────────────────┴────────────────────────────┘
