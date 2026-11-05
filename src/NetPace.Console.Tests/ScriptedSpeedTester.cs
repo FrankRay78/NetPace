@@ -53,19 +53,19 @@ public sealed class ScriptedSpeedTester : ISpeedTestService
         Task.FromResult(new[] { Server });
 
     public Task<LatencyTestResult> GetServerLatencyAsync(IServer server, CancellationToken cancellationToken = default) =>
-        Task.FromResult(new LatencyTestResult { Server = server, LatencyMilliseconds = 24 });
+        Task.FromResult(new LatencyTestResult { Server = server, LatencyMilliseconds = 24, JitterMilliseconds = 3 });
 
     public Task<LatencyTestResult> GetServerLatencyAsync(IServer server, IProgress<LatencyTestProgress> progress, CancellationToken cancellationToken = default) =>
         GetServerLatencyAsync(server, cancellationToken);
 
     public Task<LatencyTestResult> GetServerLatencyAsync(string serverUrl, CancellationToken cancellationToken = default) =>
-        Task.FromResult(new LatencyTestResult { Server = new Server { Location = "Frankfurt", Sponsor = "Deutsche Telekom", Url = serverUrl }, LatencyMilliseconds = 24 });
+        Task.FromResult(new LatencyTestResult { Server = new Server { Location = "Frankfurt", Sponsor = "Deutsche Telekom", Url = serverUrl }, LatencyMilliseconds = 24, JitterMilliseconds = 3 });
 
     public Task<LatencyTestResult> GetServerLatencyAsync(string serverUrl, IProgress<LatencyTestProgress> progress, CancellationToken cancellationToken = default) =>
         GetServerLatencyAsync(serverUrl, cancellationToken);
 
     public Task<LatencyTestResult> GetFastestServerByLatencyAsync(IServer[] servers, CancellationToken cancellationToken = default) =>
-        Task.FromResult(new LatencyTestResult { Server = servers[0], LatencyMilliseconds = 24 });
+        Task.FromResult(new LatencyTestResult { Server = servers[0], LatencyMilliseconds = 24, JitterMilliseconds = 3 });
 
     public Task<LatencyTestResult> GetFastestServerByLatencyAsync(IServer[] servers, IProgress<SpeedTestProgress> progress, CancellationToken cancellationToken = default) =>
         GetFastestServerByLatencyAsync(servers, cancellationToken);
