@@ -3,6 +3,23 @@ namespace NetPace.Console.Tests;
 public sealed partial class NetPaceConsoleTests
 {
     /// <summary>
+    /// Build a service collection that captures the constructed <see cref="OoklaSpeedtestSettings"/>
+    /// into a returned accessor instance. The action in <see cref="Program.CreateRootCommand"/> writes
+    /// to it after option binding, so the test reads <c>accessor.Settings</c> after RunAsync to verify
+    /// CLI → settings binding.
+    /// </summary>
+    private static (IServiceCollection services, OoklaSpeedtestSettingsAccessor accessor) BuildServicesWithSettingsAccessor()
+    {
+        var services = new ServiceCollection();
+        services.AddSingleton<ISpeedTestService, SpeedTestStub>();
+        services.AddSingleton<IClock, ClockStub>();
+        services.AddSingleton<IWaiter, NoDelayStub>();
+        var accessor = new OoklaSpeedtestSettingsAccessor();
+        services.AddSingleton(accessor);
+        return (services, accessor);
+    }
+
+    /// <summary>
     /// Create the CommandLineTestHost with System.CommandLine.
     /// </summary>
     private static CommandLineTestHost GetCommandLineTestHost(IServiceCollection? serviceCollection)
@@ -582,6 +599,7 @@ public sealed partial class NetPaceConsoleTests
         // SCENARIO: Help shows the lowercase command name
         // SCENARIO: Help shows option values in lowercase
         // SCENARIO: Every choice list uses one notation
+        // SCENARIO: Unit system description fits on continuation lines
 
         // Given
         var services = new ServiceCollection();

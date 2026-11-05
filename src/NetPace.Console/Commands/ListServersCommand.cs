@@ -44,6 +44,20 @@ public sealed class ListServersCommand(IAnsiConsole console, ISpeedTestService s
     private void WriteExitHint() =>
         console.WriteStyledLine(("Press ", Style.Plain), ("CTRL+C", theme.Hint), (" to exit.", Style.Plain));
 
+    /// <summary>
+    /// A server detail as the table cell that shows it.
+    /// </summary>
+    /// <remarks>
+    /// Speedtest publishes these values, so NetPace does not control what they contain, and they
+    /// are drawn as plain text rather than handed to the table as strings: a string cell is read as
+    /// Spectre.Console markup, where an unbalanced square bracket in a location, sponsor or URL
+    /// fails the whole listing. Three more change a detail without failing at all - a balanced
+    /// styling tag is drawn styled with its brackets eaten, a doubled bracket is drawn halved, and
+    /// a colon-delimited emoji code is swapped for the emoji. The default output writer shows the
+    /// sponsor and URL as plain text too.
+    /// </remarks>
+    private static Text Detail(string? value) => new(value ?? string.Empty);
+
     private async Task DisplayFastestServer(List<IServer> servers, ISpeedTestService speedTestClient, CancellationToken cancellationToken)
     {
         console.WriteLine("");
@@ -60,7 +74,7 @@ public sealed class ListServersCommand(IAnsiConsole console, ISpeedTestService s
             .AddColumn(new TableColumn("Url"))
             .AddColumn(new TableColumn("Latency"));
 
-        table.AddRow(fastestLatencyResult.Server.Location ?? string.Empty, fastestLatencyResult.Server.Sponsor ?? string.Empty, fastestLatencyResult.Server.Url ?? string.Empty, $"{fastestLatencyResult.LatencyMilliseconds}ms");
+        table.AddRow(Detail(fastestLatencyResult.Server.Location), Detail(fastestLatencyResult.Server.Sponsor), Detail(fastestLatencyResult.Server.Url), new Text($"{fastestLatencyResult.LatencyMilliseconds}ms"));
 
         console.WriteLine("");
         console.Write(table);
@@ -77,7 +91,7 @@ public sealed class ListServersCommand(IAnsiConsole console, ISpeedTestService s
 
         foreach (var server in servers)
         {
-            table.AddRow(server.Location ?? string.Empty, server.Sponsor ?? string.Empty, server.Url ?? string.Empty);
+            table.AddRow(Detail(server.Location), Detail(server.Sponsor), Detail(server.Url));
         }
 
         console.WriteLine("");
@@ -97,7 +111,7 @@ public sealed class ListServersCommand(IAnsiConsole console, ISpeedTestService s
         // Add the initial server list (without latency)
         foreach (var server in servers)
         {
-            table.AddRow(server.Location ?? string.Empty, server.Sponsor ?? string.Empty, server.Url ?? string.Empty);
+            table.AddRow(Detail(server.Location), Detail(server.Sponsor), Detail(server.Url));
         }
 
         console.WriteLine("");
