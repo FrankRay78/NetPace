@@ -1,6 +1,6 @@
 namespace NetPace.Core.Tests;
 
-public partial class SpeedTestResultTests
+public sealed partial class SpeedTestResultTests
 {
     [InlineData(0, 1000, "0 Bps")]
     [InlineData(1, 1000, "1 Bps")]
