@@ -24,6 +24,7 @@ public sealed partial class NetPaceConsoleTests
         public async Task All_Upload_Requests_Failed_Exits_Zero_By_Default()
         {
             // SCENARIO: A measured test whose every request failed exits 0 by default
+            // SCENARIO: A run with failed requests ends on its annotated result
 
             // Given a server is found and latency measures, but every upload request fails.
             var service = new ScriptedSpeedTester { UploadFactory = _ => ScriptedSpeedTester.AllFailed(32) };

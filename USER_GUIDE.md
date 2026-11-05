@@ -98,6 +98,16 @@ Two further options decide whether and where the result appears, and both work w
 
 `--diagnostics` is not a fifth format — it adds a second stream alongside whichever format you picked, leaving the result untouched. See [Diagnosing a failure with `--diagnostics`](#diagnosing-a-failure-with---diagnostics).
 
+### What `--file` writes
+
+`--file` writes **UTF-8 text with no byte-order mark**, in every format and in both `--file-mode` settings. Nothing is written in front of the content, so a `--json` file starts at its opening brace and a `--csv` file starts at its first column name: a single run's JSON file is read as it stands by a strict parser, and `cut`, `awk` and `head` see that first column name as the first field of the first line.
+
+A log an earlier version of NetPace started keeps the byte-order mark it already has, because appending does not rewrite the start of a file. Start a new log if you want one without it.
+
+**Opening a CSV result in a spreadsheet:** import it rather than double-clicking it. In Excel, use *Data → From Text/CSV* and choose **UTF-8** as the file origin. Without a byte-order mark to tip it off, a double-clicked file may be read as a legacy code page instead, which garbles non-ASCII text such as an accented server sponsor or location name. LibreOffice Calc asks for the character set on open, where UTF-8 is the default.
+
+**Reading a result in Windows PowerShell 5.1:** read the file with `Get-Content -Encoding UTF8`, or use `Import-Csv`, which assumes UTF-8. Without a byte-order mark, a plain `Get-Content` reads it in the system's legacy code page and garbles the same non-ASCII text. PowerShell 7 needs neither.
+
 ### The fields CSV and JSON carry
 
 **CSV and JSON carry the same fields under the same names.** A field one of them records, the other records too, spelled identically, so a log in either format reads the same way and neither has to be interpreted against the other. Only the shape for something missing differs: CSV always has every built-in column and leaves the cell empty, while JSON leaves the field out.

@@ -7,15 +7,21 @@ using NetPace.Core;
 namespace NetPace.Console.ConsoleWriters;
 
 /// <summary>
-/// The screen a person watches while a speed test runs, drawn in <paramref name="theme"/>.
+/// The screen a person watches while a speed test runs, drawn in <paramref name="theme"/>: a live
+/// spinner while the server is chosen, a progress bar per measurement with the speed beside it, and
+/// the result line.
 /// </summary>
 /// <remarks>
 /// The only writer that takes a theme: the machine-readable writers produce records another program
 /// parses, and <c>--minimal</c> is a single compact line that has never been coloured, so none of
 /// them has an appearance to choose.
 /// </remarks>
+/// <param name="liveDisplayRefresh">
+/// Whether those live displays redraw as they go. Both of them take it, so switching redrawing off
+/// — as the console test host does — leaves a slow run with the same screen as an instant one.
+/// </param>
 /// <param name="theme">The colours and emphasis to draw in.</param>
-public sealed class DefaultConsoleWriter(Theme theme) : IConsoleWriter
+public sealed class DefaultConsoleWriter(ILiveDisplayRefresh liveDisplayRefresh, Theme theme) : IConsoleWriter
 {
     /// <inheritdoc/>
     public bool MachineReadable => false;
@@ -26,6 +32,7 @@ public sealed class DefaultConsoleWriter(Theme theme) : IConsoleWriter
         // Get the server to use for speed testing.
         var fastest = await console.Progress()
             .AutoClear(true)
+            .AutoRefresh(liveDisplayRefresh.AutoRefresh)
             .Columns(
             [
                 new SpinnerColumn { Style = theme.Spinner },
@@ -71,6 +78,7 @@ public sealed class DefaultConsoleWriter(Theme theme) : IConsoleWriter
 
             await console.Progress()
                 .AutoClear(false)
+                .AutoRefresh(liveDisplayRefresh.AutoRefresh)
                 .Columns(
                 [
                     new TaskDescriptionColumn(),
@@ -158,9 +166,6 @@ public sealed class DefaultConsoleWriter(Theme theme) : IConsoleWriter
         }
 
         WriteResultLine(console, figures);
-
-
-        console.WriteLine("\nTry 'netpace --help' for more information.");
 
         return SpeedTestOutcome.Create(downloadResult, uploadResult);
     }

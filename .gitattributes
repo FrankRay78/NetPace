@@ -1,6 +1,9 @@
 # Every tracked file's line endings are governed here, so a clean checkout never reports
 # modifications and no file's stored bytes depend on the committing developer's core.autocrlf.
-# Text files are auto-detected, stored as LF, and checked out as LF on every platform.
+# Text files are auto-detected, stored as LF, and checked out as LF on every platform; eol
+# overrides core.autocrlf, so a Windows checkout gets LF too. A working tree created before this
+# line needs a one-time refresh: re-clone, or `git rm --cached -r . && git reset --hard` on a
+# clean tree.
 * text=auto eol=lf
 
 # Binaries, marked explicitly rather than left to auto-detection.
@@ -17,5 +20,4 @@
 # Forced text (not merely auto-detected): a shell script or a source file with LF endings is a
 # correctness requirement, not a preference.
 *.sh text eol=lf
-
 *.cs text eol=lf

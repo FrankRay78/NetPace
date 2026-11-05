@@ -8,5 +8,3 @@ http://test1.com
 Downloading \e[38;5;11m━━━━━━━━━━━━━━━━\e[0m\e[38;5;8m━━━━━━━━━━━━━━━━━━━━━━━━\e[0m  40% 8 Kbps
                                                                 
 \e[?25hLatency: 100 ms, Download: 8 Kbps
-
-Try 'netpace --help' for more information.

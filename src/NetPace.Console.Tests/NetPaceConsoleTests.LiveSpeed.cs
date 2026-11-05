@@ -158,6 +158,65 @@ public sealed partial class NetPaceConsoleTests
             await Verify(result.Output);
         }
 
+        [Fact]
+        public async Task Should_Show_The_Same_Screen_When_A_Measurement_Outlasts_The_Displays_Refresh_Interval()
+        {
+            // SCENARIO: Live figure is read from the final frame when the display would redraw mid-test
+
+            // Given the same measurement run twice: once instantly, and once taking several times
+            // Spectre.Console's own redraw interval to finish.
+            // Regression: issue #490 - the live displays redrew themselves while a slow measurement
+            // was in flight, stacking an extra frame into the capture, so the snapshots in this file
+            // failed intermittently.
+
+            // When
+            var instant = await MeasureWithPause(TimeSpan.Zero);
+            var slow = await MeasureWithPause(AcrossTheRefreshInterval);
+
+            // Then the screen the user is left with is the one the instant run produced, and it
+            // still carries both live figures, so the two are not equal by rendering nothing.
+            Assert.Equal(0, instant.ExitCode);
+            Assert.Equal(0, slow.ExitCode);
+            Assert.Equal(instant.Output, slow.Output);
+            Assert.Equal(FigureOnResultLine("Download", slow.Output), FigureBeside("Downloading", slow.Output));
+            Assert.Equal(FigureOnResultLine("Upload", slow.Output), FigureBeside("Uploading", slow.Output));
+        }
+
+        /// <summary>
+        /// Long enough to outlast a live display's redraw interval - 100 ms in Spectre.Console
+        /// 0.57.1 - so a paused phase crosses it whatever the machine's speed.
+        /// </summary>
+        private static readonly TimeSpan AcrossTheRefreshInterval = TimeSpan.FromMilliseconds(250);
+
+        /// <summary>
+        /// Runs one interactive speed test whose server selection, download and upload each take
+        /// <paramref name="pause"/> to complete, so a test can hold both live displays open past
+        /// their refresh interval without depending on how fast the machine is.
+        /// </summary>
+        private static async Task<TestResult> MeasureWithPause(TimeSpan pause)
+        {
+            SpeedTestResult MeasuredSlowly(long bytes)
+            {
+                Thread.Sleep(pause);
+                return Measured(bytes, elapsedMilliseconds: 1000);
+            }
+
+            var service = new ScriptedSpeedTester
+            {
+                ReportsProgress = true,
+                ServerSelectionPause = pause,
+                DownloadFactory = _ => MeasuredSlowly(bytes: 125_000),
+                UploadFactory = _ => MeasuredSlowly(bytes: 62_500),
+            };
+
+            var services = new ServiceCollection();
+            services.AddSingleton<ISpeedTestService>(service);
+            services.AddSingleton<IClock, ClockStub>();
+            services.AddSingleton<IWaiter, NoDelayStub>();
+
+            return await GetInteractiveCommandLineTestHost(services).RunAsync([]);
+        }
+
         private static SpeedTestResult Measured(long bytes, long elapsedMilliseconds) =>
             new() { BytesProcessed = bytes, ElapsedMilliseconds = elapsedMilliseconds, RequestsSucceeded = 1, RequestsFailed = 0 };
 

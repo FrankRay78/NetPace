@@ -350,6 +350,7 @@ public static class Program
                 var clock = serviceProvider.GetRequiredService<IClock>();
                 var clientInfoProvider = serviceProvider.GetRequiredService<IClientInfoProvider>();
                 var waiter = serviceProvider.GetRequiredService<IWaiter>();
+                var liveDisplayRefresh = serviceProvider.GetRequiredService<ILiveDisplayRefresh>();
 
                 // Switched off, nothing is recorded and nothing is written - so no call site
                 // downstream has to ask whether diagnostics are on.
@@ -371,7 +372,7 @@ public static class Program
                 recorder.Record("run.invocation", ("args", string.Join(' ', args)));
 
                 // Create and execute command
-                var command = new SpeedTestCommand(ansiConsole, speedTestService, clock, clientInfoProvider, recorder, waiter, theme);
+                var command = new SpeedTestCommand(ansiConsole, speedTestService, clock, clientInfoProvider, recorder, waiter, liveDisplayRefresh, theme);
                 return await command.ExecuteAsync(settings, cancellationToken);
             }
             catch (Exception ex)
@@ -525,6 +526,10 @@ public static class Program
         // Diagnostics go to the error stream, never through the Spectre console: one record per
         // line, whatever the terminal width, and whatever --quiet or --file were set to.
         services.AddSingleton(new DiagnosticOutput(System.Console.Error));
+
+        // Needed by both stacks: a person running either one wants the live displays to redraw as
+        // the measurement goes. Only the test host turns that off, so a capture holds one frame.
+        services.AddSingleton<ILiveDisplayRefresh, LiveDisplayRefresh>();
 
         if (args != null && args.Contains("--test"))
         {

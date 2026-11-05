@@ -75,7 +75,7 @@ public sealed class ProfileTests
         // Given
         // Resolve the repo root by walking up from the test bin directory.
         // Path.Join is used instead of Path.Combine so a rooted segment cannot silently
-        // discard earlier arguments (CodeQL cs/path-combine).
+        // discard earlier arguments.
         var dir = new DirectoryInfo(AppContext.BaseDirectory);
         while (dir is not null && !File.Exists(Path.Join(dir.FullName, "src", "NetPace.sln")))
         {

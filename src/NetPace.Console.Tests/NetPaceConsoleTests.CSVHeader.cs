@@ -251,8 +251,8 @@ public sealed partial class NetPaceConsoleTests
         [Fact]
         public async Task Should_Write_The_Header_When_The_Log_Holds_Nothing_But_A_Byte_Order_Mark()
         {
-            // Given a log file that every reader shows as empty, which is what a run that opened
-            // the file and then ended before writing a row leaves behind
+            // Given a log file that every reader shows as empty, which is what an older NetPace
+            // left when a run ended before writing a row
             using var log = new TempLogFile();
             await System.IO.File.WriteAllBytesAsync(log.FilePath, Encoding.UTF8.GetPreamble());
 
@@ -341,7 +341,7 @@ public sealed partial class NetPaceConsoleTests
         {
             // Given an empty log that NetPace may write to but not read, as one pre-created for a
             // service account can be. File modes are a Unix permission model, so this fails loudly
-            // rather than skipping on Windows (Constitution §X).
+            // rather than skipping on Windows (CONVENTIONS.md, Testing: no skipped tests).
             using var log = new TempLogFile();
             await System.IO.File.WriteAllTextAsync(log.FilePath, string.Empty);
             System.IO.File.SetUnixFileMode(log.FilePath, UnixFileMode.UserWrite);

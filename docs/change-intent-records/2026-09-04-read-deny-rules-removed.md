@@ -2,7 +2,7 @@
 
 **Intent:** Stop a recursive read of the repository escalating to a manual approval that no permission mode grants, which interrupted `/verify`'s review whenever a reviewer subagent ran `grep -rn … .`.
 
-**Behaviour:** `.claude/settings.json`; `docs/agentic-workflow-NetPace.md` → *Permissions*.
+**Behaviour:** `.claude/settings.json`.
 
 **Decisions:**
 
