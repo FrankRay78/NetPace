@@ -2,11 +2,12 @@ using System.Globalization;
 using System.Text;
 using NetPace.Console.ConsoleWriters;
 using NetPace.Console.Diagnostics;
+using NetPace.Console.Theming;
 using NetPace.Core;
 
 namespace NetPace.Console.Commands;
 
-public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService speedTestClient, IClock clock, IClientInfoProvider clientInfoProvider, IDiagnosticRecorder recorder, IWaiter waiter, ILiveDisplayRefresh liveDisplayRefresh)
+public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService speedTestClient, IClock clock, IClientInfoProvider clientInfoProvider, IDiagnosticRecorder recorder, IWaiter waiter, ILiveDisplayRefresh liveDisplayRefresh, Theme theme)
 {
     /// <summary>
     /// Executes the speed test command using the provided settings.
@@ -43,7 +44,7 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
             { CSV: true } => new CSVConsoleWriter(),
             { Json: true } or { JsonPretty: true } => new JsonConsoleWriter(),
             { Minimal: true } => new MinimalConsoleWriter(),
-            _ => new DefaultConsoleWriter(liveDisplayRefresh)
+            _ => new DefaultConsoleWriter(liveDisplayRefresh, theme)
         };
 
         if (writer.MachineReadable)
@@ -107,7 +108,7 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
                     }
                     catch (Exception e)
                     {
-                        WriteError(console, e.Message);
+                        console.WriteErrorLine(theme, e.Message);
 
                         if (FailOnRequested(settings)) return 1;
                     }
@@ -152,7 +153,7 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
                     }
                     catch (Exception e)
                     {
-                        WriteError(console, e.Message);
+                        console.WriteErrorLine(theme, e.Message);
 
                         if (FailOnRequested(settings)) return 1;
                     }
@@ -195,7 +196,7 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
                 }
                 catch (Exception e)
                 {
-                    WriteError(console, e.Message);
+                    console.WriteErrorLine(theme, e.Message);
 
                     if (FailOnRequested(settings)) return 1;
                 }
@@ -288,14 +289,6 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
         catch (IOException)
         {
         }
-    }
-
-    /// <summary>
-    /// Writes an error message to the console.
-    /// </summary>
-    private static void WriteError(IAnsiConsole console, string message)
-    {
-        console.Markup($"[red]Error:[/] {message.EscapeMarkup()}\n");
     }
 
     /// <summary>
