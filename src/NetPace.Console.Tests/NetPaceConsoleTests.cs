@@ -48,6 +48,8 @@ public sealed partial class NetPaceConsoleTests
     [Fact]
     public async Task Should_Perform_Speed_Test()
     {
+        // SCENARIO: A completed run ends on its result
+
         // Given
         var services = new ServiceCollection();
         services.AddSingleton<ISpeedTestService, SpeedTestStub>();

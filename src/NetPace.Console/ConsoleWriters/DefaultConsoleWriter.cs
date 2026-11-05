@@ -137,9 +137,6 @@ public sealed class DefaultConsoleWriter(ILiveDisplayRefresh liveDisplayRefresh)
             uploadResult is not null ? $"Upload: {uploadResult.GetSpeedString(settings.SpeedUnit, settings.SpeedUnitSystem, settings.SpeedScale)}{uploadResult.GetFailureAnnotation()}" : null
         }.Where(s => !string.IsNullOrEmpty(s))));
 
-
-        console.WriteLine("\nTry 'netpace --help' for more information.");
-
         return SpeedTestOutcome.Create(downloadResult, uploadResult);
     }
 
