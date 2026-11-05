@@ -11,6 +11,91 @@ namespace NetPace.Core.Tests;
 
 public sealed partial class OoklaSpeedtestTests
 {
+    #region --- Helpers shared across the nested test classes ---
+
+    private const string ScreeningResponseBody = "test=test";
+
+    /// <summary>
+    /// Bounds a wait that a regression would otherwise leave outstanding forever - a broken
+    /// screening ceiling, or a frozen clock suspending one - so that regression fails the test
+    /// instead of hanging the run. It is not a timing assertion.
+    /// </summary>
+    private static readonly TimeSpan HangGuard = TimeSpan.FromSeconds(10);
+
+    /// <summary>
+    /// A fixed instant for a controlled clock to start from. Any instant would do - it is named
+    /// only so a test reads as a measurement rather than an arbitrary number.
+    /// </summary>
+    private static readonly DateTimeOffset ClockStart = new(2026, 1, 1, 12, 0, 0, TimeSpan.Zero);
+
+    /// <summary>
+    /// Answers the request for <paramref name="url"/> after moving <paramref name="clock"/> on by
+    /// <paramref name="duration"/>, so the request takes exactly that much of the supplied clock's
+    /// time and none of the wall clock's.
+    /// </summary>
+    private static void RespondAfterAdvancing(MockHttpMessageHandler mockHttp, string url, ControlledTimeProvider clock, TimeSpan duration) =>
+        RespondAfterAdvancing(mockHttp, url, clock, duration, Task.CompletedTask);
+
+    /// <summary>
+    /// As <see cref="RespondAfterAdvancing(MockHttpMessageHandler, string, ControlledTimeProvider, TimeSpan)"/>,
+    /// but the request is not answered until <paramref name="gate"/> completes.
+    /// </summary>
+    /// <remarks>
+    /// Screening runs every candidate concurrently against one clock, so without an order between
+    /// them one candidate's advance can land inside another candidate's measurement and neither
+    /// figure is predictable. Gating the later candidate on the earlier one's completion orders the
+    /// two without anything waiting on the wall clock.
+    /// <para>
+    /// A caller opens the gate from a progress report, which is the only seam that fires after a
+    /// candidate's elapsed figure has been recorded - signalling from the earlier candidate's own
+    /// responder races, because the responder returns before that figure is read. The order
+    /// therefore rests on screening reporting progress once per completed candidate and not at
+    /// candidate start; an implementation that also reported 0% up front would open the gate early
+    /// and put the figures back in doubt. A test using this helper must assert that the gated
+    /// candidate was screened at all: a gate that never opens leaves it abandoned at the screening
+    /// ceiling, which is shorter than <see cref="HangGuard"/> and would otherwise pass quietly with
+    /// only one candidate compared.
+    /// </para>
+    /// </remarks>
+    private static void RespondAfterAdvancing(MockHttpMessageHandler mockHttp, string url, ControlledTimeProvider clock, TimeSpan duration, Task gate)
+    {
+        mockHttp.When(url)
+                .Respond(async _ =>
+                {
+                    await gate.WaitAsync(HangGuard);
+                    clock.Advance(duration);
+                    return new HttpResponseMessage { Content = new StringContent(ScreeningResponseBody) };
+                });
+    }
+
+    /// <summary>
+    /// Never answers the screening request for <paramref name="latencyUrl"/>, so the request stays
+    /// pending until screening gives up on it at the ceiling. That leaves the ceiling as the only
+    /// timer in the test, rather than a second one racing it.
+    /// </summary>
+    private static void NeverRespond(MockHttpMessageHandler mockHttp, string latencyUrl)
+    {
+        mockHttp.When(latencyUrl)
+                .Respond(_ => new TaskCompletionSource<HttpResponseMessage>().Task);
+    }
+
+    /// <summary>
+    /// Collects reported diagnostics inline, on the reporting thread, under a lock: the download and
+    /// upload paths report from parallel requests, so an unsynchronised list would tear.
+    /// </summary>
+    private static IProgress<RequestDiagnostic> Collect(List<RequestDiagnostic> sink)
+    {
+        return new SynchronousProgress<RequestDiagnostic>(diagnostic =>
+        {
+            lock (sink)
+            {
+                sink.Add(diagnostic);
+            }
+        });
+    }
+
+    #endregion
+
     #region --- GetServersAsync ---
 
     [Fact]
