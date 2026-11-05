@@ -10,7 +10,7 @@
 
 Change Intent Records capture the **why** behind non-obvious decisions made during development. They complement code comments (which explain "how") by documenting the reasoning, alternatives considered, and constraints that led to a particular implementation choice.
 
-A record is also the one place in the codebase where a GitHub issue number belongs. The only exception is a regression test or acceptance criterion naming the bug it guards against (the regression exception in `CONVENTIONS.md` → *Acceptance criteria*, worked in [`testing.md`](testing.md)). Everywhere else the reasoning stays as prose and the number goes, because an issue thread cited for its reasoning is standing in for a record that was never written — write the record and link that instead.
+A record is also where a GitHub issue number belongs in the codebase; the rule and its exceptions are in `CONVENTIONS.md` → *Change-intent records*. An issue thread cited for its reasoning is standing in for a record that was never written — write the record and link that instead.
 
 **Decision table** — does this change need a CIR?
 
@@ -28,7 +28,7 @@ A record is also the one place in the codebase where a GitHub issue number belon
 
 Write a record when a `→ CIR` row applies **and** no `→ No CIR` row does. Most changes need none.
 
-The confirmed-decisions row leaves out a change that constrains future work because an issue number may not be written in the codebase outside a record (see above, and `CLAUDE.md`'s paired rule). Such a decision with no record would leave the code nowhere to point for its rationale, so it still gets a short record linking the issue.
+The confirmed-decisions row leaves out a change that constrains future work because an issue number belongs in a record, not in the code (see above). Such a decision with no record would leave the code nowhere to point for its rationale, so it still gets a short record linking the issue.
 
 ## CIR Template
 
