@@ -16,7 +16,7 @@
 # left no review is not a review round, and charging the pull request for it would make the
 # footer a record of runs rather than of reviews. The test is a `<!-- review-pr -->` review
 # against the head commit the calling workflow verified the review at, which is the same marker
-# /review-followup finds prior rounds by. That commit is passed in rather than read live: an
+# /gaffer:review-followup finds prior rounds by. That commit is passed in rather than read live: an
 # author pushing between the review posting and this step would otherwise move the head away from
 # the review, and the round would lose its row while the run stayed green. That
 # test cannot tell this run's review from one an earlier run left at the same commit, so on its own
@@ -271,7 +271,7 @@ main() {
   fi
 
   # Row 1 is the review that runs when the pull request opens; every later row is a follow-up
-  # round, numbered from one. These names count rows written, not the rounds /review-followup
+  # round, numbered from one. These names count rows written, not the rounds /gaffer:review-followup
   # counts — it calls the first follow-up round 2, where its row here is `Review 1` — which is the
   # distinction WHY THE ROW NAME COMES FROM THE FOOTER sets out above.
   if [ "${#row_name[@]}" -eq 0 ]; then

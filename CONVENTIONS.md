@@ -58,7 +58,7 @@ Every line of production code is written in response to a failing test, in the R
 
 ## Commit messages
 
-Work on feature branches (`feature/your-feature-name`); commit frequently, especially before refactoring. Messages are clear and concise, in the imperative mood, and reference the issue where applicable as `Refs #<N>: …` — never a GitHub closing keyword (`Fix`/`Fixes`/`Close`/`Closes`/`Resolve`/`Resolves` `#<N>`), which closes the issue the moment the commit reaches `main`, before review. The pull request body's `Closes #<N>` is the only place that should close an issue.
+Work on feature branches named `feature/<N>-<short-slug>` after the issue, the shape `scripts/traceability-check.sh` reads the issue number from; commit frequently, especially before refactoring. Messages are clear and concise, in the imperative mood, and reference the issue where applicable as `Refs #<N>: …` — never a GitHub closing keyword (`Fix`/`Fixes`/`Close`/`Closes`/`Resolve`/`Resolves` `#<N>`), which closes the issue the moment the commit reaches `main`, before review. The pull request body's `Closes #<N>` is the only place that should close an issue.
 
 ## Documentation
 
@@ -75,10 +75,6 @@ This project keeps them. The convention is [`docs/conventions/change-intent-reco
 - **The `→ No CIR` rows that most often apply.** Reasoning already recorded in the issue's confirmed decisions is linked, not restated — unless the decision constrains future work (a public API, an interface contract, dependency direction), which keeps a short record linking the issue for its reasoning. A change only to documentation written for the project's readers needs none at all; command prompts, conventions and workflows are not covered by that row, because they direct future work.
 - **Length and shape.** About **150 words**: the intent in a sentence, each rejected alternative with its reason, and any constraint the code will not make obvious.
 - **Issue numbers live only in records.** In the codebase an issue number belongs only in `docs/change-intent-records/`, except in a regression test or acceptance criterion naming the bug it guards against (the regression exception in *Acceptance criteria*, worked in [`docs/conventions/testing.md`](docs/conventions/testing.md)). The rule is about place, not meaning, so nobody has to weigh what a number was for. Why a rule exists stays as prose beside it, linking a record where one holds the decision. Pending work is described as the current state and tracked in an open issue, because a to-do in the codebase points at a thread that closes unnoticed. Outside the codebase, and unaffected: commit messages, branch names, pull request and issue bodies (`Refs #<N>`, `Closes #<N>`), `.claude/memory/` entries (the number lets the incident be checked), and illustrative numbers in examples. Rationale: CIR [`2026-10-10-issue-numbers-live-in-records`](docs/change-intent-records/2026-10-10-issue-numbers-live-in-records.md).
-
-## Scratch files
-
-`.claude/scratch/` is git-ignored. `/gaffer:raise-pr` writes the pull request body to `.claude/scratch/raise-pr-body.md`; the `Write` tool creates the directory if it is missing. `/gaffer:draftissue` writes the issue body to `.claude/scratch/gh-issue-body-<slug>.md`, where the slug is a short kebab-case form of the title, and `/gaffer:reviewissue` writes the review comment to `.claude/scratch/reviewissue-body.md`.
 
 ## Pull requests
 

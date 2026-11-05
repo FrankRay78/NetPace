@@ -10,15 +10,16 @@ namespace NetPace.Core.Clients.Testing;
 /// <para>
 /// The stub holds three servers and recognises one by its URL; the trailing digit of the matched
 /// server's sponsor is the number its figures are built from. Anything whose URL the stub does not
-/// hold, including a server named by an unmatched URL, counts as number 10. The number scales only
-/// the elapsed time — the bytes and the request counts are the same for every server — so a
-/// higher-numbered server is slower, matching its higher latency.
+/// hold, including a server named by an unmatched URL, counts as number 10. The number scales the
+/// elapsed time and the jitter — the bytes and the request counts are the same for every server —
+/// so a higher-numbered server is slower and less steady, matching its higher latency.
 /// </para>
 /// <list type="bullet">
 /// <item><description>Latency is 100ms times the server number.</description></item>
+/// <item><description>Jitter is 10ms times the server number — so 30ms for server 3 — beside that latency.</description></item>
 /// <item><description>A download is always 1,000 bytes, taking 1 second times the server number — so 3 seconds for server 3 — from 150 requests, none failed.</description></item>
 /// <item><description>An upload is always 7,000 bytes, taking 3 seconds times the server number, from 32 requests, none failed.</description></item>
-/// <item><description>Screening wins the lowest-numbered candidate offered, at that server's latency.</description></item>
+/// <item><description>Screening wins the lowest-numbered candidate offered, at that server's latency and jitter.</description></item>
 /// </list>
 /// <para>
 /// So the figures are fixed but not uniform: a consumer comparing two servers sees two different
@@ -38,6 +39,10 @@ namespace NetPace.Core.Clients.Testing;
 /// </remarks>
 public sealed class SpeedTestStub : ISpeedTestService
 {
+    // Per unit of server number, so a higher-numbered server is both slower and less steady.
+    private const int LatencyMillisecondsPerServerNumber = 100;
+    private const int JitterMillisecondsPerServerNumber = 10;
+
     private readonly IServer[] stubServers = new IServer[]
     {
         new Server { Location = "Location 1", Sponsor = "Test Sponsor 1", Url = "http://test1.com" },
@@ -103,7 +108,8 @@ public sealed class SpeedTestStub : ISpeedTestService
         var latencyResult = new LatencyTestResult
         {
             Server = server,
-            LatencyMilliseconds = serverID * 100
+            LatencyMilliseconds = serverID * LatencyMillisecondsPerServerNumber,
+            JitterMilliseconds = serverID * JitterMillisecondsPerServerNumber
         };
 
         return Task.FromResult(latencyResult);
@@ -153,7 +159,8 @@ public sealed class SpeedTestStub : ISpeedTestService
         var latencyResult = new LatencyTestResult
         {
             Server = fastest,
-            LatencyMilliseconds = serverID * 100
+            LatencyMilliseconds = serverID * LatencyMillisecondsPerServerNumber,
+            JitterMilliseconds = serverID * JitterMillisecondsPerServerNumber
         };
 
         return Task.FromResult(latencyResult);

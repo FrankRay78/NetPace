@@ -195,6 +195,7 @@ public sealed class FaultySpeedTesterTests
             {
                 Server = new Server { Sponsor = FaultySponsor, Url = url },
                 LatencyMilliseconds = 1,
+                JitterMilliseconds = 0,
             }),
         });
 
@@ -211,8 +212,8 @@ public sealed class FaultySpeedTesterTests
         var tester = new FaultySpeedTester(inner: new SpeedTestMock
         {
             GetServersAsyncFunc = _ => Task.FromResult<IServer[]>([server]),
-            GetServerLatencyAsyncFunc = (_, _, _) => Task.FromResult(new LatencyTestResult { Server = server, LatencyMilliseconds = 7 }),
-            GetFastestServerByLatencyAsyncFunc = (servers, _, _) => Task.FromResult(new LatencyTestResult { Server = servers[0], LatencyMilliseconds = 7 }),
+            GetServerLatencyAsyncFunc = (_, _, _) => Task.FromResult(new LatencyTestResult { Server = server, LatencyMilliseconds = 7, JitterMilliseconds = 1 }),
+            GetFastestServerByLatencyAsyncFunc = (servers, _, _) => Task.FromResult(new LatencyTestResult { Server = servers[0], LatencyMilliseconds = 7, JitterMilliseconds = 0 }),
             GetDownloadSpeedAsyncFunc = (_, _, _) => Task.FromResult(new SpeedTestResult { BytesProcessed = 11, ElapsedMilliseconds = 1000, RequestsSucceeded = 1, RequestsFailed = 0 }),
             GetUploadSpeedAsyncFunc = (_, _, _) => Task.FromResult(new SpeedTestResult { BytesProcessed = 13, ElapsedMilliseconds = 1000, RequestsSucceeded = 1, RequestsFailed = 0 }),
         });

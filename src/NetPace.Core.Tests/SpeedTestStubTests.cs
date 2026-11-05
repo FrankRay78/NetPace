@@ -115,6 +115,50 @@ public sealed class SpeedTestStubTests
 
     [Theory]
     [MemberData(nameof(LatencyByServerOverloads))]
+    public async Task GetServerLatencyAsync_EachOverload_ReportsTenMillisecondsOfJitterPerServerNumber(string overload, Func<ISpeedTestService, IServer, IProgress<LatencyTestProgress>, Task<LatencyTestResult>> measure)
+    {
+        // SCENARIO: Test doubles report jitter
+
+        // Given
+        Assert.NotNull(overload);
+        var stub = new SpeedTestStub();
+        var servers = await stub.GetServersAsync();
+
+        // When
+        var results = new List<LatencyTestResult>();
+        foreach (IServer server in servers)
+        {
+            results.Add(await measure(stub, server, new NullProgress<LatencyTestProgress>()));
+        }
+
+        // Then a consumer testing against the stub has a known jitter to show or threshold on, and
+        // one that scales with the server number as the latency does.
+        Assert.Equal([10, 20, 30], results.Select(result => result.JitterMilliseconds));
+    }
+
+    [Theory]
+    [MemberData(nameof(ScreeningOverloads))]
+    public async Task GetFastestServerByLatencyAsync_EachOverload_ReportsTheWinnersJitter(string overload, Func<ISpeedTestService, IServer[], IProgress<SpeedTestProgress>, Task<LatencyTestResult>> screen)
+    {
+        // SCENARIO: Test doubles report jitter
+
+        // Given
+        Assert.NotNull(overload);
+        var stub = new SpeedTestStub();
+        var servers = await stub.GetServersAsync();
+
+        // When
+        var result = await screen(stub, servers, new NullProgress<SpeedTestProgress>());
+
+        // Then screening reports the same jitter the winner reports when measured, so a consumer is
+        // not shown two different figures for one run.
+        var measured = await stub.GetServerLatencyAsync(result.Server);
+        Assert.Equal(measured.JitterMilliseconds, result.JitterMilliseconds);
+        Assert.Equal(10, result.JitterMilliseconds);
+    }
+
+    [Theory]
+    [MemberData(nameof(LatencyByServerOverloads))]
     public async Task GetServerLatencyAsync_AServerTheStubDoesNotHold_ReportsOneThousandMilliseconds(string overload, Func<ISpeedTestService, IServer, IProgress<LatencyTestProgress>, Task<LatencyTestResult>> measure)
     {
         // Given
