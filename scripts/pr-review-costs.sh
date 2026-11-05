@@ -74,7 +74,7 @@ AWK_LIB='
     return k
   }
   function commafy(n,   s, out) {
-    s = sprintf("%d", n); out = ""
+    s = sprintf("%.0f", n); out = ""  # %.0f, not %d: some awks cap %d at 2^31
     while (length(s) > 3) { out = "," substr(s, length(s) - 2) out; s = substr(s, 1, length(s) - 3) }
     return s out
   }
@@ -114,13 +114,13 @@ lines_changed() {
 # scripts/pr-cost-footer.sh finds its own — so an example quoted above it is not read. Fails, with
 # nothing printed, when the body has no footer.
 footer_costs() {
-  printf '%s\n' "$1" | tr -d '\r' | awk -v marker="$FOOTER_MARKER" '
+  printf '%s\n' "$1" | tr -d '\r' | awk -v marker="$FOOTER_MARKER" "$AWK_LIB"'
     function trim(s) { gsub(/^[ \t]+|[ \t]+$/, "", s); return s }
     function cost(s) { return match(s, /^\$[0-9][0-9,]*(\.[0-9]+)?/) ? substr(s, 1, RLENGTH) : "" }
     function tokens(s) {
       if (!match(s, /^[0-9][0-9,]*/)) return ""
       s = substr(s, 1, RLENGTH); gsub(/,/, "", s)
-      return sprintf("%.1fM", s / 1000000)
+      return commafy(s)
     }
     { line[NR] = $0 }
     END {
@@ -185,9 +185,8 @@ build_row() {
 
 # totals_row <rows> — the bold Total row under the table, summed from the rows as they stand on
 # the page, so a row corrected by hand is counted as corrected. Only the numeric columns are
-# summed — size and cost — and every other cell is left empty. A cell that is not a plain figure is
-# not counted. Tokens are the sum of the rounded figures shown, so the total is to within a few
-# tenths of a million.
+# summed — size, cost and tokens — and every other cell is left empty. A cell that is not a plain
+# figure is not counted.
 totals_row() {
   printf '%s\n' "$1" | awk "$AWK_LIB"'
     function money(s, k) {
@@ -203,28 +202,28 @@ totals_row() {
       cells($0, c)
       for (k = 4; k <= 6; k++) if (c[k] != "") { seen[k] = 1; v = c[k]; gsub(/,/, "", v); size[k] += v }
       for (k = 9; k <= 12; k++) money(c[k], k)
-      if (c[13] ~ /^[0-9]+(\.[0-9]+)?M$/) { mtok += substr(c[13], 1, length(c[13]) - 1); seen[13] = 1 }
+      v = c[13]; gsub(/,/, "", v)
+      if (v ~ /^[0-9]+$/) { tok += v; seen[13] = 1 }
     }
     END {
       printf "| **Total** | | | %s | %s | %s | | | %s | %s | %s | %s | %s |\n",
         fmtsize(4), fmtsize(5), fmtsize(6),
         fmtmoney(9), fmtmoney(10), fmtmoney(11), fmtmoney(12),
-        seen[13] ? bold(sprintf("%.1fM", mtok)) : ""
+        seen[13] ? bold(commafy(tok)) : ""
     }
   '
 }
 
 # write_csv <sorted rows> — the same rows as CSV, for a spreadsheet: one header line, then one line
 # per pull request, with no totals row (a spreadsheet sums for itself). Numbers are plain — no
-# dollar sign, no thousands separator — and tokens are in millions, as precise as the table holds
-# them, so the CSV never claims a precision the page does not have. A cell that is not a plain
+# dollar sign, no thousands separator. A cell that is not a plain
 # number is left empty rather than break a column's sum. Every text field is quoted, so a comma in
 # one — a risk cell corrected by hand, say — moves no later field; and one a spreadsheet would read
 # as a formula (=, +, - or @ first) is opened with a quote mark, which a spreadsheet shows as text.
 # Derived from the page's rows,
 # so a correction made to a row by hand reaches the CSV too.
 write_csv() {
-  printf '%s\n' 'PR,Url,Title,Merged,Closed,CodeLines,TestLines,DocsLines,Risk,NoHumanMerge,ReviewCost,FollowUp1Cost,FollowUp2Cost,TotalCost,TotalTokensMillions'
+  printf '%s\n' 'PR,Url,Title,Merged,Closed,CodeLines,TestLines,DocsLines,Risk,NoHumanMerge,ReviewCost,FollowUp1Cost,FollowUp2Cost,TotalCost,TotalTokens'
   [ -z "$1" ] || printf '%s\n' "$1" | awk "$AWK_LIB"'
     function q(s) { if (s ~ /^[=+@-]/) s = "\047" s; gsub(/"/, "\"\"", s); return "\"" s "\"" }
     function num(s) { gsub(/,/, "", s); return s ~ /^[0-9]+$/ ? s : "" }
@@ -236,10 +235,9 @@ write_csv() {
       title = c[2]; merged = "true"
       if (sub(/ \*\(not merged\)\*$/, "", title)) merged = "false"
       gsub(/\\\|/, "|", title)
-      tok = (c[13] ~ /^[0-9]+(\.[0-9]+)?M$/) ? substr(c[13], 1, length(c[13]) - 1) : ""
       printf "%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s\n", n, url, q(title), merged, q(c[3]),
         num(c[4]), num(c[5]), num(c[6]), q(c[7]), q(c[8]),
-        money(c[9]), money(c[10]), money(c[11]), money(c[12]), tok
+        money(c[9]), money(c[10]), money(c[11]), money(c[12]), num(c[13])
     }
   '
 }
