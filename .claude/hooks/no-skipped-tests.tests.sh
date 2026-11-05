@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# no-skipped-tests.tests.sh — standalone matrix for no-skipped-tests.sh (issue #91 B12).
+# no-skipped-tests.tests.sh — standalone matrix for no-skipped-tests.sh.
 #
 # The gate reads the filesystem (it greps `$REPO_ROOT/src`), so a synthetic payload alone cannot
 # drive it. Like its fellow filesystem-reading gate green-gate.sh, it
@@ -100,7 +100,7 @@ run_hook "$(sandbox 'class T { [Fact(SkipUnless = nameof(StackIsUp))] void M(){}
 run_hook "$(sandbox 'class T { [Fact(SkipWhen = nameof(IsCi))] void M(){} }')";       ok "[Fact(SkipWhen=…)] (xUnit v3)"   'blocked_detect'
 
 echo ""
-echo "Exclusion by PATH, not by line content (#91 H1) — the escape that let skips commit clean:"
+echo "Exclusion by PATH, not by line content — the escape that let skips commit clean:"
 # The bin/obj exclusion must filter on the file's PATH. Filtering grep's output instead tests the
 # whole `path:lineno:content` line, so a construct whose SOURCE TEXT names /bin/ or /obj/ filters
 # itself out — and a dependency-probe skip naming an absolute path is the likeliest real skip
@@ -128,7 +128,7 @@ run_hook "$(sandbox "$DIRTY")" 'dotnet build'; ok "dotnet build"               '
 run_hook "$(empty_sandbox)"    'ls';           ok "non-commit + no src/ (no deadlock)" 'allowed'
 
 echo ""
-echo "Multi-line commands (#91 H2) — a line-oriented match must not be dodged by a continuation:"
+echo "Multi-line commands — a line-oriented match must not be dodged by a continuation:"
 run_hook "$(sandbox "$DIRTY")" 'git \
   commit -m x';                                ok "git \\<newline> commit"     'blocked_detect'
 run_hook "$(sandbox "$DIRTY")" 'set -e
@@ -159,7 +159,7 @@ run_hook "$_sb";                                                    ok "commit +
 ok "…and the message names the offending path" 'printf "%s" "$OUTPUT" | grep -q "Locked.cs"'
 
 echo ""
-echo "Dependency bootstrap (#91 H3) — a missing tool must block a commit, never wave it through:"
+echo "Dependency bootstrap — a missing tool must block a commit, never wave it through:"
 # The gate's own contract says it fails closed for a commit. That held for jq but NOT for grep:
 # the classifier used `grep … || exit 0`, which cannot tell "no match" from "grep is missing", so
 # a broken grep allowed every commit. The classifier is now a shell builtin and grep is checked.
@@ -186,7 +186,7 @@ run_hook_env() { OUTPUT="$(env CLAUDE_PROJECT_DIR="$1" NETPACE_ALLOW_SKIPS=1 "$H
 run_hook_env "$_sb"; ok "NETPACE_ALLOW_SKIPS=1 + dirty tree → allow" 'allowed'
 ok "…and announces itself on stderr"           'printf "%s" "$OUTPUT" | grep -q "BYPASSED"'
 # An audit must not be silenceable by a stray env var, or a leaked override turns CI into a
-# green-reporting no-op (#91 H6).
+# green-reporting no-op.
 run_check "$_sb" NETPACE_ALLOW_SKIPS=1;            ok "--check IGNORES the override → still 1" '[ "$RC" = "1" ]'
 
 echo ""
@@ -196,7 +196,7 @@ run_check "$(sandbox 'class T { void M(){ Assert.Skip("x"); } }')"; ok "--check 
 run_check "$(empty_sandbox)";                                       ok "--check no src/ → 2 (fail closed)" 'blocked_closed'
 
 echo ""
-echo "Root resolution (#91 H8) — CLAUDE_PROJECT_DIR must win over the script's own location:"
+echo "Root resolution — CLAUDE_PROJECT_DIR must win over the script's own location:"
 # Every case above depends on this. If the gate ever reverts to a purely location-derived root,
 # each sandbox would silently scan the REAL repo instead — green while verifying nothing.
 run_hook "$(sandbox "$DIRTY")"; ok "sandbox skip is seen (env root honoured, not \$HERE/../..)" 'blocked_detect'
@@ -212,7 +212,7 @@ run_hook "$(sandbox 'class T { void M(){ var q = new Page { Skip = 10, Take = 5 
 ok "pagination initializer { Skip = 10 }" 'blocked_detect'
 run_hook "$(sandbox 'class T { void M(){ int Skip = 0; } }')"
 ok "local variable named Skip"            'blocked_detect'
-# #91 H7, assessed and accepted: classification is not narrowed to command-word position. A
+# Assessed and accepted: classification is not narrowed to command-word position. A
 # read-only command merely MENTIONING the words is gated — but only when src/ already holds a
 # banned construct, i.e. when the ban is already violated and must be fixed anyway; in a clean tree
 # it never fires. Parsing shell to find the command-word would trade this harmless over-block for
