@@ -1,0 +1,28 @@
+﻿
+Press CTRL+C to exit.
+
+┌──────────────────┬─────────────────┬────────────────────────────┬─────────┐
+│ Location         │ Sponsor         │ Url                        │ Latency │
+├──────────────────┼─────────────────┼────────────────────────────┼─────────┤
+│ Bracketed [Town] │ Example [Fibre] │ http://[2001:db8::1]:8080/ │ 10ms    │
+│ Emoji Town       │ :fire: Networks │ http://emoji.example/      │         │
+│ Styling Town     │ [bold]          │ http://styling.example/    │         │
+└──────────────────┴─────────────────┴────────────────────────────┴─────────┘┌──────────────────┬─────────────────┬────────────────────────────┬─────────┐
+│ Location         │ Sponsor         │ Url                        │ Latency │
+├──────────────────┼─────────────────┼────────────────────────────┼─────────┤
+│ Bracketed [Town] │ Example [Fibre] │ http://[2001:db8::1]:8080/ │ 10ms    │
+│ Emoji Town       │ :fire: Networks │ http://emoji.example/      │ 10ms    │
+│ Styling Town     │ [bold]          │ http://styling.example/    │         │
+└──────────────────┴─────────────────┴────────────────────────────┴─────────┘┌──────────────────┬─────────────────┬────────────────────────────┬─────────┐
+│ Location         │ Sponsor         │ Url                        │ Latency │
+├──────────────────┼─────────────────┼────────────────────────────┼─────────┤
+│ Bracketed [Town] │ Example [Fibre] │ http://[2001:db8::1]:8080/ │ 10ms    │
+│ Emoji Town       │ :fire: Networks │ http://emoji.example/      │ 10ms    │
+│ Styling Town     │ [bold]          │ http://styling.example/    │ 10ms    │
+└──────────────────┴─────────────────┴────────────────────────────┴─────────┘┌──────────────────┬─────────────────┬────────────────────────────┬─────────┐
+│ Location         │ Sponsor         │ Url                        │ Latency │
+├──────────────────┼─────────────────┼────────────────────────────┼─────────┤
+│ Bracketed [Town] │ Example [Fibre] │ http://[2001:db8::1]:8080/ │ 10ms    │
+│ Emoji Town       │ :fire: Networks │ http://emoji.example/      │ 10ms    │
+│ Styling Town     │ [bold]          │ http://styling.example/    │ 10ms    │
+└──────────────────┴─────────────────┴────────────────────────────┴─────────┘
