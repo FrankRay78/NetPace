@@ -62,7 +62,7 @@ public sealed partial class OoklaSpeedtestTests
             // all-or-nothing probe this replaced would have dropped it and chosen the slower server.
             // Both are timed on a clock the test moves itself, and the slower candidate is answered
             // only once the flaky one has been screened - see RespondAfterAdvancing in
-            // OoklaSpeedtestTests.ElapsedTime.cs for why an order is needed.
+            // OoklaSpeedtestTests.cs for why an order is needed.
             const int flakyMilliseconds = 10;
             var clock = new ControlledTimeProvider(ClockStart);
             var flakyScreened = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);

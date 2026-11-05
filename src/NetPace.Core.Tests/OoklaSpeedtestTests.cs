@@ -543,8 +543,7 @@ public sealed partial class OoklaSpeedtestTests
 
         // Given two reachable candidates screened against a clock the test moves itself: the
         // quicker takes 10 ms of it, the slower 50 ms. The slower candidate is answered only once
-        // the quicker has been screened - see RespondAfterAdvancing in OoklaSpeedtestTests.ElapsedTime.cs
-        // for why an order is needed.
+        // the quicker has been screened - see RespondAfterAdvancing above for why an order is needed.
         const int quickerMilliseconds = 10;
         var clock = new ControlledTimeProvider(ClockStart);
         var quickerScreened = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
