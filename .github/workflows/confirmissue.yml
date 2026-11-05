@@ -103,9 +103,13 @@ jobs:
       # one: step 7 of the command saves the decisions and applies the label before deleting the
       # comment, and that deletion is deliberately never fatal. Skipping such an issue green would
       # make the command's documented recovery ("re-running /gaffer:confirmissue will retry it")
-      # a silent no-op in CI, because re-labelling lands here. Running the agent instead would fold
-      # a second decisions section, and deleting the comment here would put this workflow ahead of
-      # the command's own ordering — so the only correct move is to stop and say what to repair.
+      # a silent no-op in CI, because re-labelling lands here. Running the agent instead would not
+      # duplicate anything — the command rebuilds an existing `## Confirmed decisions` section in
+      # place, carrying forward every decision the review does not re-raise — but that rebuild path
+      # is reserved for a deliberate reopen, and here the surviving comment is the very one whose
+      # decisions are already on the body. Re-folding it repairs nothing: the thing that failed is
+      # the deletion. And deleting the comment here would put this workflow ahead of the command's
+      # own ordering — so the only correct move is to stop and say what to repair.
       # Clearing the label keeps the state model honest: a green run always ends with `confirm`
       # gone, confirmed or skipped. The output is recorded before the label is cleared, so a failed
       # `gh issue edit` leaves the label on — the signal this file reserves for "did not complete".

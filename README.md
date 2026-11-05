@@ -13,7 +13,7 @@ Built with .NET 10.0 — runs on Windows, Linux, and macOS.
 <p align="left">
     <a href="https://github.com/FrankRay78/NetPace/issues/new?labels=needs%20triage,bug&template=bug-report---.md">Report Bug</a>
     -
-    <a href="https://github.com/FrankRay78/NetPace/issues/new?labels=needs%20triage,enhancement&template=feature-request---.md">Request Feature</a>
+    <a href="https://github.com/FrankRay78/NetPace/issues/new?labels=needs%20triage,feature&template=feature-request---.md">Request Feature</a>
 </p>
 
 Fan of NetPace? Consider giving the [repo](https://github.com/FrankRay78/NetPace) a star ⭐ - it helps others find it too.
