@@ -9,6 +9,8 @@ namespace NetPace.Console;
 /// </summary>
 public sealed class FileConsole : IAnsiConsole, IPersistentConsole, IDisposable
 {
+    private static readonly UTF8Encoding Utf8NoByteOrderMark = new(encoderShouldEmitUTF8Identifier: false);
+
     private readonly StreamWriter _fileWriter;
     private readonly IAnsiConsole _templateConsole;
     private readonly object _writeLock = new();
@@ -23,8 +25,8 @@ public sealed class FileConsole : IAnsiConsole, IPersistentConsole, IDisposable
     /// Whether the file holds no content for this run to add to: empty or absent when the run
     /// reached it, or any file in overwrite mode, where its previous content is replaced. Read
     /// before the file is opened, because opening it for append is itself about to add content.
-    /// A file that started empty is replaced rather than appended to, so a stray byte-order mark
-    /// or line ending is not left above the first line written.
+    /// A file that started empty is replaced rather than appended to, so a stray line ending, or a
+    /// byte-order mark the file already carries, is not left above the first line written.
     /// </param>
     public FileConsole(string filePath, FileMode fileMode, bool startedEmpty)
     {
@@ -33,7 +35,13 @@ public sealed class FileConsole : IAnsiConsole, IPersistentConsole, IDisposable
 
         StartedEmpty = startedEmpty;
 
-        _fileWriter = new StreamWriter(filePath, append: (fileMode == FileMode.Append && !startedEmpty), Encoding.UTF8) { AutoFlush = true };
+        // UTF-8 with no byte-order mark, so nothing stands in front of the content a run writes:
+        // a strict JSON parser rejects a document behind a byte-order mark, and Unix text tools
+        // read one as part of the first field. Encoding.UTF8 emits one, so it is not what this
+        // writer is given. Why no option asks for one, and what that costs a
+        // spreadsheet user, is in
+        // docs/change-intent-records/2026-11-02-file-output-carries-no-byte-order-mark.md.
+        _fileWriter = new StreamWriter(filePath, append: (fileMode == FileMode.Append && !startedEmpty), Utf8NoByteOrderMark) { AutoFlush = true };
 
         // Create console settings for plain text output.
         var settings = new AnsiConsoleSettings
@@ -128,7 +136,9 @@ public sealed class FileConsole : IAnsiConsole, IPersistentConsole, IDisposable
 
         public void SetEncoding(Encoding encoding)
         {
-            // Encoding is set on StreamWriter creation.
+            // Encoding is set on StreamWriter creation, and the request is ignored deliberately:
+            // honouring one for Encoding.UTF8 would put a byte-order mark back in front of the
+            // content.
         }
     }
 }

@@ -1,0 +1,10 @@
+﻿\e[?25l                 
+  Choosing server
+                 
+\e[2K\e[1A\e[2K\e[1A\e[2K\e[?25h
+Test Sponsor 1
+http://test1.com
+\e[?25l                                                                
+Downloading ━━━━━━━━━━━━━━━━                          40% 8 Kbps
+                                                                
+\e[?25hLatency: 100 ms, Download: 8 Kbps

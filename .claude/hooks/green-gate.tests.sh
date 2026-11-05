@@ -7,11 +7,6 @@
 # throwaway CLAUDE_PROJECT_DIR so the real repo is never touched, and exits non-zero on any
 # failure. Run it after any edit to the hook.
 #
-# (History: the hook once also carried PostToolUse ledger-stamping and a Stop completion gate;
-# both were retired in issue #122 when test-green enforcement moved to the verify orchestrator,
-# then named ship. Those cases are gone from this matrix; only the marker-independent B7
-# --no-build deny remains.)
-#
 #   Usage:  .claude/hooks/green-gate.tests.sh
 
 set -uo pipefail
@@ -32,7 +27,7 @@ ok()  { if eval "$2"; then echo "  ok   $1"; pass=$((pass+1)); else echo "  FAIL
 # Synthetic-payload builder (keep the real hook schema in one place).
 pre()  { printf '{"hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":%s}}' "$(jq -Rn --arg c "$1" '$c')"; }
 
-echo "PreToolUse / B7 (--no-build staleness):"
+echo "PreToolUse (--no-build staleness):"
 run "$(printf '{"hook_event_name":"PreToolUse","tool_name":"Edit","tool_input":{"file_path":"x.cs"}}')"; ok "non-Bash tool → allow" '[ -z "$OUTPUT" ] && [ "$RC" = 0 ]'
 run "$(pre 'echo dotnet test --no-build')";        ok "echo mention → allow" '[ -z "$OUTPUT" ]'
 run "$(pre 'dotnet test')";                         ok "dotnet test (build) → allow" '[ -z "$OUTPUT" ]'

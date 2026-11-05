@@ -6,6 +6,7 @@ using Microsoft.Extensions.DependencyInjection;
 using NetPace.Console.Commands;
 using NetPace.Console.ConsoleWriters;
 using NetPace.Console.Diagnostics;
+using NetPace.Console.Theming;
 using NetPace.Core;
 using NetPace.Core.Clients.Ookla;
 using Spectre.Console;
@@ -36,7 +37,7 @@ public static class Program
     /// <remarks>
     /// Extracted here so the testing project can reuse the production configuration.
     /// </remarks>
-    internal static RootCommand CreateRootCommand(IServiceProvider serviceProvider, string[] args)
+    internal static RootCommand CreateRootCommand(IServiceProvider serviceProvider, string[] args, Theme theme)
     {
         var command = new RootCommand(Description);
 
@@ -349,6 +350,7 @@ public static class Program
                 var clock = serviceProvider.GetRequiredService<IClock>();
                 var clientInfoProvider = serviceProvider.GetRequiredService<IClientInfoProvider>();
                 var waiter = serviceProvider.GetRequiredService<IWaiter>();
+                var liveDisplayRefresh = serviceProvider.GetRequiredService<ILiveDisplayRefresh>();
 
                 // Switched off, nothing is recorded and nothing is written - so no call site
                 // downstream has to ask whether diagnostics are on.
@@ -370,20 +372,20 @@ public static class Program
                 recorder.Record("run.invocation", ("args", string.Join(' ', args)));
 
                 // Create and execute command
-                var command = new SpeedTestCommand(ansiConsole, speedTestService, clock, clientInfoProvider, recorder, waiter);
+                var command = new SpeedTestCommand(ansiConsole, speedTestService, clock, clientInfoProvider, recorder, waiter, liveDisplayRefresh, theme);
                 return await command.ExecuteAsync(settings, cancellationToken);
             }
             catch (Exception ex)
             {
                 // Usage/configuration errors and operational failures are reported to the console.
                 var console = serviceProvider.GetRequiredService<IAnsiConsole>();
-                console.MarkupLine($"[red]Error:[/] {ex.Message.EscapeMarkup()}");
+                console.WriteErrorLine(theme, ex.Message);
                 return 1;
             }
         }));
 
         // Add list servers command
-        var listServersCommand = CreateListServersCommand(serviceProvider);
+        var listServersCommand = CreateListServersCommand(serviceProvider, theme);
         command.Subcommands.Add(listServersCommand);
 
         return command;
@@ -446,7 +448,7 @@ public static class Program
     /// <summary>
     /// Create the list servers command.
     /// </summary>
-    private static Command CreateListServersCommand(IServiceProvider serviceProvider)
+    private static Command CreateListServersCommand(IServiceProvider serviceProvider, Theme theme)
     {
         var command = new Command("servers", "Show the nearest speed test servers.");
 
@@ -484,13 +486,13 @@ public static class Program
                 var speedTestService = serviceProvider.GetRequiredService<ISpeedTestService>();
 
                 // Create and execute command
-                var command = new ListServersCommand(ansiConsole, speedTestService);
+                var command = new ListServersCommand(ansiConsole, speedTestService, theme);
                 return await command.ExecuteAsync(settings, cancellationToken);
             }
             catch (Exception ex)
             {
                 var ansiConsole = serviceProvider.GetRequiredService<IAnsiConsole>();
-                ansiConsole.MarkupLine($"[red]Error:[/] {ex.Message.EscapeMarkup()}");
+                ansiConsole.WriteErrorLine(theme, ex.Message);
                 return 1;
             }
         });
@@ -509,6 +511,14 @@ public static class Program
         // Register AnsiConsole (standard output).
         services.AddSingleton(AnsiConsole.Console);
 
+        // The theme comes from the environment in every run, --test included: a theme is the one
+        // thing about a run a stub would make harder to look at rather than easier.
+        services.AddSingleton<IThemeProvider, EnvironmentThemeProvider>();
+
+        // A word to the user about how the run was asked for goes to the error stream, so it never
+        // lands in the middle of a result another program is reading.
+        services.AddSingleton(new NoticeOutput(System.Console.Error));
+
         // Needed by both stacks: the root command populates the accessor after option binding,
         // before it knows which ISpeedTestService is in play.
         services.AddSingleton<OoklaSpeedtestSettingsAccessor>();
@@ -516,6 +526,10 @@ public static class Program
         // Diagnostics go to the error stream, never through the Spectre console: one record per
         // line, whatever the terminal width, and whatever --quiet or --file were set to.
         services.AddSingleton(new DiagnosticOutput(System.Console.Error));
+
+        // Needed by both stacks: a person running either one wants the live displays to redraw as
+        // the measurement goes. Only the test host turns that off, so a capture holds one frame.
+        services.AddSingleton<ILiveDisplayRefresh, LiveDisplayRefresh>();
 
         if (args != null && args.Contains("--test"))
         {
@@ -568,7 +582,15 @@ public static class Program
     internal static async Task<int> RunAsync(IServiceProvider serviceProvider, string[] args, CancellationToken cancellationToken = default)
     {
         var ansiConsole = serviceProvider.GetRequiredService<IAnsiConsole>();
-        var rootCommand = CreateRootCommand(serviceProvider, args);
+
+        // Settled before anything is drawn, because --help is rendered below without the options
+        // ever being parsed, and a theme that arrived later would not reach it.
+        var selection = serviceProvider.GetRequiredService<IThemeProvider>().Resolve();
+        selection.Theme.ApplyTo(ansiConsole);
+
+        var rootCommand = CreateRootCommand(serviceProvider, args, selection.Theme);
+        var parseResult = rootCommand.Parse(args);
+        ReportUnrecognisedTheme(serviceProvider, parseResult, selection);
 
         // Check for version request before parsing
         if (args.Length > 0 && (args[0] is "-v" or "--version"))
@@ -580,7 +602,7 @@ public static class Program
         // Check for help request before parsing
         if (args.Length > 0 && (args[0] is "-h" or "--help" or "-?"))
         {
-            CustomHelpProvider.RenderHelp(ansiConsole, rootCommand);
+            CustomHelpProvider.RenderHelp(ansiConsole, rootCommand, selection.Theme);
             return 0;
         }
 
@@ -591,23 +613,52 @@ public static class Program
             var subcommand = rootCommand.Subcommands.FirstOrDefault(c => c.Name == subcommandName);
             if (subcommand != null)
             {
-                CustomHelpProvider.RenderHelp(ansiConsole, subcommand);
+                CustomHelpProvider.RenderHelp(ansiConsole, subcommand, selection.Theme);
                 return 0;
             }
         }
-
-        var parseResult = rootCommand.Parse(args);
 
         // Handle parse errors - these should be shown even in quiet mode
         if (parseResult.Errors.Count > 0)
         {
             foreach (var error in parseResult.Errors)
             {
-                ansiConsole.MarkupLine($"[red]Error:[/] {error.Message.EscapeMarkup()}");
+                ansiConsole.WriteErrorLine(selection.Theme, error.Message);
             }
             return 1;
         }
 
         return await parseResult.InvokeAsync(cancellationToken: cancellationToken);
+    }
+
+    /// <summary>
+    /// Tells the user, once per run, that the theme they asked for does not exist and which ones
+    /// do. Nothing is written when the value named a theme, or named nothing.
+    /// </summary>
+    /// <remarks>
+    /// Written before <c>--help</c> and <c>--version</c> return, so a user who typo'd the variable
+    /// hears about it whichever command they ran. Whether the run is quiet is read from the parse
+    /// rather than the raw arguments, so every spelling the parser accepts — a separate
+    /// <c>false</c>, a bundled <c>-tq</c>, a response file — means here what it means to the run.
+    /// </remarks>
+    private static void ReportUnrecognisedTheme(IServiceProvider serviceProvider, ParseResult parseResult, ThemeSelection selection)
+    {
+        if (selection.UnrecognisedValue is not { } requested) return;
+        if (AsksForQuiet(parseResult)) return;
+
+        // The theme is named from what the run settled on rather than assumed to be the default:
+        // NO_COLOR outranks the variable, so an unreadable name can still end in the plain theme.
+        serviceProvider.GetRequiredService<NoticeOutput>().Writer.WriteLine(
+            $"{EnvironmentThemeProvider.ThemeVariable} is set to '{requested}', which is not a theme. Using the {selection.Theme.Name} theme. Valid themes: {Theme.NameList}.");
+    }
+
+    /// <summary>
+    /// Whether the parsed run asked for quiet. Only the root command has <c>--quiet</c>, so a
+    /// subcommand run is never quiet.
+    /// </summary>
+    private static bool AsksForQuiet(ParseResult parseResult)
+    {
+        var quiet = parseResult.RootCommandResult.Command.Options.OfType<Option<bool>>().Single(option => option.Name == "--quiet");
+        return parseResult.GetResult(quiet) is { Errors: var errors } && !errors.Any() && parseResult.GetValue(quiet);
     }
 }

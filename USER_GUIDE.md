@@ -98,6 +98,16 @@ Two further options decide whether and where the result appears, and both work w
 
 `--diagnostics` is not a fifth format — it adds a second stream alongside whichever format you picked, leaving the result untouched. See [Diagnosing a failure with `--diagnostics`](#diagnosing-a-failure-with---diagnostics).
 
+### What `--file` writes
+
+`--file` writes **UTF-8 text with no byte-order mark**, in every format and in both `--file-mode` settings. Nothing is written in front of the content, so a `--json` file starts at its opening brace and a `--csv` file starts at its first column name: a single run's JSON file is read as it stands by a strict parser, and `cut`, `awk` and `head` see that first column name as the first field of the first line.
+
+A log an earlier version of NetPace started keeps the byte-order mark it already has, because appending does not rewrite the start of a file. Start a new log if you want one without it.
+
+**Opening a CSV result in a spreadsheet:** import it rather than double-clicking it. In Excel, use *Data → From Text/CSV* and choose **UTF-8** as the file origin. Without a byte-order mark to tip it off, a double-clicked file may be read as a legacy code page instead, which garbles non-ASCII text such as an accented server sponsor or location name. LibreOffice Calc asks for the character set on open, where UTF-8 is the default.
+
+**Reading a result in Windows PowerShell 5.1:** read the file with `Get-Content -Encoding UTF8`, or use `Import-Csv`, which assumes UTF-8. Without a byte-order mark, a plain `Get-Content` reads it in the system's legacy code page and garbles the same non-ASCII text. PowerShell 7 needs neither.
+
 ### The fields CSV and JSON carry
 
 **CSV and JSON carry the same fields under the same names.** A field one of them records, the other records too, spelled identically, so a log in either format reads the same way and neither has to be interpreted against the other. Only the shape for something missing differs: CSV always has every built-in column and leaves the cell empty, while JSON leaves the field out.
@@ -333,6 +343,30 @@ Reach for it when:
 
 ---
 
+## Choosing a colour theme
+
+A theme is a standing preference rather than a per-run choice, so you set it once with the `NETPACE_THEME` environment variable — in your shell profile, say — and every command picks it up:
+
+```bash
+export NETPACE_THEME=green
+```
+
+| Theme | What it looks like |
+|---|---|
+| `default` | NetPace's own colours. What you get when `NETPACE_THEME` is unset or empty. |
+| `plain` | No colour and no bold anywhere. A progress bar still shows how much is done, by how far its glyphs reach. |
+| `green` | A green-led look, in mid-tone greens chosen to read on a light terminal as well as a dark one. |
+
+Names are matched without regard to case, so `GREEN` and `green` are the same request. Set the variable to something that is not a theme and NetPace says so on the error stream, naming the theme it is drawing in instead — the run is never stopped by a typo. `--quiet` suppresses that notice along with everything else.
+
+The theme reaches every screen a person reads: the speed test, `servers` in all its forms, and `--help`. It never reaches output another program parses — `--csv` and `--json` are byte-for-byte the same whatever the theme is. `--file` output is always written without colour, and `--minimal` has no colour to change.
+
+Colour never carries meaning on its own in anything NetPace composes itself. A failure is marked by the word `Error:`, so it reads as a failure even where you cannot tell the colours apart or have turned colour off entirely. The one exception is the progress bar under `default` and `green`, where how much is done is shown by colour alone; the `plain` theme draws that distinction with glyphs and blank space instead.
+
+If you have set `NO_COLOR` — the [convention](https://no-color.org/) for asking every program on the machine to stop colouring its output — that wins, and NetPace draws the `plain` theme whatever `NETPACE_THEME` says.
+
+---
+
 ## Detecting failed measurements
 
 A speed test runs many small requests in parallel and reports the aggregate throughput. If some of those requests fail (a dropped connection, a TLS error, a timeout, or a server that rejects the transfer), NetPace does **not** silently treat them as zero-speed data — it counts them, so you can tell a genuinely slow link from a server that isn't transferring at all. When *every* request in a test fails, the speed reads zero, and the counts tell you it was a total failure rather than a 0 bps link.
@@ -367,11 +401,11 @@ Diagnostics go to the error stream, never to the result stream, so the two can b
 netpace --json --diagnostics > result.json 2> diagnostics.log
 ```
 
-The result is byte-for-byte what the same invocation produces without the switch, in every output format — so adding `--diagnostics` to a script that parses `--csv` or `--json` cannot break the parsing. Without the switch, nothing is written to the error stream at all. At a terminal with nothing redirected, the records appear after the result, leaving the live progress display intact.
+The result is byte-for-byte what the same invocation produces without the switch, in every output format — so adding `--diagnostics` to a script that parses `--csv` or `--json` cannot break the parsing. Without the switch, nothing is written to the error stream at all, except the notice about an unrecognised `NETPACE_THEME` (see [Choosing a colour theme](#choosing-a-colour-theme)). At a terminal with nothing redirected, the records appear after the result, leaving the live progress display intact.
 
 `--diagnostics` works alongside whichever output format you chose, and is unaffected by `--quiet`. It never writes to the `--file` target.
 
-Each line is one record, as `key=value` pairs (an excerpt — a real run also carries the `screening` and `latency` test blocks, and `server.selected` appears after them):
+Each line is one record, as `key=value` pairs (an excerpt — a real run also carries the `screening` and `latency` test blocks, and `server.selected` appears after them). If `NETPACE_THEME` names no theme, its one-line notice comes first on the same stream, ahead of the records:
 
 ```
 ts=1980-01-01T10:05:00.000 event=run.start version=0.25.0 runtime=".NET 10.0.0" os="Linux 6.8.0-137-generic" arch=x64

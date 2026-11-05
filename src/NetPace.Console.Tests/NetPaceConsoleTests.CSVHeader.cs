@@ -251,8 +251,8 @@ public sealed partial class NetPaceConsoleTests
         [Fact]
         public async Task Should_Write_The_Header_When_The_Log_Holds_Nothing_But_A_Byte_Order_Mark()
         {
-            // Given a log file that every reader shows as empty, which is what a run that opened
-            // the file and then ended before writing a row leaves behind
+            // Given a log file that every reader shows as empty, which is what an older NetPace
+            // left when a run ended before writing a row
             using var log = new TempLogFile();
             await System.IO.File.WriteAllBytesAsync(log.FilePath, Encoding.UTF8.GetPreamble());
 

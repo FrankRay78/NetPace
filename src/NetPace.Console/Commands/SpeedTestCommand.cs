@@ -2,11 +2,12 @@ using System.Globalization;
 using System.Text;
 using NetPace.Console.ConsoleWriters;
 using NetPace.Console.Diagnostics;
+using NetPace.Console.Theming;
 using NetPace.Core;
 
 namespace NetPace.Console.Commands;
 
-public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService speedTestClient, IClock clock, IClientInfoProvider clientInfoProvider, IDiagnosticRecorder recorder, IWaiter waiter)
+public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService speedTestClient, IClock clock, IClientInfoProvider clientInfoProvider, IDiagnosticRecorder recorder, IWaiter waiter, ILiveDisplayRefresh liveDisplayRefresh, Theme theme)
 {
     /// <summary>
     /// Executes the speed test command using the provided settings.
@@ -43,7 +44,7 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
             { CSV: true } => new CSVConsoleWriter(),
             { Json: true } or { JsonPretty: true } => new JsonConsoleWriter(),
             { Minimal: true } => new MinimalConsoleWriter(),
-            _ => new DefaultConsoleWriter()
+            _ => new DefaultConsoleWriter(liveDisplayRefresh, theme)
         };
 
         if (writer.MachineReadable)
@@ -107,7 +108,7 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
                     }
                     catch (Exception e)
                     {
-                        WriteError(console, e.Message);
+                        console.WriteErrorLine(theme, e.Message);
 
                         if (FailOnRequested(settings)) return 1;
                     }
@@ -152,7 +153,7 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
                     }
                     catch (Exception e)
                     {
-                        WriteError(console, e.Message);
+                        console.WriteErrorLine(theme, e.Message);
 
                         if (FailOnRequested(settings)) return 1;
                     }
@@ -195,7 +196,7 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
                 }
                 catch (Exception e)
                 {
-                    WriteError(console, e.Message);
+                    console.WriteErrorLine(theme, e.Message);
 
                     if (FailOnRequested(settings)) return 1;
                 }
@@ -238,12 +239,13 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
         if (!file.Exists || file.Length == 0) return true;
 
         // A file holding only a byte-order mark and/or a line ending counts as empty, not as
-        // content. FileConsole opens the file with Encoding.UTF8, which writes a byte-order mark
-        // before anything else, so a run that ended before writing a row leaves a file that every
-        // reader shows as empty; `echo > log.csv` leaves a bare line ending. Reading either as
-        // content would suppress the header on that log for good, which is the one outcome this
-        // check exists to prevent. FileConsole replaces such a file rather than appending to it,
-        // so the header lands on the first line; anything else, however short, is kept.
+        // content. NetPace writes no byte-order mark of its own, but the target may already carry
+        // one — from a log an older NetPace started, or from any other tool that saves UTF-8 with
+        // a signature — and `echo > log.csv` leaves a bare line ending; either way a reader shows
+        // the file as empty. Reading one as content would suppress the
+        // header on that log for good, which is the one outcome this check exists to prevent.
+        // FileConsole replaces such a file rather than appending to it, so the header lands on the
+        // first line; anything else, however short, is kept.
         var preamble = Encoding.UTF8.GetPreamble();
         if (file.Length > preamble.Length + 2) return false;
 
@@ -287,14 +289,6 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
         catch (IOException)
         {
         }
-    }
-
-    /// <summary>
-    /// Writes an error message to the console.
-    /// </summary>
-    private static void WriteError(IAnsiConsole console, string message)
-    {
-        console.Markup($"[red]Error:[/] {message.EscapeMarkup()}\n");
     }
 
     /// <summary>

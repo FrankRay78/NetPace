@@ -1,8 +1,9 @@
+using NetPace.Console.Theming;
 using NetPace.Core;
 
 namespace NetPace.Console.Commands;
 
-public sealed class ListServersCommand(IAnsiConsole console, ISpeedTestService speedTestClient)
+public sealed class ListServersCommand(IAnsiConsole console, ISpeedTestService speedTestClient, Theme theme)
 {
     /// <summary>
     /// Executes the list servers command, displaying available speed test servers.
@@ -35,17 +36,25 @@ public sealed class ListServersCommand(IAnsiConsole console, ISpeedTestService s
         return 0;
     }
 
+    /// <summary>
+    /// Tells the user how to interrupt a listing that takes a while — both the live listing and
+    /// the latency scan before a static one. Drawn in the theme, with the key picked out wherever
+    /// the theme has a colour for it.
+    /// </summary>
+    private void WriteExitHint() =>
+        console.WriteStyledLine(("Press ", Style.Plain), ("CTRL+C", theme.Hint), (" to exit.", Style.Plain));
+
     private async Task DisplayFastestServer(List<IServer> servers, ISpeedTestService speedTestClient, CancellationToken cancellationToken)
     {
         console.WriteLine("");
-        console.MarkupLine("Press [yellow]CTRL+C[/] to exit.");
+        WriteExitHint();
         console.WriteLine("");
 
         var fastestLatencyResult = await speedTestClient.GetFastestServerByLatencyAsync(servers.ToArray(), cancellationToken);
 
         var table = new Table()
             .Border(TableBorder.Square)
-            .BorderColor(Color.Red)
+            .BorderStyle(theme.TableBorder)
             .AddColumn(new TableColumn("Location"))
             .AddColumn(new TableColumn("Sponsor"))
             .AddColumn(new TableColumn("Url"))
@@ -61,7 +70,7 @@ public sealed class ListServersCommand(IAnsiConsole console, ISpeedTestService s
     {
         var table = new Table()
             .Border(TableBorder.Square)
-            .BorderColor(Color.Red)
+            .BorderStyle(theme.TableBorder)
             .AddColumn(new TableColumn("Location"))
             .AddColumn(new TableColumn("Sponsor"))
             .AddColumn(new TableColumn("Url"));
@@ -79,7 +88,7 @@ public sealed class ListServersCommand(IAnsiConsole console, ISpeedTestService s
     {
         var table = new Table()
             .Border(TableBorder.Square)
-            .BorderColor(Color.Red)
+            .BorderStyle(theme.TableBorder)
             .AddColumn(new TableColumn("Location"))
             .AddColumn(new TableColumn("Sponsor"))
             .AddColumn(new TableColumn("Url"))
@@ -92,7 +101,7 @@ public sealed class ListServersCommand(IAnsiConsole console, ISpeedTestService s
         }
 
         console.WriteLine("");
-        console.MarkupLine("Press [yellow]CTRL+C[/] to exit.");
+        WriteExitHint();
         console.WriteLine("");
 
         await console.Live(table)
