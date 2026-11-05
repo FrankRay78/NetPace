@@ -24,11 +24,13 @@
 # the number, exactly as /gaffer:raise-pr already parses it. A branch carrying no number has
 # nothing to check and passes: a pull request raised outside the issue flow is valid.
 #
-# DESIGN RULE: fail CLOSED — the opposite of the .claude/hooks/ convention, and deliberately so.
-# Those are advisory nudges inside an interactive turn, where a false block can lock out the tools
-# that would fix it. This is a merge gate: if it cannot fetch the issue, cannot find the repo, or
-# is missing `gh`/`jq`, it fails and says why. A gate that passes without having run gives exactly
-# the false comfort it exists to remove. Note the distinction it draws around a missing issue —
+# DESIGN RULE: fail CLOSED — the exception the .claude/hooks/ convention names, not an exception
+# to it. That convention (.claude/hooks/README.md) is fail-open by default, because a false block
+# inside an interactive turn can lock out the tools that would fix it, and fail-closed wherever
+# silence would read as a pass. This is a merge gate, so it is squarely the second case: if it
+# cannot fetch the issue, cannot find the repo, or is missing `gh`/`jq`, it fails and says why. A
+# gate that passes without having run gives exactly the false comfort it exists to remove. Note
+# the distinction it draws around a missing issue —
 # GitHub answering "nothing at that number" is an ANSWER (pass, nothing to check); auth, network
 # and rate-limit failures are the check not running (fail).
 #

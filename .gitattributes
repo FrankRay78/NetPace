@@ -17,6 +17,11 @@
 *.verified.xml text eol=lf working-tree-encoding=UTF-8
 *.verified.json text eol=lf working-tree-encoding=UTF-8
 
+# Generated data, written only by scripts/pr-review-costs.sh: GitHub collapses each in pull request
+# diffs and leaves it out of language statistics, so a refresh does not bury the change it rides with.
+docs/metrics/pr-review-costs.md linguist-generated=true
+docs/metrics/pr-review-costs.csv linguist-generated=true
+
 # Forced text (not merely auto-detected): a shell script or a source file with LF endings is a
 # correctness requirement, not a preference.
 *.sh text eol=lf
