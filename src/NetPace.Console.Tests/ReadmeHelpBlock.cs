@@ -17,7 +17,6 @@ internal static class ReadmeHelpBlock
 
     private const string FenceOpen = "```txt";
     private const string FenceClose = "```";
-    private const string MissingLine = "(no line)";
 
     /// <summary>
     /// Reads <c>README.md</c> from beside the test assembly, where the project file copies it.
@@ -50,9 +49,12 @@ internal static class ReadmeHelpBlock
         var lines = SplitLines(markdown);
         var start = -1;
 
+        // Markers are matched with trailing whitespace removed, as the compared lines are: a stray
+        // space renders identically, and would otherwise hide the block or run it on into the
+        // next fenced block.
         for (var i = 0; i < lines.Length - 1; i++)
         {
-            if (lines[i] == FenceOpen && lines[i + 1] == PromptLine)
+            if (lines[i].TrimEnd() == FenceOpen && lines[i + 1].TrimEnd() == PromptLine)
             {
                 start = i + 2;
                 break;
@@ -65,7 +67,7 @@ internal static class ReadmeHelpBlock
                 $"No README help block was found. It is the '{FenceOpen}' fenced block whose first line is '{PromptLine}'.");
         }
 
-        var end = Array.IndexOf(lines, FenceClose, start);
+        var end = Array.FindIndex(lines, start, line => line.TrimEnd() == FenceClose);
 
         if (end < 0)
         {
@@ -89,26 +91,49 @@ internal static class ReadmeHelpBlock
     /// <returns>
     /// A report naming every differing line, or <c>null</c> when the two agree.
     /// </returns>
+    /// <remarks>
+    /// The two are aligned on their longest common subsequence of lines rather than by position,
+    /// so an option added to or removed from the middle of the help is reported as that one line,
+    /// not as every line after it.
+    /// </remarks>
     public static string? Compare(IReadOnlyList<string> readme, IReadOnlyList<string> help)
     {
-        var report = new StringBuilder();
-        var lineCount = Math.Max(readme.Count, help.Count);
+        // common[i, j] is the length of the longest common subsequence of readme[i..] and help[j..].
+        var common = new int[readme.Count + 1, help.Count + 1];
 
-        for (var i = 0; i < lineCount; i++)
+        for (var i = readme.Count - 1; i >= 0; i--)
         {
-            var readmeLine = i < readme.Count ? readme[i] : null;
-            var helpLine = i < help.Count ? help[i] : null;
-
-            if (readmeLine == helpLine)
+            for (var j = help.Count - 1; j >= 0; j--)
             {
-                continue;
+                common[i, j] = readme[i] == help[j]
+                    ? common[i + 1, j + 1] + 1
+                    : Math.Max(common[i + 1, j], common[i, j + 1]);
             }
+        }
 
-            // Line numbers count from the line after the prompt line, where the compared
-            // block starts.
-            report.AppendLine($"block line {i + 1}:");
-            report.AppendLine($"  README.md: {readmeLine ?? MissingLine}");
-            report.AppendLine($"  --help:    {helpLine ?? MissingLine}");
+        var report = new StringBuilder();
+        var r = 0;
+        var h = 0;
+
+        while (r < readme.Count || h < help.Count)
+        {
+            if (r < readme.Count && h < help.Count && readme[r] == help[h])
+            {
+                r++;
+                h++;
+            }
+            else if (r < readme.Count && (h == help.Count || common[r + 1, h] >= common[r, h + 1]))
+            {
+                // Line numbers count from the line after the prompt line, where the compared
+                // block starts.
+                report.AppendLine($"- README.md line {r + 1}: {readme[r]}");
+                r++;
+            }
+            else
+            {
+                report.AppendLine($"+ --help    line {h + 1}: {help[h]}");
+                h++;
+            }
         }
 
         if (report.Length == 0)
@@ -118,8 +143,8 @@ internal static class ReadmeHelpBlock
 
         return
             "The README.md help block no longer matches what 'netpace --help' prints. " +
-            "It differs at the lines below, where '--help:' is the current output; " +
-            "update README.md to match, then re-run." +
+            "Lines marked '-' are in README.md but not printed by --help; lines marked '+' are " +
+            "printed by --help but missing from README.md. Update README.md to match, then re-run." +
             Environment.NewLine +
             report.ToString();
     }

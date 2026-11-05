@@ -63,12 +63,94 @@ public sealed partial class NetPaceConsoleTests
 
             // Then the reworded line and the line missing altogether are both named.
             Assert.NotNull(report);
-            Assert.Contains("block line 3", report);
             Assert.Contains("Performs the speed test in a loop.", report);
             Assert.Contains("Performs the speed test on continuous loop.", report);
-            Assert.Contains("block line 4", report);
             Assert.Contains("Stop speed testing after this many times.", report);
-            Assert.Contains("(no line)", report);
+        }
+
+        [Theory]
+        [InlineData(true)]
+        [InlineData(false)]
+        public void Should_Name_Only_The_Added_Or_Removed_Line_When_An_Option_Changes_Mid_Block(
+            bool optionAddedToHelp)
+        {
+            // Given help with an option added or removed in the middle, and a README block that
+            // was not updated to match.
+            string[] withoutOption =
+            [
+                "",
+                "OPTIONS:",
+                "        --first                       First unchanged option.",
+                "        --second                      Second unchanged option.",
+                "        --third                       Third unchanged option."
+            ];
+            var withOption = withoutOption
+                .Take(3)
+                .Append("        --middle                      The option that changed.")
+                .Concat(withoutOption.Skip(3))
+                .ToArray();
+
+            var readmeLines = optionAddedToHelp ? withoutOption : withOption;
+            var helpLines = optionAddedToHelp ? withOption : withoutOption;
+
+            var readme = ReadmeHelpBlock.Extract(
+                $"```txt\n{ReadmeHelpBlock.PromptLine}\n{string.Join("\n", readmeLines)}\n```\n");
+            var help = ReadmeHelpBlock.Normalise(string.Join("\n", helpLines));
+
+            // When
+            var report = ReadmeHelpBlock.Compare(readme, help);
+
+            // Then the changed option is named, and the lines around it, which still match, are not.
+            Assert.NotNull(report);
+            Assert.Contains("The option that changed.", report);
+            Assert.DoesNotContain("First unchanged option.", report);
+            Assert.DoesNotContain("Second unchanged option.", report);
+            Assert.DoesNotContain("Third unchanged option.", report);
+        }
+
+        [Theory]
+        [InlineData(0)]
+        [InlineData(1)]
+        [InlineData(2)]
+        public void Should_Find_The_Readme_Block_When_A_Fence_Or_Prompt_Line_Has_Trailing_Whitespace(
+            int lineWithTrailingSpace)
+        {
+            // Given a README block whose opening fence, prompt line or closing fence carries a
+            // trailing space — invisible, and rendered identically — followed by another fenced
+            // block the help block must not run on into.
+            string[] blockEdges = ["```txt", ReadmeHelpBlock.PromptLine, "```"];
+            blockEdges[lineWithTrailingSpace] += " ";
+
+            var readme = ReadmeHelpBlock.Extract(
+                $"""
+                Preamble.
+
+                {blockEdges[0]}
+                {blockEdges[1]}
+
+                OPTIONS:
+                        --loop                        Performs the speed test on continuous loop.
+                {blockEdges[2]}
+
+                ## Developer Use
+
+                ```bash
+                dotnet add package NetPace.Core
+                ```
+                """);
+
+            var help = ReadmeHelpBlock.Normalise(
+                """
+
+                OPTIONS:
+                        --loop                        Performs the speed test on continuous loop.
+                """);
+
+            // When
+            var report = ReadmeHelpBlock.Compare(readme, help);
+
+            // Then the block is found, ends where it should, and agrees with the help output.
+            Assert.True(report is null, report);
         }
 
         [Theory]
