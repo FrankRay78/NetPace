@@ -3,7 +3,6 @@
 
 - [A handed-down plan's tactics are suggestions — its outcomes are not](feedback_prescribed_tactics_are_suggestions.md) — distinguish prescribed *outcome* from prescribed *tactic*; prefer the simpler equivalent
 - [Challenge speculative numeric tolerances in test plans](feedback_speccheck_numeric_tolerance.md) — exact equality by default; only add tolerance when the operation actually introduces FP error
-- [Prompts favour locality over DRY](feedback_prompts_locality_over_dry.md) — inline short rules in each slash-command prompt; skip canonical-section + cross-refs and defensive specs for cases the generator can't produce
 - [Docs describe current codebase only — no forward references](feedback_docs_no_forward_references.md) — push back on task plans that mandate doc sections about unimplemented features tracked only by open issues
 - [After adding or removing a rule, sweep for what it touches](feedback_grep_after_simplifying.md) — grep for a removed concept repo-wide; reconcile a new prompt rule with older rules and re-run paths
 - [Scratch and staging files belong in .claude/scratch/](feedback_scratch_file_location.md) — gitignored; not /tmp, not ~/.claude/, not a top-level .scratch/
@@ -11,7 +10,7 @@
 - [Verify-snapshot tests count as coverage in NetPace.Console.Tests](feedback_console_output_snapshot_coverage.md) — check Expectations/*.verified.txt before reporting an output mode as untested
 - [Read source before designing fixes](feedback_read_source_before_designing.md) — read the source before designing a fix; verify a handed-down issue/spec/review diagnosis against HEAD before implementing
 - [Trust only a fresh, rebuilt, unpiped test run](feedback_trusting_a_test_run.md) — re-run after the last edit, no stale `--no-build`, never pipe a run you trust; read Passed!/Failed!
-- [Decompose quantified claims — no flattering multipliers](feedback_plain_language_decisions.md) — name what an estimate is made of instead of a headline multiplier
+- [Plain consequences first; decompose quantified claims](feedback_plain_language_decisions.md) — lead a decision with cost and payoff before mechanism; no headline multipliers
 - [Be decisive when the evidence has already earned it](feedback_decisiveness_over_hedging.md) — state the verdict the gates already support; build within a decision already made rather than re-litigating it
 - [Present several decisions one per turn](feedback_one_decision_per_turn.md) — one decision per message, explained from what happens today; write the answers up together at the end
 - [When the guard outgrows the fix, surface it as a decision](feedback_guard_outgrows_the_fix.md) — verification scaffolding bigger than the change means the wrong mechanism; ask before building

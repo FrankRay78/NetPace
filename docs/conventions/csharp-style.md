@@ -1,6 +1,6 @@
 # C# Style Guide
 
-> This document elaborates Section V of the constitution and must remain consistent with it.
+> This document elaborates the *Code quality* standards in `CONVENTIONS.md` and must remain consistent with them.
 
 **Scope**: Detailed C# coding conventions for NetPace
 **Extends**: `CLAUDE.md` (read that first for essential patterns)
@@ -90,7 +90,7 @@ Within a class, order members as follows:
 
 ## Testing
 
-See `docs/conventions/testing.md`; test naming and structure are set by the constitution's Testing Standards.
+See `docs/conventions/testing.md`; test naming and structure are set by `CONVENTIONS.md` → *Testing*.
 
 ---
 

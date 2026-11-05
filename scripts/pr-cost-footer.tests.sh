@@ -22,7 +22,8 @@
 # `review-followup` label starts a run, that a fork's pull request does not, that the action's
 # execution_file lands where the step passes it, and that a first review and a follow-up never
 # write the footer at the same time. The tool that decides all four is GitHub Actions
-# (Constitution §I, configuration/tooling), so the real workflow run is their RED step.
+# (CONVENTIONS.md, Test-driven development, configuration/tooling), so the real workflow run is
+# their RED step.
 #
 #   Usage:  scripts/pr-cost-footer.tests.sh
 

@@ -14,9 +14,9 @@ Choosing a server and measuring a server are two different jobs with two differe
 
 **Screening** answers "is this server reachable, and roughly how fast?" for every discovered candidate. It is a ranking pass: a few requests per server with no deliberate waiting between them, run concurrently across all candidates, under one overall ceiling. It is cheap on purpose, because it runs against every server on the list.
 
-**Measuring** answers "what is the latency of this server?" to the accuracy NetPace reports. It is the probe NetPace has always had — a fixed number of requests spaced by a fixed interval, averaged — and it runs exactly once, on the winner.
+**Measuring** answers "what is the latency of this server, and how steady is it?" to the accuracy NetPace reports. It is the probe NetPace has always had — a fixed number of requests spaced by a fixed interval, averaged — and it runs exactly once, on the winner. It also produces **jitter** on the result it returns: the mean of the absolute differences between consecutive probe times, which is unevenness as the change from one reply to the next rather than the spread of the probes around their average. No output format carries it, so today it reaches library consumers only. Only measuring produces it, and that is the clearest statement of the split — screening times each of its requests but keeps only the fastest, so no run of probe times survives to derive a jitter figure from, and it reports zero.
 
-`GetFastestServerByLatencyAsync` is the screening pass and returns the winner carrying its *screening* latency. The console then measures that server with `GetServerLatencyAsync`, and the measured figure is the one reported. The interface did not change: screening is a reinterpretation of what "find the fastest server" already meant, not a new method.
+`GetFastestServerByLatencyAsync` is the screening pass and returns the winner carrying its *screening* latency, and no jitter. The console then measures that server with `GetServerLatencyAsync`, and the measured figure is the one reported. The interface did not change: screening is a reinterpretation of what "find the fastest server" already meant, not a new method.
 
 ## Screening ranks, it does not reject
 

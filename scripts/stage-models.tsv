@@ -1,16 +1,13 @@
-# The model and reasoning effort for every stage a runner starts unattended: the chain
-# (scripts/chain.sh) and the GitHub workflows that run Claude. This file is the one place that
-# answer is written; scripts/stage-flags.sh <stage> turns a row into the flags a runner passes.
-# CHAIN_MODEL overrides the chain stages' model for a one-off run; their effort stays this file's.
+# The model and reasoning effort for every stage the GitHub workflows start unattended. This file
+# is the one place that answer is written for them; scripts/stage-flags.sh <stage> turns a row into
+# the flags a workflow passes. The chain's three stages are configured in .gaffer/chain.json, which
+# gaffer's chain reads.
 #
 # A command run by hand ignores this file and uses the session's model. A model a command picks
 # for its own subagents (review-pr's triage map, say) is set in the command, not here, so it holds
 # however the command was started.
 #
 # stage             model           effort
-build               claude-opus-5   high
-verify              claude-opus-5   high
-raise-pr            claude-opus-5   medium
 review-pr           opus            high
 review-followup     opus            high
 reviewissue         opus            high

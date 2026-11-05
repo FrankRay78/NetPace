@@ -2,7 +2,7 @@
 
 **Intent:** Let `/verify`'s clean-context review run to completion without a human. Reviewer subagents stand up synthetic fixtures to exercise failure paths and tear them down again, so teardown hits `rm` on nearly every run — and an `ask` rule is never auto-approved in any mode, `bypassPermissions` included, so removing the rule was the only lever that reaches the behaviour.
 
-**Behaviour:** `.claude/settings.json`; `docs/agentic-workflow-NetPace.md` → *Permissions*.
+**Behaviour:** `.claude/settings.json`.
 
 **Decisions:**
 

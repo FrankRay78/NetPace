@@ -2,10 +2,9 @@
 #
 # plugin-report.sh — read-only report on the harness tooling this repo declares.
 #
-# Covers four tools: read-once, context-mode and rtk (the token/context tooling named in
-# docs/agentic-workflow.md) plus pr-review-toolkit, which supplies the reviewer agents /verify
-# calls. Detailed descriptions and install commands for the first three live in
-# docs/wsl-claude-sandbox.md, step 7.
+# Covers five tools: read-once, context-mode and rtk (the token/context tooling), pr-review-toolkit,
+# which supplies the reviewer agents /gaffer:verify calls, and gaffer, which supplies the harness
+# commands themselves. /install-harness-tooling installs whichever of the first three is missing.
 #
 # WHY. Those tools are traced through this repo by several mechanisms — `Bash(rtk …)` and
 # `mcp__plugin_context-mode_context-mode__*` allow-entries in .claude/settings.json, an
@@ -24,7 +23,7 @@
 # they are absent, the nested session leaves a transcript under the Claude home's projects tree
 # like any other, and it records a context-mode session of its own. The nested session runs in
 # this repo, so this repo's hooks run with it. Manually run: not a hook, not wired into CI or
-# /verify, no --check mode and no exit-code contract. To install what it reports missing, run
+# /gaffer:verify, no --check mode and no exit-code contract. To install what it reports missing, run
 # /install-harness-tooling.
 #
 # "I COULD NOT LOOK" IS NOT "NO". Every probe that cannot reach a verdict — jq absent, a
@@ -118,13 +117,14 @@ probe_verdict() {
   esac
 }
 
-# Does this repo reference the tool at all — in harness config, or in the workflow docs that
-# describe it? Applied to all four rows so the column means one thing throughout: read-once is
-# named only in docs (no config anywhere references it), and the column says so uniformly
-# rather than meaning "in settings" on some rows and "in settings or docs" on others.
+# Does this repo reference the tool at all — in harness config, or in the docs and commands that
+# describe it? Applied to every row so the column means one thing throughout: read-once is named
+# only in /install-harness-tooling and docs (no config anywhere references it), and the column
+# says so uniformly rather than meaning "in settings" on some rows and "in settings or docs" on
+# others.
 declared_in_repo() {
   { [ -f "$SETTINGS" ] && grep -q -- "$1" "$SETTINGS" 2>/dev/null; } && return "$YES"
-  grep -rq -- "$1" "$ROOT/docs" 2>/dev/null && return "$YES"
+  grep -rq -- "$1" "$ROOT/docs" "$ROOT/.claude/commands" 2>/dev/null && return "$YES"
   return "$NO"
 }
 
@@ -231,12 +231,22 @@ hooked_in_claude_home 'rtk'; rtk_en=$?
 if [ $rtk_inst -eq "$YES" ]; then probe_verdict rtk --version; rtk_reach=$?; else rtk_reach=$NO; fi
 line rtk "$(yn $rtk_decl)" "$(yn $rtk_inst)" "$(yn $rtk_en)" "$(yn $rtk_reach)"
 
-# pr-review-toolkit — supplies the named reviewer agents /verify calls.
+# pr-review-toolkit — supplies the named reviewer agents /gaffer:verify calls.
 declared_in_repo 'pr-review-toolkit'; pr_decl=$?
 plugin_installed 'pr-review-toolkit@claude-plugins-official'; pr_inst=$?
 plugin_enabled 'pr-review-toolkit@claude-plugins-official'; pr_en=$?
 pr_reach=$NA   # agents are resolved by the harness at session start; nothing to probe here
 line pr-review-toolkit "$(yn $pr_decl)" "$(yn $pr_inst)" "$(yn $pr_en)" "$(yn $pr_reach)"
+
+# gaffer — supplies the /gaffer: commands. `installed` reads the user-level registry, so a box
+# that gets the plugin only through this repo's settings (extraKnownMarketplaces + enabledPlugins,
+# fetched when the project is opened) reports declared and enabled but not installed; that is
+# the honest answer, not a fault.
+declared_in_repo 'gaffer@gaffer-claude'; gf_decl=$?
+plugin_installed 'gaffer@gaffer-claude'; gf_inst=$?
+plugin_enabled 'gaffer@gaffer-claude'; gf_en=$?
+gf_reach=$NA   # commands are resolved by the harness at session start; nothing to probe here
+line gaffer "$(yn $gf_decl)" "$(yn $gf_inst)" "$(yn $gf_en)" "$(yn $gf_reach)"
 
 # --- CONFIG -----------------------------------------------------------------------
 echo
@@ -437,3 +447,4 @@ else
   cm_counters_row
 fi
 echo "pr-review-toolkit: n/a — exposes no counters"
+echo "gaffer: n/a — exposes no counters"

@@ -104,7 +104,7 @@ echo "Exclusion by PATH, not by line content (#91 H1) — the escape that let sk
 # The bin/obj exclusion must filter on the file's PATH. Filtering grep's output instead tests the
 # whole `path:lineno:content` line, so a construct whose SOURCE TEXT names /bin/ or /obj/ filters
 # itself out — and a dependency-probe skip naming an absolute path is the likeliest real skip
-# there is, which made the hole line up exactly with what §X most needs to catch.
+# there is, which made the hole line up exactly with what the ban most needs to catch.
 run_hook "$(sandbox 'class T { void M(){ Skip.If(!File.Exists("/bin/bash"), "no bash"); } }')"; ok "Skip.If with \"/bin/…\" in the string" 'blocked_detect'
 run_hook "$(sandbox 'class T { void M(){ Assert.Skip("see /obj/notes"); } }')";                 ok "Assert.Skip with \"/obj/…\" in the string" 'blocked_detect'
 run_hook "$(sandbox 'class T { void M(){ Skip.If(x); } }' 'src/Sample.Tests/bin/Debug/G.cs')"; ok "real bin/ dir still excluded"  'allowed'
@@ -207,14 +207,14 @@ echo "KNOWN OVER-BLOCKS — deliberate, pinned so a future 'tighten this' sees t
 # BANNED_RE carries a bare `Skip…=` to catch [Fact(Skip = GateReason)], where the reason is an
 # identifier. That breadth also matches ordinary C# assigning to something named Skip. Over-blocking
 # is the safe failure — loud, and fixed by a rename — where a false pass is silent non-coverage,
-# which is what §X exists to prevent.
+# which is what the ban exists to prevent.
 run_hook "$(sandbox 'class T { void M(){ var q = new Page { Skip = 10, Take = 5 }; } }')"
 ok "pagination initializer { Skip = 10 }" 'blocked_detect'
 run_hook "$(sandbox 'class T { void M(){ int Skip = 0; } }')"
 ok "local variable named Skip"            'blocked_detect'
 # #91 H7, assessed and accepted: classification is not narrowed to command-word position. A
 # read-only command merely MENTIONING the words is gated — but only when src/ already holds a
-# banned construct, i.e. when §X is already violated and must be fixed anyway; in a clean tree
+# banned construct, i.e. when the ban is already violated and must be fixed anyway; in a clean tree
 # it never fires. Parsing shell to find the command-word would trade this harmless over-block for
 # the failure that matters: a parser gap missing a real commit and letting a skip land silently.
 run_hook "$(sandbox "$DIRTY")" 'grep -r "git commit" docs/'

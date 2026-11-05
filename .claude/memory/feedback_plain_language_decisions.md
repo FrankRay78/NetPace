@@ -1,10 +1,10 @@
 ---
-name: Decompose quantified claims — no flattering multipliers
-description: When an option's cost or benefit is quantified for Frank, say what the estimate is made of rather than quoting a headline multiplier.
+name: Plain consequences first; decompose quantified claims
+description: Put a choice to Frank in plain consequences before mechanism, and say what a quantified estimate is made of rather than quoting a headline multiplier.
 type: feedback
 ---
 
-When putting a choice to Frank (framing rules: CLAUDE.md "Don't frame a decision in implementation jargon"), decompose any quantified cost or benefit instead of reaching for a round multiplier.
+When putting a choice to Frank (an `AskUserQuestion`, a spec tradeoff), lead with plain-language consequences — what it costs, what it unlocks — before the mechanism, and decompose any quantified cost or benefit instead of reaching for a round multiplier. The gaffer commands that raise decisions (`/gaffer:draftissue`, `/gaffer:reviewissue`) carry the same plain-words rule.
 
 **Why:** A calibrated "~30% fewer re-reads" can be checked part by part; a loose "2x faster" can't, and it erodes trust when it proves wrong.
 
