@@ -6,7 +6,7 @@ using NetPace.Core;
 
 namespace NetPace.Console.Commands;
 
-public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService speedTestClient, IClock clock, IClientInfoProvider clientInfoProvider, IDiagnosticRecorder recorder, IWaiter waiter)
+public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService speedTestClient, IClock clock, IClientInfoProvider clientInfoProvider, IDiagnosticRecorder recorder, IWaiter waiter, ILiveDisplayRefresh liveDisplayRefresh)
 {
     /// <summary>
     /// Executes the speed test command using the provided settings.
@@ -43,7 +43,7 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
             { CSV: true } => new CSVConsoleWriter(),
             { Json: true } or { JsonPretty: true } => new JsonConsoleWriter(),
             { Minimal: true } => new MinimalConsoleWriter(),
-            _ => new DefaultConsoleWriter()
+            _ => new DefaultConsoleWriter(liveDisplayRefresh)
         };
 
         if (writer.MachineReadable)
