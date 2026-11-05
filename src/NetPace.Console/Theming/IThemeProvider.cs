@@ -27,7 +27,9 @@ public interface IThemeProvider
 /// <c>NO_COLOR</c> outranks it. A user who has asked every program on the machine for no colour has
 /// already answered the question a theme asks, so any non-empty value selects
 /// <see cref="Theme.Plain"/> whatever <c>NETPACE_THEME</c> says — the convention published at
-/// no-color.org, which Spectre.Console does not implement itself.
+/// no-color.org. Spectre.Console reads the variable too, but only to drop colour, so without this a
+/// theme's bold would survive it. Spectre also treats an empty value as set where no-color.org does
+/// not, so an empty <c>NO_COLOR</c> draws the chosen theme's emphasis without its colour.
 /// </para>
 /// </remarks>
 public sealed class EnvironmentThemeProvider : IThemeProvider

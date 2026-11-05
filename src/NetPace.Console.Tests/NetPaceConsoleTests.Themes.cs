@@ -80,6 +80,22 @@ public sealed partial class NetPaceConsoleTests
         }
 
         [Fact]
+        public async Task PartlyFinishedProgressBar_WithNoThemeChosen_IsDrawnInTodaysColours()
+        {
+            // SCENARIO: Unset theme keeps today's look
+
+            // Given a download that stops part-way, so the bar has both a done and a remaining part
+            var host = SpeedTestHost(PartWayDownloadServices(FromEnvironment()));
+
+            // When
+            var result = await host.RunAsync(["--no-upload"]);
+
+            // Then
+            Assert.Equal(0, result.ExitCode);
+            await Verify(AnsiSnapshot.Readable(result.Output));
+        }
+
+        [Fact]
         public async Task ServerList_WithNoThemeChosen_IsDrawnInTodaysColours()
         {
             // SCENARIO: Unset theme keeps today's look
@@ -137,6 +153,38 @@ public sealed partial class NetPaceConsoleTests
 
             // When
             var result = await host.RunAsync(["servers", "--fastest"]);
+
+            // Then
+            Assert.Equal(0, result.ExitCode);
+            await Verify(AnsiSnapshot.Readable(result.Output));
+        }
+
+        [Fact]
+        public async Task ServerListWithLatency_UnderTheGreenTheme_IsDrawnInGreen()
+        {
+            // SCENARIO: Chosen theme applies to every command
+
+            // Given
+            var host = StaticScreenHost(ServerListServices(FromEnvironment(("NETPACE_THEME", "green"))));
+
+            // When
+            var result = await host.RunAsync(["servers", "--latency"]);
+
+            // Then
+            Assert.Equal(0, result.ExitCode);
+            await Verify(AnsiSnapshot.Readable(result.Output));
+        }
+
+        [Fact]
+        public async Task ServersHelpScreen_UnderTheGreenTheme_IsDrawnInGreen()
+        {
+            // SCENARIO: Chosen theme applies to every command
+
+            // Given
+            var host = StaticScreenHost(ServerListServices(FromEnvironment(("NETPACE_THEME", "green"))));
+
+            // When
+            var result = await host.RunAsync(["servers", "--help"]);
 
             // Then
             Assert.Equal(0, result.ExitCode);
@@ -245,8 +293,9 @@ public sealed partial class NetPaceConsoleTests
             var result = await host.RunAsync(["--no-upload"]);
 
             // Then the slots only a part-finished bar reaches — the transferred part, the part still
-            // to come, the running percentage and the spinner — are drawn in the theme. The finished
-            // bars in the other green snapshots reach none of these.
+            // to come and the running percentage — are drawn in the theme. The finished bars in the
+            // other green snapshots reach none of these. The spinner's style is not covered: its
+            // display is cleared before its last frame, so no snapshot draws a glyph.
             Assert.Equal(0, result.ExitCode);
             await Verify(AnsiSnapshot.Readable(result.Output));
         }
@@ -265,16 +314,10 @@ public sealed partial class NetPaceConsoleTests
             // Then the run completes,
             Assert.Equal(0, result.ExitCode);
 
-            // and the user is told what was not understood and what they could have typed.
-            Assert.Contains("halloween", result.NoticeOutput, StringComparison.Ordinal);
-            Assert.Contains("NETPACE_THEME", result.NoticeOutput, StringComparison.Ordinal);
-            foreach (var name in Theme.All.Select(theme => theme.Name))
-            {
-                Assert.Contains(name, result.NoticeOutput, StringComparison.Ordinal);
-            }
-
-            // The notice is a word to the user, never part of the result.
+            // The notice is a word to the user, never part of the result,
+            // and tells them what was not understood and what they could have typed.
             Assert.DoesNotContain("halloween", result.Output, StringComparison.Ordinal);
+            await Verify(result.NoticeOutput);
         }
 
         [InlineData("--csv")]
@@ -320,6 +363,7 @@ public sealed partial class NetPaceConsoleTests
         [InlineData("--quiet=true")]
         [InlineData("--quiet:true")]
         [InlineData("-q=true")]
+        [InlineData("-tq")]
         [Theory]
         public async Task UnrecognisedThemeName_UnderAQuietRun_SaysNothing(string quiet)
         {
@@ -336,6 +380,25 @@ public sealed partial class NetPaceConsoleTests
             Assert.Equal(string.Empty, result.NoticeOutput);
         }
 
+        [InlineData("--quiet", "false")]
+        [InlineData("-q", "false")]
+        [InlineData("--quiet=false")]
+        [Theory]
+        public async Task UnrecognisedThemeName_WhenQuietIsTurnedOff_IsStillReported(params string[] args)
+        {
+            // SCENARIO: Unknown theme name
+
+            // Given
+            var host = StaticScreenHost(SpeedTestServices(FromEnvironment(("NETPACE_THEME", "halloween"))));
+
+            // When
+            var result = await host.RunAsync(args);
+
+            // Then
+            Assert.Equal(0, result.ExitCode);
+            Assert.Contains("halloween", result.NoticeOutput, StringComparison.Ordinal);
+        }
+
         [Fact]
         public async Task UnrecognisedThemeName_WhenNoColourIsAsked_NamesThePlainThemeItActuallyDrew()
         {
@@ -350,8 +413,7 @@ public sealed partial class NetPaceConsoleTests
             // Then the notice names the theme the run settled on rather than assuming the default,
             // so it does not send the user looking for colour that was never going to appear.
             Assert.Equal(0, result.ExitCode);
-            Assert.Contains($"the {Theme.Plain.Name} theme", result.NoticeOutput, StringComparison.Ordinal);
-            Assert.DoesNotContain($"the {Theme.Default.Name} theme", result.NoticeOutput, StringComparison.Ordinal);
+            await Verify(result.NoticeOutput);
         }
 
         [Fact]
@@ -392,22 +454,6 @@ public sealed partial class NetPaceConsoleTests
 
             // Then
             Assert.All(outputs, output => Assert.Equal(outputs[0], output));
-        }
-
-        [Fact]
-        public async Task HelpScreen_TellsTheUserAboutTheThemeVariable()
-        {
-            // Given
-            var host = StaticScreenHost(SpeedTestServices(FromEnvironment()));
-
-            // When
-            var result = await host.RunAsync(["--help"]);
-
-            // Then
-            Assert.Equal(0, result.ExitCode);
-            var help = AnsiSnapshot.WithoutStyling(result.Output);
-            Assert.Contains("NETPACE_THEME", help, StringComparison.Ordinal);
-            Assert.Contains(Theme.NameList, help, StringComparison.Ordinal);
         }
 
         [InlineData("--csv --json")]

@@ -6,8 +6,9 @@ namespace NetPace.Console.Theming;
 /// <remarks>
 /// A theme is a standing preference rather than a per-run choice, so it is chosen through the
 /// environment and never through an option — see <see cref="EnvironmentThemeProvider"/>. Only the
-/// screens a person reads take their appearance from here: CSV, JSON and <c>--file</c> output carry
-/// numbers another program parses, and <c>--minimal</c> has never been coloured.
+/// screens a person reads take their appearance from here: CSV and JSON carry numbers another
+/// program parses, <c>--file</c> output is always written without colour, and <c>--minimal</c> has
+/// never been coloured.
 /// <para>
 /// Every element NetPace colours has a slot, so a new theme is a list of values rather than a
 /// search through the renderers. A slot's name says what is being drawn, never which colour it

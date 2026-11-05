@@ -582,9 +582,10 @@ public static class Program
         // ever being parsed, and a theme that arrived later would not reach it.
         var selection = serviceProvider.GetRequiredService<IThemeProvider>().Resolve();
         selection.Theme.ApplyTo(ansiConsole);
-        ReportUnrecognisedTheme(serviceProvider, args, selection);
 
         var rootCommand = CreateRootCommand(serviceProvider, args, selection.Theme);
+        var parseResult = rootCommand.Parse(args);
+        ReportUnrecognisedTheme(serviceProvider, parseResult, selection);
 
         // Check for version request before parsing
         if (args.Length > 0 && (args[0] is "-v" or "--version"))
@@ -612,8 +613,6 @@ public static class Program
             }
         }
 
-        var parseResult = rootCommand.Parse(args);
-
         // Handle parse errors - these should be shown even in quiet mode
         if (parseResult.Errors.Count > 0)
         {
@@ -632,17 +631,15 @@ public static class Program
     /// do. Nothing is written when the value named a theme, or named nothing.
     /// </summary>
     /// <remarks>
-    /// Written before any option is parsed, because <c>--help</c> and <c>--version</c> both return
-    /// without parsing and a user who typo'd the variable should hear about it whichever command
-    /// they ran. That is also why <c>--quiet</c> is read off the arguments here: a run told to say
-    /// nothing says nothing, and the parsed value does not exist yet. Reading it by hand means the
-    /// spellings below have to cover every form the parser accepts for a boolean option, not just
-    /// the bare flag.
+    /// Written before <c>--help</c> and <c>--version</c> return, so a user who typo'd the variable
+    /// hears about it whichever command they ran. Whether the run is quiet is read from the parse
+    /// rather than the raw arguments, so every spelling the parser accepts — a separate
+    /// <c>false</c>, a bundled <c>-tq</c>, a response file — means here what it means to the run.
     /// </remarks>
-    private static void ReportUnrecognisedTheme(IServiceProvider serviceProvider, string[] args, ThemeSelection selection)
+    private static void ReportUnrecognisedTheme(IServiceProvider serviceProvider, ParseResult parseResult, ThemeSelection selection)
     {
         if (selection.UnrecognisedValue is not { } requested) return;
-        if (args.Any(AsksForQuiet)) return;
+        if (AsksForQuiet(parseResult)) return;
 
         // The theme is named from what the run settled on rather than assumed to be the default:
         // NO_COLOR outranks the variable, so an unreadable name can still end in the plain theme.
@@ -651,24 +648,12 @@ public static class Program
     }
 
     /// <summary>
-    /// Whether <paramref name="arg"/> is a request for a quiet run, in any spelling
-    /// System.CommandLine accepts for a boolean option — bare, or with a value after <c>=</c> or
-    /// <c>:</c>. An explicit <c>false</c> is not a request for quiet.
+    /// Whether the parsed run asked for quiet. Only the root command has <c>--quiet</c>, so a
+    /// subcommand run is never quiet.
     /// </summary>
-    private static bool AsksForQuiet(string arg)
+    private static bool AsksForQuiet(ParseResult parseResult)
     {
-        string[] names = ["--quiet", "-q"];
-
-        foreach (string name in names)
-        {
-            if (arg == name) return true;
-
-            if (arg.StartsWith($"{name}=", StringComparison.Ordinal) || arg.StartsWith($"{name}:", StringComparison.Ordinal))
-            {
-                return !bool.TryParse(arg[(name.Length + 1)..], out bool asked) || asked;
-            }
-        }
-
-        return false;
+        var quiet = parseResult.RootCommandResult.Command.Options.OfType<Option<bool>>().Single(option => option.Name == "--quiet");
+        return parseResult.GetResult(quiet) is { Errors: var errors } && !errors.Any() && parseResult.GetValue(quiet);
     }
 }

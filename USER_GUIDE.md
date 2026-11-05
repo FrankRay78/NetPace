@@ -349,7 +349,7 @@ export NETPACE_THEME=green
 
 Names are matched without regard to case, so `GREEN` and `green` are the same request. Set the variable to something that is not a theme and NetPace says so on the error stream, naming the theme it is drawing in instead — the run is never stopped by a typo. `--quiet` suppresses that notice along with everything else.
 
-The theme reaches every screen a person reads: the speed test, `servers` in all its forms, and `--help`. It never reaches output another program parses — `--csv`, `--json` and `--file` are byte-for-byte the same whatever the theme is, and `--minimal` has no colour to change.
+The theme reaches every screen a person reads: the speed test, `servers` in all its forms, and `--help`. It never reaches output another program parses — `--csv` and `--json` are byte-for-byte the same whatever the theme is. `--file` output is always written without colour, and `--minimal` has no colour to change.
 
 Colour never carries meaning on its own in anything NetPace composes itself. A failure is marked by the word `Error:`, so it reads as a failure even where you cannot tell the colours apart or have turned colour off entirely. The one exception is the progress bar under `default` and `green`, where how much is done is shown by colour alone; the `plain` theme draws that distinction with glyphs and blank space instead.
 
@@ -391,11 +391,11 @@ Diagnostics go to the error stream, never to the result stream, so the two can b
 netpace --json --diagnostics > result.json 2> diagnostics.log
 ```
 
-The result is byte-for-byte what the same invocation produces without the switch, in every output format — so adding `--diagnostics` to a script that parses `--csv` or `--json` cannot break the parsing. Without the switch, nothing is written to the error stream at all. At a terminal with nothing redirected, the records appear after the result, leaving the live progress display intact.
+The result is byte-for-byte what the same invocation produces without the switch, in every output format — so adding `--diagnostics` to a script that parses `--csv` or `--json` cannot break the parsing. Without the switch, nothing is written to the error stream at all, except the notice about an unrecognised `NETPACE_THEME` (see [Choosing a colour theme](#choosing-a-colour-theme)). At a terminal with nothing redirected, the records appear after the result, leaving the live progress display intact.
 
 `--diagnostics` works alongside whichever output format you chose, and is unaffected by `--quiet`. It never writes to the `--file` target.
 
-Each line is one record, as `key=value` pairs (an excerpt — a real run also carries the `screening` and `latency` test blocks, and `server.selected` appears after them):
+Each line is one record, as `key=value` pairs (an excerpt — a real run also carries the `screening` and `latency` test blocks, and `server.selected` appears after them). If `NETPACE_THEME` names no theme, its one-line notice comes first on the same stream, ahead of the records:
 
 ```
 ts=1980-01-01T10:05:00.000 event=run.start version=0.25.0 runtime=".NET 10.0.0" os="Linux 6.8.0-137-generic" arch=x64

@@ -1,0 +1,1 @@
+﻿NETPACE_THEME is set to 'halloween', which is not a theme. Using the default theme. Valid themes: <default, plain, green>.
