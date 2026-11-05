@@ -5,15 +5,19 @@ public sealed partial class NetPaceConsoleTests
     public sealed class Servers
     {
         /// <summary>
-        /// Server details as Speedtest may publish them: brackets in a location, a sponsor and a
-        /// URL, a sponsor that reads as a styling tag, and one that reads as an emoji code. NetPace
-        /// does not control any of these, so each is listed character for character.
+        /// Server details as Speedtest may publish them. A markup cell rejects some outright -
+        /// brackets in a location, a sponsor and a URL, and a sponsor reading as an unclosed
+        /// styling tag - and changes others without failing: a balanced styling tag, doubled
+        /// brackets, and an emoji code. NetPace does not control any of these, so each is listed
+        /// character for character.
         /// </summary>
         private static readonly IServer[] unruly =
         [
             new Server { Location = "Bracketed [Town]", Sponsor = "Example [Fibre]", Url = "http://[2001:db8::1]:8080/" },
             new Server { Location = "Emoji Town", Sponsor = ":fire: Networks", Url = "http://emoji.example/" },
             new Server { Location = "Styling Town", Sponsor = "[bold]", Url = "http://styling.example/" },
+            new Server { Location = "Tagged Town", Sponsor = "[bold]Fast[/] Fibre", Url = "http://tagged.example/" },
+            new Server { Location = "Doubled Town", Sponsor = "Example [[Fibre]]", Url = "http://doubled.example/" },
         ];
 
         /// <summary>
@@ -31,7 +35,7 @@ public sealed partial class NetPaceConsoleTests
         {
             var services = new ServiceCollection();
             services.AddSingleton<ISpeedTestService>(UnrulyServerService());
-            return new CommandLineTestHost(services, CommandLineTestHost.RedirectedWidth, recordColour: recordColour);
+            return new CommandLineTestHost(services, recordColour: recordColour);
         }
 
         [Fact]

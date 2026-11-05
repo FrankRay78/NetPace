@@ -50,9 +50,11 @@ public sealed class ListServersCommand(IAnsiConsole console, ISpeedTestService s
     /// <remarks>
     /// Speedtest publishes these values, so NetPace does not control what they contain, and they
     /// are drawn as plain text rather than handed to the table as strings: a string cell is read as
-    /// Spectre.Console markup, where a square bracket in a location, sponsor or URL fails the whole
-    /// listing, and a value that happens to read as a styling tag is drawn styled with its brackets
-    /// eaten. The speed test's own writers show the same fields as plain text.
+    /// Spectre.Console markup, where an unbalanced square bracket in a location, sponsor or URL
+    /// fails the whole listing. Three more change a detail without failing at all - a balanced
+    /// styling tag is drawn styled with its brackets eaten, a doubled bracket is drawn halved, and
+    /// a colon-delimited emoji code is swapped for the emoji. The default output writer shows the
+    /// sponsor and URL as plain text too.
     /// </remarks>
     private static Text Detail(string? value) => new(value ?? string.Empty);
 
