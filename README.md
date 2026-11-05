@@ -13,7 +13,7 @@ Built with .NET 10.0 — runs on Windows, Linux, and macOS.
 <p align="left">
     <a href="https://github.com/FrankRay78/NetPace/issues/new?labels=needs%20triage,bug&template=bug-report---.md">Report Bug</a>
     -
-    <a href="https://github.com/FrankRay78/NetPace/issues/new?labels=needs%20triage,enhancement&template=feature-request---.md">Request Feature</a>
+    <a href="https://github.com/FrankRay78/NetPace/issues/new?labels=needs%20triage,feature&template=feature-request---.md">Request Feature</a>
 </p>
 
 Fan of NetPace? Consider giving the [repo](https://github.com/FrankRay78/NetPace) a star ⭐ - it helps others find it too.
@@ -26,6 +26,7 @@ Fan of NetPace? Consider giving the [repo](https://github.com/FrankRay78/NetPace
 * Server discovery, latency measurement, download and upload speed testing.
 * Command-line application and C# Microsoft .Net [NuGet](https://www.nuget.org/packages/NetPace.Core/) library for developers.
 * User configurable output (eg. SI or IEC units, bits or bytes, CSV and Json formats).
+* Colour themes, chosen once with `NETPACE_THEME` and applied to every command.
 * Highly configurable traffic profiles (see [LatencyTestSettings](https://github.com/FrankRay78/NetPace/blob/main/src/NetPace.Core/Clients/Ookla/Settings/LatencyTestSettings.cs), [DownloadTestSettings](https://github.com/FrankRay78/NetPace/blob/main/src/NetPace.Core/Clients/Ookla/Settings/DownloadTestSettings.cs) and [UploadTestSettings](https://github.com/FrankRay78/NetPace/blob/main/src/NetPace.Core/Clients/Ookla/Settings/UploadTestSettings.cs)).
 * Highly reliable, utilises [Ookla's](https://www.speedtest.net/) Speedtest servers.
 
@@ -77,6 +78,14 @@ On a metered or IoT connection? Use the `tiny` profile (≤ 1 MiB total per run)
 ```bash
 netpace --profile tiny
 ```
+
+Prefer a different look? Set `NETPACE_THEME` once — `default` (NetPace's own colours), `plain` (no colour at all) or `green` — and every command is drawn that way:
+
+```bash
+export NETPACE_THEME=green
+```
+
+`NO_COLOR` outranks it, and output meant for another program to parse is the same whatever the theme. See the [User Guide](https://github.com/FrankRay78/NetPace/blob/main/USER_GUIDE.md#choosing-a-colour-theme) for the detail.
 
 For common scenarios and advanced usage (such as scripting, restricting payload size, choosing a traffic profile, or customising output), see the [User Guide](https://github.com/FrankRay78/NetPace/blob/main/USER_GUIDE.md).
 
@@ -148,6 +157,9 @@ OPTIONS:
 
 COMMANDS:
     servers    Show the nearest speed test servers.
+
+ENVIRONMENT:
+    NETPACE_THEME  Colour theme to draw in. <default, plain, green>
 
 SEE ALSO:
     https://github.com/FrankRay78/NetPace/blob/main/USER_GUIDE.md

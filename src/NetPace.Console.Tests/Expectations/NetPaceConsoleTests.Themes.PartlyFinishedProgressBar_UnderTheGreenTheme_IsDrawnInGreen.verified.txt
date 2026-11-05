@@ -1,0 +1,10 @@
+﻿\e[?25l                 
+  Choosing server
+                 
+\e[2K\e[1A\e[2K\e[1A\e[2K\e[?25h
+\e[1;38;5;28mTest Sponsor 1\e[0m
+\e[38;5;65mhttp://test1.com\e[0m
+\e[?25l                                                                
+Downloading \e[38;5;64m━━━━━━━━━━━━━━━━\e[0m\e[38;5;65m━━━━━━━━━━━━━━━━━━━━━━━━\e[0m  \e[38;5;65m40%\e[0m 8 Kbps
+                                                                
+\e[?25h\e[38;5;29mLatency:\e[0m \e[1;38;5;28m100 ms\e[0m, \e[38;5;29mDownload:\e[0m \e[1;38;5;28m8 Kbps\e[0m

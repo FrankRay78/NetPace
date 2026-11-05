@@ -2,6 +2,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using NetPace.Console;
 using NetPace.Console.Diagnostics;
+using NetPace.Console.Tests.Theming;
+using NetPace.Console.Theming;
 using Spectre.Console;
 using Spectre.Console.Testing;
 
@@ -38,6 +40,7 @@ public sealed class CommandLineTestHost
     private readonly IServiceCollection serviceCollection;
     private readonly int consoleWidth;
     private readonly bool _interactive;
+    private readonly bool _recordColour;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="CommandLineTestHost"/> class.
@@ -54,11 +57,20 @@ public sealed class CommandLineTestHost
     /// or redirected destination every other test here stands for. An interactive run needs a
     /// finite width: pass <see cref="InteractiveTerminalWidth"/> rather than leaving the default.
     /// </param>
-    public CommandLineTestHost(IServiceCollection? services, int consoleWidth = UnlimitedWidth, bool interactive = false)
+    /// <param name="recordColour">
+    /// Whether the run sees a colour-capable terminal that emits ANSI sequences, so the captured
+    /// output carries the colours the user would see rather than the bare text. Defaults to
+    /// <c>false</c>, which is what every snapshot of NetPace's wording relies on: a colourless
+    /// console leaves the text readable in a snapshot and unaffected by any later change to which
+    /// colour an element is drawn in. Turn it on only to assert something about colour itself, and
+    /// pass the captured output through <see cref="AnsiSnapshot.Readable"/> before snapshotting it.
+    /// </param>
+    public CommandLineTestHost(IServiceCollection? services, int consoleWidth = UnlimitedWidth, bool interactive = false, bool recordColour = false)
     {
         serviceCollection = services ?? new ServiceCollection();
         this.consoleWidth = consoleWidth;
         _interactive = interactive;
+        _recordColour = recordColour;
     }
 
     /// <summary>
@@ -76,12 +88,27 @@ public sealed class CommandLineTestHost
             testConsole.Interactive();
         }
 
+        if (_recordColour)
+        {
+            testConsole.Colors(ColorSystem.TrueColor);
+            testConsole.EmitAnsiSequences();
+        }
+
         serviceCollection.TryAddSingleton<IAnsiConsole>(testConsole);
 
         // The diagnostic stream is captured separately from the result stream, so a test can assert
         // that each carries only its own content.
         using var diagnosticWriter = new StringWriter();
         serviceCollection.TryAddSingleton(new DiagnosticOutput(diagnosticWriter));
+
+        // Where a notice to the user goes — the process error stream in production. Captured apart
+        // from both the result and the diagnostics, so a test can assert which stream carried what.
+        using var noticeWriter = new StringWriter();
+        serviceCollection.TryAddSingleton(new NoticeOutput(noticeWriter));
+
+        // A fixed theme unless a test chooses otherwise, so no snapshot depends on what the person
+        // running the tests has NETPACE_THEME set to.
+        serviceCollection.TryAddSingleton<IThemeProvider>(new FixedThemeProvider(Theme.Default));
 
         // Default IClientInfoProvider stub unless a test already registered one
         serviceCollection.TryAddSingleton<IClientInfoProvider, ClientInfoProviderStub>();
@@ -109,6 +136,7 @@ public sealed class CommandLineTestHost
             ExitCode = exitCode,
             Output = testConsole.Output,
             DiagnosticOutput = diagnosticWriter.ToString(),
+            NoticeOutput = noticeWriter.ToString(),
         };
     }
 }
@@ -132,4 +160,10 @@ public sealed record TestResult
     /// Gets what was written to the diagnostic stream — empty unless <c>--diagnostics</c> was passed.
     /// </summary>
     public required string DiagnosticOutput { get; init; }
+
+    /// <summary>
+    /// Gets what the run said to the user alongside its result — empty unless something about the
+    /// way NetPace was asked to run needed remarking on.
+    /// </summary>
+    public required string NoticeOutput { get; init; }
 }
