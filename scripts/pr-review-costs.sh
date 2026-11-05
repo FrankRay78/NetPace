@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 #
-# pr-review-costs.sh — add a row per newly closed pull request to docs/metrics/pr-review-costs.md,
+# pr-review-costs.sh — add a row per newly closed pull request to docs/metrics/pr-review-costs.md
+# (and the same rows to pr-review-costs.csv beside it),
 # collecting what each one's automated review cycle cost beside how big and how risky it was.
 #
 # Every reviewed pull request carries its review rounds' cost in a footer at the end of its
@@ -30,7 +31,7 @@
 # WHY IN THE CODEBASE, AND WHY AGENTS SKIP IT. The file is data for the maintainer, written only
 # by this script and committed like any other change; the wiki's narrow layout made the table hard
 # to read. It cites a pull request number on every row, which CONVENTIONS.md's rule that issue
-# numbers live only in change-intent records allows for this one file, and it opens with a note
+# numbers live only in change-intent records allows for it and its CSV, and it opens with a note
 # telling agents it is not guidance. Rationale: CIR
 # docs/change-intent-records/2026-11-05-review-costs-live-in-the-codebase.md.
 #
@@ -50,8 +51,8 @@ shopt -s inherit_errexit
 PAGE_PATH='docs/metrics/pr-review-costs.md'
 FOOTER_MARKER='<!-- pr-cost-footer -->'
 REVIEW_MARKER='<!-- review-pr -->'
-HEADER='| PR | Title | Closed | Code | Tests | Docs | Risk | No-human merge | Review | Follow-up 1 | Follow-up 2 | Follow-up 3 | Total cost | Total tokens |'
-SEPARATOR='| --- | --- | --- | ---: | ---: | ---: | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |'
+HEADER='| PR | Title | Closed | Code | Tests | Docs | Risk | No-human merge | Review | Follow-up 1 | Follow-up 2 | Total cost | Total tokens |'
+SEPARATOR='| --- | --- | --- | ---: | ---: | ---: | --- | --- | ---: | ---: | ---: | ---: | ---: |'
 
 # The awk helpers every reader of a row shares. A row is split on its pipes once escaped pipes in a
 # title are set aside, so an empty cell is still a cell; cells(row, c) fills c[1..] with the trimmed
@@ -92,8 +93,10 @@ lines_changed() {
   '
 }
 
-# footer_costs <body> — "<review>\t<follow-up 1>\t<follow-up 2>\t<follow-up 3>\t<total cost>\t<total tokens>"
-# read from the cost footer. A round the pull request never had is empty; the footer's own
+# footer_costs <body> — <review>, <follow-up 1>, <follow-up 2>, <total cost> and <total tokens>,
+# read from the cost footer. Two follow-up columns, because /gaffer:review-followup caps a pull
+# request at three rounds in all; a further round, should the cap ever change, still counts in the
+# total. A round the pull request never had is empty; the footer's own
 # `unknown` passes through, since it is a real answer.
 footer_costs() {
   printf '%s\n' "$1" | tr -d '\r' | awk -v marker="$FOOTER_MARKER" '
@@ -107,11 +110,11 @@ footer_costs() {
     infooter && /^\|/ {
       split($0, c, "|"); name = trim(c[2]); tok = trim(c[3]); cost = trim(c[4])
       if (name == "PR Review") r[0] = cost
-      else if (name ~ /^Review [1-3]$/) r[substr(name, 8) + 0] = cost
+      else if (name ~ /^Review [12]$/) r[substr(name, 8) + 0] = cost
       else if (name == "Total") { tc = cost; tt = tokens(tok) }
     }
     END {
-      for (i = 0; i <= 3; i++) printf "%s\037", (i in r) ? r[i] : ""
+      for (i = 0; i <= 2; i++) printf "%s\037", (i in r) ? r[i] : ""
       printf "%s\037%s\n", (tc == "" ? "unknown" : tc), (tt == "" ? "unknown" : tt)
     }
   '
@@ -146,15 +149,15 @@ build_row() {
 
   IFS=$'\037' read -r code tests docs < <(printf '%s' "$files" | lines_changed)
   IFS=$'\037' read -r risk human < <(first_verdict "$reviews")
-  local r0 r1 r2 r3 total tokens
-  IFS=$'\037' read -r r0 r1 r2 r3 total tokens < <(footer_costs "$(jq -r .body <<<"$pr")")
+  local r0 r1 r2 total tokens
+  IFS=$'\037' read -r r0 r1 r2 total tokens < <(footer_costs "$(jq -r .body <<<"$pr")")
 
   local title_cell; title_cell=$(cell "$title")
   [ -n "$merged" ] || title_cell+=" *(not merged)*"
 
-  printf '| %s | %s | %s | %s | %s | %s | %s | %s | %s | %s | %s | %s | %s | %s |\n' \
+  printf '| %s | %s | %s | %s | %s | %s | %s | %s | %s | %s | %s | %s | %s |\n' \
     "[#$n]($url)" "$title_cell" "$closed" "$code" "$tests" "$docs" "$risk" "$human" \
-    "$r0" "$r1" "$r2" "$r3" "$total" "$tokens"
+    "$r0" "$r1" "$r2" "$total" "$tokens"
 }
 
 # totals_row <rows> — the bold Total row under the table, summed from the rows as they stand on
@@ -180,22 +183,56 @@ totals_row() {
     {
       cells($0, c)
       for (k = 4; k <= 6; k++) if (c[k] != "") { seen[k] = 1; v = c[k]; gsub(/,/, "", v); size[k] += v }
-      for (k = 9; k <= 13; k++) money(c[k], k)
-      if (c[14] ~ /^[0-9]+(\.[0-9]+)?M$/) { mtok += substr(c[14], 1, length(c[14]) - 1); seen[14] = 1 }
-      else if (c[14] != "") { tgap = 1; seen[14] = 1 }
+      for (k = 9; k <= 12; k++) money(c[k], k)
+      if (c[13] ~ /^[0-9]+(\.[0-9]+)?M$/) { mtok += substr(c[13], 1, length(c[13]) - 1); seen[13] = 1 }
+      else if (c[13] != "") { tgap = 1; seen[13] = 1 }
     }
     END {
-      printf "| **Total** | | | %s | %s | %s | | | %s | %s | %s | %s | %s | %s |\n",
+      printf "| **Total** | | | %s | %s | %s | | | %s | %s | %s | %s | %s |\n",
         fmtsize(4), fmtsize(5), fmtsize(6),
-        fmtmoney(9), fmtmoney(10), fmtmoney(11), fmtmoney(12), fmtmoney(13),
-        seen[14] ? bold(sprintf("%.1fM%s", mtok, tgap ? " + unknown" : "")) : ""
+        fmtmoney(9), fmtmoney(10), fmtmoney(11), fmtmoney(12),
+        seen[13] ? bold(sprintf("%.1fM%s", mtok, tgap ? " + unknown" : "")) : ""
     }
   '
 }
 
-# write_page <file> <rows> — the whole page: fixed prose, the header, then every row newest first.
+# write_csv <sorted rows> — the same rows as CSV, for a spreadsheet: one header line, then one line
+# per pull request, with no totals row (a spreadsheet sums for itself). Numbers are plain — no
+# dollar sign, no thousands separator — and tokens are in millions, as precise as the table holds
+# them, so the CSV never claims a precision the page does not have. A cell that is not a plain
+# number (`unknown`) is left empty rather than break a column's sum. Derived from the page's rows,
+# so a correction made to a row by hand reaches the CSV too.
+write_csv() {
+  printf '%s\n' 'PR,Url,Title,Merged,Closed,CodeLines,TestLines,DocsLines,Risk,NoHumanMerge,ReviewCost,FollowUp1Cost,FollowUp2Cost,TotalCost,TotalTokensMillions'
+  [ -z "$1" ] || printf '%s\n' "$1" | awk "$AWK_LIB"'
+    function q(s) { gsub(/"/, "\"\"", s); return "\"" s "\"" }
+    function num(s) { gsub(/,/, "", s); return s ~ /^[0-9]+$/ ? s : "" }
+    function money(s) { return s ~ /^\$[0-9]+(\.[0-9]+)?$/ ? substr(s, 2) : "" }
+    {
+      cells($0, c)
+      match(c[1], /#[0-9]+/); n = substr(c[1], RSTART + 1, RLENGTH - 1)
+      match(c[1], /\(.*\)/); url = substr(c[1], RSTART + 1, RLENGTH - 2)
+      title = c[2]; merged = "true"
+      if (sub(/ \*\(not merged\)\*$/, "", title)) merged = "false"
+      gsub(/\\\|/, "|", title)
+      tok = (c[13] ~ /^[0-9]+(\.[0-9]+)?M$/) ? substr(c[13], 1, length(c[13]) - 1) : ""
+      printf "%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s\n", n, url, q(title), merged, c[3],
+        num(c[4]), num(c[5]), num(c[6]), c[7], c[8],
+        money(c[9]), money(c[10]), money(c[11]), money(c[12]), tok
+    }
+  '
+}
+
+# write_page <file> <rows> — the whole page: fixed prose, the header, then every row newest first;
+# and beside it, <file> with a .csv extension holding the same rows.
 write_page() {
-  local file=$1 rows=$2
+  local file=$1 rows=$2 csv sorted=''
+  csv="${file%.md}.csv"
+  # Newest first by the Closed column, then by number, so the order does not depend on which
+  # run added a row.
+  [ -z "$rows" ] || sorted=$(printf '%s\n' "$rows" \
+    | awk "$AWK_LIB"'{ cells($0, c); match(c[1], /#[0-9]+/); printf "%s\t%010d\t%s\n", c[3], substr(c[1], RSTART + 1, RLENGTH - 1), $0 }' \
+    | sort -t$'\t' -k1,1r -k2,2r | cut -f3-)
   {
     cat <<'PROSE'
 <!-- Agents: this file is generated data for the maintainer, not guidance. Do not read it for rules, conventions or context, and do not edit it; `scripts/pr-review-costs.sh` writes it. -->
@@ -208,19 +245,17 @@ Generated by [`scripts/pr-review-costs.sh`](../../scripts/pr-review-costs.sh). E
 
 - **Code / Tests / Docs** — size, as lines added plus lines deleted. Tests are files under a `*.Tests` project and `*.tests.sh` matrices; docs are any other Markdown; code is everything else.
 - **Risk** and **No-human merge** — the risk tier and the merge-with-no-human-review verdict from the first `/gaffer:review-pr` round.
-- **Review** — the first review's API cost; **Follow-up 1–3** — each `/gaffer:review-followup` round's. **Total cost** and **Total tokens** cover every round.
+- **Review** — the first review's API cost; **Follow-up 1–2** — each `/gaffer:review-followup` round's, which stops at two. **Total cost** and **Total tokens** cover every round.
 - **Total (bottom row)** — size and cost summed from the rows above as they stand, recomputed on every run; pull requests closed unmerged are included, since their reviews were paid for.
 - An empty cell means there was nothing to record: a kind of file not touched, a round not run, or a review that gave no risk tier.
 
 PROSE
+    printf 'The same rows as CSV, for a spreadsheet: [%s](%s)\n\n' "$(basename "$csv")" "$(basename "$csv")"
     printf '%s\n%s\n' "$HEADER" "$SEPARATOR"
-    # Newest first by the Closed column, then by number, so the order does not depend on which
-    # run added a row.
-    [ -z "$rows" ] || printf '%s\n' "$rows" \
-      | awk "$AWK_LIB"'{ cells($0, c); match(c[1], /#[0-9]+/); printf "%s\t%010d\t%s\n", c[3], substr(c[1], RSTART + 1, RLENGTH - 1), $0 }' \
-      | sort -t$'\t' -k1,1r -k2,2r | cut -f3-
-    [ -z "$rows" ] || totals_row "$rows"
+    [ -z "$sorted" ] || printf '%s\n' "$sorted"
+    [ -z "$sorted" ] || totals_row "$sorted"
   } > "$file"
+  write_csv "$sorted" > "$csv"
 }
 
 # update_page <file> — add the missing rows to the page at <file>, creating it if absent. Prints

@@ -116,8 +116,8 @@ ok "code size is lines added plus deleted for everything not a test or docs" '[ 
 ok "tests count test projects, their snapshots and shell matrices, grouped in thousands" '[ "$(col 20 5)" = "1,055" ]'
 ok "docs count Markdown" '[ "$(col 20 6)" = "35" ]'
 ok "risk and verdict come from the first marked review, backticks or not" '[ "$(col 20 7)" = Medium ] && [ "$(col 20 8)" = yes ]'
-ok "each round lands in its own column" '[ "$(col 20 9)" = "\$10.24" ] && [ "$(col 20 10)" = "\$2.96" ] && [ "$(col 20 11)" = "\$2.67" ] && [ -z "$(col 20 12)" ]'
-ok "the total is the footer's, tokens in millions" '[ "$(col 20 13)" = "\$15.87" ] && [ "$(col 20 14)" = "16.4M" ]'
+ok "each round lands in its own column" '[ "$(col 20 9)" = "\$10.24" ] && [ "$(col 20 10)" = "\$2.96" ] && [ "$(col 20 11)" = "\$2.67" ]'
+ok "the total is the footer's, tokens in millions" '[ "$(col 20 12)" = "\$15.87" ] && [ "$(col 20 13)" = "16.4M" ]'
 ok "the closed date is the day it closed" '[ "$(col 20 3)" = 2026-11-04 ]'
 
 echo "Gaps:"
@@ -128,8 +128,8 @@ reviews 30 '[]'
 run
 ok "a kind of file not touched is an empty cell" '[ -z "$(col 30 4)" ] && [ -z "$(col 30 5)" ] && [ "$(col 30 6)" = 2 ]'
 ok "no marked review leaves risk and verdict empty" '[ -z "$(col 30 7)" ] && [ -z "$(col 30 8)" ]'
-ok "an unknown cost stays unknown rather than a guess" '[ "$(col 30 9)" = unknown ] && [ "$(col 30 13)" = unknown ] && [ "$(col 30 14)" = unknown ]'
-ok "and an empty cell keeps every later cell in its column" '[ "$(row 30 | grep -o "|" | wc -l)" = 15 ]'
+ok "an unknown cost stays unknown rather than a guess" '[ "$(col 30 9)" = unknown ] && [ "$(col 30 12)" = unknown ] && [ "$(col 30 13)" = unknown ]'
+ok "and an empty cell keeps every later cell in its column" '[ "$(row 30 | grep -o "|" | wc -l)" = 14 ]'
 
 echo "The totals row:"
 fresh
@@ -146,10 +146,21 @@ ok "sits last" '[ "$(tail -1 "$PAGE" | cut -c1-13)" = "| **Total** |" ]'
 ok "sums each size column" '[ "$(TOTAL 4)" = "**19**" ] && [ "$(TOTAL 5)" = "**5**" ] && [ "$(TOTAL 6)" = "**2**" ]'
 ok "leaves title, date, risk and verdict empty" '[ "$(TOTAL 1)" = "**Total**" ] && [ -z "$(TOTAL 2)$(TOTAL 3)$(TOTAL 7)$(TOTAL 8)" ]'
 ok "sums each round, and owns an unknown rather than hide it" '[ "$(TOTAL 9)" = "**\$8.00 + unknown**" ] && [ "$(TOTAL 10)" = "**\$1.10**" ] && [ -z "$(TOTAL 11)" ]'
-ok "sums total cost and tokens" '[ "$(TOTAL 13)" = "**\$9.10 + unknown**" ] && [ "$(TOTAL 14)" = "**4.5M + unknown**" ]'
-sed -i 's/| \$2.66 |  |  |  | \$2.66 |/| $3.66 |  |  |  | $3.66 |/' "$PAGE"
+ok "sums total cost and tokens" '[ "$(TOTAL 12)" = "**\$9.10 + unknown**" ] && [ "$(TOTAL 13)" = "**4.5M + unknown**" ]'
+sed -i 's/| \$2.66 |  |  | \$2.66 |/| $3.66 |  |  | $3.66 |/' "$PAGE"
 run
-ok "is recomputed from the rows as they stand, once" '[ "$(TOTAL 13)" = "**\$10.10 + unknown**" ] && [ "$(grep -c "| \*\*Total" "$PAGE")" = 1 ]'
+ok "is recomputed from the rows as they stand, once" '[ "$(TOTAL 12)" = "**\$10.10 + unknown**" ] && [ "$(grep -c "| \*\*Total" "$PAGE")" = 1 ]'
+
+echo "The CSV beside the page:"
+CSV="${PAGE%.md}.csv"
+# csv <n> <k> — the k-th field of pull request <n>'s CSV line; titles hold no comma in these fixtures.
+csv() { grep -E "^$1," "$CSV" | sed 's/"//g' | cut -d, -f"$2"; }
+ok "is linked from the page, above the table" '[ "$(grep -n "(page.csv)" "$PAGE" | cut -d: -f1)" -lt "$(grep -n "^| PR |" "$PAGE" | cut -d: -f1)" ]'
+ok "holds a header and one line per row, newest first, with no totals" '[ "$(cut -d, -f1 "$CSV" | paste -sd,)" = "PR,50,51,52" ]'
+ok "carries plain numbers: no dollar sign, no thousands separator" '[ "$(csv 50 11)" = 5.34 ] && [ "$(csv 50 14)" = 6.44 ] && [ "$(csv 50 6)" = 12 ] && [ "$(csv 50 15)" = 3.0 ]'
+ok "reads a hand correction made on the page" '[ "$(csv 51 14)" = 3.66 ]'
+ok "leaves an unknown cost empty rather than break a sum" '[ -z "$(csv 52 11)" ] && [ -z "$(csv 52 14)" ] && [ -z "$(csv 52 15)" ]'
+ok "states merged as true or false, with the title bare" '[ "$(csv 50 4)" = true ] && [ "$(csv 52 4)" = false ] && [ "$(csv 52 3)" = "Change 52" ]'
 
 echo "A failing call:"
 fresh

@@ -1,0 +1,23 @@
+PR,Url,Title,Merged,Closed,CodeLines,TestLines,DocsLines,Risk,NoHumanMerge,ReviewCost,FollowUp1Cost,FollowUp2Cost,TotalCost,TotalTokensMillions
+512,https://github.com/FrankRay78/NetPace/pull/512,"Completed Run Ends On Its Result",true,2026-11-05,3,99,,Medium,no,6.47,,,6.47,8.3
+508,https://github.com/FrankRay78/NetPace/pull/508,"Deterministic Live Display Tests",true,2026-11-05,68,76,22,Medium,no,5.16,,,5.16,5.7
+496,https://github.com/FrankRay78/NetPace/pull/496,"File Output Without A Byte Order Mark",true,2026-11-05,31,228,23,Medium,no,5.37,,,5.37,5.4
+485,https://github.com/FrankRay78/NetPace/pull/485,"Jitter On Latency Result",true,2026-11-05,125,333,21,High,no,5.34,,,5.34,6.4
+507,https://github.com/FrankRay78/NetPace/pull/507,"Remove leftovers from the move to gaffer's commands",true,2026-11-03,32,,29,Low,no,2.45,,,2.45,2.5
+506,https://github.com/FrankRay78/NetPace/pull/506,"Remove CodeQL analysis",true,2026-11-03,50,2,17,Medium,no,2.42,,,2.42,2.2
+504,https://github.com/FrankRay78/NetPace/pull/504,"Retire the workflow delta doc and the WSL sandbox guide",true,2026-11-03,54,,610,Medium,no,7.14,2.23,,9.37,11.9
+501,https://github.com/FrankRay78/NetPace/pull/501,"Move CLAUDE.md's working rules to their homes",true,2026-11-03,,,36,Low,no,4.71,,,4.71,5.3
+500,https://github.com/FrankRay78/NetPace/pull/500,"Trim the workflow doc to NetPace's delta",true,2026-11-02,,,91,Low,no,5.52,,,5.52,6.7
+488,https://github.com/FrankRay78/NetPace/pull/488,"Run NetPace's SDLC commands from the gaffer plugin",false,2026-11-02,1026,973,3897,High,no,2.11,,,2.11,2.3
+484,https://github.com/FrankRay78/NetPace/pull/484,"Capture Learnings: Test Integrity And Parked-Attempt Salvage",true,2026-10-31,,,17,Low,no,3.83,,,3.83,3.9
+483,https://github.com/FrankRay78/NetPace/pull/483,"Elapsed Time From Time Provider",true,2026-10-31,141,755,35,High,no,10.24,2.96,2.67,15.87,16.4
+482,https://github.com/FrankRay78/NetPace/pull/482,"Test Doubles Supported Surface",true,2026-10-31,133,1417,21,Medium,no,8.69,,,8.69,9.4
+481,https://github.com/FrankRay78/NetPace/pull/481,"Let chain stages wait for their own background subagents",true,2026-10-30,7,5,,Medium,no,5.51,,,5.51,6.1
+480,https://github.com/FrankRay78/NetPace/pull/480,"Server And Device Fields",true,2026-10-30,230,859,88,Medium,no,9.90,2.26,,12.16,15.1
+469,https://github.com/FrankRay78/NetPace/pull/469,"Csv Header Control",true,2026-10-30,150,595,130,Medium,no,6.15,6.82,5.97,18.94,16.2
+468,https://github.com/FrankRay78/NetPace/pull/468,"Consistent Option Values",true,2026-10-30,182,302,132,Medium,no,6.93,3.13,,10.06,12.1
+466,https://github.com/FrankRay78/NetPace/pull/466,"Remove CSV Delimiter And Escape CSV Fields",true,2026-10-30,68,386,100,Medium,no,4.41,,,4.41,5.2
+465,https://github.com/FrankRay78/NetPace/pull/465,"Choose The Number Of Connections",true,2026-10-30,72,205,46,Medium,no,6.89,1.88,,8.77,9.4
+475,https://github.com/FrankRay78/NetPace/pull/475,"Remove Orphaned CSV Snapshots",true,2026-10-29,,4,,Low,yes,2.11,1.57,,3.68,3.6
+472,https://github.com/FrankRay78/NetPace/pull/472,"Call Chain Specialist",true,2026-10-29,,,56,Medium,no,6.18,5.01,2.58,13.77,11.6
+455,https://github.com/FrankRay78/NetPace/pull/455,"PR Review Cost Footer",true,2026-10-29,583,456,37,High,no,9.61,,,9.61,8.6
