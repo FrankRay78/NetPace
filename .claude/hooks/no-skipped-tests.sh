@@ -43,8 +43,9 @@
 # The cost is that the script runs on every Bash call — a `mktemp`, a `cat` of the payload, then the
 # pre-filter below, whose own test is a shell builtin. The over-block that reaches the script with
 # the filter gone — a read-only command merely mentioning the words, `grep -r "git commit" docs/` —
-# is accepted: on the scan path it fires only when src/ already holds a banned construct, and on the
-# fail-closed paths (no jq, no grep, no src/) it fires on any such call, clean tree or not.
+# is accepted: on the scan path it fires only when src/ already holds a banned construct; on the
+# fail-closed paths (no jq, no grep) it fires on any Bash call whose raw payload contains both words,
+# clean tree or not; the no-src/ guard needs the command itself to match.
 # What this gate cannot see at all is an
 # indirect commit: a git alias (`git ci`), or a script that commits internally. It reads only the
 # command text. The `--check` step in .github/workflows/dotnet.yml is the backstop for those, and
@@ -97,7 +98,7 @@ scan() {
 
 # Where scan() parks grep's stderr, so an error can be reported with the path that caused it.
 SCAN_ERR="$(mktemp 2>/dev/null)" || SCAN_ERR=/dev/null
-trap 'rm -f "$SCAN_ERR"' EXIT
+[ "$SCAN_ERR" != /dev/null ] && trap 'rm -f "$SCAN_ERR"' EXIT
 
 # --check is deliberately ABOVE the override: an audit must never be silenceable by an env var.
 # NETPACE_ALLOW_SKIPS=1 is a local, per-commit emergency hatch for the interactive agent loop; if it
@@ -184,8 +185,9 @@ cmd_flat="${cmd//\\$'\n'/ }"
 
 # Deliberately NOT narrowed to command-word position. A read-only command that merely mentions
 # the words — `grep -r "git commit" docs/` — is gated too, and that over-block is accepted: it can
-# only bite HERE when src/ ALREADY holds a banned construct, i.e. when the ban is already violated
-# and must be fixed regardless; the fail-closed guards above bite on any such command, clean tree or
+# only bite HERE when src/ ALREADY holds a banned construct, which includes read-only review and audit
+# sessions (e.g. `git rev-parse <ref>^{commit}`) that meet a dirty src/ while doing their job and
+# cannot fix it; the fail-closed guards above bite on any such command, clean tree or
 # not, which is the real cost of the breadth. Parsing shell to find the command-word
 # would trade this harmless over-block for the failure that actually matters — a parser gap
 # missing a real commit and letting a skip land silently. The breadth is what lets the hook be

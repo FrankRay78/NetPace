@@ -254,7 +254,7 @@ echo "Registration — the gate must be handed every Bash call, not a pre-filter
 # above green. `[false]` means one matching entry, carrying no `if:`; `[true]` a filter is back,
 # `[]` the entry is gone.
 check_registration() {
-  OUTPUT="$(jq -c '[.hooks.PreToolUse[].hooks[] | select(.command | test("no-skipped-tests")) | has("if")]' "$HERE/../settings.json" 2>&1)"; RC=$?
+  OUTPUT="$(jq -c '[.hooks.PreToolUse[] | select(.matcher == "Bash") | .hooks[] | select((.command // "") | test("no-skipped-tests")) | has("if")]' "$HERE/../settings.json" 2>&1)"; RC=$?
 }
 check_registration
 ok "the hook entry carries no 'if:' filter" '[ "$RC" = "0" ] && [ "$OUTPUT" = "[false]" ]'
