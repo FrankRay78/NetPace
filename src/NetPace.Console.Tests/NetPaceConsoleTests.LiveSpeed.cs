@@ -161,6 +161,8 @@ public sealed partial class NetPaceConsoleTests
         [Fact]
         public async Task Should_Show_The_Same_Screen_When_A_Measurement_Outlasts_The_Displays_Refresh_Interval()
         {
+            // SCENARIO: Live figure is read from the final frame when the display would redraw mid-test
+
             // Given the same measurement run twice: once instantly, and once taking several times
             // Spectre.Console's own redraw interval to finish.
             // Regression: issue #490 - the live displays redrew themselves while a slow measurement
