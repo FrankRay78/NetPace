@@ -27,6 +27,7 @@ public sealed partial class NetPaceConsoleTests
             // report and so hides the very lines a contributor needs to see.
             var report = ReadmeHelpBlock.Compare(readme, help);
             Assert.True(report is null, report);
+            Assert.Equal(0, result.ExitCode);
         }
 
         [Fact]
@@ -68,6 +69,37 @@ public sealed partial class NetPaceConsoleTests
             Assert.Contains("block line 4", report);
             Assert.Contains("Stop speed testing after this many times.", report);
             Assert.Contains("(no line)", report);
+        }
+
+        [Theory]
+        [InlineData("\n", "")]
+        [InlineData("\r\n", "")]
+        [InlineData("\r", "")]
+        [InlineData("\n", "\uFEFF")]
+        public void Should_Agree_With_The_Readme_Block_Whatever_Line_Endings_The_Help_Output_Uses(
+            string lineEnding, string byteOrderMark)
+        {
+            // Given a README block stored with the LF endings every checkout gets, and the same
+            // help output as a platform's console hands it over — CRLF or CR, byte-order-marked
+            // or not.
+            string[] helpLines =
+            [
+                "",
+                "OPTIONS:",
+                "        --loop                        Performs the speed test on continuous loop."
+            ];
+
+            var readme = ReadmeHelpBlock.Extract(
+                $"```txt\n{ReadmeHelpBlock.PromptLine}\n{string.Join("\n", helpLines)}\n```\n");
+            var help = ReadmeHelpBlock.Normalise(
+                byteOrderMark + string.Join(lineEnding, helpLines) + lineEnding);
+
+            // When
+            var report = ReadmeHelpBlock.Compare(readme, help);
+
+            // Then the check reaches the same verdict, so it gives the same result on every
+            // platform.
+            Assert.True(report is null, report);
         }
     }
 }

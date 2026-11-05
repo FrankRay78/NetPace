@@ -3,9 +3,9 @@ using System.Text;
 namespace NetPace.Console.Tests;
 
 /// <summary>
-/// The copy of the <c>netpace --help</c> output that <c>README.md</c> reproduces, and the
-/// comparison that keeps it honest. The README is the first description of the CLI most people
-/// see, and it was previously kept current by hand.
+/// The <c>netpace --help</c> output that <c>README.md</c> reproduces, and the comparison that
+/// keeps it honest. The README is the first description of the CLI most people see, and its help
+/// block is edited by hand, so this is what catches one left behind by a change to the help.
 /// </summary>
 internal static class ReadmeHelpBlock
 {
@@ -17,6 +17,7 @@ internal static class ReadmeHelpBlock
 
     private const string FenceOpen = "```txt";
     private const string FenceClose = "```";
+    private const string MissingLine = "(no line)";
 
     /// <summary>
     /// Reads <c>README.md</c> from beside the test assembly, where the project file copies it.
@@ -38,39 +39,41 @@ internal static class ReadmeHelpBlock
 
     /// <summary>
     /// Extracts the help output the README reproduces: the contents of the fenced block that
-    /// opens with <see cref="PromptLine"/>, with that prompt line removed.
+    /// opens with <see cref="PromptLine"/>, with that prompt line removed. The blank line after
+    /// the prompt line is kept: it reproduces the help output's own blank first line, which is
+    /// what aligns the two for comparison.
     /// </summary>
     /// <param name="markdown">The README contents.</param>
     /// <returns>The reproduced help output, one line per element, trailing whitespace removed.</returns>
     public static IReadOnlyList<string> Extract(string markdown)
     {
         var lines = SplitLines(markdown);
+        var start = -1;
 
-        for (var i = 0; i < lines.Count - 1; i++)
+        for (var i = 0; i < lines.Length - 1; i++)
         {
-            if (lines[i] != FenceOpen || lines[i + 1] != PromptLine)
+            if (lines[i] == FenceOpen && lines[i + 1] == PromptLine)
             {
-                continue;
+                start = i + 2;
+                break;
             }
+        }
 
-            var block = new List<string>();
+        if (start < 0)
+        {
+            throw new InvalidOperationException(
+                $"No README help block was found. It is the '{FenceOpen}' fenced block whose first line is '{PromptLine}'.");
+        }
 
-            for (var j = i + 2; j < lines.Count; j++)
-            {
-                if (lines[j] == FenceClose)
-                {
-                    return Trimmed(block);
-                }
+        var end = Array.IndexOf(lines, FenceClose, start);
 
-                block.Add(lines[j]);
-            }
-
+        if (end < 0)
+        {
             throw new InvalidOperationException(
                 $"The README help block opened with '{FenceOpen}' but was never closed with '{FenceClose}'.");
         }
 
-        throw new InvalidOperationException(
-            $"No README help block was found. It is the '{FenceOpen}' fenced block whose first line is '{PromptLine}'.");
+        return Trimmed(lines[start..end]);
     }
 
     /// <summary>
@@ -89,8 +92,9 @@ internal static class ReadmeHelpBlock
     public static string? Compare(IReadOnlyList<string> readme, IReadOnlyList<string> help)
     {
         var report = new StringBuilder();
+        var lineCount = Math.Max(readme.Count, help.Count);
 
-        for (var i = 0; i < Math.Max(readme.Count, help.Count); i++)
+        for (var i = 0; i < lineCount; i++)
         {
             var readmeLine = i < readme.Count ? readme[i] : null;
             var helpLine = i < help.Count ? help[i] : null;
@@ -100,11 +104,11 @@ internal static class ReadmeHelpBlock
                 continue;
             }
 
-            // Line numbers are counted within the block, which is how a reader scrolling the
-            // fenced block in README.md sees it.
+            // Line numbers count from the line after the prompt line, where the compared
+            // block starts.
             report.AppendLine($"block line {i + 1}:");
-            report.AppendLine(readmeLine is null ? "  README.md: (no line)" : $"  README.md: {readmeLine}");
-            report.AppendLine(helpLine is null ? "  --help:    (no line)" : $"  --help:    {helpLine}");
+            report.AppendLine($"  README.md: {readmeLine ?? MissingLine}");
+            report.AppendLine($"  --help:    {helpLine ?? MissingLine}");
         }
 
         if (report.Length == 0)
@@ -114,7 +118,8 @@ internal static class ReadmeHelpBlock
 
         return
             "The README.md help block no longer matches what 'netpace --help' prints. " +
-            "Update the block in README.md to the lines below, then re-run." +
+            "It differs at the lines below, where '--help:' is the current output; " +
+            "update README.md to match, then re-run." +
             Environment.NewLine +
             report.ToString();
     }
@@ -123,23 +128,14 @@ internal static class ReadmeHelpBlock
     /// Splits on any line ending, so the comparison is unaffected by the line endings a checkout
     /// or a platform's console uses, and removes a byte order mark.
     /// </summary>
-    private static List<string> SplitLines(string text)
-    {
-        var lines = text.Replace("\r\n", "\n").Replace('\r', '\n').Split('\n').ToList();
-
-        if (lines.Count > 0)
-        {
-            lines[0] = lines[0].TrimStart('\uFEFF');
-        }
-
-        return lines;
-    }
+    private static string[] SplitLines(string text) =>
+        text.TrimStart('\uFEFF').Split(["\r\n", "\r", "\n"], StringSplitOptions.None);
 
     /// <summary>
     /// Removes trailing whitespace from every line — the help grid pads its last column — and
     /// drops the empty lines a fence or a final newline leaves at the end.
     /// </summary>
-    private static List<string> Trimmed(List<string> lines)
+    private static List<string> Trimmed(IEnumerable<string> lines)
     {
         var trimmed = lines.Select(line => line.TrimEnd()).ToList();
 
