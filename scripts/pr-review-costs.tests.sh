@@ -145,7 +145,7 @@ reviews 30 '[]'; files 31 '[]'; reviews 31 "$VERDICT"
 run
 ok "a kind of file not touched is an empty cell" '[ -z "$(col 30 4)" ] && [ -z "$(col 30 5)" ] && [ "$(col 30 6)" = 2 ]'
 ok "no marked review leaves risk and verdict empty" '[ -z "$(col 30 7)" ] && [ -z "$(col 30 8)" ]'
-ok "an unknown cost stays unknown rather than a guess" '[ "$(col 30 9)" = unknown ] && [ "$(col 30 12)" = unknown ] && [ "$(col 30 13)" = unknown ]'
+ok "a figure the footer could not report is an empty cell" '[ -z "$(col 30 9)" ] && [ -z "$(col 30 12)" ] && [ -z "$(col 30 13)" ]'
 ok "and an empty cell keeps every later cell in its column" '[ "$(row 30 | grep -o "|" | wc -l)" = 14 ]'
 ok "a description with CRLF line endings still has its footer read" '[ "$(col 31 9)" = "\$5.34" ] && [ "$(col 31 12)" = "\$5.34" ] && [ "$(col 31 13)" = 6.4M ]'
 
@@ -154,9 +154,9 @@ fresh
 # Listed out of date order, so the order on the page is the script's sort. #51's title carries a
 # pipe, a quote and a comma: the pipe is escaped on the page and has to be set aside again by every
 # reader of the row, and the quote and comma have to survive the CSV's quoting.
-{ pr 52 2026-11-02T09:00:00Z null $'\n| PR Review | unknown | unknown |\n| Total | unknown | unknown |'
+{ pr 52 2026-11-02T09:00:00Z null $'\n| PR Review | 2,000,000 | $1.00 |\n| Review 1 | unknown | unknown |\n| Total | 2,000,000 + unknown | $1.00 + unknown |'
   pr 50 2026-11-04T09:00:00Z '"2026-11-04T09:00:00Z"' $'\n| PR Review | 2,000,000 | $5.34 |\n| Review 1 | 1,000,000 | $1.10 |\n| Total | 3,000,000 | $6.44 |'
-  pr 51 2026-11-03T09:00:00Z '"2026-11-03T09:00:00Z"' $'\n| PR Review | 1,500,000 | $2.66 |\n| Total | 1,500,000 | $2.66 |' 'Say "hi", a | b'; } | prs
+  pr 51 2026-11-03T09:00:00Z '"2026-11-03T09:00:00Z"' $'\n| PR Review | 1,500,000 | $1,026.00 |\n| Total | 1,500,000 | $1,026.00 |' 'Say "hi", a | b'; } | prs
 files 50 '[{"filename":"a.cs","additions":1000,"deletions":2},{"filename":"x.tests.sh","additions":5,"deletions":0}]'
 files 51 '[{"filename":"b.cs","additions":3,"deletions":4}]'
 files 52 '[{"filename":"c.md","additions":1,"deletions":1}]'
@@ -167,11 +167,12 @@ ok "sorts newest first, a piped title included, on the page and in the CSV" '[ "
 ok "sits last" '[ "$(tail -1 "$PAGE" | cut -c1-13)" = "| **Total** |" ]'
 ok "sums each size column" '[ "$(TOTAL 4)" = "**1,009**" ] && [ "$(TOTAL 5)" = "**5**" ] && [ "$(TOTAL 6)" = "**2**" ]'
 ok "leaves title, date, risk and verdict empty" '[ "$(TOTAL 1)" = "**Total**" ] && [ -z "$(TOTAL 2)$(TOTAL 3)$(TOTAL 7)$(TOTAL 8)" ]'
-ok "sums each round, and owns an unknown rather than hide it" '[ "$(TOTAL 9)" = "**\$8.00 + unknown**" ] && [ "$(TOTAL 10)" = "**\$1.10**" ] && [ -z "$(TOTAL 11)" ]'
-ok "sums total cost and tokens" '[ "$(TOTAL 12)" = "**\$9.10 + unknown**" ] && [ "$(TOTAL 13)" = "**4.5M + unknown**" ]'
-sed -i 's/| \$2.66 |  |  | \$2.66 |/| $3.66 |  |  | $3.66 |/' "$PAGE"
+ok "a partial footer total keeps its known part, and an unreported round is empty" '[ "$(col 52 9)" = "\$1.00" ] && [ -z "$(col 52 10)" ] && [ "$(col 52 12)" = "\$1.00" ] && [ "$(col 52 13)" = 2.0M ]'
+ok "sums each round, reading a cost of \$1,000 or more whole" '[ "$(TOTAL 9)" = "**\$1,032.34**" ] && [ "$(TOTAL 10)" = "**\$1.10**" ] && [ -z "$(TOTAL 11)" ]'
+ok "sums total cost and tokens" '[ "$(TOTAL 12)" = "**\$1,033.44**" ] && [ "$(TOTAL 13)" = "**6.5M**" ]'
+sed -i 's/| \$1.00 |  |  | \$1.00 | 2.0M |/| $1.00 |  |  | $2.00 | 2.0M |/' "$PAGE"
 run
-ok "is recomputed from the rows as they stand, once" '[ "$(TOTAL 12)" = "**\$10.10 + unknown**" ] && [ "$(grep -c "| \*\*Total" "$PAGE")" = 1 ]'
+ok "is recomputed from the rows as they stand, once" '[ "$(TOTAL 12)" = "**\$1,034.44**" ] && [ "$(grep -c "| \*\*Total" "$PAGE")" = 1 ]'
 
 echo "The CSV beside the page:"
 CSV="${PAGE%.md}.csv"
@@ -184,8 +185,9 @@ ok "is linked from the page, above the table" '[ "$(grep -n "(page.csv)" "$PAGE"
 ok "holds a header and one line per row, newest first, with no totals" '[ "$(cut -d, -f1 "$CSV" | paste -sd,)" = "PR,50,51,52" ]'
 ok "writes every field of a row in its column" '[ "$(csvline 50)" = "50,https://example.test/pull/50,\"Change 50\",true,2026-11-04,1002,5,,High,no,5.34,1.10,,6.44,3.0" ]'
 ok "quotes a title, doubling its quotes, with its pipe unescaped" '[ "$(csvline 51 | cut -d, -f1-5)" = "51,https://example.test/pull/51,\"Say \"\"hi\"\", a | b\",true" ]'
-ok "reads a hand correction made on the page" '[ "$(csvline 51 | awk -F, "{ print \$(NF - 1) }")" = 3.66 ]'
-ok "leaves an unknown cost empty rather than break a sum" '[ -z "$(csv 52 11)" ] && [ -z "$(csv 52 14)" ] && [ -z "$(csv 52 15)" ]'
+ok "reads a hand correction made on the page" '[ "$(csv 52 14)" = 2.00 ]'
+ok "keeps the known part of a partial figure, and an unreported round empty" '[ "$(csv 52 11)" = 1.00 ] && [ -z "$(csv 52 12)" ] && [ "$(csv 52 15)" = 2.0 ]'
+ok "reads a cost of \$1,000 or more whole" '[ "$(csvline 51 | awk -F, "{ print \$(NF - 4) }")" = 1026.00 ]'
 ok "states merged as true or false, with the title bare" '[ "$(csv 50 4)" = true ] && [ "$(csv 52 4)" = false ] && [ "$(csv 52 3)" = "\"Change 52\"" ]'
 
 echo "A failing call:"

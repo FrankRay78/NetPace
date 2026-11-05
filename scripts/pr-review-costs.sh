@@ -94,28 +94,31 @@ lines_changed() {
 }
 
 # footer_costs <body> — <review>, <follow-up 1>, <follow-up 2>, <total cost> and <total tokens>,
-# read from the cost footer. Two follow-up columns, because /gaffer:review-followup caps a pull
-# request at three rounds in all; a further round, should the cap ever change, still counts in the
-# total. A round the pull request never had is empty; the footer's own
-# `unknown` passes through, since it is a real answer.
+# read from the cost footer. Two follow-up columns: a third is exceptional, so a later round gets no
+# column of its own, though the footer's total still counts it.
+#
+# A figure the footer could not report (its `unknown`) is an empty cell, and a total the footer
+# marks as partial keeps only the part it does state: the table records what was measured and
+# leaves out what was not, rather than carry a second notion of "missing" beside an empty cell.
 footer_costs() {
   printf '%s\n' "$1" | tr -d '\r' | awk -v marker="$FOOTER_MARKER" '
     function trim(s) { gsub(/^[ \t]+|[ \t]+$/, "", s); return s }
-    function tokens(s,  n) {
-      n = s; gsub(/,/, "", n)
-      if (n ~ /^[0-9]+$/) return sprintf("%.1fM", n / 1000000)
-      return s
+    function cost(s) { return match(s, /^\$[0-9][0-9,]*(\.[0-9]+)?/) ? substr(s, 1, RLENGTH) : "" }
+    function tokens(s) {
+      if (!match(s, /^[0-9][0-9,]*/)) return ""
+      s = substr(s, 1, RLENGTH); gsub(/,/, "", s)
+      return sprintf("%.1fM", s / 1000000)
     }
     trim($0) == marker { infooter = 1; next }
     infooter && /^\|/ {
-      split($0, c, "|"); name = trim(c[2]); tok = trim(c[3]); cost = trim(c[4])
-      if (name == "PR Review") r[0] = cost
-      else if (name ~ /^Review [12]$/) r[substr(name, 8) + 0] = cost
-      else if (name == "Total") { tc = cost; tt = tokens(tok) }
+      split($0, c, "|"); name = trim(c[2]); tok = trim(c[3]); price = cost(trim(c[4]))
+      if (name == "PR Review") r[0] = price
+      else if (name ~ /^Review [12]$/) r[substr(name, 8) + 0] = price
+      else if (name == "Total") { tc = price; tt = tokens(trim(tok)) }
     }
     END {
       for (i = 0; i <= 2; i++) printf "%s\037", (i in r) ? r[i] : ""
-      printf "%s\037%s\n", (tc == "" ? "unknown" : tc), (tt == "" ? "unknown" : tt)
+      printf "%s\037%s\n", tc, tt
     }
   '
 }
@@ -162,36 +165,31 @@ build_row() {
 
 # totals_row <rows> — the bold Total row under the table, summed from the rows as they stand on
 # the page, so a row corrected by hand is counted as corrected. Only the numeric columns are
-# summed — size and cost — and every other cell is left empty. A cost cell that is not a plain
-# dollar figure (`unknown`, or a footer total that was missing a round) is counted for what it does
-# state, and the sum says `+ unknown` rather than pass for the whole. Tokens are the sum of the
-# rounded figures shown, so the total is to within a few tenths of a million.
+# summed — size and cost — and every other cell is left empty. A cell that is not a plain figure is
+# not counted. Tokens are the sum of the rounded figures shown, so the total is to within a few
+# tenths of a million.
 totals_row() {
   printf '%s\n' "$1" | awk "$AWK_LIB"'
     function money(s, k) {
-      if (s == "") return
-      seen[k] = 1
-      if (match(s, /\$[0-9]+(\.[0-9]+)?/)) cents[k] += int(substr(s, RSTART + 1, RLENGTH - 1) * 100 + 0.5)
-      if (s !~ /^\$[0-9]+(\.[0-9]+)?$/) gap[k] = 1
+      gsub(/,/, "", s)
+      if (s ~ /^\$[0-9]+(\.[0-9]+)?$/) { seen[k] = 1; cents[k] += int(substr(s, 2) * 100 + 0.5) }
     }
     function bold(s) { return s == "" ? "" : "**" s "**" }
     function fmtsize(k) { return seen[k] ? bold(commafy(size[k])) : "" }
     function fmtmoney(k) {
-      if (!seen[k]) return ""
-      return bold(sprintf("$%d.%02d%s", int(cents[k] / 100), cents[k] % 100, gap[k] ? " + unknown" : ""))
+      return seen[k] ? bold(sprintf("$%s.%02d", commafy(int(cents[k] / 100)), cents[k] % 100)) : ""
     }
     {
       cells($0, c)
       for (k = 4; k <= 6; k++) if (c[k] != "") { seen[k] = 1; v = c[k]; gsub(/,/, "", v); size[k] += v }
       for (k = 9; k <= 12; k++) money(c[k], k)
       if (c[13] ~ /^[0-9]+(\.[0-9]+)?M$/) { mtok += substr(c[13], 1, length(c[13]) - 1); seen[13] = 1 }
-      else if (c[13] != "") { tgap = 1; seen[13] = 1 }
     }
     END {
       printf "| **Total** | | | %s | %s | %s | | | %s | %s | %s | %s | %s |\n",
         fmtsize(4), fmtsize(5), fmtsize(6),
         fmtmoney(9), fmtmoney(10), fmtmoney(11), fmtmoney(12),
-        seen[13] ? bold(sprintf("%.1fM%s", mtok, tgap ? " + unknown" : "")) : ""
+        seen[13] ? bold(sprintf("%.1fM", mtok)) : ""
     }
   '
 }
@@ -200,14 +198,14 @@ totals_row() {
 # per pull request, with no totals row (a spreadsheet sums for itself). Numbers are plain — no
 # dollar sign, no thousands separator — and tokens are in millions, as precise as the table holds
 # them, so the CSV never claims a precision the page does not have. A cell that is not a plain
-# number (`unknown`) is left empty rather than break a column's sum. Derived from the page's rows,
+# number is left empty rather than break a column's sum. Derived from the page's rows,
 # so a correction made to a row by hand reaches the CSV too.
 write_csv() {
   printf '%s\n' 'PR,Url,Title,Merged,Closed,CodeLines,TestLines,DocsLines,Risk,NoHumanMerge,ReviewCost,FollowUp1Cost,FollowUp2Cost,TotalCost,TotalTokensMillions'
   [ -z "$1" ] || printf '%s\n' "$1" | awk "$AWK_LIB"'
     function q(s) { gsub(/"/, "\"\"", s); return "\"" s "\"" }
     function num(s) { gsub(/,/, "", s); return s ~ /^[0-9]+$/ ? s : "" }
-    function money(s) { return s ~ /^\$[0-9]+(\.[0-9]+)?$/ ? substr(s, 2) : "" }
+    function money(s) { gsub(/,/, "", s); return s ~ /^\$[0-9]+(\.[0-9]+)?$/ ? substr(s, 2) : "" }
     {
       cells($0, c)
       match(c[1], /#[0-9]+/); n = substr(c[1], RSTART + 1, RLENGTH - 1)
@@ -245,9 +243,9 @@ Generated by [`scripts/pr-review-costs.sh`](../../scripts/pr-review-costs.sh). E
 
 - **Code / Tests / Docs** — size, as lines added plus lines deleted. Tests are files under a `*.Tests` project and `*.tests.sh` matrices; docs are any other Markdown; code is everything else.
 - **Risk** and **No-human merge** — the risk tier and the merge-with-no-human-review verdict from the first `/gaffer:review-pr` round.
-- **Review** — the first review's API cost; **Follow-up 1–2** — each `/gaffer:review-followup` round's, which stops at two. **Total cost** and **Total tokens** cover every round.
+- **Review** — the first review's API cost; **Follow-up 1–2** — the next two rounds'. A third follow-up is exceptional and has no column. **Total cost** and **Total tokens** cover every round.
 - **Total (bottom row)** — size and cost summed from the rows above as they stand, recomputed on every run; pull requests closed unmerged are included, since their reviews were paid for.
-- An empty cell means there was nothing to record: a kind of file not touched, a round not run, or a review that gave no risk tier.
+- An empty cell means there was nothing to record: a kind of file not touched, a round not run, a figure the cost footer could not report, or a review that gave no risk tier. Where the footer could report only some rounds, the total is the part it did report.
 
 PROSE
     printf 'The same rows as CSV, for a spreadsheet: [%s](%s)\n\n' "$(basename "$csv")" "$(basename "$csv")"
