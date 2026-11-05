@@ -35,8 +35,8 @@
 # Bash calls at all. What that filter covers was measured, not assumed: it decomposes a compound
 # command, so `cd somewhere && git commit -m x` reaches the gate; it does not match on a mention,
 # so `grep -r "git commit" docs/` does not; and it is a command-word prefix match, so
-# `git -C <path> commit` slips past it — a known gap, left as it stands because this gate's own
-# classification does not depend on the filter being tight (see the pre-filter below).
+# `git -C <path> commit` slips past it — a known gap: such a commit never reaches this script, so
+# it is never scanned.
 # CONVENTIONS.md (Testing, "No skipped tests") states the ban.
 
 set -uo pipefail
@@ -124,7 +124,7 @@ fi
 # Classify the command as a commit BEFORE requiring jq or the src/ tree, and do not lean on the
 # `if: Bash(git commit:*)` filter in .claude/settings.json to have done it. That filter is the
 # harness's, it is configuration this script cannot see, and a run that loses or widens it — a
-# settings edit, a `--check`-less manual invocation, a port to another repo — would hand this
+# settings edit, running the script by hand, a port to another repo — would hand this
 # script arbitrary Bash calls. So the script classifies for itself, and a fail-closed dependency
 # check placed ahead of that classification would block unrelated commands (`ls`, `cat`, even
 # `apt install jq`) on any box without jq — a bootstrap deadlock on a fresh machine. The
