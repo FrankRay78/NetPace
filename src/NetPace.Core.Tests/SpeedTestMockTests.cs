@@ -314,7 +314,7 @@ public sealed class SpeedTestMockTests
     private static IServer[] Servers() => [Anywhere];
 
     private static LatencyTestResult Latency() =>
-        new() { Server = Anywhere, LatencyMilliseconds = 42 };
+        new() { Server = Anywhere, LatencyMilliseconds = 42, JitterMilliseconds = 4 };
 
     private static SpeedTestResult Transfer() =>
         new() { BytesProcessed = 4200, ElapsedMilliseconds = 1000, RequestsSucceeded = 7, RequestsFailed = 0 };
