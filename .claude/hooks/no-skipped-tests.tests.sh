@@ -128,6 +128,18 @@ run_hook "$(sandbox "$DIRTY")" 'dotnet build'; ok "dotnet build"               '
 run_hook "$(empty_sandbox)"    'ls';           ok "non-commit + no src/ (no deadlock)" 'allowed'
 
 echo ""
+echo "Commit shape — a global option or a wrapper before the subcommand must not dodge the match:"
+# The forms a leading-word filter (`if: Bash(git commit:*)`) could not see, which is why the hook is
+# registered with no filter at all. Each is pinned here because the classifier's breadth is the only
+# thing now catching them: narrowing it to command-word position would restore the gap they close.
+run_hook "$(sandbox "$DIRTY")" 'cd /elsewhere && git commit -m x'; ok "compound: cd … && git commit" 'blocked_detect'
+run_hook "$(sandbox "$DIRTY")" 'git -C /elsewhere commit -m x';    ok "git -C <path> commit"         'blocked_detect'
+run_hook "$(sandbox "$DIRTY")" 'git -c user.name=x commit -m x';   ok "git -c k=v commit"            'blocked_detect'
+run_hook "$(sandbox "$DIRTY")" 'git --no-pager commit -m x';       ok "git --no-pager commit"        'blocked_detect'
+run_hook "$(sandbox "$DIRTY")" 'env FOO=1 git commit -m x';        ok "env X=1 git commit"           'blocked_detect'
+run_hook "$(sandbox "$DIRTY")" "bash -c 'git commit -m x'";        ok "bash -c 'git commit …'"       'blocked_detect'
+
+echo ""
 echo "Multi-line commands — a line-oriented match must not be dodged by a continuation:"
 run_hook "$(sandbox "$DIRTY")" 'git \
   commit -m x';                                ok "git \\<newline> commit"     'blocked_detect'
@@ -178,6 +190,12 @@ run_raw_env "$_sb" "$NOJQ" '{"tool_name":"Bash","tool_input":{"command":"git com
 ok "commit + no jq → block"                    'blocked_closed'
 run_raw_env "$_sb" "$NOJQ" '{"tool_name":"Bash","tool_input":{"command":"ls"}}'
 ok "non-commit + no jq → allow (no deadlock)"  'allowed'
+# The pre-filter reads the WHOLE payload and only ever widens, so a read-only command whose payload
+# mentions both words reaches the dependency guards and is denied — on a clean tree, for want of jq.
+# That is the accepted cost of registering the hook with no `if:` filter; pinned so the prose in the
+# script header and README stays answerable to the code.
+run_raw_env "$(sandbox "$CLEAN")" "$NOJQ" '{"tool_name":"Bash","tool_input":{"command":"cat README.md"},"description":"read the git commit docs"}'
+ok "mention-only + no jq + CLEAN tree → block" 'blocked_closed'
 
 echo ""
 echo "The override — hook mode only, and never silent:"
@@ -213,14 +231,33 @@ ok "pagination initializer { Skip = 10 }" 'blocked_detect'
 run_hook "$(sandbox 'class T { void M(){ int Skip = 0; } }')"
 ok "local variable named Skip"            'blocked_detect'
 # Assessed and accepted: classification is not narrowed to command-word position. A
-# read-only command merely MENTIONING the words is gated — but only when src/ already holds a
-# banned construct, i.e. when the ban is already violated and must be fixed anyway; in a clean tree
-# it never fires. Parsing shell to find the command-word would trade this harmless over-block for
-# the failure that matters: a parser gap missing a real commit and letting a skip land silently.
+# read-only command merely MENTIONING the words is gated — on the scan path only when src/ already
+# holds a banned construct, i.e. when the ban is already violated and must be fixed anyway, but on
+# the fail-closed paths on a clean tree too. Parsing shell to find the command-word would trade this
+# over-block for the failure that matters: a parser gap missing a real commit and letting a skip
+# land silently.
 run_hook "$(sandbox "$DIRTY")" 'grep -r "git commit" docs/'
 ok "read-only grep mentioning 'git commit'" 'blocked_detect'
 run_hook "$(sandbox "$CLEAN")" 'grep -r "git commit" docs/'
-ok "…but never on a clean tree"             'allowed'
+ok "…not on a clean tree, on the scan path" 'allowed'
+# …but the fail-closed guards are not conditioned on the tree at all: they fire once the payload
+# mentions both words, so a mention-only command is denied when src/ cannot be located.
+run_hook "$(empty_sandbox)" 'grep -r "git commit" docs/'
+ok "…yet IS denied, clean or not, when src/ is unlocatable" 'blocked_closed'
+
+echo ""
+echo "Registration — the gate must be handed every Bash call, not a pre-filtered subset:"
+# Every case above drives the script directly, so none of them can see how it is registered. An
+# `if:` filter on the hook entry narrows what reaches it to commands whose LEADING words match,
+# which is exactly how `git -C <path> commit` went unscanned: the classifier's breadth above is
+# worthless if the registration re-narrows it, and re-adding the filter would leave every case
+# above green. `[false]` means one matching entry, carrying no `if:`; `[true]` a filter is back,
+# `[]` the entry is gone.
+check_registration() {
+  OUTPUT="$(jq -c '[.hooks.PreToolUse[] | select(.matcher == "Bash") | .hooks[] | select((.command // "") | test("no-skipped-tests")) | has("if")]' "$HERE/../settings.json" 2>&1)"; RC=$?
+}
+check_registration
+ok "the hook entry carries no 'if:' filter" '[ "$RC" = "0" ] && [ "$OUTPUT" = "[false]" ]'
 
 echo ""
 echo "----------------------------------------"

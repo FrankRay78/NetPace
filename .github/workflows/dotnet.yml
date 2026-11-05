@@ -12,6 +12,28 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
 
+    - name: Fail if any banned skipped-test construct is under src/
+      # The skip ban (CONVENTIONS.md, Testing, "No skipped tests") was enforced only by the
+      # .claude/hooks/no-skipped-tests.sh PreToolUse hook, which sees a commit only when one is made
+      # from a Claude session — so a commit made by hand, or in the GitHub UI, landed a skipped test
+      # with nothing to stop it. Running the gate's own `--check` mode here makes the ban hold
+      # whoever committed, and gates it rather than verifying it once (CONVENTIONS.md,
+      # Test-driven development, configuration/tooling).
+      #
+      # A step of this job rather than a workflow of its own, deliberately: `build` is already a
+      # required check in the Main CI/CD ruleset, so the ban blocks a merge from this change onward,
+      # where a new context could not be required until its workflow was on main (CONVENTIONS.md,
+      # Pull requests).
+      #
+      # First in the job, right after checkout and before the SDK is even set up: the scan is static,
+      # needs only bash, grep and a couple of coreutils, and a banned construct has to be removed
+      # whatever the build does. `--check` ignores the NETPACE_ALLOW_SKIPS override by design, so a
+      # leaked override cannot quiet it, and it fails closed (exit 2) if it cannot read the tree —
+      # either way a non-zero exit fails the job. CLAUDE_PROJECT_DIR is the one variable that still
+      # redirects it: `--check` honours it, so a workflow-level env of that name would point this scan
+      # at another tree and report clean.
+      run: bash .claude/hooks/no-skipped-tests.sh --check
+
     - name: Setup .NET
       uses: actions/setup-dotnet@v4
       with:
