@@ -16,7 +16,12 @@ The same rows as CSV, for a spreadsheet: [pr-review-costs.csv](pr-review-costs.c
 
 | PR | Title | Closed | Code | Tests | Docs | Risk | No-human merge | Review | Follow-up 1 | Follow-up 2 | Total cost | Total tokens |
 | --- | --- | --- | ---: | ---: | ---: | --- | --- | ---: | ---: | ---: | ---: | ---: |
+| [#522](https://github.com/FrankRay78/NetPace/pull/522) | Skip Ban Sees Every Commit | 2026-11-05 | 82 | 47 | 12 | Medium | no | $9.25 | $4.42 |  | $13.67 | 11.4M |
+| [#521](https://github.com/FrankRay78/NetPace/pull/521) | Servers Details As Written | 2026-11-05 | 20 | 181 |  | Medium | no | $4.14 |  |  | $4.14 | 4.2M |
+| [#520](https://github.com/FrankRay78/NetPace/pull/520) | Readme Help Matches Real Help | 2026-11-05 | 2 | 149 | 2 | Medium | no | $5.11 |  |  | $5.11 | 5.2M |
 | [#519](https://github.com/FrankRay78/NetPace/pull/519) | Harness Docs Say What Is True | 2026-11-05 | 62 | 21 | 12 | Low | no | $5.68 |  |  | $5.68 | 5.6M |
+| [#516](https://github.com/FrankRay78/NetPace/pull/516) | Nest each partial test file's tests in a class named after its suffix | 2026-11-05 |  | 5,441 | 2 | Low | no | $4.64 | $0.67 |  | $5.31 | 9.4M |
+| [#515](https://github.com/FrankRay78/NetPace/pull/515) | Review Cost Table | 2026-11-05 | 362 | 243 | 66 | Medium | no | $7.91 | $5.13 | $6.78 | $19.82 | 18.1M |
 | [#512](https://github.com/FrankRay78/NetPace/pull/512) | Completed Run Ends On Its Result | 2026-11-05 | 3 | 99 |  | Medium | no | $6.47 |  |  | $6.47 | 8.3M |
 | [#511](https://github.com/FrankRay78/NetPace/pull/511) | Deterministic Live Display | 2026-11-05 |  | 26 |  | Medium | no | $2.46 |  |  | $2.46 | 2.3M |
 | [#508](https://github.com/FrankRay78/NetPace/pull/508) | Deterministic Live Display Tests | 2026-11-05 | 68 | 76 | 22 | Medium | no | $5.16 |  |  | $5.16 | 5.7M |
@@ -41,4 +46,4 @@ The same rows as CSV, for a spreadsheet: [pr-review-costs.csv](pr-review-costs.c
 | [#475](https://github.com/FrankRay78/NetPace/pull/475) | Remove Orphaned CSV Snapshots | 2026-10-29 |  | 4 |  | Low | yes | $2.11 | $1.57 |  | $3.68 | 3.6M |
 | [#472](https://github.com/FrankRay78/NetPace/pull/472) | Call Chain Specialist | 2026-10-29 |  |  | 56 | Medium | no | $6.18 | $5.01 | $2.58 | $13.77 | 11.6M |
 | [#455](https://github.com/FrankRay78/NetPace/pull/455) | PR Review Cost Footer | 2026-10-29 | 583 | 456 | 37 | High | no | $9.61 |  |  | $9.61 | 8.6M |
-| **Total** | | | **3,773** | **7,950** | **5,479** | | | **$147.47** | **$34.37** | **$11.22** | **$193.06** | **208.0M** |
+| **Total** | | | **4,239** | **14,011** | **5,561** | | | **$178.52** | **$44.59** | **$18.00** | **$241.11** | **256.3M** |
