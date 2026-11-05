@@ -16,6 +16,12 @@
 # table is regenerated. A closed pull request with no cost footer is not listed — it was closed
 # before footers existed, or never reviewed, and a row of blanks would read as a free review.
 #
+# WHOSE FIGURES. Only the maintainer's pull requests from a branch of this repository are listed,
+# and only reviews the review bot posted are read: those are the only ones the review workflows
+# run on, and anyone can open a pull request, or post a review, that types a footer or a risk line
+# by hand. A footer is recognised by the shape scripts/pr-cost-footer.sh writes it in, so a
+# description that merely quotes the marker is not mistaken for one.
+#
 # WHY THE FIRST REVIEW'S RISK. The tier is judged on the whole pull request against main and
 # rarely moves between rounds; the first review's tier is the one the change arrived with, before
 # any follow-up commits answered it. The verdict is taken from the same review so the two cells
@@ -51,6 +57,9 @@ shopt -s inherit_errexit
 PAGE_PATH='docs/metrics/pr-review-costs.md'
 FOOTER_MARKER='<!-- pr-cost-footer -->'
 REVIEW_MARKER='<!-- review-pr -->'
+# Who the review workflows run for, and who posts their reviews (.github/workflows/review-pr.yml).
+MAINTAINER='FrankRay78'
+REVIEW_BOT='github-actions[bot]'
 HEADER='| PR | Title | Closed | Code | Tests | Docs | Risk | No-human merge | Review | Follow-up 1 | Follow-up 2 | Total cost | Total tokens |'
 SEPARATOR='| --- | --- | --- | ---: | ---: | ---: | --- | --- | ---: | ---: | ---: | ---: | ---: |'
 
@@ -100,6 +109,10 @@ lines_changed() {
 # A figure the footer could not report (its `unknown`) is an empty cell, and a total the footer
 # marks as partial keeps only the part it does state: the table records what was measured and
 # leaves out what was not, rather than carry a second notion of "missing" beside an empty cell.
+#
+# The footer is the marker line, a blank line, then a horizontal rule — the last such occurrence, as
+# scripts/pr-cost-footer.sh finds its own — so an example quoted above it is not read. Fails, with
+# nothing printed, when the body has no footer.
 footer_costs() {
   printf '%s\n' "$1" | tr -d '\r' | awk -v marker="$FOOTER_MARKER" '
     function trim(s) { gsub(/^[ \t]+|[ \t]+$/, "", s); return s }
@@ -109,21 +122,25 @@ footer_costs() {
       s = substr(s, 1, RLENGTH); gsub(/,/, "", s)
       return sprintf("%.1fM", s / 1000000)
     }
-    trim($0) == marker { infooter = 1; next }
-    infooter && /^\|/ {
-      split($0, c, "|"); name = trim(c[2]); tok = trim(c[3]); price = cost(trim(c[4]))
-      if (name == "PR Review") r[0] = price
-      else if (name ~ /^Review [12]$/) r[substr(name, 8) + 0] = price
-      else if (name == "Total") { tc = price; tt = tokens(trim(tok)) }
-    }
+    { line[NR] = $0 }
     END {
+      for (i = 1; i <= NR; i++)
+        if (trim(line[i]) == marker && trim(line[i + 1]) == "" && trim(line[i + 2]) == "---") s = i
+      if (!s) exit 1
+      for (i = s + 3; i <= NR; i++) {
+        if (line[i] !~ /^\|/) continue
+        split(line[i], c, "|"); name = trim(c[2]); price = cost(trim(c[4]))
+        if (name == "PR Review") r[0] = price
+        else if (name ~ /^Review [12]$/) r[substr(name, 8) + 0] = price
+        else if (name == "Total") { tc = price; tt = tokens(trim(c[3])) }
+      }
       for (i = 0; i <= 2; i++) printf "%s\037", (i in r) ? r[i] : ""
       printf "%s\037%s\n", tc, tt
     }
   '
 }
 
-# first_verdict <review bodies, oldest first> — "<risk>\t<no-human>" from the first review's
+# first_verdict <first review's body> — "<risk>\t<no-human>" from its
 # `Risk tier: X · Merge with no human review: Y` line, or empty for each when there is none. Earlier
 # reviews wrapped the line in backticks, so a leading one is allowed.
 first_verdict() {
@@ -136,7 +153,7 @@ first_verdict() {
 
 # build_row <pr-json> — the table row for one closed pull request.
 build_row() {
-  local pr=$1 n url title closed merged files reviews code tests docs risk human
+  local pr=$1 n url title closed merged files review code tests docs risk human
   n=$(jq -r .number <<<"$pr")
   url=$(jq -r .url <<<"$pr")
   title=$(jq -r .title <<<"$pr")
@@ -146,12 +163,15 @@ build_row() {
   files=$(gh api --paginate "repos/{owner}/{repo}/pulls/$n/files" \
     --jq '.[] | [.filename, .additions, .deletions] | @tsv') \
     || die "could not read the files changed by #$n."
-  reviews=$(gh api --paginate "repos/{owner}/{repo}/pulls/$n/reviews" \
-    --jq ".[] | select(.body | contains(\"$REVIEW_MARKER\")) | .body") \
+  # One JSON string per line, so the first review is the first line however many lines its body
+  # has; --jq runs per page, so it cannot pick the first itself.
+  review=$(gh api --paginate "repos/{owner}/{repo}/pulls/$n/reviews" \
+    --jq ".[] | select(.user.login == \"$REVIEW_BOT\" and (.body | contains(\"$REVIEW_MARKER\"))) | .body | @json") \
     || die "could not read the reviews of #$n."
+  review=$(head -n1 <<<"$review" | jq -r '.')
 
   IFS=$'\037' read -r code tests docs < <(printf '%s' "$files" | lines_changed)
-  IFS=$'\037' read -r risk human < <(first_verdict "$reviews")
+  IFS=$'\037' read -r risk human < <(first_verdict "$review")
   local r0 r1 r2 total tokens
   IFS=$'\037' read -r r0 r1 r2 total tokens < <(footer_costs "$(jq -r .body <<<"$pr")")
 
@@ -264,15 +284,20 @@ update_page() {
   # grep finds nothing on a new page; jq -s still answers [] for it.
   known=$(grep -oE '^\| \[#[0-9]+\]' <<<"$existing" | grep -oE '[0-9]+' | jq -s . || true)
 
-  prs=$(gh pr list --state closed --limit 1000 --json number,title,url,closedAt,mergedAt,body) \
+  prs=$(gh pr list --state closed --limit 1000 \
+    --json number,title,url,closedAt,mergedAt,body,author,isCrossRepository) \
     || die "could not list the closed pull requests."
-  prs=$(jq -c --arg m "$FOOTER_MARKER" --argjson known "$known" \
-    '.[] | select((.body // "") | contains($m)) | select(.number as $n | $known | index($n) | not)' <<<"$prs") \
+  prs=$(jq -c --arg m "$FOOTER_MARKER" --arg a "$MAINTAINER" --argjson known "$known" '.[]
+    | select(.author.login == $a and (.isCrossRepository | not))
+    | select((.body // "") | contains($m))
+    | select(.number as $n | $known | index($n) | not)' <<<"$prs") \
     || die "could not read the list of closed pull requests."
 
   rows=$existing
   while IFS= read -r pr; do
     [ -n "$pr" ] || continue
+    # The marker test above is a cheap first cut; a body that only quotes the marker is dropped here.
+    footer_costs "$(jq -r .body <<<"$pr")" >/dev/null || continue
     n=$(jq -r .number <<<"$pr")
     rows+="${rows:+$'\n'}$(build_row "$pr")"
     added+=("$n")

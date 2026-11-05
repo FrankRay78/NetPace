@@ -63,19 +63,24 @@ col() { row "$1" | cells_of "$2"; }
 
 FOOTER='\n\n<!-- pr-cost-footer -->\n\n---\n\n| Round | Tokens | API cost |\n| --- | --- | --- |'
 # pr <n> <closed> <merged-or-null> <footer rows> [title] — one closed pull request, as gh pr list
-# gives it. PR_CRLF=true gives the description CRLF line endings, as GitHub returns one saved in
-# the web UI.
+# gives it, opened by the maintainer from a branch of this repository. PR_CRLF=true gives the
+# description CRLF line endings, as GitHub returns one saved in the web UI; PR_INTRO replaces the
+# text above the footer; PR_AUTHOR and PR_CROSS=true change who opened it and from where.
 pr() {
-  local body="Why${4:+$FOOTER$4}"
+  local body="${PR_INTRO:-Why}${4:+$FOOTER$4}"
   jq -n --argjson n "$1" --arg c "$2" --argjson m "$3" --arg b "$(printf "$body")" --arg t "${5:-Change $1}" \
-    --argjson crlf "${PR_CRLF:-false}" \
+    --argjson crlf "${PR_CRLF:-false}" --arg a "${PR_AUTHOR:-FrankRay78}" --argjson x "${PR_CROSS:-false}" \
     '{number: $n, title: $t, url: "https://example.test/pull/\($n)", closedAt: $c, mergedAt: $m,
+      author: {login: $a}, isCrossRepository: $x,
       body: (if $crlf then ($b | gsub("\n"; "\r\n")) else $b end)}'
 }
 prs() { jq -s . > "$STUB_DIR/prs.json"; }
 files() { printf '%s' "$2" > "$STUB_DIR/files-$1.json"; }
 reviews() { printf '%s' "$2" > "$STUB_DIR/reviews-$1.json"; }
-VERDICT='[{"body":"Summary\nRisk tier: High · Merge with no human review: no\n<!-- review-pr -->"}]'
+# review <body> [login] — one review, as the reviews API gives it; posted by the review bot unless
+# another login is named.
+review() { jq -cn --arg b "$(printf "$1")" --arg u "${2:-github-actions[bot]}" '{user: {login: $u}, body: $b}'; }
+VERDICT="[$(review 'Summary\nRisk tier: High · Merge with no human review: no\n<!-- review-pr -->')]"
 ONE_ROUND='\n| PR Review | 6,432,360 | $5.34 |\n| Total | 6,432,360 | $5.34 |'
 
 echo "A new page:"
@@ -125,7 +130,7 @@ pr 20 2026-11-04T09:00:00Z null $'\n| PR Review | 10,508,842 | $10.24 |\n| Revie
 files 20 '[{"filename":"src/NetPace.Core/A.cs","additions":90,"deletions":40},{"filename":"scripts/x.sh","additions":9,"deletions":2},
   {"filename":"src/NetPace.Core.Tests/ATests.cs","additions":900,"deletions":100},{"filename":"src/NetPace.Console.Tests/Expectations/x.verified.txt","additions":5,"deletions":0},
   {"filename":"scripts/x.tests.sh","additions":50,"deletions":0},{"filename":"docs/a.md","additions":22,"deletions":13}]'
-reviews 20 '[{"body":"an author reply, no marker"},{"body":"`Risk tier: Medium · Merge with no human review: yes`\n<!-- review-pr -->"},{"body":"Risk tier: High · Merge with no human review: no\n<!-- review-pr -->"}]'
+reviews 20 "[$(review 'an author reply, no marker' FrankRay78),$(review '`Risk tier: Medium · Merge with no human review: yes`\n<!-- review-pr -->'),$(review 'Risk tier: High · Merge with no human review: no\n<!-- review-pr -->')]"
 run
 ok "the number and the title are cells of their own" '[ "$(col 20 1)" = "[#20](https://example.test/pull/20)" ] && [ "$(col 20 2)" = "Change \\| 20 *(not merged)*" ]'
 ok "code size is lines added plus deleted for everything not a test or docs" '[ "$(col 20 4)" = "141" ]'
@@ -135,6 +140,31 @@ ok "risk and verdict come from the first marked review, backticks or not" '[ "$(
 ok "each round lands in its own column" '[ "$(col 20 9)" = "\$10.24" ] && [ "$(col 20 10)" = "\$2.96" ] && [ "$(col 20 11)" = "\$2.67" ]'
 ok "the total is the footer's, tokens in millions" '[ "$(col 20 12)" = "\$15.87" ] && [ "$(col 20 13)" = "16.4M" ]'
 ok "the closed date is the day it closed" '[ "$(col 20 3)" = 2026-11-04 ]'
+
+echo "Whose reviews count:"
+fresh
+{ pr 21 2026-11-04T09:00:00Z '"2026-11-04T09:00:00Z"' "$ONE_ROUND"
+  pr 22 2026-11-04T09:00:00Z '"2026-11-04T09:00:00Z"' "$ONE_ROUND"; } | prs
+files 21 '[]'; files 22 '[]'
+reviews 21 "[$(review 'Summary, no tier\n<!-- review-pr -->'),$(review 'Risk tier: High · Merge with no human review: no\n<!-- review-pr -->')]"
+reviews 22 "[$(review 'Risk tier: Low · Merge with no human review: yes\n<!-- review-pr -->' someone),$(review 'Risk tier: High · Merge with no human review: no\n<!-- review-pr -->')]"
+run
+ok "a first review with no tier leaves risk and verdict empty, not a later round's" '[ -z "$(col 21 7)" ] && [ -z "$(col 21 8)" ]'
+ok "a marked review not posted by the review bot is passed over" '[ "$(col 22 7)" = High ] && [ "$(col 22 8)" = no ]'
+
+echo "Who is listed:"
+fresh
+FENCED='An example:\n\n```\n<!-- pr-cost-footer -->\n\n---\n\n| Review 1 | 1 | $999.99 |\n```'
+{ PR_AUTHOR=someone pr 60 2026-11-04T09:00:00Z '"2026-11-04T09:00:00Z"' "$ONE_ROUND"
+  PR_CROSS=true pr 61 2026-11-04T09:00:00Z '"2026-11-04T09:00:00Z"' "$ONE_ROUND"
+  PR_INTRO='Quotes `<!-- pr-cost-footer -->` and nothing more' pr 62 2026-11-04T09:00:00Z '"2026-11-04T09:00:00Z"' ''
+  PR_INTRO="$FENCED" pr 63 2026-11-04T09:00:00Z '"2026-11-04T09:00:00Z"' "$ONE_ROUND"; } | prs
+files 63 '[]'; reviews 63 "$VERDICT"
+run
+ok "leaves out a pull request someone else opened" '[ "$RC" = 0 ] && ! row 60 >/dev/null && ! grep -q "pulls/60/" "$STUB_DIR/gh-log"'
+ok "leaves out a pull request from a fork" '! row 61 >/dev/null && ! grep -q "pulls/61/" "$STUB_DIR/gh-log"'
+ok "leaves out a description that only quotes the marker" '! row 62 >/dev/null && ! grep -q "pulls/62/" "$STUB_DIR/gh-log"'
+ok "reads the real footer, not an example of one above it" '[ -z "$(col 63 10)" ] && [ "$(col 63 9)" = "\$5.34" ]'
 
 echo "Gaps:"
 fresh
@@ -160,7 +190,7 @@ fresh
 files 50 '[{"filename":"a.cs","additions":1000,"deletions":2},{"filename":"x.tests.sh","additions":5,"deletions":0}]'
 files 51 '[{"filename":"b.cs","additions":3,"deletions":4}]'
 files 52 '[{"filename":"c.md","additions":1,"deletions":1}]'
-reviews 50 "$VERDICT"; reviews 51 '[{"body":"Risk tier: Low · Merge with no human review: yes\n<!-- review-pr -->"}]'; reviews 52 '[]'
+reviews 50 "$VERDICT"; reviews 51 "[$(review 'Risk tier: Low · Merge with no human review: yes\n<!-- review-pr -->')]"; reviews 52 '[]'
 run
 TOTAL() { grep -F "| **Total" "$PAGE" | cells_of "$1"; }
 ok "sorts newest first, a piped title included, on the page and in the CSV" '[ "$(cut -d, -f1 "${PAGE%.md}.csv" | paste -sd,)" = "PR,50,51,52" ] && [ "$(grep -oE "^\| \[#[0-9]+" "$PAGE" | tr -d "|[# " | paste -sd,)" = "50,51,52" ]'
