@@ -52,7 +52,8 @@ pass=0; fail=0; OUTPUT=; RC=
 ok() { if eval "$2"; then echo "  ok   $1"; pass=$((pass+1)); else echo "  FAIL $1 -- rc=$RC output:[$OUTPUT]"; fail=$((fail+1)); fi; }
 
 fresh() { export STUB_DIR="$SB/case"; rm -rf "$STUB_DIR"; mkdir -p "$STUB_DIR"; PAGE="$STUB_DIR/page.md"; }
-run() { OUTPUT="$(PATH="$SB/bin:$PATH" bash "$SCRIPT" --page "$PAGE" 2>&1)"; RC=$?; }
+run() { run_args --page "$PAGE"; }
+run_args() { OUTPUT="$(PATH="$SB/bin:$PATH" bash "$SCRIPT" "$@" 2>&1)"; RC=$?; }
 # row <n> — the page's row for pull request <n>.
 row() { grep -E "^\| \[#$1\]" "$PAGE"; }
 # col <n> <k> — the k-th cell (1-based) of pull request <n>'s row, trimmed.
@@ -61,11 +62,15 @@ cells_of() { sed 's/\\|/\x01/g' | awk -F'|' -v k="$1" '{ s = $(k + 1); gsub(/^ +
 col() { row "$1" | cells_of "$2"; }
 
 FOOTER='\n\n<!-- pr-cost-footer -->\n\n---\n\n| Round | Tokens | API cost |\n| --- | --- | --- |'
-# pr <n> <closed> <merged-or-null> <footer rows> — one closed pull request, as gh pr list gives it.
+# pr <n> <closed> <merged-or-null> <footer rows> [title] — one closed pull request, as gh pr list
+# gives it. PR_CRLF=true gives the description CRLF line endings, as GitHub returns one saved in
+# the web UI.
 pr() {
   local body="Why${4:+$FOOTER$4}"
-  jq -n --argjson n "$1" --arg c "$2" --argjson m "$3" --arg b "$(printf "$body")" \
-    '{number: $n, title: (if $n == 20 then "Change | 20" else "Change \($n)" end), url: "https://example.test/pull/\($n)", closedAt: $c, mergedAt: $m, body: $b}'
+  jq -n --argjson n "$1" --arg c "$2" --argjson m "$3" --arg b "$(printf "$body")" --arg t "${5:-Change $1}" \
+    --argjson crlf "${PR_CRLF:-false}" \
+    '{number: $n, title: $t, url: "https://example.test/pull/\($n)", closedAt: $c, mergedAt: $m,
+      body: (if $crlf then ($b | gsub("\n"; "\r\n")) else $b end)}'
 }
 prs() { jq -s . > "$STUB_DIR/prs.json"; }
 files() { printf '%s' "$2" > "$STUB_DIR/files-$1.json"; }
@@ -100,12 +105,23 @@ ok "adds only the pull request not yet listed" '[ "$RC" = 0 ] && grep -qF "added
 ok "does not fetch a listed pull request again" '! grep -qE "pulls/(10|11|12)/" "$STUB_DIR/gh-log"'
 ok "keeps a hand-corrected row as it was" '[ "$(col 10 7)" = "Low (hand-corrected)" ]'
 ok "slots the new row in by its closed date" '[ "$(grep -oE "^\| \[#[0-9]+" "$PAGE" | tr -d "|[# " | paste -sd,)" = "12,13,11,10" ]'
+cp "$PAGE" "$STUB_DIR/before.md"; : > "$STUB_DIR/gh-log"
 run
-ok "a run with nothing new changes nothing" '[ "$RC" = 0 ] && grep -qF "nothing new" <<<"$OUTPUT" && [ "$(grep -c "^| \[#" "$PAGE")" = 4 ]'
+ok "a run with nothing new changes nothing" '[ "$RC" = 0 ] && grep -qF "nothing new" <<<"$OUTPUT" && cmp -s "$PAGE" "$STUB_DIR/before.md" && ! grep -q "pulls/" "$STUB_DIR/gh-log"'
+
+echo "Bad arguments:"
+fresh
+REAL_PAGE="$HERE/../docs/metrics/pr-review-costs.md"
+real_sum() { cat "$REAL_PAGE" "${REAL_PAGE%.md}.csv" 2>/dev/null | cksum; }
+before=$(real_sum)
+run_args --page
+ok "--page with no file is refused, touching nothing" '[ "$RC" = 2 ] && grep -qF usage <<<"$OUTPUT" && [ "$(real_sum)" = "$before" ] && [ ! -s "$STUB_DIR/gh-log" ]'
+run_args --bogus
+ok "an unknown argument is refused, touching nothing" '[ "$RC" = 2 ] && grep -qF usage <<<"$OUTPUT" && [ "$(real_sum)" = "$before" ] && [ ! -s "$STUB_DIR/gh-log" ]'
 
 echo "One pull request's row:"
 fresh
-pr 20 2026-11-04T09:00:00Z null $'\n| PR Review | 10,508,842 | $10.24 |\n| Review 1 | 3,140,638 | $2.96 |\n| Review 2 | 2,782,760 | $2.67 |\n| Total | 16,432,240 | $15.87 |' | prs
+pr 20 2026-11-04T09:00:00Z null $'\n| PR Review | 10,508,842 | $10.24 |\n| Review 1 | 3,140,638 | $2.96 |\n| Review 2 | 2,782,760 | $2.67 |\n| Total | 16,432,240 | $15.87 |' "Change | 20" | prs
 files 20 '[{"filename":"src/NetPace.Core/A.cs","additions":90,"deletions":40},{"filename":"scripts/x.sh","additions":9,"deletions":2},
   {"filename":"src/NetPace.Core.Tests/ATests.cs","additions":900,"deletions":100},{"filename":"src/NetPace.Console.Tests/Expectations/x.verified.txt","additions":5,"deletions":0},
   {"filename":"scripts/x.tests.sh","additions":50,"deletions":0},{"filename":"docs/a.md","additions":22,"deletions":13}]'
@@ -122,28 +138,34 @@ ok "the closed date is the day it closed" '[ "$(col 20 3)" = 2026-11-04 ]'
 
 echo "Gaps:"
 fresh
-pr 30 2026-11-04T09:00:00Z '"2026-11-04T09:00:00Z"' $'\n| PR Review | unknown | unknown |\n| Total | unknown | unknown |' | prs
+{ pr 30 2026-11-04T09:00:00Z '"2026-11-04T09:00:00Z"' $'\n| PR Review | unknown | unknown |\n| Total | unknown | unknown |'
+  PR_CRLF=true pr 31 2026-11-03T09:00:00Z '"2026-11-03T09:00:00Z"' "$ONE_ROUND"; } | prs
 files 30 '[{"filename":"README.md","additions":1,"deletions":1}]'
-reviews 30 '[]'
+reviews 30 '[]'; files 31 '[]'; reviews 31 "$VERDICT"
 run
 ok "a kind of file not touched is an empty cell" '[ -z "$(col 30 4)" ] && [ -z "$(col 30 5)" ] && [ "$(col 30 6)" = 2 ]'
 ok "no marked review leaves risk and verdict empty" '[ -z "$(col 30 7)" ] && [ -z "$(col 30 8)" ]'
 ok "an unknown cost stays unknown rather than a guess" '[ "$(col 30 9)" = unknown ] && [ "$(col 30 12)" = unknown ] && [ "$(col 30 13)" = unknown ]'
 ok "and an empty cell keeps every later cell in its column" '[ "$(row 30 | grep -o "|" | wc -l)" = 14 ]'
+ok "a description with CRLF line endings still has its footer read" '[ "$(col 31 9)" = "\$5.34" ] && [ "$(col 31 12)" = "\$5.34" ] && [ "$(col 31 13)" = 6.4M ]'
 
 echo "The totals row:"
 fresh
-{ pr 50 2026-11-04T09:00:00Z '"2026-11-04T09:00:00Z"' $'\n| PR Review | 2,000,000 | $5.34 |\n| Review 1 | 1,000,000 | $1.10 |\n| Total | 3,000,000 | $6.44 |'
-  pr 51 2026-11-03T09:00:00Z '"2026-11-03T09:00:00Z"' $'\n| PR Review | 1,500,000 | $2.66 |\n| Total | 1,500,000 | $2.66 |'
-  pr 52 2026-11-02T09:00:00Z null $'\n| PR Review | unknown | unknown |\n| Total | unknown | unknown |'; } | prs
-files 50 '[{"filename":"a.cs","additions":10,"deletions":2},{"filename":"x.tests.sh","additions":5,"deletions":0}]'
+# Listed out of date order, so the order on the page is the script's sort. #51's title carries a
+# pipe, a quote and a comma: the pipe is escaped on the page and has to be set aside again by every
+# reader of the row, and the quote and comma have to survive the CSV's quoting.
+{ pr 52 2026-11-02T09:00:00Z null $'\n| PR Review | unknown | unknown |\n| Total | unknown | unknown |'
+  pr 50 2026-11-04T09:00:00Z '"2026-11-04T09:00:00Z"' $'\n| PR Review | 2,000,000 | $5.34 |\n| Review 1 | 1,000,000 | $1.10 |\n| Total | 3,000,000 | $6.44 |'
+  pr 51 2026-11-03T09:00:00Z '"2026-11-03T09:00:00Z"' $'\n| PR Review | 1,500,000 | $2.66 |\n| Total | 1,500,000 | $2.66 |' 'Say "hi", a | b'; } | prs
+files 50 '[{"filename":"a.cs","additions":1000,"deletions":2},{"filename":"x.tests.sh","additions":5,"deletions":0}]'
 files 51 '[{"filename":"b.cs","additions":3,"deletions":4}]'
 files 52 '[{"filename":"c.md","additions":1,"deletions":1}]'
 reviews 50 "$VERDICT"; reviews 51 '[{"body":"Risk tier: Low · Merge with no human review: yes\n<!-- review-pr -->"}]'; reviews 52 '[]'
 run
 TOTAL() { grep -F "| **Total" "$PAGE" | cells_of "$1"; }
+ok "sorts newest first, a piped title included, on the page and in the CSV" '[ "$(cut -d, -f1 "${PAGE%.md}.csv" | paste -sd,)" = "PR,50,51,52" ] && [ "$(grep -oE "^\| \[#[0-9]+" "$PAGE" | tr -d "|[# " | paste -sd,)" = "50,51,52" ]'
 ok "sits last" '[ "$(tail -1 "$PAGE" | cut -c1-13)" = "| **Total** |" ]'
-ok "sums each size column" '[ "$(TOTAL 4)" = "**19**" ] && [ "$(TOTAL 5)" = "**5**" ] && [ "$(TOTAL 6)" = "**2**" ]'
+ok "sums each size column" '[ "$(TOTAL 4)" = "**1,009**" ] && [ "$(TOTAL 5)" = "**5**" ] && [ "$(TOTAL 6)" = "**2**" ]'
 ok "leaves title, date, risk and verdict empty" '[ "$(TOTAL 1)" = "**Total**" ] && [ -z "$(TOTAL 2)$(TOTAL 3)$(TOTAL 7)$(TOTAL 8)" ]'
 ok "sums each round, and owns an unknown rather than hide it" '[ "$(TOTAL 9)" = "**\$8.00 + unknown**" ] && [ "$(TOTAL 10)" = "**\$1.10**" ] && [ -z "$(TOTAL 11)" ]'
 ok "sums total cost and tokens" '[ "$(TOTAL 12)" = "**\$9.10 + unknown**" ] && [ "$(TOTAL 13)" = "**4.5M + unknown**" ]'
@@ -153,14 +175,18 @@ ok "is recomputed from the rows as they stand, once" '[ "$(TOTAL 12)" = "**\$10.
 
 echo "The CSV beside the page:"
 CSV="${PAGE%.md}.csv"
-# csv <n> <k> — the k-th field of pull request <n>'s CSV line; titles hold no comma in these fixtures.
-csv() { grep -E "^$1," "$CSV" | sed 's/"//g' | cut -d, -f"$2"; }
+# csvline <n> — pull request <n>'s CSV line, exactly as written.
+csvline() { grep -E "^$1," "$CSV"; }
+# csv <n> <k> — the k-th field of pull request <n>'s CSV line, quotes and all; only for a line whose
+# title holds no comma.
+csv() { csvline "$1" | cut -d, -f"$2"; }
 ok "is linked from the page, above the table" '[ "$(grep -n "(page.csv)" "$PAGE" | cut -d: -f1)" -lt "$(grep -n "^| PR |" "$PAGE" | cut -d: -f1)" ]'
 ok "holds a header and one line per row, newest first, with no totals" '[ "$(cut -d, -f1 "$CSV" | paste -sd,)" = "PR,50,51,52" ]'
-ok "carries plain numbers: no dollar sign, no thousands separator" '[ "$(csv 50 11)" = 5.34 ] && [ "$(csv 50 14)" = 6.44 ] && [ "$(csv 50 6)" = 12 ] && [ "$(csv 50 15)" = 3.0 ]'
-ok "reads a hand correction made on the page" '[ "$(csv 51 14)" = 3.66 ]'
+ok "writes every field of a row in its column" '[ "$(csvline 50)" = "50,https://example.test/pull/50,\"Change 50\",true,2026-11-04,1002,5,,High,no,5.34,1.10,,6.44,3.0" ]'
+ok "quotes a title, doubling its quotes, with its pipe unescaped" '[ "$(csvline 51 | cut -d, -f1-5)" = "51,https://example.test/pull/51,\"Say \"\"hi\"\", a | b\",true" ]'
+ok "reads a hand correction made on the page" '[ "$(csvline 51 | awk -F, "{ print \$(NF - 1) }")" = 3.66 ]'
 ok "leaves an unknown cost empty rather than break a sum" '[ -z "$(csv 52 11)" ] && [ -z "$(csv 52 14)" ] && [ -z "$(csv 52 15)" ]'
-ok "states merged as true or false, with the title bare" '[ "$(csv 50 4)" = true ] && [ "$(csv 52 4)" = false ] && [ "$(csv 52 3)" = "Change 52" ]'
+ok "states merged as true or false, with the title bare" '[ "$(csv 50 4)" = true ] && [ "$(csv 52 4)" = false ] && [ "$(csv 52 3)" = "\"Change 52\"" ]'
 
 echo "A failing call:"
 fresh
