@@ -2,11 +2,12 @@
 #
 # stage-flags.tests.sh — standalone test matrix for stage-flags.sh and the stage table it reads.
 #
-# The script turns a stage name into the model and effort flags a runner passes to claude. The
+# The script turns a stage name into the model and effort flags a workflow passes to claude. The
 # lookup is proved against copies of the script beside fixture tables, so no case depends on the
 # models the real table happens to name today. The last group checks the real table against the
-# runners that read it: every stage a runner names has a row, and no runner names a model or an
-# effort of its own, which is what keeps the table the one place the answer is written. Exits
+# workflows that read it: every stage a workflow names has a row, and no workflow names a model or
+# an effort of its own, which is what keeps the table the one place the answer is written. The
+# chain's stages are configured in .gaffer/chain.json, read by gaffer's chain, not here. Exits
 # non-zero on any failure.
 #
 #   Usage:  scripts/stage-flags.tests.sh
@@ -57,9 +58,8 @@ lookup build
 ok "a stage written twice fails rather than pick one" '[ "$RC" != 0 ]'
 
 echo "The real table and the runners that read it:"
-# Every stage name a runner looks up: the workflows' calls to the script and the chain's stages.
-names=$(cd "$REPO" && { git grep -hoE 'stage-flags\.sh"? [a-z-]+' -- .github/workflows | awk '{print $2}'; \
-  grep -oE '^  run_stage [0-9]+ [a-z-]+' scripts/chain.sh | awk '{print $3}'; } | sort -u)
+# Every stage name a runner looks up: the workflows' calls to the script.
+names=$(cd "$REPO" && git grep -hoE 'stage-flags\.sh"? [a-z-]+' -- .github/workflows | awk '{print $2}' | sort -u)
 ok "the runners name at least one stage" '[ -n "$names" ]'
 missing=
 for n in $names; do bash "$LOOKUP" "$n" >/dev/null 2>&1 || missing="$missing $n"; done
@@ -67,8 +67,8 @@ OUTPUT=$missing
 ok "every stage a runner names has a row" '[ -z "$missing" ]'
 # A model or effort written as a literal value anywhere a runner is written is an answer the table
 # does not give; a flag whose value is a variable is the runner passing the table's answer on. The
-# test matrices are left out, as their stubs record the flags the chain passed, and so is the
-# lookup itself, whose usage line shows what it prints.
+# test matrices are left out, as their fixtures name models of their own, and so is the lookup
+# itself, whose usage line shows what it prints.
 OUTPUT=$(cd "$REPO" && git grep -nE -- "--(model|effort)[ =]+['\"]?[A-Za-z0-9]" -- .github/workflows 'scripts/*.sh' ':!*.tests.sh' ':!scripts/stage-flags.sh')
 ok "no runner names a model or effort of its own" '[ -z "$OUTPUT" ]'
 # A Claude step whose claude_args does not open with a looked-up output, or that reads an output

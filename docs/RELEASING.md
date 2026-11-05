@@ -192,7 +192,7 @@ The `IsAotCompatible=true` property on `NetPace.Core.csproj` causes `dotnet pack
 
 Every release tag packs and pushes `NetPace.Core` at the tag's version, whether or not the library changed since the previous tag. Most releases change only the CLI, so most library versions are identical in content to the one before.
 
-**Why**: the workflow used to publish only when `src/NetPace.Core/**` differed from the nearest earlier tag. That tag could be a release candidate, so a stable release tagged after an rc that carried the library's last change found no difference and never published the stable library. The diff also never saw `src/Directory.Build.props` or `src/Directory.Packages.props`, which shape the library too. Before 1.0 a version number makes no compatibility promise (Constitution VII, *Pre-1.0 stance*), so the skip protected nothing worth the risk of a release with no library.
+**Why**: the workflow used to publish only when `src/NetPace.Core/**` differed from the nearest earlier tag. That tag could be a release candidate, so a stable release tagged after an rc that carried the library's last change found no difference and never published the stable library. The diff also never saw `src/Directory.Build.props` or `src/Directory.Packages.props`, which shape the library too. Before 1.0 a version number makes no compatibility promise (`CONVENTIONS.md` → *Public API and breaking changes*), so the skip protected nothing worth the risk of a release with no library.
 
 The GitHub Release / binary-attachment flow via `release-binaries.yml` ships every release tag too.
 
@@ -280,7 +280,7 @@ A tag of the form `X.Y.Z-suffix` (`0.27.0-rc1`, `0.27.0-rc.1`) is a prerelease. 
 The .NET SDK version is encoded in two places, both targeting **.NET 10 (LTS)**:
 
 - **`global.json`** (repo root) pins `"version": "10.0.0"` with `"rollForward": "latestFeature"`, so local and CI builds resolve to the latest installed 10.0.x feature band — reproducible without hard-pinning a patch that may not be on every runner.
-- **Each workflow** (`dotnet.yml`, `codeql.yml`, `publish-nuget.yml`, `publish-tool.yml`, `release-binaries.yml`, `shell-tests.yml`) sets `dotnet-version: 10.0.x` on `actions/setup-dotnet`, which installs a 10.0 SDK that `global.json` then honours.
+- **Each workflow** (`dotnet.yml`, `publish-nuget.yml`, `publish-tool.yml`, `release-binaries.yml`, `shell-tests.yml`) sets `dotnet-version: 10.0.x` on `actions/setup-dotnet`, which installs a 10.0 SDK that `global.json` then honours.
 
 When bumping the SDK major, update both places in lockstep.
 

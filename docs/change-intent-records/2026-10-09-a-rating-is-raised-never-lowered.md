@@ -2,7 +2,7 @@
 
 **Intent:** Close the ways `/verify` could report a branch verified when it should not, or stop for the wrong reason, that #346 found in how a finding's severity decides the verdict.
 
-**Behaviour:** [`.claude/commands/verify.md`](../../.claude/commands/verify.md) — the reviewer brief, and the rules table with its definitions, in step 2.
+**Behaviour:** [`.claude/commands/verify.md`](https://github.com/FrankRay78/gaffer-claude/blob/main/commands/verify.md) — the reviewer brief, and the rules table with its definitions, in step 2.
 
 **Constraints:** The reviewer agents come from a plugin, so their own prompts cannot be edited; the scale can only be asked for in the brief `/verify` gives them.
 
