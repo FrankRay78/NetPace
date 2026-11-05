@@ -16,29 +16,29 @@ The same rows as CSV, for a spreadsheet: [pr-review-costs.csv](pr-review-costs.c
 
 | PR | Title | Closed | Code | Tests | Docs | Risk | No-human merge | Review | Follow-up 1 | Follow-up 2 | Total cost | Total tokens |
 | --- | --- | --- | ---: | ---: | ---: | --- | --- | ---: | ---: | ---: | ---: | ---: |
-| [#519](https://github.com/FrankRay78/NetPace/pull/519) | Harness Docs Say What Is True | 2026-11-05 | 62 | 21 | 12 | Low | no | $5.68 |  |  | $5.68 | 5.6M |
-| [#512](https://github.com/FrankRay78/NetPace/pull/512) | Completed Run Ends On Its Result | 2026-11-05 | 3 | 99 |  | Medium | no | $6.47 |  |  | $6.47 | 8.3M |
-| [#511](https://github.com/FrankRay78/NetPace/pull/511) | Deterministic Live Display | 2026-11-05 |  | 26 |  | Medium | no | $2.46 |  |  | $2.46 | 2.3M |
-| [#508](https://github.com/FrankRay78/NetPace/pull/508) | Deterministic Live Display Tests | 2026-11-05 | 68 | 76 | 22 | Medium | no | $5.16 |  |  | $5.16 | 5.7M |
-| [#497](https://github.com/FrankRay78/NetPace/pull/497) | Colour Themes | 2026-11-05 | 756 | 1,208 | 59 | Medium | no | $12.19 | $8.51 |  | $20.70 | 25.8M |
-| [#496](https://github.com/FrankRay78/NetPace/pull/496) | File Output Without A Byte Order Mark | 2026-11-05 | 31 | 228 | 23 | Medium | no | $5.37 |  |  | $5.37 | 5.4M |
-| [#485](https://github.com/FrankRay78/NetPace/pull/485) | Jitter On Latency Result | 2026-11-05 | 125 | 333 | 21 | High | no | $5.34 |  |  | $5.34 | 6.4M |
-| [#507](https://github.com/FrankRay78/NetPace/pull/507) | Remove leftovers from the move to gaffer's commands | 2026-11-03 | 32 |  | 29 | Low | no | $2.45 |  |  | $2.45 | 2.5M |
-| [#506](https://github.com/FrankRay78/NetPace/pull/506) | Remove CodeQL analysis | 2026-11-03 | 50 | 2 | 17 | Medium | no | $2.42 |  |  | $2.42 | 2.2M |
-| [#504](https://github.com/FrankRay78/NetPace/pull/504) | Retire the workflow delta doc and the WSL sandbox guide | 2026-11-03 | 54 |  | 610 | Medium | no | $7.14 | $2.23 |  | $9.37 | 11.9M |
-| [#501](https://github.com/FrankRay78/NetPace/pull/501) | Move CLAUDE.md's working rules to their homes | 2026-11-03 |  |  | 36 | Low | no | $4.71 |  |  | $4.71 | 5.3M |
-| [#500](https://github.com/FrankRay78/NetPace/pull/500) | Trim the workflow doc to NetPace's delta | 2026-11-02 |  |  | 91 | Low | no | $5.52 |  |  | $5.52 | 6.7M |
-| [#488](https://github.com/FrankRay78/NetPace/pull/488) | Run NetPace's SDLC commands from the gaffer plugin *(not merged)* | 2026-11-02 | 1,026 | 973 | 3,897 | High | no | $2.11 |  |  | $2.11 | 2.3M |
-| [#484](https://github.com/FrankRay78/NetPace/pull/484) | Capture Learnings: Test Integrity And Parked-Attempt Salvage | 2026-10-31 |  |  | 17 | Low | no | $3.83 |  |  | $3.83 | 3.9M |
-| [#483](https://github.com/FrankRay78/NetPace/pull/483) | Elapsed Time From Time Provider | 2026-10-31 | 141 | 755 | 35 | High | no | $10.24 | $2.96 | $2.67 | $15.87 | 16.4M |
-| [#482](https://github.com/FrankRay78/NetPace/pull/482) | Test Doubles Supported Surface | 2026-10-31 | 133 | 1,417 | 21 | Medium | no | $8.69 |  |  | $8.69 | 9.4M |
-| [#481](https://github.com/FrankRay78/NetPace/pull/481) | Let chain stages wait for their own background subagents | 2026-10-30 | 7 | 5 |  | Medium | no | $5.51 |  |  | $5.51 | 6.1M |
-| [#480](https://github.com/FrankRay78/NetPace/pull/480) | Server And Device Fields | 2026-10-30 | 230 | 859 | 88 | Medium | no | $9.90 | $2.26 |  | $12.16 | 15.1M |
-| [#469](https://github.com/FrankRay78/NetPace/pull/469) | Csv Header Control | 2026-10-30 | 150 | 595 | 130 | Medium | no | $6.15 | $6.82 | $5.97 | $18.94 | 16.2M |
-| [#468](https://github.com/FrankRay78/NetPace/pull/468) | Consistent Option Values | 2026-10-30 | 182 | 302 | 132 | Medium | no | $6.93 | $3.13 |  | $10.06 | 12.1M |
-| [#466](https://github.com/FrankRay78/NetPace/pull/466) | Remove CSV Delimiter And Escape CSV Fields | 2026-10-30 | 68 | 386 | 100 | Medium | no | $4.41 |  |  | $4.41 | 5.2M |
-| [#465](https://github.com/FrankRay78/NetPace/pull/465) | Choose The Number Of Connections | 2026-10-30 | 72 | 205 | 46 | Medium | no | $6.89 | $1.88 |  | $8.77 | 9.4M |
-| [#475](https://github.com/FrankRay78/NetPace/pull/475) | Remove Orphaned CSV Snapshots | 2026-10-29 |  | 4 |  | Low | yes | $2.11 | $1.57 |  | $3.68 | 3.6M |
-| [#472](https://github.com/FrankRay78/NetPace/pull/472) | Call Chain Specialist | 2026-10-29 |  |  | 56 | Medium | no | $6.18 | $5.01 | $2.58 | $13.77 | 11.6M |
-| [#455](https://github.com/FrankRay78/NetPace/pull/455) | PR Review Cost Footer | 2026-10-29 | 583 | 456 | 37 | High | no | $9.61 |  |  | $9.61 | 8.6M |
-| **Total** | | | **3,773** | **7,950** | **5,479** | | | **$147.47** | **$34.37** | **$11.22** | **$193.06** | **208.0M** |
+| [#519](https://github.com/FrankRay78/NetPace/pull/519) | Harness Docs Say What Is True | 2026-11-05 | 62 | 21 | 12 | Low | no | $5.68 |  |  | $5.68 | 5,632,809 |
+| [#512](https://github.com/FrankRay78/NetPace/pull/512) | Completed Run Ends On Its Result | 2026-11-05 | 3 | 99 |  | Medium | no | $6.47 |  |  | $6.47 | 8,278,807 |
+| [#511](https://github.com/FrankRay78/NetPace/pull/511) | Deterministic Live Display | 2026-11-05 |  | 26 |  | Medium | no | $2.46 |  |  | $2.46 | 2,348,162 |
+| [#508](https://github.com/FrankRay78/NetPace/pull/508) | Deterministic Live Display Tests | 2026-11-05 | 68 | 76 | 22 | Medium | no | $5.16 |  |  | $5.16 | 5,723,567 |
+| [#497](https://github.com/FrankRay78/NetPace/pull/497) | Colour Themes | 2026-11-05 | 756 | 1,208 | 59 | Medium | no | $12.19 | $8.51 |  | $20.70 | 25,757,135 |
+| [#496](https://github.com/FrankRay78/NetPace/pull/496) | File Output Without A Byte Order Mark | 2026-11-05 | 31 | 228 | 23 | Medium | no | $5.37 |  |  | $5.37 | 5,391,126 |
+| [#485](https://github.com/FrankRay78/NetPace/pull/485) | Jitter On Latency Result | 2026-11-05 | 125 | 333 | 21 | High | no | $5.34 |  |  | $5.34 | 6,432,360 |
+| [#507](https://github.com/FrankRay78/NetPace/pull/507) | Remove leftovers from the move to gaffer's commands | 2026-11-03 | 32 |  | 29 | Low | no | $2.45 |  |  | $2.45 | 2,508,414 |
+| [#506](https://github.com/FrankRay78/NetPace/pull/506) | Remove CodeQL analysis | 2026-11-03 | 50 | 2 | 17 | Medium | no | $2.42 |  |  | $2.42 | 2,170,620 |
+| [#504](https://github.com/FrankRay78/NetPace/pull/504) | Retire the workflow delta doc and the WSL sandbox guide | 2026-11-03 | 54 |  | 610 | Medium | no | $7.14 | $2.23 |  | $9.37 | 11,921,515 |
+| [#501](https://github.com/FrankRay78/NetPace/pull/501) | Move CLAUDE.md's working rules to their homes | 2026-11-03 |  |  | 36 | Low | no | $4.71 |  |  | $4.71 | 5,322,757 |
+| [#500](https://github.com/FrankRay78/NetPace/pull/500) | Trim the workflow doc to NetPace's delta | 2026-11-02 |  |  | 91 | Low | no | $5.52 |  |  | $5.52 | 6,664,733 |
+| [#488](https://github.com/FrankRay78/NetPace/pull/488) | Run NetPace's SDLC commands from the gaffer plugin *(not merged)* | 2026-11-02 | 1,026 | 973 | 3,897 | High | no | $2.11 |  |  | $2.11 | 2,302,405 |
+| [#484](https://github.com/FrankRay78/NetPace/pull/484) | Capture Learnings: Test Integrity And Parked-Attempt Salvage | 2026-10-31 |  |  | 17 | Low | no | $3.83 |  |  | $3.83 | 3,903,907 |
+| [#483](https://github.com/FrankRay78/NetPace/pull/483) | Elapsed Time From Time Provider | 2026-10-31 | 141 | 755 | 35 | High | no | $10.24 | $2.96 | $2.67 | $15.87 | 16,432,240 |
+| [#482](https://github.com/FrankRay78/NetPace/pull/482) | Test Doubles Supported Surface | 2026-10-31 | 133 | 1,417 | 21 | Medium | no | $8.69 |  |  | $8.69 | 9,413,916 |
+| [#481](https://github.com/FrankRay78/NetPace/pull/481) | Let chain stages wait for their own background subagents | 2026-10-30 | 7 | 5 |  | Medium | no | $5.51 |  |  | $5.51 | 6,058,916 |
+| [#480](https://github.com/FrankRay78/NetPace/pull/480) | Server And Device Fields | 2026-10-30 | 230 | 859 | 88 | Medium | no | $9.90 | $2.26 |  | $12.16 | 15,050,707 |
+| [#469](https://github.com/FrankRay78/NetPace/pull/469) | Csv Header Control | 2026-10-30 | 150 | 595 | 130 | Medium | no | $6.15 | $6.82 | $5.97 | $18.94 | 16,177,501 |
+| [#468](https://github.com/FrankRay78/NetPace/pull/468) | Consistent Option Values | 2026-10-30 | 182 | 302 | 132 | Medium | no | $6.93 | $3.13 |  | $10.06 | 12,120,546 |
+| [#466](https://github.com/FrankRay78/NetPace/pull/466) | Remove CSV Delimiter And Escape CSV Fields | 2026-10-30 | 68 | 386 | 100 | Medium | no | $4.41 |  |  | $4.41 | 5,185,870 |
+| [#465](https://github.com/FrankRay78/NetPace/pull/465) | Choose The Number Of Connections | 2026-10-30 | 72 | 205 | 46 | Medium | no | $6.89 | $1.88 |  | $8.77 | 9,376,496 |
+| [#475](https://github.com/FrankRay78/NetPace/pull/475) | Remove Orphaned CSV Snapshots | 2026-10-29 |  | 4 |  | Low | yes | $2.11 | $1.57 |  | $3.68 | 3,621,199 |
+| [#472](https://github.com/FrankRay78/NetPace/pull/472) | Call Chain Specialist | 2026-10-29 |  |  | 56 | Medium | no | $6.18 | $5.01 | $2.58 | $13.77 | 11,649,175 |
+| [#455](https://github.com/FrankRay78/NetPace/pull/455) | PR Review Cost Footer | 2026-10-29 | 583 | 456 | 37 | High | no | $9.61 |  |  | $9.61 | 8,598,279 |
+| **Total** | | | **3,773** | **7,950** | **5,479** | | | **$147.47** | **$34.37** | **$11.22** | **$193.06** | **208,043,162** |
