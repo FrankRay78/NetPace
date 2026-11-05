@@ -1,4 +1,4 @@
-# The review-cost table lives in the codebase, as the one exception to issue numbers living in records
+# The review-cost table lives in the codebase, as an exception to issue numbers living in records
 
 **Intent:** Keep one readable, cumulative table of what each pull request's automated review cost, beside its size and first-review risk, so the cost of a review rule change can be judged across pull requests rather than one at a time.
 
