@@ -582,6 +582,7 @@ public sealed partial class NetPaceConsoleTests
         // SCENARIO: Help shows the lowercase command name
         // SCENARIO: Help shows option values in lowercase
         // SCENARIO: Every choice list uses one notation
+        // SCENARIO: Unit system description fits on continuation lines
 
         // Given
         var services = new ServiceCollection();
