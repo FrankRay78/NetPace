@@ -23,4 +23,10 @@
     <ProjectReference Include="..\NetPace.Console\NetPace.Console.csproj" />
   </ItemGroup>
 
+  <!-- The repository README reproduces the help output; copy it beside the test assembly so the
+       test that compares the two can read it. -->
+  <ItemGroup>
+    <None Include="$(MSBuildThisFileDirectory)..\..\README.md" Link="README.md" CopyToOutputDirectory="PreserveNewest" Visible="false" />
+  </ItemGroup>
+
 </Project>

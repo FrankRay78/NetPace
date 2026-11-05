@@ -186,7 +186,7 @@ public static class Program
 
         var unitSystemOption = new Option<SpeedUnitSystem>("--unit-system")
         {
-            Description = $"The speed unit system. {OptionValues.UnitSystems.HelpList}\nApplies to the default and minimal output.\nSI steps up in powers of 1000 (KB, MB, GB), common in networking, while IEC uses powers of 1024 (KiB, MiB, GiB), standard in computing and storage.",
+            Description = $"The speed unit system. {OptionValues.UnitSystems.HelpList}\nApplies to the default and minimal output.\nSI steps up in powers of 1000 (KB, MB, GB), common in networking,\nwhile IEC uses powers of 1024 (KiB, MiB, GiB), standard in computing and storage.",
             DefaultValueFactory = _ => SpeedUnitSystem.SI,
             CustomParser = result => OptionValues.UnitSystems.Parse(result, "--unit-system")
         };
