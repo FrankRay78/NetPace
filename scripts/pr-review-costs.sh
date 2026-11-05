@@ -218,12 +218,15 @@ totals_row() {
 # per pull request, with no totals row (a spreadsheet sums for itself). Numbers are plain — no
 # dollar sign, no thousands separator — and tokens are in millions, as precise as the table holds
 # them, so the CSV never claims a precision the page does not have. A cell that is not a plain
-# number is left empty rather than break a column's sum. Derived from the page's rows,
+# number is left empty rather than break a column's sum. Every text field is quoted, so a comma in
+# one — a risk cell corrected by hand, say — moves no later field; and one a spreadsheet would read
+# as a formula (=, +, - or @ first) is opened with a quote mark, which a spreadsheet shows as text.
+# Derived from the page's rows,
 # so a correction made to a row by hand reaches the CSV too.
 write_csv() {
   printf '%s\n' 'PR,Url,Title,Merged,Closed,CodeLines,TestLines,DocsLines,Risk,NoHumanMerge,ReviewCost,FollowUp1Cost,FollowUp2Cost,TotalCost,TotalTokensMillions'
   [ -z "$1" ] || printf '%s\n' "$1" | awk "$AWK_LIB"'
-    function q(s) { gsub(/"/, "\"\"", s); return "\"" s "\"" }
+    function q(s) { if (s ~ /^[=+@-]/) s = "\047" s; gsub(/"/, "\"\"", s); return "\"" s "\"" }
     function num(s) { gsub(/,/, "", s); return s ~ /^[0-9]+$/ ? s : "" }
     function money(s) { gsub(/,/, "", s); return s ~ /^\$[0-9]+(\.[0-9]+)?$/ ? substr(s, 2) : "" }
     {
@@ -234,8 +237,8 @@ write_csv() {
       if (sub(/ \*\(not merged\)\*$/, "", title)) merged = "false"
       gsub(/\\\|/, "|", title)
       tok = (c[13] ~ /^[0-9]+(\.[0-9]+)?M$/) ? substr(c[13], 1, length(c[13]) - 1) : ""
-      printf "%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s\n", n, url, q(title), merged, c[3],
-        num(c[4]), num(c[5]), num(c[6]), c[7], c[8],
+      printf "%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s\n", n, url, q(title), merged, q(c[3]),
+        num(c[4]), num(c[5]), num(c[6]), q(c[7]), q(c[8]),
         money(c[9]), money(c[10]), money(c[11]), money(c[12]), tok
     }
   '

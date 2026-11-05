@@ -213,12 +213,21 @@ csvline() { grep -E "^$1," "$CSV"; }
 csv() { csvline "$1" | cut -d, -f"$2"; }
 ok "is linked from the page, above the table" '[ "$(grep -n "(page.csv)" "$PAGE" | cut -d: -f1)" -lt "$(grep -n "^| PR |" "$PAGE" | cut -d: -f1)" ]'
 ok "holds a header and one line per row, newest first, with no totals" '[ "$(cut -d, -f1 "$CSV" | paste -sd,)" = "PR,50,51,52" ]'
-ok "writes every field of a row in its column" '[ "$(csvline 50)" = "50,https://example.test/pull/50,\"Change 50\",true,2026-11-04,1002,5,,High,no,5.34,1.10,,6.44,3.0" ]'
+ok "writes every field of a row in its column" '[ "$(csvline 50)" = "50,https://example.test/pull/50,\"Change 50\",true,\"2026-11-04\",1002,5,,\"High\",\"no\",5.34,1.10,,6.44,3.0" ]'
 ok "quotes a title, doubling its quotes, with its pipe unescaped" '[ "$(csvline 51 | cut -d, -f1-5)" = "51,https://example.test/pull/51,\"Say \"\"hi\"\", a | b\",true" ]'
 ok "reads a hand correction made on the page" '[ "$(csv 52 14)" = 2.00 ]'
 ok "keeps the known part of a partial figure, and an unreported round empty" '[ "$(csv 52 11)" = 1.00 ] && [ -z "$(csv 52 12)" ] && [ "$(csv 52 15)" = 2.0 ]'
 ok "reads a cost of \$1,000 or more whole" '[ "$(csvline 51 | awk -F, "{ print \$(NF - 4) }")" = 1026.00 ]'
 ok "states merged as true or false, with the title bare" '[ "$(csv 50 4)" = true ] && [ "$(csv 52 4)" = false ] && [ "$(csv 52 3)" = "\"Change 52\"" ]'
+
+echo "Text in the CSV:"
+fresh
+SQ="'"
+pr 70 2026-11-04T09:00:00Z '"2026-11-04T09:00:00Z"' "$ONE_ROUND" '=HYPERLINK("x")' | prs
+files 70 '[]'; reviews 70 "[$(review 'Risk tier: High, see notes · Merge with no human review: no\n<!-- review-pr -->')]"
+run
+ok "quotes every text field, so a comma in one moves nothing" '[ "$(csvline 70)" = "70,https://example.test/pull/70,\"$SQ=HYPERLINK(\"\"x\"\")\",true,\"2026-11-04\",,,,\"High, see notes\",\"no\",5.34,,,5.34,6.4" ]'
+ok "and a field a spreadsheet would read as a formula is opened with a quote mark" '[ "$(csvline 70 | cut -d, -f3 | cut -c1-3)" = "\"$SQ=" ]'
 
 echo "A failing call:"
 fresh
