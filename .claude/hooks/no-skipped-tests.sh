@@ -30,13 +30,21 @@
 # It applies to HOOK MODE ONLY — `--check` ignores it, so an audit can never be silenced by a
 # stray env var. Delete this block once the gate is trusted to make the ban absolute.
 #
-# Wired into .claude/settings.json as a PreToolUse(Bash) hook carrying `if: Bash(git commit:*)`,
-# so the harness filters the call before this script is reached and the script never sees most
-# Bash calls at all. What that filter covers was measured, not assumed: it decomposes a compound
-# command, so `cd somewhere && git commit -m x` reaches the gate; it does not match on a mention,
-# so `grep -r "git commit" docs/` does not; and it is a command-word prefix match, so
-# `git -C <path> commit` slips past it — a known gap: such a commit never reaches this script, so
-# it is never scanned.
+# Wired into .claude/settings.json as a PreToolUse(Bash) hook with no `if:` filter, so the script
+# is handed every Bash call and its own classifier below decides what to gate. It was previously
+# registered with `if: Bash(git commit:*)`, which matches on the command's leading words: that
+# filter decomposed a compound command, so `cd somewhere && git commit -m x` reached the gate, but
+# a git global option before the subcommand — `git -C <path> commit`, `git -c k=v commit`,
+# `git --no-pager commit` — did not match, and nor did a wrapper such as `env X=1 git commit` or
+# `bash -c 'git commit …'`. Those commits never reached the script, so they were never scanned.
+# Taking the filter off closes that: the classifier here already matched every one of those forms.
+# The cost is that the script runs on every Bash call; it is waved through at the pre-filter below,
+# which uses shell builtins only. The over-block that reaches the script with the filter gone — a
+# read-only command merely mentioning the words, `grep -r "git commit" docs/` — is accepted, and
+# can only fire when src/ already holds a banned construct. What this gate cannot see at all is an
+# indirect commit: a git alias (`git ci`), or a script that commits internally. It reads only the
+# command text. The `--check` step in .github/workflows/dotnet.yml is the backstop for those, and
+# for a commit made outside a Claude session altogether.
 # CONVENTIONS.md (Testing, "No skipped tests") states the ban.
 
 set -uo pipefail
@@ -121,11 +129,11 @@ fi
 
 # Hook mode: read the PreToolUse JSON on stdin and gate ONLY `git commit`.
 #
-# Classify the command as a commit BEFORE requiring jq or the src/ tree, and do not lean on the
-# `if: Bash(git commit:*)` filter in .claude/settings.json to have done it. That filter is the
-# harness's, it is configuration this script cannot see, and a run that loses or widens it — a
-# settings edit, running the script by hand, a port to another repo — would hand this
-# script arbitrary Bash calls. So the script classifies for itself, and a fail-closed dependency
+# Classify the command as a commit BEFORE requiring jq or the src/ tree. This classification is
+# the only one there is: .claude/settings.json registers the hook with no `if:` filter, so the
+# harness narrows nothing and every Bash call arrives here. The script would classify for itself
+# regardless — the registration is configuration it cannot see, and running the script by hand or
+# porting it to another repo hands it arbitrary Bash calls either way. A fail-closed dependency
 # check placed ahead of that classification would block unrelated commands (`ls`, `cat`, even
 # `apt install jq`) on any box without jq — a bootstrap deadlock on a fresh machine. The
 # fail-closed guards below therefore apply only once we know this is a commit; a non-commit Bash
@@ -175,9 +183,9 @@ cmd_flat="${cmd//\\$'\n'/ }"
 # only bite when src/ ALREADY holds a banned construct, i.e. when the ban is already violated and
 # must be fixed regardless; in a clean tree it never fires. Parsing shell to find the command-word
 # would trade this harmless over-block for the failure that actually matters — a parser gap
-# missing a real commit and letting a skip land silently. (In practice the harness's
-# `if: Bash(git commit:*)` filter spares the mention case before this script is reached, so the
-# over-block is rarely seen; the breadth stays because this classification must hold on its own.)
+# missing a real commit and letting a skip land silently. The breadth is what lets the hook be
+# registered with no `if:` filter: it matches `git -C <path> commit` and every other form that put
+# a global option or a wrapper ahead of the subcommand, which a leading-word filter could not.
 if [ "$tool" != "Bash" ] || ! printf '%s' "$cmd_flat" | grep -qE '\bgit\b.*\bcommit\b'; then
   exit 0
 fi
