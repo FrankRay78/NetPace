@@ -8,6 +8,6 @@
 
 **Decisions:**
 
-- No option to write a byte-order mark, for any format. Rejected: a `--bom` switch, or writing one for CSV only. Some versions of Excel read a double-clicked UTF-8 CSV as a legacy code page without one, which mangles non-ASCII sponsor names — but a redirected stdout already behaves that way, a user who needs the mark can add it after the run (prepending it first does not survive: a file holding nothing but a mark counts as an empty log and is replaced), and the user guide now points spreadsheet users at *Data → From Text/CSV*. A second encoding to support would outlast the spreadsheet bug.
+- No option to write a byte-order mark. Rejected: a `--bom` switch, or a mark for CSV only. Some Excel versions misread a double-clicked UTF-8 CSV without one, but redirected stdout already lacks one, a user can add it after the run, and the user guide points spreadsheet users at *Data → From Text/CSV*. A second encoding would outlast the spreadsheet bug.
 
 **Date:** 2026-11-02
