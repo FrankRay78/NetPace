@@ -20,8 +20,10 @@
 # For a commit it is gating, the gate fails CLOSED: if it cannot locate src/, cannot scan, or
 # cannot parse its hook payload (jq/grep missing), it blocks rather than silently allowing — a
 # gate that fails open is the same silent non-coverage it exists to prevent. These fail-closed
-# guards apply ONLY after the command is classified as a `git commit`; every non-commit Bash call
-# is waved straight through first, so a missing dependency never blocks unrelated commands. The
+# guards apply ONLY once the payload mentions both `git` and `commit`; any other Bash call is waved
+# straight through first, so a missing dependency never blocks it. A read-only call that does
+# mention both words is denied by them, clean tree or not — the accepted cost of an unfiltered
+# hook, and the reason the denial names the missing dependency. The
 # classification itself therefore uses shell builtins only — see the pre-filter below, where
 # shelling out would reintroduce exactly the fail-open hole these guards exist to close.
 #
@@ -38,10 +40,12 @@
 # `git --no-pager commit` — did not match, and nor did a wrapper such as `env X=1 git commit` or
 # `bash -c 'git commit …'`. Those commits never reached the script, so they were never scanned.
 # Taking the filter off closes that: the classifier here already matched every one of those forms.
-# The cost is that the script runs on every Bash call; it is waved through at the pre-filter below,
-# which uses shell builtins only. The over-block that reaches the script with the filter gone — a
-# read-only command merely mentioning the words, `grep -r "git commit" docs/` — is accepted, and
-# can only fire when src/ already holds a banned construct. What this gate cannot see at all is an
+# The cost is that the script runs on every Bash call — a `mktemp`, a `cat` of the payload, then the
+# pre-filter below, whose own test is a shell builtin. The over-block that reaches the script with
+# the filter gone — a read-only command merely mentioning the words, `grep -r "git commit" docs/` —
+# is accepted: on the scan path it fires only when src/ already holds a banned construct, and on the
+# fail-closed paths (no jq, no grep, no src/) it fires on any such call, clean tree or not.
+# What this gate cannot see at all is an
 # indirect commit: a git alias (`git ci`), or a script that commits internally. It reads only the
 # command text. The `--check` step in .github/workflows/dotnet.yml is the backstop for those, and
 # for a commit made outside a Claude session altogether.
@@ -136,8 +140,8 @@ fi
 # porting it to another repo hands it arbitrary Bash calls either way. A fail-closed dependency
 # check placed ahead of that classification would block unrelated commands (`ls`, `cat`, even
 # `apt install jq`) on any box without jq — a bootstrap deadlock on a fresh machine. The
-# fail-closed guards below therefore apply only once we know this is a commit; a non-commit Bash
-# call is always waved straight through.
+# fail-closed guards below therefore apply only once the payload mentions git and commit; a Bash
+# call that does not is always waved straight through.
 input="$(cat)"
 
 # Cheap pre-filter: if the raw payload cannot even contain a `git commit`, there is nothing to
@@ -180,8 +184,9 @@ cmd_flat="${cmd//\\$'\n'/ }"
 
 # Deliberately NOT narrowed to command-word position. A read-only command that merely mentions
 # the words — `grep -r "git commit" docs/` — is gated too, and that over-block is accepted: it can
-# only bite when src/ ALREADY holds a banned construct, i.e. when the ban is already violated and
-# must be fixed regardless; in a clean tree it never fires. Parsing shell to find the command-word
+# only bite HERE when src/ ALREADY holds a banned construct, i.e. when the ban is already violated
+# and must be fixed regardless; the fail-closed guards above bite on any such command, clean tree or
+# not, which is the real cost of the breadth. Parsing shell to find the command-word
 # would trade this harmless over-block for the failure that actually matters — a parser gap
 # missing a real commit and letting a skip land silently. The breadth is what lets the hook be
 # registered with no `if:` filter: it matches `git -C <path> commit` and every other form that put

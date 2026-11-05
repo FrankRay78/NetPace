@@ -25,10 +25,13 @@ jobs:
       # where a new context could not be required until its workflow was on main (CONVENTIONS.md,
       # Pull requests).
       #
-      # First in the job, before the SDK is even set up: the scan is static, needs only bash and
-      # grep, and a banned construct has to be removed whatever the build does. `--check` ignores the
-      # NETPACE_ALLOW_SKIPS override by design, so no stray environment variable can quiet it, and it
-      # fails closed (exit 2) if it cannot read the tree — either way a non-zero exit fails the job.
+      # First in the job, right after checkout and before the SDK is even set up: the scan is static,
+      # needs only bash, grep and a couple of coreutils, and a banned construct has to be removed
+      # whatever the build does. `--check` ignores the NETPACE_ALLOW_SKIPS override by design, so a
+      # leaked override cannot quiet it, and it fails closed (exit 2) if it cannot read the tree —
+      # either way a non-zero exit fails the job. CLAUDE_PROJECT_DIR is the one variable that still
+      # redirects it: `--check` honours it, so a workflow-level env of that name would point this scan
+      # at another tree and report clean.
       run: bash .claude/hooks/no-skipped-tests.sh --check
 
     - name: Setup .NET
