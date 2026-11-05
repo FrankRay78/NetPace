@@ -9,6 +9,8 @@ public sealed partial class NetPaceConsoleTests
         [Theory]
         public async Task Should_Write_Output_To_File(string file)
         {
+            // SCENARIO: Default output written to a file carries no hint
+
             // Given
             var testFile = Path.Join(Path.GetTempPath(), $"netpace-test-{Guid.NewGuid()}.txt");
 

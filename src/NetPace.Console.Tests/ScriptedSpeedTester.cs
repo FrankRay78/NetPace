@@ -31,6 +31,12 @@ public sealed class ScriptedSpeedTester : ISpeedTestService
     /// </summary>
     public bool ReportsProgress { get; set; }
 
+    /// <summary>
+    /// How long <see cref="GetServersAsync"/> takes to return, so a test can hold the live display
+    /// that wraps server selection open past its redraw interval. Instant by default.
+    /// </summary>
+    public TimeSpan ServerSelectionPause { get; set; }
+
     /// <summary>Supplies the download result for a given zero-based call index.</summary>
     public Func<int, SpeedTestResult> DownloadFactory { get; set; } = _ => Clean(150);
 
@@ -49,8 +55,12 @@ public sealed class ScriptedSpeedTester : ISpeedTestService
     public static SpeedTestResult Partial(int attempts, int failed) =>
         new() { BytesProcessed = 1000, ElapsedMilliseconds = 1000, RequestsSucceeded = attempts - failed, RequestsFailed = failed };
 
-    public Task<IServer[]> GetServersAsync(CancellationToken cancellationToken = default) =>
-        Task.FromResult(new[] { Server });
+    public Task<IServer[]> GetServersAsync(CancellationToken cancellationToken = default)
+    {
+        Thread.Sleep(ServerSelectionPause);
+
+        return Task.FromResult(new[] { Server });
+    }
 
     public Task<LatencyTestResult> GetServerLatencyAsync(IServer server, CancellationToken cancellationToken = default) =>
         Task.FromResult(new LatencyTestResult { Server = server, LatencyMilliseconds = 24, JitterMilliseconds = 3 });

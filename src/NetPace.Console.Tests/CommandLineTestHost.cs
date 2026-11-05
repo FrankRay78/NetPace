@@ -92,6 +92,11 @@ public sealed class CommandLineTestHost
         serviceCollection.TryAddSingleton<IEnvironmentInfoProvider, EnvironmentInfoProviderStub>();
         serviceCollection.TryAddSingleton<IDiagnosticClock, IncrementingDiagnosticClockStub>();
 
+        // And a live display that does not redraw as it goes: how many frames Spectre's own
+        // refresh interval draws depends on how long the measurement took, machine-specific in
+        // the same way.
+        serviceCollection.TryAddSingleton<ILiveDisplayRefresh, NoRefreshStub>();
+
         // Default OoklaSpeedtestSettingsAccessor (matches production DI). Tests that want to
         // inspect the bound settings register their own instance before calling RunAsync.
         serviceCollection.TryAddSingleton<OoklaSpeedtestSettingsAccessor>();
