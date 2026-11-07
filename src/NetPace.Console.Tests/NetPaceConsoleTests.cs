@@ -567,6 +567,38 @@ public sealed partial class NetPaceConsoleTests
         await Verify(result.Output);
     }
 
+    /// <summary>
+    /// Every output mode a speed test reports in, by the switch that selects it. The default mode
+    /// is selected by no switch at all.
+    /// </summary>
+    public static TheoryData<string> EveryOutputModeOfASpeedTest() => new("", "--minimal", "--csv", "--json");
+
+    [Theory]
+    [MemberData(nameof(EveryOutputModeOfASpeedTest))]
+    public async Task Should_Handle_No_Servers_Available_In_Every_Output_Mode(string outputMode)
+    {
+        // Given discovery comes back with nothing at all.
+        var mock = new SpeedTestMock
+        {
+            GetServersAsyncFunc = _ => Task.FromResult(Array.Empty<IServer>()),
+        };
+
+        var services = new ServiceCollection();
+        services.AddSingleton<ISpeedTestService>(mock);
+        services.AddSingleton<IClock, ClockStub>();
+        services.AddSingleton<IWaiter, NoDelayStub>();
+        var host = GetCommandLineTestHost(services);
+
+        // When
+        var result = await host.RunAsync(outputMode.Length == 0 ? [] : [outputMode]);
+
+        // Then the condition is reported whichever mode the user asked for, and the exit code
+        // reports that NetPace itself worked. The servers command now follows the same rule, and
+        // this is what holds the speed test to it.
+        Assert.Equal(0, result.ExitCode);
+        Assert.Contains("No servers available", result.Output);
+    }
+
     [Fact]
     public async Task Should_Handle_No_Servers_Available_With_NoLatency()
     {

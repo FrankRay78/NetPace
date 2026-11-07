@@ -102,7 +102,7 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
                         // User requested cancellation.
                         return 0;
                     }
-                    catch (Exception e) when (IsOperationalFault(e))
+                    catch (Exception e) when (OperationalFault.Matches(e))
                     {
                         throw;
                     }
@@ -147,7 +147,7 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
                         // User requested cancellation.
                         return 0;
                     }
-                    catch (Exception e) when (IsOperationalFault(e))
+                    catch (Exception e) when (OperationalFault.Matches(e))
                     {
                         throw;
                     }
@@ -190,7 +190,7 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
                     // User requested cancellation.
                     return 0;
                 }
-                catch (Exception e) when (IsOperationalFault(e))
+                catch (Exception e) when (OperationalFault.Matches(e))
                 {
                     throw;
                 }
@@ -290,16 +290,6 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
         {
         }
     }
-
-    /// <summary>
-    /// Whether an exception reflects NetPace's own health rather than a network condition.
-    /// Network conditions are reported and leave the exit code at <c>0</c>; operational faults
-    /// (for example, the <c>--file</c> target becoming unwritable mid-run) must exit non-zero.
-    /// <see cref="HttpIOException"/> is excluded because it derives from <see cref="IOException"/>:
-    /// a reset connection is a network condition, not ours.
-    /// </summary>
-    private static bool IsOperationalFault(Exception e) =>
-        e is (IOException and not HttpIOException) or UnauthorizedAccessException;
 
     /// <summary>
     /// Evaluates the <c>--fail-on</c> threshold against a single measurement (fail-fast).

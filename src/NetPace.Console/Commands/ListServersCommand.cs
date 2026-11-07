@@ -8,7 +8,44 @@ public sealed class ListServersCommand(IAnsiConsole console, ISpeedTestService s
     /// <summary>
     /// Executes the list servers command, displaying available speed test servers.
     /// </summary>
+    /// <remarks>
+    /// Network and discovery outcomes are data, not errors, exactly as they are for a speed test:
+    /// they are reported and leave the exit code at <c>0</c>. Only an operational fault, or a
+    /// provider misconfigured through its settings, propagates out of this method to the top-level
+    /// handler for a non-zero exit code.
+    /// </remarks>
     public async Task<int> ExecuteAsync(ListServersCommandSettings settings, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await ListAsync(settings, cancellationToken);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            // The user pressed Ctrl+C on a command that told them to, so there is nothing to
+            // report. Only this command's own token counts: an HttpClient timeout surfaces as a
+            // cancellation too, and reporting that one as the user's choice would hide it.
+        }
+        catch (Exception e) when (ExitsNonZero(e))
+        {
+            throw;
+        }
+        catch (Exception e)
+        {
+            console.WriteErrorLine(theme, e.Message);
+        }
+
+        return 0;
+    }
+
+    /// <summary>
+    /// Whether a failure is NetPace's own rather than the network's, and so must exit non-zero: an
+    /// operational fault, or a provider the settings have made unusable.
+    /// </summary>
+    private static bool ExitsNonZero(Exception exception) =>
+        OperationalFault.Matches(exception) || exception is ArgumentException;
+
+    private async Task ListAsync(ListServersCommandSettings settings, CancellationToken cancellationToken)
     {
         var servers = await speedTestClient.GetServersAsync(cancellationToken);
 
@@ -17,7 +54,7 @@ public sealed class ListServersCommand(IAnsiConsole console, ISpeedTestService s
         // Check if any servers are available
         if (serversList.Count == 0)
         {
-            throw new Exception("No servers available");
+            throw new NoServersAvailableException();
         }
 
         if (settings.Fastest)
@@ -32,8 +69,6 @@ public sealed class ListServersCommand(IAnsiConsole console, ISpeedTestService s
         {
             await DisplayServersWithLatency(serversList, speedTestClient, cancellationToken);
         }
-
-        return 0;
     }
 
     /// <summary>
@@ -138,6 +173,13 @@ public sealed class ListServersCommand(IAnsiConsole console, ISpeedTestService s
                         var latencyResult = await speedTestClient.GetFastestServerByLatencyAsync([servers[row]], cancellationToken);
 
                         latency = $"{latencyResult.LatencyMilliseconds}ms";
+                    }
+                    catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                    {
+                        // The user pressed Ctrl+C before this server answered, so the row is left
+                        // as it was drawn - blank. A dash here would say the server did not answer,
+                        // which is a verdict the listing never reached.
+                        return;
                     }
                     catch (Exception e) when (e is not ArgumentException)
                     {

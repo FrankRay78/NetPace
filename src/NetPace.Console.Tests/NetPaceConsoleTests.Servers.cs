@@ -38,6 +38,33 @@ public sealed partial class NetPaceConsoleTests
             return new CommandLineTestHost(services, recordColour: recordColour);
         }
 
+        /// <summary>
+        /// Three plain servers, in the order the listing shows them, so a test naming "the first
+        /// row" names the same server however the command orders its rows.
+        /// </summary>
+        private static readonly IServer[] discoveredServers =
+        [
+            new Server { Location = "Location 1", Sponsor = "Test Sponsor 1", Url = "http://test1.com" },
+            new Server { Location = "Location 2", Sponsor = "Test Sponsor 2", Url = "http://test2.com" },
+            new Server { Location = "Location 3", Sponsor = "Test Sponsor 3", Url = "http://test3.com" },
+        ];
+
+        /// <summary>
+        /// Every form of the <c>servers</c> command, by the command line that runs it: the plain
+        /// list, the latency listing and the fastest-server lookup. The exit-code rule is the same
+        /// for all three, so each outcome below is checked against every one of them.
+        /// </summary>
+        public static TheoryData<string> EveryForm() => new("servers", "servers --latency", "servers --fastest");
+
+        private static CommandLineTestHost HostWith(ISpeedTestService speedTestService)
+        {
+            var services = new ServiceCollection();
+            services.AddSingleton(speedTestService);
+            services.AddSingleton<IClock, ClockStub>();
+            services.AddSingleton<IWaiter, NoDelayStub>();
+            return new CommandLineTestHost(services);
+        }
+
         [Fact]
         public async Task Should_List_Servers_Whose_Details_Contain_Brackets()
         {
@@ -170,27 +197,189 @@ public sealed partial class NetPaceConsoleTests
             await Verify(result.Output);
         }
 
-        [Fact]
-        public async Task Should_Handle_No_Servers_Available()
+        [Theory]
+        [MemberData(nameof(EveryForm))]
+        public async Task Should_Handle_No_Servers_Available(string commandLine)
         {
-            // Given
-            var mock = new SpeedTestMock
-            {
-                GetServersAsyncFunc = (cancellationToken) => Task.FromResult(Array.Empty<IServer>()),
-                GetFastestServerByLatencyAsyncFunc = (_, _, _) => throw new Exception("No servers available"),
-            };
+            // SCENARIO: Servers command with no servers available exits zero
 
-            var services = new ServiceCollection();
-            services.AddSingleton<ISpeedTestService>(mock);
-            services.AddSingleton<IClock, ClockStub>();
-            services.AddSingleton<IWaiter, NoDelayStub>();
-            var host = GetCommandLineTestHost(services);
+            // Given discovery comes back with nothing at all.
+            var host = HostWith(new SpeedTestMock
+            {
+                GetServersAsyncFunc = _ => Task.FromResult(Array.Empty<IServer>()),
+            });
+
+            // When
+            var result = await host.RunAsync(commandLine.Split(' '));
+
+            // Then the user is told no servers were available, and the exit code reports that
+            // NetPace itself worked - the same as a speed test that finds none.
+            Assert.Equal(0, result.ExitCode);
+            await Verify(result.Output).DisableRequireUniquePrefix();
+        }
+
+        [Fact]
+        public async Task Should_Report_That_Nothing_Answered_When_Looking_For_The_Fastest_Server()
+        {
+            // SCENARIO: Fastest server with none reachable exits zero
+
+            // Given servers are listed, but screening reaches none of them.
+            var host = HostWith(new SpeedTestMock
+            {
+                GetServersAsyncFunc = _ => Task.FromResult(discoveredServers),
+                GetFastestServerByLatencyAsyncFunc = (_, _, _) => throw new NoServersAvailableException(),
+            });
+
+            // When
+            var result = await host.RunAsync(["servers", "--fastest"]);
+
+            // Then
+            Assert.Equal(0, result.ExitCode);
+            await Verify(result.Output);
+        }
+
+        [Fact]
+        public async Task Should_Show_A_Dash_Against_Every_Server_When_None_Of_Them_Answers()
+        {
+            // Given servers are listed, but screening reaches none of them.
+            var host = HostWith(new SpeedTestMock
+            {
+                GetServersAsyncFunc = _ => Task.FromResult(discoveredServers),
+                GetFastestServerByLatencyAsyncFunc = (_, _, _) => throw new NoServersAvailableException(),
+            });
+
+            // When
+            var result = await host.RunAsync(["servers", "--latency"]);
+
+            // Then every row carries "-", as the user guide documents, and the exit code reports
+            // that NetPace itself worked.
+            Assert.Equal(0, result.ExitCode);
+            await Verify(result.Output);
+        }
+
+        [Theory]
+        [MemberData(nameof(EveryForm))]
+        public async Task Should_Report_A_Network_Failure_Fetching_The_Server_List(string commandLine)
+        {
+            // SCENARIO: Servers command during a network outage exits zero
+
+            // Given the server list cannot be fetched at all.
+            var host = HostWith(new SpeedTestMock
+            {
+                GetServersAsyncFunc = _ => throw new HttpRequestException("No such host is known."),
+            });
+
+            // When
+            var result = await host.RunAsync(commandLine.Split(' '));
+
+            // Then the failure is reported, and the exit code reports that NetPace itself worked.
+            Assert.Equal(0, result.ExitCode);
+            await Verify(result.Output).DisableRequireUniquePrefix();
+        }
+
+        [Fact]
+        public async Task Should_Report_A_Timed_Out_Server_List_Fetch()
+        {
+            // SCENARIO: Servers command reports a timed-out list fetch
+
+            // Given fetching the list times out. HttpClient reports its own timeout as a
+            // cancellation - of a token that is not the command's - carrying a TimeoutException.
+            var host = HostWith(new SpeedTestMock
+            {
+                GetServersAsyncFunc = _ => throw new TaskCanceledException(
+                    "The request was canceled due to the configured HttpClient.Timeout of 100 seconds elapsing.",
+                    new TimeoutException()),
+            });
 
             // When
             var result = await host.RunAsync(["servers"]);
 
-            // Then
-            Assert.Equal(1, result.ExitCode);
+            // Then the user is told what went wrong, rather than the command stopping silently as
+            // though they had pressed Ctrl+C.
+            Assert.Equal(0, result.ExitCode);
+            await Verify(result.Output);
+        }
+
+        [Theory]
+        [MemberData(nameof(EveryForm))]
+        public async Task Should_Stop_Quietly_When_Cancelled_Fetching_The_Server_List(string commandLine)
+        {
+            // SCENARIO: Cancelling the servers command exits zero without an error
+
+            // Given the user presses Ctrl+C while the server list is being fetched.
+            using var cancellation = new CancellationTokenSource();
+            var host = HostWith(new SpeedTestMock
+            {
+                GetServersAsyncFunc = _ =>
+                {
+                    cancellation.Cancel();
+                    throw new OperationCanceledException(cancellation.Token);
+                },
+            });
+
+            // When
+            var result = await host.RunAsync(commandLine.Split(' '), cancellation.Token);
+
+            // Then the command stops, nothing is reported, and the exit code is 0.
+            Assert.Equal(0, result.ExitCode);
+            await Verify(result.Output).DisableRequireUniquePrefix();
+        }
+
+        [Fact]
+        public async Task Should_Stop_Quietly_When_Cancelled_Choosing_The_Fastest_Server()
+        {
+            // SCENARIO: Cancelling the servers command exits zero without an error
+
+            // Given the user presses Ctrl+C during the lookup that tells them to, after the list
+            // has been fetched.
+            using var cancellation = new CancellationTokenSource();
+            var host = HostWith(new SpeedTestMock
+            {
+                GetServersAsyncFunc = _ => Task.FromResult(discoveredServers),
+                GetFastestServerByLatencyAsyncFunc = (_, _, _) =>
+                {
+                    cancellation.Cancel();
+                    throw new OperationCanceledException(cancellation.Token);
+                },
+            });
+
+            // When
+            var result = await host.RunAsync(["servers", "--fastest"], cancellation.Token);
+
+            // Then no error joins the exit hint already on screen, and the exit code is 0.
+            Assert.Equal(0, result.ExitCode);
+            await Verify(result.Output);
+        }
+
+        [Fact]
+        public async Task Should_Leave_Rows_Blank_That_Cancellation_Cut_Short()
+        {
+            // SCENARIO: Cancelling the latency listing leaves unfinished rows blank
+
+            // Given the first server answers and the user presses Ctrl+C before the rest do.
+            using var cancellation = new CancellationTokenSource();
+            var host = HostWith(new SpeedTestMock
+            {
+                GetServersAsyncFunc = _ => Task.FromResult(discoveredServers),
+                GetFastestServerByLatencyAsyncFunc = (servers, _, _) =>
+                {
+                    if (servers[0].Location == discoveredServers[0].Location)
+                    {
+                        return Task.FromResult(new LatencyTestResult { Server = servers[0], LatencyMilliseconds = 12, JitterMilliseconds = 1 });
+                    }
+
+                    cancellation.Cancel();
+                    throw new OperationCanceledException(cancellation.Token);
+                },
+            });
+
+            // When
+            var result = await host.RunAsync(["servers", "--latency"], cancellation.Token);
+
+            // Then the row already measured keeps its figure, the rows cut short are blank rather
+            // than "-" - which would have said those servers did not answer - and the exit code
+            // reports that NetPace itself worked.
+            Assert.Equal(0, result.ExitCode);
             await Verify(result.Output);
         }
 

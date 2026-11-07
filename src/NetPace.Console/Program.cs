@@ -491,6 +491,9 @@ public static class Program
             }
             catch (Exception ex)
             {
+                // Usage/configuration errors and operational failures are reported to the console.
+                // Network and discovery outcomes never reach here: ListServersCommand reports those
+                // itself and leaves the exit code at 0, as a speed test does.
                 var ansiConsole = serviceProvider.GetRequiredService<IAnsiConsole>();
                 ansiConsole.WriteErrorLine(theme, ex.Message);
                 return 1;

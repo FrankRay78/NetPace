@@ -114,7 +114,7 @@ public sealed partial class NetPaceConsoleTests
 
                     if (ranked.Length == 0)
                     {
-                        throw new Exception("No servers available");
+                        throw new NoServersAvailableException();
                     }
 
                     return Task.FromResult(new LatencyTestResult { Server = ranked[0].candidate, LatencyMilliseconds = ranked[0].latency!.Value, JitterMilliseconds = 0 });

@@ -178,7 +178,7 @@ public class FaultySpeedTester : ISpeedTestService
 
         if (reachable.Length == 0)
         {
-            throw new Exception("No servers available");
+            throw new NoServersAvailableException();
         }
 
         return inner.GetFastestServerByLatencyAsync(reachable, progress, diagnostics, cancellationToken);
