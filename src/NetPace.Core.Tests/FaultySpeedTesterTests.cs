@@ -159,20 +159,13 @@ public sealed class FaultySpeedTesterTests
         var tester = new FaultySpeedTester();
         var unreachable = (await tester.GetServersAsync()).Single(server => server.Sponsor == FaultySponsor);
 
-        // When a library caller asks it for the fastest server, handling only the no-servers
-        // condition - no catch-all beneath it, so anything else would escape this method.
-        string? handled = null;
-        try
-        {
-            await tester.GetFastestServerByLatencyAsync([unreachable]);
-        }
-        catch (NoServersAvailableException e)
-        {
-            handled = e.Message;
-        }
+        // When a library caller asks it for the fastest server, catching the no-servers condition
+        // and nothing else - ThrowsAsync matches that type exactly, so a broader exception, or one
+        // derived from it, fails the test rather than satisfying it.
+        var handled = await Assert.ThrowsAsync<NoServersAvailableException>(() => tester.GetFastestServerByLatencyAsync([unreachable]));
 
-        // Then that handler alone caught it, and the message is the one the console prints.
-        Assert.Equal("No servers available", handled);
+        // Then the message is the one the console prints.
+        Assert.Equal("No servers available", handled.Message);
     }
 
     [Theory]

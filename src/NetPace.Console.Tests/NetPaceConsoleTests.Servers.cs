@@ -39,20 +39,10 @@ public sealed partial class NetPaceConsoleTests
         }
 
         /// <summary>
-        /// Three plain servers, in the order the listing shows them, so a test naming "the first
-        /// row" names the same server however the command orders its rows.
-        /// </summary>
-        private static readonly IServer[] discoveredServers =
-        [
-            new Server { Location = "Location 1", Sponsor = "Test Sponsor 1", Url = "http://test1.com" },
-            new Server { Location = "Location 2", Sponsor = "Test Sponsor 2", Url = "http://test2.com" },
-            new Server { Location = "Location 3", Sponsor = "Test Sponsor 3", Url = "http://test3.com" },
-        ];
-
-        /// <summary>
         /// Every form of the <c>servers</c> command, by the command line that runs it: the plain
         /// list, the latency listing and the fastest-server lookup. The exit-code rule is the same
-        /// for all three, so each outcome below is checked against every one of them.
+        /// for all three, so an outcome that can arise in every form is checked against every one
+        /// of them; the outcomes only one form can reach are pinned to that form.
         /// </summary>
         public static TheoryData<string> EveryForm() => new("servers", "servers --latency", "servers --fastest");
 
@@ -277,8 +267,9 @@ public sealed partial class NetPaceConsoleTests
             await Verify(result.Output).DisableRequireUniquePrefix();
         }
 
-        [Fact]
-        public async Task Should_Report_A_Timed_Out_Server_List_Fetch()
+        [Theory]
+        [MemberData(nameof(EveryForm))]
+        public async Task Should_Report_A_Timed_Out_Server_List_Fetch(string commandLine)
         {
             // SCENARIO: Servers command reports a timed-out list fetch
 
@@ -292,12 +283,30 @@ public sealed partial class NetPaceConsoleTests
             });
 
             // When
-            var result = await host.RunAsync(["servers"]);
+            var result = await host.RunAsync(commandLine.Split(' '));
 
             // Then the user is told what went wrong, rather than the command stopping silently as
             // though they had pressed Ctrl+C.
             Assert.Equal(0, result.ExitCode);
-            await Verify(result.Output);
+            await Verify(result.Output).DisableRequireUniquePrefix();
+        }
+
+        [Theory]
+        [MemberData(nameof(EveryForm))]
+        public async Task Should_Exit_Non_Zero_On_An_Operational_Fault(string commandLine)
+        {
+            // Given NetPace itself cannot do its job - here the server list cannot be read at all.
+            var host = HostWith(new SpeedTestMock
+            {
+                GetServersAsyncFunc = _ => throw new UnauthorizedAccessException("Access to the path is denied."),
+            });
+
+            // When
+            var result = await host.RunAsync(commandLine.Split(' '));
+
+            // Then the exit code reports that NetPace failed, not the network - the other half of
+            // the split the speed test already follows, which no network outcome above reaches.
+            Assert.NotEqual(0, result.ExitCode);
         }
 
         [Theory]

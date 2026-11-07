@@ -39,19 +39,15 @@ public sealed class ListServersCommand(IAnsiConsole console, ISpeedTestService s
     }
 
     /// <summary>
-    /// Whether a failure is NetPace's own rather than the network's, and so must exit non-zero: an
-    /// operational fault, or a provider the settings have made unusable.
+    /// Lists the servers in whichever form the settings ask for: the fastest one, the plain list,
+    /// or the list with each server's latency.
     /// </summary>
-    private static bool ExitsNonZero(Exception exception) =>
-        OperationalFault.Matches(exception) || exception is ArgumentException;
-
     private async Task ListAsync(ListServersCommandSettings settings, CancellationToken cancellationToken)
     {
         var servers = await speedTestClient.GetServersAsync(cancellationToken);
 
-        var serversList = servers.OrderBy(servers => servers.Location).ToList();
+        var serversList = servers.OrderBy(server => server.Location).ToList();
 
-        // Check if any servers are available
         if (serversList.Count == 0)
         {
             throw new NoServersAvailableException();
@@ -70,6 +66,13 @@ public sealed class ListServersCommand(IAnsiConsole console, ISpeedTestService s
             await DisplayServersWithLatency(serversList, speedTestClient, cancellationToken);
         }
     }
+
+    /// <summary>
+    /// Whether a failure is NetPace's own rather than the network's, and so must exit non-zero: an
+    /// operational fault, or a provider the settings have made unusable.
+    /// </summary>
+    private static bool ExitsNonZero(Exception exception) =>
+        OperationalFault.Matches(exception) || exception is ArgumentException;
 
     /// <summary>
     /// Tells the user how to interrupt a listing that takes a while — both the live listing and

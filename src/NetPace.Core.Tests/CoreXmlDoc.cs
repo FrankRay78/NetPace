@@ -15,6 +15,17 @@ internal static class CoreXmlDoc
     public static XDocument Load() => Load(ResolvePath());
 
     /// <summary>
+    /// Loads the documentation file at <paramref name="xmlPath"/>. Opens with
+    /// <see cref="FileShare.ReadWrite"/> so a concurrent writer cannot fail the read;
+    /// <c>XDocument.Load(string)</c> opens with <see cref="FileShare.Read"/> and throws instead.
+    /// </summary>
+    public static XDocument Load(string xmlPath)
+    {
+        using var stream = new FileStream(xmlPath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+        return XDocument.Load(stream);
+    }
+
+    /// <summary>
     /// The <c>member</c> elements whose documented name starts with <paramref name="namePrefix"/> —
     /// every overload of a method, where the prefix names the method.
     /// </summary>
@@ -35,15 +46,5 @@ internal static class CoreXmlDoc
         File.Exists(xmlPath).ShouldBeTrue(
             $"Expected NetPace.Core.xml next to assembly at '{xmlPath}'. Ensure <GenerateDocumentationFile>true</GenerateDocumentationFile> is set on NetPace.Core.csproj.");
         return xmlPath;
-    }
-
-    /// <summary>
-    /// Opens with <see cref="FileShare.ReadWrite"/> so a concurrent writer cannot fail the read;
-    /// <c>XDocument.Load(string)</c> opens with <see cref="FileShare.Read"/> and throws instead.
-    /// </summary>
-    internal static XDocument Load(string xmlPath)
-    {
-        using var stream = new FileStream(xmlPath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
-        return XDocument.Load(stream);
     }
 }

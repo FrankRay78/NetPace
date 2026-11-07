@@ -1,3 +1,4 @@
+using System.Xml.Linq;
 using Shouldly;
 
 namespace NetPace.Core.Tests;
@@ -5,7 +6,7 @@ namespace NetPace.Core.Tests;
 /// <summary>
 /// Verifies that the documentation shipped to NuGet consumers names the exception a screening call
 /// can raise, so a consumer reading it knows which type to catch rather than being pointed at
-/// <see cref="Exception"/>, which nothing can be caught by on purpose.
+/// <see cref="Exception"/>, which cannot be caught selectively.
 /// </summary>
 public sealed class ISpeedTestServiceXmlDocTests
 {
@@ -26,12 +27,13 @@ public sealed class ISpeedTestServiceXmlDocTests
         // the base exception any more.
         overloads.ShouldNotBeEmpty($"XML doc for {ScreeningMethod} is missing — every public member must be documented.");
 
-        foreach (var overload in overloads)
+        foreach (XElement overload in overloads)
         {
             var documented = overload.DocumentedExceptions();
+            var whatItDocuments = $"{(string?)overload.Attribute("name")} documents {string.Join(", ", documented)}";
 
-            documented.ShouldContain("T:NetPace.Core.NoServersAvailableException", $"{(string?)overload.Attribute("name")} documents {string.Join(", ", documented)}");
-            documented.ShouldNotContain("T:System.Exception", $"{(string?)overload.Attribute("name")} documents {string.Join(", ", documented)}");
+            documented.ShouldContain("T:NetPace.Core.NoServersAvailableException", whatItDocuments);
+            documented.ShouldNotContain("T:System.Exception", whatItDocuments);
         }
     }
 }

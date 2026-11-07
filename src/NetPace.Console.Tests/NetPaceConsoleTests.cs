@@ -3,6 +3,18 @@ namespace NetPace.Console.Tests;
 public sealed partial class NetPaceConsoleTests
 {
     /// <summary>
+    /// Three plain servers, as discovery hands them over, in the order a listing shows them, so a
+    /// test naming "the first row" names the same server however the command orders its rows.
+    /// Shared by the nested classes that list servers and that select one.
+    /// </summary>
+    private static readonly IServer[] discoveredServers =
+    [
+        new Server { Location = "Location 1", Sponsor = "Test Sponsor 1", Url = "http://test1.com" },
+        new Server { Location = "Location 2", Sponsor = "Test Sponsor 2", Url = "http://test2.com" },
+        new Server { Location = "Location 3", Sponsor = "Test Sponsor 3", Url = "http://test3.com" },
+    ];
+
+    /// <summary>
     /// Build a service collection that captures the constructed <see cref="OoklaSpeedtestSettings"/>
     /// into a returned accessor instance. The action in <see cref="Program.CreateRootCommand"/> writes
     /// to it after option binding, so the test reads <c>accessor.Settings</c> after RunAsync to verify

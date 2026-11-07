@@ -33,7 +33,8 @@ namespace NetPace.Core.Clients.Testing;
 /// it is unreachable when it measures.
 /// </para>
 /// <para>
-/// Every failure the tester simulates surfaces as a plain <see cref="Exception"/>.
+/// A screening left with nothing reachable surfaces as <see cref="NoServersAvailableException"/>;
+/// every other failure the tester simulates surfaces as a plain <see cref="Exception"/>.
 /// </para>
 /// </remarks>
 public class FaultySpeedTester : ISpeedTestService

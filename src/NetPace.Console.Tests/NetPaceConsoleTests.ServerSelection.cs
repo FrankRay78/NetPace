@@ -8,13 +8,6 @@ public sealed partial class NetPaceConsoleTests
     /// </summary>
     public sealed class ServerSelection
     {
-        private static readonly IServer[] discoveredServers =
-        [
-            new Server { Location = "Location 1", Sponsor = "Test Sponsor 1", Url = "http://test1.com" },
-            new Server { Location = "Location 2", Sponsor = "Test Sponsor 2", Url = "http://test2.com" },
-            new Server { Location = "Location 3", Sponsor = "Test Sponsor 3", Url = "http://test3.com" },
-        ];
-
         /// <summary>
         /// The screening latency a candidate answers with, or <c>null</c> when it cannot be
         /// screened at all - which is how a candidate drops out of selection.
