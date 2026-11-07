@@ -170,7 +170,7 @@ public sealed class VariableSpeedTesterTests
 
         // Then the server carries the URL and the sponsor placeholder, and nothing stands in for a
         // location the caller never supplied — the shape the real provider builds.
-        Assert.Equal("(Unknown)", result.Server.Sponsor);
+        Assert.Equal("[Unknown]", result.Server.Sponsor);
         Assert.Empty(result.Server.Location);
     }
 

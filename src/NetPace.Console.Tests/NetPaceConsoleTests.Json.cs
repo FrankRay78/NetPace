@@ -27,6 +27,28 @@ public sealed partial class NetPaceConsoleTests
         [InlineData("--json")]
         [InlineData("--json-pretty")]
         [Theory]
+        public async Task Should_Perform_Speed_Test_With_Json_And_Server(string jsonSwitch)
+        {
+            // SCENARIO: CSV and JSON carry the new label
+
+            // Given
+            var services = new ServiceCollection();
+            services.AddSingleton<ISpeedTestService, SpeedTestStub>();
+            services.AddSingleton<IClock, ClockStub>();
+            services.AddSingleton<IWaiter, NoDelayStub>();
+            var host = GetCommandLineTestHost(services);
+
+            // When
+            var result = await host.RunAsync([jsonSwitch, "--server", "http://test1.com"]);
+
+            // Then
+            Assert.Equal(0, result.ExitCode);
+            await Verify(result.Output).UseParameters(jsonSwitch);
+        }
+
+        [InlineData("--json")]
+        [InlineData("--json-pretty")]
+        [Theory]
         public async Task Should_Perform_Speed_Test_With_Json_Continuously(string jsonSwitch)
         {
             // Given
