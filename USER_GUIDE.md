@@ -277,7 +277,7 @@ If nothing answered during screening, the run reports `Error: No servers availab
 
 The cap on screening exists to stop a single pathological server stalling a run: before it was introduced, a server taking 20–60 seconds to answer each request could hold up a test for minutes. If you want a particular server regardless, `--server <url>` skips selection entirely.
 
-`netpace servers -l` lists each discovered server with its screening latency, so what you see there is what auto-selection would rank. A server shown with `-` could not be reached, and a run would not have used it either. Rows stay in their listed order rather than being re-sorted by latency.
+`netpace servers -l` lists each discovered server with its screening latency, so what you see there is what auto-selection would rank. A server shown with `-` could not be reached, and a run would not have used it either. Rows stay in their listed order rather than being re-sorted by latency. Press Ctrl+C part-way through and the rows that had not answered yet stay blank instead: nothing had been decided about those servers.
 
 ## Choosing a profile
 
@@ -435,7 +435,9 @@ Under `--count` or `--loop`, `run.start`, `run.invocation` and `run.end` appear 
 
 The exit code reports only whether **NetPace itself** functioned. Network conditions like a total outage, 100% request failure, or no servers found are *data*, not errors, and NetPace will exit `0`. Only an operational failure (for example, being unable to write the `--file` output) or a usage error (an unusable option value, or two output formats at once) exits non-zero. So a `0 bps` measurement still exits `0` by default: inspect the counts (or use `--fail-on`) to detect it.
 
-If you want a failed measurement to fail the process, opt in with `--fail-on`:
+**The rule covers every command, not just a speed test.** `netpace servers`, `netpace servers --latency` and `netpace servers --fastest` each report an empty server list, a list no server answered on, and a failed or timed-out attempt to fetch it — and exit `0` for all of them. Pressing Ctrl+C exits `0` as well, wherever you press it, and says nothing. A script that wants to know whether servers were found reads the output, not the exit code.
+
+If you want a failed measurement to fail the process, opt in with `--fail-on`. It applies to a speed test; the `servers` command has no opt-in of its own:
 
 | Value | Exits non-zero when… |
 |---|---|
