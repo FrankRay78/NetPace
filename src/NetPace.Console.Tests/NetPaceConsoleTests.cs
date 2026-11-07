@@ -209,8 +209,8 @@ public sealed partial class NetPaceConsoleTests
     {
         // SCENARIO: A named server is labelled with square brackets
 
-        // Given a named server whose latency is never measured, so the placeholder the console
-        // itself puts on the server stands in for the sponsor rather than the provider's.
+        // Given a named server and no latency test, so the sponsor on show is the console's own
+        // placeholder rather than the one the speed test service supplies.
         var services = new ServiceCollection();
         services.AddSingleton<ISpeedTestService, SpeedTestStub>();
         services.AddSingleton<IClock, ClockStub>();

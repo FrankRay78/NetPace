@@ -126,7 +126,7 @@ public sealed class SpeedTestStub : ISpeedTestService
     {
         // Matches what OoklaSpeedtest builds for a server named by URL: a sponsor of "[Unknown]"
         // and no location, so a snapshot of this path records what the real client would report.
-        var server = new Server() { Sponsor = "[Unknown]", Url = serverUrl };
+        var server = new Server { Sponsor = "[Unknown]", Url = serverUrl };
 
         return GetServerLatencyAsync(server, progress, cancellationToken);
     }

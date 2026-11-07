@@ -15,6 +15,11 @@ public interface IServer
     /// Gets or sets the name of the organization or entity sponsoring the server.
     /// This is often displayed to credit the infrastructure provider.
     /// </summary>
+    /// <remarks>
+    /// A server named by URL alone has no sponsor name, and carries the placeholder
+    /// <c>[Unknown]</c> instead. Square brackets are Spectre.Console markup delimiters, so escape
+    /// this value wherever it is written as markup.
+    /// </remarks>
     string Sponsor { get; set; }
 
     /// <summary>
