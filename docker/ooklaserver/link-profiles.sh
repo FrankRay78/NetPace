@@ -46,8 +46,8 @@ link_profile() {
       LINK_UP="delay 1000ms 200ms distribution normal loss 0.5% rate 384kbit"
       ;;
     gprs)
-      # 2G packet data. Narrow enough that a single default-sized NetPace request
-      # would take many minutes; use --profile tiny with this one.
+      # 2G packet data. Narrow enough that a single default-sized NetPace request runs
+      # from a quarter of an hour to nearly two; use --profile tiny with this one.
       LINK_MODELS="2G data: ~700 ms round trip with jitter, 40 kbit down / 20 kbit up, ~1% loss"
       LINK_DOWN="delay 350ms 75ms distribution normal loss 0.5% rate 40kbit"
       LINK_UP="delay 350ms 75ms distribution normal loss 0.5% rate 20kbit"

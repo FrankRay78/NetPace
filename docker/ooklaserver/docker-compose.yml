@@ -7,9 +7,10 @@ services:
       - "18080:8080/tcp"
       - "18080:8080/udp"
     restart: unless-stopped
-    # tc needs NET_ADMIN to shape the container's own interface. Granted always, not
-    # only when a profile is asked for: without it shape.sh refuses to start the
-    # server rather than serve a fast link while claiming to be slow.
+    # tc needs NET_ADMIN to shape the container's own interface. Compose cannot grant a
+    # capability conditionally on an environment variable, so it is granted always and
+    # shape.sh is what refuses: asked for a profile it cannot apply, it declines to start
+    # the server rather than serve a fast link while claiming to be slow.
     cap_add:
       - NET_ADMIN
     environment:

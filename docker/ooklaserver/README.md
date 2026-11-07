@@ -14,14 +14,14 @@ OoklaServer is Ookla's official speed-test daemon. It exposes the HTTP-Legacy en
 | `docker-compose.yml` | Declarative container config (port mapping, restart policy, healthcheck). |
 | `start.sh`           | Build image, start container, wait until ready, print NetPace command. |
 | `stop.sh`            | Stop and remove the container.                      |
-| `link-profiles.sh`   | The five slow-link profiles, as `tc netem` arguments. Sourced by the two below. |
+| `link-profiles.sh`   | The five slow-link profiles, as `tc netem` arguments. Sourced by `start.sh` and `shape.sh`. |
 | `shape.sh`           | Container entry point: applies the requested profile, then starts OoklaServer. |
 
 ---
 
 ## Prerequisites
 
-- Docker Desktop (Windows/macOS) or Docker Engine (Linux), running.
+- Docker Desktop (Windows/macOS) or Docker Engine (Linux), running. The slow-link profiles are confirmed on Linux Docker Engine only — see *Confirmed host platforms*.
 - Host TCP and UDP port 18080 free.
 - `bash` and `curl` on PATH (Git Bash, WSL, macOS, Linux — all fine).
 
@@ -62,7 +62,7 @@ NetPace is developed on fast networks, and its unit tests fake HTTP responses, s
 ./start.sh satellite
 ```
 
-`./start.sh` with no argument is unchanged — the full-speed local server. `./start.sh --help` lists the profiles.
+`./start.sh` with no argument still gives you the full-speed local server. `./start.sh --help` lists the profiles.
 
 To change profile, start again on another; every start replaces whatever was running with exactly the state you asked for, so there is no way to end up on yesterday's profile. The ready message always names the profile in effect, or says there is none.
 
@@ -70,13 +70,13 @@ The five profiles are fixed. There is deliberately no way to set values of your 
 
 ### What each models
 
-| Profile      | Models                              | Round trip            | Down / up        | Loss         |
-| ------------ | ----------------------------------- | --------------------- | ---------------- | ------------ |
-| `satellite`  | Geostationary satellite             | about 600 ms          | 10 Mbit / 2 Mbit | about 0.5%   |
-| `3g-bloated` | Congested 3G with full queues       | about 2 s, with jitter | 1 Mbit / 384 kbit | about 1%    |
-| `gprs`       | 2G data                             | about 700 ms, with jitter | 40 kbit / 20 kbit | about 1%  |
-| `radio`      | Low-rate radio link                 | about 1 s             | 9.6 kbit each way | about 2%    |
-| `flaky`      | A usable link that keeps failing    | about 200 ms          | 2 Mbit / 1 Mbit  | in bursts    |
+| Profile      | Models                              | Round trip                | Down / up         | Loss         |
+| ------------ | ----------------------------------- | ------------------------- | ----------------- | ------------ |
+| `satellite`  | Geostationary satellite             | about 600 ms              | 10 Mbit / 2 Mbit  | about 0.5%   |
+| `3g-bloated` | Congested 3G with full queues       | about 2 s, with jitter    | 1 Mbit / 384 kbit | about 1%     |
+| `gprs`       | 2G data                             | about 700 ms, with jitter | 40 kbit / 20 kbit | about 1%     |
+| `radio`      | Low-rate radio link                 | about 1 s                 | 9.6 kbit each way | about 2%     |
+| `flaky`      | A usable link that keeps failing    | about 200 ms              | 2 Mbit / 1 Mbit   | ~2%, bursty  |
 
 ### Exact per-direction values
 
@@ -98,7 +98,7 @@ Round trip, jitter and loss above are end-to-end figures. They are split evenly 
 
 ### The rate is the link, not the result
 
-Each rate is the capacity of the pipe, not the throughput you will measure across it. Delay and loss cost TCP a great deal on their own: on `satellite`, a 10 Mbit pipe with a 600 ms round trip delivers only a few Mbit to a single connection, because the transfer spends its life in slow start and every loss costs most of a second to recover. That gap is not a fault in the profile — it is the thing the profiles exist to show you.
+Each rate is the capacity of the pipe, not the throughput you will measure across it. Delay and loss cost TCP a great deal on their own: on `satellite`, a 10 Mbit pipe with a 600 ms round trip delivers a small fraction of that to a single connection, because the transfer spends its life in slow start and every loss costs most of a second to recover. That gap is not a fault in the profile — it is the thing the profiles exist to show you.
 
 ### Automatic server selection is not slowed
 
@@ -114,19 +114,19 @@ netpace --server http://localhost:18080/speedtest/upload.php --profile tiny
 
 The profiles were confirmed on **Linux Docker Engine** (Ubuntu 24.04, kernel 6.8, Docker 29.9). That is the supported configuration.
 
-Docker Desktop for Windows and macOS run containers inside a virtual machine, and the upload direction needs the host kernel's `ifb` module, which is not guaranteed there. They are **unconfirmed**. If shaping cannot be applied in full on your host you are told so and nothing starts — see below — so an unconfirmed platform costs you a clear error, never a wrong measurement.
+Docker Desktop for Windows and macOS run containers inside a virtual machine, and the upload direction needs the host kernel's `ifb` module, which is not guaranteed there. They are **unconfirmed**. If shaping cannot be applied in full on your host you are told so and nothing starts — see *How it works, and what it refuses to do* below — so an unconfirmed platform costs you a clear error, never a wrong measurement.
 
 ### How it works, and what it refuses to do
 
 `shape.sh` runs as the container's entry point and applies the profile with `tc netem` before OoklaServer accepts its first connection. The container needs the `NET_ADMIN` capability, which `docker-compose.yml` grants. The download direction is plain egress `netem` on the container's interface; `netem` cannot shape ingress, so the upload direction redirects incoming traffic through an `ifb` device and shapes that device's egress instead.
 
-Shaping is applied at container start, not from the host afterwards, because `tc` settings do not survive a restart and the container carries `restart: unless-stopped`. An unattended restart therefore comes back on the same profile rather than coming back fast while still claiming to be slow.
+Shaping is applied at container start, not from the host afterwards, because it has to be re-asserted on every start and the container carries `restart: unless-stopped`. An unattended restart therefore comes back on the same profile rather than coming back fast while still claiming to be slow.
 
 **OoklaServer is not started unless both directions are shaped.** If either fails, the container exits non-zero, `start.sh` prints the log tail and removes the container, and you get a non-zero exit. A half-shaped server is worse than an unshaped one: you would read a plausible number off a link that is only slow one way, with nothing on screen to say so.
 
 An unknown profile name is refused before anything is built, with the list of available profiles and a non-zero exit.
 
-The container's healthcheck uses loopback, which shaping does not touch, so it stays fast and honest on every profile and reports on OoklaServer itself rather than on the link. `start.sh` polls the published port instead — the address you are about to use — so what it confirms is the real path, over the shaped link.
+The container's healthcheck uses loopback, which shaping does not touch, so it stays fast and honest on every profile and reports on OoklaServer itself rather than on the link. `start.sh` polls the published port instead — the address you are about to use — as a liveness check on it.
 
 ---
 
@@ -198,7 +198,7 @@ Update `start.sh` (the polling URL) to match if you want the readiness check to 
 
 ### `start.sh` refuses to start a profile
 
-A message naming the direction it could not shape, followed by the container log tail, means the host could not apply the profile in full. The container is removed rather than left serving an unshaped link. Usual causes:
+A container that stops or restarts before becoming ready, followed by a log tail whose `shape: ERROR:` line names the direction that could not be shaped, means the host could not apply the profile in full. The container is removed rather than left serving an unshaped link. Usual causes:
 
 - The `NET_ADMIN` capability is missing — check `cap_add` in `docker-compose.yml` is intact, and that no local override drops it.
 - The host kernel has no `ifb` module, so the upload direction cannot be shaped. Expected on Docker Desktop for Windows and macOS; see *Confirmed host platforms* above.
@@ -207,11 +207,7 @@ The full-speed server is unaffected — `./start.sh` with no profile still works
 
 ### `start.sh` times out waiting for OoklaServer
 
-Check the logs:
-
-```bash
-docker compose logs --tail=100 ooklaserver
-```
+`start.sh` prints the last 50 log lines itself and then removes the container, so read that tail — `docker compose logs` afterwards has nothing left to show. To keep the container for inspection, start it manually with `docker compose up -d --build` instead.
 
 Common causes: host port conflict (another service on 18080), OoklaServer out-of-date warning that aborts startup, or missing AES-NI CPU instructions (required by OoklaServer).
 

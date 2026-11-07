@@ -3,8 +3,8 @@
 # network interface, then hand over to OoklaServer.
 #
 # Runs inside the container, not on the host. It is the entry point rather than a step
-# in start.sh for two reasons: shaping set on an interface does not survive a restart,
-# and the container carries `restart: unless-stopped`, so an unattended restart has to
+# in start.sh for two reasons: the shaping has to be re-asserted on every start of the
+# container, which carries `restart: unless-stopped`, so an unattended restart has to
 # re-apply the profile or come back fast while claiming to be slow. Doing it here also
 # means the shaping is in place before OoklaServer accepts its first connection.
 #
@@ -43,6 +43,14 @@ die() {
   exit 1
 }
 
+# This is the container entry point, so the command to run arrives as arguments (the
+# image's CMD). With none, every `exec "$@"` below is a silent no-op that falls through
+# to the unknown-profile check and reports the wrong failure.
+if [ "$#" -eq 0 ]; then
+  echo "shape: ERROR: no command to run — this entry point expects one (the image's CMD supplies OoklaServer)." >&2
+  exit 1
+fi
+
 if [ -z "$PROFILE" ]; then
   say "no link profile requested — serving at full local speed."
   exec "$@"
@@ -54,8 +62,13 @@ if ! link_profile "$PROFILE"; then
   exit 1
 fi
 
-command -v tc >/dev/null 2>&1 \
-  || die "tc is not installed in this image (iproute2 is missing from the Dockerfile)"
+command -v tc >/dev/null 2>&1 && command -v ip >/dev/null 2>&1 \
+  || die "tc or ip is not installed in this image (iproute2 is missing from the Dockerfile)"
+
+# Word-split below, so an empty direction would install a no-op netem that still reads
+# back as netem. set -u catches an unset variable, never an empty one.
+[ -n "$LINK_DOWN" ] && [ -n "$LINK_UP" ] \
+  || die "the '$PROFILE' profile has an empty direction in link-profiles.sh"
 
 say "applying '$PROFILE' — $LINK_MODELS"
 
@@ -68,13 +81,13 @@ tc qdisc del dev "$IFACE" ingress 2>/dev/null || true
 # Unquoted on purpose — the profile string is a list of tc arguments to split.
 # shellcheck disable=SC2086
 tc qdisc replace dev "$IFACE" root netem $LINK_DOWN \
-  || die "could not shape the download direction on $IFACE — the container needs the NET_ADMIN capability"
+  || die "could not shape the download direction on $IFACE — see the tc error above. Check NET_ADMIN is granted (cap_add in docker-compose.yml), and that the host kernel's netem supports this profile's arguments"
 
 # Upload: traffic entering the container. netem cannot shape ingress, so every
 # incoming packet is mirrored to $IFB and shaped on that device's egress instead.
 if ! ip link show "$IFB" >/dev/null 2>&1; then
   ip link add "$IFB" type ifb \
-    || die "could not create $IFB — the host kernel needs the ifb module for the upload direction"
+    || die "could not create $IFB — see the ip error above. The host kernel needs the ifb module for the upload direction"
 fi
 ip link set "$IFB" up || die "could not bring $IFB up"
 
@@ -90,10 +103,14 @@ tc qdisc replace dev "$IFB" root netem $LINK_UP \
 # Read both qdiscs back. Every command above reported success, but this is the one
 # check that distinguishes "tc accepted the arguments" from "the link is shaped",
 # and it is the claim start.sh goes on to make to the maintainer.
-tc qdisc show dev "$IFACE" | grep -q netem \
-  || die "no netem qdisc on $IFACE after shaping the download direction"
-tc qdisc show dev "$IFB" | grep -q netem \
-  || die "no netem qdisc on $IFB after shaping the upload direction"
+tc qdisc show dev "$IFACE" | grep -Eq 'netem .*(delay|rate|loss)' \
+  || die "no impairment on the netem qdisc on $IFACE after shaping the download direction"
+# The redirect is what carries $IFACE ingress to $IFB. Without it $IFB is a perfectly
+# shaped device no packet ever crosses, and the upload direction runs at full speed.
+tc filter show dev "$IFACE" parent ffff: | grep -q mirred \
+  || die "no ingress redirect on $IFACE, so nothing reaches $IFB and the upload direction is unshaped"
+tc qdisc show dev "$IFB" | grep -Eq 'netem .*(delay|rate|loss)' \
+  || die "no impairment on the netem qdisc on $IFB after shaping the upload direction"
 
 say "download (container egress):  netem $LINK_DOWN"
 say "upload   (container ingress): netem $LINK_UP"

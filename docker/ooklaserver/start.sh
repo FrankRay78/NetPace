@@ -22,7 +22,7 @@ usage() {
   echo >&2
   echo "Available profiles:" >&2
   for p in $LINK_PROFILES; do
-    link_profile "$p"
+    link_profile "$p" || LINK_MODELS="(no definition in link-profiles.sh)"
     printf '  %-12s %s\n' "$p" "$LINK_MODELS" >&2
   done
   echo >&2
@@ -66,6 +66,10 @@ docker compose down --remove-orphans
 export NETPACE_LINK_PROFILE="$PROFILE"
 docker compose up -d --build
 
+# Ctrl-C during the wait leaves the container up — and a profile that cannot be applied
+# leaves it restart-looping. Say what is still running rather than exit silently.
+trap 'echo >&2; echo "Interrupted — the container may still be running. Run ./stop.sh to remove it." >&2; exit 130' INT TERM
+
 # A profile that cannot be applied in full exits the container non-zero from shape.sh.
 # `restart: unless-stopped` then cycles it, so a failed start shows up as a container
 # that is not running, or one that has already been restarted.
@@ -73,10 +77,11 @@ failed_start() {
   echo >&2
   echo "ERROR: $1" >&2
   echo >&2
-  docker compose logs --tail=50 ooklaserver >&2
+  docker compose logs --tail=50 ooklaserver >&2 || echo "(could not read the container log)" >&2
   echo >&2
   echo "Removing the container." >&2
-  docker compose down --remove-orphans >&2
+  docker compose down --remove-orphans >&2 \
+    || echo "ERROR: could not remove the container — run ./stop.sh, or 'docker rm -f ooklaserver'." >&2
   exit 1
 }
 
@@ -86,7 +91,10 @@ else
   echo "Waiting for OoklaServer (up to ${DEADLINE}s)..."
 fi
 
-for _ in $(seq 1 "$DEADLINE"); do
+# A wall-clock budget, not a loop count: each pass costs a curl and two docker inspects,
+# so counting iterations would overrun the figure printed above many times over.
+DEADLINE_AT=$(( $(date +%s) + DEADLINE ))
+while [ "$(date +%s)" -lt "$DEADLINE_AT" ]; do
   status="$(docker inspect -f '{{.State.Status}}' ooklaserver 2>/dev/null || echo missing)"
   restarts="$(docker inspect -f '{{.RestartCount}}' ooklaserver 2>/dev/null || echo 0)"
 
@@ -98,11 +106,14 @@ for _ in $(seq 1 "$DEADLINE"); do
   fi
 
   # Polled through the published port, so what is confirmed is the address the
-  # maintainer is about to point NetPace at, over the shaped link, not loopback
-  # inside the container.
-  if curl -fsS --max-time 20 http://localhost:18080/speedtest/latency.txt 2>/dev/null | grep -q "^test=test"; then
+  # maintainer is about to point NetPace at, not loopback inside the container.
+  if curl -fsS --max-time 10 http://localhost:18080/speedtest/latency.txt 2>/dev/null | grep -q "^test=test"; then
     echo
     if [ -n "$PROFILE" ]; then
+      # The values below come from the argument, so take the claim from the container
+      # itself: shape.sh says this only once both directions are shaped and read back.
+      docker compose logs ooklaserver 2>/dev/null | grep -q "both directions shaped" \
+        || failed_start "the container is serving, but its log does not say both directions were shaped."
       echo "OoklaServer is ready on the '$PROFILE' link — $LINK_MODELS"
       echo "  download (container egress):  netem $LINK_DOWN"
       echo "  upload   (container ingress): netem $LINK_UP"
