@@ -8,6 +8,7 @@
 
 - Square brackets are Spectre.Console's markup delimiters, and `AnsiConsole.MarkupLine` on this value throws rather than printing it. Every sink writes the sponsor as plain text today; a new one must keep that or escape it.
 - The value is an interface contract — the `ServerSponsor` field of CSV and JSON output, and the `Sponsor` of a published return type — so a script or library consumer comparing against `(Unknown)` breaks.
+- Every site takes the value from the one constant `Server.UnknownSponsor`, so the URL path with and without a latency test cannot drift apart. Tests assert the literal `[Unknown]`, not the constant, because the literal is the contract.
 
 **Decisions:**
 
