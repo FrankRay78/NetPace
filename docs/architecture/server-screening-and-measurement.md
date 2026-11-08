@@ -41,6 +41,8 @@ Two properties make the ceiling affordable where the old per-candidate budget wa
 
 Abandoned is not forgotten, though: an abandoned candidate contributes no result and reports no progress once the pass is over, and whatever it throws on its way out is observed rather than left to surface as an unobserved task exception. A fault raised by a candidate that finished inside the ceiling is reported to the caller, because a screening that throws something other than "unreachable" is a defect in NetPace rather than a verdict on a server. A fault from a candidate abandoned at the ceiling can only be observed and discarded — by then nothing is waiting on it, which is the price of keeping the ceiling hard.
 
+A pass that ranked nothing throws `NoServersAvailableException`, carrying the message the console prints. The type is public so that this one outcome — a network condition, not a fault — can be caught on its own, by NetPace's own commands and by a library consumer alike; a consumer catching it is reading a verdict about the network, not handling a defect.
+
 `ScreeningRequestCount` sits beside the ceiling and sets how many requests each server is sent. The screening figure is the **fastest** of the requests that completed, not their average: screening has no warm-up, so the first request carries connection setup the link itself is not responsible for.
 
 The figure and the ceiling read different clocks, deliberately. How long a screening request took — like how long a latency probe or a transfer took — is measured on the time provider the caller passed to `OoklaSpeedtest`. Candidates are screened concurrently against that one clock, so a caller reading an exact figure off a clock it moves itself has to let one candidate finish before the next is answered; otherwise an advance made for one lands inside another's measurement. The ceiling above is not a measurement but a bound on how long to wait, and stays on the system clock along with the per-request HTTP timeouts; a controlled clock that stood still would otherwise suspend them.
@@ -51,7 +53,7 @@ If the winner's full measurement fails, the run fails. It does not fall back to 
 
 ## `servers -l` lists what selection would rank
 
-`ListServersCommand` screens each server through `GetFastestServerByLatencyAsync`, one candidate per call so that every server gets a figure rather than only the winner, and with all the calls in flight together so the listing takes about one ceiling rather than one per unreachable server. The latency it lists is the figure auto-selection ranks on. A server listed with a latency is a server a real run would consider; a server listed with `-` could not be reached, and a run would not have used it either. That equivalence is the point — the table and the run used to disagree because they probed differently.
+`ListServersCommand` screens each server through `GetFastestServerByLatencyAsync`, one candidate per call so that every server gets a figure rather than only the winner, and with all the calls in flight together so the listing takes about one ceiling rather than one per unreachable server. The latency it lists is the figure auto-selection ranks on. A server listed with a latency is a server a real run would consider; a server listed with `-` could not be reached, and a run would not have used it either. A row left blank is neither: the user cancelled before that server answered, so the listing never reached a verdict on it. That equivalence is the point — the table and the run used to disagree because they probed differently.
 
 Rows keep their discovered order and are not re-sorted by latency, though they fill in as each server answers rather than top to bottom: "ranked" means the user can see and compare the figures, not that the table reorders itself.
 
@@ -59,10 +61,9 @@ Rows keep their discovered order and are not re-sorted by latency, though they f
 
 ## What is deliberately not here
 
-- **Per-server diagnostics.** Why an individual server failed to answer is not reported. `No servers available` stays as it is.
-- **A dedicated exception type.** The "nothing answered" case still throws a bare `Exception` carrying that message, because the user-visible message and exit code must not change.
+- **Per-server diagnostics.** Why an individual server failed to answer is not reported. `No servers available` stays as the message it has always been.
 - **A cap on discovered servers.** Unnecessary while screening cost is bounded by the ceiling rather than by candidate count.
 
 ---
 
-**Last Updated**: October 2026
+**Last Updated**: November 2026

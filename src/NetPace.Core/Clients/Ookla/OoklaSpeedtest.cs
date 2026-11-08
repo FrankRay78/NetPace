@@ -322,7 +322,7 @@ public sealed class OoklaSpeedtest : ISpeedTestService
 
         if (reachable.Length == 0)
         {
-            throw new Exception("No servers available");
+            throw new NoServersAvailableException();
         }
 
         return reachable.OrderBy(result => result.LatencyMilliseconds).First();

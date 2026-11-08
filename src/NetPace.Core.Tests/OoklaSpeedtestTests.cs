@@ -646,7 +646,7 @@ public sealed partial class OoklaSpeedtestTests
 
         // Then
         exception.ShouldNotBeNull();
-        exception.ShouldBeOfType<Exception>();
+        exception.ShouldBeOfType<NoServersAvailableException>();
         exception.Message.ShouldBe("No servers available");
     }
 

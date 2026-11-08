@@ -248,8 +248,10 @@ public sealed partial class OoklaSpeedtestTests
             // When
             var exception = await Record.ExceptionAsync(() => speedtest.GetFastestServerByLatencyAsync(servers).WaitAsync(HangGuard));
 
-            // Then the message the console surfaces as "Error: No servers available" is unchanged.
+            // Then the condition is raised as its own type, and the message the console surfaces as
+            // "Error: No servers available" is unchanged.
             exception.ShouldNotBeNull();
+            exception.ShouldBeOfType<NoServersAvailableException>();
             exception.Message.ShouldBe("No servers available");
         }
 
