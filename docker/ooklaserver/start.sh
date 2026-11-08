@@ -63,12 +63,21 @@ fi
 # shaped differently from what was asked for.
 docker compose down --remove-orphans
 
+# Ctrl-C during the build or the wait removes the container, as a failed start does: a
+# server left up would be one nobody confirmed ready, and a profile that cannot be
+# applied would be left restart-looping under `restart: unless-stopped`.
+interrupted() {
+  trap - INT TERM
+  echo >&2
+  echo "Interrupted — removing the container." >&2
+  docker compose down --remove-orphans >&2 \
+    || echo "ERROR: could not remove the container — run ./stop.sh, or 'docker rm -f ooklaserver'." >&2
+  exit 130
+}
+trap interrupted INT TERM
+
 export NETPACE_LINK_PROFILE="$PROFILE"
 docker compose up -d --build
-
-# Ctrl-C during the wait leaves the container up — and a profile that cannot be applied
-# leaves it restart-looping. Say what is still running rather than exit silently.
-trap 'echo >&2; echo "Interrupted — the container may still be running. Run ./stop.sh to remove it." >&2; exit 130' INT TERM
 
 # A profile that cannot be applied in full exits the container non-zero from shape.sh.
 # `restart: unless-stopped` then cycles it, so a failed start shows up as a container
@@ -112,8 +121,14 @@ while [ "$(date +%s)" -lt "$DEADLINE_AT" ]; do
     if [ -n "$PROFILE" ]; then
       # The values below come from the argument, so take the claim from the container
       # itself: shape.sh says this only once both directions are shaped and read back.
-      docker compose logs ooklaserver 2>/dev/null | grep -q "both directions shaped" \
-        || failed_start "the container is serving, but its log does not say both directions were shaped."
+      # Captured, not piped into `grep -q`: grep would exit on the match while compose is
+      # still writing OoklaServer's later lines, and under pipefail compose's SIGPIPE
+      # would fail a server that was shaped correctly.
+      shape_log="$(docker compose logs ooklaserver 2>/dev/null || true)"
+      case "$shape_log" in
+        *"both directions shaped"*) ;;
+        *) failed_start "the container is serving, but its log does not say both directions were shaped." ;;
+      esac
       echo "OoklaServer is ready on the '$PROFILE' link — $LINK_MODELS"
       echo "  download (container egress):  netem $LINK_DOWN"
       echo "  upload   (container ingress): netem $LINK_UP"

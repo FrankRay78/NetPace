@@ -44,16 +44,28 @@ die() {
 }
 
 # This is the container entry point, so the command to run arrives as arguments (the
-# image's CMD). With none, every `exec "$@"` below is a silent no-op that falls through
-# to the unknown-profile check and reports the wrong failure.
+# image's CMD). With none, every hand-over below would be a silent no-op that falls
+# through to the unknown-profile check and reports the wrong failure.
 if [ "$#" -eq 0 ]; then
   echo "shape: ERROR: no command to run — this entry point expects one (the image's CMD supplies OoklaServer)." >&2
   exit 1
 fi
 
+# Hand over to the command without NET_ADMIN. Only the tc and ip setup here needs it;
+# OoklaServer runs as root on a published port, and keeping the capability would let a
+# compromised server lift its own shaping and widen the kernel surface it can reach.
+# Both sets are dropped because root exec'ing a binary with no file capabilities takes
+# its new permitted set from the inheritable and bounding sets. The qdiscs stay in place.
+# setpriv is util-linux, which is Essential on the base image.
+serve() {
+  command -v setpriv >/dev/null 2>&1 \
+    || { echo "shape: ERROR: setpriv is not installed in this image, so NET_ADMIN cannot be dropped before starting OoklaServer." >&2; exit 1; }
+  exec setpriv --bounding-set=-net_admin --inh-caps=-net_admin -- "$@"
+}
+
 if [ -z "$PROFILE" ]; then
   say "no link profile requested — serving at full local speed."
-  exec "$@"
+  serve "$@"
 fi
 
 if ! link_profile "$PROFILE"; then
@@ -116,4 +128,4 @@ say "download (container egress):  netem $LINK_DOWN"
 say "upload   (container ingress): netem $LINK_UP"
 say "both directions shaped — starting OoklaServer."
 
-exec "$@"
+serve "$@"

@@ -118,7 +118,7 @@ Docker Desktop for Windows and macOS run containers inside a virtual machine, an
 
 ### How it works, and what it refuses to do
 
-`shape.sh` runs as the container's entry point and applies the profile with `tc netem` before OoklaServer accepts its first connection. The container needs the `NET_ADMIN` capability, which `docker-compose.yml` grants. The download direction is plain egress `netem` on the container's interface; `netem` cannot shape ingress, so the upload direction redirects incoming traffic through an `ifb` device and shapes that device's egress instead.
+`shape.sh` runs as the container's entry point and applies the profile with `tc netem` before OoklaServer accepts its first connection. The container needs the `NET_ADMIN` capability, which `docker-compose.yml` grants; `shape.sh` drops it again before starting OoklaServer, so the server never holds it, with or without a profile. The download direction is plain egress `netem` on the container's interface; `netem` cannot shape ingress, so the upload direction redirects incoming traffic through an `ifb` device and shapes that device's egress instead.
 
 Shaping is applied at container start, not from the host afterwards, because it has to be re-asserted on every start and the container carries `restart: unless-stopped`. An unattended restart therefore comes back on the same profile rather than coming back fast while still claiming to be slow.
 
@@ -207,7 +207,7 @@ The full-speed server is unaffected — `./start.sh` with no profile still works
 
 ### `start.sh` times out waiting for OoklaServer
 
-`start.sh` prints the last 50 log lines itself and then removes the container, so read that tail — `docker compose logs` afterwards has nothing left to show. To keep the container for inspection, start it manually with `docker compose up -d --build` instead.
+`start.sh` prints the last 50 log lines itself and then removes the container, so read that tail — `docker compose logs` afterwards has nothing left to show. To keep the container for inspection, start it manually with `NETPACE_LINK_PROFILE=<profile> docker compose up -d --build` instead — leave the variable out for the full-speed server. Without it the container starts unshaped, so a timeout that only the profile causes will not reproduce. Ctrl-C during `start.sh`'s wait also removes the container, as a failed start does.
 
 Common causes: host port conflict (another service on 18080), OoklaServer out-of-date warning that aborts startup, or missing AES-NI CPU instructions (required by OoklaServer).
 
@@ -238,6 +238,9 @@ Run in the foreground to see the error directly:
 
 ```bash
 docker run --rm -it -p 8080:8080 local-ooklaserver
+
+# The same, behind a profile
+docker run --rm -it -p 8080:8080 --cap-add NET_ADMIN -e NETPACE_LINK_PROFILE=<profile> local-ooklaserver
 ```
 
 ---
