@@ -248,6 +248,34 @@ public sealed partial class OoklaSpeedtestTests
             Assert.Equal(nameof(ServerDiscoverySettings.ServerTimeoutMilliseconds), exception.ParamName);
         }
 
+        [Theory]
+        [InlineData(0)]
+        [InlineData(-1)]
+        [InlineData(-100)]
+        public async Task GetServerLatencyAsync_HttpTimeoutMilliseconds_NotPositive_ThrowsArgumentOutOfRangeException(int httpTimeoutMilliseconds)
+        {
+            // Given a probe timeout that is not a positive span of time. Zero would abandon every
+            // probe before it could answer and report a configuration error as a server that never
+            // answered, and -1 (Timeout.Infinite) would remove the bound on a probe altogether - so
+            // the timeout is rejected up front, as the screening ceiling is.
+            using var handler = new CountingHandler();
+            using var httpClient = new HttpClient(handler, disposeHandler: false);
+            var settings = new OoklaSpeedtestSettings
+            {
+                LatencyTest = new() { HttpTimeoutMilliseconds = httpTimeoutMilliseconds }
+            };
+            var speedtest = new OoklaSpeedtest(settings, httpClient);
+            var server = new Server { Url = "http://example.com/", Sponsor = "Sponsor", Location = "Location" };
+
+            // When
+            var exception = await Assert.ThrowsAsync<ArgumentOutOfRangeException>(
+                () => speedtest.GetServerLatencyAsync(server));
+
+            // Then it is rejected by name, and no request is sent.
+            Assert.Equal(nameof(LatencyTestSettings.HttpTimeoutMilliseconds), exception.ParamName);
+            Assert.Equal(0, handler.Requests);
+        }
+
         [Fact]
         public async Task GetDownloadSpeedAsync_Server_Null_ThrowsArgumentNullException()
         {
@@ -448,6 +476,22 @@ public sealed partial class OoklaSpeedtestTests
 
             // Then
             Assert.Equal("UploadSizeMb", exception.ParamName);
+        }
+
+        /// <summary>
+        /// Counts the requests that reach it, so a guard can be shown to reject before any is sent.
+        /// </summary>
+        private sealed class CountingHandler : HttpMessageHandler
+        {
+            private int requests;
+
+            public int Requests => Volatile.Read(ref requests);
+
+            protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+            {
+                Interlocked.Increment(ref requests);
+                return Task.FromResult(new HttpResponseMessage(System.Net.HttpStatusCode.OK) { Content = new StringContent("test=test") });
+            }
         }
     }
 }

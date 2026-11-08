@@ -8,6 +8,14 @@ namespace NetPace.Core;
 /// to propagate to the caller rather than catching and suppressing them. This approach enables consumers of the library
 /// to implement their own error handling strategies that align with their application's needs. The exception is the
 /// per-request outcomes of a download or upload test, which are aggregated into the returned result's counts.
+/// <para>
+/// A request abandoned at a timeout and a caller that asked to stop both arrive as an
+/// <see cref="OperationCanceledException"/>, so wherever a timeout surfaces as an exception, implementations raise it
+/// in the shape .NET's own HTTP client uses for <see cref="System.Net.Http.HttpClient.Timeout"/>: a cancellation carrying a
+/// <see cref="TimeoutException"/> as its <see cref="Exception.InnerException"/>. A caller can therefore tell a
+/// timeout from its own cancellation without knowing which timeout applied, and a caller that does not inspect the
+/// exception is no worse off than before.
+/// </para>
 /// </remarks>
 public interface ISpeedTestService
 {
@@ -24,6 +32,7 @@ public interface ISpeedTestService
     /// <param name="server">The server to measure latency against.</param>
     /// <param name="cancellationToken">The token to allow the operation to be cancelled.</param>
     /// <returns>The server, and its latency and jitter in milliseconds.</returns>
+    /// <exception cref="ArgumentOutOfRangeException">Thrown when the provider is configured with a non-positive latency probe timeout.</exception>
     public Task<LatencyTestResult> GetServerLatencyAsync(IServer server, CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -33,6 +42,7 @@ public interface ISpeedTestService
     /// <param name="progress">A progress reporter that receives latency test progress updates.</param>
     /// <param name="cancellationToken">The token to allow the operation to be cancelled.</param>
     /// <returns>The server, and its latency and jitter in milliseconds.</returns>
+    /// <exception cref="ArgumentOutOfRangeException">Thrown when the provider is configured with a non-positive latency probe timeout.</exception>
     public Task<LatencyTestResult> GetServerLatencyAsync(IServer server, IProgress<LatencyTestProgress> progress, CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -43,6 +53,7 @@ public interface ISpeedTestService
     /// <param name="diagnostics">A reporter that receives one <see cref="RequestDiagnostic"/> per request, or <see langword="null"/> for none.</param>
     /// <param name="cancellationToken">The token to allow the operation to be cancelled.</param>
     /// <returns>The server, and its latency and jitter in milliseconds.</returns>
+    /// <exception cref="ArgumentOutOfRangeException">Thrown when the provider is configured with a non-positive latency probe timeout.</exception>
     public Task<LatencyTestResult> GetServerLatencyAsync(IServer server, IProgress<LatencyTestProgress>? progress, IProgress<RequestDiagnostic>? diagnostics, CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -55,6 +66,7 @@ public interface ISpeedTestService
     /// <param name="serverUrl">The server to measure latency against.</param>
     /// <param name="cancellationToken">The token to allow the operation to be cancelled.</param>
     /// <returns>The server, and its latency and jitter in milliseconds.</returns>
+    /// <exception cref="ArgumentOutOfRangeException">Thrown when the provider is configured with a non-positive latency probe timeout.</exception>
     public Task<LatencyTestResult> GetServerLatencyAsync(string serverUrl, CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -68,6 +80,7 @@ public interface ISpeedTestService
     /// <param name="progress">A progress reporter that receives latency test progress updates.</param>
     /// <param name="cancellationToken">The token to allow the operation to be cancelled.</param>
     /// <returns>The server, and its latency and jitter in milliseconds.</returns>
+    /// <exception cref="ArgumentOutOfRangeException">Thrown when the provider is configured with a non-positive latency probe timeout.</exception>
     public Task<LatencyTestResult> GetServerLatencyAsync(string serverUrl, IProgress<LatencyTestProgress> progress, CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -82,6 +95,7 @@ public interface ISpeedTestService
     /// <param name="diagnostics">A reporter that receives one <see cref="RequestDiagnostic"/> per request, or <see langword="null"/> for none.</param>
     /// <param name="cancellationToken">The token to allow the operation to be cancelled.</param>
     /// <returns>The server, and its latency and jitter in milliseconds.</returns>
+    /// <exception cref="ArgumentOutOfRangeException">Thrown when the provider is configured with a non-positive latency probe timeout.</exception>
     public Task<LatencyTestResult> GetServerLatencyAsync(string serverUrl, IProgress<LatencyTestProgress>? progress, IProgress<RequestDiagnostic>? diagnostics, CancellationToken cancellationToken = default);
 
     /// <summary>
