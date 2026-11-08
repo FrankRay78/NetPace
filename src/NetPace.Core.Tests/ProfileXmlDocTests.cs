@@ -15,8 +15,11 @@ public sealed class ProfileXmlDocTests
     {
         // SCENARIO: Mega's bonus-payload dependency is documented
 
-        // Given, When
-        var doc = CoreXmlDoc.Load();
+        // Given
+        var xmlPath = ResolveCoreXmlDocPath();
+
+        // When
+        var doc = LoadXmlDoc(xmlPath);
         var memberNode = doc.Descendants("member")
             .FirstOrDefault(m => (string?)m.Attribute("name") == "F:NetPace.Core.Profile.Mega");
 
@@ -53,7 +56,7 @@ public sealed class ProfileXmlDocTests
             using var competingWriter = new FileStream(xmlPath, FileMode.Open, FileAccess.Write, FileShare.Read);
 
             // When
-            var doc = CoreXmlDoc.Load(xmlPath);
+            var doc = LoadXmlDoc(xmlPath);
 
             // Then
             doc.Root!.Name.LocalName.ShouldBe("doc");
@@ -62,5 +65,24 @@ public sealed class ProfileXmlDocTests
         {
             File.Delete(xmlPath);
         }
+    }
+
+    private static string ResolveCoreXmlDocPath()
+    {
+        var assemblyPath = typeof(Profile).Assembly.Location;
+        var xmlPath = Path.ChangeExtension(assemblyPath, ".xml");
+        File.Exists(xmlPath).ShouldBeTrue(
+            $"Expected NetPace.Core.xml next to assembly at '{xmlPath}'. Ensure <GenerateDocumentationFile>true</GenerateDocumentationFile> is set on NetPace.Core.csproj.");
+        return xmlPath;
+    }
+
+    /// <summary>
+    /// Opens with <see cref="FileShare.ReadWrite"/> so a concurrent writer cannot fail the read;
+    /// <c>XDocument.Load(string)</c> opens with <see cref="FileShare.Read"/> and throws instead.
+    /// </summary>
+    private static XDocument LoadXmlDoc(string xmlPath)
+    {
+        using var stream = new FileStream(xmlPath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+        return XDocument.Load(stream);
     }
 }
