@@ -317,6 +317,7 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
             ? TimedOutMessage
             : e.Message;
 
+    /// <summary>
     /// Evaluates the <c>--fail-on</c> threshold against a single measurement (fail-fast).
     /// </summary>
     private static bool FailOnTriggered(SpeedTestOutcome outcome, SpeedTestCommandSettings settings)
