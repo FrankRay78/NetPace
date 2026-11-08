@@ -147,7 +147,25 @@ public sealed class FaultySpeedTesterTests
 
         // When, Then a selection left with nothing reports that no servers are available rather
         // than returning the candidate it could not measure.
-        await Assert.ThrowsAsync<Exception>(() => screen(tester, [unreachable]));
+        await Assert.ThrowsAsync<NoServersAvailableException>(() => screen(tester, [unreachable]));
+    }
+
+    [Fact]
+    public async Task GetFastestServerByLatencyAsync_WithNothingReachable_IsCaughtByAHandlerForNoServersAlone()
+    {
+        // SCENARIO: Library caller catches no servers without a catch-all
+
+        // Given a provider that can reach no server.
+        var tester = new FaultySpeedTester();
+        var unreachable = (await tester.GetServersAsync()).Single(server => server.Sponsor == FaultySponsor);
+
+        // When a library caller asks it for the fastest server, catching the no-servers condition
+        // and nothing else - ThrowsAsync matches that type exactly, so a broader exception, or one
+        // derived from it, fails the test rather than satisfying it.
+        var handled = await Assert.ThrowsAsync<NoServersAvailableException>(() => tester.GetFastestServerByLatencyAsync([unreachable]));
+
+        // Then the message is the one the console prints.
+        Assert.Equal("No servers available", handled.Message);
     }
 
     [Theory]

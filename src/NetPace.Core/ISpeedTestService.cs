@@ -113,7 +113,7 @@ public interface ISpeedTestService
     /// <param name="servers">An array of servers to screen.</param>
     /// <param name="cancellationToken">The token to allow the operation to be cancelled.</param>
     /// <returns>The reachable server with the lowest screening latency, and that latency in milliseconds.</returns>
-    /// <exception cref="Exception">Thrown when no given server could be reached.</exception>
+    /// <exception cref="NoServersAvailableException">Thrown when no given server could be reached.</exception>
     /// <exception cref="ArgumentOutOfRangeException">Thrown when the provider is configured with a non-positive screening request count or screening ceiling.</exception>
     public Task<LatencyTestResult> GetFastestServerByLatencyAsync(IServer[] servers, CancellationToken cancellationToken = default);
 
@@ -133,7 +133,7 @@ public interface ISpeedTestService
     /// <param name="progress">A progress reporter that receives server selection progress updates.</param>
     /// <param name="cancellationToken">The token to allow the operation to be cancelled.</param>
     /// <returns>The reachable server with the lowest screening latency, and that latency in milliseconds.</returns>
-    /// <exception cref="Exception">Thrown when no given server could be reached.</exception>
+    /// <exception cref="NoServersAvailableException">Thrown when no given server could be reached.</exception>
     /// <exception cref="ArgumentOutOfRangeException">Thrown when the provider is configured with a non-positive screening request count or screening ceiling.</exception>
     public Task<LatencyTestResult> GetFastestServerByLatencyAsync(IServer[] servers, IProgress<SpeedTestProgress> progress, CancellationToken cancellationToken = default);
 
@@ -150,7 +150,7 @@ public interface ISpeedTestService
     /// <param name="diagnostics">A reporter that receives one <see cref="RequestDiagnostic"/> per screening request, or <see langword="null"/> for none.</param>
     /// <param name="cancellationToken">The token to allow the operation to be cancelled.</param>
     /// <returns>The reachable server with the lowest screening latency, and that latency in milliseconds.</returns>
-    /// <exception cref="Exception">Thrown when no given server could be reached.</exception>
+    /// <exception cref="NoServersAvailableException">Thrown when no given server could be reached.</exception>
     /// <exception cref="ArgumentOutOfRangeException">Thrown when the provider is configured with a non-positive screening request count or screening ceiling.</exception>
     public Task<LatencyTestResult> GetFastestServerByLatencyAsync(IServer[] servers, IProgress<SpeedTestProgress>? progress, IProgress<RequestDiagnostic>? diagnostics, CancellationToken cancellationToken = default);
 

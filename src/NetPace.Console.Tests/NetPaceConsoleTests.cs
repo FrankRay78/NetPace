@@ -3,6 +3,18 @@ namespace NetPace.Console.Tests;
 public sealed partial class NetPaceConsoleTests
 {
     /// <summary>
+    /// Three plain servers, as discovery hands them over, in the order a listing shows them, so a
+    /// test naming "the first row" names the same server however the command orders its rows.
+    /// Shared by the nested classes that list servers and that select one.
+    /// </summary>
+    private static readonly IServer[] discoveredServers =
+    [
+        new Server { Location = "Location 1", Sponsor = "Test Sponsor 1", Url = "http://test1.com" },
+        new Server { Location = "Location 2", Sponsor = "Test Sponsor 2", Url = "http://test2.com" },
+        new Server { Location = "Location 3", Sponsor = "Test Sponsor 3", Url = "http://test3.com" },
+    ];
+
+    /// <summary>
     /// Build a service collection that captures the constructed <see cref="OoklaSpeedtestSettings"/>
     /// into a returned accessor instance. The action in <see cref="Program.CreateRootCommand"/> writes
     /// to it after option binding, so the test reads <c>accessor.Settings</c> after RunAsync to verify
@@ -597,6 +609,38 @@ public sealed partial class NetPaceConsoleTests
         // Then the no-servers condition is reported on the console and exits 0.
         Assert.Equal(0, result.ExitCode);
         await Verify(result.Output);
+    }
+
+    /// <summary>
+    /// Every output mode a speed test reports in, by the switch that selects it. The default mode
+    /// is selected by no switch at all.
+    /// </summary>
+    public static TheoryData<string> EveryOutputModeOfASpeedTest() => new("", "--minimal", "--csv", "--json");
+
+    [Theory]
+    [MemberData(nameof(EveryOutputModeOfASpeedTest))]
+    public async Task Should_Handle_No_Servers_Available_In_Every_Output_Mode(string outputMode)
+    {
+        // Given discovery comes back with nothing at all.
+        var mock = new SpeedTestMock
+        {
+            GetServersAsyncFunc = _ => Task.FromResult(Array.Empty<IServer>()),
+        };
+
+        var services = new ServiceCollection();
+        services.AddSingleton<ISpeedTestService>(mock);
+        services.AddSingleton<IClock, ClockStub>();
+        services.AddSingleton<IWaiter, NoDelayStub>();
+        var host = GetCommandLineTestHost(services);
+
+        // When
+        var result = await host.RunAsync(outputMode.Length == 0 ? [] : [outputMode]);
+
+        // Then the condition is reported whichever mode the user asked for, and the exit code
+        // reports that NetPace itself worked. The servers command now follows the same rule, and
+        // this is what holds the speed test to it.
+        Assert.Equal(0, result.ExitCode);
+        Assert.Contains("No servers available", result.Output);
     }
 
     [Fact]

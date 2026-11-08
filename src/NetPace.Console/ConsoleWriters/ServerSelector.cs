@@ -48,7 +48,7 @@ internal static class ServerSelector
                 var servers = await speedTestClient.GetServersAsync(cancellationToken);
                 if (servers.Length == 0)
                 {
-                    throw new Exception("No servers available");
+                    throw new NoServersAvailableException();
                 }
                 var firstServer = servers.First();
                 return new ServerSelection
@@ -76,7 +76,7 @@ internal static class ServerSelector
                 var servers = await speedTestClient.GetServersAsync(cancellationToken);
                 if (servers.Length == 0)
                 {
-                    throw new Exception("No servers available");
+                    throw new NoServersAvailableException();
                 }
                 // Screening chooses the server; the latency NetPace reports is then measured
                 // properly, on the winner only. Once chosen, the server is not swapped out: if its
