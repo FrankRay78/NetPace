@@ -272,6 +272,37 @@ public sealed partial class OoklaSpeedtestTests
     }
 
     [Fact]
+    public async Task GetServerLatencyAsync_AServerNamedByUrl_ReportsThePlaceholderSponsor()
+    {
+        // SCENARIO: The library reports the new label
+
+        // Given a server named by URL alone, so no sponsor name was ever supplied for it.
+        using var mockHttp = new MockHttpMessageHandler();
+        mockHttp.When("http://testserver.com/latency.txt")
+                .Respond("text/plain", ScreeningResponseBody);
+
+        var httpClient = mockHttp.ToHttpClient();
+        var settings = new OoklaSpeedtestSettings
+        {
+            LatencyTest = new()
+            {
+                LatencyTestIterations = 1,
+                LatencyTestIntervalMilliseconds = 0
+            }
+        };
+
+        var speedtest = new OoklaSpeedtest(settings, httpClient);
+
+        // When
+        var result = await speedtest.GetServerLatencyAsync("http://testserver.com/");
+
+        // Then the sponsor reads as a placeholder rather than an aside, and nothing stands in for
+        // a location the caller never supplied.
+        result.Server.Sponsor.ShouldBe("[Unknown]");
+        result.Server.Location.ShouldBeEmpty();
+    }
+
+    [Fact]
     public async Task GetServerLatencyAsync_ProbesTakingAKnownTimeOnTheSuppliedClock_ReportsExactlyThatLatency()
     {
         // SCENARIO: Latency follows the supplied time provider

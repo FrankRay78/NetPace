@@ -219,7 +219,7 @@ public sealed class SpeedTestStubTests
         // Then the server carries the URL asked for and the sponsor placeholder, and nothing
         // stands in for a location the caller never supplied — the shape the real provider builds.
         Assert.Equal("http://elsewhere.com", result.Server.Url);
-        Assert.Equal("(Unknown)", result.Server.Sponsor);
+        Assert.Equal("[Unknown]", result.Server.Sponsor);
         Assert.Empty(result.Server.Location);
     }
 
