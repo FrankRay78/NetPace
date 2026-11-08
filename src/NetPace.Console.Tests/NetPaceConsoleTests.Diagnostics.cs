@@ -89,7 +89,7 @@ public sealed partial class NetPaceConsoleTests
         {
             // Given the user named the server.
             // When the run goes ahead with diagnostics.
-            var result = await HostWith().RunAsync(["--minimal", "--server", DiagnosticSpeedTester.Url, "--diagnostics"]);
+            var result = await HostWith().RunAsync(["--minimal", "--server-url", DiagnosticSpeedTester.Url, "--diagnostics"]);
 
             // Then the route says so, and no screening figure is claimed - nothing was screened.
             await Verify(result.DiagnosticOutput);
@@ -98,7 +98,7 @@ public sealed partial class NetPaceConsoleTests
         [Fact]
         public async Task Diagnostics_RecordAFirstInListServerAndOmitTheLatencyFigure()
         {
-            // Given --no-latency without --server, so the first server offered is used.
+            // Given --no-latency without --server-url, so the first server offered is used.
             // When the run goes ahead with diagnostics.
             var result = await HostWith().RunAsync(["--minimal", "--no-latency", "--diagnostics"]);
 
@@ -120,7 +120,7 @@ public sealed partial class NetPaceConsoleTests
         [Fact]
         public async Task Diagnostics_RecordEveryRequestAndTheAutoSelectedRoute()
         {
-            // Given a run whose every test issues more than one request, and no --server, so
+            // Given a run whose every test issues more than one request, and no --server-url, so
             // screening chooses the route.
             // When it runs with diagnostics.
             var result = await HostWith().RunAsync(["--minimal", "--diagnostics"]);

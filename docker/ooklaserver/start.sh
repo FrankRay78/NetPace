@@ -134,14 +134,14 @@ while [ "$(date +%s)" -lt "$DEADLINE_AT" ]; do
       echo "  upload   (container ingress): netem $LINK_UP"
       echo
       echo "Automatic server selection is NOT slowed: the server list still comes from"
-      echo "the public internet at full speed, so use --server to cross the slow link."
+      echo "the public internet at full speed, so use --server-url to cross the slow link."
       echo
       echo "Point NetPace at it with:"
-      echo "  netpace --server http://localhost:18080/speedtest/upload.php --profile tiny"
+      echo "  netpace --server-url http://localhost:18080/speedtest/upload.php --profile tiny"
     else
       echo "OoklaServer is ready — no link profile in effect."
       echo "Point NetPace at it with:"
-      echo "  netpace --server http://localhost:18080/speedtest/upload.php"
+      echo "  netpace --server-url http://localhost:18080/speedtest/upload.php"
     fi
     exit 0
   fi
