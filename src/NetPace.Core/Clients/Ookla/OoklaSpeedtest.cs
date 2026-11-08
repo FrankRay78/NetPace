@@ -116,6 +116,11 @@ public sealed class OoklaSpeedtest : ISpeedTestService
         ArgumentNullException.ThrowIfNull(server);
         ArgumentException.ThrowIfNullOrWhiteSpace(server.Url);
 
+        // Guarded here because a non-positive timeout cancels every probe before it leaves, which
+        // now surfaces as a timeout and would report a configuration error as a server that never
+        // answered.
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(settings.LatencyTest.HttpTimeoutMilliseconds, nameof(settings.LatencyTest.HttpTimeoutMilliseconds));
+
         var latencyUrl = GetBaseUrl(server.Url) + LatencyFileName;
         var pings = new List<long>();
 

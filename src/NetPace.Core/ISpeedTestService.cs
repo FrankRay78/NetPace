@@ -10,11 +10,11 @@ namespace NetPace.Core;
 /// per-request outcomes of a download or upload test, which are aggregated into the returned result's counts.
 /// <para>
 /// A request abandoned at a timeout and a caller that asked to stop both arrive as an
-/// <see cref="OperationCanceledException"/>, so implementations raise a timeout in the shape .NET's own HTTP client
-/// uses for <see cref="System.Net.Http.HttpClient.Timeout"/>: a cancellation carrying a
+/// <see cref="OperationCanceledException"/>, so wherever a timeout surfaces as an exception, implementations raise it
+/// in the shape .NET's own HTTP client uses for <see cref="System.Net.Http.HttpClient.Timeout"/>: a cancellation carrying a
 /// <see cref="TimeoutException"/> as its <see cref="Exception.InnerException"/>. A caller can therefore tell a
-/// timeout from its own cancellation without knowing which timeout applied, and one that does not look stays no
-/// worse off than before.
+/// timeout from its own cancellation without knowing which timeout applied, and a caller that does not inspect the
+/// exception is no worse off than before.
 /// </para>
 /// </remarks>
 public interface ISpeedTestService

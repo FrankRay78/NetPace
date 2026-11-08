@@ -1,3 +1,5 @@
+using System.Globalization;
+
 namespace NetPace.Core.Clients.Ookla.Extensions;
 
 internal static class HttpClientExtensions
@@ -22,7 +24,7 @@ internal static class HttpClientExtensions
             // HttpClient uses for its own Timeout - a cancellation carrying a TimeoutException -
             // so a caller can tell the two apart without knowing how the timeout was applied.
             throw new TaskCanceledException(
-                $"The request was canceled due to the configured timeout of {timeout.TotalSeconds} seconds elapsing.",
+                string.Format(CultureInfo.InvariantCulture, "The request was canceled due to the configured timeout of {0} seconds elapsing.", timeout.TotalSeconds),
                 new TimeoutException(e.Message, e),
                 timeoutCts.Token);
         }

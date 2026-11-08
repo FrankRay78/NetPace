@@ -8,8 +8,8 @@
 
 **Decisions:**
 
-- The latency probe's per-request timeout is raised as .NET's HTTP client raises its own `Timeout` — a cancellation with a `TimeoutException` inside — so the server-list fetch, which already times out that way, needs nothing. Rejected: a NetPace-specific exception type. It would break any consumer catching `OperationCanceledException` today, and leaves consumers two shapes to learn where one already exists.
+- The latency probe's per-request timeout is raised as .NET's HTTP client raises its own `Timeout` — a cancellation with a `TimeoutException` inside — so the server-list fetch, which already times out that way, needs nothing. Rejected: a NetPace-specific exception type. It leaves consumers two shapes to learn where one already exists.
 - Rejected: letting the console decide by its token alone, with no library change. The console would then be guessing what a cancellation it did not ask for means, and a library consumer would still have nothing to read.
-- `Should.ThrowAsync` and `Task.WaitAsync` both replace a cancelled task's exception with a bare one of their own, so the tests for this record the exception instead.
+- `Should.ThrowAsync` replaces a cancelled task's exception with a bare one of its own, so the tests for this record the exception instead.
 
 **Date:** 2026-11-08

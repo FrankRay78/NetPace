@@ -1,14 +1,12 @@
-using System.Net.Http;
-
 namespace NetPace.Console.Tests;
 
-/// <summary>
-/// CLI behaviour when a request is abandoned at its own timeout rather than failing on its own
-/// merits: a timeout is reported like any other network failure, honours <c>--fail-on</c>, and is
-/// told apart from the cancellation the user asked for.
-/// </summary>
 public sealed partial class NetPaceConsoleTests
 {
+    /// <summary>
+    /// CLI behaviour when a request is abandoned at its own timeout rather than failing on its own
+    /// merits: a timeout is reported like any other network failure, honours <c>--fail-on</c>, and is
+    /// told apart from the cancellation the user asked for.
+    /// </summary>
     public sealed class Timeouts
     {
         private const string ServerUrl = "http://slow.example/upload.php";
@@ -19,7 +17,9 @@ public sealed partial class NetPaceConsoleTests
         /// latency probe reports its per-probe timeout the same way.
         /// </summary>
         private static Exception TimedOut() =>
-            new TaskCanceledException("A task was canceled.", new TimeoutException("The operation was canceled."));
+            new TaskCanceledException(
+                "The request was canceled due to the configured timeout of 2 seconds elapsing.",
+                new TimeoutException("A task was canceled."));
 
         private static LatencyTestResult Latency(string serverUrl) =>
             new()
@@ -38,21 +38,56 @@ public sealed partial class NetPaceConsoleTests
             return new CommandLineTestHost(services);
         }
 
+        /// <summary>
+        /// A server that never answers its latency probe in time, so every test ends at the timeout.
+        /// </summary>
+        private static CommandLineTestHost HostWhoseProbeTimesOut() =>
+            HostWith(new SpeedTestMock { GetServerLatencyByServerUrlAsyncFunc = (_, _, _) => throw TimedOut() });
+
+        /// <summary>
+        /// A server whose first latency probe times out and whose later probes answer, so a repeated
+        /// run meets one timeout and then measures normally.
+        /// </summary>
+        private static CommandLineTestHost HostWhoseFirstProbeTimesOut(IWaiter? waiter = null)
+        {
+            var probe = 0;
+            return HostWith(new SpeedTestMock
+            {
+                GetServerLatencyByServerUrlAsyncFunc = (url, _, _) => Interlocked.Increment(ref probe) == 1
+                    ? throw TimedOut()
+                    : Task.FromResult(Latency(url)),
+                GetDownloadSpeedAsyncFunc = (_, _, _) => Task.FromResult(ScriptedSpeedTester.Clean(150)),
+                GetUploadSpeedAsyncFunc = (_, _, _) => Task.FromResult(ScriptedSpeedTester.Clean(32))
+            },
+            waiter);
+        }
+
+        /// <summary>
+        /// A run the user cancels while the latency probe is in flight: the probe cancels the given
+        /// source and then observes the token, as the real one does.
+        /// </summary>
+        private static CommandLineTestHost HostCancelledMidProbe(CancellationTokenSource cancellation) =>
+            HostWith(new SpeedTestMock
+            {
+                GetServerLatencyByServerUrlAsyncFunc = (_, _, token) =>
+                {
+                    cancellation.Cancel();
+                    token.ThrowIfCancellationRequested();
+                    return Task.FromResult(Latency(ServerUrl));
+                }
+            });
+
         [Theory]
-        [InlineData("")]
-        [InlineData("--minimal")]
-        [InlineData("--csv")]
-        [InlineData("--json")]
-        public async Task Timed_Out_Probe_Is_Reported_In_Every_Output_Mode(string formatFlag)
+        [InlineData("default", "")]
+        [InlineData("minimal", "--minimal")]
+        [InlineData("csv", "--csv")]
+        [InlineData("json", "--json")]
+        public async Task Timed_Out_Probe_Is_Reported_In_Every_Output_Mode(string mode, string formatFlag)
         {
             // SCENARIO: A timed-out request is reported
 
             // Given a server that does not answer its latency probe in time.
-            var mock = new SpeedTestMock
-            {
-                GetServerLatencyByServerUrlAsyncFunc = (_, _, _) => throw TimedOut(),
-            };
-            var host = HostWith(mock);
+            var host = HostWhoseProbeTimesOut();
 
             // When the test runs in each output mode.
             string[] args = formatFlag.Length == 0
@@ -60,23 +95,23 @@ public sealed partial class NetPaceConsoleTests
                 : ["--server", ServerUrl, formatFlag];
             var result = await host.RunAsync(args);
 
-            // Then the user is told why the test failed, and the exit code stays 0 - a network
-            // condition is data, not a NetPace fault.
-            Assert.Contains("did not respond in time", result.Output);
+            // Then the whole of what each mode emits is the reviewed contract: a substring match
+            // would pass wherever the line landed, and what this has to hold is that the machine
+            // readable modes carry the failure the same way every other network failure does. The
+            // exit code stays 0 - a network condition is data, not a NetPace fault.
             Assert.Equal(0, result.ExitCode);
+            await Verify(result.Output).UseParameters(mode);
         }
 
         [Fact]
         public async Task Timed_Out_Probe_Says_Nothing_About_The_Cancellation_Behind_It()
         {
-            // One composed line explains the failure: the exception's own wording ("A task was
-            // canceled") names no cause and would leave the user no better off than silence.
+            // One composed line explains the failure: the exception's own wording names the
+            // configured timeout that elapsed, which describes NetPace's own plumbing and leaves
+            // the word "canceled" in front of a user who cancelled nothing.
 
-            var mock = new SpeedTestMock
-            {
-                GetServerLatencyByServerUrlAsyncFunc = (_, _, _) => throw TimedOut(),
-            };
-            var host = HostWith(mock);
+            // Given
+            var host = HostWhoseProbeTimesOut();
 
             // When
             var result = await host.RunAsync(["--server", ServerUrl]);
@@ -95,11 +130,7 @@ public sealed partial class NetPaceConsoleTests
             // SCENARIO: A timed-out request trips fail-on
 
             // Given a server that does not answer its latency probe in time.
-            var mock = new SpeedTestMock
-            {
-                GetServerLatencyByServerUrlAsyncFunc = (_, _, _) => throw TimedOut(),
-            };
-            var host = HostWith(mock);
+            var host = HostWhoseProbeTimesOut();
 
             // When the test runs with --fail-on.
             var result = await host.RunAsync(["--server", ServerUrl, "--fail-on", failOn]);
@@ -116,11 +147,8 @@ public sealed partial class NetPaceConsoleTests
             // raises its own timeout as a cancellation carrying a TimeoutException - so it must
             // reach the user by the same route.
 
-            var mock = new SpeedTestMock
-            {
-                GetServersAsyncFunc = _ => throw TimedOut(),
-            };
-            var host = HostWith(mock);
+            // Given
+            var host = HostWith(new SpeedTestMock { GetServersAsyncFunc = _ => throw TimedOut() });
 
             // When run without --server, so discovery runs.
             var result = await host.RunAsync([]);
@@ -136,16 +164,7 @@ public sealed partial class NetPaceConsoleTests
             // SCENARIO: A timed-out request does not end a repeated run
 
             // Given a server whose first latency probe times out and whose later probes answer.
-            var probe = 0;
-            var mock = new SpeedTestMock
-            {
-                GetServerLatencyByServerUrlAsyncFunc = (url, _, _) => Interlocked.Increment(ref probe) == 1
-                    ? throw TimedOut()
-                    : Task.FromResult(Latency(url)),
-                GetDownloadSpeedAsyncFunc = (_, _, _) => Task.FromResult(ScriptedSpeedTester.Clean(150)),
-                GetUploadSpeedAsyncFunc = (_, _, _) => Task.FromResult(ScriptedSpeedTester.Clean(32)),
-            };
-            var host = HostWith(mock);
+            var host = HostWhoseFirstProbeTimesOut();
 
             // When three tests are asked for.
             var result = await host.RunAsync(["--server", ServerUrl, "--count", "3", "--minimal"]);
@@ -162,16 +181,8 @@ public sealed partial class NetPaceConsoleTests
             // --fail-on is fail-fast everywhere else, so a timeout must stop a repeated run at the
             // first failure rather than carrying on through it.
 
-            var probe = 0;
-            var mock = new SpeedTestMock
-            {
-                GetServerLatencyByServerUrlAsyncFunc = (url, _, _) => Interlocked.Increment(ref probe) == 1
-                    ? throw TimedOut()
-                    : Task.FromResult(Latency(url)),
-                GetDownloadSpeedAsyncFunc = (_, _, _) => Task.FromResult(ScriptedSpeedTester.Clean(150)),
-                GetUploadSpeedAsyncFunc = (_, _, _) => Task.FromResult(ScriptedSpeedTester.Clean(32)),
-            };
-            var host = HostWith(mock);
+            // Given
+            var host = HostWhoseFirstProbeTimesOut();
 
             // When
             var result = await host.RunAsync(["--server", ServerUrl, "--count", "3", "--minimal", "--fail-on", "Total"]);
@@ -182,22 +193,74 @@ public sealed partial class NetPaceConsoleTests
         }
 
         [Fact]
+        public async Task Timed_Out_Probe_Does_Not_End_A_Continuous_Run()
+        {
+            // SCENARIO: A timed-out request does not end a repeated run
+
+            // --loop keeps its own copy of the catch-and-report block, separate from the one
+            // --count uses, so a timeout swallowed there would end a monitoring loop silently -
+            // the original failure, in the mode it hurt most.
+
+            // Given a server whose first latency probe times out and whose later probes answer,
+            // and a pause that ends the loop after the second test.
+            using var cancellation = new CancellationTokenSource();
+            var host = HostWhoseFirstProbeTimesOut(new SelfCancellingWaiter(2, cancellation));
+
+            // When the run loops until that cancellation.
+            var result = await host.RunAsync(["--server", ServerUrl, "--loop", "--minimal"], cancellation.Token);
+
+            // Then the timeout is reported once and the run went on to measure normally.
+            Assert.Equal(0, result.ExitCode);
+            Assert.Equal(1, result.Output.Split("did not respond in time").Length - 1);
+            Assert.Equal(1, result.Output.Split("Latency: 24 ms").Length - 1);
+        }
+
+        [Fact]
+        public async Task Timed_Out_Probe_Stops_A_Continuous_Run_Under_FailOn()
+        {
+            // --fail-on is fail-fast in --loop as it is in --count, so the first timeout ends the
+            // run rather than looping on through it.
+
+            // Given
+            using var cancellation = new CancellationTokenSource();
+            var host = HostWhoseFirstProbeTimesOut(new SelfCancellingWaiter(2, cancellation));
+
+            // When
+            var result = await host.RunAsync(["--server", ServerUrl, "--loop", "--minimal", "--fail-on", "Total"], cancellation.Token);
+
+            // Then
+            Assert.Equal(1, result.ExitCode);
+            Assert.DoesNotContain("Latency: 24 ms", result.Output);
+        }
+
+        [Fact]
+        public async Task Cancelling_Mid_Test_Ends_A_Continuous_Run_Quietly()
+        {
+            // SCENARIO: Ctrl-C still ends the run quietly
+
+            // The companion to the two above: --loop's guard must claim the cancellation the user
+            // asked for while leaving a timeout to be reported.
+
+            // Given a looping run the user cancels while the probe is in flight.
+            using var cancellation = new CancellationTokenSource();
+            var host = HostCancelledMidProbe(cancellation);
+
+            // When
+            var result = await host.RunAsync(["--server", ServerUrl, "--loop", "--minimal"], cancellation.Token);
+
+            // Then nothing is reported as an error and the run exits 0.
+            Assert.DoesNotContain("Error:", result.Output);
+            Assert.Equal(0, result.ExitCode);
+        }
+
+        [Fact]
         public async Task Cancelling_A_Test_Ends_The_Run_Quietly()
         {
             // SCENARIO: Ctrl-C still ends the run quietly
 
             // Given a run the user cancels while the test is in progress.
             using var cancellation = new CancellationTokenSource();
-            var mock = new SpeedTestMock
-            {
-                GetServerLatencyByServerUrlAsyncFunc = (_, _, token) =>
-                {
-                    cancellation.Cancel();
-                    token.ThrowIfCancellationRequested();
-                    return Task.FromResult(Latency(ServerUrl));
-                },
-            };
-            var host = HostWith(mock);
+            var host = HostCancelledMidProbe(cancellation);
 
             // When
             var result = await host.RunAsync(["--server", ServerUrl], cancellation.Token);
@@ -218,7 +281,7 @@ public sealed partial class NetPaceConsoleTests
             {
                 GetServerLatencyByServerUrlAsyncFunc = (url, _, _) => Task.FromResult(Latency(url)),
                 GetDownloadSpeedAsyncFunc = (_, _, _) => Task.FromResult(ScriptedSpeedTester.Clean(150)),
-                GetUploadSpeedAsyncFunc = (_, _, _) => Task.FromResult(ScriptedSpeedTester.Clean(32)),
+                GetUploadSpeedAsyncFunc = (_, _, _) => Task.FromResult(ScriptedSpeedTester.Clean(32))
             };
             var host = HostWith(mock, new SelfCancellingWaiter(1, cancellation));
 
@@ -235,17 +298,9 @@ public sealed partial class NetPaceConsoleTests
         {
             // --fail-on reports a failed measurement, and a run the user stopped is not one.
 
+            // Given
             using var cancellation = new CancellationTokenSource();
-            var mock = new SpeedTestMock
-            {
-                GetServerLatencyByServerUrlAsyncFunc = (_, _, token) =>
-                {
-                    cancellation.Cancel();
-                    token.ThrowIfCancellationRequested();
-                    return Task.FromResult(Latency(ServerUrl));
-                },
-            };
-            var host = HostWith(mock);
+            var host = HostCancelledMidProbe(cancellation);
 
             // When
             var result = await host.RunAsync(["--server", ServerUrl, "--fail-on", "Total"], cancellation.Token);
