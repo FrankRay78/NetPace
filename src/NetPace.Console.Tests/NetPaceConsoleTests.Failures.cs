@@ -75,7 +75,7 @@ public sealed partial class NetPaceConsoleTests
             var host = HostWith(mock);
 
             // When
-            var result = await host.RunAsync(["--server", "http://unreachable.example/upload.php"]);
+            var result = await host.RunAsync(["--server-url", "http://unreachable.example/upload.php"]);
 
             // Then the network condition is reported as data, not as a NetPace fault.
             Assert.Equal(0, result.ExitCode);
@@ -293,7 +293,7 @@ public sealed partial class NetPaceConsoleTests
         [Fact]
         public async Task Unreachable_User_Specified_Server_Exits_Zero()
         {
-            // An unreachable --server is a network condition, not a NetPace fault: it must exit 0.
+            // An unreachable --server-url is a network condition, not a NetPace fault: it must exit 0.
 
             // Given a user-specified server whose latency probe throws (host down).
             var mock = new SpeedTestMock
@@ -303,7 +303,7 @@ public sealed partial class NetPaceConsoleTests
             var host = HostWith(mock);
 
             // When run with the default latency probe enabled.
-            var result = await host.RunAsync(["--server", "http://unreachable.example/upload.php"]);
+            var result = await host.RunAsync(["--server-url", "http://unreachable.example/upload.php"]);
 
             // Then the reason reaches the console and the process exits 0 (not 1).
             Assert.Equal(0, result.ExitCode);

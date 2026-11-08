@@ -49,9 +49,11 @@ public sealed partial class NetPaceConsoleTests
     }
 
     /// <summary>
-    /// A host whose speed tester records the one call a run makes before measuring — server
-    /// discovery — so a test can assert the run never got that far. Shared by the tests that hold a
-    /// retired option closed.
+    /// A host whose speed tester records the calls a run makes before it measures anything, so a
+    /// test can assert the run never got that far: server discovery, and the latency probe that a
+    /// run naming its own server goes straight to instead. Both are recorded because a run that
+    /// honoured a server URL would skip discovery, leaving a discovery-only recorder empty whether
+    /// the option was refused or obeyed. Shared by the tests that hold a retired option closed.
     /// </summary>
     private static (CommandLineTestHost host, List<string> serviceCalls) HostRecordingMeasurements()
     {
@@ -63,6 +65,11 @@ public sealed partial class NetPaceConsoleTests
             {
                 serviceCalls.Add(nameof(ISpeedTestService.GetServersAsync));
                 return Task.FromResult<IServer[]>([]);
+            },
+            GetServerLatencyByServerUrlAsyncFunc = (_, _, _) =>
+            {
+                serviceCalls.Add(nameof(ISpeedTestService.GetServerLatencyAsync));
+                throw new NotImplementedException(nameof(ISpeedTestService.GetServerLatencyAsync));
             }
         };
 
@@ -209,7 +216,7 @@ public sealed partial class NetPaceConsoleTests
         var host = GetCommandLineTestHost(services);
 
         // When
-        var result = await host.RunAsync(["--server", url]);
+        var result = await host.RunAsync(["--server-url", url]);
 
         // Then
         Assert.Equal(0, result.ExitCode);
@@ -230,7 +237,7 @@ public sealed partial class NetPaceConsoleTests
         var host = GetCommandLineTestHost(services);
 
         // When
-        var result = await host.RunAsync(["--server", "http://test1.com", "--no-latency"]);
+        var result = await host.RunAsync(["--server-url", "http://test1.com", "--no-latency"]);
 
         // Then
         Assert.Equal(0, result.ExitCode);
@@ -254,7 +261,7 @@ public sealed partial class NetPaceConsoleTests
         var host = GetCommandLineTestHost(services);
 
         // When
-        var result = await host.RunAsync(["--csv", "--count", "3", "--unit-scale", "Mega", "--server", url]);
+        var result = await host.RunAsync(["--csv", "--count", "3", "--unit-scale", "Mega", "--server-url", url]);
 
         // Then
         Assert.Equal(0, result.ExitCode);

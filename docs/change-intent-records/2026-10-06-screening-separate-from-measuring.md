@@ -4,7 +4,7 @@
 
 **Behaviour:** Given several servers are discovered and at least one is reachable, when a run selects a server, then every discovered server is screened, the fastest that answered is chosen, its latency is measured with the full probe, and the measured figure is reported. Given no discovered server answers, when a run selects a server, then it reports `No servers available` with its exit code unchanged. Given `servers -l`, then each server shows the screening latency auto-selection would rank it on, or `-` if it could not be reached.
 
-**Constraints:** The ceiling must stay — before budgets existed, a server answering in 20–60 s per request could stall a run for minutes. The user-visible "no servers" message and exit code must not change. `--server` must keep bypassing selection.
+**Constraints:** The ceiling must stay — before budgets existed, a server answering in 20–60 s per request could stall a run for minutes. The user-visible "no servers" message and exit code must not change. `--server-url` must keep bypassing selection.
 
 **Decisions:**
 

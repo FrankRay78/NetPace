@@ -98,7 +98,7 @@ public static class Program
 
         var noLatencyOption = new Option<bool>("--no-latency")
         {
-            Description = "Do not perform latency test.\nWhen used without --server, the first available server is selected.",
+            Description = "Do not perform latency test.\nWhen used without --server-url, the first available server is selected.",
             DefaultValueFactory = _ => false
         };
 
@@ -114,7 +114,7 @@ public static class Program
             DefaultValueFactory = _ => false
         };
 
-        var serverOption = new Option<string>("--server")
+        var serverUrlOption = new Option<string>("--server-url")
         {
             Description = "The URL of a specific speed test server.\n'netpace servers -l' will return your nearest servers.",
             DefaultValueFactory = _ => string.Empty
@@ -219,6 +219,18 @@ public static class Program
             }
         });
 
+        // --server has been renamed --server-url, but the old name stays registered so that a
+        // script still passing it is told what to use rather than getting a generic
+        // unrecognised-option error. It takes an optional string so that a bare --server lands on
+        // the same message instead of a built-in missing-argument failure. Hidden, and
+        // CustomHelpProvider strips hidden options, so --help advertises only the new name.
+        var serverOption = new Option<string>("--server")
+        {
+            Arity = ArgumentArity.ZeroOrOne,
+            Hidden = true
+        };
+        serverOption.Validators.Add(result => result.AddError("--server has been renamed --server-url, see --help."));
+
         // --verbosity is retired, but stays registered so that a script still passing it gets a
         // message naming the removal rather than a generic unrecognised-option error. It takes an
         // optional string so that every former value - and no value at all - lands on the same
@@ -280,7 +292,7 @@ public static class Program
         command.Options.Add(noLatencyOption);
         command.Options.Add(noDownloadOption);
         command.Options.Add(noUploadOption);
-        command.Options.Add(serverOption);
+        command.Options.Add(serverUrlOption);
         command.Options.Add(timestampOption);
         command.Options.Add(profileOption);
         command.Options.Add(downloadSizeOption);
@@ -291,6 +303,7 @@ public static class Program
         command.Options.Add(unitSystemOption);
         command.Options.Add(deviceIdOption);
         command.Options.Add(customFieldOption);
+        command.Options.Add(serverOption);
         command.Options.Add(verbosityOption);
         command.Options.Add(fileOption);
         command.Options.Add(fileModeOption);
@@ -317,7 +330,7 @@ public static class Program
                     NoLatency = parseResult.GetValue(noLatencyOption),
                     NoDownload = parseResult.GetValue(noDownloadOption),
                     NoUpload = parseResult.GetValue(noUploadOption),
-                    ServerUrl = parseResult.GetValue(serverOption) ?? string.Empty,
+                    ServerUrl = parseResult.GetValue(serverUrlOption) ?? string.Empty,
                     IncludeTimestamp = parseResult.GetValue(timestampOption),
                     Profile = parseResult.GetValue(profileOption),
                     DownloadSizeMb = parseResult.GetValue(downloadSizeOption),

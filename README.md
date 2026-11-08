@@ -122,10 +122,10 @@ OPTIONS:
         --minimal                     Display the result as a single compact line.
                                       Ideal for batch scripts and redirected output.
         --no-latency                  Do not perform latency test.
-                                      When used without --server, the first available server is selected.
+                                      When used without --server-url, the first available server is selected.
         --no-download                 Do not perform download test.
         --no-upload                   Do not perform upload test.
-        --server                      The URL of a specific speed test server.
+        --server-url                  The URL of a specific speed test server.
                                       'netpace servers -l' will return your nearest servers.
     -t, --timestamp                   Include a timestamp in the output.
         --profile          medium     Profile bundle of payload settings. <tiny, small, medium, large, mega>

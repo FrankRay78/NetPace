@@ -39,7 +39,7 @@ public sealed partial class NetPaceConsoleTests
             var host = GetCommandLineTestHost(services);
 
             // When
-            var result = await host.RunAsync([jsonSwitch, "--server", "http://test1.com"]);
+            var result = await host.RunAsync([jsonSwitch, "--server-url", "http://test1.com"]);
 
             // Then
             Assert.Equal(0, result.ExitCode);

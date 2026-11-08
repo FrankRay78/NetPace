@@ -47,7 +47,7 @@ netpace servers
 
 Use a specific server URL for testing:  
 ```bash
-netpace --server https://speedtest.example.com/
+netpace --server-url https://speedtest.example.com/
 ```
 
 Show speeds in bytes/sec, using IEC units (KiB, MiB, GiB):  
@@ -267,7 +267,7 @@ The offset is what makes the machine-readable timestamp one unambiguous instant,
 
 ## How a server is chosen
 
-With no `--server`, NetPace picks the server for you in two steps.
+With no `--server-url`, NetPace picks the server for you in two steps.
 
 **Screening.** Every server discovery returned is sent a few quick requests, all at the same time, to answer one question: did it answer, and roughly how fast? The whole pass is capped at a fixed couple of seconds, no matter how many servers were discovered or how many of them never answer. A server that answers slowly is not thrown out — it is simply ranked below the quicker ones. Only a server that does not answer at all inside the cap drops out of the running.
 
@@ -275,7 +275,7 @@ With no `--server`, NetPace picks the server for you in two steps.
 
 If nothing answered during screening, the run reports `Error: No servers available`. That is a network outcome rather than a fault in NetPace, so the exit code stays `0` (see [Exit codes](#exit-codes)).
 
-The cap on screening exists to stop a single pathological server stalling a run: before it was introduced, a server taking 20–60 seconds to answer each request could hold up a test for minutes. If you want a particular server regardless, `--server <url>` skips selection entirely.
+The cap on screening exists to stop a single pathological server stalling a run: before it was introduced, a server taking 20–60 seconds to answer each request could hold up a test for minutes. If you want a particular server regardless, `--server-url <url>` skips selection entirely.
 
 `netpace servers -l` lists each discovered server with its screening latency, so what you see there is what auto-selection would rank. A server shown with `-` could not be reached, and a run would not have used it either. Rows stay in their listed order rather than being re-sorted by latency. Press Ctrl+C part-way through and the rows that had not answered yet stay blank instead: nothing had been decided about those servers.
 
