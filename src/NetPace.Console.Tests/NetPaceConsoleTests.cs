@@ -197,7 +197,7 @@ public sealed partial class NetPaceConsoleTests
         var host = GetCommandLineTestHost(services);
 
         // When
-        var result = await host.RunAsync(["--server", url]);
+        var result = await host.RunAsync(["--server-url", url]);
 
         // Then
         Assert.Equal(0, result.ExitCode);
@@ -218,7 +218,7 @@ public sealed partial class NetPaceConsoleTests
         var host = GetCommandLineTestHost(services);
 
         // When
-        var result = await host.RunAsync(["--server", "http://test1.com", "--no-latency"]);
+        var result = await host.RunAsync(["--server-url", "http://test1.com", "--no-latency"]);
 
         // Then
         Assert.Equal(0, result.ExitCode);
@@ -242,7 +242,7 @@ public sealed partial class NetPaceConsoleTests
         var host = GetCommandLineTestHost(services);
 
         // When
-        var result = await host.RunAsync(["--csv", "--count", "3", "--unit-scale", "Mega", "--server", url]);
+        var result = await host.RunAsync(["--csv", "--count", "3", "--unit-scale", "Mega", "--server-url", url]);
 
         // Then
         Assert.Equal(0, result.ExitCode);

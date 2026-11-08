@@ -36,11 +36,11 @@ and upload speed testing.
                                       Ideal for batch scripts and redirected    
                                       output.                                   
     \e[38;5;7m    --no-latency\e[0m                  Do not perform latency test.              
-                                      When used without --server, the first     
+                                      When used without --server-url, the first 
                                       available server is selected.             
     \e[38;5;7m    --no-download\e[0m                 Do not perform download test.             
     \e[38;5;7m    --no-upload\e[0m                   Do not perform upload test.               
-    \e[38;5;7m    --server\e[0m                      The URL of a specific speed test server.  
+    \e[38;5;7m    --server-url\e[0m                  The URL of a specific speed test server.  
                                       'netpace servers -l' will return your     
                                       nearest servers.                          
     \e[38;5;7m-t, --timestamp\e[0m                   Include a timestamp in the output.        
