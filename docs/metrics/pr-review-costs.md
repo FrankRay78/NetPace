@@ -16,6 +16,11 @@ The same rows as CSV, for a spreadsheet: [pr-review-costs.csv](pr-review-costs.c
 
 | PR | Title | Closed | Code | Tests | Docs | Risk | No-human merge | Review | Follow-up 1 | Follow-up 2 | Total cost | Total tokens |
 | --- | --- | --- | ---: | ---: | ---: | --- | --- | ---: | ---: | ---: | ---: | ---: |
+| [#532](https://github.com/FrankRay78/NetPace/pull/532) | Server URL Option | 2026-11-08 | 23 | 112 | 33 | Medium | no | $5.36 |  |  | $5.36 | 5.9M |
+| [#531](https://github.com/FrankRay78/NetPace/pull/531) | Timed Out Run Exits Silently | 2026-11-08 | 84 | 536 | 14 | High | no | $11.45 | $4.74 |  | $16.19 | 19.6M |
+| [#530](https://github.com/FrankRay78/NetPace/pull/530) | Slow Link Profiles | 2026-11-08 | 379 |  | 98 | Medium | no | $6.77 | $6.22 |  | $12.99 | 9.7M |
+| [#529](https://github.com/FrankRay78/NetPace/pull/529) | No Servers Consistently | 2026-11-08 | 167 | 361 | 32 | High | no | $8.78 | $0.71 |  | $9.49 | 11.9M |
+| [#528](https://github.com/FrankRay78/NetPace/pull/528) | Unknown Server Label | 2026-11-08 | 28 | 135 | 18 | Medium | no | $5.29 | $2.76 |  | $8.05 | 9.0M |
 | [#522](https://github.com/FrankRay78/NetPace/pull/522) | Skip Ban Sees Every Commit | 2026-11-05 | 82 | 47 | 12 | Medium | no | $9.25 | $4.42 |  | $13.67 | 11.4M |
 | [#521](https://github.com/FrankRay78/NetPace/pull/521) | Servers Details As Written | 2026-11-05 | 20 | 181 |  | Medium | no | $4.14 |  |  | $4.14 | 4.2M |
 | [#520](https://github.com/FrankRay78/NetPace/pull/520) | Readme Help Matches Real Help | 2026-11-05 | 2 | 149 | 2 | Medium | no | $5.11 |  |  | $5.11 | 5.2M |
@@ -46,4 +51,4 @@ The same rows as CSV, for a spreadsheet: [pr-review-costs.csv](pr-review-costs.c
 | [#475](https://github.com/FrankRay78/NetPace/pull/475) | Remove Orphaned CSV Snapshots | 2026-10-29 |  | 4 |  | Low | yes | $2.11 | $1.57 |  | $3.68 | 3.6M |
 | [#472](https://github.com/FrankRay78/NetPace/pull/472) | Call Chain Specialist | 2026-10-29 |  |  | 56 | Medium | no | $6.18 | $5.01 | $2.58 | $13.77 | 11.6M |
 | [#455](https://github.com/FrankRay78/NetPace/pull/455) | PR Review Cost Footer | 2026-10-29 | 583 | 456 | 37 | High | no | $9.61 |  |  | $9.61 | 8.6M |
-| **Total** | | | **4,239** | **14,011** | **5,561** | | | **$178.52** | **$44.59** | **$18.00** | **$241.11** | **256.3M** |
+| **Total** | | | **4,920** | **15,155** | **5,756** | | | **$216.17** | **$59.02** | **$18.00** | **$293.19** | **312.4M** |

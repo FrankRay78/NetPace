@@ -1,4 +1,9 @@
 PR,Url,Title,Merged,Closed,CodeLines,TestLines,DocsLines,Risk,NoHumanMerge,ReviewCost,FollowUp1Cost,FollowUp2Cost,TotalCost,TotalTokensMillions
+532,https://github.com/FrankRay78/NetPace/pull/532,"Server URL Option",true,"2026-11-08",23,112,33,"Medium","no",5.36,,,5.36,5.9
+531,https://github.com/FrankRay78/NetPace/pull/531,"Timed Out Run Exits Silently",true,"2026-11-08",84,536,14,"High","no",11.45,4.74,,16.19,19.6
+530,https://github.com/FrankRay78/NetPace/pull/530,"Slow Link Profiles",true,"2026-11-08",379,,98,"Medium","no",6.77,6.22,,12.99,9.7
+529,https://github.com/FrankRay78/NetPace/pull/529,"No Servers Consistently",true,"2026-11-08",167,361,32,"High","no",8.78,0.71,,9.49,11.9
+528,https://github.com/FrankRay78/NetPace/pull/528,"Unknown Server Label",true,"2026-11-08",28,135,18,"Medium","no",5.29,2.76,,8.05,9.0
 522,https://github.com/FrankRay78/NetPace/pull/522,"Skip Ban Sees Every Commit",true,"2026-11-05",82,47,12,"Medium","no",9.25,4.42,,13.67,11.4
 521,https://github.com/FrankRay78/NetPace/pull/521,"Servers Details As Written",true,"2026-11-05",20,181,,"Medium","no",4.14,,,4.14,4.2
 520,https://github.com/FrankRay78/NetPace/pull/520,"Readme Help Matches Real Help",true,"2026-11-05",2,149,2,"Medium","no",5.11,,,5.11,5.2
