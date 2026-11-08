@@ -1,4 +1,4 @@
-using NetPace.Console.Tests.Theming;
+﻿using NetPace.Console.Tests.Theming;
 using NetPace.Console.Theming;
 
 namespace NetPace.Console.Tests;
@@ -510,14 +510,15 @@ public sealed partial class NetPaceConsoleTests
                 BytesProcessed = 1000,
                 ElapsedMilliseconds = 1000,
                 RequestsSucceeded = 1,
-                RequestsFailed = 0
+                RequestsFailed = 0,
+                Latency = null
             };
 
             var speedTester = new SpeedTestMock
             {
                 GetServersAsyncFunc = _ => Task.FromResult<IServer[]>([new Server { Url = "http://test1.com", Sponsor = "Test Sponsor 1", Location = "Location 1" }]),
-                GetFastestServerByLatencyAsyncFunc = (servers, _, _) => Task.FromResult(new LatencyTestResult { Server = servers[0], LatencyMilliseconds = 100, JitterMilliseconds = 0 }),
-                GetServerLatencyAsyncFunc = (server, _, _) => Task.FromResult(new LatencyTestResult { Server = server, LatencyMilliseconds = 100, JitterMilliseconds = 0 }),
+                GetFastestServerByLatencyAsyncFunc = (servers, _, _) => Task.FromResult(new LatencyTestResult { Server = servers[0], LatencyMilliseconds = 100, MinimumLatencyMilliseconds = null, MaximumLatencyMilliseconds = null, JitterMilliseconds = 0 }),
+                GetServerLatencyAsyncFunc = (server, _, _) => Task.FromResult(new LatencyTestResult { Server = server, LatencyMilliseconds = 100, MinimumLatencyMilliseconds = null, MaximumLatencyMilliseconds = null, JitterMilliseconds = 0 }),
                 GetDownloadSpeedAsyncFunc = (_, progress, _) =>
                 {
                     progress?.Report(new SpeedTestProgress { PercentageComplete = 40, BytesProcessed = 400, ElapsedMilliseconds = 400 });

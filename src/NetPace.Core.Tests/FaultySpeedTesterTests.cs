@@ -1,4 +1,4 @@
-using NetPace.Core.Clients.Testing;
+﻿using NetPace.Core.Clients.Testing;
 
 namespace NetPace.Core.Tests;
 
@@ -213,6 +213,8 @@ public sealed class FaultySpeedTesterTests
             {
                 Server = new Server { Sponsor = FaultySponsor, Url = url },
                 LatencyMilliseconds = 1,
+                MinimumLatencyMilliseconds = null,
+                MaximumLatencyMilliseconds = null,
                 JitterMilliseconds = 0,
             }),
         });
@@ -230,10 +232,10 @@ public sealed class FaultySpeedTesterTests
         var tester = new FaultySpeedTester(inner: new SpeedTestMock
         {
             GetServersAsyncFunc = _ => Task.FromResult<IServer[]>([server]),
-            GetServerLatencyAsyncFunc = (_, _, _) => Task.FromResult(new LatencyTestResult { Server = server, LatencyMilliseconds = 7, JitterMilliseconds = 1 }),
-            GetFastestServerByLatencyAsyncFunc = (servers, _, _) => Task.FromResult(new LatencyTestResult { Server = servers[0], LatencyMilliseconds = 7, JitterMilliseconds = 0 }),
-            GetDownloadSpeedAsyncFunc = (_, _, _) => Task.FromResult(new SpeedTestResult { BytesProcessed = 11, ElapsedMilliseconds = 1000, RequestsSucceeded = 1, RequestsFailed = 0 }),
-            GetUploadSpeedAsyncFunc = (_, _, _) => Task.FromResult(new SpeedTestResult { BytesProcessed = 13, ElapsedMilliseconds = 1000, RequestsSucceeded = 1, RequestsFailed = 0 }),
+            GetServerLatencyAsyncFunc = (_, _, _) => Task.FromResult(new LatencyTestResult { Server = server, LatencyMilliseconds = 7, MinimumLatencyMilliseconds = null, MaximumLatencyMilliseconds = null, JitterMilliseconds = 1 }),
+            GetFastestServerByLatencyAsyncFunc = (servers, _, _) => Task.FromResult(new LatencyTestResult { Server = servers[0], LatencyMilliseconds = 7, MinimumLatencyMilliseconds = null, MaximumLatencyMilliseconds = null, JitterMilliseconds = 0 }),
+            GetDownloadSpeedAsyncFunc = (_, _, _) => Task.FromResult(new SpeedTestResult { BytesProcessed = 11, ElapsedMilliseconds = 1000, RequestsSucceeded = 1, RequestsFailed = 0, Latency = null }),
+            GetUploadSpeedAsyncFunc = (_, _, _) => Task.FromResult(new SpeedTestResult { BytesProcessed = 13, ElapsedMilliseconds = 1000, RequestsSucceeded = 1, RequestsFailed = 0, Latency = null }),
         });
 
         // When
@@ -282,5 +284,22 @@ public sealed class FaultySpeedTesterTests
         // Then screening is itself a latency probe, so the rule governs selection as well as
         // measurement, and the next-lowest-numbered server wins.
         Assert.Equal(FaultySponsor, result.Server.Sponsor);
+    }
+
+    [Fact]
+    public async Task TheFaultyTestersTransfers_PassTheWrappedServicesUnderLoadFiguresThrough()
+    {
+        // Given the faulty tester over the stub, measuring a server the default fault leaves alone.
+        var tester = new FaultySpeedTester();
+        var servers = await tester.GetServersAsync();
+        var expected = await new SpeedTestStub().GetDownloadSpeedAsync(servers[0]);
+
+        // When a download and an upload run against it.
+        var download = await tester.GetDownloadSpeedAsync(servers[0]);
+        var upload = await tester.GetUploadSpeedAsync(servers[0]);
+
+        // Then the under-load figures are the wrapped service's own, unchanged.
+        Assert.Equal(expected.Latency, download.Latency);
+        Assert.Equal(expected.Latency, upload.Latency);
     }
 }

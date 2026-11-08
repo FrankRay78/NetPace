@@ -1,4 +1,4 @@
-using NetPace.Core.Clients.Testing;
+﻿using NetPace.Core.Clients.Testing;
 
 namespace NetPace.Core.Tests;
 
@@ -230,6 +230,39 @@ public sealed class VariableSpeedTesterTests
         Assert.Equal([75, 75, 75, 75, 75, 75, 100, 150], latencies);
         Assert.Equal([343750, 343750, 343750], downloads);
         Assert.Equal([166250, 166250, 166250], uploads);
+    }
+
+
+    [Fact]
+    public async Task TheVariableTestersTransfers_ReportNoUnderLoadLatency()
+    {
+        // Given the variable tester, whose figures vary by test rather than describing a line.
+        var tester = new VariableSpeedTester();
+        var servers = await tester.GetServersAsync();
+
+        // When a download and an upload run against its server.
+        var download = await tester.GetDownloadSpeedAsync(servers[0]);
+        var upload = await tester.GetUploadSpeedAsync(servers[0]);
+
+        // Then neither result claims an under-load latency, as its documentation states.
+        Assert.Null(download.Latency);
+        Assert.Null(upload.Latency);
+    }
+
+    [Fact]
+    public async Task TheVariableTestersIdleLatency_ReportsALowestAndHighestAroundItsAverage()
+    {
+        // Given the variable tester on its first test - 75 ms latency, 5 ms jitter.
+        var tester = new VariableSpeedTester();
+        var servers = await tester.GetServersAsync();
+
+        // When the servers are screened and the winner measured.
+        var screened = await tester.GetFastestServerByLatencyAsync(servers);
+        var measured = await tester.GetServerLatencyAsync(screened.Server);
+
+        // Then the lowest and highest sit a jitter either side of that latency.
+        Assert.Equal(70, measured.MinimumLatencyMilliseconds);
+        Assert.Equal(80, measured.MaximumLatencyMilliseconds);
     }
 
     /// <summary>

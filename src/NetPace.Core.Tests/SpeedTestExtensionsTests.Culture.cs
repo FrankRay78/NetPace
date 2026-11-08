@@ -15,7 +15,7 @@ public sealed partial class SpeedTestExtensionsTests
         /// "18.67 Kbps" — a value whose decimal separator a comma-decimal culture would change.
         /// </summary>
         private static SpeedTestResult FractionalSpeed() =>
-            new() { BytesProcessed = 7000, ElapsedMilliseconds = 3000, RequestsSucceeded = 1, RequestsFailed = 0 };
+            new() { BytesProcessed = 7000, ElapsedMilliseconds = 3000, RequestsSucceeded = 1, RequestsFailed = 0, Latency = null };
 
         /// <summary>
         /// Runs <paramref name="format"/> on a thread set to the named culture and hands back what

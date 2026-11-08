@@ -21,6 +21,7 @@ public sealed class OoklaSpeedtest : ISpeedTestService
     private const string ByteBudgetReached = "byte budget reached";
     private const string ScreeningCeilingReached = "screening ceiling reached";
     private const string CancelledByCaller = "cancelled by caller";
+    private const string TransferEnded = "transfer ended";
 
     // Reasons a request failed on its own merits with no exception behind it.
     private const string NotASpeedTestServer = "not a speed test server";
@@ -158,14 +159,14 @@ public sealed class OoklaSpeedtest : ISpeedTestService
                 // taken is not a measurement. It is recorded first, so a diagnostic log names the
                 // cause of a run that ended here, and the duration is frozen before that recording.
                 var failedElapsedMilliseconds = ElapsedMillisecondsSince(startTimestamp);
-                ReportRequestFailure(diagnostics, startedAt, sequence, latencyUrl, failedElapsedMilliseconds, e, cancellationToken);
+                ReportRequestFailure(diagnostics, RequestKind.LatencyProbe, startedAt, sequence, latencyUrl, failedElapsedMilliseconds, e, cancellationToken);
                 throw;
             }
 
             if (!testString.StartsWith(LatencyResponsePrefix))
             {
                 var wrongServer = new InvalidOperationException("Server returned incorrect test string for latency.txt");
-                ReportRequestFailure(diagnostics, startedAt, sequence, latencyUrl, elapsedMilliseconds, wrongServer, cancellationToken, Encoding.UTF8.GetByteCount(testString));
+                ReportRequestFailure(diagnostics, RequestKind.LatencyProbe, startedAt, sequence, latencyUrl, elapsedMilliseconds, wrongServer, cancellationToken, Encoding.UTF8.GetByteCount(testString));
                 throw wrongServer;
             }
 
@@ -182,11 +183,14 @@ public sealed class OoklaSpeedtest : ISpeedTestService
             });
         }
 
-        // Calculate the average server latency, and how uneven the probes behind it were.
+        // Calculate the average server latency, the extremes behind it, and how uneven the probes
+        // behind it were.
         var latencyResult = new LatencyTestResult
         {
             Server = server,
             LatencyMilliseconds = (long)pings.Average(),
+            MinimumLatencyMilliseconds = pings.Min(),
+            MaximumLatencyMilliseconds = pings.Max(),
             JitterMilliseconds = CalculateJitterMilliseconds(pings)
         };
 
@@ -384,6 +388,7 @@ public sealed class OoklaSpeedtest : ISpeedTestService
                         ReportProgress(diagnostics, new RequestDiagnostic
                         {
                             StartedAt = startedAt,
+                            Kind = RequestKind.LatencyProbe,
                             Sequence = sequence,
                             Url = latencyUrl,
                             Outcome = RequestOutcome.Failed,
@@ -439,6 +444,7 @@ public sealed class OoklaSpeedtest : ISpeedTestService
                     ReportProgress(diagnostics, new RequestDiagnostic
                     {
                         StartedAt = startedAt,
+                        Kind = RequestKind.LatencyProbe,
                         Sequence = sequence,
                         Url = latencyUrl,
                         Outcome = rankedOut ? RequestOutcome.Failed : RequestOutcome.Cancelled,
@@ -461,10 +467,17 @@ public sealed class OoklaSpeedtest : ISpeedTestService
 
         // Screening times each of its requests but keeps only the fastest, so no run of probe
         // times survives to derive a jitter figure from. Reported as zero rather than measured
-        // from requests issued back to back for ranking.
+        // from requests issued back to back for ranking, and the extremes as not recorded.
         return fastestMilliseconds is null
             ? null
-            : new LatencyTestResult { Server = server, LatencyMilliseconds = fastestMilliseconds.Value, JitterMilliseconds = 0 };
+            : new LatencyTestResult
+            {
+                Server = server,
+                LatencyMilliseconds = fastestMilliseconds.Value,
+                MinimumLatencyMilliseconds = null,
+                MaximumLatencyMilliseconds = null,
+                JitterMilliseconds = 0
+            };
     }
 
     /// <inheritdoc/>
@@ -494,6 +507,7 @@ public sealed class OoklaSpeedtest : ISpeedTestService
         ArgumentNullException.ThrowIfNull(server);
         ArgumentException.ThrowIfNullOrWhiteSpace(server.Url);
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(settings.DownloadTest.DownloadSizeMb, nameof(settings.DownloadTest.DownloadSizeMb));
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(settings.LatencyTest.LoadedLatencyIntervalMilliseconds, nameof(settings.LatencyTest.LoadedLatencyIntervalMilliseconds));
 
         var downloadUrls = GenerateDownloadUrls(server.Url, settings.DownloadTest.DownloadSizes, settings.DownloadTest.DownloadSizeIterations);
 
@@ -527,7 +541,7 @@ public sealed class OoklaSpeedtest : ISpeedTestService
         var maxBytes = settings.DownloadTest.DownloadSizeMb == int.MaxValue
             ? long.MaxValue
             : (long)settings.DownloadTest.DownloadSizeMb * 1024L * 1024L;
-        var downloadResult = await GenericTestSpeedAsync(downloadUrls, DownloadAndMeasureAsync, url => url, progress, diagnostics, settings.DownloadTest.DownloadParallelTasks, maxBytes, sequenceOffset: 0, cancellationToken);
+        var downloadResult = await GenericTestSpeedAsync(server, downloadUrls, DownloadAndMeasureAsync, url => url, progress, diagnostics, settings.DownloadTest.DownloadParallelTasks, maxBytes, sequenceOffset: 0, cancellationToken);
 
         return downloadResult;
     }
@@ -559,6 +573,7 @@ public sealed class OoklaSpeedtest : ISpeedTestService
         ArgumentNullException.ThrowIfNull(server);
         ArgumentException.ThrowIfNullOrWhiteSpace(server.Url);
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(settings.UploadTest.UploadSizeMb, nameof(settings.UploadTest.UploadSizeMb));
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(settings.LatencyTest.LoadedLatencyIntervalMilliseconds, nameof(settings.LatencyTest.LoadedLatencyIntervalMilliseconds));
 
         // Generate upload sizes (in bytes) rather than allocating large buffers up-front.
         var testDataLengths = GenerateUploadDataLengths(settings.UploadTest.UploadIncrements, settings.UploadTest.UploadSizeIncrementKb, settings.UploadTest.UploadSizeIterations);
@@ -587,16 +602,18 @@ public sealed class OoklaSpeedtest : ISpeedTestService
         var maxBytes = settings.UploadTest.UploadSizeMb == int.MaxValue
             ? long.MaxValue
             : (long)settings.UploadTest.UploadSizeMb * 1024L * 1024L;
-        var uploadResult = await GenericTestSpeedAsync(testDataLengths, UploadAndMeasureAsync, _ => uploadUrl, progress, diagnostics, settings.UploadTest.UploadParallelTasks, maxBytes, sequenceOffset: probeRequests, cancellationToken);
+        var uploadResult = await GenericTestSpeedAsync(server, testDataLengths, UploadAndMeasureAsync, _ => uploadUrl, progress, diagnostics, settings.UploadTest.UploadParallelTasks, maxBytes, sequenceOffset: probeRequests, cancellationToken);
 
         return uploadResult;
     }
 
     /// <summary>
     /// Executes a generic speed test by processing a collection of test data in parallel,
-    /// measuring total bytes processed and elapsed time.
+    /// measuring total bytes processed and elapsed time - and, while it runs, the latency to the
+    /// server under that load.
     /// </summary>
     private async Task<SpeedTestResult> GenericTestSpeedAsync<T>(
+        IServer server,
         IEnumerable<T> testData,
         Func<HttpClient, T, CancellationToken, Task<int>> doWork,
         Func<T, string> urlOf,
@@ -620,6 +637,11 @@ public sealed class OoklaSpeedtest : ISpeedTestService
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
 
         var testStartTimestamp = timeProvider.GetTimestamp();
+
+        // Started where the transfer starts, so its first probe is due one interval into the
+        // transfer rather than one interval into the whole operation: an upload resolves its
+        // endpoint first, and a probe sent before any data moved would time an idle line.
+        using var probing = LoadedLatencyProbing.Start(this, server, GetBaseUrl(server.Url) + LatencyFileName, diagnostics);
 
         // Create and execute tasks to process the test data in parallel.
         var sequenceIssued = sequenceOffset;
@@ -823,6 +845,7 @@ public sealed class OoklaSpeedtest : ISpeedTestService
                             ReportProgress(diagnostics, new RequestDiagnostic
                             {
                                 StartedAt = startedAt,
+                                Kind = RequestKind.Transfer,
                                 Sequence = sequence,
                                 Url = urlOf(data),
                                 Outcome = outcome,
@@ -849,15 +872,22 @@ public sealed class OoklaSpeedtest : ISpeedTestService
         await Task.WhenAll(tasks);
 
         // Read where the speed test actually ends, rather than inside the result below, so that
-        // anything later added between the two is not billed to the transfer.
+        // anything later added between the two is not billed to the transfer. Probing is stopped
+        // after it, so the probes' own winding up is not billed either.
         var testElapsedMilliseconds = ElapsedMillisecondsSince(testStartTimestamp);
+
+        var loadedLatency = probing?.Stop();
 
         return new SpeedTestResult
         {
             BytesProcessed = totalBytesReturned,
             ElapsedMilliseconds = testElapsedMilliseconds,
             RequestsSucceeded = succeededCount,
-            RequestsFailed = failedCount
+            RequestsFailed = failedCount,
+
+            // No request moved any data, so whatever the probes saw was not a loaded line and
+            // reporting it as latency under load would be a figure about nothing.
+            Latency = succeededCount == 0 ? null : loadedLatency
         };
     }
 
@@ -910,6 +940,7 @@ public sealed class OoklaSpeedtest : ISpeedTestService
                     ReportProgress(diagnostics, new RequestDiagnostic
                     {
                         StartedAt = startedAt,
+                        Kind = RequestKind.EndpointProbe,
                         Sequence = requestsIssued,
                         Url = probeUrl,
                         Outcome = probeAnswered ? RequestOutcome.Succeeded : RequestOutcome.Failed,
@@ -939,7 +970,7 @@ public sealed class OoklaSpeedtest : ISpeedTestService
             }
             catch (Exception e) when (e is HttpRequestException or IOException or OperationCanceledException)
             {
-                ReportRequestFailure(diagnostics, startedAt, requestsIssued, probeUrl, ElapsedMillisecondsSince(startTimestamp), e, cancellationToken);
+                ReportRequestFailure(diagnostics, RequestKind.EndpointProbe, startedAt, requestsIssued, probeUrl, ElapsedMillisecondsSince(startTimestamp), e, cancellationToken);
 
                 if (cancellationToken.IsCancellationRequested)
                 {
@@ -999,6 +1030,7 @@ public sealed class OoklaSpeedtest : ISpeedTestService
         ReportProgress(diagnostics, new RequestDiagnostic
         {
             StartedAt = startedAt,
+            Kind = RequestKind.LatencyProbe,
             Sequence = sequence,
             Url = url,
             Outcome = RequestOutcome.Succeeded,
@@ -1011,7 +1043,7 @@ public sealed class OoklaSpeedtest : ISpeedTestService
     /// Reports a request that did not succeed, distinguishing one the caller cancelled from one
     /// that genuinely failed.
     /// </summary>
-    private static void ReportRequestFailure(IProgress<RequestDiagnostic>? diagnostics, DateTime startedAt, int sequence, string url, long elapsedMilliseconds, Exception failure, CancellationToken cancellationToken, long bytesProcessed = 0)
+    private static void ReportRequestFailure(IProgress<RequestDiagnostic>? diagnostics, RequestKind kind, DateTime startedAt, int sequence, string url, long elapsedMilliseconds, Exception failure, CancellationToken cancellationToken, long bytesProcessed = 0)
     {
         if (diagnostics is null)
         {
@@ -1023,6 +1055,7 @@ public sealed class OoklaSpeedtest : ISpeedTestService
         ReportProgress(diagnostics, new RequestDiagnostic
         {
             StartedAt = startedAt,
+            Kind = kind,
             Sequence = sequence,
             Url = url,
             Outcome = cancelled ? RequestOutcome.Cancelled : RequestOutcome.Failed,
@@ -1176,6 +1209,255 @@ public sealed class OoklaSpeedtest : ISpeedTestService
             {
                 yield return incrementSize;
             }
+        }
+    }
+
+    /// <summary>
+    /// The latency probes of one transfer: small requests to the server's latency endpoint, sent
+    /// while a download or an upload runs, whose round trips are what latency under load means.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Probes never overlap — the next is due an interval after the last one finished, so a slow
+    /// probe delays its successor rather than stacking up behind it — and none has a time limit of
+    /// its own beyond the HTTP client's default, because a probe that takes a long time under load
+    /// is the measurement rather than a fault.
+    /// </para>
+    /// <para>
+    /// They travel on the same <see cref="HttpClient"/> as the transfer, which does not put them
+    /// behind the transfer's data: the handler leaves <c>MaxConnectionsPerServer</c> unbounded, and
+    /// HTTP/1.1 does not multiplex, so a probe issued while a transfer holds a connection opens one
+    /// of its own instead of queueing. A second client would add nothing but a second set of proxy
+    /// settings to keep in step.
+    /// </para>
+    /// <para>
+    /// A probe still waiting when the transfer ends is discarded rather than waited for, so every
+    /// figure comes from a probe that answered: the cost is that a line too congested for any probe
+    /// to answer within the transfer reports nothing measured, which a diagnostic log shows as the
+    /// abandoned probe. Discarding and answering are decided under one lock, so exactly one report
+    /// is made for each probe.
+    /// </para>
+    /// </remarks>
+    private sealed class LoadedLatencyProbing : IDisposable
+    {
+        private readonly OoklaSpeedtest owner;
+        private readonly IServer server;
+        private readonly string probeUrl;
+        private readonly IProgress<RequestDiagnostic>? diagnostics;
+        private readonly int intervalMilliseconds;
+
+        private readonly object gate = new();
+        private readonly List<long> samples = [];
+        private readonly CancellationTokenSource stop = new();
+
+        private Task loop = Task.CompletedTask;
+        private Probe? outstanding;
+        private bool stopped;
+        private int probesIssued;
+        private LatencyTestResult? measured;
+
+        /// <summary>One probe in flight: what it will be reported as, and when it left.</summary>
+        private readonly record struct Probe(int Sequence, DateTime StartedAt, long StartTimestamp);
+
+        private LoadedLatencyProbing(OoklaSpeedtest owner, IServer server, string probeUrl, IProgress<RequestDiagnostic>? diagnostics)
+        {
+            this.owner = owner;
+            this.server = server;
+            this.probeUrl = probeUrl;
+            this.diagnostics = diagnostics;
+            this.intervalMilliseconds = owner.settings.LatencyTest.LoadedLatencyIntervalMilliseconds;
+        }
+
+        /// <summary>
+        /// Starts probing, or returns <see langword="null"/> where the measurement is switched off —
+        /// which is what makes "no probing object" mean "nothing is being probed", so no caller has
+        /// to re-test the setting.
+        /// </summary>
+        public static LoadedLatencyProbing? Start(OoklaSpeedtest owner, IServer server, string probeUrl, IProgress<RequestDiagnostic>? diagnostics)
+        {
+            if (!owner.settings.LatencyTest.LoadedLatencyEnabled)
+            {
+                return null;
+            }
+
+            var probing = new LoadedLatencyProbing(owner, server, probeUrl, diagnostics);
+            probing.loop = probing.RunAsync();
+            return probing;
+        }
+
+        /// <summary>
+        /// Stops probing and returns what the probes that answered measured, or
+        /// <see langword="null"/> where none did. Idempotent, so a transfer that ended by throwing
+        /// still abandons its probes through <see cref="Dispose"/>.
+        /// </summary>
+        public LatencyTestResult? Stop()
+        {
+            // The figures are settled before anything is cancelled, so a second call returns under
+            // the lock without touching the token source - which by then may already have been
+            // disposed by the loop's own completion below.
+            lock (gate)
+            {
+                if (stopped)
+                {
+                    return measured;
+                }
+
+                stopped = true;
+
+                if (outstanding is { } abandoned)
+                {
+                    // Reported before the transfer returns, under the lock its own answer would
+                    // take, so the probe is accounted for exactly once.
+                    Report(abandoned, RequestOutcome.Cancelled, response: null, owner.ElapsedMillisecondsSince(abandoned.StartTimestamp), TransferEnded, failureType: null);
+                    outstanding = null;
+                }
+
+                measured = samples.Count == 0
+                    ? null
+                    : new LatencyTestResult
+                    {
+                        Server = server,
+                        LatencyMilliseconds = (long)samples.Average(),
+                        MinimumLatencyMilliseconds = samples.Min(),
+                        MaximumLatencyMilliseconds = samples.Max(),
+                        JitterMilliseconds = CalculateJitterMilliseconds(samples)
+                    };
+            }
+
+            // Ends the wait before the next probe, and abandons any request already out. After the
+            // figures above, so the result does not depend on how quickly either of those unwinds.
+            stop.Cancel();
+
+            // Nothing waits on the loop - the result is not held up by a probe - but its faults are
+            // observed, so one cannot vanish as an unobserved task exception, and the token source
+            // is disposed only once no probe can still be reading its token. Attached after the
+            // cancellation above, so a loop that has already finished cannot dispose the source
+            // before it is cancelled.
+            _ = loop.ContinueWith(
+                completed =>
+                {
+                    _ = completed.Exception;
+                    stop.Dispose();
+                },
+                CancellationToken.None,
+                TaskContinuationOptions.ExecuteSynchronously,
+                TaskScheduler.Default);
+
+            return measured;
+        }
+
+        /// <inheritdoc/>
+        public void Dispose() => Stop();
+
+        private async Task RunAsync()
+        {
+            while (!stop.IsCancellationRequested)
+            {
+                try
+                {
+                    // Waited before the first probe as well as between them: a transfer has built
+                    // no queue at the instant it starts, so a probe sent then would report the idle
+                    // line and flatter the figure.
+                    await owner.delayProvider.DelayAsync(intervalMilliseconds, stop.Token).ConfigureAwait(false);
+                }
+                catch (OperationCanceledException)
+                {
+                    return;
+                }
+
+                Probe probe;
+
+                lock (gate)
+                {
+                    if (stopped)
+                    {
+                        return;
+                    }
+
+                    probe = new Probe(probesIssued + 1, owner.timeProvider.GetLocalNow().DateTime, owner.timeProvider.GetTimestamp());
+                    probesIssued = probe.Sequence;
+                    outstanding = probe;
+                }
+
+                try
+                {
+                    // Whatever the server returns is treated as an answer: by the time a transfer
+                    // is running, the endpoint has already answered correctly for the latency
+                    // measurement, and rejecting a sample on its body would discard a round trip
+                    // over something the probe is not measuring.
+                    var answer = await owner.httpClient.GetStringAsync(probeUrl, stop.Token).ConfigureAwait(false);
+
+                    if (!Complete(probe, owner.ElapsedMillisecondsSince(probe.StartTimestamp), answer, failure: null))
+                    {
+                        return;
+                    }
+                }
+                catch (Exception e)
+                {
+                    if (!Complete(probe, owner.ElapsedMillisecondsSince(probe.StartTimestamp), answer: null, failure: e))
+                    {
+                        return;
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// Takes one probe's outcome, or reports that the probe had already been abandoned - in
+        /// which case the loop is over and the caller should stop.
+        /// </summary>
+        private bool Complete(Probe probe, long elapsedMilliseconds, string? answer, Exception? failure)
+        {
+            lock (gate)
+            {
+                // The transfer ended while this probe was still out, so it has already been
+                // reported as abandoned and whatever it eventually said is discarded.
+                if (stopped || outstanding?.Sequence != probe.Sequence)
+                {
+                    return false;
+                }
+
+                outstanding = null;
+
+                if (failure is null)
+                {
+                    samples.Add(elapsedMilliseconds);
+                    Report(probe, RequestOutcome.Succeeded, answer, elapsedMilliseconds, failureReason: null, failureType: null);
+                }
+                else
+                {
+                    // Recorded and skipped: a probe that could not be taken is not a sample, and it
+                    // is not a verdict on the transfer it was measuring either, which carries on.
+                    Report(probe, RequestOutcome.Failed, response: null, elapsedMilliseconds, DescribeFailure(failure), failure.GetType().Name);
+                }
+
+                return true;
+            }
+        }
+
+        /// <summary>
+        /// Reports one probe. The response is passed rather than its byte count so that nothing is
+        /// computed for a caller that asked for no diagnostics.
+        /// </summary>
+        private void Report(Probe probe, RequestOutcome outcome, string? response, long elapsedMilliseconds, string? failureReason, string? failureType)
+        {
+            if (diagnostics is null)
+            {
+                return;
+            }
+
+            ReportProgress(diagnostics, new RequestDiagnostic
+            {
+                StartedAt = probe.StartedAt,
+                Kind = RequestKind.LatencyProbe,
+                Sequence = probe.Sequence,
+                Url = probeUrl,
+                Outcome = outcome,
+                BytesProcessed = response is null ? 0 : Encoding.UTF8.GetByteCount(response),
+                ElapsedMilliseconds = elapsedMilliseconds,
+                FailureReason = failureReason,
+                FailureType = failureType
+            });
         }
     }
 

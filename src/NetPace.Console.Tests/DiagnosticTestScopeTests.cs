@@ -1,4 +1,4 @@
-using NetPace.Console.Diagnostics;
+﻿using NetPace.Console.Diagnostics;
 using NetPace.Core;
 
 namespace NetPace.Console.Tests;
@@ -89,10 +89,11 @@ public sealed class DiagnosticTestScopeTests
         Assert.Equal(500, recorder.SummaryBytes);
     }
 
-    private static RequestDiagnostic Diagnostic(int sequence, RequestOutcome outcome, long bytes = 0) =>
+    private static RequestDiagnostic Diagnostic(int sequence, RequestOutcome outcome, long bytes = 0, RequestKind kind = RequestKind.Transfer) =>
         new()
         {
             StartedAt = new DateTime(1980, 1, 1, 10, 5, 0),
+            Kind = kind,
             Sequence = sequence,
             Url = "http://example.com/",
             Outcome = outcome,

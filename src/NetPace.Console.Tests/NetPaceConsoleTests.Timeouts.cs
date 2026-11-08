@@ -1,4 +1,4 @@
-namespace NetPace.Console.Tests;
+﻿namespace NetPace.Console.Tests;
 
 public sealed partial class NetPaceConsoleTests
 {
@@ -26,6 +26,8 @@ public sealed partial class NetPaceConsoleTests
             {
                 Server = new Server { Sponsor = "Deutsche Telekom", Location = "Frankfurt", Url = serverUrl },
                 LatencyMilliseconds = 24,
+                MinimumLatencyMilliseconds = null,
+                MaximumLatencyMilliseconds = null,
                 JitterMilliseconds = 3
             };
 

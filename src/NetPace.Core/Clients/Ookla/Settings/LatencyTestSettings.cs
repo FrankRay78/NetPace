@@ -25,5 +25,28 @@ public sealed record LatencyTestSettings
     /// Set to 0 to disable delay between iterations.
     /// </summary>
     public int LatencyTestIntervalMilliseconds { get; init; } = 50;
+
+    /// <summary>
+    /// Whether a download or an upload measures the latency to the server while it runs — latency
+    /// under load. On by default.
+    /// </summary>
+    /// <remarks>
+    /// Switching this off is the only way to stop the probes; a zero or negative
+    /// <see cref="LoadedLatencyIntervalMilliseconds"/> is rejected rather than read as "do not
+    /// probe", because an interval of none would probe continuously.
+    /// </remarks>
+    public bool LoadedLatencyEnabled { get; init; } = true;
+
+    /// <summary>
+    /// The pause between the under-load latency probes a download or an upload sends, in
+    /// milliseconds. The first probe goes out one of these after the transfer starts.
+    /// </summary>
+    /// <remarks>
+    /// Named apart from <see cref="LatencyTestIntervalMilliseconds"/>, which paces the idle
+    /// measurement: the two are different measurements and their intervals are set independently.
+    /// Must be positive; a non-positive value is rejected when a download or an upload starts, not
+    /// at construction.
+    /// </remarks>
+    public int LoadedLatencyIntervalMilliseconds { get; init; } = 250;
 }
 

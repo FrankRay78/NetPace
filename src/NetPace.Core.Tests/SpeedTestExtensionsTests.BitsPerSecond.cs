@@ -20,7 +20,7 @@ public sealed partial class SpeedTestExtensionsTests
         public void GetBitsPerSecond_Measurement_ReturnsWholeBitsPerSecond(long bytesProcessed, long elapsedMilliseconds, long expected)
         {
             // Given
-            var result = new SpeedTestResult { BytesProcessed = bytesProcessed, ElapsedMilliseconds = elapsedMilliseconds, RequestsSucceeded = 1, RequestsFailed = 0 };
+            var result = new SpeedTestResult { BytesProcessed = bytesProcessed, ElapsedMilliseconds = elapsedMilliseconds, RequestsSucceeded = 1, RequestsFailed = 0, Latency = null };
 
             // When
             var bitsPerSecond = result.GetBitsPerSecond();
@@ -33,7 +33,7 @@ public sealed partial class SpeedTestExtensionsTests
         public void GetBitsPerSecond_NoTimeElapsed_ReturnsZero()
         {
             // Given no time elapsed, so no speed was measured.
-            var result = new SpeedTestResult { BytesProcessed = 1000, ElapsedMilliseconds = 0, RequestsSucceeded = 1, RequestsFailed = 0 };
+            var result = new SpeedTestResult { BytesProcessed = 1000, ElapsedMilliseconds = 0, RequestsSucceeded = 1, RequestsFailed = 0, Latency = null };
 
             // When
             var bitsPerSecond = result.GetBitsPerSecond();
@@ -46,7 +46,7 @@ public sealed partial class SpeedTestExtensionsTests
         public void GetBitsPerSecond_AllRequestsFailed_ReturnsZero()
         {
             // Given a test that ran but moved no bytes.
-            var result = new SpeedTestResult { BytesProcessed = 0, ElapsedMilliseconds = 2500, RequestsSucceeded = 0, RequestsFailed = 32 };
+            var result = new SpeedTestResult { BytesProcessed = 0, ElapsedMilliseconds = 2500, RequestsSucceeded = 0, RequestsFailed = 32, Latency = null };
 
             // When
             var bitsPerSecond = result.GetBitsPerSecond();
@@ -62,7 +62,7 @@ public sealed partial class SpeedTestExtensionsTests
         public void GetBitsPerSecond_WhateverTheFormattingOptions_IsUnchanged(SpeedUnit unit, SpeedUnitSystem unitSystem, SpeedScale scale, string expectedFormatted)
         {
             // Given
-            var result = new SpeedTestResult { BytesProcessed = 7000, ElapsedMilliseconds = 3000, RequestsSucceeded = 32, RequestsFailed = 0 };
+            var result = new SpeedTestResult { BytesProcessed = 7000, ElapsedMilliseconds = 3000, RequestsSucceeded = 32, RequestsFailed = 0, Latency = null };
 
             // When the same measurement is formatted under these options
             var formatted = result.GetSpeedString(unit, unitSystem, scale);

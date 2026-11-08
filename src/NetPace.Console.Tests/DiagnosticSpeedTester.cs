@@ -1,4 +1,4 @@
-using NetPace.Core;
+﻿using NetPace.Core;
 
 namespace NetPace.Console.Tests;
 
@@ -8,7 +8,8 @@ namespace NetPace.Console.Tests;
 /// </summary>
 /// <remarks>
 /// Deliberately tiny and self-consistent: a handful of requests per test, with results whose counts
-/// and bytes are exactly what the reported records add up to. <see cref="SpeedTestStub"/> fabricates
+/// and bytes are exactly what the reported records add up to. Each transfer also sends one latency
+/// probe, so the records cover a request a test makes without measuring. <see cref="SpeedTestStub"/> fabricates
 /// aggregate results with no requests behind them, which is fine for result snapshots but would make
 /// a diagnostic snapshot disagree with itself.
 /// </remarks>
@@ -24,6 +25,20 @@ public sealed class DiagnosticSpeedTester : ISpeedTestService
         "The SSL connection could not be established, see inner exception. <- Authentication failed because the remote party sent a TLS alert: 'HandshakeFailure'.";
 
     private static readonly DateTime RequestsStartAt = new DateTime(1980, 1, 1, 11, 0, 0);
+
+    /// <summary>
+    /// The latency a transfer reports having measured under its own load, from the one probe the
+    /// tester sends while it runs - so a diagnostic snapshot carries a probe record whose figure the
+    /// result agrees with.
+    /// </summary>
+    private static LatencyTestResult LoadedLatency(IServer server) => new()
+    {
+        Server = server,
+        LatencyMilliseconds = 61,
+        MinimumLatencyMilliseconds = 61,
+        MaximumLatencyMilliseconds = 61,
+        JitterMilliseconds = 0
+    };
 
     private readonly IServer defaultServer = new Server { Location = "Frankfurt", Sponsor = "Deutsche Telekom", Url = Url };
 
@@ -58,10 +73,10 @@ public sealed class DiagnosticSpeedTester : ISpeedTestService
     {
         for (var sequence = 1; sequence <= 2; sequence++)
         {
-            Report(diagnostics, sequence, LatencyUrl, RequestOutcome.Succeeded, bytes: 9, durationMilliseconds: 24);
+            Report(diagnostics, sequence, LatencyUrl, RequestOutcome.Succeeded, bytes: 9, durationMilliseconds: 24, kind: RequestKind.LatencyProbe);
         }
 
-        return Task.FromResult(new LatencyTestResult { Server = server, LatencyMilliseconds = 24, JitterMilliseconds = 0 });
+        return Task.FromResult(new LatencyTestResult { Server = server, LatencyMilliseconds = 24, MinimumLatencyMilliseconds = null, MaximumLatencyMilliseconds = null, JitterMilliseconds = 0 });
     }
 
     /// <inheritdoc />
@@ -92,9 +107,9 @@ public sealed class DiagnosticSpeedTester : ISpeedTestService
             throw SelectionFault;
         }
 
-        Report(diagnostics, sequence: 1, LatencyUrl, RequestOutcome.Succeeded, bytes: 9, durationMilliseconds: 31);
+        Report(diagnostics, sequence: 1, LatencyUrl, RequestOutcome.Succeeded, bytes: 9, durationMilliseconds: 31, kind: RequestKind.LatencyProbe);
 
-        return Task.FromResult(new LatencyTestResult { Server = servers[0], LatencyMilliseconds = 31, JitterMilliseconds = 0 });
+        return Task.FromResult(new LatencyTestResult { Server = servers[0], LatencyMilliseconds = 31, MinimumLatencyMilliseconds = null, MaximumLatencyMilliseconds = null, JitterMilliseconds = 0 });
     }
 
     /// <inheritdoc />
@@ -113,7 +128,11 @@ public sealed class DiagnosticSpeedTester : ISpeedTestService
             Report(diagnostics, sequence, "http://ffm.wsqm.telekom-dienste.de:8080/speedtest/random1500x1500.jpg?r=" + sequence, RequestOutcome.Succeeded, bytes: 500, durationMilliseconds: 250);
         }
 
-        return Task.FromResult(new SpeedTestResult { BytesProcessed = 1000, ElapsedMilliseconds = 1000, RequestsSucceeded = 2, RequestsFailed = 0 });
+        // One latency probe sent while the download ran. It is a request the test made but not one
+        // it measured, so the summary must record it without counting it.
+        Report(diagnostics, sequence: 1, LatencyUrl, RequestOutcome.Succeeded, bytes: 9, durationMilliseconds: 61, kind: RequestKind.LatencyProbe);
+
+        return Task.FromResult(new SpeedTestResult { BytesProcessed = 1000, ElapsedMilliseconds = 1000, RequestsSucceeded = 2, RequestsFailed = 0, Latency = LoadedLatency(server) });
     }
 
     /// <inheritdoc />
@@ -139,22 +158,27 @@ public sealed class DiagnosticSpeedTester : ISpeedTestService
             }
         }
 
+        Report(diagnostics, sequence: 1, LatencyUrl, RequestOutcome.Succeeded, bytes: 9, durationMilliseconds: 61, kind: RequestKind.LatencyProbe);
+
+        // An upload whose every request failed moved nothing, so its probes saw no loaded line and
+        // it reports no under-load latency - the probe record above is still the account of them.
         return FailEveryUpload
-            ? Task.FromResult(new SpeedTestResult { BytesProcessed = 0, ElapsedMilliseconds = 3000, RequestsSucceeded = 0, RequestsFailed = 2 })
-            : Task.FromResult(new SpeedTestResult { BytesProcessed = 7000, ElapsedMilliseconds = 3000, RequestsSucceeded = 2, RequestsFailed = 0 });
+            ? Task.FromResult(new SpeedTestResult { BytesProcessed = 0, ElapsedMilliseconds = 3000, RequestsSucceeded = 0, RequestsFailed = 2, Latency = null })
+            : Task.FromResult(new SpeedTestResult { BytesProcessed = 7000, ElapsedMilliseconds = 3000, RequestsSucceeded = 2, RequestsFailed = 0, Latency = LoadedLatency(server) });
     }
 
     /// <summary>
     /// Reports one request, stamped a second later than the last, so the order records were issued
     /// in is visible in a snapshot without depending on real time.
     /// </summary>
-    private void Report(IProgress<RequestDiagnostic>? diagnostics, int sequence, string url, RequestOutcome outcome, long bytes, long durationMilliseconds, string? reason = null, string? failureType = null)
+    private void Report(IProgress<RequestDiagnostic>? diagnostics, int sequence, string url, RequestOutcome outcome, long bytes, long durationMilliseconds, string? reason = null, string? failureType = null, RequestKind kind = RequestKind.Transfer)
     {
         requestsIssued++;
 
         diagnostics?.Report(new RequestDiagnostic
         {
             StartedAt = RequestsStartAt.AddSeconds(requestsIssued),
+            Kind = kind,
             Sequence = sequence,
             Url = url,
             Outcome = outcome,

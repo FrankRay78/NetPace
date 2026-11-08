@@ -28,7 +28,7 @@ public sealed partial class NetPaceConsoleTests
         {
             GetServersAsyncFunc = _ => Task.FromResult(unruly),
             GetFastestServerByLatencyAsyncFunc = (servers, _, _) =>
-                Task.FromResult(new LatencyTestResult { Server = servers[0], LatencyMilliseconds = 10, JitterMilliseconds = 1 }),
+                Task.FromResult(new LatencyTestResult { Server = servers[0], LatencyMilliseconds = 10, MinimumLatencyMilliseconds = null, MaximumLatencyMilliseconds = null, JitterMilliseconds = 1 }),
         };
 
         private static CommandLineTestHost UnrulyServerHost(bool recordColour = false)
@@ -374,7 +374,7 @@ public sealed partial class NetPaceConsoleTests
                 {
                     if (servers[0].Location == discoveredServers[0].Location)
                     {
-                        return Task.FromResult(new LatencyTestResult { Server = servers[0], LatencyMilliseconds = 12, JitterMilliseconds = 1 });
+                        return Task.FromResult(new LatencyTestResult { Server = servers[0], LatencyMilliseconds = 12, MinimumLatencyMilliseconds = null, MaximumLatencyMilliseconds = null, JitterMilliseconds = 1 });
                     }
 
                     cancellation.Cancel();
