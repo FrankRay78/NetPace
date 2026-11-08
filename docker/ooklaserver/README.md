@@ -14,12 +14,14 @@ OoklaServer is Ookla's official speed-test daemon. It exposes the HTTP-Legacy en
 | `docker-compose.yml` | Declarative container config (port mapping, restart policy, healthcheck). |
 | `start.sh`           | Build image, start container, wait until ready, print NetPace command. |
 | `stop.sh`            | Stop and remove the container.                      |
+| `link-profiles.sh`   | The five slow-link profiles, as `tc netem` arguments. Sourced by `start.sh` and `shape.sh`. |
+| `shape.sh`           | Container entry point: applies the requested profile, then starts OoklaServer. |
 
 ---
 
 ## Prerequisites
 
-- Docker Desktop (Windows/macOS) or Docker Engine (Linux), running.
+- Docker Desktop (Windows/macOS) or Docker Engine (Linux), running. The slow-link profiles are confirmed on Linux Docker Engine only — see *Confirmed host platforms*.
 - Host TCP and UDP port 18080 free.
 - `bash` and `curl` on PATH (Git Bash, WSL, macOS, Linux — all fine).
 
@@ -49,6 +51,82 @@ Re-running `start.sh` rebuilds the image each time (`--build`), so container upg
 docker compose build --no-cache
 ./start.sh
 ```
+
+---
+
+## Slow link profiles
+
+NetPace is developed on fast networks, and its unit tests fake HTTP responses, so nothing in the suite exercises a poor link. These profiles close that gap: they put the same local OoklaServer behind a deliberately bad network so you can run the real `netpace` against it and see what a user on that link would see.
+
+```bash
+./start.sh satellite
+```
+
+`./start.sh` with no argument still gives you the full-speed local server. `./start.sh --help` lists the profiles.
+
+To change profile, start again on another; every start replaces whatever was running with exactly the state you asked for, so there is no way to end up on yesterday's profile. The ready message always names the profile in effect, or says there is none.
+
+The five profiles are fixed. There is deliberately no way to set values of your own: a profile you can edit is a profile nobody else can reproduce.
+
+### What each models
+
+| Profile      | Models                              | Round trip                | Down / up         | Loss         |
+| ------------ | ----------------------------------- | ------------------------- | ----------------- | ------------ |
+| `satellite`  | Geostationary satellite             | about 600 ms              | 10 Mbit / 2 Mbit  | about 0.5%   |
+| `3g-bloated` | Congested 3G with full queues       | about 2 s, with jitter    | 1 Mbit / 384 kbit | about 1%     |
+| `gprs`       | 2G data                             | about 700 ms, with jitter | 40 kbit / 20 kbit | about 1%     |
+| `radio`      | Low-rate radio link                 | about 1 s                 | 9.6 kbit each way | about 2%     |
+| `flaky`      | A usable link that keeps failing    | about 200 ms              | 2 Mbit / 1 Mbit   | ~2%, bursty  |
+
+### Exact per-direction values
+
+Round trip, jitter and loss above are end-to-end figures. They are split evenly between the two directions, so each direction carries half of each. Rates are not split — they are per-direction figures already, because a real link's downstream and upstream rates are independent.
+
+"Down" shapes traffic leaving the container, which is what NetPace downloads; "up" shapes traffic entering it, which is what NetPace uploads.
+
+| Profile      | Down (`tc netem` arguments)                                          | Up (`tc netem` arguments)                                              |
+| ------------ | -------------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| `satellite`  | `delay 300ms loss 0.25% rate 10mbit`                                 | `delay 300ms loss 0.25% rate 2mbit`                                    |
+| `3g-bloated` | `delay 1000ms 200ms distribution normal loss 0.5% rate 1mbit`        | `delay 1000ms 200ms distribution normal loss 0.5% rate 384kbit`        |
+| `gprs`       | `delay 350ms 75ms distribution normal loss 0.5% rate 40kbit`         | `delay 350ms 75ms distribution normal loss 0.5% rate 20kbit`           |
+| `radio`      | `delay 500ms loss 1% rate 9600bit`                                   | `delay 500ms loss 1% rate 9600bit`                                     |
+| `flaky`      | `delay 100ms loss gemodel 2% 50% 30% 0% rate 2mbit`                  | `delay 100ms loss gemodel 2% 50% 30% 0% rate 1mbit`                    |
+
+`link-profiles.sh` is the single source of these values; the table above is a copy for reading.
+
+`flaky` uses `netem`'s Gilbert-Elliott loss model (`loss gemodel p r 1-h 1-k`) rather than a flat percentage, so its loss arrives in clumps: 2% chance of entering a bad state, 50% of leaving it, dropping 30% of packets while in it. That averages a little over 1% per direction, but in bursts — which is what breaks a retry policy that uniform loss survives.
+
+### The rate is the link, not the result
+
+Each rate is the capacity of the pipe, not the throughput you will measure across it. Delay and loss cost TCP a great deal on their own: on `satellite`, a 10 Mbit pipe with a 600 ms round trip delivers a small fraction of that to a single connection, because the transfer spends its life in slow start and every loss costs most of a second to recover. That gap is not a fault in the profile — it is the thing the profiles exist to show you.
+
+### Automatic server selection is not slowed
+
+Only traffic to and from the container crosses the shaped link. The server list still comes from the public internet at full speed, so **automatic server selection is unaffected** and runs as fast as it always did. To put a measurement on the slow link you must point NetPace at the container explicitly:
+
+```bash
+netpace --server-url http://localhost:18080/speedtest/upload.php --profile tiny
+```
+
+`--profile tiny` is worth the habit here. On the narrower profiles NetPace's default transfer sizes take a very long time — at 9.6 kbit, a single default-sized request is a wait measured in hours.
+
+### Confirmed host platforms
+
+The profiles were confirmed on **Linux Docker Engine** (Ubuntu 24.04, kernel 6.8, Docker 29.9). That is the supported configuration.
+
+Docker Desktop for Windows and macOS run containers inside a virtual machine, and the upload direction needs the host kernel's `ifb` module, which is not guaranteed there. They are **unconfirmed**. If shaping cannot be applied in full on your host you are told so and nothing starts — see *How it works, and what it refuses to do* below — so an unconfirmed platform costs you a clear error, never a wrong measurement.
+
+### How it works, and what it refuses to do
+
+`shape.sh` runs as the container's entry point and applies the profile with `tc netem` before OoklaServer accepts its first connection. The container needs the `NET_ADMIN` capability, which `docker-compose.yml` grants; `shape.sh` drops it again before starting OoklaServer, so the server never holds it, with or without a profile. The download direction is plain egress `netem` on the container's interface; `netem` cannot shape ingress, so the upload direction redirects incoming traffic through an `ifb` device and shapes that device's egress instead.
+
+Shaping is applied at container start, not from the host afterwards, because it has to be re-asserted on every start and the container carries `restart: unless-stopped`. An unattended restart therefore comes back on the same profile rather than coming back fast while still claiming to be slow.
+
+**OoklaServer is not started unless both directions are shaped.** If either fails, the container exits non-zero, `start.sh` prints the log tail and removes the container, and you get a non-zero exit. A half-shaped server is worse than an unshaped one: you would read a plausible number off a link that is only slow one way, with nothing on screen to say so.
+
+An unknown profile name is refused before anything is built, with the list of available profiles and a non-zero exit.
+
+The container's healthcheck uses loopback, which shaping does not touch, so it stays fast and honest on every profile and reports on OoklaServer itself rather than on the link. `start.sh` polls the published port instead — the address you are about to use — as a liveness check on it.
 
 ---
 
@@ -118,13 +196,18 @@ Update `start.sh` (the polling URL) to match if you want the readiness check to 
 
 ## Troubleshooting
 
+### `start.sh` refuses to start a profile
+
+A container that stops or restarts before becoming ready, followed by a log tail whose `shape: ERROR:` line names the direction that could not be shaped, means the host could not apply the profile in full. The container is removed rather than left serving an unshaped link. Usual causes:
+
+- The `NET_ADMIN` capability is missing — check `cap_add` in `docker-compose.yml` is intact, and that no local override drops it.
+- The host kernel has no `ifb` module, so the upload direction cannot be shaped. Expected on Docker Desktop for Windows and macOS; see *Confirmed host platforms* above.
+
+The full-speed server is unaffected — `./start.sh` with no profile still works on any host.
+
 ### `start.sh` times out waiting for OoklaServer
 
-Check the logs:
-
-```bash
-docker compose logs --tail=100 ooklaserver
-```
+`start.sh` prints the last 50 log lines itself and then removes the container, so read that tail — `docker compose logs` afterwards has nothing left to show. To keep the container for inspection, start it manually with `NETPACE_LINK_PROFILE=<profile> docker compose up -d --build` instead — leave the variable out for the full-speed server. Without it the container starts unshaped, so a timeout that only the profile causes will not reproduce. Ctrl-C during `start.sh`'s wait also removes the container, as a failed start does.
 
 Common causes: host port conflict (another service on 18080), OoklaServer out-of-date warning that aborts startup, or missing AES-NI CPU instructions (required by OoklaServer).
 
@@ -155,6 +238,9 @@ Run in the foreground to see the error directly:
 
 ```bash
 docker run --rm -it -p 8080:8080 local-ooklaserver
+
+# The same, behind a profile
+docker run --rm -it -p 8080:8080 --cap-add NET_ADMIN -e NETPACE_LINK_PROFILE=<profile> local-ooklaserver
 ```
 
 ---

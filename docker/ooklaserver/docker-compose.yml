@@ -7,3 +7,14 @@ services:
       - "18080:8080/tcp"
       - "18080:8080/udp"
     restart: unless-stopped
+    # tc needs NET_ADMIN to shape the container's own interface. Compose cannot grant a
+    # capability conditionally on an environment variable, so it is granted always and
+    # shape.sh is what refuses: asked for a profile it cannot apply, it declines to start
+    # the server rather than serve a fast link while claiming to be slow. shape.sh drops
+    # NET_ADMIN again before handing over, so OoklaServer itself never holds it.
+    cap_add:
+      - NET_ADMIN
+    environment:
+      # Set by start.sh from its argument. Empty means no shaping — the fast local
+      # server. The default keeps `docker compose up` on its own working unchanged.
+      NETPACE_LINK_PROFILE: "${NETPACE_LINK_PROFILE:-}"

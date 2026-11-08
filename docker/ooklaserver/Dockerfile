@@ -4,8 +4,11 @@ FROM ubuntu:22.04
 # plain `docker build` invocations.
 ARG TARGETARCH=amd64
 
+# iproute2 supplies tc and ip, which shape.sh uses to apply a slow-link profile to
+# the container's own interface. Present whether or not a profile is requested, so a
+# profile is never refused for want of a tool the image could have carried.
 RUN apt-get update \
- && apt-get install -y --no-install-recommends wget ca-certificates \
+ && apt-get install -y --no-install-recommends wget ca-certificates iproute2 \
  && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /opt/ookla
@@ -26,9 +29,17 @@ RUN set -eux; \
     cp OoklaServer.properties.default OoklaServer.properties; \
     chmod +x OoklaServer
 
+COPY link-profiles.sh shape.sh ./
+
 EXPOSE 8080/tcp 8080/udp
 
+# Loopback, deliberately: shaping is applied to eth0, so the healthcheck stays fast
+# and honest on every profile and reports on OoklaServer itself rather than the link.
 HEALTHCHECK --interval=10s --timeout=3s --start-period=10s --retries=3 \
   CMD wget -q --spider http://localhost:8080/speedtest/latency.txt || exit 1
+
+# Invoked through bash rather than directly, so the entry point does not depend on the
+# executable bit surviving the checkout the image is built from.
+ENTRYPOINT ["bash", "/opt/ookla/shape.sh"]
 
 CMD ["./OoklaServer"]
