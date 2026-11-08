@@ -4,7 +4,7 @@
 
 **Behaviour:** See issue #452. `--server-url` does what `--server` did; `--server` stays registered and hidden only to fail the parse naming its replacement, the pattern the retired `--verbosity` option in `src/NetPace.Console/Program.cs` already carries.
 
-**Constraints:** A URL carries no sponsor, so a server named this way keeps the `(Unknown)` placeholder.
+**Constraints:** A URL carries no sponsor, so a server named this way keeps the `[Unknown]` placeholder.
 
 **Decisions:**
 

@@ -22,12 +22,11 @@ public sealed partial class NetPaceConsoleTests
             // When the old option name is passed with a URL that the new name accepts.
             var result = await host.RunAsync(["--server", url]);
 
-            // Then no test ran - not even server discovery - the exit code reports the usage
-            // error, and the message says the option was renamed and what to use instead.
+            // Then neither server discovery nor the latency probe a named server goes straight to
+            // was reached, the exit code reports the usage error, and the message names the option
+            // to use instead. Its wording is not asserted: that is a message for a person to read.
             Assert.Empty(serviceCalls);
-            Assert.NotEqual(0, result.ExitCode);
-            Assert.Contains("--server", result.Output);
-            Assert.Contains("renamed", result.Output);
+            Assert.Equal(1, result.ExitCode);
             Assert.Contains("--server-url", result.Output);
         }
 
@@ -43,8 +42,7 @@ public sealed partial class NetPaceConsoleTests
 
             // Then
             Assert.Empty(serviceCalls);
-            Assert.NotEqual(0, result.ExitCode);
-            Assert.Contains("renamed", result.Output);
+            Assert.Equal(1, result.ExitCode);
             Assert.Contains("--server-url", result.Output);
         }
 
