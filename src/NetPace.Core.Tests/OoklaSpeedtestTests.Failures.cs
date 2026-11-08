@@ -150,6 +150,79 @@ public sealed partial class OoklaSpeedtestTests
         }
 
         [Fact]
+        public async Task GetServerLatencyAsync_ShouldRaiseACancellationCarryingATimeout_WhenAProbeTimesOut()
+        {
+            // A caller cannot act on a timeout it cannot recognise, and a bare cancellation reads
+            // as "the caller asked to stop". The probe timeout is therefore raised in the shape
+            // .NET's own HTTP client uses for its Timeout: a cancellation with a TimeoutException
+            // inside.
+
+            // Given a server that never answers, and a probe timeout short enough to fire first.
+            using var handler = new NeverAnsweringHandler();
+            using var httpClient = new HttpClient(handler, disposeHandler: false);
+            var settings = new OoklaSpeedtestSettings
+            {
+                LatencyTest = new() { HttpTimeoutMilliseconds = 20, LatencyTestIterations = 1, LatencyTestIntervalMilliseconds = 0 }
+            };
+            var speedtest = new OoklaSpeedtest(settings, httpClient);
+            var server = new Server { Url = "http://slow.example/", Sponsor = "Test", Location = "Test" };
+
+            // When. Recorded rather than caught through Should.ThrowAsync or Task.WaitAsync: a
+            // probe timeout completes its task as cancelled, and both of those replace such a
+            // task's exception with a bare one of their own, hiding the very thing this test
+            // reads. The 20 ms probe timeout is the guard against a hang.
+            var failure = await Record.ExceptionAsync(() => speedtest.GetServerLatencyAsync(server));
+
+            // Then the timeout is recognisable, and is not reported as the caller's cancellation.
+            failure.ShouldBeAssignableTo<OperationCanceledException>();
+            failure!.InnerException.ShouldBeOfType<TimeoutException>();
+        }
+
+        [Fact]
+        public async Task GetServerLatencyAsync_ShouldRaiseAPlainCancellation_WhenTheCallerCancelsAProbe()
+        {
+            // The caller's own cancellation must stay distinguishable from a timeout, or a run the
+            // user stopped would be reported as a failure.
+
+            // Given a server that never answers, and a caller that cancels while a probe is in
+            // flight.
+            using var cancellation = new CancellationTokenSource();
+            using var handler = new NeverAnsweringHandler(() => cancellation.Cancel());
+            using var httpClient = new HttpClient(handler, disposeHandler: false);
+            var settings = new OoklaSpeedtestSettings
+            {
+                LatencyTest = new() { LatencyTestIterations = 1, LatencyTestIntervalMilliseconds = 0 }
+            };
+            var speedtest = new OoklaSpeedtest(settings, httpClient);
+            var server = new Server { Url = "http://slow.example/", Sponsor = "Test", Location = "Test" };
+
+            // When (recorded rather than caught, for the reason the test above gives).
+            var failure = await Record.ExceptionAsync(() => speedtest.GetServerLatencyAsync(server, cancellation.Token));
+
+            // Then
+            failure.ShouldBeAssignableTo<OperationCanceledException>();
+            failure!.InnerException.ShouldNotBeOfType<TimeoutException>();
+        }
+
+        /// <summary>
+        /// Never answers a request: it waits for the request's own cancellation, so whichever
+        /// deadline fires first - the probe timeout or the caller's token - is the one the probe
+        /// reports.
+        /// </summary>
+        /// <param name="onRequest">Run as each request arrives, before the wait begins.</param>
+        private sealed class NeverAnsweringHandler(Action? onRequest = null) : HttpMessageHandler
+        {
+            protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+            {
+                onRequest?.Invoke();
+
+                await Task.Delay(Timeout.Infinite, cancellationToken);
+
+                throw new InvalidOperationException("An infinite delay completed.");
+            }
+        }
+
+        [Fact]
         public async Task GetUploadSpeedAsync_ShouldCountNeitherSucceededNorFailed_WhenTheByteBudgetSkipsRequests()
         {
             // SCENARIO: Requests skipped by the byte budget are not counted as failures

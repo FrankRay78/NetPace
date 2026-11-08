@@ -97,7 +97,7 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
                         var outcome = await writer.PerformSpeedTestAsync(initialSpeedTest: firstLoop, console, clock, clientInfoProvider, recorder, speedTestClient, settings, cancellationToken);
                         if (FailOnTriggered(outcome, settings)) return 1;
                     }
-                    catch (OperationCanceledException)
+                    catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
                     {
                         // User requested cancellation.
                         return 0;
@@ -108,7 +108,7 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
                     }
                     catch (Exception e)
                     {
-                        console.WriteErrorLine(theme, e.Message);
+                        console.WriteErrorLine(theme, Describe(e));
 
                         if (FailOnRequested(settings)) return 1;
                     }
@@ -142,7 +142,7 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
                         var outcome = await writer.PerformSpeedTestAsync(initialSpeedTest: (i == 0), console, clock, clientInfoProvider, recorder, speedTestClient, settings, cancellationToken);
                         if (FailOnTriggered(outcome, settings)) return 1;
                     }
-                    catch (OperationCanceledException)
+                    catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
                     {
                         // User requested cancellation.
                         return 0;
@@ -153,7 +153,7 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
                     }
                     catch (Exception e)
                     {
-                        console.WriteErrorLine(theme, e.Message);
+                        console.WriteErrorLine(theme, Describe(e));
 
                         if (FailOnRequested(settings)) return 1;
                     }
@@ -185,7 +185,7 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
                     var outcome = await writer.PerformSpeedTestAsync(initialSpeedTest: true, console, clock, clientInfoProvider, recorder, speedTestClient, settings, cancellationToken);
                     if (FailOnTriggered(outcome, settings)) return 1;
                 }
-                catch (OperationCanceledException)
+                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
                 {
                     // User requested cancellation.
                     return 0;
@@ -196,7 +196,7 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
                 }
                 catch (Exception e)
                 {
-                    console.WriteErrorLine(theme, e.Message);
+                    console.WriteErrorLine(theme, Describe(e));
 
                     if (FailOnRequested(settings)) return 1;
                 }
@@ -290,6 +290,31 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
         {
         }
     }
+
+    /// <summary>
+    /// What the user is told about a request abandoned at its own timeout. One composed line for
+    /// every timeout, whichever request hit it: the exception's own wording is a bare "A task was
+    /// canceled", which names no cause and leaves a reader no better off than the silence this
+    /// replaced.
+    /// </summary>
+    private const string TimedOutMessage = "The speed test failed because the server did not respond in time.";
+
+    /// <summary>
+    /// What to tell the user about a network condition that ended a test.
+    /// </summary>
+    private static string Describe(Exception e) => IsTimeout(e) ? TimedOutMessage : e.Message;
+
+    /// <summary>
+    /// Whether an exception is a request abandoned at its own timeout rather than a failure on its
+    /// own merits. A timeout and a cancellation arrive as the same exception type, so the two are
+    /// told apart by what the cancellation carries: .NET's HTTP client reports its own
+    /// <see cref="HttpClient.Timeout"/> as a cancellation with a <see cref="TimeoutException"/>
+    /// inside, and <c>NetPace.Core</c>'s latency probe reports its per-probe timeout the same way.
+    /// A cancellation the caller asked for never reaches here - the catch above it claims one
+    /// whenever this command's own token has been cancelled.
+    /// </summary>
+    private static bool IsTimeout(Exception e) =>
+        e is OperationCanceledException && e.InnerException is TimeoutException;
 
     /// <summary>
     /// Whether an exception reflects NetPace's own health rather than a network condition.
