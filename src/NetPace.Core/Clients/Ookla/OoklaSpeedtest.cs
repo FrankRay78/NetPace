@@ -94,7 +94,7 @@ public sealed class OoklaSpeedtest : ISpeedTestService
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(serverUrl);
 
-        var server = new Server() { Sponsor = "(Unknown)", Url = serverUrl };
+        var server = new Server { Sponsor = Server.UnknownSponsor, Url = serverUrl };
         return await GetServerLatencyAsync(server, progress, diagnostics, cancellationToken);
     }
 

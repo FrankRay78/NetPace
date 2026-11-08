@@ -59,7 +59,7 @@ public class VariableSpeedTester : ISpeedTestService
             // server is built as the real provider builds it — the URL asked for and the sponsor
             // placeholder, with no location the caller never supplied.
             GetServerLatencyByServerUrlAsyncFunc = (serverUrl, _, _) =>
-                Task.FromResult(LatencyForCurrentTest(new Server { Sponsor = "(Unknown)", Url = serverUrl })),
+                Task.FromResult(LatencyForCurrentTest(new Server { Sponsor = Server.UnknownSponsor, Url = serverUrl })),
 
             GetDownloadSpeedAsyncFunc = (server, _, _) =>
             {

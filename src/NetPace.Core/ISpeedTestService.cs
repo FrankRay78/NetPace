@@ -59,6 +59,10 @@ public interface ISpeedTestService
     /// <summary>
     /// Measures the network latency (ping) to the specified server.
     /// </summary>
+    /// <remarks>
+    /// No sponsor name is known for a server named by URL alone, so the returned server carries
+    /// the given URL, no location, and the placeholder sponsor <see cref="Server.UnknownSponsor"/>.
+    /// </remarks>
     /// <param name="serverUrl">The server to measure latency against.</param>
     /// <param name="cancellationToken">The token to allow the operation to be cancelled.</param>
     /// <returns>The server, and its latency and jitter in milliseconds.</returns>
@@ -68,6 +72,10 @@ public interface ISpeedTestService
     /// <summary>
     /// Measures the network latency (ping) to the specified server.
     /// </summary>
+    /// <remarks>
+    /// The returned server carries the placeholder sponsor <see cref="Server.UnknownSponsor"/> - see
+    /// <see cref="GetServerLatencyAsync(string, CancellationToken)"/>.
+    /// </remarks>
     /// <param name="serverUrl">The server URL to measure latency against.</param>
     /// <param name="progress">A progress reporter that receives latency test progress updates.</param>
     /// <param name="cancellationToken">The token to allow the operation to be cancelled.</param>
@@ -78,6 +86,10 @@ public interface ISpeedTestService
     /// <summary>
     /// Measures the network latency (ping) to the specified server, reporting per-request detail.
     /// </summary>
+    /// <remarks>
+    /// The returned server carries the placeholder sponsor <see cref="Server.UnknownSponsor"/> - see
+    /// <see cref="GetServerLatencyAsync(string, CancellationToken)"/>.
+    /// </remarks>
     /// <param name="serverUrl">The server URL to measure latency against.</param>
     /// <param name="progress">A progress reporter that receives latency test progress updates, or <see langword="null"/> for none.</param>
     /// <param name="diagnostics">A reporter that receives one <see cref="RequestDiagnostic"/> per request, or <see langword="null"/> for none.</param>
