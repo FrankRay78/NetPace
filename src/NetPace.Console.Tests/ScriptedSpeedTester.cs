@@ -1,4 +1,4 @@
-﻿using NetPace.Core;
+using NetPace.Core;
 using NetPace.Core.Clients.Ookla;
 using NetPace.Core.Clients.Testing;
 

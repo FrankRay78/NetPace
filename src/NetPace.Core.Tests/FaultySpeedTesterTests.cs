@@ -1,4 +1,4 @@
-﻿using NetPace.Core.Clients.Testing;
+using NetPace.Core.Clients.Testing;
 
 namespace NetPace.Core.Tests;
 

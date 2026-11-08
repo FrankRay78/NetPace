@@ -1,4 +1,4 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection;
 using NetPace.Console.Diagnostics;
 
 namespace NetPace.Console.Tests;

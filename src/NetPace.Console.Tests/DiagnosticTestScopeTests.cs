@@ -1,4 +1,4 @@
-﻿using NetPace.Console.Diagnostics;
+using NetPace.Console.Diagnostics;
 using NetPace.Core;
 
 namespace NetPace.Console.Tests;

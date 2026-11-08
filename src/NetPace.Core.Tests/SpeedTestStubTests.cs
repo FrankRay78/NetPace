@@ -1,4 +1,4 @@
-﻿using System.Diagnostics;
+using System.Diagnostics;
 using NetPace.Core.Clients.Testing;
 
 namespace NetPace.Core.Tests;

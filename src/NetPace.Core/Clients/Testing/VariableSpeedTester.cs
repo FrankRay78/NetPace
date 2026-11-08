@@ -1,4 +1,4 @@
-﻿namespace NetPace.Core.Clients.Testing;
+namespace NetPace.Core.Clients.Testing;
 
 /// <summary>
 /// An implementation of <see cref="ISpeedTestService"/> that

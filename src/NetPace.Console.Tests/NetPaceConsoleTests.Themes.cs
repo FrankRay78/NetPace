@@ -1,4 +1,4 @@
-﻿using NetPace.Console.Tests.Theming;
+using NetPace.Console.Tests.Theming;
 using NetPace.Console.Theming;
 
 namespace NetPace.Console.Tests;
