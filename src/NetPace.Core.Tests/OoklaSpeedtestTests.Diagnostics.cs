@@ -397,7 +397,7 @@ public sealed partial class OoklaSpeedtestTests
             var diagnostics = new List<RequestDiagnostic>();
 
             // When screening runs and finds nothing reachable.
-            var noServers = await Should.ThrowAsync<Exception>(() => speedtest.GetFastestServerByLatencyAsync(servers, null, Collect(diagnostics)));
+            var noServers = await Should.ThrowAsync<NoServersAvailableException>(() => speedtest.GetFastestServerByLatencyAsync(servers, null, Collect(diagnostics)));
             noServers.Message.ShouldBe("No servers available");
 
             // Then the candidate is recorded as failed, carrying the cause and the exception type: a

@@ -1,0 +1,1 @@
+﻿Error: The speed test failed because the server did not respond in time.
