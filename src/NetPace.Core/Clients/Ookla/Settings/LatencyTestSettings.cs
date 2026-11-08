@@ -8,6 +8,10 @@ public sealed record LatencyTestSettings
     /// <summary>
     /// The timeout duration in milliseconds for each individual HTTP request when measuring latency.
     /// </summary>
+    /// <remarks>
+    /// Must be positive; a non-positive value, including <see cref="Timeout.Infinite"/>, is rejected
+    /// when latency is measured, not at construction.
+    /// </remarks>
     public int HttpTimeoutMilliseconds { get; init; } = 2000;
 
     /// <summary>

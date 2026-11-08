@@ -271,6 +271,57 @@ public sealed partial class NetPaceConsoleTests
         }
 
         [Fact]
+        public async Task Cancelling_Mid_Test_Ends_A_Counted_Run_Quietly()
+        {
+            // SCENARIO: Ctrl-C still ends the run quietly
+
+            // --count keeps its own copy of the mid-test guard, separate from the single-run and
+            // --loop ones, so it is pressed mid-test here rather than only during the pause.
+
+            // Given a counted run the user cancels while the probe is in flight.
+            using var cancellation = new CancellationTokenSource();
+            var host = HostCancelledMidProbe(cancellation);
+
+            // When
+            var result = await host.RunAsync(["--server", ServerUrl, "--count", "3", "--minimal"], cancellation.Token);
+
+            // Then nothing is reported as an error and the run exits 0.
+            Assert.DoesNotContain("Error:", result.Output);
+            Assert.Equal(0, result.ExitCode);
+        }
+
+        [Theory]
+        [InlineData("single")]
+        [InlineData("count")]
+        [InlineData("loop")]
+        public async Task Cancellation_The_User_Did_Not_Ask_For_Is_Reported(string run)
+        {
+            // Only the command's own token says a cancellation is the user's. One the user never
+            // asked for - here with no TimeoutException inside it to say what it was - is a test
+            // that ended without a result, and ending the run silently on it was the original bug
+            // in another shape.
+
+            // Given a probe that is cancelled while the user's token stays live.
+            var host = HostWith(new SpeedTestMock
+            {
+                GetServerLatencyByServerUrlAsyncFunc = (_, _, _) => throw new OperationCanceledException()
+            });
+
+            // When each kind of run meets it under --fail-on.
+            string[] args = run switch
+            {
+                "count" => ["--server", ServerUrl, "--count", "3", "--fail-on", "Total"],
+                "loop" => ["--server", ServerUrl, "--loop", "--fail-on", "Total"],
+                _ => ["--server", ServerUrl, "--fail-on", "Total"]
+            };
+            var result = await host.RunAsync(args);
+
+            // Then the failure is reported and the run exits 1.
+            Assert.Contains("Error:", result.Output);
+            Assert.Equal(1, result.ExitCode);
+        }
+
+        [Fact]
         public async Task Cancelling_During_The_Pause_Ends_The_Run_Quietly()
         {
             // SCENARIO: Ctrl-C still ends the run quietly
