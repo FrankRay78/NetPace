@@ -1,8 +1,9 @@
 namespace NetPace.Core;
 
 /// <summary>
-/// What a reported request was for, so a consumer can tell the requests a test is measuring from
-/// the ones it makes alongside them.
+/// What a reported request was for. Which kinds a given test is measuring depends on the test: the
+/// latency probes are the measurement in a latency or screening pass, and incidental during a
+/// download or an upload.
 /// </summary>
 /// <remarks>
 /// A download or an upload reports requests of more than one kind: the transfers it measures, and —
@@ -18,8 +19,9 @@ public enum RequestKind
     Transfer,
 
     /// <summary>
-    /// The empty request made before an upload test to find the address the server wants uploads
-    /// sent to. It carries no bytes and is not part of the measured speed.
+    /// An empty request issued at the start of an upload test to find the address the server wants
+    /// uploads sent to - one per redirect followed. It carries no bytes and is not part of the
+    /// measured speed.
     /// </summary>
     EndpointProbe,
 

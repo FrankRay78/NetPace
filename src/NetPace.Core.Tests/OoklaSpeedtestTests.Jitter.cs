@@ -86,6 +86,11 @@ public sealed partial class OoklaSpeedtestTests
             // trips were.
             result.LatencyMilliseconds.ShouldBe(35);
             result.JitterMilliseconds.ShouldBe(20);
+
+            // And the extremes are the fastest and slowest of those same probes, stated the right
+            // way round rather than swapped or taken from the ends of the run.
+            result.MinimumLatencyMilliseconds.ShouldBe(20);
+            result.MaximumLatencyMilliseconds.ShouldBe(50);
         }
 
         [Fact]

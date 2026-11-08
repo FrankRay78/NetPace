@@ -189,8 +189,10 @@ public sealed partial class OoklaSpeedtestTests
             result.Latency.JitterMilliseconds.ShouldBe(30);
 
             // And its speed comes from the transfer's own bytes and elapsed time alone: the probes'
-            // bytes are not in the total, the probes are not in the counts, and the elapsed figure
-            // is the transfer's own window rather than the probe durations added to it.
+            // bytes are not in the total and the probes are not in the counts. The elapsed figure
+            // is 620 because this test's probes and its transfer advance one shared clock, so the
+            // probes' 120ms necessarily falls inside the transfer's own 500ms window; on a real
+            // clock the probes run concurrently and cost the transfer nothing.
             result.BytesProcessed.ShouldBe(DownloadResponseBytes);
             result.RequestsSucceeded.ShouldBe(1);
             result.RequestsFailed.ShouldBe(0);
@@ -640,5 +642,194 @@ public sealed partial class OoklaSpeedtestTests
             // Then it is rejected rather than run.
             exception.ShouldBeOfType<ArgumentOutOfRangeException>();
         }
+        [Fact]
+        public async Task GetUploadSpeedAsync_WhoseEndpointRedirectsToAnotherHost_ProbesThatHost()
+        {
+            // Given an upload whose endpoint probe is redirected to a different host, so the
+            // address carrying the load is not the server's listed one.
+            const string MovedUploadUrl = "http://moved.example.com/upload.php";
+            const string MovedLatencyUrl = "http://moved.example.com/latency.txt";
+
+            var clock = new ControlledTimeProvider(ClockStart);
+            var delays = new GatedDelayProvider();
+            var watcher = new ProbeWatcher();
+            var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+
+            using var mockHttp = new MockHttpMessageHandler();
+
+            mockHttp.When(HttpMethod.Post, ServerUrl)
+                    .Respond(_ =>
+                    {
+                        var moved = new HttpResponseMessage(HttpStatusCode.MovedPermanently);
+                        moved.Headers.Location = new Uri(MovedUploadUrl);
+                        return moved;
+                    });
+
+            var movedPosts = 0;
+
+            mockHttp.When(HttpMethod.Post, MovedUploadUrl)
+                    .Respond(async _ =>
+                    {
+                        // The first POST here completes the endpoint resolution; the measured
+                        // upload is the one after it, and that is the one held open.
+                        if (Interlocked.Increment(ref movedPosts) == 1)
+                        {
+                            return new HttpResponseMessage(HttpStatusCode.OK);
+                        }
+
+                        await release.Task.WaitAsync(HangGuard);
+                        clock.Advance(TransferDuration);
+                        return new HttpResponseMessage(HttpStatusCode.OK);
+                    });
+
+            // The listed host's latency endpoint is left unanswered deliberately: a probe sent
+            // there would fail rather than quietly measure the wrong line.
+            mockHttp.When(HttpMethod.Get, MovedLatencyUrl)
+                    .Respond(_ =>
+                    {
+                        clock.Advance(TimeSpan.FromMilliseconds(70));
+                        return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(ProbeResponseBody) };
+                    });
+
+            var speedtest = new OoklaSpeedtest(SingleUploadSettings(), mockHttp.ToHttpClient(), delays, clock);
+
+            // When one probe goes out while the upload to the resolved endpoint is held open.
+            var upload = speedtest.GetUploadSpeedAsync(TestServer, null, watcher.Reporter);
+
+            (await delays.ReleaseNextAsync(HangGuard)).ShouldBeTrue();
+            (await watcher.NextProbeReportedAsync()).ShouldBeTrue();
+
+            release.SetResult();
+            var result = await upload.WaitAsync(HangGuard);
+
+            // Then the probe was sent to the host actually carrying the upload, and answered.
+            watcher.Probes.Count.ShouldBe(1);
+            watcher.Probes[0].Url.ShouldBe(MovedLatencyUrl);
+            watcher.Probes[0].Outcome.ShouldBe(RequestOutcome.Succeeded);
+
+            // And the figure it measured is the one the result reports.
+            result.Latency.ShouldNotBeNull();
+            result.Latency!.LatencyMilliseconds.ShouldBe(70);
+        }
+
+        [Fact]
+        public async Task GetDownloadSpeedAsync_WithANonDefaultProbeInterval_WaitsThatIntervalBeforeEveryProbe()
+        {
+            // Given a probe interval set well away from both the default and the idle measurement's
+            // own interval, so a figure read from either would not pass.
+            const int ProbeInterval = 310;
+
+            var clock = new ControlledTimeProvider(ClockStart);
+            var delays = new GatedDelayProvider();
+            var watcher = new ProbeWatcher();
+            var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+
+            using var mockHttp = new MockHttpMessageHandler();
+            RespondToProbes(mockHttp, clock, 10, 10, 10);
+            mockHttp.When(DownloadUrlPattern)
+                    .Respond(async _ =>
+                    {
+                        await release.Task.WaitAsync(HangGuard);
+                        clock.Advance(TransferDuration);
+                        return new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent(new byte[DownloadResponseBytes]) };
+                    });
+
+            var settings = SingleDownloadSettings(new LatencyTestSettings
+            {
+                LoadedLatencyIntervalMilliseconds = ProbeInterval,
+                LatencyTestIntervalMilliseconds = 50
+            });
+            var speedtest = new OoklaSpeedtest(settings, mockHttp.ToHttpClient(), delays, clock);
+
+            // When three probes have each gone out.
+            var download = speedtest.GetDownloadSpeedAsync(TestServer, null, watcher.Reporter);
+
+            for (var probe = 0; probe < 3; probe++)
+            {
+                (await delays.ReleaseNextAsync(HangGuard)).ShouldBeTrue();
+                (await watcher.NextProbeReportedAsync()).ShouldBeTrue();
+            }
+
+            release.SetResult();
+            await download.WaitAsync(HangGuard);
+
+            // Then every wait before a probe was that interval - not just the first, and not the
+            // idle measurement's.
+            delays.RequestedIntervals.Take(3).ShouldAllBe(interval => interval == ProbeInterval);
+        }
+
+        [Fact]
+        public async Task GetDownloadSpeedAsync_WithANonPositiveProbeIntervalAndProbingSwitchedOff_IsStillRejected()
+        {
+            // Given probing switched off, and an interval that would be meaningless if it were on.
+            // Rejected anyway, so no stored interval means nothing until someone switches probing
+            // back on.
+            using var mockHttp = new MockHttpMessageHandler();
+            mockHttp.When("*").Respond(_ => new HttpResponseMessage(HttpStatusCode.OK));
+
+            var settings = SingleDownloadSettings(new LatencyTestSettings
+            {
+                LoadedLatencyEnabled = false,
+                LoadedLatencyIntervalMilliseconds = 0
+            });
+            var speedtest = new OoklaSpeedtest(settings, mockHttp.ToHttpClient());
+
+            // When the download starts.
+            var exception = await Record.ExceptionAsync(() => speedtest.GetDownloadSpeedAsync(TestServer));
+
+            // Then it is still rejected, and the guard names the interval rather than another setting.
+            exception.ShouldBeOfType<ArgumentOutOfRangeException>()
+                     .ParamName.ShouldBe(nameof(LatencyTestSettings.LoadedLatencyIntervalMilliseconds));
+        }
+
+        [Fact]
+        public async Task GetDownloadSpeedAsync_CancelledWithAProbeStillWaiting_StillReportsThatProbeAbandoned()
+        {
+            // Given a download that the caller cancels with a probe still out. Caller cancellation
+            // is the one end that propagates, so the transfer never reaches its ordinary stop and
+            // only disposal can abandon the probe.
+            var clock = new ControlledTimeProvider(ClockStart);
+            var delays = new GatedDelayProvider();
+            var watcher = new ProbeWatcher();
+            var probeSent = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            using var caller = new CancellationTokenSource();
+
+            using var mockHttp = new MockHttpMessageHandler();
+
+            mockHttp.When(HttpMethod.Get, LatencyUrl)
+                    .Respond(async _ =>
+                    {
+                        // Never answers within the test: the probe is still outstanding at the end.
+                        probeSent.TrySetResult();
+                        await Task.Delay(HangGuard);
+                        return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(ProbeResponseBody) };
+                    });
+
+            mockHttp.When(DownloadUrlPattern)
+                    .Respond(async _ =>
+                    {
+                        await Task.Delay(HangGuard, caller.Token);
+                        return new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent(new byte[DownloadResponseBytes]) };
+                    });
+
+            var speedtest = new OoklaSpeedtest(SingleDownloadSettings(), mockHttp.ToHttpClient(), delays, clock);
+
+            // When the probe has gone out and the caller then cancels.
+            var download = speedtest.GetDownloadSpeedAsync(TestServer, null, watcher.Reporter, caller.Token);
+
+            (await delays.ReleaseNextAsync(HangGuard)).ShouldBeTrue();
+            await probeSent.Task.WaitAsync(HangGuard);
+
+            await caller.CancelAsync();
+
+            // Then the download propagates the cancellation rather than returning a result.
+            var thrown = await Record.ExceptionAsync(() => download).WaitAsync(HangGuard);
+            thrown.ShouldBeAssignableTo<OperationCanceledException>();
+
+            // And the outstanding probe was still accounted for, exactly once, as abandoned.
+            watcher.Probes.Count.ShouldBe(1);
+            watcher.Probes[0].Outcome.ShouldBe(RequestOutcome.Cancelled);
+        }
+
     }
 }

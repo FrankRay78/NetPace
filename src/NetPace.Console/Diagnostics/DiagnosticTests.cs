@@ -36,7 +36,5 @@ public static class DiagnosticTests
     /// one place: a call site that forgot to say would otherwise log a probe as one of its test's
     /// own requests and quietly put the summary out by one.
     /// </remarks>
-    public static bool MeasuresATransfer(string test) =>
-        string.Equals(test, Download, StringComparison.Ordinal) ||
-        string.Equals(test, Upload, StringComparison.Ordinal);
+    public static bool MeasuresATransfer(string test) => test is Download or Upload;
 }

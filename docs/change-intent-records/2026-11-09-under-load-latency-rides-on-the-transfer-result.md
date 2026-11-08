@@ -4,7 +4,7 @@
 
 **Behaviour:** See [issue #458](https://github.com/FrankRay78/NetPace/issues/458) and its confirmed decisions, which settled the figures, the settings and the log-line shape.
 
-**Constraints:** `RequestKind` names what a request *was*, so the idle latency measurement and server screening report `LatencyProbe` too. The console therefore decides `event=probe` from the kind **and** the test: inside a transfer a probe is incidental, inside `screening` or `latency` it *is* the test and stays a counted `request` line. Nothing in `NetPace.Core` knows either log-line name.
+**Constraints:** `RequestKind` names what a request *was*, not whether its test was measuring it, so the console decides `event=probe` from the kind **and** the test. Nothing in `NetPace.Core` knows either log-line name.
 
 **Decisions:**
 

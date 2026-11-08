@@ -183,19 +183,24 @@ public sealed class OoklaSpeedtest : ISpeedTestService
             });
         }
 
-        // Calculate the average server latency, the extremes behind it, and how uneven the probes
-        // behind it were.
-        var latencyResult = new LatencyTestResult
-        {
-            Server = server,
-            LatencyMilliseconds = (long)pings.Average(),
-            MinimumLatencyMilliseconds = pings.Min(),
-            MaximumLatencyMilliseconds = pings.Max(),
-            JitterMilliseconds = CalculateJitterMilliseconds(pings)
-        };
-
-        return latencyResult;
+        // The average server latency, the extremes behind it, and how uneven the probes behind it
+        // were.
+        return MeasuredLatency(server, pings);
     }
+
+    /// <summary>
+    /// The latency figures of one run of probe times: their average, the extremes behind it, and
+    /// how uneven they were. Derived in one place, so an idle measurement and a measurement taken
+    /// under load state the same figures of the same samples.
+    /// </summary>
+    private static LatencyTestResult MeasuredLatency(IServer server, IReadOnlyList<long> probeMilliseconds) => new()
+    {
+        Server = server,
+        LatencyMilliseconds = (long)probeMilliseconds.Average(),
+        MinimumLatencyMilliseconds = probeMilliseconds.Min(),
+        MaximumLatencyMilliseconds = probeMilliseconds.Max(),
+        JitterMilliseconds = CalculateJitterMilliseconds(probeMilliseconds)
+    };
 
     /// <summary>
     /// How uneven a run of probe times was: the mean of the absolute differences between
@@ -541,7 +546,7 @@ public sealed class OoklaSpeedtest : ISpeedTestService
         var maxBytes = settings.DownloadTest.DownloadSizeMb == int.MaxValue
             ? long.MaxValue
             : (long)settings.DownloadTest.DownloadSizeMb * 1024L * 1024L;
-        var downloadResult = await GenericTestSpeedAsync(server, downloadUrls, DownloadAndMeasureAsync, url => url, progress, diagnostics, settings.DownloadTest.DownloadParallelTasks, maxBytes, sequenceOffset: 0, cancellationToken);
+        var downloadResult = await GenericTestSpeedAsync(server, server.Url, downloadUrls, DownloadAndMeasureAsync, url => url, progress, diagnostics, settings.DownloadTest.DownloadParallelTasks, maxBytes, sequenceOffset: 0, cancellationToken);
 
         return downloadResult;
     }
@@ -602,18 +607,19 @@ public sealed class OoklaSpeedtest : ISpeedTestService
         var maxBytes = settings.UploadTest.UploadSizeMb == int.MaxValue
             ? long.MaxValue
             : (long)settings.UploadTest.UploadSizeMb * 1024L * 1024L;
-        var uploadResult = await GenericTestSpeedAsync(server, testDataLengths, UploadAndMeasureAsync, _ => uploadUrl, progress, diagnostics, settings.UploadTest.UploadParallelTasks, maxBytes, sequenceOffset: probeRequests, cancellationToken);
+        var uploadResult = await GenericTestSpeedAsync(server, uploadUrl, testDataLengths, UploadAndMeasureAsync, _ => uploadUrl, progress, diagnostics, settings.UploadTest.UploadParallelTasks, maxBytes, sequenceOffset: probeRequests, cancellationToken);
 
         return uploadResult;
     }
 
     /// <summary>
     /// Executes a generic speed test by processing a collection of test data in parallel,
-    /// measuring total bytes processed and elapsed time - and, while it runs, the latency to the
-    /// server under that load.
+    /// measuring total bytes processed and elapsed time - and, where that measurement is on, the
+    /// latency to the server under that load.
     /// </summary>
     private async Task<SpeedTestResult> GenericTestSpeedAsync<T>(
         IServer server,
+        string transferUrl,
         IEnumerable<T> testData,
         Func<HttpClient, T, CancellationToken, Task<int>> doWork,
         Func<T, string> urlOf,
@@ -641,7 +647,10 @@ public sealed class OoklaSpeedtest : ISpeedTestService
         // Started where the transfer starts, so its first probe is due one interval into the
         // transfer rather than one interval into the whole operation: an upload resolves its
         // endpoint first, and a probe sent before any data moved would time an idle line.
-        using var probing = LoadedLatencyProbing.Start(this, server, GetBaseUrl(server.Url) + LatencyFileName, diagnostics);
+        // Probed against the address the transfer is actually using, not the server's listed one:
+        // an upload resolves a redirect first, and those can differ in scheme, host and port, so
+        // probing the listed address would time a line that is carrying nothing.
+        using var probing = LoadedLatencyProbing.Start(this, server, GetBaseUrl(transferUrl) + LatencyFileName, diagnostics);
 
         // Create and execute tasks to process the test data in parallel.
         var sequenceIssued = sequenceOffset;
@@ -907,8 +916,9 @@ public sealed class OoklaSpeedtest : ISpeedTestService
     /// </remarks>
     /// <returns>
     /// The address to upload to, and how many requests the probe issued getting there - the
-    /// measured uploads are numbered after those, so every request of an upload test has a distinct
-    /// sequence number.
+    /// measured uploads are numbered after those. The under-load latency probes are numbered
+    /// separately, so a sequence number is distinct only within one kind; see
+    /// <see cref="RequestDiagnostic.Sequence"/>.
     /// </returns>
     private async Task<(string Url, int RequestsIssued)> ResolveUploadUrlAsync(string url, IProgress<RequestDiagnostic>? diagnostics, CancellationToken cancellationToken)
     {
@@ -1312,16 +1322,7 @@ public sealed class OoklaSpeedtest : ISpeedTestService
                     outstanding = null;
                 }
 
-                measured = samples.Count == 0
-                    ? null
-                    : new LatencyTestResult
-                    {
-                        Server = server,
-                        LatencyMilliseconds = (long)samples.Average(),
-                        MinimumLatencyMilliseconds = samples.Min(),
-                        MaximumLatencyMilliseconds = samples.Max(),
-                        JitterMilliseconds = CalculateJitterMilliseconds(samples)
-                    };
+                measured = samples.Count == 0 ? null : MeasuredLatency(server, samples);
             }
 
             // Ends the wait before the next probe, and abandons any request already out. After the
@@ -1379,25 +1380,29 @@ public sealed class OoklaSpeedtest : ISpeedTestService
                     outstanding = probe;
                 }
 
+                string? answer = null;
+                Exception? failure = null;
+
                 try
                 {
                     // Whatever the server returns is treated as an answer: by the time a transfer
                     // is running, the endpoint has already answered correctly for the latency
                     // measurement, and rejecting a sample on its body would discard a round trip
                     // over something the probe is not measuring.
-                    var answer = await owner.httpClient.GetStringAsync(probeUrl, stop.Token).ConfigureAwait(false);
-
-                    if (!Complete(probe, owner.ElapsedMillisecondsSince(probe.StartTimestamp), answer, failure: null))
-                    {
-                        return;
-                    }
+                    answer = await owner.httpClient.GetStringAsync(probeUrl, stop.Token).ConfigureAwait(false);
                 }
                 catch (Exception e)
                 {
-                    if (!Complete(probe, owner.ElapsedMillisecondsSince(probe.StartTimestamp), answer: null, failure: e))
-                    {
-                        return;
-                    }
+                    failure = e;
+                }
+
+                // Read once, after the outcome is captured and outside both branches. Reading it
+                // inside each would call a caller-supplied clock twice over one probe: a clock
+                // fault on the success path would throw again from the catch that was meant to
+                // handle it, escaping the loop and stopping all further probing silently.
+                if (!Complete(probe, owner.ElapsedMillisecondsSince(probe.StartTimestamp), answer, failure))
+                {
+                    return;
                 }
             }
         }

@@ -6,22 +6,25 @@ namespace NetPace.Core.Clients.Ookla.Settings;
 public sealed record LatencyTestSettings
 {
     /// <summary>
-    /// The timeout duration in milliseconds for each individual HTTP request when measuring latency.
+    /// The timeout duration in milliseconds for each individual HTTP request of the idle latency
+    /// measurement.
     /// </summary>
     /// <remarks>
     /// Must be positive; a non-positive value, including <see cref="Timeout.Infinite"/>, is rejected
-    /// when latency is measured, not at construction.
+    /// when latency is measured, not at construction. It does not bound the under-load probes a
+    /// download or an upload sends: a probe that takes a long time under load is the measurement
+    /// rather than a fault, so those carry no timeout beyond the HTTP client's own.
     /// </remarks>
     public int HttpTimeoutMilliseconds { get; init; } = 2000;
 
     /// <summary>
-    /// The number of HTTP requests to send when measuring latency to a server.
+    /// The number of HTTP requests to send when measuring idle latency to a server.
     /// The average latency across these iterations will be used.
     /// </summary>
     public int LatencyTestIterations { get; init; } = 20;
 
     /// <summary>
-    /// The delay in milliseconds between each latency test iteration.
+    /// The delay in milliseconds between each idle latency test iteration.
     /// Set to 0 to disable delay between iterations.
     /// </summary>
     public int LatencyTestIntervalMilliseconds { get; init; } = 50;

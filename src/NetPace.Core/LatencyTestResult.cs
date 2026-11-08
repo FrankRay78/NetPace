@@ -34,7 +34,7 @@ public sealed record LatencyTestResult
     /// </summary>
     /// <remarks>
     /// A measurement that kept its probe times states a figure; one that did not — server
-    /// screening, which keeps only its fastest request, or a caller that skipped the measurement
+    /// screening, which keeps no run of probe times, or a caller that skipped the measurement
     /// altogether — states <see langword="null"/>, which says not recorded rather than zero.
     /// </remarks>
     public required long? MinimumLatencyMilliseconds { get; init; }

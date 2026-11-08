@@ -40,6 +40,19 @@ public sealed class DiagnosticSpeedTester : ISpeedTestService
         JitterMilliseconds = 0
     };
 
+    /// <summary>
+    /// The latency a measurement off an unloaded line reports here: an average alone, with the
+    /// extremes left as not recorded.
+    /// </summary>
+    private static LatencyTestResult IdleLatency(IServer server, long latencyMilliseconds) => new()
+    {
+        Server = server,
+        LatencyMilliseconds = latencyMilliseconds,
+        MinimumLatencyMilliseconds = null,
+        MaximumLatencyMilliseconds = null,
+        JitterMilliseconds = 0
+    };
+
     private readonly IServer defaultServer = new Server { Location = "Frankfurt", Sponsor = "Deutsche Telekom", Url = Url };
 
     private int requestsIssued = -1;
@@ -76,7 +89,7 @@ public sealed class DiagnosticSpeedTester : ISpeedTestService
             Report(diagnostics, sequence, LatencyUrl, RequestOutcome.Succeeded, bytes: 9, durationMilliseconds: 24, kind: RequestKind.LatencyProbe);
         }
 
-        return Task.FromResult(new LatencyTestResult { Server = server, LatencyMilliseconds = 24, MinimumLatencyMilliseconds = null, MaximumLatencyMilliseconds = null, JitterMilliseconds = 0 });
+        return Task.FromResult(IdleLatency(server, 24));
     }
 
     /// <inheritdoc />
@@ -109,7 +122,7 @@ public sealed class DiagnosticSpeedTester : ISpeedTestService
 
         Report(diagnostics, sequence: 1, LatencyUrl, RequestOutcome.Succeeded, bytes: 9, durationMilliseconds: 31, kind: RequestKind.LatencyProbe);
 
-        return Task.FromResult(new LatencyTestResult { Server = servers[0], LatencyMilliseconds = 31, MinimumLatencyMilliseconds = null, MaximumLatencyMilliseconds = null, JitterMilliseconds = 0 });
+        return Task.FromResult(IdleLatency(servers[0], 31));
     }
 
     /// <inheritdoc />

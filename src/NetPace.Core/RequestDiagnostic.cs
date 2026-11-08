@@ -19,8 +19,9 @@ public sealed record RequestDiagnostic
     public required DateTime StartedAt { get; init; }
 
     /// <summary>
-    /// Gets what the request was for, which tells the requests a test is measuring from the ones it
-    /// makes alongside them.
+    /// Gets what the request was for. Which kinds a test is measuring depends on the test, so this
+    /// alone does not separate a measurement from the requests made alongside it; see
+    /// <see cref="RequestKind"/>.
     /// </summary>
     public required RequestKind Kind { get; init; }
 

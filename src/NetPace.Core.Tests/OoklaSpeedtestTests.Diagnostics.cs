@@ -37,6 +37,7 @@ public sealed partial class OoklaSpeedtestTests
 
             var settings = new OoklaSpeedtestSettings
             {
+                LatencyTest = new() { LoadedLatencyEnabled = false },
                 DownloadTest = new()
                 {
                     DownloadSizes = [100],
@@ -72,6 +73,7 @@ public sealed partial class OoklaSpeedtestTests
 
             var settings = new OoklaSpeedtestSettings
             {
+                LatencyTest = new() { LoadedLatencyEnabled = false },
                 DownloadTest = new()
                 {
                     DownloadSizes = [100],
@@ -107,6 +109,7 @@ public sealed partial class OoklaSpeedtestTests
 
             var settings = new OoklaSpeedtestSettings
             {
+                LatencyTest = new() { LoadedLatencyEnabled = false },
                 UploadTest = new()
                 {
                     UploadIncrements = 1,
@@ -128,6 +131,12 @@ public sealed partial class OoklaSpeedtestTests
             diagnostics.Select(d => d.Sequence).OrderBy(sequence => sequence).ShouldBe([1, 2, 3]);
             diagnostics.ShouldAllBe(d => d.Outcome == RequestOutcome.Succeeded);
             diagnostics.Single(d => d.Sequence == 1).BytesProcessed.ShouldBe(0);
+
+            // And it is reported as the endpoint probe rather than as a transfer or a latency probe:
+            // a diagnostic log counts a test's own requests by kind, so mislabelling this one would
+            // put the upload summary out by one.
+            diagnostics.Single(d => d.Sequence == 1).Kind.ShouldBe(RequestKind.EndpointProbe);
+            diagnostics.Where(d => d.Sequence != 1).ShouldAllBe(d => d.Kind == RequestKind.Transfer);
         }
 
         [Fact]
@@ -158,6 +167,10 @@ public sealed partial class OoklaSpeedtestTests
             diagnostics.Select(d => d.Sequence).ShouldBe([1, 2, 3]);
             diagnostics.ShouldAllBe(d => d.Outcome == RequestOutcome.Succeeded);
             diagnostics.ShouldAllBe(d => d.Url == TestServerUrl + "latency.txt");
+
+            // And each is reported as a latency probe - which here is the measurement itself, not
+            // something done alongside one.
+            diagnostics.ShouldAllBe(d => d.Kind == RequestKind.LatencyProbe);
         }
 
         [Fact]
@@ -236,6 +249,7 @@ public sealed partial class OoklaSpeedtestTests
 
             var settings = new OoklaSpeedtestSettings
             {
+                LatencyTest = new() { LoadedLatencyEnabled = false },
                 DownloadTest = new()
                 {
                     DownloadSizes = [100],
@@ -269,6 +283,7 @@ public sealed partial class OoklaSpeedtestTests
             // waiter start before the cancellation reaches it, and the cancelled count moves.
             var settings = new OoklaSpeedtestSettings
             {
+                LatencyTest = new() { LoadedLatencyEnabled = false },
                 DownloadTest = new()
                 {
                     DownloadSizes = [100],
@@ -358,6 +373,7 @@ public sealed partial class OoklaSpeedtestTests
 
             var settings = new OoklaSpeedtestSettings
             {
+                LatencyTest = new() { LoadedLatencyEnabled = false },
                 DownloadTest = new()
                 {
                     DownloadSizes = [100],
@@ -469,6 +485,7 @@ public sealed partial class OoklaSpeedtestTests
 
             var settings = new OoklaSpeedtestSettings
             {
+                LatencyTest = new() { LoadedLatencyEnabled = false },
                 UploadTest = new()
                 {
                     UploadIncrements = 1,
@@ -644,6 +661,7 @@ public sealed partial class OoklaSpeedtestTests
 
             var settings = new OoklaSpeedtestSettings
             {
+                LatencyTest = new() { LoadedLatencyEnabled = false },
                 UploadTest = new()
                 {
                     UploadIncrements = 1,
@@ -690,6 +708,7 @@ public sealed partial class OoklaSpeedtestTests
 
             var settings = new OoklaSpeedtestSettings
             {
+                LatencyTest = new() { LoadedLatencyEnabled = false },
                 DownloadTest = new()
                 {
                     DownloadSizes = [100],

@@ -232,7 +232,6 @@ public sealed class VariableSpeedTesterTests
         Assert.Equal([166250, 166250, 166250], uploads);
     }
 
-
     [Fact]
     public async Task TheVariableTestersTransfers_ReportNoUnderLoadLatency()
     {
