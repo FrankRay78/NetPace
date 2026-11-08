@@ -199,6 +199,8 @@ public sealed partial class NetPaceConsoleTests
     [Theory]
     public async Task Should_Perform_Speed_Test_With_Server(string url)
     {
+        // SCENARIO: A named server is labelled with square brackets
+
         // Given
         var services = new ServiceCollection();
         services.AddSingleton<ISpeedTestService, SpeedTestStub>();
@@ -214,6 +216,27 @@ public sealed partial class NetPaceConsoleTests
         await Verify(result.Output).UseParameters(url);
     }
 
+    [Fact]
+    public async Task Should_Perform_Speed_Test_With_Server_And_No_Latency()
+    {
+        // SCENARIO: A named server is labelled with square brackets
+
+        // Given a named server and no latency test, so the sponsor on show is the console's own
+        // placeholder rather than the one the speed test service supplies.
+        var services = new ServiceCollection();
+        services.AddSingleton<ISpeedTestService, SpeedTestStub>();
+        services.AddSingleton<IClock, ClockStub>();
+        services.AddSingleton<IWaiter, NoDelayStub>();
+        var host = GetCommandLineTestHost(services);
+
+        // When
+        var result = await host.RunAsync(["--server", "http://test1.com", "--no-latency"]);
+
+        // Then
+        Assert.Equal(0, result.ExitCode);
+        await Verify(result.Output);
+    }
+
     [InlineData("http://test1.com")]
     [InlineData("http://test2.com")]
     [InlineData("http://test3.com")]
@@ -221,6 +244,8 @@ public sealed partial class NetPaceConsoleTests
     [Theory]
     public async Task Should_Perform_Speed_Test_Multiple_Times_With_Server(string url)
     {
+        // SCENARIO: CSV and JSON carry the new label
+
         // Given
         var services = new ServiceCollection();
         services.AddSingleton<ISpeedTestService, SpeedTestStub>();
