@@ -84,19 +84,23 @@ public sealed partial class NetPaceConsoleTests
             // Then it is the download speed's number, not some other figure's. Pinned to the number
             // itself rather than to any number: the one-line --minimal output this format replaced
             // put the latency second on the line holding Download, and a check that the word merely
-            // parses would pass on it - the misparse #525 exists to prevent.
+            // parses would pass on it - the misparse this format exists to prevent.
             Assert.Equal(0, byDefault.ExitCode);
             Assert.Equal(0, result.ExitCode);
             Assert.NotEmpty(downloadNumber);
             Assert.Equal(downloadNumber, word);
         }
 
-        [Fact]
-        public async Task Simple_Figures_Are_The_Ones_Default_Output_Reports()
+        [Theory]
+        [InlineData("")]
+        [InlineData("--unit bytes --unit-scale Kilo --unit-system IEC")]
+        public async Task Simple_Figures_Are_The_Ones_Default_Output_Reports(string unitSwitches)
         {
-            // Given the same run written in each human-readable format
-            var simple = await GetCommandLineTestHost(StubServices()).RunAsync(["--simple"]);
-            var byDefault = await GetCommandLineTestHost(StubServices()).RunAsync([]);
+            // Given the same run written in each human-readable format, under the same unit
+            // switches - Kilo rather than Mega, so the stub's figures do not round to zero
+            string[] units = unitSwitches.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            var simple = await GetCommandLineTestHost(StubServices()).RunAsync(["--simple", .. units]);
+            var byDefault = await GetCommandLineTestHost(StubServices()).RunAsync(units);
 
             // Then each figure reads the same in both, so neither format is formatting it alone.
             // Each is checked non-empty first: Figure returns "" for a label it cannot find, so a

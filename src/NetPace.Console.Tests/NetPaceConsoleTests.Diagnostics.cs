@@ -58,12 +58,12 @@ public sealed partial class NetPaceConsoleTests
         [Theory]
         [InlineData("--csv")]
         [InlineData("--json")]
+        [InlineData("--simple")]
         public async Task Every_OutputFormat_ProducesTheSameDiagnostics(string outputFormat)
         {
-            // Given the CSV and JSON formats pass no progress reporter at all, diagnostics must
-            // not ride on one. --simple is left out: it is the one format whose diagnostics
-            // legitimately differ, because it turns the under-load probes off and so emits no
-            // probe record.
+            // Given the simple, CSV and JSON formats pass no progress reporter at all, diagnostics
+            // must not ride on one. --simple turns the under-load probes off in a real run, but this
+            // stub reports its probe records whatever the settings say, so here it matches too.
             // When each runs with --diagnostics, alongside the default format.
             var expected = await HostWith().RunAsync(["--diagnostics"]);
             var actual = await HostWith().RunAsync([outputFormat, "--diagnostics"]);

@@ -4,9 +4,13 @@
 
 **Behaviour:** See issue #525 and its confirmed decisions.
 
-**Supersedes:** [`2026-10-07-minimal-replaces-verbosity`](2026-10-07-minimal-replaces-verbosity.md) — the switch that replaced `--verbosity Minimal` is now `--simple`, and its one line is one line per figure. The reasoning for retiring `--verbosity` stands.
+**Supersedes:** [`2026-10-07-minimal-replaces-verbosity`](2026-10-07-minimal-replaces-verbosity.md) — the switch is now `--simple`, one line per figure. The reasoning for retiring `--verbosity` stands.
 
-**Constraints:** The line shape is a contract: `<name>: <value>`, one figure per line, the timestamp labelled like the rest. A bool-typed option carries an implicit parse result, so the retired `--minimal` has to be a string option or its validator fires on every run. `--simple` is also the only format that turns the under-load latency probes off, and nothing in the writer shows it — the switch is thrown in `Program.BuildOoklaSettings`, so whoever adds the next format inherits probes-on without being asked. Its diagnostics therefore carry no `probe` record, which is why the diagnostics tests that snapshot one run on `--csv` rather than `--simple`.
+**Constraints:**
+
+- The line shape is a contract: `<name>: <value>`, one figure per line, the timestamp labelled like the rest.
+- Only `--simple` turns the under-load probes off, in `Program.BuildOoklaSettings`, not the writer — a new format inherits probes-on unasked.
+- So its diagnostics carry no `probe` record; the diagnostics snapshots that need one run on `--csv`.
 
 **Decisions:**
 
