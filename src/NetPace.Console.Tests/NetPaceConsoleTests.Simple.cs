@@ -63,9 +63,11 @@ public sealed partial class NetPaceConsoleTests
         {
             // SCENARIO: A line-based parser reads the download speed
 
-            // Given a --simple result, and the download speed default output reports for the same run
-            var byDefault = await GetCommandLineTestHost(StubServices()).RunAsync([]);
-            var downloadNumber = Regex.Match(byDefault.Output, @"Download: ([^ ,\r\n]+)").Groups[1].Value;
+            // Given a --simple result, and the download speed default output reports for the same
+            // run. Default output is read at a terminal: anywhere else it writes these very lines,
+            // so a non-interactive host would compare the simple writer with itself.
+            var byDefault = await GetInteractiveCommandLineTestHost(StubServices()).RunAsync([]);
+            var downloadNumber = Regex.Match(LineHolding(byDefault.Output, "Downloading"), @"(\S+) [A-Za-z]*bps").Groups[1].Value;
             var host = GetCommandLineTestHost(StubServices());
 
             // When a script takes the second word of the line holding Download

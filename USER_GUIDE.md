@@ -124,7 +124,7 @@ Upload: 18.4 Mbps
 
 A script reads any of them the same way — `netpace --simple | grep '^Download:' | awk '{print $2}'` gives the download speed's number. Anchor the match to the start of the line: a run that faults writes an `Error:` message to the same stream, and an unanchored `grep Download` can pick a word out of that message instead of a figure. Speeds are auto-scaled and follow `--unit`, `--unit-scale` and `--unit-system`, so a figure can read `1.2 Gbps` on a fast line; pin the unit with `--unit-scale Mega` where a script compares numbers across runs. `--timestamp` adds a `Timestamp: <yyyy-MM-dd HH:mm:ss>` line above the figures, a test skipped with `--no-latency` / `--no-download` / `--no-upload` contributes no line at all, and runs under `--count` and `--loop` follow one another with no separator. Failed requests are noted on their own test's line. The format shows no jitter, server or under-load figure, and sends no under-load latency probes; scripts wanting more use CSV or JSON.
 
-These are also the lines default output writes wherever it cannot redraw, so `netpace > results.txt` and `netpace --simple > results.txt` leave the same file. The one difference is the probes: default output measures latency under load whether or not anything is watching, because `--csv` and `--json` report it, while `--simple` asks for none.
+These are also the lines default output writes wherever it cannot redraw, so `netpace > results.txt` and `netpace --simple > results.txt` leave the same file. The one difference is the probes: default output sends the under-load latency probes whichever destination it ends up writing to, so a redirected run carries traffic that only `--diagnostics` reports, while `--simple` sends none.
 
 ### What `--file` writes
 
@@ -420,7 +420,7 @@ Names are matched without regard to case, so `GREEN` and `green` are the same re
 
 The theme reaches every screen a person reads: the speed test, `servers` in all its forms, and `--help`. It never reaches output another program parses — `--csv` and `--json` are byte-for-byte the same whatever the theme is. `--file` output is always written without colour, and `--simple` has no colour to change.
 
-Colour never carries meaning on its own in anything NetPace composes itself, and there is no exception. A failure is marked by the word `Error:`, and in the live table each test carries a mark of its own — `✓` for a clean run, `!` where some requests failed, `✗` where every one did — beside a `Failed` count saying how many. So the table reads the same where you cannot tell the colours apart or have turned colour off entirely. Where the terminal cannot draw those marks either, `OK`, `!` and `X` stand in for them.
+Colour never carries meaning on its own in anything NetPace composes itself, and there is no exception. A failure is marked by the word `Error:`, and in the live table each test carries a mark of its own — `✓` for a clean run, `!` where some requests failed, `✗` where every one did or the measurement could not be taken at all. Where a test reports how many of its requests failed, a `Failed` column appears beside the marks with the count. So the table reads the same where you cannot tell the colours apart or have turned colour off entirely. Where the terminal cannot draw those marks either, `OK`, `!` and `X` stand in for them.
 
 If you have set `NO_COLOR` — the [convention](https://no-color.org/) for asking every program on the machine to stop colouring its output — that wins, and NetPace draws the `plain` theme whatever `NETPACE_THEME` says.
 
@@ -434,10 +434,10 @@ Every output format carries the counts:
 
 **Default** — a `Failed` column appears as soon as a test finishes with failures, and the test's mark says which kind of failure it was. A test whose every request failed reports a zero speed, and no latency under load: its probes never saw a loaded line, so those cells stay blank.
 ```
-    Test         Done        Speed  Latency  Jitter    Failed
-✓   Pinging      100%                 24 ms    3 ms
-!   Downloading  100%  512.6 Mbps     60 ms    4 ms  1 of 150
-✗   Uploading    100%       0 bps                    32 of 32
+    Test         Done       Speed  Latency  Jitter    Failed
+✓   Pinging      100%                24 ms    3 ms
+!   Downloading  100%  512.6 Mbps    60 ms    4 ms  1 of 150
+✗   Uploading    100%       0 bps                   32 of 32
 ```
 
 **`--simple`** — the same annotation, on the line of the test it belongs to:

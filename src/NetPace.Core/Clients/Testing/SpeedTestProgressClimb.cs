@@ -30,6 +30,12 @@ public static class SpeedTestProgressClimb
     ];
 
     /// <summary>
+    /// How many reports go out before the first probe has answered, so a consumer is shown the
+    /// blank cell a real transfer starts with.
+    /// </summary>
+    private const int ReportsBeforeTheFirstProbeAnswers = 1;
+
+    /// <summary>
     /// The reports a measurement raises on its way to <paramref name="result"/>, in order.
     /// </summary>
     /// <param name="result">The result the measurement goes on to return.</param>
@@ -49,26 +55,24 @@ public static class SpeedTestProgressClimb
     {
         ArgumentNullException.ThrowIfNull(result);
 
-        var report = 0;
+        var reportsSoFar = 0;
 
         foreach ((int percentageComplete, int bytesPercentage) in Climb)
         {
-            report++;
+            reportsSoFar++;
+
+            // How many probes have answered by this report, which is what decides whether it
+            // carries a latency at all and whether it carries the unevenness between a pair.
+            var probesAnswered = reportsSoFar - ReportsBeforeTheFirstProbeAnswers;
 
             yield return new SpeedTestProgress
             {
                 PercentageComplete = percentageComplete,
                 BytesProcessed = result.BytesProcessed * bytesPercentage / 100,
                 ElapsedMilliseconds = result.ElapsedMilliseconds * percentageComplete / 100,
-                LatencyMilliseconds = report >= ReportsBeforeTheFirstProbeAnswers + 1 ? result.Latency?.LatencyMilliseconds : null,
-                JitterMilliseconds = report >= ReportsBeforeTheFirstProbeAnswers + 2 ? result.Latency?.JitterMilliseconds : null
+                LatencyMilliseconds = probesAnswered >= 1 ? result.Latency?.LatencyMilliseconds : null,
+                JitterMilliseconds = probesAnswered >= 2 ? result.Latency?.JitterMilliseconds : null
             };
         }
     }
-
-    /// <summary>
-    /// How many reports go out before the first probe has answered, so a consumer is shown the
-    /// blank cell a real transfer starts with.
-    /// </summary>
-    private const int ReportsBeforeTheFirstProbeAnswers = 1;
 }

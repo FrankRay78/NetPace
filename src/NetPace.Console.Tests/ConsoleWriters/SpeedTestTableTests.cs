@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using NetPace.Console.ConsoleWriters;
 using NetPace.Console.Theming;
 using NetPace.Core;
@@ -56,6 +57,52 @@ public sealed class SpeedTestTableTests
         };
 
     [Fact]
+    public void AnAnimatedSpinner_TurnsAsTheMeasurementReports()
+    {
+        // Given an animated table with a measurement under way, which is what a run at a real
+        // terminal builds - every other test here holds the spinner still so a capture does not
+        // depend on how much the run happened to report.
+        var table = new SpeedTestTable(Theme.Plain, SpeedUnit.BitsPerSecond, SpeedUnitSystem.SI, SpeedScale.Auto, showLatency: true, animated: true);
+        var row = table.AddRow("Downloading");
+
+        row.Report(new SpeedTestProgress { PercentageComplete = 10, BytesProcessed = 100_000, ElapsedMilliseconds = 1000 });
+        var first = Render(table);
+
+        // When the measurement reports again.
+        row.Report(new SpeedTestProgress { PercentageComplete = 20, BytesProcessed = 200_000, ElapsedMilliseconds = 1000 });
+
+        // Then the mark against the row has moved on, so the screen reads as turning rather than
+        // frozen while the transfer is still in flight.
+        Assert.NotEqual(Mark(first), Mark(Render(table)));
+    }
+
+    [Fact]
+    public void AConsoleThatCannotDrawUnicode_GetsPlainMarksInstead()
+    {
+        // Given a settled table and a console that reports no Unicode, as a legacy terminal does.
+        var table = Table();
+        table.AddRow("Downloading").Settle(Transfer(succeeded: 10, failed: 0, latency: null));
+        table.AddRow("Uploading").Settle(Transfer(succeeded: 0, failed: 10, latency: null));
+
+        var console = new TestConsole().Width(120);
+        console.Profile.Capabilities.Unicode = false;
+
+        // When it is drawn there.
+        console.Write(table);
+
+        // Then the outcome of each row is still readable, as the plain stand-ins rather than as a
+        // glyph the console cannot draw.
+        Assert.Contains("OK", console.Output);
+        Assert.Contains("X", console.Output);
+        Assert.DoesNotContain("\u2713", console.Output);
+        Assert.DoesNotContain("\u2717", console.Output);
+    }
+
+    /// <summary>The first column of the first row of figures: the mark or spinner frame.</summary>
+    private static string Mark(string rendered) =>
+        rendered.Split('\n', StringSplitOptions.RemoveEmptyEntries)[1].TrimStart().Split(' ')[0];
+
+    [Fact]
     public void AReportedFigure_IsShownBeforeTheMeasurementEnds()
     {
         // SCENARIO: Figures are live while a test runs
@@ -79,6 +126,7 @@ public sealed class SpeedTestTableTests
         var running = Render(table);
         Assert.Contains("30%", running);
         Assert.Contains("38 ms", running);
+        Assert.Single(Regex.Matches(running, "ms"));
 
         // And when a later report carries both.
         row.Report(new SpeedTestProgress
@@ -133,7 +181,6 @@ public sealed class SpeedTestTableTests
         var settled = Render(table);
         Assert.Contains("8 Mbps", settled);
         Assert.DoesNotContain("ms", settled);
-        Assert.DoesNotContain("0 ms", settled);
     }
 
     [Fact]
@@ -264,7 +311,7 @@ public sealed class SpeedTestTableTests
     }
 
     [Fact]
-    public void AGrowingFigure_IsShownWholeAndTheColumnsStillLineUp()
+    public async Task AGrowingFigure_IsShownWholeAndTheColumnsStillLineUp()
     {
         // SCENARIO: Columns grow to fit
 
@@ -276,15 +323,9 @@ public sealed class SpeedTestTableTests
         // When a much larger figure arrives, and the Failed column appears with it.
         row.Settle(Transfer(succeeded: 998, failed: 2, latency: Latency(1234, 567)));
 
-        // Then every value is shown whole rather than cut off.
-        var rendered = Render(table);
-        Assert.Contains("1234 ms", rendered);
-        Assert.Contains("567 ms", rendered);
-        Assert.Contains("2 of 1000", rendered);
-
-        // And the headings still sit above their own values: one line each, so the columns the
-        // header row names are the columns the value row fills.
-        var lines = rendered.Split('\n', StringSplitOptions.RemoveEmptyEntries);
-        Assert.Equal(2, lines.Length);
+        // Then every value is shown whole rather than cut off, and the headings still sit above
+        // their own values on one line each - which is a claim about the shape of the output, so
+        // the snapshot carries it rather than a line count beside it.
+        await Verify(Render(table));
     }
 }

@@ -28,9 +28,12 @@ public sealed record SpeedTestProgress
     /// <remarks>
     /// <para>
     /// The mean of the probes that have answered since the transfer began, so it compares directly
-    /// with an idle measurement and ends on the figure the result goes on to report.
-    /// <see langword="null"/> says nothing measured yet, which is not the same as zero: the
-    /// measurement is switched off, or no probe has answered.
+    /// with an idle measurement and converges on what the result reports. It does not promise to
+    /// equal it: a probe answering after the last report lands in the result alone, and a transfer
+    /// whose every request failed reports no latency at all, whatever the probes saw. Read the
+    /// figure to show a user off <see cref="SpeedTestResult.Latency"/> rather than off the last
+    /// report. <see langword="null"/> says nothing measured yet, which is not the same as zero:
+    /// the measurement is switched off, or no probe has answered.
     /// </para>
     /// <para>
     /// This figure and <see cref="JitterMilliseconds"/> describe the one server under test. Server

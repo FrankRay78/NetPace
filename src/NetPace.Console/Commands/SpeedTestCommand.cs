@@ -55,7 +55,7 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
             _ => new DefaultConsoleWriter(liveDisplayRefresh, theme)
         };
 
-        if (writer.MachineReadable || !console.Profile.Capabilities.Interactive)
+        if (writer.MachineReadable || !DefaultConsoleWriter.CanAnimate(console))
         {
             // Spectre wraps what it writes to the console's width - 80 when stdout is a pipe or a
             // redirect, the window width in a narrow terminal - and those breaks are real newlines in

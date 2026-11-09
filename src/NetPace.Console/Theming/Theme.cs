@@ -12,7 +12,7 @@ namespace NetPace.Console.Theming;
 /// <para>
 /// Every element NetPace colours has a slot, so a new theme is a list of values rather than a
 /// search through the renderers. A slot's name says what is being drawn, never which colour it
-/// ends up — <c>ResultValue</c>, not <c>BoldYellow</c> — because the colour is what a theme
+/// ends up — <c>Figure</c>, not <c>BoldYellow</c> — because the colour is what a theme
 /// changes.
 /// </para>
 /// </remarks>
@@ -30,9 +30,9 @@ public sealed record Theme
     /// <remarks>
     /// Read off the slots rather than stated alongside them, so it cannot disagree with them. A
     /// theme that said it suppressed colour while colouring a slot would have that colour taken
-    /// away by <see cref="ApplyTo"/>; one that said it did not while colouring nothing would draw
-    /// the progress bar as a single unbroken run of glyphs, which is the failure
-    /// <see cref="ApplyTo"/> exists to prevent.
+    /// away by <see cref="ApplyTo"/>; one that said it did not while colouring nothing would leave
+    /// the console colour-capable, so anything Spectre.Console draws of its own accord would still
+    /// be coloured — the failure <see cref="ApplyTo"/> exists to prevent.
     /// </remarks>
     public bool SuppressesColour =>
         Banner == Color.Default && Styles.All(style => style.Foreground == Color.Default && style.Background == Color.Default);

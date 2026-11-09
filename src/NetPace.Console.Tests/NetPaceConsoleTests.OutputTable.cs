@@ -52,6 +52,24 @@ public sealed partial class NetPaceConsoleTests
             };
 
         [Fact]
+        public async Task A_Named_Server_Is_Labelled_With_Square_Brackets_And_Chooses_Nothing()
+        {
+            // SCENARIO: A named server is labelled with square brackets
+
+            // Given a terminal and a server the user named, so there is nothing to choose.
+            var host = TerminalHost(Services(new SpeedTestStub()));
+
+            // When
+            var result = await host.RunAsync(["--server-url", "http://test1.com"]);
+
+            // Then the header carries the placeholder sponsor in square brackets above the URL,
+            // and no "Choosing server" spinner appears for a choice that was never made - both of
+            // which the snapshot carries.
+            Assert.Equal(0, result.ExitCode);
+            await Verify(result.Output);
+        }
+
+        [Fact]
         public async Task The_Server_Is_On_Screen_Before_Any_Latency_Reply()
         {
             // SCENARIO: The server is shown before any latency reply
@@ -188,9 +206,6 @@ public sealed partial class NetPaceConsoleTests
             // wrapped itself to fit rather than dropping a figure the user asked for. A dropped
             // column would read as a measurement that was never taken.
             Assert.Equal(0, result.ExitCode);
-            Assert.Contains("100 ms", result.Output);
-            Assert.Contains("10 ms", result.Output);
-            Assert.Contains("Jitter", result.Output);
             await Verify(result.Output);
         }
 
@@ -207,9 +222,6 @@ public sealed partial class NetPaceConsoleTests
 
             // Then nothing in the table names latency at all.
             Assert.Equal(0, result.ExitCode);
-            Assert.DoesNotContain("Pinging", result.Output);
-            Assert.DoesNotContain("Latency", result.Output);
-            Assert.DoesNotContain("Jitter", result.Output);
             await Verify(result.Output);
         }
 
@@ -255,8 +267,6 @@ public sealed partial class NetPaceConsoleTests
 
             // Then
             Assert.Equal(0, result.ExitCode);
-            Assert.DoesNotContain("Downloading", result.Output);
-            Assert.DoesNotContain("Uploading", result.Output);
             await Verify(result.Output);
         }
 
@@ -367,8 +377,25 @@ public sealed partial class NetPaceConsoleTests
             // Then the server and URL are still on screen, the Pinging row shows the failure, and
             // the run reports the error.
             Assert.Equal(0, result.ExitCode);
-            Assert.Contains("Deutsche Telekom", result.Output);
-            Assert.Contains(ScriptedSpeedTester.Url, result.Output);
+            await Verify(result.Output);
+        }
+
+        [Fact]
+        public async Task A_Transfer_That_Throws_Leaves_No_Row_Looking_Like_It_Is_Still_Running()
+        {
+            // Given a terminal, a latency measurement that succeeds and a download that throws.
+            var service = new ScriptedSpeedTester
+            {
+                DownloadFactory = _ => throw new HttpRequestException("The connection was reset"),
+            };
+
+            // When
+            var result = await TerminalHost(Services(service)).RunAsync([]);
+
+            // Then no row is left carrying a spinner: the last frame on screen is drawn after the
+            // run has ended, so a row still marked as measuring would say a measurement is in
+            // flight after the process has exited. The snapshot carries what each row says.
+            Assert.Equal(0, result.ExitCode);
             await Verify(result.Output);
         }
 
@@ -455,7 +482,6 @@ public sealed partial class NetPaceConsoleTests
             // count rather than from a colour.
             Assert.Equal(0, result.ExitCode);
             Assert.False(AnsiSnapshot.CarriesStyling(result.Output));
-            Assert.Contains("1 of 150", result.Output);
             await Verify(AnsiSnapshot.Readable(result.Output));
         }
 

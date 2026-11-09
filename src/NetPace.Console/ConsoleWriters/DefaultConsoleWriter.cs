@@ -80,19 +80,9 @@ public sealed class DefaultConsoleWriter(ILiveDisplayRefresh liveDisplayRefresh,
 
                 try
                 {
-                    try
-                    {
-                        latency = await ServerSelector.MeasureLatencyAsync(speedTestClient, chosen, settings, recorder, LatencyReports(pinging, Redraw), cancellationToken);
-                        pinging?.Settle(latency);
-                        Redraw();
-                    }
-                    catch
-                    {
-                        // The row says what happened to it rather than vanishing: the server stays
-                        // named and the failure is reported by the command above.
-                        pinging?.Fail();
-                        throw;
-                    }
+                    latency = await ServerSelector.MeasureLatencyAsync(speedTestClient, chosen, settings, recorder, LatencyReports(pinging, Redraw), cancellationToken);
+                    pinging?.Settle(latency);
+                    Redraw();
 
                     if (downloading is not null)
                     {
@@ -110,12 +100,31 @@ public sealed class DefaultConsoleWriter(ILiveDisplayRefresh liveDisplayRefresh,
                         Redraw();
                     }
                 }
-                catch
+                catch (OperationCanceledException)
                 {
+                    // Cancellation stopped the measurements rather than failing them, so no row is
+                    // marked failed: the table keeps whatever it had measured. The final frame is
+                    // drawn below for the reason the next handler gives.
+                    context.Refresh();
+                    throw;
+                }
+                catch (Exception)
+                {
+                    // A measurement that ends by throwing never settles its row, so without this
+                    // the row keeps its spinner and the last frame on screen says it is still
+                    // measuring after the run has ended.
+                    foreach (SpeedTestTableRow? row in new[] { pinging, downloading, uploading })
+                    {
+                        if (row is { IsRunning: true })
+                        {
+                            row.Fail();
+                        }
+                    }
+
                     // The display draws its last frame when the block finishes, and not when the
-                    // block ends by throwing, so a run that was cancelled or whose measurement
-                    // failed draws that frame itself: whatever was measured before it ended stays
-                    // on screen, beside the row that says what happened.
+                    // block ends by throwing, so a run whose measurement failed draws that frame
+                    // itself: whatever was measured before it ended stays on screen, beside the
+                    // row that says what happened.
                     context.Refresh();
                     throw;
                 }
@@ -123,9 +132,12 @@ public sealed class DefaultConsoleWriter(ILiveDisplayRefresh liveDisplayRefresh,
 
         var outcome = SpeedTestOutcome.Create(downloadResult, uploadResult);
 
-        if (plain is not null && latency is not null)
+        if (plain is not null)
         {
-            SimpleLines.Write(plain, clock, latency, outcome, settings);
+            // The block above either set this or threw, in which case the run never reaches here.
+            // Guarding on it instead would read as a condition that can fail, and would silently
+            // leave a --file target empty if it ever did.
+            SimpleLines.Write(plain, clock, latency!, outcome, settings);
         }
 
         return outcome;
@@ -171,8 +183,8 @@ public sealed class DefaultConsoleWriter(ILiveDisplayRefresh liveDisplayRefresh,
             console.WriteLine(clock.Now.ToHumanReadable(), theme.Figure);
         }
 
-        console.WriteLine($"{chosen.Server.Sponsor}", theme.ServerName);
-        console.WriteLine($"{chosen.Server.Url}", theme.ServerUrl);
+        console.WriteLine(chosen.Server.Sponsor, theme.ServerName);
+        console.WriteLine(chosen.Server.Url, theme.ServerUrl);
         console.WriteLine("");
     }
 
@@ -217,15 +229,18 @@ public sealed class DefaultConsoleWriter(ILiveDisplayRefresh liveDisplayRefresh,
     /// Whether a destination can redraw. Interactivity alone decides it: "a terminal that cannot
     /// redraw" means one Spectre.Console reports as not interactive.
     /// </summary>
-    private static bool CanAnimate(IAnsiConsole console) => console.Profile.Capabilities.Interactive;
+    internal static bool CanAnimate(IAnsiConsole console) => console.Profile.Capabilities.Interactive;
 
     private static IAnsiConsole? Wrap(IAnsiConsole[] destinations) => destinations.Length switch
     {
         0 => null,
         1 => destinations[0],
 
-        // The wrapper is never disposed here: the composite the command built owns these
-        // destinations and closes them itself.
+        // No test reaches this arm, and none can today: it needs two destinations of the same
+        // kind, and the command builds at most one terminal and one --file target. It stays
+        // because the composite's contract allows more, and a silently dropped destination would
+        // be worse than an untested one. The wrapper is never disposed here: the composite the
+        // command built owns these destinations and closes them itself.
         _ => new CompositeAnsiConsole(destinations[0], destinations),
     };
 

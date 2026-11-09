@@ -219,14 +219,6 @@ public sealed class OoklaSpeedtest : ISpeedTestService
     /// hears — rather than the spread of the probes around their average. It is the one definition
     /// of jitter in NetPace, so a figure measured under load stays comparable with an idle one.
     /// </remarks>
-    /// <summary>
-    /// How uneven a run of probe times was so far, or <see langword="null"/> where there is not yet
-    /// a consecutive pair to compare. A running figure says nothing rather than zero, because a
-    /// zero would read as perfectly even round trips.
-    /// </summary>
-    private static long? RunningJitterMilliseconds(IReadOnlyList<long> probeMilliseconds) =>
-        probeMilliseconds.Count < 2 ? null : CalculateJitterMilliseconds(probeMilliseconds);
-
     private static long CalculateJitterMilliseconds(IReadOnlyList<long> probeMilliseconds)
     {
         if (probeMilliseconds.Count < 2)
@@ -243,6 +235,15 @@ public sealed class OoklaSpeedtest : ISpeedTestService
         var meanChange = (double)totalChange / (probeMilliseconds.Count - 1);
         return (long)Math.Round(meanChange, MidpointRounding.AwayFromZero);
     }
+
+    /// <summary>
+    /// <see cref="CalculateJitterMilliseconds"/> as a measurement still running reports it, or
+    /// <see langword="null"/> where there is not yet a consecutive pair to compare. A running
+    /// figure says nothing rather than zero, because a zero would read as perfectly even round
+    /// trips.
+    /// </summary>
+    private static long? RunningJitterMilliseconds(IReadOnlyList<long> probeMilliseconds) =>
+        probeMilliseconds.Count < 2 ? null : CalculateJitterMilliseconds(probeMilliseconds);
 
     /// <inheritdoc/>
     public async Task<LatencyTestResult> GetFastestServerByLatencyAsync(IServer[] servers, CancellationToken cancellationToken = default)

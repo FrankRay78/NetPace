@@ -17,8 +17,8 @@ public sealed record LatencyTestProgress
     /// </summary>
     /// <remarks>
     /// The mean of the probes that have answered, so the figure a consumer watches ends on the
-    /// figure the result reports. <see langword="null"/> says nothing measured yet rather than
-    /// zero.
+    /// figure the result reports — both are the mean of the same probes.
+    /// <see langword="null"/> says nothing measured yet rather than zero.
     /// </remarks>
     public long? LatencyMilliseconds { get; init; }
 
@@ -29,7 +29,9 @@ public sealed record LatencyTestProgress
     /// <remarks>
     /// Unevenness is a change from one round trip to the next, so this stays absent until a second
     /// probe has answered: a single probe has no consecutive pair to compare, and reports no figure
-    /// rather than a zero.
+    /// rather than a zero. <see cref="LatencyTestResult.JitterMilliseconds"/> is a plain
+    /// <see langword="long"/> and cannot say that, so a measurement of one probe alone reports no
+    /// jitter here and zero there.
     /// </remarks>
     public long? JitterMilliseconds { get; init; }
 }

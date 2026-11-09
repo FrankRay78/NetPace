@@ -148,16 +148,18 @@ internal sealed class SpeedTestTable(
             columns.Add(Heading("Failed", Justify.Right));
         }
 
-        // The gap belongs between columns, so the last one carries none and no line ends in
-        // trailing blanks.
+        // The gap belongs between columns, so the last one carries none: a line ends at its last
+        // column rather than a column's worth of blank past it. An empty right-aligned cell is
+        // still padded out to the column width, so a row whose last cell is blank does end in
+        // blanks.
         columns[^1].Padding = Gap(0);
 
-        foreach (var column in columns)
+        foreach (TableColumn column in columns)
         {
             table.AddColumn(column);
         }
 
-        foreach (var row in rows)
+        foreach (SpeedTestTableRow row in rows)
         {
             var outcome = OutcomeStyle(row);
 
@@ -241,165 +243,11 @@ internal sealed class SpeedTestTable(
 
     /// <summary>
     /// A figure in milliseconds as a cell carries it, or nothing at all where it was not measured.
-    /// A blank cell says not measured; a zero would say measured as none.
+    /// A blank cell says not measured; a zero would say measured as none. The Speed column is
+    /// deliberately the exception: a transfer whose every request failed shows <c>0 bps</c> rather
+    /// than a blank, because the mark and the Failed count beside it already say what happened,
+    /// and a blank speed on a finished row would read as a figure still to come.
     /// </summary>
     private static string Milliseconds(long? value) =>
         value is long measured ? $"{measured.ToString(CultureInfo.InvariantCulture)} ms" : string.Empty;
-}
-
-/// <summary>
-/// How far a row's measurement got.
-/// </summary>
-internal enum SpeedTestTableRowState
-{
-    /// <summary>Still measuring.</summary>
-    Running,
-
-    /// <summary>Finished with every request succeeding.</summary>
-    Succeeded,
-
-    /// <summary>Finished with some requests failing, having still measured something.</summary>
-    PartiallyFailed,
-
-    /// <summary>Finished with nothing measured: every request failed, or the measurement threw.</summary>
-    Failed,
-}
-
-/// <summary>
-/// One row of <see cref="SpeedTestTable"/>: what a single measurement has reported so far.
-/// </summary>
-/// <remarks>
-/// A figure the measurement has not reported stays absent rather than defaulting to zero, so the
-/// table draws a blank cell where nothing was measured and a number only where something was. A
-/// latency measurement fills fewer cells than a transfer does - no speed, and no count of failed
-/// requests, since a failed probe is not a verdict on anything the user asked for - and it does so
-/// simply by never reporting them.
-/// </remarks>
-internal sealed class SpeedTestTableRow
-{
-    private readonly SpeedTestTable table;
-
-    internal SpeedTestTableRow(SpeedTestTable table, string name)
-    {
-        this.table = table;
-        Name = name;
-    }
-
-    /// <summary>What is being measured, as the Test column names it.</summary>
-    internal string Name { get; }
-
-    internal SpeedTestTableRowState State { get; private set; } = SpeedTestTableRowState.Running;
-
-    internal bool IsRunning => State == SpeedTestTableRowState.Running;
-
-    internal int PercentageComplete { get; private set; }
-
-    internal string Speed { get; private set; } = string.Empty;
-
-    internal long? LatencyMilliseconds { get; private set; }
-
-    internal long? JitterMilliseconds { get; private set; }
-
-    /// <summary>
-    /// How many of the measurement's requests failed, and how many were made, or
-    /// <see langword="null"/> where none failed. Present only once the measurement has finished,
-    /// because its own result is what says.
-    /// </summary>
-    internal (int Failed, int Attempted)? FailedCount { get; private set; }
-
-    internal string PercentageText => $"{PercentageComplete.ToString(CultureInfo.InvariantCulture)}%";
-
-    internal string FailedText =>
-        FailedCount is (int failed, int attempted)
-            ? $"{failed.ToString(CultureInfo.InvariantCulture)} of {attempted.ToString(CultureInfo.InvariantCulture)}"
-            : string.Empty;
-
-    /// <summary>Takes a latency measurement's running figures.</summary>
-    /// <exception cref="ArgumentNullException"><paramref name="progress"/> is <c>null</c>.</exception>
-    public void Report(LatencyTestProgress progress)
-    {
-        ArgumentNullException.ThrowIfNull(progress);
-
-        PercentageComplete = progress.PercentageComplete;
-        LatencyMilliseconds = progress.LatencyMilliseconds;
-        JitterMilliseconds = progress.JitterMilliseconds;
-        table.Changed();
-    }
-
-    /// <summary>Takes a transfer's running figures.</summary>
-    /// <exception cref="ArgumentNullException"><paramref name="progress"/> is <c>null</c>.</exception>
-    public void Report(SpeedTestProgress progress)
-    {
-        ArgumentNullException.ThrowIfNull(progress);
-
-        PercentageComplete = progress.PercentageComplete;
-        LatencyMilliseconds = progress.LatencyMilliseconds;
-        JitterMilliseconds = progress.JitterMilliseconds;
-
-        // Nothing is shown until a report carries both bytes and elapsed time, so a cell holds no
-        // speed computed from nothing. A provider reporting only a percentage therefore shows no
-        // speed until its result arrives.
-        if (progress.BytesProcessed > 0 && progress.ElapsedMilliseconds > 0)
-        {
-            Speed = table.SpeedOf(progress);
-        }
-
-        table.Changed();
-    }
-
-    /// <summary>Ends the row on a latency measurement's own figures.</summary>
-    /// <exception cref="ArgumentNullException"><paramref name="result"/> is <c>null</c>.</exception>
-    public void Settle(LatencyTestResult result)
-    {
-        ArgumentNullException.ThrowIfNull(result);
-
-        PercentageComplete = 100;
-        State = SpeedTestTableRowState.Succeeded;
-        LatencyMilliseconds = result.LatencyMilliseconds;
-        JitterMilliseconds = result.JitterMilliseconds;
-        table.Changed();
-    }
-
-    /// <summary>
-    /// Ends the row on a transfer's own figures: the speed it measured, the latency measured under
-    /// it where there was any, and how many of its requests failed where any did.
-    /// </summary>
-    /// <exception cref="ArgumentNullException"><paramref name="result"/> is <c>null</c>.</exception>
-    public void Settle(SpeedTestResult result)
-    {
-        ArgumentNullException.ThrowIfNull(result);
-
-        PercentageComplete = 100;
-        Speed = table.SpeedOf(result);
-
-        // Read off the result rather than carried over from the last progress report, so the
-        // figures the user watched end on the figures they are given - and a transfer that
-        // measured none leaves its cells blank however many probes answered along the way.
-        LatencyMilliseconds = result.Latency?.LatencyMilliseconds;
-        JitterMilliseconds = result.Latency?.JitterMilliseconds;
-
-        State = result switch
-        {
-            { RequestsFailed: 0 } => SpeedTestTableRowState.Succeeded,
-            { RequestsSucceeded: 0 } => SpeedTestTableRowState.Failed,
-            _ => SpeedTestTableRowState.PartiallyFailed,
-        };
-
-        if (result.RequestsFailed > 0)
-        {
-            FailedCount = (result.RequestsFailed, result.RequestsSucceeded + result.RequestsFailed);
-        }
-
-        table.Changed();
-    }
-
-    /// <summary>
-    /// Marks the row as a measurement that could not be taken at all, keeping whatever it had
-    /// already reported: the row says what happened to it rather than disappearing.
-    /// </summary>
-    public void Fail()
-    {
-        State = SpeedTestTableRowState.Failed;
-        table.Changed();
-    }
 }

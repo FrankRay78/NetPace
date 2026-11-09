@@ -189,6 +189,49 @@ public sealed partial class OoklaSpeedtestTests
         }
 
         [Fact]
+        public async Task GetDownloadSpeedAsync_AfterOneProbeAnswered_ReportsTheLatencyButNoJitter()
+        {
+            // Given a download held open while exactly one probe answers, in 40 ms.
+            var clock = new ControlledTimeProvider(ClockStart);
+            var delays = new GatedDelayProvider();
+            var reports = new List<SpeedTestProgress>();
+            var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+
+            using var mockHttp = new MockHttpMessageHandler();
+            RespondToProbes(mockHttp, clock, 40);
+            mockHttp.When(DownloadUrlPattern)
+                    .Respond(async _ =>
+                    {
+                        await release.Task.WaitAsync(HangGuard);
+                        return new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent(new byte[2048]) };
+                    });
+
+            var speedtest = SingleRequestDownloadSpeedtest(mockHttp, delays, clock);
+
+            // When that one probe has answered and the download then finishes. The barrier is the
+            // probe loop asking for its next delay, which it can only do once the sample it just
+            // took has been published - incrementing a counter inside the response handler would
+            // race that publish.
+            var download = speedtest.GetDownloadSpeedAsync(TestServer, new SynchronousProgress<SpeedTestProgress>(reports.Add));
+
+            (await delays.ReleaseNextAsync(HangGuard)).ShouldBeTrue();
+            await WaitForAsync(() => delays.RequestedIntervals.Count >= 2);
+
+            release.SetResult();
+            var result = await download.WaitAsync(HangGuard);
+
+            // Then the latency is reported, while the unevenness stays absent: one probe has no
+            // consecutive pair to compare, and a zero there would read as perfectly even round
+            // trips rather than as nothing measured.
+            reports.ShouldNotBeEmpty();
+            reports[^1].LatencyMilliseconds.ShouldBe(40);
+            reports[^1].JitterMilliseconds.ShouldBeNull();
+
+            result.Latency.ShouldNotBeNull();
+            result.Latency!.LatencyMilliseconds.ShouldBe(40);
+        }
+
+        [Fact]
         public async Task GetDownloadSpeedAsync_BeforeAnyProbeAnswered_ReportsNeitherFigure()
         {
             // Given a download that finishes before its first probe is even due.

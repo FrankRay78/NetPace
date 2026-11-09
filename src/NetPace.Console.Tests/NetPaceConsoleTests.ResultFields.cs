@@ -326,9 +326,14 @@ public sealed partial class NetPaceConsoleTests
         {
             // Given the same speed test run twice, once plainly and once with a device label and a
             // custom field. Both describe the run for a log, not the measurement, so neither output
-            // written for a person to read shows them. --timestamp stands for the default output.
-            var plain = await GetCommandLineTestHost(StubServices()).RunAsync([modeSwitch]);
-            var labelled = await GetCommandLineTestHost(StubServices()).RunAsync(
+            // written for a person to read shows them. --timestamp stands for the default output,
+            // and is read at a terminal: anywhere else default output writes the --simple lines,
+            // which would make both rows of this theory the same writer.
+            Func<IServiceCollection?, CommandLineTestHost> host =
+                modeSwitch == "--simple" ? GetCommandLineTestHost : GetInteractiveCommandLineTestHost;
+
+            var plain = await host(StubServices()).RunAsync([modeSwitch]);
+            var labelled = await host(StubServices()).RunAsync(
                 [modeSwitch, "--device-id", "kitchen-pi", "--custom-field", "site=home"]);
 
             // Then both runs are accepted and the two outputs are the same.

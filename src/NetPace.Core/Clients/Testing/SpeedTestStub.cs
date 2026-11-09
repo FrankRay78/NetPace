@@ -54,15 +54,15 @@ public sealed class SpeedTestStub : ISpeedTestService
     private const int LoadedMaximumMillisecondsPerServerNumber = 200;
     private const int LoadedJitterMillisecondsPerServerNumber = 20;
 
+    /// <summary>The completeness each of a latency measurement's four probe reports carries.</summary>
+    private static readonly int[] LatencyProbeProgress = [25, 50, 75, 100];
+
     private readonly IServer[] stubServers = new IServer[]
     {
         new Server { Location = "Location 1", Sponsor = "Test Sponsor 1", Url = "http://test1.com" },
         new Server { Location = "Location 2", Sponsor = "Test Sponsor 2", Url = "http://test2.com" },
         new Server { Location = "Location 3", Sponsor = "Test Sponsor 3", Url = "http://test3.com" },
     };
-
-    /// <summary>The completeness each of a latency measurement's four probe reports carries.</summary>
-    private static readonly int[] LatencyProbeProgress = [25, 50, 75, 100];
 
     private readonly int delayMilliseconds = 0;
 
@@ -115,18 +115,15 @@ public sealed class SpeedTestStub : ISpeedTestService
         // Four probes, each report carrying the figures of the probes answered so far: the latency
         // from the first, and the jitter from the second, which is the first report with a
         // consecutive pair behind it. Both land on the figures the result states.
-        var probe = 0;
-
-        foreach (var percentageComplete in LatencyProbeProgress)
+        for (var probe = 0; probe < LatencyProbeProgress.Length; probe++)
         {
             Task.Delay(delayMilliseconds).Wait();
-            probe++;
 
             progress.Report(new LatencyTestProgress
             {
-                PercentageComplete = percentageComplete,
+                PercentageComplete = LatencyProbeProgress[probe],
                 LatencyMilliseconds = latencyResult.LatencyMilliseconds,
-                JitterMilliseconds = probe < 2 ? null : latencyResult.JitterMilliseconds
+                JitterMilliseconds = probe == 0 ? null : latencyResult.JitterMilliseconds
             });
         }
 
