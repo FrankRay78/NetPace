@@ -111,16 +111,17 @@ public sealed partial class NetPaceConsoleTests
         }
 
         [Fact]
-        public async Task Should_Write_Minimal_On_One_Line_When_Stdout_Is_Redirected()
+        public async Task Should_Write_Simple_One_Figure_Per_Line_When_Stdout_Is_Redirected()
         {
-            // Given stdout is redirected, and a result long enough to pass 80 columns
+            // Given stdout is redirected, and a download annotated with failed requests
             var service = new ScriptedSpeedTester { DownloadFactory = _ => ScriptedSpeedTester.Partial(150, 5) };
 
             // When
-            var output = await RunAtWidthAsync(CommandLineTestHost.RedirectedWidth, ["--minimal", "--timestamp"], service);
+            var output = await RunAtWidthAsync(CommandLineTestHost.RedirectedWidth, ["--simple", "--timestamp"], service);
 
-            // Then
-            Assert.Single(Lines(output));
+            // Then the only line breaks are the ones the format defines - one per figure, and the
+            // timestamp above them - so the annotated figure arrives whole on its own line, which
+            // the snapshot carries. A line wider than the window is the narrow-terminal test's job.
             await Verify(output);
         }
 
@@ -146,19 +147,26 @@ public sealed partial class NetPaceConsoleTests
         [InlineData("--json")]
         [InlineData("--json-pretty")]
         [InlineData("--csv")]
-        [InlineData("--minimal")]
+        [InlineData("--simple")]
         [Theory]
         public async Task Should_Write_Machine_Readable_Output_Unbroken_In_A_Narrow_Terminal(string formatSwitch)
         {
             // Given a terminal window narrower than the output line, reporting a server whose name
-            // and URL each pass 80 columns
+            // and URL each pass 80 columns, and a download annotated with failed requests - so even
+            // --simple, which prints no server, has a line past the window's 40 columns
+            static ScriptedSpeedTester Tester()
+            {
+                var tester = LongNamedServerTester();
+                tester.DownloadFactory = _ => ScriptedSpeedTester.Partial(150, 5);
+                return tester;
+            }
 
             // When
-            var narrow = await RunAtWidthAsync(CommandLineTestHost.NarrowTerminalWidth, [formatSwitch], LongNamedServerTester());
+            var narrow = await RunAtWidthAsync(CommandLineTestHost.NarrowTerminalWidth, [formatSwitch], Tester());
 
             // Then nothing the window's width did shows in the output: it is what the same run writes
             // with no width limit at all, break for break.
-            var unlimited = await RunAtWidthAsync(CommandLineTestHost.UnlimitedWidth, [formatSwitch], LongNamedServerTester());
+            var unlimited = await RunAtWidthAsync(CommandLineTestHost.UnlimitedWidth, [formatSwitch], Tester());
             Assert.Equal(unlimited, narrow);
 
             await Verify(narrow).UseParameters(formatSwitch);

@@ -99,7 +99,7 @@ public sealed partial class NetPaceConsoleTests
         public static TheoryData<string> EveryOutputMode() =>
         [
             "-t",
-            "--minimal -t",
+            "--simple -t",
             "--csv",
             "--json",
             "--json-pretty"
@@ -114,7 +114,7 @@ public sealed partial class NetPaceConsoleTests
         public static TheoryData<string> EveryModeWithAFormattedSpeed() =>
         [
             "-t",
-            "--minimal -t"
+            "--simple -t"
         ];
 
         [Theory]
@@ -195,7 +195,7 @@ public sealed partial class NetPaceConsoleTests
 
         [Theory]
         [InlineData("-t")]
-        [InlineData("--minimal -t")]
+        [InlineData("--simple -t")]
         public async Task SpeedTest_HumanReadableOutput_WritesTheTimestampInItsFamiliarFormat(string commandLine)
         {
             // SCENARIO: Human-readable timestamp keeps its familiar format

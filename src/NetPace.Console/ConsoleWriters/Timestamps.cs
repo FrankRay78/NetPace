@@ -12,7 +12,7 @@ namespace NetPace.Console.ConsoleWriters;
 internal static class Timestamps
 {
     /// <summary>
-    /// Local time as a person reads it, in the layout the default and minimal output have always
+    /// Local time as a person reads it, in the layout the default and simple output have always
     /// defaulted to. No offset: someone reading their own terminal already knows the zone they are
     /// in.
     /// </summary>
@@ -28,7 +28,7 @@ internal static class Timestamps
     private const string MachineReadableFormat = "yyyy-MM-ddTHH:mm:sszzz";
 
     /// <summary>
-    /// Renders the instant for a person to read, as the default and minimal output do.
+    /// Renders the instant for a person to read, as the default and simple output do.
     /// </summary>
     internal static string ToHumanReadable(this DateTimeOffset value)
     {

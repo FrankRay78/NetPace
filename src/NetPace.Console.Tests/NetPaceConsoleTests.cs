@@ -133,7 +133,7 @@ public sealed partial class NetPaceConsoleTests
         var host = GetCommandLineTestHost(services);
 
         // When
-        var result = await host.RunAsync(["-t", "--loop", "--minimal"], cancellationTokenSource.Token);
+        var result = await host.RunAsync(["-t", "--loop", "--simple"], cancellationTokenSource.Token);
 
         // Then
         Assert.Equal(0, result.ExitCode);
@@ -152,7 +152,7 @@ public sealed partial class NetPaceConsoleTests
         var host = GetCommandLineTestHost(services);
 
         // When
-        var result = await host.RunAsync(["-t", "--count", $"{count}", "--minimal"]);
+        var result = await host.RunAsync(["-t", "--count", $"{count}", "--simple"]);
 
         // Then
         Assert.Equal(0, result.ExitCode);
@@ -173,7 +173,7 @@ public sealed partial class NetPaceConsoleTests
         var host = GetCommandLineTestHost(services);
 
         // When
-        var result = await host.RunAsync(["-t", "--count", $"{count}", "--delay", $"{delay}", "--minimal"]);
+        var result = await host.RunAsync(["-t", "--count", $"{count}", "--delay", $"{delay}", "--simple"]);
 
         // Then
         Assert.Equal(count - 1, waiter.CallCount);
@@ -192,7 +192,7 @@ public sealed partial class NetPaceConsoleTests
         var host = GetCommandLineTestHost(services);
 
         // When
-        var result = await host.RunAsync(["--count", "3", "--unit-scale", "Mega", "--minimal"]);
+        var result = await host.RunAsync(["--count", "3", "--unit-scale", "Mega", "--simple"]);
 
         // Then
         Assert.Equal(0, result.ExitCode);
@@ -315,7 +315,7 @@ public sealed partial class NetPaceConsoleTests
     [InlineData(false)]
     [InlineData(true)]
     [Theory]
-    public async Task Should_Not_Perform_Download_Speed_Test(bool minimal)
+    public async Task Should_Not_Perform_Download_Speed_Test(bool simple)
     {
         // Given
         var services = new ServiceCollection();
@@ -325,17 +325,17 @@ public sealed partial class NetPaceConsoleTests
         var host = GetCommandLineTestHost(services);
 
         // When
-        var result = await host.RunAsync(minimal ? ["--no-download", "--minimal"] : ["--no-download"]);
+        var result = await host.RunAsync(simple ? ["--no-download", "--simple"] : ["--no-download"]);
 
         // Then
         Assert.Equal(0, result.ExitCode);
-        await Verify(result.Output).UseParameters(minimal);
+        await Verify(result.Output).UseParameters(simple);
     }
 
     [InlineData(false)]
     [InlineData(true)]
     [Theory]
-    public async Task Should_Not_Perform_Upload_Speed_Test(bool minimal)
+    public async Task Should_Not_Perform_Upload_Speed_Test(bool simple)
     {
         // Given
         var services = new ServiceCollection();
@@ -345,17 +345,17 @@ public sealed partial class NetPaceConsoleTests
         var host = GetCommandLineTestHost(services);
 
         // When
-        var result = await host.RunAsync(minimal ? ["--no-upload", "--minimal"] : ["--no-upload"]);
+        var result = await host.RunAsync(simple ? ["--no-upload", "--simple"] : ["--no-upload"]);
 
         // Then
         Assert.Equal(0, result.ExitCode);
-        await Verify(result.Output).UseParameters(minimal);
+        await Verify(result.Output).UseParameters(simple);
     }
 
     [InlineData(false)]
     [InlineData(true)]
     [Theory]
-    public async Task Should_Not_Perform_Download_Upload_Speed_Test(bool minimal)
+    public async Task Should_Not_Perform_Download_Upload_Speed_Test(bool simple)
     {
         // Given
         var services = new ServiceCollection();
@@ -365,17 +365,17 @@ public sealed partial class NetPaceConsoleTests
         var host = GetCommandLineTestHost(services);
 
         // When
-        var result = await host.RunAsync(minimal ? ["--no-download", "--no-upload", "--minimal"] : ["--no-download", "--no-upload"]);
+        var result = await host.RunAsync(simple ? ["--no-download", "--no-upload", "--simple"] : ["--no-download", "--no-upload"]);
 
         // Then
         Assert.Equal(0, result.ExitCode);
-        await Verify(result.Output).UseParameters(minimal);
+        await Verify(result.Output).UseParameters(simple);
     }
 
     [InlineData(false)]
     [InlineData(true)]
     [Theory]
-    public async Task Should_Not_Perform_Latency_Test(bool minimal)
+    public async Task Should_Not_Perform_Latency_Test(bool simple)
     {
         // Given
         var services = new ServiceCollection();
@@ -385,11 +385,11 @@ public sealed partial class NetPaceConsoleTests
         var host = GetCommandLineTestHost(services);
 
         // When
-        var result = await host.RunAsync(minimal ? ["--no-latency", "--minimal"] : ["--no-latency"]);
+        var result = await host.RunAsync(simple ? ["--no-latency", "--simple"] : ["--no-latency"]);
 
         // Then
         Assert.Equal(0, result.ExitCode);
-        await Verify(result.Output).UseParameters(minimal);
+        await Verify(result.Output).UseParameters(simple);
     }
 
     [Fact]
@@ -454,7 +454,7 @@ public sealed partial class NetPaceConsoleTests
         var host = GetCommandLineTestHost(services);
 
         // When
-        var result = await host.RunAsync(["-t", "--loop", "--minimal"], cancellationTokenSource.Token);
+        var result = await host.RunAsync(["-t", "--loop", "--simple"], cancellationTokenSource.Token);
 
         // Then
         Assert.Equal(0, result.ExitCode);
@@ -475,7 +475,7 @@ public sealed partial class NetPaceConsoleTests
         var host = GetCommandLineTestHost(services);
 
         // When
-        var result = await host.RunAsync(["-t", "--count", "100", "--minimal"], cancellationTokenSource.Token);
+        var result = await host.RunAsync(["-t", "--count", "100", "--simple"], cancellationTokenSource.Token);
 
         // Then
         Assert.Equal(0, result.ExitCode);
@@ -552,7 +552,7 @@ public sealed partial class NetPaceConsoleTests
         var host = GetCommandLineTestHost(services);
 
         // When
-        var result = await host.RunAsync(["-t", "--count", "100", "--minimal"], cancellationTokenSource.Token);
+        var result = await host.RunAsync(["-t", "--count", "100", "--simple"], cancellationTokenSource.Token);
 
         // Then
         Assert.Equal(0, result.ExitCode);
@@ -581,7 +581,7 @@ public sealed partial class NetPaceConsoleTests
         var host = GetCommandLineTestHost(services);
 
         // When
-        var result = await host.RunAsync(["-t", "--count", "100", "--minimal"], cancellationTokenSource.Token);
+        var result = await host.RunAsync(["-t", "--count", "100", "--simple"], cancellationTokenSource.Token);
 
         // Then
         Assert.Equal(0, result.ExitCode);
@@ -615,7 +615,7 @@ public sealed partial class NetPaceConsoleTests
     /// Every output mode a speed test reports in, by the switch that selects it. The default mode
     /// is selected by no switch at all.
     /// </summary>
-    public static TheoryData<string> EveryOutputModeOfASpeedTest() => new("", "--minimal", "--csv", "--json");
+    public static TheoryData<string> EveryOutputModeOfASpeedTest() => new("", "--simple", "--csv", "--json");
 
     [Theory]
     [MemberData(nameof(EveryOutputModeOfASpeedTest))]

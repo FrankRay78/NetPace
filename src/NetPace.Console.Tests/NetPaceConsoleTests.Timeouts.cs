@@ -81,7 +81,7 @@ public sealed partial class NetPaceConsoleTests
 
         [Theory]
         [InlineData("default", "")]
-        [InlineData("minimal", "--minimal")]
+        [InlineData("simple", "--simple")]
         [InlineData("csv", "--csv")]
         [InlineData("json", "--json")]
         public async Task Timed_Out_Probe_Is_Reported_In_Every_Output_Mode(string mode, string formatFlag)
@@ -169,12 +169,12 @@ public sealed partial class NetPaceConsoleTests
             var host = HostWhoseFirstProbeTimesOut();
 
             // When three tests are asked for.
-            var result = await host.RunAsync(["--server-url", ServerUrl, "--count", "3", "--minimal"]);
+            var result = await host.RunAsync(["--server-url", ServerUrl, "--count", "3", "--simple"]);
 
             // Then the timeout is reported once and the two remaining tests still report results.
             Assert.Equal(0, result.ExitCode);
             Assert.Equal(1, result.Output.Split("did not respond in time").Length - 1);
-            Assert.Equal(2, result.Output.Split("Latency: 24 ms").Length - 1);
+            Assert.Equal(2, result.Output.Split("Ping: 24 ms").Length - 1);
         }
 
         [Fact]
@@ -187,11 +187,11 @@ public sealed partial class NetPaceConsoleTests
             var host = HostWhoseFirstProbeTimesOut();
 
             // When
-            var result = await host.RunAsync(["--server-url", ServerUrl, "--count", "3", "--minimal", "--fail-on", "Total"]);
+            var result = await host.RunAsync(["--server-url", ServerUrl, "--count", "3", "--simple", "--fail-on", "Total"]);
 
             // Then
             Assert.Equal(1, result.ExitCode);
-            Assert.DoesNotContain("Latency: 24 ms", result.Output);
+            Assert.DoesNotContain("Ping: 24 ms", result.Output);
         }
 
         [Fact]
@@ -209,12 +209,12 @@ public sealed partial class NetPaceConsoleTests
             var host = HostWhoseFirstProbeTimesOut(new SelfCancellingWaiter(2, cancellation));
 
             // When the run loops until that cancellation.
-            var result = await host.RunAsync(["--server-url", ServerUrl, "--loop", "--minimal"], cancellation.Token);
+            var result = await host.RunAsync(["--server-url", ServerUrl, "--loop", "--simple"], cancellation.Token);
 
             // Then the timeout is reported once and the run went on to measure normally.
             Assert.Equal(0, result.ExitCode);
             Assert.Equal(1, result.Output.Split("did not respond in time").Length - 1);
-            Assert.Equal(1, result.Output.Split("Latency: 24 ms").Length - 1);
+            Assert.Equal(1, result.Output.Split("Ping: 24 ms").Length - 1);
         }
 
         [Fact]
@@ -228,11 +228,11 @@ public sealed partial class NetPaceConsoleTests
             var host = HostWhoseFirstProbeTimesOut(new SelfCancellingWaiter(2, cancellation));
 
             // When
-            var result = await host.RunAsync(["--server-url", ServerUrl, "--loop", "--minimal", "--fail-on", "Total"], cancellation.Token);
+            var result = await host.RunAsync(["--server-url", ServerUrl, "--loop", "--simple", "--fail-on", "Total"], cancellation.Token);
 
             // Then
             Assert.Equal(1, result.ExitCode);
-            Assert.DoesNotContain("Latency: 24 ms", result.Output);
+            Assert.DoesNotContain("Ping: 24 ms", result.Output);
         }
 
         [Fact]
@@ -248,7 +248,7 @@ public sealed partial class NetPaceConsoleTests
             var host = HostCancelledMidProbe(cancellation);
 
             // When
-            var result = await host.RunAsync(["--server-url", ServerUrl, "--loop", "--minimal"], cancellation.Token);
+            var result = await host.RunAsync(["--server-url", ServerUrl, "--loop", "--simple"], cancellation.Token);
 
             // Then nothing is reported as an error and the run exits 0.
             Assert.DoesNotContain("Error:", result.Output);
@@ -285,7 +285,7 @@ public sealed partial class NetPaceConsoleTests
             var host = HostCancelledMidProbe(cancellation);
 
             // When
-            var result = await host.RunAsync(["--server-url", ServerUrl, "--count", "3", "--minimal"], cancellation.Token);
+            var result = await host.RunAsync(["--server-url", ServerUrl, "--count", "3", "--simple"], cancellation.Token);
 
             // Then nothing is reported as an error and the run exits 0.
             Assert.DoesNotContain("Error:", result.Output);
@@ -339,7 +339,7 @@ public sealed partial class NetPaceConsoleTests
             var host = HostWith(mock, new SelfCancellingWaiter(1, cancellation));
 
             // When
-            var result = await host.RunAsync(["--server-url", ServerUrl, "--loop", "--minimal"], cancellation.Token);
+            var result = await host.RunAsync(["--server-url", ServerUrl, "--loop", "--simple"], cancellation.Token);
 
             // Then
             Assert.DoesNotContain("Error:", result.Output);

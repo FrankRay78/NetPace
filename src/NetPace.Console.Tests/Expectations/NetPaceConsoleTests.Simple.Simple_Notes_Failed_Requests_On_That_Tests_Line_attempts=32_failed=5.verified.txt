@@ -1,0 +1,3 @@
+﻿Ping: 24 ms
+Download: 8 Kbps
+Upload: 8 Kbps (5 of 32 requests failed)

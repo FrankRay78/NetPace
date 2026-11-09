@@ -1,0 +1,6 @@
+﻿Ping: 100 ms
+Download: 8 Kbps
+Upload: 18.67 Kbps
+Ping: 100 ms
+Download: 0 MiBps
+Upload: 0 MiBps

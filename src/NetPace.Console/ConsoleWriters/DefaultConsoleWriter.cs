@@ -13,7 +13,7 @@ namespace NetPace.Console.ConsoleWriters;
 /// </summary>
 /// <remarks>
 /// The only writer that takes a theme: the machine-readable writers produce records another program
-/// parses, and <c>--minimal</c> is a single compact line that has never been coloured, so none of
+/// parses, and <c>--simple</c> is a plain line per figure that has never been coloured, so none of
 /// them has an appearance to choose.
 /// </remarks>
 /// <param name="liveDisplayRefresh">

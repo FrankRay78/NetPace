@@ -1,1 +1,3 @@
-﻿Latency: 100 ms, Download: 0 Gbps, Upload: 0 Gbps
+﻿Ping: 100 ms
+Download: 0 Gbps
+Upload: 0 Gbps

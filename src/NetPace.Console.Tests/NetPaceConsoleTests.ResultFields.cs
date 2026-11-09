@@ -241,7 +241,7 @@ public sealed partial class NetPaceConsoleTests
         [Theory]
         [InlineData("--csv")]
         [InlineData("--json")]
-        [InlineData("--minimal")]
+        [InlineData("--simple")]
         [InlineData("--timestamp")]
         public async Task Should_Reject_A_Malformed_Custom_Field_Whichever_Output_Mode_Is_Chosen(string modeSwitch)
         {
@@ -309,8 +309,8 @@ public sealed partial class NetPaceConsoleTests
 
         [Theory]
         [InlineData("--timestamp")]
-        [InlineData("--minimal")]
-        public async Task Should_Leave_The_Default_And_Minimal_Output_Untouched(string modeSwitch)
+        [InlineData("--simple")]
+        public async Task Should_Leave_The_Default_And_Simple_Output_Untouched(string modeSwitch)
         {
             // Given the same speed test run twice, once plainly and once with a device label and a
             // custom field. Both describe the run for a log, not the measurement, so neither output
