@@ -7,7 +7,7 @@
 **Constraints:**
 
 - The names are an interface contract that 1.0 freezes: idle `JitterMilliseconds`, and per direction `…LatencyMilliseconds`, `…LowestLatencyMilliseconds`, `…HighestLatencyMilliseconds`, `…JitterMilliseconds`, the upload mirroring the download word for word.
-- JSON properties are declared in the CSV column order, because the source generator writes them in declaration order and the two formats must read alike.
+- The JSON measurement properties are declared in the CSV column order, because the source generator writes them in declaration order and the two formats must read alike.
 
 **Decisions:**
 

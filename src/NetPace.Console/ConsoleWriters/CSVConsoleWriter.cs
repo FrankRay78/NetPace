@@ -24,9 +24,9 @@ public sealed class CSVConsoleWriter : IConsoleWriter
         // each direction's four under-load figures after that direction's speed and request counts.
         // That placement moves every column from DownloadSpeedBitsPerSecond on, so while NetPace is
         // below 1.0.0 no column keeps a fixed position across releases — a script reading CSV reads
-        // by header name, and a log is started afresh whenever the columns change. The identity and
-        // server columns follow, then any custom columns, which are per invocation, so only the
-        // built-in prefix keeps one shape across runs.
+        // by header name, and a user starts a new log after an upgrade that changes them. The
+        // identity and server columns follow, then any custom columns, which are per invocation, so
+        // only the built-in prefix keeps one shape across runs.
         if (initialSpeedTest && !settings.NoCSVHeader)
         {
             string header = Record([
@@ -66,9 +66,9 @@ public sealed class CSVConsoleWriter : IConsoleWriter
         // within a run and across runs.
         // A test that did not run leaves its cells empty; one that ran and failed entirely reports
         // a speed of 0 beside the request counts that say so. A latency figure that was not
-        // measured — under-load latency the transfer never saw, or any figure under --no-latency —
-        // leaves its cell empty too, so nothing charting the column reads an unmeasured line as a
-        // perfect one.
+        // measured — under-load latency the transfer never saw, or the idle latency and jitter
+        // under --no-latency — leaves its cell empty too, so nothing charting the column reads an
+        // unmeasured line as a perfect one.
         // The device label is empty when none was given, because every built-in column is present
         // whatever the run was asked for.
         console.WriteLine(Record([

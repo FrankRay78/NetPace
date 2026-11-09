@@ -233,7 +233,7 @@ netpace --csv --no-csv-header >> ~/netpace.csv
 
 **Start a new log if a run failed before it wrote a row.** NetPace decides to write the header by whether the target is empty, never by reading what is in it, so any content keeps the header out — including an error message from a run whose network was down, which is written to the log alongside the terminal. A log whose first line is an error rather than the column names will collect data rows under no header for as long as you keep appending to it. Move it aside and let the next run start a fresh one.
 
-**Start a new log after an upgrade that changes the columns.** While NetPace is below 1.0.0 the CSV columns may gain fields between releases, and nothing checks an existing log's header against the columns being written. Rows from a newer version appended to an older log sit under a header that no longer describes them. After an upgrade that changes the columns, move the old log aside and let NetPace start a fresh one.
+**Start a new log after an upgrade that changes the columns.** While NetPace is below 1.0.0 the CSV columns may gain or move fields between releases, and nothing checks an existing log's header against the columns being written. Rows from a newer version appended to an older log sit under a header that no longer describes them. After an upgrade that changes the columns, move the old log aside and let NetPace start a fresh one.
 
 ### Numeric values in JSON
 
@@ -430,7 +430,7 @@ Timestamp,LatencyMilliseconds,JitterMilliseconds,DownloadSpeedBitsPerSecond,Down
 1980-01-01T10:05:00+01:00,24,5,512600000,150,0,61,34,148,14,0,0,32,,,,,192.168.1.1,test-host,London,Foo Telecom,http://speedtest.foo.example:8080/speedtest/upload.php,
 ```
 
-**JSON** — each test that ran gains integer `…Succeeded` / `…Failed` fields alongside its speed. The schema keeps one shape: a total failure reports `0` with the counts beside it, exactly as the other formats do. Only a test you skipped (`--no-download`, `--no-upload`) omits its fields entirely:
+**JSON** — each test that ran gains integer `…Succeeded` / `…Failed` fields alongside its speed. A total failure reports `0` with the counts beside it, exactly as the other formats do, and leaves out its latency-under-load fields, since nothing was measured. Only a test you skipped (`--no-download`, `--no-upload`) omits its fields entirely:
 ```json
 { "UploadSpeedBitsPerSecond": 0, "UploadSucceeded": 0, "UploadFailed": 32, … }
 ```
