@@ -18,16 +18,34 @@ public sealed partial class OoklaSpeedtestTests
     public sealed class HighLatencyLinks
     {
         /// <summary>
-        /// Longer than the round trip of the slowest link NetPace undertakes to measure, so a server
-        /// answering after this is a stand-in for one reached across such a link.
+        /// Comfortably past the two seconds that used to end a probe and a screening pass, so a
+        /// server answering only after this stands in for one reached across a slow link.
         /// </summary>
-        private const int SlowLinkRoundTripMilliseconds = 4000;
+        /// <remarks>
+        /// Bounded above by the screening ceiling divided by <c>ScreeningRequestCount</c>: a
+        /// candidate is screened with that many requests, issued one after another, and is ranked
+        /// only once the last of them returns. Raise this past a third of the ceiling and a
+        /// screening pass can no longer finish inside it, leaving the candidates abandoned and the
+        /// test resting on whether an abandoned candidate's figure happens to be recorded before
+        /// the pass reads its results.
+        /// </remarks>
+        private const int SlowLinkRoundTripMilliseconds = 2500;
 
         /// <summary>
-        /// The per-probe limit and the screening ceiling this replaced, kept here as the figure a
-        /// measurement has to beat to show that neither of them is in force any more.
+        /// The per-probe limit this replaced, and the whole screening ceiling before it became only
+        /// the first screening stage. A figure beating it shows that neither still ends the work: a
+        /// probe is no longer abandoned at two seconds, and a pass that has ranked nothing by then
+        /// no longer gives up.
         /// </summary>
         private const int FormerLimitMilliseconds = 2000;
+
+        /// <summary>
+        /// A ceiling longer than the first stage, so that a pass which ranks nothing spends both
+        /// stages rather than collapsing to one. Four seconds: far enough above the first stage that
+        /// spending the ceiling once is plainly distinguishable from spending it twice, and short
+        /// enough to leave the suite's wall clock alone.
+        /// </summary>
+        private const int StagedCeilingMilliseconds = 4000;
 
         /// <summary>
         /// What "bounded" has to mean for a server that never answers: the ten seconds the defaults
@@ -41,10 +59,19 @@ public sealed partial class OoklaSpeedtestTests
         /// Bounds a wait a regression would otherwise leave outstanding far longer than the defaults
         /// allow, so that regression fails the test instead of stalling the suite behind the HTTP
         /// client's own hundred-second timeout. Longer than the shared
-        /// <see cref="OoklaSpeedtestTests.HangGuard"/>, which is shorter than the ten seconds the
+        /// <see cref="OoklaSpeedtestTests.HangGuard"/>, which is exactly the ten seconds the
         /// defaults under test here are allowed to take and would fail them for taking it.
         /// </summary>
         private static readonly TimeSpan SlowLinkHangGuard = TimeSpan.FromSeconds(30);
+
+        /// <summary>
+        /// What "as fast as it ever was" has to mean for a pass that ranked a candidate inside the
+        /// first stage: that stage - the two seconds that were the whole ceiling - and a second more
+        /// for a loaded machine's timers. Kept close to the stage deliberately, so that a first
+        /// stage which grew would fail this rather than hide under the slack; a regression that
+        /// waited the whole slow-link allowance out takes ten seconds and misses it by far.
+        /// </summary>
+        private static readonly TimeSpan PromptChoiceBound = TimeSpan.FromMilliseconds(FormerLimitMilliseconds + 1000);
 
         /// <summary>
         /// Answers every latency request only once the round trip of a slow link has passed, on the
@@ -63,8 +90,9 @@ public sealed partial class OoklaSpeedtestTests
 
         /// <summary>
         /// The library defaults, with only the number of latency probes lowered: one probe is enough
-        /// to show the per-probe limit is no longer what ends the measurement, and twenty of them
-        /// across a slow link would put the better part of a minute into the suite.
+        /// to show the per-probe limit is no longer what ends the measurement, and the default
+        /// twenty, each waiting out <see cref="SlowLinkRoundTripMilliseconds"/>, would put nearly a
+        /// minute into the suite.
         /// </summary>
         private static OoklaSpeedtestSettings DefaultsWithOneLatencyProbe() => new()
         {
@@ -104,15 +132,24 @@ public sealed partial class OoklaSpeedtestTests
             using var mockHttp = new MockHttpMessageHandler();
             RespondAfterASlowRoundTrip(mockHttp, "*/latency.txt");
 
+            // The ceiling and the per-probe limit are left at the defaults, since they are what has
+            // to carry a slow link; only the number of screening requests is lowered. One request is
+            // enough to leave the pass unranked when the first stage is up, which is the path under
+            // test, and the default three would spend three round trips per candidate to reach it.
+            var settings = new OoklaSpeedtestSettings
+            {
+                ServerDiscovery = new() { ScreeningRequestCount = 1 }
+            };
+
             var httpClient = mockHttp.ToHttpClient();
-            var speedtest = new OoklaSpeedtest(new OoklaSpeedtestSettings(), httpClient, new DelayProviderStub());
+            var speedtest = new OoklaSpeedtest(settings, httpClient, new DelayProviderStub());
             IServer[] servers =
             [
                 new Server { Url = "http://satellite1.com/", Sponsor = "Satellite1", Location = "Orbit" },
                 new Server { Url = "http://satellite2.com/", Sponsor = "Satellite2", Location = "Orbit" }
             ];
 
-            // When a server is chosen with nothing overridden.
+            // When a server is chosen under the shipped ceiling.
             var stopwatch = Stopwatch.StartNew();
             var result = await speedtest.GetFastestServerByLatencyAsync(servers).WaitAsync(SlowLinkHangGuard);
             stopwatch.Stop();
@@ -146,8 +183,12 @@ public sealed partial class OoklaSpeedtestTests
 
             // Then the measurement ends in a failure within the bound rather than waiting on a
             // server that is never going to reply - the price of a probe limit long enough for a
-            // slow link is that it must still be a limit.
-            exception.ShouldNotBeNull();
+            // slow link is that it must still be a limit. The failure is the probe's own timeout,
+            // in the shape NetPace raises one: a bare "some exception was thrown" would be
+            // satisfied by the argument guard that fires instantly on a non-positive limit, and
+            // would report a bound this test never observed.
+            exception.ShouldBeAssignableTo<OperationCanceledException>();
+            exception!.InnerException.ShouldBeOfType<TimeoutException>();
             stopwatch.Elapsed.ShouldBeLessThan(BoundedWait);
         }
 
@@ -209,7 +250,76 @@ public sealed partial class OoklaSpeedtestTests
             // Then the candidate that answered is chosen, and the silent one did not cost the run
             // the whole allowance a slow link is given.
             result.Server.ShouldBe(promptServer);
-            stopwatch.Elapsed.ShouldBeLessThan(TimeSpan.FromMilliseconds(2 * FormerLimitMilliseconds));
+            stopwatch.Elapsed.ShouldBeLessThan(PromptChoiceBound);
+        }
+
+        [Fact]
+        public async Task GetFastestServerByLatencyAsync_NothingRanked_SpendsTheCeilingOnceAcrossBothStages()
+        {
+            // The stages divide the ceiling, they do not add to it: a pass that has ranked nothing
+            // waits the first stage and then only what is left of the ceiling. A second stage that
+            // waited the whole ceiling again would report the same failure after half again as
+            // long, so only a bound on both sides of the figure notices it.
+
+            // Given candidates that never answer, and a ceiling longer than the first stage so that
+            // both stages are spent.
+            using var mockHttp = new MockHttpMessageHandler();
+            NeverRespond(mockHttp, "*/latency.txt");
+
+            var settings = new OoklaSpeedtestSettings
+            {
+                ServerDiscovery = new() { ServerTimeoutMilliseconds = StagedCeilingMilliseconds }
+            };
+
+            var speedtest = new OoklaSpeedtest(settings, mockHttp.ToHttpClient(), new DelayProviderStub());
+            IServer[] servers =
+            [
+                new Server { Url = "http://silent1.com/", Sponsor = "Silent1", Location = "Nowhere" },
+                new Server { Url = "http://silent2.com/", Sponsor = "Silent2", Location = "Nowhere" }
+            ];
+
+            // When a server is chosen.
+            var stopwatch = Stopwatch.StartNew();
+            var exception = await Record.ExceptionAsync(() => speedtest.GetFastestServerByLatencyAsync(servers).WaitAsync(SlowLinkHangGuard));
+            stopwatch.Stop();
+
+            // Then the pass gave up only once the ceiling was spent, and did not spend it twice.
+            exception.ShouldBeOfType<NoServersAvailableException>();
+            stopwatch.Elapsed.ShouldBeGreaterThan(TimeSpan.FromMilliseconds(StagedCeilingMilliseconds - 200));
+            stopwatch.Elapsed.ShouldBeLessThan(TimeSpan.FromMilliseconds(StagedCeilingMilliseconds + FormerLimitMilliseconds - 500));
+        }
+
+        [Fact]
+        public async Task GetFastestServerByLatencyAsync_EveryCandidateFailsOnItsOwnMerits_GivesUpBeforeTheFirstStageIsOut()
+        {
+            // A longer ceiling costs a run only while something is still outstanding. A pass whose
+            // candidates have all answered - with something no speed test server would send - has
+            // nothing left to wait for, so it reports the failure at once instead of holding the
+            // user for a ceiling that cannot change the answer. Without this the raised ceiling
+            // would turn an instant error on a link where nothing is listening into a ten-second
+            // one.
+
+            // Given candidates that answer promptly, with a body no speed test server would send.
+            const string wrongBody = "<html>hello</html>";
+            using var mockHttp = new MockHttpMessageHandler();
+            mockHttp.When("*/latency.txt").Respond("text/plain", wrongBody);
+
+            var httpClient = mockHttp.ToHttpClient();
+            var speedtest = new OoklaSpeedtest(new OoklaSpeedtestSettings(), httpClient, new DelayProviderStub());
+            IServer[] servers =
+            [
+                new Server { Url = "http://wrong1.com/", Sponsor = "Wrong1", Location = "Nowhere" },
+                new Server { Url = "http://wrong2.com/", Sponsor = "Wrong2", Location = "Nowhere" }
+            ];
+
+            // When a server is chosen, with the shipped ceiling in force.
+            var stopwatch = Stopwatch.StartNew();
+            var exception = await Record.ExceptionAsync(() => speedtest.GetFastestServerByLatencyAsync(servers).WaitAsync(SlowLinkHangGuard));
+            stopwatch.Stop();
+
+            // Then the pass says no server could be reached, without spending even the first stage.
+            exception.ShouldBeOfType<NoServersAvailableException>();
+            stopwatch.Elapsed.ShouldBeLessThan(TimeSpan.FromMilliseconds(FormerLimitMilliseconds));
         }
     }
 }

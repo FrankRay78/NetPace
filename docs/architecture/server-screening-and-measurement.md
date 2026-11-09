@@ -43,17 +43,19 @@ Abandoned is not forgotten, though: an abandoned candidate contributes no result
 
 A pass that ranked nothing throws `NoServersAvailableException`, carrying the message the console prints. The type is public so that this one outcome — a network condition, not a fault — can be caught on its own, by NetPace's own commands and by a library consumer alike; a consumer catching it is reading a verdict about the network, not handling a defect.
 
-## The ceiling is spent in stages, not waited out
-
-A link whose round trip is a second or two — a geostationary satellite, a congested mobile cell, 2G data — cannot answer a screening request inside two seconds, and those are the links a speed test matters most on. So the ceiling is ten seconds. Raising it and leaving it at that would have cost every run with one silent candidate eight seconds it never used to spend: a pass ends early only once *every* candidate has finished, so the ceiling is what ends a pass still holding a straggler, however quick the candidates that answered were.
-
-The ceiling is therefore spent in two stages. The first is two seconds, which was the whole ceiling before. A pass that has ranked a candidate by the end of it takes the winner and moves on, so a run on a quick link chooses a server exactly as fast as it ever did. Only a pass that has ranked nothing by then — the run that would otherwise have ended in `No servers available` — waits out the rest, which is what gives a slow link the time to answer at all. A pass whose candidates have all already failed on their own merits ends there and then, so a dead link still fails fast rather than waiting the ceiling out.
-
-The first stage is a constant in `OoklaSpeedtest` rather than a setting: a caller says how long choosing a server may take, and the stages are only how that allowance is spent. A ceiling of two seconds or less is a single stage. Rationale: CIR [`2026-11-09-screening-ceiling-is-spent-in-stages`](../change-intent-records/2026-11-09-screening-ceiling-is-spent-in-stages.md).
-
 `ScreeningRequestCount` sits beside the ceiling and sets how many requests each server is sent. The screening figure is the **fastest** of the requests that completed, not their average: screening has no warm-up, so the first request carries connection setup the link itself is not responsible for.
 
 The figure and the ceiling read different clocks, deliberately. How long a screening request took — like how long a latency probe or a transfer took — is measured on the time provider the caller passed to `OoklaSpeedtest`. Candidates are screened concurrently against that one clock, so a caller reading an exact figure off a clock it moves itself has to let one candidate finish before the next is answered; otherwise an advance made for one lands inside another's measurement. The ceiling above is not a measurement but a bound on how long to wait, and stays on the system clock along with the per-request HTTP timeouts; a controlled clock that stood still would otherwise suspend them.
+
+## The ceiling is spent in stages, not waited out
+
+A link whose round trip is a second or two — a geostationary satellite, a congested mobile cell, 2G data — often cannot answer a screening request inside two seconds, and those are the links a speed test matters most on. So the ceiling is ten seconds. Raising it and leaving it at that would have cost every run with one silent candidate eight seconds it never used to spend: a pass ends early only once *every* candidate has finished, so the ceiling is what ends a pass still holding a straggler, however quick the candidates that answered were.
+
+The ceiling is therefore spent in two stages. The first is two seconds, which was the whole ceiling before. A pass that has ranked a candidate by the end of it takes the winner and moves on. A candidate is ranked only once it has finished all `ScreeningRequestCount` of its requests, so what the first stage leaves untouched is a run whose candidates get through that many round trips inside it; a slower link that the old two-second ceiling would have ranked on a partial figure now waits out the rest of the new one instead. Only a pass that has ranked nothing by then — the run that would otherwise have ended in `No servers available` — waits out the rest, which is what gives a slow link the time to answer at all. A pass whose candidates have all already failed on their own merits ends there and then, so a candidate that is refused, or that answers with something that is not a speed test server, costs the pass nothing; one that simply never replies cannot be told from a slow one, and costs the whole ceiling.
+
+A single-candidate pass has no sibling to rank inside the first stage, so whenever its one candidate is unreachable it spends the whole ceiling before giving up. That is how `ListServersCommand` screens each row, so an unreachable server in `servers -l` or `servers -f` now costs ten seconds where it used to cost two.
+
+The first stage is a constant in `OoklaSpeedtest` rather than a setting: a caller says how long choosing a server may take, and the stages are only how that allowance is spent. A ceiling of two seconds or less is a single stage. Rationale: CIR [`2026-11-09-screening-ceiling-is-spent-in-stages`](../change-intent-records/2026-11-09-screening-ceiling-is-spent-in-stages.md).
 
 ## Once chosen, the server does not change
 

@@ -205,9 +205,9 @@ public sealed partial class OoklaSpeedtestTests
             // Waiting is not measurement: the screening ceiling is a bound on how long to wait and stays
             // on the system clock, so a frozen clock must not suspend it. Were the ceiling ever moved
             // onto the supplied clock, this call would never return and HangGuard would fail the test.
-            // The ceiling is named rather than left at its default, which allows a pass that has ranked
-            // nothing the ten seconds a slow link needs - as long as HangGuard itself, so the two would
-            // race and the hang this guards against would stop being the only way to fail.
+            // The ceiling is named rather than left at its default, which would allow a pass that has
+            // ranked nothing the ten seconds a slow link needs - as long as HangGuard itself, so the two
+            // would race and the hang this guards against would stop being the only way to fail.
             var clock = new ControlledTimeProvider(ClockStart);
 
             using var mockHttp = new MockHttpMessageHandler();

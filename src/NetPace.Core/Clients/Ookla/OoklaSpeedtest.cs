@@ -265,6 +265,12 @@ public sealed class OoklaSpeedtest : ISpeedTestService
         var screeningLock = new object();
         var serversScreened = 0;
 
+        // Counted as results are recorded rather than scanned for at the stage boundary below: a
+        // consumer's progress callback is invoked under screeningLock, so a handler of theirs that
+        // blocks would otherwise hold up the decision of whether to wait out the rest of the
+        // ceiling.
+        var ranked = 0;
+
         // One counter for the whole pass, not one per candidate: the consumer brackets the entire
         // pass in a single diagnostic scope, so numbering each candidate from one would issue the
         // same sequence to a request against every server.
@@ -286,6 +292,11 @@ public sealed class OoklaSpeedtest : ISpeedTestService
                 screened[index] = result;
                 serversScreened++;
 
+                if (result is not null)
+                {
+                    ranked++;
+                }
+
                 if (!ceilingCts.IsCancellationRequested)
                 {
                     ReportProgress(progress, new SpeedTestProgress
@@ -302,29 +313,24 @@ public sealed class OoklaSpeedtest : ISpeedTestService
             screenings[index] = ScreenAndRecordAsync(index);
         }
 
-        bool NothingRanked()
-        {
-            lock (screeningLock)
-            {
-                return Array.TrueForAll(screened, result => result is null);
-            }
-        }
-
         // The ceiling is reached in stages rather than waited out. A pass that has ranked a
-        // candidate by the end of the first stage takes it and moves on, so a run on a quick link
-        // chooses a server as fast as it did when the first stage was the whole ceiling, however
-        // long the ceiling now is. Only a pass that has ranked nothing - the run that would
+        // candidate by the end of the first stage takes it and moves on, so a link whose candidates
+        // finish all their screening requests inside that stage chooses a server as fast as it did
+        // when the first stage was the whole ceiling, however long the ceiling now is. A slower one
+        // does not: a candidate counts as ranked only once its whole request loop has returned.
+        // Only a pass that has ranked nothing - the run that would
         // otherwise end in "no servers available" - waits for the rest, which is what gives a link
         // with a round trip of a second or two the time to answer at all.
         var allScreenings = Task.WhenAll(screenings);
         var ceilingMilliseconds = settings.ServerDiscovery.ServerTimeoutMilliseconds;
         var firstStageMilliseconds = Math.Min(FirstScreeningStageMilliseconds, ceilingMilliseconds);
+        var remainingMilliseconds = ceilingMilliseconds - firstStageMilliseconds;
 
         await Task.WhenAny(allScreenings, Task.Delay(firstStageMilliseconds, ceilingCts.Token)).ConfigureAwait(false);
 
-        if (!allScreenings.IsCompleted && firstStageMilliseconds < ceilingMilliseconds && NothingRanked())
+        // A ceiling at or below the first stage leaves nothing remaining, and is spent in one stage.
+        if (remainingMilliseconds > 0 && !allScreenings.IsCompleted && Volatile.Read(ref ranked) == 0)
         {
-            var remainingMilliseconds = ceilingMilliseconds - firstStageMilliseconds;
             await Task.WhenAny(allScreenings, Task.Delay(remainingMilliseconds, ceilingCts.Token)).ConfigureAwait(false);
         }
 

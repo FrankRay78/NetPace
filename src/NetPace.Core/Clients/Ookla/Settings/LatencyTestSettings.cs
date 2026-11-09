@@ -13,7 +13,10 @@ public sealed record LatencyTestSettings
     /// Ten seconds, so that a link whose round trip is a second or two - a geostationary satellite,
     /// a congested mobile cell, 2G data - is measured rather than refused, with room for one
     /// retransmit on top of the round trip itself. A probe that does not answer inside it still ends
-    /// the measurement: the limit is long enough for a slow link, and is still a limit.
+    /// the measurement: the limit is long enough for a slow link, and is still a limit. It bounds
+    /// one probe and nothing bounds the run of them, so the measurement's worst case is this limit
+    /// multiplied by <see cref="LatencyTestIterations"/> - with the defaults, a server answering
+    /// just inside the limit every time occupies the latency stage for some minutes.
     /// <para>
     /// Must be positive; a non-positive value, including <see cref="Timeout.Infinite"/>, is rejected
     /// when latency is measured, not at construction. It does not bound the under-load probes a
