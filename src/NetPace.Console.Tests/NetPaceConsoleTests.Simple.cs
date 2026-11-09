@@ -1,4 +1,3 @@
-using System.Globalization;
 using System.Text.RegularExpressions;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -73,17 +72,23 @@ public sealed partial class NetPaceConsoleTests
         {
             // SCENARIO: A line-based parser reads the download speed
 
-            // Given a --simple result
+            // Given a --simple result, and the download speed default output reports for the same run
+            var byDefault = await GetCommandLineTestHost(StubServices()).RunAsync([]);
+            var downloadNumber = Regex.Match(byDefault.Output, @"Download: ([^ ,\r\n]+)").Groups[1].Value;
             var host = GetCommandLineTestHost(StubServices());
 
             // When a script takes the second word of the line holding Download
             var result = await host.RunAsync(["--simple"]);
             var word = SecondWordOfLineHolding(result.Output, "Download");
 
-            // Then it is the download speed's number, and nothing else on that line is.
+            // Then it is the download speed's number, not some other figure's. Pinned to the number
+            // itself rather than to any number: the one-line --minimal output this format replaced
+            // put the latency second on the line holding Download, and a check that the word merely
+            // parses would pass on it - the misparse #525 exists to prevent.
+            Assert.Equal(0, byDefault.ExitCode);
             Assert.Equal(0, result.ExitCode);
-            Assert.True(double.TryParse(word, NumberStyles.Float, CultureInfo.InvariantCulture, out var speed));
-            Assert.True(speed > 0);
+            Assert.NotEmpty(downloadNumber);
+            Assert.Equal(downloadNumber, word);
         }
 
         [Fact]
