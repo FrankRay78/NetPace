@@ -166,17 +166,27 @@ CSV is read by spreadsheets, importers and logs, so every measurement is a plain
 
 | Column | What it holds |
 | --- | --- |
-| `LatencyMilliseconds` | Latency as a whole number of milliseconds. |
+| `LatencyMilliseconds` | Latency measured on an idle line, as a whole number of milliseconds. |
+| `JitterMilliseconds` | Idle jitter in milliseconds: how uneven those round trips were. Empty whenever `LatencyMilliseconds` is. |
 | `DownloadSpeedBitsPerSecond` | Download speed in bits per second, rounded to the nearest whole number. |
+| `DownloadLatencyMilliseconds` | Average latency measured *while the download ran* — latency under load — in milliseconds. Directly comparable with `LatencyMilliseconds`, which is the same line idle. |
+| `DownloadLowestLatencyMilliseconds` | The quickest of the probes behind that average, in milliseconds. |
+| `DownloadHighestLatencyMilliseconds` | The slowest of them, in milliseconds — the figure a stuttering line shows up in. |
+| `DownloadJitterMilliseconds` | Jitter of those probes, in milliseconds. |
 | `UploadSpeedBitsPerSecond` | Upload speed in bits per second, rounded to the nearest whole number. |
+| `UploadLatencyMilliseconds`, `UploadLowestLatencyMilliseconds`, `UploadHighestLatencyMilliseconds`, `UploadJitterMilliseconds` | The same four figures, measured while the upload ran. |
 
 ```bash
 netpace --csv
 ```
 ```
-Timestamp,LatencyMilliseconds,DownloadSpeedBitsPerSecond,DownloadSucceeded,DownloadFailed,UploadSpeedBitsPerSecond,UploadSucceeded,UploadFailed,IPAddress,Hostname,ServerLocation,ServerSponsor,ServerUrl,DeviceId
-1980-01-01T10:05:00+01:00,12,512600000,150,0,48200000,32,0,192.168.1.1,test-host,London,Foo Telecom,http://speedtest.foo.example:8080/speedtest/upload.php,
+Timestamp,LatencyMilliseconds,JitterMilliseconds,DownloadSpeedBitsPerSecond,DownloadSucceeded,DownloadFailed,DownloadLatencyMilliseconds,DownloadLowestLatencyMilliseconds,DownloadHighestLatencyMilliseconds,DownloadJitterMilliseconds,UploadSpeedBitsPerSecond,UploadSucceeded,UploadFailed,UploadLatencyMilliseconds,UploadLowestLatencyMilliseconds,UploadHighestLatencyMilliseconds,UploadJitterMilliseconds,IPAddress,Hostname,ServerLocation,ServerSponsor,ServerUrl,DeviceId
+1980-01-01T10:05:00+01:00,12,3,512600000,150,0,48,31,96,9,48200000,32,0,52,33,104,11,192.168.1.1,test-host,London,Foo Telecom,http://speedtest.foo.example:8080/speedtest/upload.php,
 ```
+
+**Latency under load is where bufferbloat shows.** A line whose idle latency is 12 ms and whose download latency is 48 ms is filling a buffer somewhere between you and the server; the highest figure is what a video call hears. Each direction's four figures sit beside that direction's speed, so one row holds the whole picture of one run.
+
+**An unmeasured latency figure is an empty cell, never `0`.** A direction's four cells are empty where the transfer measured nothing under load — the measurement was switched off, the transfer ended before the first probe was due, no probe answered, or every one of the transfer's own requests failed — as well as where the test did not run at all. The lowest and highest are also empty where no run of probe times was kept. Nothing charting these columns can mistake a line that was not measured for a perfect one.
 
 **`--unit`, `--unit-scale` and `--unit-system` do not change CSV output at all.** They shape the default and simple output only. That is what makes a CSV log safe to append to: under the default automatic scale a formatted speed can be `Kbps` on one run and `Mbps` on the next, so a file collecting rows over weeks would mix units in one column. The numbers never shift, so `--csv` works with `--count` and `--loop` whatever the unit options say, and the numbers match [the numeric fields in JSON](#numeric-values-in-json) for the same run.
 
@@ -186,8 +196,8 @@ The built-in columns are the same columns in the same order on every run, whiche
 netpace --csv --no-upload
 ```
 ```
-Timestamp,LatencyMilliseconds,DownloadSpeedBitsPerSecond,DownloadSucceeded,DownloadFailed,UploadSpeedBitsPerSecond,UploadSucceeded,UploadFailed,IPAddress,Hostname,ServerLocation,ServerSponsor,ServerUrl,DeviceId
-1980-01-01T10:05:00+01:00,12,512600000,150,0,,,,192.168.1.1,test-host,London,Foo Telecom,http://speedtest.foo.example:8080/speedtest/upload.php,
+Timestamp,LatencyMilliseconds,JitterMilliseconds,DownloadSpeedBitsPerSecond,DownloadSucceeded,DownloadFailed,DownloadLatencyMilliseconds,DownloadLowestLatencyMilliseconds,DownloadHighestLatencyMilliseconds,DownloadJitterMilliseconds,UploadSpeedBitsPerSecond,UploadSucceeded,UploadFailed,UploadLatencyMilliseconds,UploadLowestLatencyMilliseconds,UploadHighestLatencyMilliseconds,UploadJitterMilliseconds,IPAddress,Hostname,ServerLocation,ServerSponsor,ServerUrl,DeviceId
+1980-01-01T10:05:00+01:00,12,3,512600000,150,0,48,31,96,9,,,,,,,,192.168.1.1,test-host,London,Foo Telecom,http://speedtest.foo.example:8080/speedtest/upload.php,
 ```
 
 A download or upload test that ran but failed entirely reports `0`, with its request counts beside it — see [Detecting failed measurements](#detecting-failed-measurements).
@@ -206,9 +216,9 @@ netpace --csv --file /var/log/netpace.csv
 After two runs, `/var/log/netpace.csv` holds:
 
 ```
-Timestamp,LatencyMilliseconds,DownloadSpeedBitsPerSecond,DownloadSucceeded,DownloadFailed,UploadSpeedBitsPerSecond,UploadSucceeded,UploadFailed,IPAddress,Hostname,ServerLocation,ServerSponsor,ServerUrl,DeviceId
-1980-01-01T10:05:00+01:00,12,512600000,150,0,48200000,32,0,192.168.1.1,test-host,London,Foo Telecom,http://speedtest.foo.example:8080/speedtest/upload.php,
-1980-01-01T10:20:00+01:00,14,498300000,150,0,47100000,32,0,192.168.1.1,test-host,London,Foo Telecom,http://speedtest.foo.example:8080/speedtest/upload.php,
+Timestamp,LatencyMilliseconds,JitterMilliseconds,DownloadSpeedBitsPerSecond,DownloadSucceeded,DownloadFailed,DownloadLatencyMilliseconds,DownloadLowestLatencyMilliseconds,DownloadHighestLatencyMilliseconds,DownloadJitterMilliseconds,UploadSpeedBitsPerSecond,UploadSucceeded,UploadFailed,UploadLatencyMilliseconds,UploadLowestLatencyMilliseconds,UploadHighestLatencyMilliseconds,UploadJitterMilliseconds,IPAddress,Hostname,ServerLocation,ServerSponsor,ServerUrl,DeviceId
+1980-01-01T10:05:00+01:00,12,3,512600000,150,0,48,31,96,9,48200000,32,0,52,33,104,11,192.168.1.1,test-host,London,Foo Telecom,http://speedtest.foo.example:8080/speedtest/upload.php,
+1980-01-01T10:20:00+01:00,14,4,498300000,150,0,61,34,148,14,47100000,32,0,58,35,121,12,192.168.1.1,test-host,London,Foo Telecom,http://speedtest.foo.example:8080/speedtest/upload.php,
 ```
 
 The terminal is a fresh stream on every run, so it still labels its columns even when the file does not: the two destinations differ by exactly that one line. `--file-mode overwrite` replaces the file rather than adding to it, so an overwritten log always starts with the header.
@@ -231,9 +241,15 @@ JSON reports each measured speed and latency once, as a plain number in a fixed 
 
 | Field | What it holds |
 | --- | --- |
-| `LatencyMilliseconds` | Latency as a whole number of milliseconds. |
+| `LatencyMilliseconds` | Latency measured on an idle line, as a whole number of milliseconds. |
+| `JitterMilliseconds` | Idle jitter in milliseconds: how uneven those round trips were. Present exactly when `LatencyMilliseconds` is. |
 | `DownloadSpeedBitsPerSecond` | Download speed in bits per second, rounded to the nearest whole number. |
+| `DownloadLatencyMilliseconds` | Average latency measured *while the download ran* — latency under load — in milliseconds. Directly comparable with `LatencyMilliseconds`, which is the same line idle. |
+| `DownloadLowestLatencyMilliseconds` | The quickest of the probes behind that average, in milliseconds. |
+| `DownloadHighestLatencyMilliseconds` | The slowest of them, in milliseconds — the figure a stuttering line shows up in. |
+| `DownloadJitterMilliseconds` | Jitter of those probes, in milliseconds. |
 | `UploadSpeedBitsPerSecond` | Upload speed in bits per second, rounded to the nearest whole number. |
+| `UploadLatencyMilliseconds`, `UploadLowestLatencyMilliseconds`, `UploadHighestLatencyMilliseconds`, `UploadJitterMilliseconds` | The same four figures, measured while the upload ran. |
 
 ```bash
 NetPace --json-pretty
@@ -245,16 +261,27 @@ NetPace --json-pretty
   "ServerUrl": "http://speedtest.foo.example:8080/speedtest/upload.php",
   "Timestamp": "1980-01-01T10:05:00+01:00",
   "LatencyMilliseconds": 12,
+  "JitterMilliseconds": 3,
   "DownloadSpeedBitsPerSecond": 512600000,
   "DownloadSucceeded": 150,
   "DownloadFailed": 0,
+  "DownloadLatencyMilliseconds": 48,
+  "DownloadLowestLatencyMilliseconds": 31,
+  "DownloadHighestLatencyMilliseconds": 96,
+  "DownloadJitterMilliseconds": 9,
   "UploadSpeedBitsPerSecond": 48200000,
   "UploadSucceeded": 32,
   "UploadFailed": 0,
+  "UploadLatencyMilliseconds": 52,
+  "UploadLowestLatencyMilliseconds": 33,
+  "UploadHighestLatencyMilliseconds": 104,
+  "UploadJitterMilliseconds": 11,
   "IPAddress": "192.168.1.1",
   "Hostname": "test-host"
 }
 ```
+
+The same nine figures CSV carries, under the same names and as the same numbers for the same run. **A figure that was not measured is left out rather than reported as `0`** — a direction's four fields are absent where the transfer measured nothing under load or the test did not run, and the lowest and highest are absent where no run of probe times was kept. `JitterMilliseconds` goes whenever `LatencyMilliseconds` does, so `--no-latency` leaves out both.
 
 **`--unit`, `--unit-scale` and `--unit-system` do not change JSON output at all.** They shape the default and simple output only. Passing one with `--json` or `--json-pretty` is accepted without an error or warning, and the result is byte-for-byte what the same run writes without it. That is what makes a saved JSON result comparable: a script comparing runs, writing to a database or checking a threshold reads the numbers and never has to strip a unit, convert between scales, or know which switches the run was made with.
 
@@ -397,10 +424,10 @@ Download: 512.6 Mbps
 Upload: 0 bps (32 of 32 requests failed)
 ```
 
-**CSV** — a `Succeeded` and `Failed` column sits next to each speed column, and a total failure reports a speed of `0` beside the counts that say so:
+**CSV** — a `Succeeded` and `Failed` column sits next to each speed column, and a total failure reports a speed of `0` beside the counts that say so. Its latency-under-load cells are empty rather than `0`: a transfer whose every request failed never loaded the line, so there was nothing to measure.
 ```
-Timestamp,LatencyMilliseconds,DownloadSpeedBitsPerSecond,DownloadSucceeded,DownloadFailed,UploadSpeedBitsPerSecond,UploadSucceeded,UploadFailed,IPAddress,Hostname,ServerLocation,ServerSponsor,ServerUrl,DeviceId
-1980-01-01T10:05:00+01:00,24,512600000,150,0,0,0,32,192.168.1.1,test-host,London,Foo Telecom,http://speedtest.foo.example:8080/speedtest/upload.php,
+Timestamp,LatencyMilliseconds,JitterMilliseconds,DownloadSpeedBitsPerSecond,DownloadSucceeded,DownloadFailed,DownloadLatencyMilliseconds,DownloadLowestLatencyMilliseconds,DownloadHighestLatencyMilliseconds,DownloadJitterMilliseconds,UploadSpeedBitsPerSecond,UploadSucceeded,UploadFailed,UploadLatencyMilliseconds,UploadLowestLatencyMilliseconds,UploadHighestLatencyMilliseconds,UploadJitterMilliseconds,IPAddress,Hostname,ServerLocation,ServerSponsor,ServerUrl,DeviceId
+1980-01-01T10:05:00+01:00,24,5,512600000,150,0,61,34,148,14,0,0,32,,,,,192.168.1.1,test-host,London,Foo Telecom,http://speedtest.foo.example:8080/speedtest/upload.php,
 ```
 
 **JSON** — each test that ran gains integer `…Succeeded` / `…Failed` fields alongside its speed. The schema keeps one shape: a total failure reports `0` with the counts beside it, exactly as the other formats do. Only a test you skipped (`--no-download`, `--no-upload`) omits its fields entirely:
