@@ -23,6 +23,13 @@ public sealed class OoklaSpeedtest : ISpeedTestService
     private const string CancelledByCaller = "cancelled by caller";
     private const string TransferEnded = "transfer ended";
 
+    // How much of the screening ceiling a pass waits before it is willing to wait out the rest of
+    // it - see ServerDiscoverySettings.ServerTimeoutMilliseconds. Two seconds, which was the whole
+    // ceiling before a slow link was given longer, so a quick link is screened exactly as it was.
+    // Not a setting: a caller sets how long choosing a server may take, and this is only how that
+    // allowance is spent.
+    private const int FirstScreeningStageMilliseconds = 2000;
+
     // Reasons a request failed on its own merits with no exception behind it.
     private const string NotASpeedTestServer = "not a speed test server";
     private const string EndpointProbeAnswered = "endpoint probe answered";
@@ -295,9 +302,31 @@ public sealed class OoklaSpeedtest : ISpeedTestService
             screenings[index] = ScreenAndRecordAsync(index);
         }
 
+        bool NothingRanked()
+        {
+            lock (screeningLock)
+            {
+                return Array.TrueForAll(screened, result => result is null);
+            }
+        }
+
+        // The ceiling is reached in stages rather than waited out. A pass that has ranked a
+        // candidate by the end of the first stage takes it and moves on, so a run on a quick link
+        // chooses a server as fast as it did when the first stage was the whole ceiling, however
+        // long the ceiling now is. Only a pass that has ranked nothing - the run that would
+        // otherwise end in "no servers available" - waits for the rest, which is what gives a link
+        // with a round trip of a second or two the time to answer at all.
         var allScreenings = Task.WhenAll(screenings);
-        var ceiling = Task.Delay(settings.ServerDiscovery.ServerTimeoutMilliseconds, ceilingCts.Token);
-        await Task.WhenAny(allScreenings, ceiling).ConfigureAwait(false);
+        var ceilingMilliseconds = settings.ServerDiscovery.ServerTimeoutMilliseconds;
+        var firstStageMilliseconds = Math.Min(FirstScreeningStageMilliseconds, ceilingMilliseconds);
+
+        await Task.WhenAny(allScreenings, Task.Delay(firstStageMilliseconds, ceilingCts.Token)).ConfigureAwait(false);
+
+        if (!allScreenings.IsCompleted && firstStageMilliseconds < ceilingMilliseconds && NothingRanked())
+        {
+            var remainingMilliseconds = ceilingMilliseconds - firstStageMilliseconds;
+            await Task.WhenAny(allScreenings, Task.Delay(remainingMilliseconds, ceilingCts.Token)).ConfigureAwait(false);
+        }
 
         // Stop the ceiling timer, and abandon any candidate still outstanding rather than waiting
         // on it: the ceiling is a wall-clock bound on choosing a server, and awaiting an

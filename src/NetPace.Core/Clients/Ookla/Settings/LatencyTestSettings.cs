@@ -10,12 +10,18 @@ public sealed record LatencyTestSettings
     /// measurement.
     /// </summary>
     /// <remarks>
+    /// Ten seconds, so that a link whose round trip is a second or two - a geostationary satellite,
+    /// a congested mobile cell, 2G data - is measured rather than refused, with room for one
+    /// retransmit on top of the round trip itself. A probe that does not answer inside it still ends
+    /// the measurement: the limit is long enough for a slow link, and is still a limit.
+    /// <para>
     /// Must be positive; a non-positive value, including <see cref="Timeout.Infinite"/>, is rejected
     /// when latency is measured, not at construction. It does not bound the under-load probes a
     /// download or an upload sends: a probe that takes a long time under load is the measurement
     /// rather than a fault, so those carry no timeout beyond the HTTP client's own.
+    /// </para>
     /// </remarks>
-    public int HttpTimeoutMilliseconds { get; init; } = 2000;
+    public int HttpTimeoutMilliseconds { get; init; } = 10000;
 
     /// <summary>
     /// The number of HTTP requests to send when measuring idle latency to a server.

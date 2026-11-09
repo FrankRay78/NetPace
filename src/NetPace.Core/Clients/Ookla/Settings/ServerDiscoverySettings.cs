@@ -21,8 +21,16 @@ public sealed record ServerDiscoverySettings
     /// screened concurrently, so the worst case is roughly one timeout rather than one per server.
     /// A candidate that has not answered by the ceiling is treated as unreachable and drops out.
     /// Must be positive; a non-positive value is rejected when selection runs, not at construction.
+    /// <para>
+    /// Ten seconds, so that a link whose round trip is a second or two can still have a server
+    /// chosen for it. The ceiling is reached in stages rather than waited out: a pass that has
+    /// ranked a candidate inside the first couple of seconds takes it and moves on, so a run on a
+    /// quick link chooses a server as fast as it ever did, and only a pass that has ranked nothing
+    /// waits for the rest. See
+    /// <c>docs/architecture/server-screening-and-measurement.md</c>.
+    /// </para>
     /// </remarks>
-    public int ServerTimeoutMilliseconds { get; init; } = 2000;
+    public int ServerTimeoutMilliseconds { get; init; } = 10000;
 
     /// <summary>
     /// The number of requests sent to each server when screening it, with no deliberate waiting
