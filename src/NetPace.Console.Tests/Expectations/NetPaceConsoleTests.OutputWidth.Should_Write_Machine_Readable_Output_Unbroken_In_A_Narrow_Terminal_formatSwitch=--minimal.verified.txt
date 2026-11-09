@@ -1,1 +1,0 @@
-﻿Latency: 24 ms, Download: 8 Kbps, Upload: 8 Kbps

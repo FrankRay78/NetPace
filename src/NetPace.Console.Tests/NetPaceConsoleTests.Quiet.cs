@@ -108,7 +108,7 @@ public sealed partial class NetPaceConsoleTests
         [InlineData("-q")]
         [InlineData("--quiet")]
         [Theory]
-        public async Task Should_Suppress_Console_With_Minimal_In_Quiet_Mode(string quiet)
+        public async Task Should_Suppress_Console_With_Simple_In_Quiet_Mode(string quiet)
         {
             // Given
             var services = new ServiceCollection();
@@ -118,7 +118,7 @@ public sealed partial class NetPaceConsoleTests
             var host = GetCommandLineTestHost(services);
 
             // When
-            var result = await host.RunAsync([quiet, "--minimal"]);
+            var result = await host.RunAsync([quiet, "--simple"]);
 
             // Then
             Assert.Equal(0, result.ExitCode);

@@ -93,7 +93,7 @@ Of the fixed-name CI contexts, `build` and `traceability` are required checks in
 What `/gaffer:draftissue` considers when it looks for the requirements decisions a source leaves open:
 
 - **Library consumers** — `NetPace.Core` is published to NuGet. Where the feature has a library side, its consumers are users too: say whether the capability is offered to them, not only to the CLI.
-- **Output modes** — a result shown to the user must follow the rule `CLAUDE.md` → *Units and Formatting* states for default, minimal, CSV and JSON output. Say which modes are in scope.
+- **Output modes** — a result shown to the user must follow the rule `CLAUDE.md` → *Units and Formatting* states for default, simple, CSV and JSON output. Say which modes are in scope.
 - **CLI docs** — if the feature adds or changes a CLI option, the documentation *Documentation* names for one is part of the work; make it an acceptance criterion.
 - **Breaking changes** — under the stance *Public API and breaking changes* states, a breaking change needs no approval, but the issue must state plainly what breaks and for whom.
 
@@ -102,7 +102,7 @@ What `/gaffer:draftissue` considers when it looks for the requirements decisions
 What `/gaffer:reviewissue` considers alongside its generic categories, under the same test: raise a gap only where the issue leaves the point open.
 
 - **Library first** — does the feature start in `NetPace.Core`, and does it change `ISpeedTestService`?
-- **Output modes** — does it hold to the rule `CLAUDE.md` → *Units and Formatting* states for default, minimal, CSV and JSON output?
+- **Output modes** — does it hold to the rule `CLAUDE.md` → *Units and Formatting* states for default, simple, CSV and JSON output?
 - **CLI docs** — if it touches a CLI option, is the documentation *Documentation* names for one in scope?
 - **Acceptance criteria** — do they describe outcomes rather than mechanism, and are the `**Scenario:**` labels right (*Acceptance criteria*)?
 - **AOT trimming** — is it safe for trimmed builds (*Code quality*)?
@@ -130,7 +130,7 @@ What `/gaffer:audit-codebase` reads about this repository.
 - **Rules to audit (lens 1)** — the rules this file states and the product principles `CLAUDE.md` → *Product Principles* states, concentrating on any amended inside the window:
   - **Library-first** — does `NetPace.Core` reference anything in `NetPace.Console`, or assume a console host (writing to the console, reading environment a library should be handed)? Does any provider-agnostic type (`Profile`, `SpeedUnit`, the result records) reach forward into a concrete provider under `Clients/`? Is any behaviour that belongs in the library implemented only in the console project?
   - **CLI excellence** — is each output format selected by its own switch, with exactly one selectable? Do error messages say what to do next? Does every command and option that exists appear in `--help`?
-  - **Units and formatting** — is a given measurement formatted identically across default and minimal output, including under `--unit-scale`? Trace one value through both and report any path that formats it separately. CSV and JSON are deliberately not among them (`CLAUDE.md` → *Units and Formatting*): check only that their numbers agree with each other.
+  - **Units and formatting** — is a given measurement formatted identically across default and simple output, including under `--unit-scale`? Trace one value through both and report any path that formats it separately. CSV and JSON are deliberately not among them (`CLAUDE.md` → *Units and Formatting*): check only that their numbers agree with each other.
   - **Cross-platform** (*Code quality*) — hard-coded path separators, line endings, encodings, or platform APIs without a documented reason.
   - **Code quality** — a public `NetPace.Core` member without XML documentation; a network operation that is not async or cannot be cancelled; an exception caught and discarded; a `#pragma warning disable` or `[SuppressMessage]` with no stated reason.
   - **Dependencies** — from the deprecated, outdated and licence evidence: a `NetPace.Core` runtime dependency with no stated justification, any runtime dependency whose licence is not MIT, Apache 2.0 or BSD, and any deprecated package.

@@ -86,7 +86,7 @@ public sealed partial class NetPaceConsoleTests
             var host = GetOptionValuesTestHost();
 
             // When
-            var result = await host.RunAsync(["--minimal", option, value]);
+            var result = await host.RunAsync(["--simple", option, value]);
 
             // Then
             Assert.Equal(0, result.ExitCode);
@@ -133,7 +133,7 @@ public sealed partial class NetPaceConsoleTests
             var host = GetOptionValuesTestHost();
 
             // When
-            var result = await host.RunAsync(["--minimal", "--unit-scale", value]);
+            var result = await host.RunAsync(["--simple", "--unit-scale", value]);
 
             // Then — the snapshot shows the scale each spelling selects.
             Assert.Equal(0, result.ExitCode);
@@ -147,9 +147,9 @@ public sealed partial class NetPaceConsoleTests
         {
             // Given — a host per run; one host captures output for a single run only.
             // When
-            var lowerResult = await GetOptionValuesTestHost().RunAsync(["--minimal", "--unit", lower]);
-            var mixedResult = await GetOptionValuesTestHost().RunAsync(["--minimal", "--unit", mixed]);
-            var upperResult = await GetOptionValuesTestHost().RunAsync(["--minimal", "--unit", upper]);
+            var lowerResult = await GetOptionValuesTestHost().RunAsync(["--simple", "--unit", lower]);
+            var mixedResult = await GetOptionValuesTestHost().RunAsync(["--simple", "--unit", mixed]);
+            var upperResult = await GetOptionValuesTestHost().RunAsync(["--simple", "--unit", upper]);
 
             // Then — all three spellings are accepted and report the same speeds.
             Assert.Equal(0, lowerResult.ExitCode);

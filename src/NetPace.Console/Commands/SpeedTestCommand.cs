@@ -51,7 +51,7 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
         {
             { CSV: true } => new CSVConsoleWriter(),
             { Json: true } or { JsonPretty: true } => new JsonConsoleWriter(),
-            { Minimal: true } => new MinimalConsoleWriter(),
+            { Simple: true } => new SimpleConsoleWriter(),
             _ => new DefaultConsoleWriter(liveDisplayRefresh, theme)
         };
 

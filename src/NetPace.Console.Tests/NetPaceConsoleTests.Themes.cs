@@ -436,7 +436,7 @@ public sealed partial class NetPaceConsoleTests
         [InlineData("--csv")]
         [InlineData("--json")]
         [InlineData("--json-pretty")]
-        [InlineData("--minimal")]
+        [InlineData("--simple")]
         [Theory]
         public async Task MachineReadableOutput_IsTheSameWhateverTheThemeIs(string format)
         {

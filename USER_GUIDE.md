@@ -15,9 +15,9 @@ Produce CSV output, with every speed and latency a plain number, suitable for pa
 netpace --csv
 ```
 
-Report the result as a single compact line:
+Report the result as one named line per figure:
 ```bash
-netpace --minimal
+netpace --simple
 ```
 
 Run download test only:  
@@ -84,19 +84,31 @@ Three alternative formats are available instead:
 
 | Switch | Output |
 | --- | --- |
-| `--minimal` | The result as a single compact line. No live progress display. |
+| `--simple` | One named line per figure — `Ping`, `Download`, `Upload`. No live progress display, and no under-load latency probes. |
 | `--csv` | A single CSV row, always including a timestamp. `--no-csv-header` leaves the header row out — see [Collecting CSV in a log](#collecting-csv-in-a-log). |
 | `--json` | A JSON object. `--json-pretty` selects the same format and indents it for reading. |
 
-`--minimal`, `--csv` and `--json` are peers, and exactly one format may be selected. Passing two together is an error naming the conflict, so a stray or mistyped flag in a script fails loudly instead of quietly producing the wrong format. `--json-pretty` counts as selecting JSON, so `--json --json-pretty` is the one combination allowed — they are the same format, indented — while `--csv --json-pretty` and `--json-pretty --minimal` are conflicts like any other pair.
+`--simple`, `--csv` and `--json` are peers, and exactly one format may be selected. Passing two together is an error naming the conflict, so a stray or mistyped flag in a script fails loudly instead of quietly producing the wrong format. `--json-pretty` counts as selecting JSON, so `--json --json-pretty` is the one combination allowed — they are the same format, indented — while `--csv --json-pretty` and `--json-pretty --simple` are conflicts like any other pair.
 
-`--minimal`, `--csv` and `--json` are written for a program to read, so they carry no line breaks beyond the ones their own format defines — one CSV record per line, and the indentation `--json-pretty` asks for. That holds however narrow the destination is: a pipe, a redirect, or a terminal window narrower than the line. Only the default terminal output wraps to fit the screen.
+`--simple`, `--csv` and `--json` are written for a program to read, so they carry no line breaks beyond the ones their own format defines — one `--simple` figure per line, one CSV record per line, and the indentation `--json-pretty` asks for. That holds however narrow the destination is: a pipe, a redirect, or a terminal window narrower than the line. Only the default terminal output wraps to fit the screen.
 
-Every format composes with skipping individual tests — `--no-latency` / `--no-download` / `--no-upload`. `--timestamp`, `--unit`, `--unit-scale` and `--unit-system` are narrower: they shape the default and minimal output only. `--device-id` and `--custom-field` are narrower the other way — they add fields to CSV and JSON only, and are described under [The fields CSV and JSON carry](#the-fields-csv-and-json-carry). CSV and JSON always carry a timestamp, and report their measurements as plain numbers in fixed units, so those options are accepted alongside `--csv`, `--json` and `--json-pretty` without an error and change nothing in the output — see [Numeric values in CSV](#numeric-values-in-csv) and [Numeric values in JSON](#numeric-values-in-json).
+Every format composes with skipping individual tests — `--no-latency` / `--no-download` / `--no-upload`. `--timestamp`, `--unit`, `--unit-scale` and `--unit-system` are narrower: they shape the default and simple output only. `--device-id` and `--custom-field` are narrower the other way — they add fields to CSV and JSON only, and are described under [The fields CSV and JSON carry](#the-fields-csv-and-json-carry). CSV and JSON always carry a timestamp, and report their measurements as plain numbers in fixed units, so those options are accepted alongside `--csv`, `--json` and `--json-pretty` without an error and change nothing in the output — see [Numeric values in CSV](#numeric-values-in-csv) and [Numeric values in JSON](#numeric-values-in-json).
 
 Two further options decide whether and where the result appears, and both work with any format: `--quiet` suppresses the result entirely, and `--file` writes it to disk.
 
 `--diagnostics` is not a fifth format — it adds a second stream alongside whichever format you picked, leaving the result untouched. See [Diagnosing a failure with `--diagnostics`](#diagnosing-a-failure-with---diagnostics).
+
+### Simple output
+
+`--simple` writes one line per figure, each labelled, in the order the tests ran:
+
+```txt
+Ping: 12 ms
+Download: 93.12 Mbps
+Upload: 18.4 Mbps
+```
+
+A script reads any of them the same way — `netpace --simple | grep Download | awk '{print $2}'` gives the download speed's number. Speeds are auto-scaled and follow `--unit`, `--unit-scale` and `--unit-system`, so a figure can read `1.2 Gbps` on a fast line; pin the unit with `--unit-scale Mega` where a script compares numbers across runs. `--timestamp` adds a `Timestamp: <yyyy-MM-dd HH:mm:ss>` line above the figures, a test skipped with `--no-latency` / `--no-download` / `--no-upload` contributes no line at all, and runs under `--count` and `--loop` follow one another with no separator. Failed requests are noted on their own test's line, as in the default output. The format shows no jitter, server or under-load figure, and sends no under-load latency probes; scripts wanting more use CSV or JSON.
 
 ### What `--file` writes
 
@@ -142,7 +154,7 @@ The value is everything after the first `=`, so it may contain `=` itself and ma
 
 NetPace does not police the keys. A key spelled like a built-in field, or one you give twice, is recorded as given, and each format resolves that in its own shape: CSV writes a second column of that name, while JSON — which cannot hold one key twice — keeps the last value given. A repeated key therefore reads back differently from the two formats, so it is worth avoiding.
 
-Neither option reaches the default or minimal output. Both describe the run for a log rather than the measurement, and the default output already names the server; passing either alongside those formats is accepted without an error and changes nothing in what you see. A malformed `--custom-field` is still refused in every mode.
+Neither option reaches the default or simple output. Both describe the run for a log rather than the measurement, and the default output already names the server; passing either alongside those formats is accepted without an error and changes nothing in what you see. A malformed `--custom-field` is still refused in every mode.
 
 #### When the columns change, start a new log
 
@@ -166,7 +178,7 @@ Timestamp,LatencyMilliseconds,DownloadSpeedBitsPerSecond,DownloadSucceeded,Downl
 1980-01-01T10:05:00+01:00,12,512600000,150,0,48200000,32,0,192.168.1.1,test-host,London,Foo Telecom,http://speedtest.foo.example:8080/speedtest/upload.php,
 ```
 
-**`--unit`, `--unit-scale` and `--unit-system` do not change CSV output at all.** They shape the default and minimal output only. That is what makes a CSV log safe to append to: under the default automatic scale a formatted speed can be `Kbps` on one run and `Mbps` on the next, so a file collecting rows over weeks would mix units in one column. The numbers never shift, so `--csv` works with `--count` and `--loop` whatever the unit options say, and the numbers match [the numeric fields in JSON](#numeric-values-in-json) for the same run.
+**`--unit`, `--unit-scale` and `--unit-system` do not change CSV output at all.** They shape the default and simple output only. That is what makes a CSV log safe to append to: under the default automatic scale a formatted speed can be `Kbps` on one run and `Mbps` on the next, so a file collecting rows over weeks would mix units in one column. The numbers never shift, so `--csv` works with `--count` and `--loop` whatever the unit options say, and the numbers match [the numeric fields in JSON](#numeric-values-in-json) for the same run.
 
 The built-in columns are the same columns in the same order on every run, whichever tests ran, with one column per `--custom-field` pair after them — so two runs given different custom fields do not share a header. A test you skipped with `--no-latency`, `--no-download` or `--no-upload` leaves its cells empty rather than dropping its columns, so a script reading by position is not moved along by a skipped test:
 
@@ -244,9 +256,9 @@ NetPace --json-pretty
 }
 ```
 
-**`--unit`, `--unit-scale` and `--unit-system` do not change JSON output at all.** They shape the default and minimal output only. Passing one with `--json` or `--json-pretty` is accepted without an error or warning, and the result is byte-for-byte what the same run writes without it. That is what makes a saved JSON result comparable: a script comparing runs, writing to a database or checking a threshold reads the numbers and never has to strip a unit, convert between scales, or know which switches the run was made with.
+**`--unit`, `--unit-scale` and `--unit-system` do not change JSON output at all.** They shape the default and simple output only. Passing one with `--json` or `--json-pretty` is accepted without an error or warning, and the result is byte-for-byte what the same run writes without it. That is what makes a saved JSON result comparable: a script comparing runs, writing to a database or checking a threshold reads the numbers and never has to strip a unit, convert between scales, or know which switches the run was made with.
 
-Need a speed formatted for a person to read — for a notification, say? `--minimal` writes exactly that line, and follows the unit options.
+Need a speed formatted for a person to read — for a notification, say? `--simple` writes exactly that figure on its own line, and follows the unit options.
 
 A test you skipped with `--no-latency`, `--no-download` or `--no-upload` omits every field it would have filled. A download or upload test that ran but failed entirely reports `0`, with its request counts beside it — see [Detecting failed measurements](#detecting-failed-measurements). A latency measurement that fails ends the run instead, so it reports nothing.
 
@@ -256,7 +268,7 @@ The timestamp has one fixed format per output mode. There is no option to change
 
 | Output | Timestamp | Example |
 | --- | --- | --- |
-| Default, `--minimal` (with `--timestamp`) | Local time, `yyyy-MM-dd HH:mm:ss` | `2026-10-16 08:21:17` |
+| Default, `--simple` (with `--timestamp`) | Local time, `yyyy-MM-dd HH:mm:ss` | `2026-10-16 08:21:17` |
 | `--csv`, `--json` (always present) | ISO 8601 local time to the second with its offset from UTC | `2026-10-16T08:21:17+01:00` |
 
 The offset is what makes the machine-readable timestamp one unambiguous instant, so results logged from machines in different time zones — or from one machine either side of a clock change — sort and compare directly, and any date parser reads them without being told the format. Where the local offset is zero, that is written `+00:00`. Terminal output leaves the offset out: you already know the zone you are sitting in.
@@ -359,7 +371,7 @@ export NETPACE_THEME=green
 
 Names are matched without regard to case, so `GREEN` and `green` are the same request. Set the variable to something that is not a theme and NetPace says so on the error stream, naming the theme it is drawing in instead — the run is never stopped by a typo. `--quiet` suppresses that notice along with everything else.
 
-The theme reaches every screen a person reads: the speed test, `servers` in all its forms, and `--help`. It never reaches output another program parses — `--csv` and `--json` are byte-for-byte the same whatever the theme is. `--file` output is always written without colour, and `--minimal` has no colour to change.
+The theme reaches every screen a person reads: the speed test, `servers` in all its forms, and `--help`. It never reaches output another program parses — `--csv` and `--json` are byte-for-byte the same whatever the theme is. `--file` output is always written without colour, and `--simple` has no colour to change.
 
 Colour never carries meaning on its own in anything NetPace composes itself. A failure is marked by the word `Error:`, so it reads as a failure even where you cannot tell the colours apart or have turned colour off entirely. The one exception is the progress bar under `default` and `green`, where how much is done is shown by colour alone; the `plain` theme draws that distinction with glyphs and blank space instead.
 
@@ -373,7 +385,7 @@ A speed test runs many small requests in parallel and reports the aggregate thro
 
 Every output format carries the counts:
 
-**Default / `--minimal`** — the result token is annotated only when requests failed:
+**Default / `--simple`** — the result token is annotated only when requests failed:
 ```
 Latency: 24 ms, Download: 512.6 Mbps, Upload: 0 bps (32 of 32 requests failed)
 ```

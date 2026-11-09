@@ -111,16 +111,19 @@ public sealed partial class NetPaceConsoleTests
         }
 
         [Fact]
-        public async Task Should_Write_Minimal_On_One_Line_When_Stdout_Is_Redirected()
+        public async Task Should_Write_Simple_One_Figure_Per_Line_When_Stdout_Is_Redirected()
         {
             // Given stdout is redirected, and a result long enough to pass 80 columns
             var service = new ScriptedSpeedTester { DownloadFactory = _ => ScriptedSpeedTester.Partial(150, 5) };
 
             // When
-            var output = await RunAtWidthAsync(CommandLineTestHost.RedirectedWidth, ["--minimal", "--timestamp"], service);
+            var output = await RunAtWidthAsync(CommandLineTestHost.RedirectedWidth, ["--simple", "--timestamp"], service);
 
-            // Then
-            Assert.Single(Lines(output));
+            // Then the only line breaks are the ones the format defines - one per figure, and the
+            // timestamp above them - so a figure annotated past 80 columns still arrives whole.
+            var lines = Lines(output);
+            Assert.Equal(4, lines.Length);
+            Assert.All(lines, line => Assert.Matches(@"^(Timestamp|Ping|Download|Upload): ", line));
             await Verify(output);
         }
 
@@ -146,7 +149,7 @@ public sealed partial class NetPaceConsoleTests
         [InlineData("--json")]
         [InlineData("--json-pretty")]
         [InlineData("--csv")]
-        [InlineData("--minimal")]
+        [InlineData("--simple")]
         [Theory]
         public async Task Should_Write_Machine_Readable_Output_Unbroken_In_A_Narrow_Terminal(string formatSwitch)
         {

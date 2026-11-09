@@ -15,7 +15,7 @@ public sealed partial class NetPaceConsoleTests
         /// The four output formats, by the switch that selects each. The default format is selected
         /// by no switch at all.
         /// </summary>
-        public static TheoryData<string> OutputFormats() => new("", "--minimal", "--csv", "--json");
+        public static TheoryData<string> OutputFormats() => new("", "--simple", "--csv", "--json");
 
         private static CommandLineTestHost HostWith(bool failEveryUpload = false)
         {
@@ -56,7 +56,7 @@ public sealed partial class NetPaceConsoleTests
         }
 
         [Theory]
-        [InlineData("--minimal")]
+        [InlineData("--simple")]
         [InlineData("--csv")]
         [InlineData("--json")]
         public async Task Every_OutputFormat_ProducesTheSameDiagnostics(string outputFormat)
@@ -89,7 +89,7 @@ public sealed partial class NetPaceConsoleTests
         {
             // Given the user named the server.
             // When the run goes ahead with diagnostics.
-            var result = await HostWith().RunAsync(["--minimal", "--server-url", DiagnosticSpeedTester.Url, "--diagnostics"]);
+            var result = await HostWith().RunAsync(["--simple", "--server-url", DiagnosticSpeedTester.Url, "--diagnostics"]);
 
             // Then the route says so, and no screening figure is claimed - nothing was screened.
             await Verify(result.DiagnosticOutput);
@@ -100,7 +100,7 @@ public sealed partial class NetPaceConsoleTests
         {
             // Given --no-latency without --server-url, so the first server offered is used.
             // When the run goes ahead with diagnostics.
-            var result = await HostWith().RunAsync(["--minimal", "--no-latency", "--diagnostics"]);
+            var result = await HostWith().RunAsync(["--simple", "--no-latency", "--diagnostics"]);
 
             // Then the route says so, and no latency figure is reported at all.
             await Verify(result.DiagnosticOutput);
@@ -111,7 +111,7 @@ public sealed partial class NetPaceConsoleTests
         {
             // Given a run with the download test switched off.
             // When it runs with diagnostics.
-            var result = await HostWith().RunAsync(["--minimal", "--no-download", "--diagnostics"]);
+            var result = await HostWith().RunAsync(["--simple", "--no-download", "--diagnostics"]);
 
             // Then the tests that ran are named, and the one that did not is absent.
             await Verify(result.DiagnosticOutput);
@@ -123,7 +123,7 @@ public sealed partial class NetPaceConsoleTests
             // Given a run whose every test issues more than one request, and no --server-url, so
             // screening chooses the route.
             // When it runs with diagnostics.
-            var result = await HostWith().RunAsync(["--minimal", "--diagnostics"]);
+            var result = await HostWith().RunAsync(["--simple", "--diagnostics"]);
 
             // Then each request has its own record and the test's summary agrees with them, and the
             // chosen route is named with the screening figure the choice was based on - not the
@@ -139,7 +139,7 @@ public sealed partial class NetPaceConsoleTests
 
             // Given a server that rejects every upload.
             // When the run goes ahead with diagnostics.
-            var result = await HostWith(failEveryUpload: true).RunAsync(["--minimal", "--diagnostics"]);
+            var result = await HostWith(failEveryUpload: true).RunAsync(["--simple", "--diagnostics"]);
 
             // Then the cause is attributable to the requests that failed, and it is on the record -
             // no second run, no hand-patched build. The rejection is a measurement outcome, so the
@@ -157,7 +157,7 @@ public sealed partial class NetPaceConsoleTests
             try
             {
                 // When the run goes ahead with diagnostics.
-                var result = await HostWith().RunAsync(["--minimal", "--quiet", "--file", outputFile, "--diagnostics"]);
+                var result = await HostWith().RunAsync(["--simple", "--quiet", "--file", outputFile, "--diagnostics"]);
 
                 // Then diagnostics still reach the diagnostic stream, and never the file target.
                 Assert.Contains("event=run.start", result.DiagnosticOutput, StringComparison.Ordinal);
@@ -174,7 +174,7 @@ public sealed partial class NetPaceConsoleTests
         {
             // Given three iterations of the same test.
             // When they run with diagnostics.
-            var result = await HostWith().RunAsync(["--minimal", "--count", "3", "--diagnostics"]);
+            var result = await HostWith().RunAsync(["--simple", "--count", "3", "--diagnostics"]);
 
             // Then the run is described once, and each iteration contributes its own test records.
             Assert.Equal(1, CountLines(result.DiagnosticOutput, "event=run.start"));
@@ -189,7 +189,7 @@ public sealed partial class NetPaceConsoleTests
         {
             // Given a run told to exit non-zero on a totally failed measurement.
             // When every upload fails.
-            var result = await HostWith(failEveryUpload: true).RunAsync(["--minimal", "--fail-on", "Total", "--diagnostics"]);
+            var result = await HostWith(failEveryUpload: true).RunAsync(["--simple", "--fail-on", "Total", "--diagnostics"]);
 
             // Then the diagnostics record the code the process actually exited with.
             Assert.Equal(1, result.ExitCode);
@@ -201,7 +201,7 @@ public sealed partial class NetPaceConsoleTests
         {
             // Given a run whose failure reasons are long and would wrap at any terminal width.
             // When it runs with diagnostics.
-            var result = await HostWith(failEveryUpload: true).RunAsync(["--minimal", "--diagnostics"]);
+            var result = await HostWith(failEveryUpload: true).RunAsync(["--simple", "--diagnostics"]);
 
             // Then every line is a complete record, so grepping a subset loses nothing.
             var lines = result.DiagnosticOutput.Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries);
@@ -223,7 +223,7 @@ public sealed partial class NetPaceConsoleTests
             var host = new CommandLineTestHost(services);
 
             // When it runs with diagnostics.
-            var result = await host.RunAsync(["--minimal", "--loop", "--diagnostics"], cancellation.Token);
+            var result = await host.RunAsync(["--simple", "--loop", "--diagnostics"], cancellation.Token);
 
             // Then the run is described once however many iterations it made, and each iteration
             // contributes its own test records.
@@ -275,7 +275,7 @@ public sealed partial class NetPaceConsoleTests
             services.AddSingleton<IWaiter, NoDelayStub>();
 
             // When it runs with diagnostics.
-            var result = await new CommandLineTestHost(services).RunAsync(["--minimal", "--diagnostics"]);
+            var result = await new CommandLineTestHost(services).RunAsync(["--simple", "--diagnostics"]);
 
             // Then the records written before the fault still reach the stream, and run.end reports
             // the code the process exited with - a run that failed is when its diagnostics matter
@@ -297,13 +297,13 @@ public sealed partial class NetPaceConsoleTests
             services.AddSingleton<IWaiter, NoDelayStub>();
 
             // When the run flushes its diagnostics.
-            var result = await new CommandLineTestHost(services).RunAsync(["--minimal", "--diagnostics"]);
+            var result = await new CommandLineTestHost(services).RunAsync(["--simple", "--diagnostics"]);
 
             // Then the measurement still reports its result and exits 0: diagnostics are a second
             // stream, so one that cannot be written does not decide the run's exit code. Before
             // this was guarded, the write failure escaped and the run exited 1.
             Assert.Equal(0, result.ExitCode);
-            Assert.Contains("Latency:", result.Output, StringComparison.Ordinal);
+            Assert.Contains("Ping:", result.Output, StringComparison.Ordinal);
         }
 
         /// <summary>
