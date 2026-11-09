@@ -64,7 +64,7 @@ public sealed class LiveSpeedColumnTests
         column.Report(task, new SpeedTestProgress { PercentageComplete = 100, BytesProcessed = 900, ElapsedMilliseconds = 1000 });
 
         // When
-        column.Settle(task, new SpeedTestResult { BytesProcessed = 1000, ElapsedMilliseconds = 1000, RequestsSucceeded = 150, RequestsFailed = 0 });
+        column.Settle(task, new SpeedTestResult { BytesProcessed = 1000, ElapsedMilliseconds = 1000, RequestsSucceeded = 150, RequestsFailed = 0, Latency = null });
 
         // Then the figure ends on the speed the result reports.
         Assert.Equal("8 Kbps", FigureShown(column, task));

@@ -42,6 +42,7 @@ public sealed partial class OoklaSpeedtestTests
 
             var settings = new OoklaSpeedtestSettings
             {
+                LatencyTest = new() { LoadedLatencyEnabled = false },
                 DownloadTest = new()
                 {
                     DownloadSizes = [100],
@@ -89,6 +90,7 @@ public sealed partial class OoklaSpeedtestTests
 
             var settings = new OoklaSpeedtestSettings
             {
+                LatencyTest = new() { LoadedLatencyEnabled = false },
                 DownloadTest = new()
                 {
                     DownloadSizes = [100],
@@ -132,6 +134,7 @@ public sealed partial class OoklaSpeedtestTests
 
             var settings = new OoklaSpeedtestSettings
             {
+                LatencyTest = new() { LoadedLatencyEnabled = false },
                 UploadTest = new()
                 {
                     UploadSizeIncrementKb = payloadKb,
@@ -174,6 +177,7 @@ public sealed partial class OoklaSpeedtestTests
 
             var settings = new OoklaSpeedtestSettings
             {
+                LatencyTest = new() { LoadedLatencyEnabled = false },
                 DownloadTest = new()
                 {
                     DownloadSizes = [100],
@@ -239,6 +243,7 @@ public sealed partial class OoklaSpeedtestTests
 
             var settings = new OoklaSpeedtestSettings
             {
+                LatencyTest = new() { LoadedLatencyEnabled = false },
                 DownloadTest = new()
                 {
                     DownloadSizes = [100],
@@ -274,6 +279,7 @@ public sealed partial class OoklaSpeedtestTests
 
             var settings = new OoklaSpeedtestSettings
             {
+                LatencyTest = new() { LoadedLatencyEnabled = false },
                 DownloadTest = new()
                 {
                     DownloadSizes = [100],
@@ -446,7 +452,9 @@ public sealed partial class OoklaSpeedtestTests
                 UploadIncrements = 1,
                 UploadSizeIterations = 1,
                 UploadParallelTasks = 1
-            }
+            },
+            // An under-load probe would add a record to the exact lists these tests assert.
+            LatencyTest = new() { LoadedLatencyEnabled = false }
         };
 
         [Fact]
@@ -477,6 +485,7 @@ public sealed partial class OoklaSpeedtestTests
 
             var settings = new OoklaSpeedtestSettings
             {
+                LatencyTest = new() { LoadedLatencyEnabled = false },
                 DownloadTest = new()
                 {
                     DownloadSizes = [100],

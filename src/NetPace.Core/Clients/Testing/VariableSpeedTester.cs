@@ -13,7 +13,7 @@ namespace NetPace.Core.Clients.Testing;
 /// </para>
 /// <list type="bullet">
 /// <item><description>Latency: 75ms, 100ms, 150ms, then 100ms.</description></item>
-/// <item><description>Jitter: 5ms, 10ms, 20ms, then 10ms — beside the latency of the same run.</description></item>
+/// <item><description>Jitter: 5ms, 10ms, 20ms, then 10ms — beside the latency of the same run, with the lowest and highest probe a jitter either side of it.</description></item>
 /// <item><description>Download: 31,250 bytes, 125,000, 343,750, then 125,000 — each over 1 second, so 0.25, 1.0, 2.75 then 1.0 Mbps — from 40, 150, 400 then 150 requests, none failed.</description></item>
 /// <item><description>Upload: 62,500 bytes, 375,000, 166,250, then 375,000 — each over 1 second, so 0.5, 3.0, 1.33 then 3.0 Mbps — from 12, 64, 30 then 64 requests, none failed.</description></item>
 /// </list>
@@ -21,6 +21,11 @@ namespace NetPace.Core.Clients.Testing;
 /// A caller screens the servers and then measures the winner, so both calls land within one test
 /// and report that test's latency and jitter. Measuring without screening first reports the figures of the
 /// test in progress, and before any screening that is the middling run.
+/// </para>
+/// <para>
+/// A transfer reports no latency under load. The tester's figures stand for a sequence of runs
+/// rather than for a line, so there is nothing for a probe-derived figure to be consistent with,
+/// and a fabricated one would be a figure about nothing.
 /// </para>
 /// </remarks>
 public class VariableSpeedTester : ISpeedTestService
@@ -70,10 +75,10 @@ public class VariableSpeedTester : ISpeedTestService
 
                 SpeedTestResult result = callCount switch
                 {
-                    1 => new SpeedTestResult { BytesProcessed = 31250, ElapsedMilliseconds = 1000, RequestsSucceeded = 40, RequestsFailed = 0 },
-                    2 => new SpeedTestResult { BytesProcessed = 125000, ElapsedMilliseconds = 1000, RequestsSucceeded = 150, RequestsFailed = 0 },
-                    3 => new SpeedTestResult { BytesProcessed = 343750, ElapsedMilliseconds = 1000, RequestsSucceeded = 400, RequestsFailed = 0 },
-                    _ => new SpeedTestResult { BytesProcessed = 125000, ElapsedMilliseconds = 1000, RequestsSucceeded = 150, RequestsFailed = 0 }
+                    1 => new SpeedTestResult { BytesProcessed = 31250, ElapsedMilliseconds = 1000, RequestsSucceeded = 40, RequestsFailed = 0, Latency = null },
+                    2 => new SpeedTestResult { BytesProcessed = 125000, ElapsedMilliseconds = 1000, RequestsSucceeded = 150, RequestsFailed = 0, Latency = null },
+                    3 => new SpeedTestResult { BytesProcessed = 343750, ElapsedMilliseconds = 1000, RequestsSucceeded = 400, RequestsFailed = 0, Latency = null },
+                    _ => new SpeedTestResult { BytesProcessed = 125000, ElapsedMilliseconds = 1000, RequestsSucceeded = 150, RequestsFailed = 0, Latency = null }
                 };
                 return Task.FromResult(result);
             },
@@ -87,10 +92,10 @@ public class VariableSpeedTester : ISpeedTestService
 
                 SpeedTestResult result = callCount switch
                 {
-                    1 => new SpeedTestResult { BytesProcessed = 62500, ElapsedMilliseconds = 1000, RequestsSucceeded = 12, RequestsFailed = 0 },
-                    2 => new SpeedTestResult { BytesProcessed = 375000, ElapsedMilliseconds = 1000, RequestsSucceeded = 64, RequestsFailed = 0 },
-                    3 => new SpeedTestResult { BytesProcessed = 166250, ElapsedMilliseconds = 1000, RequestsSucceeded = 30, RequestsFailed = 0 },
-                    _ => new SpeedTestResult { BytesProcessed = 375000, ElapsedMilliseconds = 1000, RequestsSucceeded = 64, RequestsFailed = 0 }
+                    1 => new SpeedTestResult { BytesProcessed = 62500, ElapsedMilliseconds = 1000, RequestsSucceeded = 12, RequestsFailed = 0, Latency = null },
+                    2 => new SpeedTestResult { BytesProcessed = 375000, ElapsedMilliseconds = 1000, RequestsSucceeded = 64, RequestsFailed = 0, Latency = null },
+                    3 => new SpeedTestResult { BytesProcessed = 166250, ElapsedMilliseconds = 1000, RequestsSucceeded = 30, RequestsFailed = 0, Latency = null },
+                    _ => new SpeedTestResult { BytesProcessed = 375000, ElapsedMilliseconds = 1000, RequestsSucceeded = 64, RequestsFailed = 0, Latency = null }
                 };
                 return Task.FromResult(result);
             }
@@ -115,7 +120,16 @@ public class VariableSpeedTester : ISpeedTestService
             _ => (100L, 10L)
         };
 
-        return new LatencyTestResult { Server = server, LatencyMilliseconds = latencyMilliseconds, JitterMilliseconds = jitterMilliseconds };
+        // The lowest and highest sit a jitter either side of the average, so the three figures are
+        // consistent with each other rather than three free numbers.
+        return new LatencyTestResult
+        {
+            Server = server,
+            LatencyMilliseconds = latencyMilliseconds,
+            MinimumLatencyMilliseconds = latencyMilliseconds - jitterMilliseconds,
+            MaximumLatencyMilliseconds = latencyMilliseconds + jitterMilliseconds,
+            JitterMilliseconds = jitterMilliseconds
+        };
     }
 
     /// <inheritdoc/>

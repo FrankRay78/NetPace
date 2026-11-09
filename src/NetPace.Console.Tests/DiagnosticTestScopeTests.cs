@@ -89,10 +89,68 @@ public sealed class DiagnosticTestScopeTests
         Assert.Equal(500, recorder.SummaryBytes);
     }
 
-    private static RequestDiagnostic Diagnostic(int sequence, RequestOutcome outcome, long bytes = 0) =>
+    [Theory]
+    [InlineData("download")]
+    [InlineData("upload")]
+    public void Report_ALatencyProbeDuringATransfer_RecordsItAsAProbeAndLeavesItOutOfTheSummary(string test)
+    {
+        // Given a transfer test that reports one of its own requests and one latency probe.
+        var recorder = new RecordingRecorder();
+
+        using (var scope = DiagnosticTestScope.For(recorder, test)!)
+        {
+            scope.Report(Diagnostic(1, RequestOutcome.Succeeded, bytes: 500));
+            scope.Report(Diagnostic(1, RequestOutcome.Succeeded, bytes: 9, kind: RequestKind.LatencyProbe));
+        }
+
+        // Then the probe gets a record of its own, and the summary totals only the transfer's own
+        // request - which is what keeps that summary reconciling with the request lines above it.
+        Assert.Contains("probe", recorder.Events);
+        Assert.Equal("requests=1 succeeded=1 failed=0 cancelled=0", recorder.Summary);
+        Assert.Equal(500, recorder.SummaryBytes);
+    }
+
+    [Fact]
+    public void Report_AnUploadEndpointProbe_CountsItAsAnOrdinaryRequest()
+    {
+        // Given an upload that resolves its endpoint with a probe before measuring.
+        var recorder = new RecordingRecorder();
+
+        using (var scope = DiagnosticTestScope.For(recorder, "upload")!)
+        {
+            scope.Report(Diagnostic(1, RequestOutcome.Succeeded, kind: RequestKind.EndpointProbe));
+        }
+
+        // Then it stays an ordinary request line and is counted - only latency probes are set apart.
+        Assert.Contains("request", recorder.Events);
+        Assert.DoesNotContain("probe", recorder.Events);
+        Assert.Equal("requests=1 succeeded=1 failed=0 cancelled=0", recorder.Summary);
+    }
+
+    [Theory]
+    [InlineData("latency")]
+    [InlineData("screening")]
+    public void Report_ALatencyProbeWhereTheProbesAreTheMeasurement_CountsItAsAnOrdinaryRequest(string test)
+    {
+        // Given a test whose probes are the measurement rather than something done alongside it.
+        var recorder = new RecordingRecorder();
+
+        using (var scope = DiagnosticTestScope.For(recorder, test)!)
+        {
+            scope.Report(Diagnostic(1, RequestOutcome.Succeeded, bytes: 9, kind: RequestKind.LatencyProbe));
+        }
+
+        // Then it stays an ordinary request line and is counted.
+        Assert.Contains("request", recorder.Events);
+        Assert.DoesNotContain("probe", recorder.Events);
+        Assert.Equal("requests=1 succeeded=1 failed=0 cancelled=0", recorder.Summary);
+    }
+
+    private static RequestDiagnostic Diagnostic(int sequence, RequestOutcome outcome, long bytes = 0, RequestKind kind = RequestKind.Transfer) =>
         new()
         {
             StartedAt = new DateTime(1980, 1, 1, 10, 5, 0),
+            Kind = kind,
             Sequence = sequence,
             Url = "http://example.com/",
             Outcome = outcome,

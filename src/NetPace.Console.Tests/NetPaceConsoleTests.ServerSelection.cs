@@ -30,13 +30,13 @@ public sealed partial class NetPaceConsoleTests
             {
                 GetServersAsyncFunc = _ => Task.FromResult<IServer[]>([discoveredServers[0]]),
                 GetFastestServerByLatencyAsyncFunc = (servers, _, _) =>
-                    Task.FromResult(new LatencyTestResult { Server = servers[0], LatencyMilliseconds = 5, JitterMilliseconds = 0 }),
+                    Task.FromResult(new LatencyTestResult { Server = servers[0], LatencyMilliseconds = 5, MinimumLatencyMilliseconds = null, MaximumLatencyMilliseconds = null, JitterMilliseconds = 0 }),
                 GetServerLatencyAsyncFunc = (server, _, _) =>
-                    Task.FromResult(new LatencyTestResult { Server = server, LatencyMilliseconds = 42, JitterMilliseconds = 4 }),
+                    Task.FromResult(new LatencyTestResult { Server = server, LatencyMilliseconds = 42, MinimumLatencyMilliseconds = null, MaximumLatencyMilliseconds = null, JitterMilliseconds = 4 }),
                 GetDownloadSpeedAsyncFunc = (_, _, _) =>
-                    Task.FromResult(new SpeedTestResult { BytesProcessed = 1000, ElapsedMilliseconds = 1000, RequestsSucceeded = 150, RequestsFailed = 0 }),
+                    Task.FromResult(new SpeedTestResult { BytesProcessed = 1000, ElapsedMilliseconds = 1000, RequestsSucceeded = 150, RequestsFailed = 0, Latency = null }),
                 GetUploadSpeedAsyncFunc = (_, _, _) =>
-                    Task.FromResult(new SpeedTestResult { BytesProcessed = 7000, ElapsedMilliseconds = 3000, RequestsSucceeded = 32, RequestsFailed = 0 }),
+                    Task.FromResult(new SpeedTestResult { BytesProcessed = 7000, ElapsedMilliseconds = 3000, RequestsSucceeded = 32, RequestsFailed = 0, Latency = null }),
             };
 
             var services = new ServiceCollection();
@@ -64,7 +64,7 @@ public sealed partial class NetPaceConsoleTests
             {
                 GetServersAsyncFunc = _ => Task.FromResult(discoveredServers),
                 GetFastestServerByLatencyAsyncFunc = (servers, _, _) =>
-                    Task.FromResult(new LatencyTestResult { Server = servers[0], LatencyMilliseconds = 5, JitterMilliseconds = 0 }),
+                    Task.FromResult(new LatencyTestResult { Server = servers[0], LatencyMilliseconds = 5, MinimumLatencyMilliseconds = null, MaximumLatencyMilliseconds = null, JitterMilliseconds = 0 }),
                 GetServerLatencyAsyncFunc = (_, _, _) =>
                     throw new Exception("Server returned incorrect test string for latency.txt"),
             };
@@ -110,10 +110,10 @@ public sealed partial class NetPaceConsoleTests
                         throw new NoServersAvailableException();
                     }
 
-                    return Task.FromResult(new LatencyTestResult { Server = ranked[0].candidate, LatencyMilliseconds = ranked[0].latency!.Value, JitterMilliseconds = 0 });
+                    return Task.FromResult(new LatencyTestResult { Server = ranked[0].candidate, LatencyMilliseconds = ranked[0].latency!.Value, MinimumLatencyMilliseconds = null, MaximumLatencyMilliseconds = null, JitterMilliseconds = 0 });
                 },
                 GetServerLatencyAsyncFunc = (server, _, _) =>
-                    Task.FromResult(new LatencyTestResult { Server = server, LatencyMilliseconds = 999, JitterMilliseconds = 9 }),
+                    Task.FromResult(new LatencyTestResult { Server = server, LatencyMilliseconds = 999, MinimumLatencyMilliseconds = null, MaximumLatencyMilliseconds = null, JitterMilliseconds = 9 }),
             };
 
             var services = new ServiceCollection();
@@ -174,7 +174,7 @@ public sealed partial class NetPaceConsoleTests
 
                     await allServersAsked.Task.WaitAsync(TimeSpan.FromSeconds(5), cancellationToken);
 
-                    return new LatencyTestResult { Server = servers[0], LatencyMilliseconds = Array.IndexOf(discoveredServers, servers[0]) + 71, JitterMilliseconds = 0 };
+                    return new LatencyTestResult { Server = servers[0], LatencyMilliseconds = Array.IndexOf(discoveredServers, servers[0]) + 71, MinimumLatencyMilliseconds = null, MaximumLatencyMilliseconds = null, JitterMilliseconds = 0 };
                 },
             };
 

@@ -37,4 +37,25 @@ public sealed record SpeedTestResult
     /// Failed requests contribute no bytes to <see cref="BytesProcessed"/>.
     /// </summary>
     public required int RequestsFailed { get; init; }
+
+    /// <summary>
+    /// Gets the latency measured while this transfer was running — latency under load — or
+    /// <see langword="null"/> where it was not measured.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The figures come from small probes sent to the same server while the transfer ran:
+    /// <see cref="LatencyTestResult.LatencyMilliseconds"/> is their plain mean, so it compares
+    /// directly with an idle measurement, and the lowest, highest and jitter are of the same
+    /// samples. The probes' bytes and durations are not part of <see cref="BytesProcessed"/> or
+    /// <see cref="ElapsedMilliseconds"/>, so they never enter the reported speed.
+    /// </para>
+    /// <para>
+    /// <see langword="null"/> says not measured, which is not the same as zero: the measurement was
+    /// switched off, the transfer ended before the first probe was due, no probe answered before it
+    /// ended, or every one of the transfer's own requests failed, so the probes never saw a loaded
+    /// line.
+    /// </para>
+    /// </remarks>
+    public required LatencyTestResult? Latency { get; init; }
 }

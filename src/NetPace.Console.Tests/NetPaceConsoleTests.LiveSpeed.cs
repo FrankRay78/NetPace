@@ -218,7 +218,7 @@ public sealed partial class NetPaceConsoleTests
         }
 
         private static SpeedTestResult Measured(long bytes, long elapsedMilliseconds) =>
-            new() { BytesProcessed = bytes, ElapsedMilliseconds = elapsedMilliseconds, RequestsSucceeded = 1, RequestsFailed = 0 };
+            new() { BytesProcessed = bytes, ElapsedMilliseconds = elapsedMilliseconds, RequestsSucceeded = 1, RequestsFailed = 0, Latency = null };
 
         /// <summary>
         /// A service whose second run is twice as fast as its first, so one run's figures cannot be

@@ -16,7 +16,8 @@ namespace NetPace.Core.Clients.Testing;
 /// </para>
 /// <list type="bullet">
 /// <item><description>Latency is 100ms times the server number.</description></item>
-/// <item><description>Jitter is 10ms times the server number — so 30ms for server 3 — beside that latency.</description></item>
+/// <item><description>Jitter is 10ms times the server number — so 30ms for server 3 — beside that latency, with the lowest and highest probe a jitter either side of the average: 90ms and 110ms times the server number.</description></item>
+/// <item><description>A transfer reports latency under load of 150ms times the server number, with a lowest of 120ms, a highest of 200ms and a jitter of 20ms, each times that number — a loaded line being slower and less steady than the same line idle.</description></item>
 /// <item><description>A download is always 1,000 bytes, taking 1 second times the server number — so 3 seconds for server 3 — from 150 requests, none failed.</description></item>
 /// <item><description>An upload is always 7,000 bytes, taking 3 seconds times the server number, from 32 requests, none failed.</description></item>
 /// <item><description>Screening wins the lowest-numbered candidate offered, at that server's latency and jitter.</description></item>
@@ -42,6 +43,13 @@ public sealed class SpeedTestStub : ISpeedTestService
     // Per unit of server number, so a higher-numbered server is both slower and less steady.
     private const int LatencyMillisecondsPerServerNumber = 100;
     private const int JitterMillisecondsPerServerNumber = 10;
+
+    // The same, for the latency a transfer reports having measured under its own load: higher than
+    // the idle figures, as a loaded line is.
+    private const int LoadedLatencyMillisecondsPerServerNumber = 150;
+    private const int LoadedMinimumMillisecondsPerServerNumber = 120;
+    private const int LoadedMaximumMillisecondsPerServerNumber = 200;
+    private const int LoadedJitterMillisecondsPerServerNumber = 20;
 
     private readonly IServer[] stubServers = new IServer[]
     {
@@ -105,12 +113,7 @@ public sealed class SpeedTestStub : ISpeedTestService
 
         var serverID = GetServerID(server.Url);
 
-        var latencyResult = new LatencyTestResult
-        {
-            Server = server,
-            LatencyMilliseconds = serverID * LatencyMillisecondsPerServerNumber,
-            JitterMilliseconds = serverID * JitterMillisecondsPerServerNumber
-        };
+        var latencyResult = IdleLatencyFor(server, serverID);
 
         return Task.FromResult(latencyResult);
     }
@@ -156,12 +159,7 @@ public sealed class SpeedTestStub : ISpeedTestService
 
         var serverID = GetServerID(fastest.Url);
 
-        var latencyResult = new LatencyTestResult
-        {
-            Server = fastest,
-            LatencyMilliseconds = serverID * LatencyMillisecondsPerServerNumber,
-            JitterMilliseconds = serverID * JitterMillisecondsPerServerNumber
-        };
+        var latencyResult = IdleLatencyFor(fastest, serverID);
 
         return Task.FromResult(latencyResult);
     }
@@ -177,7 +175,7 @@ public sealed class SpeedTestStub : ISpeedTestService
     {
         var serverID = GetServerID(server.Url);
 
-        var result = new SpeedTestResult() { BytesProcessed = 1000, ElapsedMilliseconds = 1000 * serverID, RequestsSucceeded = 150, RequestsFailed = 0 };
+        var result = new SpeedTestResult() { BytesProcessed = 1000, ElapsedMilliseconds = 1000 * serverID, RequestsSucceeded = 150, RequestsFailed = 0, Latency = LoadedLatencyFor(server, serverID) };
 
         ReportClimbTo(result, progress ?? new NullProgress<SpeedTestProgress>());
 
@@ -195,12 +193,37 @@ public sealed class SpeedTestStub : ISpeedTestService
     {
         var serverID = GetServerID(server.Url);
 
-        var result = new SpeedTestResult() { BytesProcessed = 7000, ElapsedMilliseconds = 3000 * serverID, RequestsSucceeded = 32, RequestsFailed = 0 };
+        var result = new SpeedTestResult() { BytesProcessed = 7000, ElapsedMilliseconds = 3000 * serverID, RequestsSucceeded = 32, RequestsFailed = 0, Latency = LoadedLatencyFor(server, serverID) };
 
         ReportClimbTo(result, progress ?? new NullProgress<SpeedTestProgress>());
 
         return Task.FromResult(result);
     }
+
+    /// <summary>
+    /// The idle latency figures for a server. The lowest and highest sit a jitter either side of
+    /// the average, so the three are consistent with each other rather than three free numbers.
+    /// </summary>
+    private static LatencyTestResult IdleLatencyFor(IServer server, int serverID) => new()
+    {
+        Server = server,
+        LatencyMilliseconds = serverID * LatencyMillisecondsPerServerNumber,
+        MinimumLatencyMilliseconds = serverID * (LatencyMillisecondsPerServerNumber - JitterMillisecondsPerServerNumber),
+        MaximumLatencyMilliseconds = serverID * (LatencyMillisecondsPerServerNumber + JitterMillisecondsPerServerNumber),
+        JitterMilliseconds = serverID * JitterMillisecondsPerServerNumber
+    };
+
+    /// <summary>
+    /// The latency figures a transfer reports having measured under its own load.
+    /// </summary>
+    private static LatencyTestResult LoadedLatencyFor(IServer server, int serverID) => new()
+    {
+        Server = server,
+        LatencyMilliseconds = serverID * LoadedLatencyMillisecondsPerServerNumber,
+        MinimumLatencyMilliseconds = serverID * LoadedMinimumMillisecondsPerServerNumber,
+        MaximumLatencyMilliseconds = serverID * LoadedMaximumMillisecondsPerServerNumber,
+        JitterMilliseconds = serverID * LoadedJitterMillisecondsPerServerNumber
+    };
 
     /// <summary>
     /// Reports progress towards <paramref name="result"/>, pausing by the configured delay before

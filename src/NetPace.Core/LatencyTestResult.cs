@@ -29,6 +29,26 @@ public sealed record LatencyTestResult
     public required long LatencyMilliseconds { get; init; }
 
     /// <summary>
+    /// Gets the lowest of the probe times behind <see cref="LatencyMilliseconds"/>, in
+    /// milliseconds, or <see langword="null"/> where no run of probe times was recorded.
+    /// </summary>
+    /// <remarks>
+    /// A measurement that kept its probe times states a figure; one that did not — server
+    /// screening, which keeps no run of probe times, or a caller that skipped the measurement
+    /// altogether — states <see langword="null"/>, which says not recorded rather than zero.
+    /// </remarks>
+    public required long? MinimumLatencyMilliseconds { get; init; }
+
+    /// <summary>
+    /// Gets the highest of the probe times behind <see cref="LatencyMilliseconds"/>, in
+    /// milliseconds, or <see langword="null"/> where no run of probe times was recorded.
+    /// </summary>
+    /// <remarks>
+    /// Absent on the same terms as <see cref="MinimumLatencyMilliseconds"/>.
+    /// </remarks>
+    public required long? MaximumLatencyMilliseconds { get; init; }
+
+    /// <summary>
     /// Gets the measured jitter to the server, in milliseconds: how uneven the round trips were,
     /// as the mean of the absolute differences between consecutive probe times.
     /// </summary>

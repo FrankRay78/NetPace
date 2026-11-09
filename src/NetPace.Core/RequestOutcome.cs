@@ -17,7 +17,8 @@ public enum RequestOutcome
 
     /// <summary>
     /// The request was abandoned rather than failing on its own merits: the total-byte budget was
-    /// reached, the server-selection ceiling expired, or the caller cancelled.
+    /// reached, the server-selection ceiling expired, the caller cancelled, or - for a latency probe -
+    /// the transfer it was probing beside ended.
     /// </summary>
     Cancelled
 }

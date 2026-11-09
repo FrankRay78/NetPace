@@ -234,6 +234,33 @@ public sealed partial class NetPaceConsoleTests
         }
 
         [Fact]
+        public async Task Diagnostics_RecordEachProbeAndKeepItOutOfTheTransferTotals()
+        {
+            // SCENARIO: The diagnostic log keeps probes out of the transfer totals
+
+            // Given a run whose download and upload each send an under-load latency probe.
+            // When it runs with diagnostics.
+            var result = await HostWith().RunAsync(["--diagnostics"]);
+            var lines = result.DiagnosticOutput.Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries);
+
+            // Then each probe has a record of its own, identifiable as a probe rather than as one
+            // of the transfer's requests.
+            Assert.Equal(1, CountLines(result.DiagnosticOutput, "event=probe test=download"));
+            Assert.Equal(1, CountLines(result.DiagnosticOutput, "event=probe test=upload"));
+
+            // And each transfer's summary still totals exactly its own request records, so the two
+            // keep reconciling.
+            foreach (var test in new[] { "download", "upload" })
+            {
+                var requests = lines.Count(line => line.Contains($"event=request test={test}", StringComparison.Ordinal));
+                var summary = lines.Single(line => line.Contains($"event=test.end test={test}", StringComparison.Ordinal));
+
+                Assert.True(requests > 0, $"the {test} test recorded no requests to reconcile against");
+                Assert.Contains($"requests={requests}", summary, StringComparison.Ordinal);
+            }
+        }
+
+        [Fact]
         public async Task A_RunThatFailsOutright_StillWritesItsDiagnostics()
         {
             // Given a run that fails with an operational fault - NetPace's own health rather than a

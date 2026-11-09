@@ -53,7 +53,7 @@ internal static class ServerSelector
                 var firstServer = servers.First();
                 return new ServerSelection
                 {
-                    Result = new LatencyTestResult { Server = firstServer, LatencyMilliseconds = 0, JitterMilliseconds = 0 },
+                    Result = Unmeasured(firstServer),
                     Route = ServerSelection.FirstInListRoute
                 };
             }
@@ -63,7 +63,7 @@ internal static class ServerSelector
                 var server = new Server { Sponsor = Server.UnknownSponsor, Url = settings.ServerUrl };
                 return new ServerSelection
                 {
-                    Result = new LatencyTestResult { Server = server, LatencyMilliseconds = 0, JitterMilliseconds = 0 },
+                    Result = Unmeasured(server),
                     Route = ServerSelection.SpecifiedRoute
                 };
             }
@@ -107,4 +107,12 @@ internal static class ServerSelector
             }
         }
     }
+
+    /// <summary>
+    /// A server chosen without measuring its latency, under <c>--no-latency</c>: no probe time was
+    /// recorded, so the extremes say not recorded and the figures that do read as a number are
+    /// zero.
+    /// </summary>
+    private static LatencyTestResult Unmeasured(IServer server) =>
+        new() { Server = server, LatencyMilliseconds = 0, MinimumLatencyMilliseconds = null, MaximumLatencyMilliseconds = null, JitterMilliseconds = 0 };
 }

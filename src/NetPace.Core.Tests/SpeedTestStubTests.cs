@@ -562,4 +562,48 @@ public sealed class SpeedTestStubTests
         Assert.Equal(1000, download.BytesProcessed);
         Assert.Equal(7000, upload.BytesProcessed);
     }
+
+    [Fact]
+    public async Task TheStubsTransfers_ReportTheUnderLoadFigures_ItsDocumentationStates()
+    {
+        // SCENARIO: Test doubles report under-load figures
+
+        // Given the stub's three servers, whose numbers scale every figure it reports.
+        var stub = new SpeedTestStub();
+        var servers = await stub.GetServersAsync();
+
+        // When a download and an upload run against server 3.
+        var download = await stub.GetDownloadSpeedAsync(servers[2]);
+        var upload = await stub.GetUploadSpeedAsync(servers[2]);
+
+        // Then each result carries the under-load figures the stub documents - 150, 120, 200 and
+        // 20 ms, times the server number - against the server that was measured.
+        foreach (var result in new[] { download, upload })
+        {
+            Assert.NotNull(result.Latency);
+            Assert.Same(servers[2], result.Latency!.Server);
+            Assert.Equal(450, result.Latency.LatencyMilliseconds);
+            Assert.Equal(360, result.Latency.MinimumLatencyMilliseconds);
+            Assert.Equal(600, result.Latency.MaximumLatencyMilliseconds);
+            Assert.Equal(60, result.Latency.JitterMilliseconds);
+        }
+    }
+
+    [Fact]
+    public async Task TheStubsIdleLatency_ReportsTheLowestAndHighestFigures_ItsDocumentationStates()
+    {
+        // Given the stub's first server, whose number is one.
+        var stub = new SpeedTestStub();
+        var servers = await stub.GetServersAsync();
+
+        // When its latency is measured and the same server is screened.
+        var measured = await stub.GetServerLatencyAsync(servers[0]);
+        var screened = await stub.GetFastestServerByLatencyAsync(servers);
+
+        // Then the lowest and highest sit a jitter either side of the average the stub documents.
+        Assert.Equal(90, measured.MinimumLatencyMilliseconds);
+        Assert.Equal(110, measured.MaximumLatencyMilliseconds);
+        Assert.Equal(90, screened.MinimumLatencyMilliseconds);
+        Assert.Equal(110, screened.MaximumLatencyMilliseconds);
+    }
 }

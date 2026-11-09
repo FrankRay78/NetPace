@@ -19,9 +19,22 @@ public sealed record RequestDiagnostic
     public required DateTime StartedAt { get; init; }
 
     /// <summary>
+    /// Gets what the request was for. Which kinds a test is measuring depends on the test, so this
+    /// alone does not separate a measurement from the requests made alongside it; see
+    /// <see cref="RequestKind"/>.
+    /// </summary>
+    public required RequestKind Kind { get; init; }
+
+    /// <summary>
     /// Gets the request's position within its test, numbered from one in the order requests were
     /// issued. Records arrive in completion order, so a parallel test reports these out of order.
     /// </summary>
+    /// <remarks>
+    /// The latency probes sent during a download or an upload are numbered among themselves, so the
+    /// transfer's own requests keep an unbroken run however many probes went out beside them — and a
+    /// probe and a transfer within one test can therefore carry the same number. It is
+    /// <see cref="Kind"/> and this together that identify a request within a test.
+    /// </remarks>
     public required int Sequence { get; init; }
 
     /// <summary>

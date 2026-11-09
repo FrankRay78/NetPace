@@ -67,7 +67,7 @@ public sealed partial class SpeedTestExtensionsTests
         public void GetSpeedString_ElapsedMillisecondsZero_ReturnsZero()
         {
             // Given
-            var result = new SpeedTestResult { BytesProcessed = 1000, ElapsedMilliseconds = 0, RequestsSucceeded = 1, RequestsFailed = 0 };
+            var result = new SpeedTestResult { BytesProcessed = 1000, ElapsedMilliseconds = 0, RequestsSucceeded = 1, RequestsFailed = 0, Latency = null };
 
             // When
             var speedString = result.GetSpeedString(SpeedUnit.BitsPerSecond, SpeedUnitSystem.SI);
@@ -80,7 +80,7 @@ public sealed partial class SpeedTestExtensionsTests
         public void GetSpeedStringParts_ElapsedMillisecondsZero_ReturnsZero()
         {
             // Given
-            var result = new SpeedTestResult { BytesProcessed = 1000, ElapsedMilliseconds = 0, RequestsSucceeded = 1, RequestsFailed = 0 };
+            var result = new SpeedTestResult { BytesProcessed = 1000, ElapsedMilliseconds = 0, RequestsSucceeded = 1, RequestsFailed = 0, Latency = null };
 
             // When
             var (speed, unit) = result.GetSpeedStringParts(SpeedUnit.BitsPerSecond, SpeedUnitSystem.SI);

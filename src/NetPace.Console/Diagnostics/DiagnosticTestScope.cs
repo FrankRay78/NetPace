@@ -6,7 +6,8 @@ namespace NetPace.Console.Diagnostics;
 /// <summary>
 /// Brackets one test - latency screening, latency measurement, download or upload - in the
 /// diagnostic log: a <c>test.start</c> record on construction, one <c>request</c> record per
-/// request reported by the provider, and a <c>test.end</c> summary on disposal.
+/// request reported by the provider, a <c>probe</c> record per latency probe a transfer sent while
+/// it ran, and a <c>test.end</c> summary on disposal.
 /// </summary>
 /// <remarks>
 /// The scope is the <see cref="IProgress{T}"/> the provider reports requests to, so the test's name
@@ -14,7 +15,8 @@ namespace NetPace.Console.Diagnostics;
 /// <c>test.end</c> counts are derived from the records it saw, so the summary cannot count a
 /// record that is not above it - its <c>bytes</c> total covers the successful ones, which is less
 /// than every record's bytes added up where a request moved data and was then excluded. It can also
-/// report a cancelled count, which the measured result does not carry.
+/// report a cancelled count, which the measured result does not carry. Under-load latency probes are
+/// the one thing it records without counting; see <see cref="Report"/> for why.
 /// </remarks>
 internal sealed class DiagnosticTestScope : IProgress<RequestDiagnostic>, IDisposable
 {
@@ -83,13 +85,21 @@ internal sealed class DiagnosticTestScope : IProgress<RequestDiagnostic>, IDispo
                 return;
             }
 
+            // A latency probe sent during a download or an upload is something the test does
+            // alongside its own requests, not one of them: it gets a record of its own under
+            // event=probe, carrying a request line's fields so it reads the same way, and it is
+            // left out of the summary below - which is what keeps that summary reconciling with the
+            // transfer's request records. In the screening and latency tests the probes are the
+            // test, so there they stay ordinary request lines counted as today.
+            var isLoadedLatencyProbe = value.Kind == RequestKind.LatencyProbe && DiagnosticTests.MeasuresATransfer(test);
+
             // Recorded before it is counted, and under the same lock, so the summary can never
             // total a record that is not above it: a throw here leaves the counters untouched, and
             // holding the lock stops a report passing the closed check and then landing its line
             // after Dispose has written the summary.
             recorder.RecordAt(
                 value.StartedAt,
-                "request",
+                isLoadedLatencyProbe ? "probe" : "request",
                 ("test", test),
                 ("seq", value.Sequence.ToString(CultureInfo.InvariantCulture)),
                 ("url", value.Url),
@@ -98,6 +108,11 @@ internal sealed class DiagnosticTestScope : IProgress<RequestDiagnostic>, IDispo
                 ("duration_ms", value.ElapsedMilliseconds.ToString(CultureInfo.InvariantCulture)),
                 ("reason", value.FailureReason),
                 ("exception", value.FailureType));
+
+            if (isLoadedLatencyProbe)
+            {
+                return;
+            }
 
             requests++;
 

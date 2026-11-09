@@ -51,6 +51,11 @@ public sealed partial class OoklaSpeedtestTests
 
             // Then
             result.Server.ShouldBe(slowServer);
+
+            // And the extremes are stated as not recorded rather than as zero: screening keeps no
+            // run of probe times, so it has no measured spread to report.
+            result.MinimumLatencyMilliseconds.ShouldBeNull();
+            result.MaximumLatencyMilliseconds.ShouldBeNull();
         }
 
         [Fact]

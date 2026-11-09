@@ -62,5 +62,5 @@ public sealed class SpeedTestProgressClimbTests
     }
 
     private static SpeedTestResult Measured(long bytes, long elapsedMilliseconds) =>
-        new() { BytesProcessed = bytes, ElapsedMilliseconds = elapsedMilliseconds, RequestsSucceeded = 1, RequestsFailed = 0 };
+        new() { BytesProcessed = bytes, ElapsedMilliseconds = elapsedMilliseconds, RequestsSucceeded = 1, RequestsFailed = 0, Latency = null };
 }

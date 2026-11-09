@@ -314,8 +314,40 @@ public sealed class SpeedTestMockTests
     private static IServer[] Servers() => [Anywhere];
 
     private static LatencyTestResult Latency() =>
-        new() { Server = Anywhere, LatencyMilliseconds = 42, JitterMilliseconds = 4 };
+        new() { Server = Anywhere, LatencyMilliseconds = 42, MinimumLatencyMilliseconds = null, MaximumLatencyMilliseconds = null, JitterMilliseconds = 4 };
 
     private static SpeedTestResult Transfer() =>
-        new() { BytesProcessed = 4200, ElapsedMilliseconds = 1000, RequestsSucceeded = 7, RequestsFailed = 0 };
+        new() { BytesProcessed = 4200, ElapsedMilliseconds = 1000, RequestsSucceeded = 7, RequestsFailed = 0, Latency = null };
+
+    [Fact]
+    public async Task TheMocksTransfers_ReportWhateverUnderLoadFiguresATestConfigured()
+    {
+        // Given a mock configured with a download result that carries under-load figures.
+        var server = new Server { Location = "Location", Sponsor = "Sponsor", Url = "http://test.com" };
+        var loaded = new LatencyTestResult
+        {
+            Server = server,
+            LatencyMilliseconds = 61,
+            MinimumLatencyMilliseconds = 55,
+            MaximumLatencyMilliseconds = 70,
+            JitterMilliseconds = 4
+        };
+        var mock = new SpeedTestMock
+        {
+            GetDownloadSpeedAsyncFunc = (_, _, _) => Task.FromResult(new SpeedTestResult
+            {
+                BytesProcessed = 1000,
+                ElapsedMilliseconds = 1000,
+                RequestsSucceeded = 1,
+                RequestsFailed = 0,
+                Latency = loaded
+            })
+        };
+
+        // When the download runs.
+        var result = await mock.GetDownloadSpeedAsync(server);
+
+        // Then the configured figures come back untouched: the mock invents nothing of its own.
+        Assert.Same(loaded, result.Latency);
+    }
 }

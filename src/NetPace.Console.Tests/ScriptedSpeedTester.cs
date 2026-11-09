@@ -45,15 +45,22 @@ public sealed class ScriptedSpeedTester : ISpeedTestService
 
     /// <summary>A clean result: every request succeeded.</summary>
     public static SpeedTestResult Clean(int attempts) =>
-        new() { BytesProcessed = 1000, ElapsedMilliseconds = 1000, RequestsSucceeded = attempts, RequestsFailed = 0 };
+        new() { BytesProcessed = 1000, ElapsedMilliseconds = 1000, RequestsSucceeded = attempts, RequestsFailed = 0, Latency = null };
 
     /// <summary>An all-failed result: zero bytes, every request failed.</summary>
     public static SpeedTestResult AllFailed(int attempts) =>
-        new() { BytesProcessed = 0, ElapsedMilliseconds = 1000, RequestsSucceeded = 0, RequestsFailed = attempts };
+        new() { BytesProcessed = 0, ElapsedMilliseconds = 1000, RequestsSucceeded = 0, RequestsFailed = attempts, Latency = null };
 
     /// <summary>A partial result: some requests failed, the rest contributed bytes.</summary>
     public static SpeedTestResult Partial(int attempts, int failed) =>
-        new() { BytesProcessed = 1000, ElapsedMilliseconds = 1000, RequestsSucceeded = attempts - failed, RequestsFailed = failed };
+        new() { BytesProcessed = 1000, ElapsedMilliseconds = 1000, RequestsSucceeded = attempts - failed, RequestsFailed = failed, Latency = null };
+
+    /// <summary>
+    /// The one latency result every overload here reports, against whichever server it was asked
+    /// about: a fixed figure, with no run of probe times behind it.
+    /// </summary>
+    private static LatencyTestResult LatencyFor(IServer server) =>
+        new() { Server = server, LatencyMilliseconds = 24, MinimumLatencyMilliseconds = null, MaximumLatencyMilliseconds = null, JitterMilliseconds = 3 };
 
     public Task<IServer[]> GetServersAsync(CancellationToken cancellationToken = default)
     {
@@ -63,19 +70,19 @@ public sealed class ScriptedSpeedTester : ISpeedTestService
     }
 
     public Task<LatencyTestResult> GetServerLatencyAsync(IServer server, CancellationToken cancellationToken = default) =>
-        Task.FromResult(new LatencyTestResult { Server = server, LatencyMilliseconds = 24, JitterMilliseconds = 3 });
+        Task.FromResult(LatencyFor(server));
 
     public Task<LatencyTestResult> GetServerLatencyAsync(IServer server, IProgress<LatencyTestProgress> progress, CancellationToken cancellationToken = default) =>
         GetServerLatencyAsync(server, cancellationToken);
 
     public Task<LatencyTestResult> GetServerLatencyAsync(string serverUrl, CancellationToken cancellationToken = default) =>
-        Task.FromResult(new LatencyTestResult { Server = new Server { Location = "Frankfurt", Sponsor = "Deutsche Telekom", Url = serverUrl }, LatencyMilliseconds = 24, JitterMilliseconds = 3 });
+        Task.FromResult(LatencyFor(new Server { Location = "Frankfurt", Sponsor = "Deutsche Telekom", Url = serverUrl }));
 
     public Task<LatencyTestResult> GetServerLatencyAsync(string serverUrl, IProgress<LatencyTestProgress> progress, CancellationToken cancellationToken = default) =>
         GetServerLatencyAsync(serverUrl, cancellationToken);
 
     public Task<LatencyTestResult> GetFastestServerByLatencyAsync(IServer[] servers, CancellationToken cancellationToken = default) =>
-        Task.FromResult(new LatencyTestResult { Server = servers[0], LatencyMilliseconds = 24, JitterMilliseconds = 3 });
+        Task.FromResult(LatencyFor(servers[0]));
 
     public Task<LatencyTestResult> GetFastestServerByLatencyAsync(IServer[] servers, IProgress<SpeedTestProgress> progress, CancellationToken cancellationToken = default) =>
         GetFastestServerByLatencyAsync(servers, cancellationToken);
