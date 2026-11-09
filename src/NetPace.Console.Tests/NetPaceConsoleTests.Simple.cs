@@ -31,19 +31,25 @@ public sealed partial class NetPaceConsoleTests
         }
 
         /// <summary>
-        /// The output's lines, with the byte-order mark and any trailing blank line dropped, as a
+        /// The output's lines, with the byte-order mark and any blank line dropped, as a
         /// line-based reader sees them.
         /// </summary>
         private static string[] Lines(string output) =>
             output.TrimStart('﻿').Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries);
 
         /// <summary>
-        /// What a <c>grep Download | awk '{print $2}'</c> pipeline reads out of the output: the
-        /// second whitespace-separated word of the line holding <paramref name="label"/>.
+        /// The one line holding <paramref name="label"/>, as a <c>grep</c> in a pipeline picks it
+        /// out — named rather than taken by position, so a test says which figure it is reading.
+        /// </summary>
+        private static string LineHolding(string output, string label) =>
+            Lines(output).Single(line => line.Contains(label, StringComparison.Ordinal));
+
+        /// <summary>
+        /// What a <c>grep '^Download:' | awk '{print $2}'</c> pipeline reads out of the output: the
+        /// second space-separated word of the line holding <paramref name="label"/>.
         /// </summary>
         private static string SecondWordOfLineHolding(string output, string label) =>
-            Lines(output).Single(line => line.Contains(label, StringComparison.Ordinal))
-                .Split(' ', StringSplitOptions.RemoveEmptyEntries)[1];
+            LineHolding(output, label).Split(' ', StringSplitOptions.RemoveEmptyEntries)[1];
 
         [Fact]
         public async Task Simple_Reports_Ping_Download_And_Upload_Each_On_Its_Own_Line()
@@ -57,13 +63,8 @@ public sealed partial class NetPaceConsoleTests
             var result = await host.RunAsync(["--simple"]);
 
             // Then the whole output is a Ping line, a Download line and an Upload line, in that
-            // order, and nothing else.
+            // order, and nothing else - which the snapshot carries.
             Assert.Equal(0, result.ExitCode);
-            var lines = Lines(result.Output);
-            Assert.Equal(3, lines.Length);
-            Assert.StartsWith("Ping: ", lines[0], StringComparison.Ordinal);
-            Assert.StartsWith("Download: ", lines[1], StringComparison.Ordinal);
-            Assert.StartsWith("Upload: ", lines[2], StringComparison.Ordinal);
             await Verify(result.Output);
         }
 
@@ -93,8 +94,13 @@ public sealed partial class NetPaceConsoleTests
             var byDefault = await GetCommandLineTestHost(StubServices()).RunAsync([]);
 
             // Then each figure reads the same in both, so neither format is formatting it alone.
+            // Each is checked non-empty first: Figure returns "" for a label it cannot find, so a
+            // label renamed on both sides would otherwise compare "" with "" and pass vacuously.
             Assert.Equal(0, simple.ExitCode);
             Assert.Equal(0, byDefault.ExitCode);
+            Assert.NotEmpty(Figure(byDefault.Output, "Download"));
+            Assert.NotEmpty(Figure(byDefault.Output, "Upload"));
+            Assert.NotEmpty(Figure(byDefault.Output, "Latency"));
             Assert.Equal(Figure(byDefault.Output, "Download"), Figure(simple.Output, "Download"));
             Assert.Equal(Figure(byDefault.Output, "Upload"), Figure(simple.Output, "Upload"));
             Assert.Equal(Figure(byDefault.Output, "Latency"), Figure(simple.Output, "Ping"));
@@ -104,10 +110,10 @@ public sealed partial class NetPaceConsoleTests
         }
 
         [Theory]
-        [InlineData("--no-latency", "Ping")]
-        [InlineData("--no-download", "Download")]
-        [InlineData("--no-upload", "Upload")]
-        public async Task Simple_Omits_The_Line_Of_A_Test_That_Did_Not_Run(string skipSwitch, string absentLabel)
+        [InlineData("--no-latency")]
+        [InlineData("--no-download")]
+        [InlineData("--no-upload")]
+        public async Task Simple_Omits_The_Line_Of_A_Test_That_Did_Not_Run(string skipSwitch)
         {
             // SCENARIO: A skipped test has no line
 
@@ -118,11 +124,8 @@ public sealed partial class NetPaceConsoleTests
             var result = await host.RunAsync(["--simple", skipSwitch]);
 
             // Then that test contributes no line - never a zero that reads as a measurement - and
-            // the other two are untouched.
+            // the other two are untouched, which the snapshot carries.
             Assert.Equal(0, result.ExitCode);
-            var lines = Lines(result.Output);
-            Assert.Equal(2, lines.Length);
-            Assert.DoesNotContain(absentLabel, result.Output, StringComparison.Ordinal);
             await Verify(result.Output).UseParameters(skipSwitch);
         }
 
@@ -145,11 +148,8 @@ public sealed partial class NetPaceConsoleTests
             var result = await HostWith(service).RunAsync(["--simple"]);
 
             // Then the Upload line carries the speed and how many requests failed, and no other
-            // line does.
+            // line does, which the snapshot carries.
             Assert.Equal(0, result.ExitCode);
-            var upload = Lines(result.Output).Single(line => line.StartsWith("Upload: ", StringComparison.Ordinal));
-            Assert.Contains($"{failed} of {attempts} requests failed", upload, StringComparison.Ordinal);
-            Assert.DoesNotContain("requests failed", Lines(result.Output)[1], StringComparison.Ordinal);
             await Verify(result.Output).UseParameters(attempts, failed);
         }
 
@@ -165,11 +165,8 @@ public sealed partial class NetPaceConsoleTests
             var result = await host.RunAsync(["--simple", "--timestamp"]);
 
             // Then the timestamp is alone above the figures, labelled like every other line so one
-            // parser reads them all.
+            // parser reads them all, which the snapshot carries.
             Assert.Equal(0, result.ExitCode);
-            var lines = Lines(result.Output);
-            Assert.Equal(4, lines.Length);
-            Assert.Matches(@"^Timestamp: \d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$", lines[0]);
             await Verify(result.Output);
         }
 
@@ -189,11 +186,9 @@ public sealed partial class NetPaceConsoleTests
             Assert.Equal(0, defaultUnits.ExitCode);
             Assert.Equal(0, switchedUnits.ExitCode);
 
-            // And each run shows its speeds in the unit its command line asked for. The
-            // switched run shows 0 MiBps because the stub measures about 1 kB/s down and 2.3
-            // kB/s up, which a Mega scale over IEC bytes rounds to zero.
-            Assert.EndsWith(" Kbps", Lines(defaultUnits.Output)[1], StringComparison.Ordinal);
-            Assert.EndsWith(" MiBps", Lines(switchedUnits.Output)[1], StringComparison.Ordinal);
+            // And each run shows its speeds in the unit its command line asked for, which the
+            // snapshot carries. The switched run shows 0 MiBps because the stub measures about
+            // 1 kB/s down and 2.3 kB/s up, which a Mega scale over IEC bytes rounds to zero.
             await Verify(defaultUnits.Output + switchedUnits.Output);
         }
 
@@ -246,7 +241,7 @@ public sealed partial class NetPaceConsoleTests
             var result = await host.RunAsync(["--simple"]);
 
             // Then no under-load probe goes out: this format shows no under-load figure, so its
-            // traffic is the transfers alone.
+            // traffic is as it was before the probes existed.
             Assert.Equal(0, result.ExitCode);
             Assert.False(accessor.Settings.LatencyTest.LoadedLatencyEnabled);
         }
@@ -254,7 +249,7 @@ public sealed partial class NetPaceConsoleTests
         [Fact]
         public async Task Default_Output_Still_Sends_Under_Load_Probes()
         {
-            // Given a run in any other format
+            // Given a default-format run
             var (services, accessor) = BuildServicesWithSettingsAccessor();
             var host = GetCommandLineTestHost(services);
 
@@ -280,7 +275,7 @@ public sealed partial class NetPaceConsoleTests
             var result = await host.RunAsync(arguments);
 
             // Then it fails and names the switch to use instead.
-            Assert.NotEqual(0, result.ExitCode);
+            Assert.Equal(1, result.ExitCode);
             Assert.Contains("--minimal", result.Output, StringComparison.Ordinal);
             Assert.Contains("--simple", result.Output, StringComparison.Ordinal);
         }

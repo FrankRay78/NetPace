@@ -120,10 +120,8 @@ public sealed partial class NetPaceConsoleTests
             var output = await RunAtWidthAsync(CommandLineTestHost.RedirectedWidth, ["--simple", "--timestamp"], service);
 
             // Then the only line breaks are the ones the format defines - one per figure, and the
-            // timestamp above them - so a figure annotated past 80 columns still arrives whole.
-            var lines = Lines(output);
-            Assert.Equal(4, lines.Length);
-            Assert.All(lines, line => Assert.Matches(@"^(Timestamp|Ping|Download|Upload): ", line));
+            // timestamp above them - so a figure annotated past 80 columns still arrives whole,
+            // which the snapshot carries.
             await Verify(output);
         }
 

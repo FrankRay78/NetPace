@@ -449,8 +449,9 @@ public static class Program
         if (settings.Simple)
         {
             // --simple reports no under-load figure, so the probes that would measure one are
-            // traffic nobody reads. Switching them off keeps this format's traffic to the
-            // transfers alone, as it was before the probes existed.
+            // traffic nobody reads. Switching them off keeps this format's traffic as it was
+            // before the probes existed; the idle latency test still runs, being where Ping
+            // comes from.
             ooklaSettings = ooklaSettings with
             {
                 LatencyTest = ooklaSettings.LatencyTest with { LoadedLatencyEnabled = false }

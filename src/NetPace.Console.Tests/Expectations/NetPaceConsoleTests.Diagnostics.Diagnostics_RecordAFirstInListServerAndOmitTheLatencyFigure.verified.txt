@@ -1,5 +1,5 @@
 ﻿ts=1980-01-01T10:05:00.000 event=run.start version=0.0.0 runtime=".NET 10.0.0" os="Test OS 1.0" arch=x64
-ts=1980-01-01T10:05:05.000 event=run.invocation args="--simple --no-latency --diagnostics"
+ts=1980-01-01T10:05:05.000 event=run.invocation args="--csv --no-latency --diagnostics"
 ts=1980-01-01T10:05:10.000 event=server.selected sponsor="Deutsche Telekom" location=Frankfurt url=http://ffm.wsqm.telekom-dienste.de:8080/speedtest/upload.php selection=first-in-list
 ts=1980-01-01T10:05:15.000 event=test.start test=download
 ts=1980-01-01T11:00:00.000 event=request test=download seq=1 url="http://ffm.wsqm.telekom-dienste.de:8080/speedtest/random1500x1500.jpg?r=1" status=ok bytes=500 duration_ms=250

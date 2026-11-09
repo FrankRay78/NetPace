@@ -56,13 +56,14 @@ public sealed partial class NetPaceConsoleTests
         }
 
         [Theory]
-        [InlineData("--simple")]
         [InlineData("--csv")]
         [InlineData("--json")]
         public async Task Every_OutputFormat_ProducesTheSameDiagnostics(string outputFormat)
         {
-            // Given the compact, CSV and JSON formats pass no progress reporter at all, diagnostics
-            // must not ride on one.
+            // Given the CSV and JSON formats pass no progress reporter at all, diagnostics must
+            // not ride on one. --simple is left out: it is the one format whose diagnostics
+            // legitimately differ, because it turns the under-load probes off and so emits no
+            // probe record.
             // When each runs with --diagnostics, alongside the default format.
             var expected = await HostWith().RunAsync(["--diagnostics"]);
             var actual = await HostWith().RunAsync([outputFormat, "--diagnostics"]);
@@ -89,7 +90,7 @@ public sealed partial class NetPaceConsoleTests
         {
             // Given the user named the server.
             // When the run goes ahead with diagnostics.
-            var result = await HostWith().RunAsync(["--simple", "--server-url", DiagnosticSpeedTester.Url, "--diagnostics"]);
+            var result = await HostWith().RunAsync(["--csv", "--server-url", DiagnosticSpeedTester.Url, "--diagnostics"]);
 
             // Then the route says so, and no screening figure is claimed - nothing was screened.
             await Verify(result.DiagnosticOutput);
@@ -100,7 +101,7 @@ public sealed partial class NetPaceConsoleTests
         {
             // Given --no-latency without --server-url, so the first server offered is used.
             // When the run goes ahead with diagnostics.
-            var result = await HostWith().RunAsync(["--simple", "--no-latency", "--diagnostics"]);
+            var result = await HostWith().RunAsync(["--csv", "--no-latency", "--diagnostics"]);
 
             // Then the route says so, and no latency figure is reported at all.
             await Verify(result.DiagnosticOutput);
@@ -111,7 +112,7 @@ public sealed partial class NetPaceConsoleTests
         {
             // Given a run with the download test switched off.
             // When it runs with diagnostics.
-            var result = await HostWith().RunAsync(["--simple", "--no-download", "--diagnostics"]);
+            var result = await HostWith().RunAsync(["--csv", "--no-download", "--diagnostics"]);
 
             // Then the tests that ran are named, and the one that did not is absent.
             await Verify(result.DiagnosticOutput);
@@ -123,7 +124,7 @@ public sealed partial class NetPaceConsoleTests
             // Given a run whose every test issues more than one request, and no --server-url, so
             // screening chooses the route.
             // When it runs with diagnostics.
-            var result = await HostWith().RunAsync(["--simple", "--diagnostics"]);
+            var result = await HostWith().RunAsync(["--csv", "--diagnostics"]);
 
             // Then each request has its own record and the test's summary agrees with them, and the
             // chosen route is named with the screening figure the choice was based on - not the
@@ -139,7 +140,7 @@ public sealed partial class NetPaceConsoleTests
 
             // Given a server that rejects every upload.
             // When the run goes ahead with diagnostics.
-            var result = await HostWith(failEveryUpload: true).RunAsync(["--simple", "--diagnostics"]);
+            var result = await HostWith(failEveryUpload: true).RunAsync(["--csv", "--diagnostics"]);
 
             // Then the cause is attributable to the requests that failed, and it is on the record -
             // no second run, no hand-patched build. The rejection is a measurement outcome, so the
@@ -201,7 +202,7 @@ public sealed partial class NetPaceConsoleTests
         {
             // Given a run whose failure reasons are long and would wrap at any terminal width.
             // When it runs with diagnostics.
-            var result = await HostWith(failEveryUpload: true).RunAsync(["--simple", "--diagnostics"]);
+            var result = await HostWith(failEveryUpload: true).RunAsync(["--csv", "--diagnostics"]);
 
             // Then every line is a complete record, so grepping a subset loses nothing.
             var lines = result.DiagnosticOutput.Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries);

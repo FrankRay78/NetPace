@@ -32,7 +32,7 @@ public sealed partial class NetPaceConsoleTests
             // When
             var result = await host.RunAsync(["--simple"]);
 
-            // Then the whole output is one result line.
+            // Then the whole output is a named line per figure.
             Assert.Equal(0, result.ExitCode);
             await Verify(result.Output);
         }
@@ -43,10 +43,10 @@ public sealed partial class NetPaceConsoleTests
             // Given
             var host = HostWith();
 
-            // When the compact format is combined with timestamp, unit and scale selection.
+            // When the line-per-figure format is combined with timestamp, unit and scale selection.
             var result = await host.RunAsync(["--simple", "-t", "--unit", "bytes", "--unit-scale", "Kilo", "--unit-system", "IEC"]);
 
-            // Then the single result line carries the timestamp and the chosen units.
+            // Then the timestamp has its own line above figures carrying the chosen units.
             Assert.Equal(0, result.ExitCode);
             await Verify(result.Output);
         }

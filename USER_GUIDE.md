@@ -108,7 +108,7 @@ Download: 93.12 Mbps
 Upload: 18.4 Mbps
 ```
 
-A script reads any of them the same way — `netpace --simple | grep Download | awk '{print $2}'` gives the download speed's number. Speeds are auto-scaled and follow `--unit`, `--unit-scale` and `--unit-system`, so a figure can read `1.2 Gbps` on a fast line; pin the unit with `--unit-scale Mega` where a script compares numbers across runs. `--timestamp` adds a `Timestamp: <yyyy-MM-dd HH:mm:ss>` line above the figures, a test skipped with `--no-latency` / `--no-download` / `--no-upload` contributes no line at all, and runs under `--count` and `--loop` follow one another with no separator. Failed requests are noted on their own test's line, as in the default output. The format shows no jitter, server or under-load figure, and sends no under-load latency probes; scripts wanting more use CSV or JSON.
+A script reads any of them the same way — `netpace --simple | grep '^Download:' | awk '{print $2}'` gives the download speed's number. Anchor the match to the start of the line: a run that faults writes an `Error:` message to the same stream, and an unanchored `grep Download` can pick a word out of that message instead of a figure. Speeds are auto-scaled and follow `--unit`, `--unit-scale` and `--unit-system`, so a figure can read `1.2 Gbps` on a fast line; pin the unit with `--unit-scale Mega` where a script compares numbers across runs. `--timestamp` adds a `Timestamp: <yyyy-MM-dd HH:mm:ss>` line above the figures, a test skipped with `--no-latency` / `--no-download` / `--no-upload` contributes no line at all, and runs under `--count` and `--loop` follow one another with no separator. Failed requests are noted on their own test's line, as in the default output. The format shows no jitter, server or under-load figure, and sends no under-load latency probes; scripts wanting more use CSV or JSON.
 
 ### What `--file` writes
 
@@ -385,9 +385,16 @@ A speed test runs many small requests in parallel and reports the aggregate thro
 
 Every output format carries the counts:
 
-**Default / `--simple`** — the result token is annotated only when requests failed:
+**Default** — the result token is annotated only when requests failed:
 ```
 Latency: 24 ms, Download: 512.6 Mbps, Upload: 0 bps (32 of 32 requests failed)
+```
+
+**`--simple`** — the same annotation, on the line of the test it belongs to:
+```
+Ping: 24 ms
+Download: 512.6 Mbps
+Upload: 0 bps (32 of 32 requests failed)
 ```
 
 **CSV** — a `Succeeded` and `Failed` column sits next to each speed column, and a total failure reports a speed of `0` beside the counts that say so:
@@ -439,7 +446,7 @@ What the records cover:
 | `server.selected` | The server used, and `selection=` — `auto-latency`, `specified` or `first-in-list`. `latency_ms` is the screening figure that chose it, and is absent when latency played no part in choosing. |
 | `test.start` / `test.end` | Which tests ran — `screening`, `latency`, `download`, `upload` — and, on `test.end`, the total `requests`, how many `succeeded`, `failed` or were `cancelled`, and the `bytes` the successful ones moved. Those totals cover exactly the `request` lines above them, so the two always reconcile. `probe` lines are not among them. |
 | `request` | One per request, with its sequence number, address, outcome, bytes, duration and — where it did not succeed — the `reason` and, if an exception was involved, its `exception` type. `status=` is `ok`, `failed` or `cancelled`. |
-| `probe` | One per latency probe sent *during* a download or upload, to measure the latency of the line while it is loaded. It carries a `request` line's fields, `status=` included, and is numbered in its own run of `seq` numbers, so it never displaces one of the transfer's requests — `event=` and `seq=` together identify a record within a test, since a probe and a transfer request can share a number. |
+| `probe` | One per latency probe sent *during* a download or upload, to measure the latency of the line while it is loaded. It carries a `request` line's fields, `status=` included, and is numbered in its own run of `seq` numbers, so it never displaces one of the transfer's requests — `event=` and `seq=` together identify a record within a test, since a probe and a transfer request can share a number. `--simple` sends no under-load probes, so a `--simple --diagnostics` run carries no `probe` line at all. |
 
 Every line repeats enough to stand alone, so `grep status=failed diagnostics.log` is a complete triage pass. Nothing is summarised away: every measured request gets its own record, including the latency probes made while choosing a server. Two kinds of request are not recorded individually: the initial server-list fetch, whose failure surfaces as the run's error instead; and a screening request that finishes after the selection ceiling has already passed, which arrives too late for the `test.end` it would belong to and is dropped so that summary stays exact — so a candidate you expected to see may be absent rather than untried. One request appears that you did not ask for: the upload test resolves its endpoint with an empty probe POST first, which takes the opening `seq` numbers of that test and reads `bytes=0`, so `test.end requests=` counts one more than the uploads measured (more, if the server redirects several times).
 

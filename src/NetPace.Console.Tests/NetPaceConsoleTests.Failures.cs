@@ -183,7 +183,7 @@ public sealed partial class NetPaceConsoleTests
             // When
             var result = await host.RunAsync(["--simple"]);
 
-            // Then the token annotation carries the failure.
+            // Then the Upload line carries the failure.
             Assert.Equal(0, result.ExitCode);
             Assert.Contains("32 of 32 requests failed", result.Output);
         }
@@ -342,7 +342,7 @@ public sealed partial class NetPaceConsoleTests
             var result = await host.RunAsync(["--count", "5", "--fail-on", "Total", "--simple"]);
 
             // Then it exits 1 at the first triggering measurement - the snapshot carries one
-            // result line, not five.
+            // run's lines, not five runs'.
             Assert.Equal(1, result.ExitCode);
             await Verify(result.Output);
         }

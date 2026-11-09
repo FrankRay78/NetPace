@@ -11,26 +11,9 @@ public sealed class CSVConsoleWriter : IConsoleWriter
 
     public async Task<SpeedTestOutcome> PerformSpeedTestAsync(bool initialSpeedTest, IAnsiConsole console, IClock clock, IClientInfoProvider clientInfoProvider, IDiagnosticRecorder recorder, ISpeedTestService speedTestClient, SpeedTestCommandSettings settings, CancellationToken cancellationToken)
     {
-        // Get the server to use for speed testing.
+        // Get the server to use for speed testing, then measure.
         var fastest = await ServerSelector.GetServerAsync(speedTestClient, settings, recorder, cancellationToken);
-
-
-        // A test that did not run is absent, never a zeroed result.
-        SpeedTestResult? downloadResult = null;
-        SpeedTestResult? uploadResult = null;
-
-        // Perform speed test.
-        if (!settings.NoDownload)
-        {
-            using var download = DiagnosticTestScope.For(recorder, DiagnosticTests.Download);
-            downloadResult = await speedTestClient.GetDownloadSpeedAsync(fastest.Server, null, download, cancellationToken);
-        }
-        if (!settings.NoUpload)
-        {
-            using var upload = DiagnosticTestScope.For(recorder, DiagnosticTests.Upload);
-            uploadResult = await speedTestClient.GetUploadSpeedAsync(fastest.Server, null, upload, cancellationToken);
-        }
-
+        var outcome = await Measurements.PerformAsync(speedTestClient, fastest.Server, settings, recorder, cancellationToken);
 
         // Header row, emitted on the first iteration of a run, and not at all where
         // --no-csv-header asks for rows only. Which destinations receive it is settled below: one
@@ -75,12 +58,12 @@ public sealed class CSVConsoleWriter : IConsoleWriter
         console.WriteLine(Record([
             clock.Now.ToMachineReadable(),
             !settings.NoLatency ? fastest.LatencyMilliseconds.ToString(CultureInfo.InvariantCulture) : string.Empty,
-            downloadResult?.GetBitsPerSecond().ToString(CultureInfo.InvariantCulture) ?? string.Empty,
-            downloadResult?.RequestsSucceeded.ToString(CultureInfo.InvariantCulture) ?? string.Empty,
-            downloadResult?.RequestsFailed.ToString(CultureInfo.InvariantCulture) ?? string.Empty,
-            uploadResult?.GetBitsPerSecond().ToString(CultureInfo.InvariantCulture) ?? string.Empty,
-            uploadResult?.RequestsSucceeded.ToString(CultureInfo.InvariantCulture) ?? string.Empty,
-            uploadResult?.RequestsFailed.ToString(CultureInfo.InvariantCulture) ?? string.Empty,
+            outcome.Download?.GetBitsPerSecond().ToString(CultureInfo.InvariantCulture) ?? string.Empty,
+            outcome.Download?.RequestsSucceeded.ToString(CultureInfo.InvariantCulture) ?? string.Empty,
+            outcome.Download?.RequestsFailed.ToString(CultureInfo.InvariantCulture) ?? string.Empty,
+            outcome.Upload?.GetBitsPerSecond().ToString(CultureInfo.InvariantCulture) ?? string.Empty,
+            outcome.Upload?.RequestsSucceeded.ToString(CultureInfo.InvariantCulture) ?? string.Empty,
+            outcome.Upload?.RequestsFailed.ToString(CultureInfo.InvariantCulture) ?? string.Empty,
             clientInfoProvider.GetIPAddress(),
             clientInfoProvider.GetHostname(),
             fastest.Server.Location,
@@ -89,7 +72,7 @@ public sealed class CSVConsoleWriter : IConsoleWriter
             settings.DeviceId ?? string.Empty,
             .. settings.CustomFields.Select(field => field.Value)]));
 
-        return SpeedTestOutcome.Create(downloadResult, uploadResult);
+        return outcome;
     }
 
     /// <summary>
