@@ -59,6 +59,18 @@ internal sealed class SpeedTestTable(
     private const string SucceededMarkAscii = "OK";
     private const string FailedMarkAscii = "X";
 
+    /// <summary>
+    /// The blank between a row's mark and the name of what it measures, wide enough that the two
+    /// read as separate things.
+    /// </summary>
+    private const int MarkGap = 3;
+
+    /// <summary>
+    /// The blank between one column and the next, so a column's figures do not run into the
+    /// column beside it.
+    /// </summary>
+    private const int ColumnGap = 2;
+
     private readonly List<SpeedTestTableRow> rows = [];
 
     private int reportsTaken;
@@ -174,19 +186,6 @@ internal sealed class SpeedTestTable(
         return table;
     }
 
-    /// <summary>
-    /// The blank between a row's mark and the name of what it measures, wide enough that the two
-    /// read as separate things.
-    /// </summary>
-    private const int MarkGap = 3;
-
-    /// <summary>
-    /// The blank in front of a right-aligned column, so its figures do not run into the column
-    /// before. Leading rather than trailing, which keeps the last column flush with its own widest
-    /// figure.
-    /// </summary>
-    private const int ColumnGap = 2;
-
     private TableColumn Heading(string text, Justify alignment) =>
         new(new Markup(Markup.Escape(text), theme.ColumnHeading))
         {
@@ -196,7 +195,8 @@ internal sealed class SpeedTestTable(
 
     /// <summary>
     /// The blank a column leaves after itself. Trailing rather than leading, so a right-aligned
-    /// column's widest figure is what sets where the next one starts.
+    /// column's own widest figure is what sets where its values sit, and the gap is what separates
+    /// them from the next column.
     /// </summary>
     private static Padding Gap(int width) => new(0, 0, width, 0);
 
