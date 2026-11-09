@@ -4,6 +4,7 @@
   "ServerUrl": "http://ffm.wsqm.telekom-dienste.de:8080/speedtest/upload-and-download-endpoint.php",
   "Timestamp": "1980-01-01T10:05:00+01:00",
   "LatencyMilliseconds": 24,
+  "JitterMilliseconds": 3,
   "DownloadSpeedBitsPerSecond": 8000,
   "DownloadSucceeded": 145,
   "DownloadFailed": 5,

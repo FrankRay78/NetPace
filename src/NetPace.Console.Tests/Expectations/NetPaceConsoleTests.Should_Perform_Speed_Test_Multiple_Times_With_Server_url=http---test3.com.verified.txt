@@ -1,4 +1,4 @@
-﻿Timestamp,LatencyMilliseconds,DownloadSpeedBitsPerSecond,DownloadSucceeded,DownloadFailed,UploadSpeedBitsPerSecond,UploadSucceeded,UploadFailed,IPAddress,Hostname,ServerLocation,ServerSponsor,ServerUrl,DeviceId
-1980-01-01T10:05:00+01:00,300,2667,150,0,6222,32,0,192.168.1.1,test-host,,[Unknown],http://test3.com,
-1980-01-01T10:05:00+01:00,300,2667,150,0,6222,32,0,192.168.1.1,test-host,,[Unknown],http://test3.com,
-1980-01-01T10:05:00+01:00,300,2667,150,0,6222,32,0,192.168.1.1,test-host,,[Unknown],http://test3.com,
+﻿Timestamp,LatencyMilliseconds,JitterMilliseconds,DownloadSpeedBitsPerSecond,DownloadSucceeded,DownloadFailed,DownloadLatencyMilliseconds,DownloadLowestLatencyMilliseconds,DownloadHighestLatencyMilliseconds,DownloadJitterMilliseconds,UploadSpeedBitsPerSecond,UploadSucceeded,UploadFailed,UploadLatencyMilliseconds,UploadLowestLatencyMilliseconds,UploadHighestLatencyMilliseconds,UploadJitterMilliseconds,IPAddress,Hostname,ServerLocation,ServerSponsor,ServerUrl,DeviceId
+1980-01-01T10:05:00+01:00,300,30,2667,150,0,450,360,600,60,6222,32,0,450,360,600,60,192.168.1.1,test-host,,[Unknown],http://test3.com,
+1980-01-01T10:05:00+01:00,300,30,2667,150,0,450,360,600,60,6222,32,0,450,360,600,60,192.168.1.1,test-host,,[Unknown],http://test3.com,
+1980-01-01T10:05:00+01:00,300,30,2667,150,0,450,360,600,60,6222,32,0,450,360,600,60,192.168.1.1,test-host,,[Unknown],http://test3.com,
