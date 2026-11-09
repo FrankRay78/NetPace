@@ -305,7 +305,9 @@ public sealed partial class OoklaSpeedtestTests
                     {
                         if (++probesIssued == 3)
                         {
-                            throw new HttpRequestException("connection reset");
+                            // How HttpClient surfaces its own timeout: a cancellation the loop must
+                            // not mistake for being told to stop.
+                            throw new TaskCanceledException("timed out", new TimeoutException());
                         }
 
                         clock.Advance(TimeSpan.FromMilliseconds(times.Dequeue()));
@@ -419,14 +421,17 @@ public sealed partial class OoklaSpeedtestTests
             (await delays.ReleaseNextAsync(HangGuard)).ShouldBeTrue();
             (await probeIssued.WaitAsync(HangGuard)).ShouldBeTrue();
 
+            // And no wait for a second probe is asked for while the first is outstanding - a loop
+            // that sent probes without awaiting them would ask for one straight away.
+            (await delays.ReleaseNextAsync(TimeSpan.FromMilliseconds(200))).ShouldBeFalse();
+
             release.SetResult();
 
             // Then the result is produced without waiting on the probe, and says not measured.
             var result = await download.WaitAsync(HangGuard);
             result.Latency.ShouldBeNull();
 
-            // And that one probe was recorded as abandoned rather than left unaccounted for. Only
-            // one went out: a second would have meant the loop probing while one was outstanding.
+            // And that one probe was recorded as abandoned rather than left unaccounted for.
             var probe = watcher.Probes.ShouldHaveSingleItem();
             probe.Outcome.ShouldBe(RequestOutcome.Cancelled);
         }
@@ -593,7 +598,9 @@ public sealed partial class OoklaSpeedtestTests
             watcher.Probes.ShouldAllBe(record => record.Url == LatencyUrl);
             watcher.Probes.Select(record => record.Outcome)
                    .ShouldBe([RequestOutcome.Succeeded, RequestOutcome.Failed, RequestOutcome.Cancelled]);
-            watcher.Probes.Single(record => record.Outcome == RequestOutcome.Succeeded).BytesProcessed.ShouldBe(ProbeResponseBytes);
+            var answered = watcher.Probes.Single(record => record.Outcome == RequestOutcome.Succeeded);
+            answered.BytesProcessed.ShouldBe(ProbeResponseBytes);
+            answered.ElapsedMilliseconds.ShouldBe(40);
 
             // And the transfer's own request is reported under its own kind, so a caller can tell
             // the two apart.
@@ -829,6 +836,7 @@ public sealed partial class OoklaSpeedtestTests
             // And the outstanding probe was still accounted for, exactly once, as abandoned.
             watcher.Probes.Count.ShouldBe(1);
             watcher.Probes[0].Outcome.ShouldBe(RequestOutcome.Cancelled);
+            watcher.Probes[0].FailureReason.ShouldBe("cancelled by caller");
         }
 
     }

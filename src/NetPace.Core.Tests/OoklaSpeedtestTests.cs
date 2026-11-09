@@ -891,7 +891,9 @@ public sealed partial class OoklaSpeedtestTests
             DownloadTest = new()
             {
                 DownloadParallelTasks = 1
-            }
+            },
+            // A probe would add its 1 KB to actualBytes whenever the transfer outlasts the interval.
+            LatencyTest = new() { LoadedLatencyEnabled = false }
         };
 
         var speedtest = new OoklaSpeedtest(settings, httpClient);

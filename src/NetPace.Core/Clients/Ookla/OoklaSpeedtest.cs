@@ -650,7 +650,7 @@ public sealed class OoklaSpeedtest : ISpeedTestService
         // Probed against the address the transfer is actually using, not the server's listed one:
         // an upload resolves a redirect first, and those can differ in scheme, host and port, so
         // probing the listed address would time a line that is carrying nothing.
-        using var probing = LoadedLatencyProbing.Start(this, server, GetBaseUrl(transferUrl) + LatencyFileName, diagnostics);
+        using var probing = LoadedLatencyProbing.Start(this, server, GetBaseUrl(transferUrl) + LatencyFileName, diagnostics, cancellationToken);
 
         // Create and execute tasks to process the test data in parallel.
         var sequenceIssued = sequenceOffset;
@@ -1255,6 +1255,7 @@ public sealed class OoklaSpeedtest : ISpeedTestService
         private readonly string probeUrl;
         private readonly IProgress<RequestDiagnostic>? diagnostics;
         private readonly int intervalMilliseconds;
+        private readonly CancellationToken callerToken;
 
         private readonly object gate = new();
         private readonly List<long> samples = [];
@@ -1269,8 +1270,9 @@ public sealed class OoklaSpeedtest : ISpeedTestService
         /// <summary>One probe in flight: what it will be reported as, and when it left.</summary>
         private readonly record struct Probe(int Sequence, DateTime StartedAt, long StartTimestamp);
 
-        private LoadedLatencyProbing(OoklaSpeedtest owner, IServer server, string probeUrl, IProgress<RequestDiagnostic>? diagnostics)
+        private LoadedLatencyProbing(OoklaSpeedtest owner, IServer server, string probeUrl, IProgress<RequestDiagnostic>? diagnostics, CancellationToken callerToken)
         {
+            this.callerToken = callerToken;
             this.owner = owner;
             this.server = server;
             this.probeUrl = probeUrl;
@@ -1283,15 +1285,19 @@ public sealed class OoklaSpeedtest : ISpeedTestService
         /// which is what makes "no probing object" mean "nothing is being probed", so no caller has
         /// to re-test the setting.
         /// </summary>
-        public static LoadedLatencyProbing? Start(OoklaSpeedtest owner, IServer server, string probeUrl, IProgress<RequestDiagnostic>? diagnostics)
+        public static LoadedLatencyProbing? Start(OoklaSpeedtest owner, IServer server, string probeUrl, IProgress<RequestDiagnostic>? diagnostics, CancellationToken callerToken)
         {
             if (!owner.settings.LatencyTest.LoadedLatencyEnabled)
             {
                 return null;
             }
 
-            var probing = new LoadedLatencyProbing(owner, server, probeUrl, diagnostics);
-            probing.loop = probing.RunAsync();
+            var probing = new LoadedLatencyProbing(owner, server, probeUrl, diagnostics, callerToken);
+
+            // Run off the caller's thread: a delay provider and an HTTP handler that both complete
+            // at once (DelayProviderStub with an in-memory handler) would otherwise never yield, so
+            // Start would never return and the transfer would never begin.
+            probing.loop = Task.Run(probing.RunAsync);
             return probing;
         }
 
@@ -1318,7 +1324,8 @@ public sealed class OoklaSpeedtest : ISpeedTestService
                 {
                     // Reported before the transfer returns, under the lock its own answer would
                     // take, so the probe is accounted for exactly once.
-                    Report(abandoned, RequestOutcome.Cancelled, response: null, owner.ElapsedMillisecondsSince(abandoned.StartTimestamp), TransferEnded, failureType: null);
+                    var reason = callerToken.IsCancellationRequested ? CancelledByCaller : TransferEnded;
+                    Report(abandoned, RequestOutcome.Cancelled, response: null, owner.ElapsedMillisecondsSince(abandoned.StartTimestamp), reason, failureType: null);
                     outstanding = null;
                 }
 
@@ -1396,10 +1403,9 @@ public sealed class OoklaSpeedtest : ISpeedTestService
                     failure = e;
                 }
 
-                // Read once, after the outcome is captured and outside both branches. Reading it
-                // inside each would call a caller-supplied clock twice over one probe: a clock
-                // fault on the success path would throw again from the catch that was meant to
-                // handle it, escaping the loop and stopping all further probing silently.
+                // Read once, after the outcome is captured. A caller-supplied clock that faults
+                // here (one stepping backwards) ends probing for the rest of the transfer;
+                // TimeProvider.System never does.
                 if (!Complete(probe, owner.ElapsedMillisecondsSince(probe.StartTimestamp), answer, failure))
                 {
                     return;

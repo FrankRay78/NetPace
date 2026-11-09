@@ -110,6 +110,23 @@ public sealed class DiagnosticTestScopeTests
         Assert.Equal(500, recorder.SummaryBytes);
     }
 
+    [Fact]
+    public void Report_AnUploadEndpointProbe_CountsItAsAnOrdinaryRequest()
+    {
+        // Given an upload that resolves its endpoint with a probe before measuring.
+        var recorder = new RecordingRecorder();
+
+        using (var scope = DiagnosticTestScope.For(recorder, "upload")!)
+        {
+            scope.Report(Diagnostic(1, RequestOutcome.Succeeded, kind: RequestKind.EndpointProbe));
+        }
+
+        // Then it stays an ordinary request line and is counted - only latency probes are set apart.
+        Assert.Contains("request", recorder.Events);
+        Assert.DoesNotContain("probe", recorder.Events);
+        Assert.Equal("requests=1 succeeded=1 failed=0 cancelled=0", recorder.Summary);
+    }
+
     [Theory]
     [InlineData("latency")]
     [InlineData("screening")]

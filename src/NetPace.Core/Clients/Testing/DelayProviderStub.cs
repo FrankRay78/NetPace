@@ -6,6 +6,9 @@ namespace NetPace.Core.Clients.Testing;
 /// <remarks>
 /// This stub does not actually delay - it completes immediately.
 /// It records delay requests so tests can verify the correct delays were requested.
+/// With <c>LatencyTestSettings.LoadedLatencyEnabled</c> on, the under-load probes it paces go out
+/// back to back for the whole transfer; switch probing off when using this stub for a download or
+/// an upload.
 /// </remarks>
 public sealed class DelayProviderStub : IDelayProvider
 {

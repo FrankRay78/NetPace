@@ -452,7 +452,9 @@ public sealed partial class OoklaSpeedtestTests
                 UploadIncrements = 1,
                 UploadSizeIterations = 1,
                 UploadParallelTasks = 1
-            }
+            },
+            // An under-load probe would add a record to the exact lists these tests assert.
+            LatencyTest = new() { LoadedLatencyEnabled = false }
         };
 
         [Fact]
