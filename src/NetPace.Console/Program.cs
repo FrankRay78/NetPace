@@ -424,7 +424,8 @@ public static class Program
     /// Profile sets per-request shape and cap defaults; explicit --downloadsize / --uploadsize
     /// override only the cap via with-expressions, and --connections overrides only the number of
     /// transfers each direction runs at once. <c>--simple</c> additionally switches the under-load
-    /// latency probes off, because that format shows no under-load figure.
+    /// latency probes off, because that format shows no under-load figure, and
+    /// <c>--no-latency</c> does because it asks for no latency at all.
     /// </summary>
     internal static OoklaSpeedtestSettings BuildOoklaSettings(SpeedTestCommandSettings settings)
     {
@@ -446,12 +447,14 @@ public static class Program
             };
         }
 
-        if (settings.Simple)
+        if (settings.Simple || settings.NoLatency)
         {
             // --simple reports no under-load figure, so the probes that would measure one are
             // traffic nobody reads. Switching them off keeps this format's traffic as it was
             // before the probes existed; the idle latency test still runs, being where Ping
-            // comes from.
+            // comes from. --no-latency switches them off for the opposite reason: asking for no
+            // latency asks for none anywhere, so no probe goes out under a transfer either, in
+            // whichever format the run reports.
             ooklaSettings = ooklaSettings with
             {
                 LatencyTest = ooklaSettings.LatencyTest with { LoadedLatencyEnabled = false }

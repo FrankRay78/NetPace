@@ -4,8 +4,9 @@
 \e[2K\e[1A\e[2K\e[1A\e[2K\e[?25h
 \e[1;38;5;11mTest Sponsor 1\e[0m
 http://test1.com
-\e[?25l                                                                    
-Downloading \e[38;5;2m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m \e[38;5;2m100%\e[0m 8 Kbps    
-  Uploading \e[38;5;2m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m \e[38;5;2m100%\e[0m 18.67 Kbps
-                                                                    
-\e[?25hLatency: 100 ms, Download: 8 Kbps, Upload: 18.67 Kbps
+
+\e[?25l    Test         Done       Speed  Latency  Jitter
+\e[38;5;2m✓\e[0m   Pinging      \e[38;5;2m100%\e[0m               100 ms   10 ms
+\e[38;5;2m✓\e[0m   Downloading  \e[38;5;2m100%\e[0m      8 Kbps   150 ms   20 ms
+\e[38;5;2m✓\e[0m   Uploading    \e[38;5;2m100%\e[0m  18.67 Kbps   150 ms   20 ms
+\e[?25h

@@ -1,0 +1,10 @@
+﻿                 
+  Choosing server
+                 
+Deutsche Telekom
+http://ffm.wsqm.telekom-dienste.de:8080/speedtest/upload.php
+
+    Test         Done   Speed  Latency  Jitter
+✓   Pinging      100%            24 ms    3 ms
+✓   Downloading  100%  8 Mbps                 
+✓   Uploading    100%  8 Mbps                 

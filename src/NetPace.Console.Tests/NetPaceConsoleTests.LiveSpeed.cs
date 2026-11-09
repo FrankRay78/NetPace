@@ -4,28 +4,32 @@ namespace NetPace.Console.Tests;
 
 public sealed partial class NetPaceConsoleTests
 {
+    /// <summary>
+    /// The speed figure the live table carries for each transfer: that it is there, that it is in
+    /// the unit the run asked for, and that it is the speed the run went on to measure.
+    /// </summary>
+    /// <remarks>
+    /// Default output has no result line to compare a figure against, so these tests compare the
+    /// table's figure with the one <c>--simple</c> reports for the same measurement. That is the
+    /// stable format a script reads, so a figure the table showed and a figure a script was given
+    /// disagreeing is the failure worth catching.
+    /// </remarks>
     public sealed class LiveSpeed
     {
         [Fact]
-        public async Task Should_End_The_Live_Figure_On_The_Speed_The_Result_Line_Reports()
+        public async Task Should_End_The_Live_Figure_On_The_Speed_The_Result_Reports()
         {
             // SCENARIO: Live speed settles on the reported result
 
-            // Given
-            var services = new ServiceCollection();
-            services.AddSingleton<ISpeedTestService, SpeedTestStub>();
-            services.AddSingleton<IClock, ClockStub>();
-            services.AddSingleton<IWaiter, NoDelayStub>();
-            var host = GetInteractiveCommandLineTestHost(services);
+            // Given the same measurement shown at a terminal and written for a script.
+            var result = await Measure(Stub(), interactive: true, []);
+            var simple = await Measure(Stub(), interactive: false, ["--simple"]);
 
-            // When
-            var result = await host.RunAsync([]);
-
-            // Then the figure beside each bar is the one the result line reports for that test. A
-            // snapshot cannot hold this: it stays green if both figures move together.
+            // Then the figure on each row is the one the run reports for that test. A snapshot
+            // cannot hold this: it stays green if both figures move together.
             Assert.Equal(0, result.ExitCode);
-            Assert.Equal(FigureOnResultLine("Download", result.Output), FigureBeside("Downloading", result.Output));
-            Assert.Equal(FigureOnResultLine("Upload", result.Output), FigureBeside("Uploading", result.Output));
+            Assert.Contains(SimpleFigure("Download", simple.Output), RowFor("Downloading", result.Output));
+            Assert.Contains(SimpleFigure("Upload", simple.Output), RowFor("Uploading", result.Output));
             await Verify(result.Output);
         }
 
@@ -35,87 +39,58 @@ public sealed partial class NetPaceConsoleTests
             // SCENARIO: Live speed follows the unit options
 
             // Given a gigabit download and a half-gigabit upload, so a fixed Mega scale reads clearly.
-            var service = new ScriptedSpeedTester
-            {
-                ReportsProgress = true,
-                DownloadFactory = _ => Measured(bytes: 125_000_000, elapsedMilliseconds: 1000),
-                UploadFactory = _ => Measured(bytes: 62_500_000, elapsedMilliseconds: 1000),
-            };
+            string[] unitSwitches = ["--unit", "bytes", "--unit-system", "IEC", "--unit-scale", "Mega"];
 
-            var services = new ServiceCollection();
-            services.AddSingleton<ISpeedTestService>(service);
-            services.AddSingleton<IClock, ClockStub>();
-            services.AddSingleton<IWaiter, NoDelayStub>();
-            var host = GetInteractiveCommandLineTestHost(services);
+            var result = await Measure(Gigabit(), interactive: true, unitSwitches);
+            var simple = await Measure(Gigabit(), interactive: false, ["--simple", .. unitSwitches]);
 
-            // When
-            var result = await host.RunAsync(["--unit", "bytes", "--unit-system", "IEC", "--unit-scale", "Mega"]);
-
-            // Then the live figure carries the same unit and scale as the result line; the snapshot
-            // carries which unit that was.
+            // Then the table's figure carries the same unit and scale as the figure a script is
+            // given; the snapshot carries which unit that was.
             Assert.Equal(0, result.ExitCode);
-            Assert.Equal(FigureOnResultLine("Download", result.Output), FigureBeside("Downloading", result.Output));
-            Assert.Equal(FigureOnResultLine("Upload", result.Output), FigureBeside("Uploading", result.Output));
+            Assert.Contains(SimpleFigure("Download", simple.Output), RowFor("Downloading", result.Output));
+            Assert.Contains(SimpleFigure("Upload", simple.Output), RowFor("Uploading", result.Output));
             await Verify(result.Output);
         }
 
         [Fact]
-        public async Task Should_Print_The_Result_Line_And_No_Live_Display_When_Not_Interactive()
+        public async Task Should_Write_The_Simple_Lines_And_No_Table_When_Not_Interactive()
         {
             // SCENARIO: Output outside a terminal is unchanged
 
-            // Given
-            var services = new ServiceCollection();
-            services.AddSingleton<ISpeedTestService, SpeedTestStub>();
-            services.AddSingleton<IClock, ClockStub>();
-            services.AddSingleton<IWaiter, NoDelayStub>();
-            var host = GetCommandLineTestHost(services);
+            // Given a destination that cannot redraw.
+            var result = await Measure(Stub(), interactive: false, []);
 
-            // When
-            var result = await host.RunAsync([]);
-
-            // Then the result line is still printed, and no live display precedes it. The snapshot
-            // carries both facts, and is byte-identical to the non-interactive runs elsewhere in
-            // this suite.
+            // Then nothing of the table reaches it, and the snapshot carries what did.
             Assert.Equal(0, result.ExitCode);
+            Assert.DoesNotContain("Downloading", result.Output);
             await Verify(result.Output);
         }
 
         [Fact]
-        public async Task Should_Show_No_Bar_And_No_Live_Figure_When_Download_Is_Switched_Off()
+        public async Task Should_Show_No_Row_And_No_Figure_When_Download_Is_Switched_Off()
         {
             // Given
-            var services = new ServiceCollection();
-            services.AddSingleton<ISpeedTestService, SpeedTestStub>();
-            services.AddSingleton<IClock, ClockStub>();
-            services.AddSingleton<IWaiter, NoDelayStub>();
-            var host = GetInteractiveCommandLineTestHost(services);
+            var result = await Measure(Stub(), interactive: true, ["--no-download"]);
+            var simple = await Measure(Stub(), interactive: false, ["--simple", "--no-download"]);
 
-            // When
-            var result = await host.RunAsync(["--no-download"]);
-
-            // Then the download has neither a bar nor a figure, and the upload still has both.
+            // Then the download has no row at all, and the upload still carries its figure.
             Assert.Equal(0, result.ExitCode);
-            Assert.Equal(FigureOnResultLine("Upload", result.Output), FigureBeside("Uploading", result.Output));
+            Assert.DoesNotContain("Downloading", result.Output);
+            Assert.Contains(SimpleFigure("Upload", simple.Output), RowFor("Uploading", result.Output));
             await Verify(result.Output);
         }
 
         [Fact]
-        public async Task Should_Show_No_Bar_And_No_Live_Figure_When_Upload_Is_Switched_Off()
+        public async Task Should_Show_No_Row_And_No_Figure_When_Upload_Is_Switched_Off()
         {
             // Given
-            var services = new ServiceCollection();
-            services.AddSingleton<ISpeedTestService, SpeedTestStub>();
-            services.AddSingleton<IClock, ClockStub>();
-            services.AddSingleton<IWaiter, NoDelayStub>();
-            var host = GetInteractiveCommandLineTestHost(services);
+            var result = await Measure(Stub(), interactive: true, ["--no-upload"]);
+            var simple = await Measure(Stub(), interactive: false, ["--simple", "--no-upload"]);
 
-            // When
-            var result = await host.RunAsync(["--no-upload"]);
-
-            // Then the upload has neither a bar nor a figure, and the download still has both.
+            // Then the upload has no row at all, and the download still carries its figure.
             Assert.Equal(0, result.ExitCode);
-            Assert.Equal(FigureOnResultLine("Download", result.Output), FigureBeside("Downloading", result.Output));
+            Assert.DoesNotContain("Uploading", result.Output);
+            Assert.Contains(SimpleFigure("Download", simple.Output), RowFor("Downloading", result.Output));
             await Verify(result.Output);
         }
 
@@ -123,16 +98,9 @@ public sealed partial class NetPaceConsoleTests
         public async Task Should_Show_Its_Own_Live_Figures_For_Each_Run_Under_Count()
         {
             // Given successive runs that measure different speeds.
-            var services = new ServiceCollection();
-            services.AddSingleton<ISpeedTestService>(ScriptedRuns());
-            services.AddSingleton<IClock, ClockStub>();
-            services.AddSingleton<IWaiter, NoDelayStub>();
-            var host = GetInteractiveCommandLineTestHost(services);
+            var result = await Measure(ScriptedRuns(), interactive: true, ["--count", "2"]);
 
-            // When
-            var result = await host.RunAsync(["--count", "2"]);
-
-            // Then each run carries its own figures beside its own bars.
+            // Then each run carries its own figures in its own table.
             Assert.Equal(0, result.ExitCode);
             await Verify(result.Output);
         }
@@ -153,7 +121,7 @@ public sealed partial class NetPaceConsoleTests
             // When
             var result = await host.RunAsync(["--loop"], cancellationTokenSource.Token);
 
-            // Then each run carries its own figures beside its own bars.
+            // Then each run carries its own figures in its own table.
             Assert.Equal(0, result.ExitCode);
             await Verify(result.Output);
         }
@@ -174,12 +142,12 @@ public sealed partial class NetPaceConsoleTests
             var slow = await MeasureWithPause(AcrossTheRefreshInterval);
 
             // Then the screen the user is left with is the one the instant run produced, and it
-            // still carries both live figures, so the two are not equal by rendering nothing.
+            // still carries both figures, so the two are not equal by rendering nothing.
             Assert.Equal(0, instant.ExitCode);
             Assert.Equal(0, slow.ExitCode);
             Assert.Equal(instant.Output, slow.Output);
-            Assert.Equal(FigureOnResultLine("Download", slow.Output), FigureBeside("Downloading", slow.Output));
-            Assert.Equal(FigureOnResultLine("Upload", slow.Output), FigureBeside("Uploading", slow.Output));
+            Assert.Contains("1 Mbps", RowFor("Downloading", slow.Output));
+            Assert.Contains("500 Kbps", RowFor("Uploading", slow.Output));
         }
 
         /// <summary>
@@ -187,6 +155,24 @@ public sealed partial class NetPaceConsoleTests
         /// 0.57.1 - so a paused phase crosses it whatever the machine's speed.
         /// </summary>
         private static readonly TimeSpan AcrossTheRefreshInterval = TimeSpan.FromMilliseconds(250);
+
+        /// <summary>
+        /// Runs one speed test against <paramref name="service"/>, at a terminal or at a
+        /// destination that cannot redraw.
+        /// </summary>
+        private static async Task<TestResult> Measure(ISpeedTestService service, bool interactive, string[] arguments)
+        {
+            var services = new ServiceCollection();
+            services.AddSingleton(service);
+            services.AddSingleton<IClock, ClockStub>();
+            services.AddSingleton<IWaiter, NoDelayStub>();
+
+            var host = interactive
+                ? GetInteractiveCommandLineTestHost(services)
+                : GetCommandLineTestHost(services);
+
+            return await host.RunAsync(arguments);
+        }
 
         /// <summary>
         /// Runs one interactive speed test whose server selection, download and upload each take
@@ -209,16 +195,21 @@ public sealed partial class NetPaceConsoleTests
                 UploadFactory = _ => MeasuredSlowly(bytes: 62_500),
             };
 
-            var services = new ServiceCollection();
-            services.AddSingleton<ISpeedTestService>(service);
-            services.AddSingleton<IClock, ClockStub>();
-            services.AddSingleton<IWaiter, NoDelayStub>();
-
-            return await GetInteractiveCommandLineTestHost(services).RunAsync([]);
+            return await Measure(service, interactive: true, []);
         }
+
+        private static SpeedTestStub Stub() => new();
 
         private static SpeedTestResult Measured(long bytes, long elapsedMilliseconds) =>
             new() { BytesProcessed = bytes, ElapsedMilliseconds = elapsedMilliseconds, RequestsSucceeded = 1, RequestsFailed = 0, Latency = null };
+
+        /// <summary>A gigabit download beside a half-gigabit upload.</summary>
+        private static ScriptedSpeedTester Gigabit() => new()
+        {
+            ReportsProgress = true,
+            DownloadFactory = _ => Measured(bytes: 125_000_000, elapsedMilliseconds: 1000),
+            UploadFactory = _ => Measured(bytes: 62_500_000, elapsedMilliseconds: 1000),
+        };
 
         /// <summary>
         /// A service whose second run is twice as fast as its first, so one run's figures cannot be
@@ -232,40 +223,30 @@ public sealed partial class NetPaceConsoleTests
         };
 
         /// <summary>
-        /// The speed figure shown beside the first bar for the named test, read off the rendered
-        /// screen: whatever follows the percentage on that bar's line. A capture of several runs
-        /// holds one such bar per run, and this reads the first.
+        /// The table row for the named test, read off the rendered screen. A capture of several
+        /// runs holds one such row per run, and this reads the first.
         /// </summary>
-        private static string FigureBeside(string description, string output)
+        private static string RowFor(string test, string output)
         {
             var line = output
                 .Split('\n')
-                .Select(candidate => candidate.Trim())
-                .FirstOrDefault(candidate => candidate.StartsWith(description, StringComparison.Ordinal));
+                .FirstOrDefault(candidate => candidate.Contains(test, StringComparison.Ordinal));
 
             Assert.NotNull(line);
 
-            var percentage = line.IndexOf('%', StringComparison.Ordinal);
-            Assert.True(percentage >= 0, $"No percentage found on the '{description}' line: '{line}'");
-
-            return line[(percentage + 1)..].Trim();
+            return line;
         }
 
         /// <summary>
-        /// The speed the result line reports for the named test, so a live figure can be compared
-        /// against the number the user is finally given rather than against a hard-coded literal.
+        /// The speed a <c>--simple</c> run reports for the named test, so a figure in the table can
+        /// be compared against the number a script is given rather than against a literal.
         /// </summary>
-        private static string FigureOnResultLine(string label, string output)
+        private static string SimpleFigure(string label, string output)
         {
-            var line = output
-                .Split('\n')
-                .FirstOrDefault(candidate => candidate.Contains("Latency:", StringComparison.Ordinal));
-
-            Assert.NotNull(line);
-
-            var figures = line.Split(',', StringSplitOptions.TrimEntries)
-                .Where(part => part.StartsWith($"{label}:", StringComparison.Ordinal))
-                .Select(part => part[(label.Length + 1)..].Trim())
+            var figures = output
+                .Split('\n', StringSplitOptions.TrimEntries)
+                .Where(line => line.StartsWith($"{label}:", StringComparison.Ordinal))
+                .Select(line => line[(label.Length + 1)..].Trim())
                 .ToArray();
 
             return Assert.Single(figures);

@@ -37,18 +37,38 @@ public static class SpeedTestProgressClimb
     /// Four reports of increasing completeness, none of them carrying the result's full byte count.
     /// </returns>
     /// <exception cref="ArgumentNullException"><paramref name="result"/> is <c>null</c>.</exception>
+    /// <remarks>
+    /// The latency figures arrive as a real transfer's do: none by the first report, because no
+    /// probe has answered that early; the latency alone by the second; and the unevenness from the
+    /// third, which is the first report with a consecutive pair of probes behind it. Unlike the
+    /// bytes, they land on the result's own figures, so a consumer watching them is watching the
+    /// numbers it will be given. A result that measured no latency under load carries neither
+    /// figure on any report.
+    /// </remarks>
     public static IEnumerable<SpeedTestProgress> Towards(SpeedTestResult result)
     {
         ArgumentNullException.ThrowIfNull(result);
 
+        var report = 0;
+
         foreach ((int percentageComplete, int bytesPercentage) in Climb)
         {
+            report++;
+
             yield return new SpeedTestProgress
             {
                 PercentageComplete = percentageComplete,
                 BytesProcessed = result.BytesProcessed * bytesPercentage / 100,
-                ElapsedMilliseconds = result.ElapsedMilliseconds * percentageComplete / 100
+                ElapsedMilliseconds = result.ElapsedMilliseconds * percentageComplete / 100,
+                LatencyMilliseconds = report >= ReportsBeforeTheFirstProbeAnswers + 1 ? result.Latency?.LatencyMilliseconds : null,
+                JitterMilliseconds = report >= ReportsBeforeTheFirstProbeAnswers + 2 ? result.Latency?.JitterMilliseconds : null
             };
         }
     }
+
+    /// <summary>
+    /// How many reports go out before the first probe has answered, so a consumer is shown the
+    /// blank cell a real transfer starts with.
+    /// </summary>
+    private const int ReportsBeforeTheFirstProbeAnswers = 1;
 }

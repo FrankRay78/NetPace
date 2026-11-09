@@ -3,8 +3,8 @@
                  
 Deutsche Telekom
 http://ffm.wsqm.telekom-dienste.de:8080/speedtest/upload.php
-                                                                      
-Downloading ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 100% 119.21 MiBps
-  Uploading ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 100% 59.6 MiBps  
-                                                                      
-Latency: 24 ms, Download: 119.21 MiBps, Upload: 59.6 MiBps
+
+    Test         Done         Speed  Latency  Jitter
+✓   Pinging      100%                  24 ms    3 ms
+✓   Downloading  100%  119.21 MiBps                 
+✓   Uploading    100%    59.6 MiBps                 

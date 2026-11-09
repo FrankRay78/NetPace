@@ -1,0 +1,14 @@
+﻿                 
+  Choosing server
+                 
+Test Sponsor 1
+http://test1.com
+
+    Test    Done   Speed  Latenc  Jitter
+                               y        
+✓   Pingin  100%          100 ms   10 ms
+    g                                   
+✓   Downlo  100%  8 Kbps  150 ms   20 ms
+    ading                               
+✓   Upload  100%  18.67   150 ms   20 ms
+    ing             Kbps                

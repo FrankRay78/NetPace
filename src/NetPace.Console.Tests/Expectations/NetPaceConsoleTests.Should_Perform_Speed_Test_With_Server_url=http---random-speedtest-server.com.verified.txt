@@ -1,5 +1,3 @@
-
-[Unknown]
-http://random-speedtest-server.com
-
-Latency: 1000 ms, Download: 800 bps, Upload: 1.87 Kbps
+﻿Ping: 1000 ms
+Download: 800 bps
+Upload: 1.87 Kbps

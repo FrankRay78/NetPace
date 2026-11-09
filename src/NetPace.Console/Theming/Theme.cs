@@ -77,31 +77,31 @@ public sealed record Theme
     /// <summary>The address of the server a speed test chose.</summary>
     public required Style ServerUrl { get; init; }
 
-    /// <summary>What a figure on the result line measures — Latency, Download, Upload.</summary>
-    public required Style ResultLabel { get; init; }
+    /// <summary>A column heading of the live table — Test, Done, Speed, Latency, Jitter, Failed.</summary>
+    public required Style ColumnHeading { get; init; }
 
-    /// <summary>A value on the result line — a measured figure, or the timestamp.</summary>
-    public required Style ResultValue { get; init; }
+    /// <summary>A measured figure in the live table, or the timestamp above it.</summary>
+    public required Style Figure { get; init; }
 
     /// <summary>The lines a table is drawn with.</summary>
     public required Style TableBorder { get; init; }
 
-    /// <summary>The part of a progress bar already transferred, while the transfer is running.</summary>
-    public required Style ProgressComplete { get; init; }
+    /// <summary>The mark against a measurement whose every request succeeded.</summary>
+    public required Style Success { get; init; }
 
-    /// <summary>A progress bar once its transfer has finished.</summary>
-    public required Style ProgressFinished { get; init; }
+    /// <summary>
+    /// The mark against a measurement some of whose requests failed, and the count that says how
+    /// many. Distinct from <see cref="Error"/>, because a partial failure still measured something.
+    /// </summary>
+    public required Style PartialFailure { get; init; }
 
-    /// <summary>The part of a progress bar still to come.</summary>
-    public required Style ProgressRemaining { get; init; }
-
-    /// <summary>The percentage beside a running progress bar.</summary>
+    /// <summary>How far through a measurement still running is.</summary>
     public required Style Percentage { get; init; }
 
-    /// <summary>The percentage beside a progress bar that has reached the end.</summary>
+    /// <summary>How far through a measurement that has finished got.</summary>
     public required Style PercentageComplete { get; init; }
 
-    /// <summary>The spinner shown while a server is being chosen.</summary>
+    /// <summary>The spinner shown while a server is being chosen, and beside a running measurement.</summary>
     public required Style Spinner { get; init; }
 
     /// <summary>
@@ -128,12 +128,11 @@ public sealed record Theme
         Error,
         ServerName,
         ServerUrl,
-        ResultLabel,
-        ResultValue,
+        ColumnHeading,
+        Figure,
         TableBorder,
-        ProgressComplete,
-        ProgressFinished,
-        ProgressRemaining,
+        Success,
+        PartialFailure,
         Percentage,
         PercentageComplete,
         Spinner
@@ -143,9 +142,8 @@ public sealed record Theme
     /// Today's look, and what a run with no theme chosen draws in.
     /// </summary>
     /// <remarks>
-    /// The progress slots carry Spectre.Console's own defaults rather than being left unset, so
-    /// every theme reaches the renderer the same way and there is one place to read what the
-    /// unthemed screen looked like.
+    /// Every slot carries a value rather than being left unset, so every theme reaches the
+    /// renderer the same way and there is one place to read what the unthemed screen looks like.
     /// </remarks>
     public static Theme Default { get; } = new()
     {
@@ -161,12 +159,11 @@ public sealed record Theme
         Error = new Style(foreground: Color.Red),
         ServerName = new Style(foreground: Color.Yellow, decoration: Decoration.Bold),
         ServerUrl = Style.Plain,
-        ResultLabel = Style.Plain,
-        ResultValue = Style.Plain,
+        ColumnHeading = Style.Plain,
+        Figure = Style.Plain,
         TableBorder = new Style(foreground: Color.Red),
-        ProgressComplete = new Style(foreground: Color.Yellow),
-        ProgressFinished = new Style(foreground: Color.Green),
-        ProgressRemaining = new Style(foreground: Color.Grey),
+        Success = new Style(foreground: Color.Green),
+        PartialFailure = new Style(foreground: Color.Yellow),
         Percentage = Style.Plain,
         PercentageComplete = new Style(foreground: Color.Green),
         Spinner = new Style(foreground: Color.Yellow)
@@ -174,8 +171,9 @@ public sealed record Theme
 
     /// <summary>
     /// No colour and no emphasis anywhere — what NetPace looks like when the user has asked for no
-    /// colour at all, including Spectre.Console's own uncoloured progress bar, which marks what is
-    /// done with its glyph and what remains with blank space rather than with a second colour.
+    /// colour at all. Nothing in the live table is marked by colour alone: a measurement's outcome
+    /// is readable from its symbol and its failed count, so an uncoloured screen loses nothing but
+    /// the colour.
     /// </summary>
     public static Theme Plain { get; } = new()
     {
@@ -191,12 +189,11 @@ public sealed record Theme
         Error = Style.Plain,
         ServerName = Style.Plain,
         ServerUrl = Style.Plain,
-        ResultLabel = Style.Plain,
-        ResultValue = Style.Plain,
+        ColumnHeading = Style.Plain,
+        Figure = Style.Plain,
         TableBorder = Style.Plain,
-        ProgressComplete = Style.Plain,
-        ProgressFinished = Style.Plain,
-        ProgressRemaining = Style.Plain,
+        Success = Style.Plain,
+        PartialFailure = Style.Plain,
         Percentage = Style.Plain,
         PercentageComplete = Style.Plain,
         Spinner = Style.Plain
@@ -226,12 +223,11 @@ public sealed record Theme
         Error = new Style(foreground: Color.Chartreuse4, decoration: Decoration.Bold),
         ServerName = new Style(foreground: Color.Green4, decoration: Decoration.Bold),
         ServerUrl = new Style(foreground: Color.DarkSeaGreen4),
-        ResultLabel = new Style(foreground: Color.SpringGreen4),
-        ResultValue = new Style(foreground: Color.Green4, decoration: Decoration.Bold),
+        ColumnHeading = new Style(foreground: Color.SpringGreen4),
+        Figure = new Style(foreground: Color.Green4, decoration: Decoration.Bold),
         TableBorder = new Style(foreground: Color.DarkSeaGreen4),
-        ProgressComplete = new Style(foreground: Color.Chartreuse4),
-        ProgressFinished = new Style(foreground: Color.Green4),
-        ProgressRemaining = new Style(foreground: Color.DarkSeaGreen4),
+        Success = new Style(foreground: Color.Green4),
+        PartialFailure = new Style(foreground: Color.SpringGreen4, decoration: Decoration.Bold),
         Percentage = new Style(foreground: Color.DarkSeaGreen4),
         PercentageComplete = new Style(foreground: Color.SpringGreen4),
         Spinner = new Style(foreground: Color.SpringGreen4)
@@ -279,10 +275,7 @@ public sealed record Theme
     /// </summary>
     /// <remarks>
     /// A theme that uses no colour takes colour away from the console rather than setting every
-    /// slot to nothing and hoping. Two things need that: Spectre.Console's progress bar tells its
-    /// finished part from its remaining part by colour and falls back to blank space only when the
-    /// console cannot colour, so an uncoloured theme that left the console colour-capable would
-    /// draw a bar of one unbroken glyph; and anything drawn by Spectre.Console itself, rather than
+    /// slot to nothing and hoping: anything Spectre.Console draws of its own accord, rather than
     /// through a slot here, has no slot to leave unset.
     /// </remarks>
     /// <param name="console">The console the run draws on.</param>

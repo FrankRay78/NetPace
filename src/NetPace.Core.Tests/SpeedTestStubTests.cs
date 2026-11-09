@@ -606,4 +606,66 @@ public sealed class SpeedTestStubTests
         Assert.Equal(90, screened.MinimumLatencyMilliseconds);
         Assert.Equal(110, screened.MaximumLatencyMilliseconds);
     }
+
+    [Fact]
+    public async Task TheStubsIdleLatency_ReportsRunningFigures_AsItMeasures()
+    {
+        // SCENARIO: Library progress carries running figures
+
+        // Given the stub's second server, whose latency is 200 ms and jitter 20 ms.
+        var stub = new SpeedTestStub();
+        var servers = await stub.GetServersAsync();
+        var reports = new List<LatencyTestProgress>();
+
+        // When its latency is measured, collecting every progress report.
+        await stub.GetServerLatencyAsync(servers[1], new SynchronousProgress<LatencyTestProgress>(reports.Add));
+
+        // Then the first report carries the latency and no jitter, unevenness needing a second
+        // probe to compare, and every later one carries both.
+        Assert.Equal(200, reports[0].LatencyMilliseconds);
+        Assert.Null(reports[0].JitterMilliseconds);
+        Assert.All(reports[1..], report =>
+        {
+            Assert.Equal(200, report.LatencyMilliseconds);
+            Assert.Equal(20, report.JitterMilliseconds);
+        });
+    }
+
+    [Fact]
+    public async Task TheStubsScreening_ReportsNeitherRunningFigure()
+    {
+        // Given the stub's three servers.
+        var stub = new SpeedTestStub();
+        var servers = await stub.GetServersAsync();
+        var reports = new List<SpeedTestProgress>();
+
+        // When they are screened.
+        await stub.GetFastestServerByLatencyAsync(servers, new SynchronousProgress<SpeedTestProgress>(reports.Add));
+
+        // Then no report claims a figure: the two describe the one server under test, and
+        // screening is measuring several.
+        Assert.NotEmpty(reports);
+        Assert.All(reports, report =>
+        {
+            Assert.Null(report.LatencyMilliseconds);
+            Assert.Null(report.JitterMilliseconds);
+        });
+    }
+
+    [Fact]
+    public async Task TheStubsTransfers_ReportRunningFigures_EndingOnTheResults()
+    {
+        // Given the stub's first server.
+        var stub = new SpeedTestStub();
+        var servers = await stub.GetServersAsync();
+        var reports = new List<SpeedTestProgress>();
+
+        // When a download runs against it.
+        var result = await stub.GetDownloadSpeedAsync(servers[0], new SynchronousProgress<SpeedTestProgress>(reports.Add));
+
+        // Then the figures the consumer watched end on the figures the result reports.
+        Assert.NotNull(result.Latency);
+        Assert.Equal(result.Latency!.LatencyMilliseconds, reports[^1].LatencyMilliseconds);
+        Assert.Equal(result.Latency.JitterMilliseconds, reports[^1].JitterMilliseconds);
+    }
 }

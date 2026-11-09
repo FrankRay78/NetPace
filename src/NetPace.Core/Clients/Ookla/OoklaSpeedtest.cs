@@ -175,11 +175,16 @@ public sealed class OoklaSpeedtest : ISpeedTestService
             // Record this ping time
             pings.Add(elapsedMilliseconds);
 
-            // Report progress after each iteration
+            // Report progress after each iteration, with the figures of the probes that have
+            // answered so far, so a consumer can show a latency that climbs rather than one that
+            // appears only at the end. The running figures are derived the same way the result's
+            // are, so the last report lands on the figures the result states.
             var percentageComplete = (iteration + 1) * 100 / maxIterations;
             ReportProgress(progress, new LatencyTestProgress
             {
                 PercentageComplete = percentageComplete,
+                LatencyMilliseconds = (long)pings.Average(),
+                JitterMilliseconds = RunningJitterMilliseconds(pings),
             });
         }
 
@@ -214,6 +219,14 @@ public sealed class OoklaSpeedtest : ISpeedTestService
     /// hears — rather than the spread of the probes around their average. It is the one definition
     /// of jitter in NetPace, so a figure measured under load stays comparable with an idle one.
     /// </remarks>
+    /// <summary>
+    /// How uneven a run of probe times was so far, or <see langword="null"/> where there is not yet
+    /// a consecutive pair to compare. A running figure says nothing rather than zero, because a
+    /// zero would read as perfectly even round trips.
+    /// </summary>
+    private static long? RunningJitterMilliseconds(IReadOnlyList<long> probeMilliseconds) =>
+        probeMilliseconds.Count < 2 ? null : CalculateJitterMilliseconds(probeMilliseconds);
+
     private static long CalculateJitterMilliseconds(IReadOnlyList<long> probeMilliseconds)
     {
         if (probeMilliseconds.Count < 2)
@@ -683,6 +696,28 @@ public sealed class OoklaSpeedtest : ISpeedTestService
         // probing the listed address would time a line that is carrying nothing.
         using var probing = LoadedLatencyProbing.Start(this, server, GetBaseUrl(transferUrl) + LatencyFileName, diagnostics, cancellationToken);
 
+        // One place that composes a transfer's progress report, so the bytes, the clock and the
+        // running latency figures are always read together. Nothing is computed where no consumer
+        // asked for progress.
+        void ReportTransferProgress(int percentageComplete, long bytesProcessed)
+        {
+            if (progress is null)
+            {
+                return;
+            }
+
+            (long? latencyMilliseconds, long? jitterMilliseconds) = probing?.Running ?? (null, null);
+
+            ReportProgress(progress, new SpeedTestProgress
+            {
+                PercentageComplete = percentageComplete,
+                BytesProcessed = bytesProcessed,
+                ElapsedMilliseconds = ElapsedMillisecondsSince(testStartTimestamp),
+                LatencyMilliseconds = latencyMilliseconds,
+                JitterMilliseconds = jitterMilliseconds
+            });
+        }
+
         // Create and execute tasks to process the test data in parallel.
         var sequenceIssued = sequenceOffset;
 
@@ -807,12 +842,7 @@ public sealed class OoklaSpeedtest : ISpeedTestService
                                 // Configured byte cap is hit.
                                 wasCancelledLocally = true;
                                 cts.Cancel();
-                                ReportProgress(progress, new SpeedTestProgress
-                                {
-                                    PercentageComplete = 100,
-                                    BytesProcessed = totalBytesReturned,
-                                    ElapsedMilliseconds = ElapsedMillisecondsSince(testStartTimestamp)
-                                });
+                                ReportTransferProgress(100, totalBytesReturned);
                             }
                             else
                             {
@@ -832,12 +862,7 @@ public sealed class OoklaSpeedtest : ISpeedTestService
                                     }
                                 }
 
-                                ReportProgress(progress, new SpeedTestProgress
-                                {
-                                    PercentageComplete = percentageComplete,
-                                    BytesProcessed = totalBytesReturned,
-                                    ElapsedMilliseconds = ElapsedMillisecondsSince(testStartTimestamp)
-                                });
+                                ReportTransferProgress(percentageComplete, totalBytesReturned);
                             }
                         }
 
@@ -1298,6 +1323,15 @@ public sealed class OoklaSpeedtest : ISpeedTestService
         private int probesIssued;
         private LatencyTestResult? measured;
 
+        // The running figures, published as each sample is taken so that a transfer reporting its
+        // own progress can read them without taking the gate. Taking it would make a consumer's
+        // diagnostics handler - which runs under the gate - able to delay the transfer's progress
+        // reports. The sample count carries presence, because a nullable long cannot be read
+        // atomically: zero means nothing to report, one means a latency but no unevenness yet.
+        private long runningLatencyMilliseconds;
+        private long runningJitterMilliseconds;
+        private int runningSampleCount;
+
         /// <summary>One probe in flight: what it will be reported as, and when it left.</summary>
         private readonly record struct Probe(int Sequence, DateTime StartedAt, long StartTimestamp);
 
@@ -1330,6 +1364,28 @@ public sealed class OoklaSpeedtest : ISpeedTestService
             // Start would never return and the transfer would never begin.
             probing.loop = Task.Run(probing.RunAsync);
             return probing;
+        }
+
+        /// <summary>
+        /// The figures of the probes that have answered so far, for a transfer to carry on its own
+        /// progress reports. Both absent until the first probe answers, and the unevenness until
+        /// the second.
+        /// </summary>
+        public (long? LatencyMilliseconds, long? JitterMilliseconds) Running
+        {
+            get
+            {
+                var samplesTaken = Volatile.Read(ref runningSampleCount);
+
+                if (samplesTaken == 0)
+                {
+                    return (null, null);
+                }
+
+                return (
+                    Volatile.Read(ref runningLatencyMilliseconds),
+                    samplesTaken < 2 ? null : Volatile.Read(ref runningJitterMilliseconds));
+            }
         }
 
         /// <summary>
@@ -1464,6 +1520,14 @@ public sealed class OoklaSpeedtest : ISpeedTestService
                 if (failure is null)
                 {
                     samples.Add(elapsedMilliseconds);
+
+                    // Published before the diagnostics report below, so a transfer's next progress
+                    // report carries this sample however long a consumer's handler takes. The
+                    // count is written last, because it is what makes the two figures readable.
+                    Volatile.Write(ref runningLatencyMilliseconds, (long)samples.Average());
+                    Volatile.Write(ref runningJitterMilliseconds, CalculateJitterMilliseconds(samples));
+                    Volatile.Write(ref runningSampleCount, samples.Count);
+
                     Report(probe, RequestOutcome.Succeeded, answer, elapsedMilliseconds, failureReason: null, failureType: null);
                 }
                 else
