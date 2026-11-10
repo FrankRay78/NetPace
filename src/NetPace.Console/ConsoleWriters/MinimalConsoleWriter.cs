@@ -34,16 +34,18 @@ public sealed class MinimalConsoleWriter : IConsoleWriter
         var fastest = await ServerSelector.GetServerAsync(speedTestClient, settings, recorder, cancellationToken);
         var outcome = await Measurements.PerformAsync(speedTestClient, fastest.Server, settings, recorder, cancellationToken);
 
-        // One line, the timestamp first, then a named field per figure in the order the tests ran.
-        // A test that did not run contributes no field, so nothing here ever reports a zero for a
-        // measurement nobody asked for.
-        console.WriteLine(string.Join(", ", new[]
-        {
+        // The timestamp first, then a named field per figure in the order the tests ran. A test that
+        // did not run contributes null rather than a field, so nothing here ever reports a zero for
+        // a measurement nobody asked for.
+        string?[] fields =
+        [
             clock.Now.ToHumanReadable(),
-            !settings.NoLatency ? $"Latency: {fastest.LatencyMilliseconds.ToString(CultureInfo.InvariantCulture)} ms" : null,
+            settings.NoLatency ? null : $"Latency: {fastest.LatencyMilliseconds.ToString(CultureInfo.InvariantCulture)} ms",
             outcome.Download is SpeedTestResult download ? $"Download: {download.GetFigure(settings)}" : null,
-            outcome.Upload is SpeedTestResult upload ? $"Upload: {upload.GetFigure(settings)}" : null
-        }.Where(field => !string.IsNullOrEmpty(field))));
+            outcome.Upload is SpeedTestResult upload ? $"Upload: {upload.GetFigure(settings)}" : null,
+        ];
+
+        console.WriteLine(string.Join(", ", fields.Where(field => field is not null)));
 
         return outcome;
     }

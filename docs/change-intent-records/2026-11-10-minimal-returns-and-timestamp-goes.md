@@ -8,7 +8,7 @@
 
 **Constraints:**
 
-- Four formats now share the one-of-these rule and the probes-off decision in `Program.BuildOoklaSettings`; a fifth inherits probes-on unasked.
+- Four formats now share the one-of-these rule in `SpeedTestCommandSettingsExtensions.Validate`; `--minimal` and `--simple` alone share the probes-off decision in `Program.BuildOoklaSettings`, and a fifth format inherits probes-on unasked.
 - `--minimal` and `--simple` must render the same measurement identically, so the figure is one expression on `SpeedTestResultExtensions`.
 
 **Decisions:**

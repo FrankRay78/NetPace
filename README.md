@@ -137,11 +137,11 @@ OPTIONS:
                                       Overrides the --profile connection count; the profile's data caps still apply.
                                       A maximum, so a profile with fewer transfers to run than this will not reach it.
     -u, --unit             bits       The speed unit. <bits, bytes>
-                                      Applies to the default and simple output.
+                                      Applies to the default, minimal and simple output.
         --unit-scale       auto       The speed unit scale. <auto, base, kilo, mega, giga, tera, peta>
-                                      Applies to the default and simple output.
+                                      Applies to the default, minimal and simple output.
         --unit-system      SI         The speed unit system. <SI, IEC>
-                                      Applies to the default and simple output.
+                                      Applies to the default, minimal and simple output.
                                       SI steps up in powers of 1000 (KB, MB, GB), common in networking,
                                       while IEC uses powers of 1024 (KiB, MiB, GiB), standard in computing and storage.
         --device-id                   Record a label for this machine in CSV and JSON output.

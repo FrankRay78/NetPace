@@ -171,7 +171,7 @@ public static class Program
 
         var unitOption = new Option<SpeedUnit>("--unit")
         {
-            Description = $"The speed unit. {OptionValues.Units.HelpList}\nApplies to the default and simple output.",
+            Description = $"The speed unit. {OptionValues.Units.HelpList}\nApplies to the default, minimal and simple output.",
             DefaultValueFactory = _ => SpeedUnit.BitsPerSecond,
             CustomParser = result => OptionValues.Units.Parse(result, "--unit")
         };
@@ -179,14 +179,14 @@ public static class Program
 
         var unitScaleOption = new Option<SpeedScale>("--unit-scale")
         {
-            Description = $"The speed unit scale. {OptionValues.UnitScales.HelpList}\nApplies to the default and simple output.",
+            Description = $"The speed unit scale. {OptionValues.UnitScales.HelpList}\nApplies to the default, minimal and simple output.",
             DefaultValueFactory = _ => SpeedScale.Auto,
             CustomParser = result => OptionValues.UnitScales.Parse(result, "--unit-scale")
         };
 
         var unitSystemOption = new Option<SpeedUnitSystem>("--unit-system")
         {
-            Description = $"The speed unit system. {OptionValues.UnitSystems.HelpList}\nApplies to the default and simple output.\nSI steps up in powers of 1000 (KB, MB, GB), common in networking,\nwhile IEC uses powers of 1024 (KiB, MiB, GiB), standard in computing and storage.",
+            Description = $"The speed unit system. {OptionValues.UnitSystems.HelpList}\nApplies to the default, minimal and simple output.\nSI steps up in powers of 1000 (KB, MB, GB), common in networking,\nwhile IEC uses powers of 1024 (KiB, MiB, GiB), standard in computing and storage.",
             DefaultValueFactory = _ => SpeedUnitSystem.SI,
             CustomParser = result => OptionValues.UnitSystems.Parse(result, "--unit-system")
         };
@@ -434,11 +434,11 @@ public static class Program
         if (settings.Simple || settings.Minimal || settings.NoLatency)
         {
             // --simple and --minimal report no under-load figure, so the probes that would measure
-            // one are traffic nobody reads. Switching them off keeps these formats' traffic as it
-            // was before the probes existed; the idle latency test still runs, being where the
-            // latency figure comes from. --no-latency switches them off for the opposite reason: asking for no
-            // latency asks for none anywhere, so no probe goes out under a transfer either, in
-            // whichever format the run reports.
+            // one are traffic nobody reads. Switching them off keeps --simple's traffic as it was
+            // before the probes existed; the idle latency test still runs, being where the
+            // latency figure comes from. --no-latency switches them off for the opposite reason:
+            // asking for no latency asks for none anywhere, so no probe goes out under a transfer
+            // either, in whichever format the run reports.
             ooklaSettings = ooklaSettings with
             {
                 LatencyTest = ooklaSettings.LatencyTest with { LoadedLatencyEnabled = false }

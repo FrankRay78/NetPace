@@ -28,7 +28,6 @@ public sealed partial class NetPaceConsoleTests
             // below 1.0.0.
             Assert.Empty(serviceCalls);
             Assert.NotEqual(0, result.ExitCode);
-            Assert.DoesNotContain("removed", result.Output);
             await Verify(result.Output).UseParameters(option);
         }
 

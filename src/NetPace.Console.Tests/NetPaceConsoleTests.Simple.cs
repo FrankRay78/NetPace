@@ -267,7 +267,7 @@ public sealed partial class NetPaceConsoleTests
             // When
             var result = await host.RunAsync([]);
 
-            // Then opting out is --simple's alone, and nothing else lost its probes with it.
+            // Then the default output keeps its probes: only --simple and --minimal opt out.
             Assert.Equal(0, result.ExitCode);
             Assert.True(accessor.Settings.LatencyTest.LoadedLatencyEnabled);
         }

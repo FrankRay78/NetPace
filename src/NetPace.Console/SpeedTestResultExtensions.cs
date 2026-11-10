@@ -6,7 +6,7 @@ namespace NetPace.Console;
 
 /// <summary>
 /// CLI-side helpers that derive measurement validity from a <see cref="SpeedTestResult"/>'s request
-/// counts, and render the figure the human-readable formats carry. The counts are the universal
+/// counts, and render the figure the line-based formats carry. The counts are the universal
 /// currency of validity; these helpers apply the consumer policy the core library deliberately does
 /// not.
 /// </summary>
@@ -28,17 +28,18 @@ internal static class SpeedTestResultExtensions
     /// <c>" (5 of 150 requests failed)"</c>); an empty string when none failed.
     /// </summary>
     public static string GetFailureAnnotation(this SpeedTestResult result) =>
-        result.RequestsFailed > 0
+        result.HasFailures()
             ? $" ({result.RequestsFailed.ToString(CultureInfo.InvariantCulture)} of {(result.RequestsSucceeded + result.RequestsFailed).ToString(CultureInfo.InvariantCulture)} requests failed)"
             : string.Empty;
 
     /// <summary>
-    /// A measurement as the formats written for a person carry it: the speed in the unit the
-    /// switches ask for, followed by the failed-request annotation where there is one.
+    /// A measurement as <c>--minimal</c> and <c>--simple</c> carry it: the speed in the unit the
+    /// switches ask for, followed by the failed-request annotation where there is one. Default
+    /// output does not use this: its table has a <c>Failed</c> column of its own.
     /// </summary>
     /// <remarks>
-    /// One expression for every such format, so <c>--minimal</c> and <c>--simple</c> cannot drift
-    /// apart in how they render the same measurement.
+    /// One expression for both, so they cannot drift apart in how they render the same
+    /// measurement.
     /// </remarks>
     public static string GetFigure(this SpeedTestResult result, SpeedTestCommandSettings settings)
     {

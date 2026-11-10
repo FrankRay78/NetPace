@@ -82,8 +82,8 @@ public sealed record Theme
     public required Style ColumnHeading { get; init; }
 
     /// <summary>
-    /// A measured figure in the live table, the name of the test on its row (Pinging,
-    /// Downloading, Uploading), or the timestamp above the table.
+    /// A measured figure in the live table, or the name of the test on its row (Pinging,
+    /// Downloading, Uploading).
     /// </summary>
     public required Style Figure { get; init; }
 

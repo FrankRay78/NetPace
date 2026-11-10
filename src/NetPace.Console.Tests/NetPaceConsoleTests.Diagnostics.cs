@@ -12,8 +12,8 @@ public sealed partial class NetPaceConsoleTests
     public sealed class Diagnostics
     {
         /// <summary>
-        /// The four output formats, by the switch that selects each. The default format is selected
-        /// by no switch at all.
+        /// The output formats this suite runs the diagnostic stream against, by the switch that
+        /// selects each. The default format is selected by no switch at all.
         /// </summary>
         public static TheoryData<string> OutputFormats() => new("", "--simple", "--csv", "--json");
 

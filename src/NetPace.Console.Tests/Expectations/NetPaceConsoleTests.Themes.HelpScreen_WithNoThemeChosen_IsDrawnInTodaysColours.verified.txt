@@ -61,12 +61,15 @@ and upload speed testing.
                                       transfers to run than this will not reach 
                                       it.                                       
     \e[38;5;7m-u, --unit\e[0m             \e[1mbits\e[0m       The speed unit. <bits, bytes>             
-                                      Applies to the default and simple output. 
+                                      Applies to the default, minimal and simple
+                                      output.                                   
     \e[38;5;7m    --unit-scale\e[0m       \e[1mauto\e[0m       The speed unit scale. <auto, base, kilo,  
                                       mega, giga, tera, peta>                   
-                                      Applies to the default and simple output. 
+                                      Applies to the default, minimal and simple
+                                      output.                                   
     \e[38;5;7m    --unit-system\e[0m      \e[1mSI\e[0m         The speed unit system. <SI, IEC>          
-                                      Applies to the default and simple output. 
+                                      Applies to the default, minimal and simple
+                                      output.                                   
                                       SI steps up in powers of 1000 (KB, MB,    
                                       GB), common in networking,                
                                       while IEC uses powers of 1024 (KiB, MiB,  

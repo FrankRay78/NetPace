@@ -31,7 +31,7 @@ internal static class SimpleLines
 
         // Runs under --count and --loop follow one another with no separator, so a reader takes
         // every line the same way whichever run wrote it. None of them carries the time: this
-        // format is exactly the three lines speedtest-cli --simple writes, and --minimal is where
+        // format keeps the shape speedtest-cli --simple writes, and --minimal is where
         // a timestamped line per run comes from.
         if (!settings.NoLatency)
         {

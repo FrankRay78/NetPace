@@ -10,10 +10,10 @@ namespace NetPace.Console.ConsoleWriters;
 /// <remarks>
 /// Machine-readable, so the width limit comes off and nothing it writes is styled: the line shape
 /// is the contract a reader parses, and a break or an escape sequence inside one would land in the
-/// value. Every line this writer writes carries a <c>name: value</c> label, so one expression
-/// reads any of them — but a run that faults writes an unlabelled
-/// <c>Error:</c> message to the same stream, so a reader anchors its match (<c>grep '^Download:'</c>)
-/// rather than trusting every line to be a figure.
+/// value. Every line this writer writes carries a <c>name: value</c> label, so one expression reads
+/// any of them — but a run that faults writes an unlabelled <c>Error:</c> message to the same
+/// stream, so a reader anchors its match (<c>grep '^Download:'</c>) rather than trusting every line
+/// to be a figure.
 /// <para>
 /// These are also the lines default output writes wherever it cannot redraw, which is why the
 /// lines themselves live in <see cref="SimpleLines"/>.

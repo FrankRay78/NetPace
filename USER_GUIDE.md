@@ -111,7 +111,7 @@ Every format composes with skipping individual tests — `--no-latency` / `--no-
 
 Two further options decide whether and where the result appears, and both work with any format: `--quiet` suppresses the result entirely, and `--file` writes it to disk.
 
-`--diagnostics` is not a fifth format — it adds a second stream alongside whichever format you picked, leaving the result untouched. See [Diagnosing a failure with `--diagnostics`](#diagnosing-a-failure-with---diagnostics).
+`--diagnostics` is not another format — it adds a second stream alongside whichever format you picked, leaving the result untouched. See [Diagnosing a failure with `--diagnostics`](#diagnosing-a-failure-with---diagnostics).
 
 ### Minimal output
 
@@ -221,7 +221,7 @@ Timestamp,LatencyMilliseconds,JitterMilliseconds,DownloadSpeedBitsPerSecond,Down
 
 **`--no-latency` empties only `LatencyMilliseconds` and `JitterMilliseconds`.** It skips the idle measurement, not the probes taken while a transfer runs, so each direction's four under-load figures are still reported; only `--no-download` or `--no-upload` empties them.
 
-**`--unit`, `--unit-scale` and `--unit-system` do not change CSV output at all.** They shape the default and simple output only. That is what makes a CSV log safe to append to: under the default automatic scale a formatted speed can be `Kbps` on one run and `Mbps` on the next, so a file collecting rows over weeks would mix units in one column. The numbers never shift, so `--csv` works with `--count` and `--loop` whatever the unit options say, and the numbers match [the numeric fields in JSON](#numeric-values-in-json) for the same run.
+**`--unit`, `--unit-scale` and `--unit-system` do not change CSV output at all.** They shape the default, minimal and simple output only. That is what makes a CSV log safe to append to: under the default automatic scale a formatted speed can be `Kbps` on one run and `Mbps` on the next, so a file collecting rows over weeks would mix units in one column. The numbers never shift, so `--csv` works with `--count` and `--loop` whatever the unit options say, and the numbers match [the numeric fields in JSON](#numeric-values-in-json) for the same run.
 
 The built-in columns are the same columns in the same order on every run, whichever tests ran, with one column per `--custom-field` pair after them — so two runs given different custom fields do not share a header. A test you skipped with `--no-latency`, `--no-download` or `--no-upload` leaves its cells empty rather than dropping its columns, so a script reading by position is not moved along by a skipped test:
 
@@ -316,7 +316,7 @@ NetPace --json-pretty
 
 The same nine figures CSV carries, under the same names and as the same numbers for the same run. **A figure that was not measured is left out rather than reported as `0`** — a direction's four fields are absent where the transfer measured nothing under load or the test did not run, and the lowest and highest are absent where no run of probe times was kept. `JitterMilliseconds` goes whenever `LatencyMilliseconds` does, so `--no-latency` leaves out both — and only those two: each direction's four under-load fields are still reported, and only `--no-download` or `--no-upload` leaves them out.
 
-**`--unit`, `--unit-scale` and `--unit-system` do not change JSON output at all.** They shape the default and simple output only. Passing one with `--json` or `--json-pretty` is accepted without an error or warning, and the result is byte-for-byte what the same run writes without it. That is what makes a saved JSON result comparable: a script comparing runs, writing to a database or checking a threshold reads the numbers and never has to strip a unit, convert between scales, or know which switches the run was made with.
+**`--unit`, `--unit-scale` and `--unit-system` do not change JSON output at all.** They shape the default, minimal and simple output only. Passing one with `--json` or `--json-pretty` is accepted without an error or warning, and the result is byte-for-byte what the same run writes without it. That is what makes a saved JSON result comparable: a script comparing runs, writing to a database or checking a threshold reads the numbers and never has to strip a unit, convert between scales, or know which switches the run was made with.
 
 Need a speed formatted for a person to read — for a notification, say? `--simple` writes exactly that figure on its own line, and `--minimal` writes the whole run as one line; both follow the unit options.
 
@@ -324,7 +324,7 @@ A test you skipped with `--no-latency`, `--no-download` or `--no-upload` omits e
 
 ### Timestamps and regional settings
 
-The timestamp has one fixed format per output mode, and whether a format carries one at all is fixed too. There is no option to add or remove it, so a script reading a NetPace result never has to know what a given run was asked for. The default and `--simple` output carry no timestamp: the default is read live, and `--simple` is exactly the lines `speedtest-cli --simple` writes.
+The timestamp has one fixed format per output mode, and whether a format carries one at all is fixed too. There is no option to add or remove it, so a script reading a NetPace result never has to know what a given run was asked for. The default and `--simple` output carry no timestamp: the default is read live, and `--simple` keeps the shape `speedtest-cli --simple` writes.
 
 | Output | Timestamp | Example |
 | --- | --- | --- |

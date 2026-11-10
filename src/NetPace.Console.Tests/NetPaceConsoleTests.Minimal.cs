@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace NetPace.Console.Tests;
@@ -10,18 +11,6 @@ public sealed partial class NetPaceConsoleTests
 {
     public sealed class Minimal
     {
-        /// <summary>
-        /// The timestamp every results line opens with, as the stub clock reports it.
-        /// </summary>
-        private const string StubTimestamp = "1980-01-01 10:05:00";
-
-        /// <summary>
-        /// The output's lines, with the byte-order mark and any blank line dropped, as someone
-        /// watching a loop scroll past sees them.
-        /// </summary>
-        private static string[] Lines(string output) =>
-            output.TrimStart('﻿').Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries);
-
         private static CommandLineTestHost HostWith(ISpeedTestService service)
         {
             var services = new ServiceCollection();
@@ -58,8 +47,6 @@ public sealed partial class NetPaceConsoleTests
             // Then the whole output is one line, it opens with the local timestamp, and the latency,
             // download and upload figures follow it, which the snapshot carries.
             Assert.Equal(0, result.ExitCode);
-            Assert.Single(Lines(result.Output));
-            Assert.StartsWith(StubTimestamp, Lines(result.Output)[0], StringComparison.Ordinal);
             await Verify(result.Output);
         }
 
@@ -77,8 +64,6 @@ public sealed partial class NetPaceConsoleTests
             // Then the output is two lines, each opening with its own timestamp, which the snapshot
             // carries.
             Assert.Equal(0, result.ExitCode);
-            Assert.Equal(2, Lines(result.Output).Length);
-            Assert.All(Lines(result.Output), line => Assert.Matches(@"^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}, ", line));
             await Verify(result.Output);
         }
 
@@ -95,10 +80,9 @@ public sealed partial class NetPaceConsoleTests
                 // When
                 var result = await host.RunAsync(["--minimal", "--count", "2", "--file", testFile]);
 
-                // Then the file holds the same two lines the terminal saw, one per run.
+                // Then the file holds one line per run, which the snapshot carries.
                 Assert.Equal(0, result.ExitCode);
                 var fileContent = await System.IO.File.ReadAllTextAsync(testFile);
-                Assert.Equal(2, Lines(fileContent).Length);
                 await Verify(fileContent);
             }
             finally
@@ -128,7 +112,6 @@ public sealed partial class NetPaceConsoleTests
             // zero that reads as a measurement - and the others are untouched, which the snapshot
             // carries.
             Assert.Equal(0, result.ExitCode);
-            Assert.StartsWith(StubTimestamp, Lines(result.Output)[0], StringComparison.Ordinal);
             await Verify(result.Output).UseParameters(skipSwitch);
         }
 
@@ -169,8 +152,6 @@ public sealed partial class NetPaceConsoleTests
             // Then the line is the bare Error: message, with no timestamp in front of it: this
             // format is a quick shorthand, not a detailed log.
             Assert.Equal(0, result.ExitCode);
-            Assert.StartsWith("Error:", Lines(result.Output)[0], StringComparison.Ordinal);
-            Assert.DoesNotContain(StubTimestamp, result.Output);
             await Verify(result.Output);
         }
 
@@ -200,7 +181,7 @@ public sealed partial class NetPaceConsoleTests
             }
 
             static string Figure(string output, string label) =>
-                System.Text.RegularExpressions.Regex.Match(output, $@"^{label}: (.+)$", System.Text.RegularExpressions.RegexOptions.Multiline).Groups[1].Value.Trim();
+                Regex.Match(output, $@"^{label}: (.+)$", RegexOptions.Multiline).Groups[1].Value.Trim();
         }
 
         [Fact]
@@ -255,7 +236,6 @@ public sealed partial class NetPaceConsoleTests
             // Then the one line still opens with the timestamp and carries the chosen units, which
             // the snapshot carries.
             Assert.Equal(0, result.ExitCode);
-            Assert.Single(Lines(result.Output));
             await Verify(result.Output);
         }
 

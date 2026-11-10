@@ -113,6 +113,7 @@ public sealed partial class NetPaceConsoleTests
         /// </summary>
         public static TheoryData<string> EveryModeWithAFormattedSpeed() =>
         [
+            "",
             "--minimal",
             "--simple"
         ];
@@ -199,7 +200,7 @@ public sealed partial class NetPaceConsoleTests
         {
             // SCENARIO: Human-readable timestamp keeps its familiar format
 
-            // Given a run that asks for a timestamp in output meant for a person to read.
+            // Given a run in the one format for a person that carries a timestamp.
 
             // When
             var output = await RunUnderCultureAsync("en-GB", ArgsFrom(commandLine));
