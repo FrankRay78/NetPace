@@ -41,17 +41,10 @@ public sealed class MinimalConsoleWriter : IConsoleWriter
         {
             clock.Now.ToHumanReadable(),
             !settings.NoLatency ? $"Latency: {fastest.LatencyMilliseconds.ToString(CultureInfo.InvariantCulture)} ms" : null,
-            outcome.Download is SpeedTestResult download ? $"Download: {Speed(download, settings)}" : null,
-            outcome.Upload is SpeedTestResult upload ? $"Upload: {Speed(upload, settings)}" : null
+            outcome.Download is SpeedTestResult download ? $"Download: {download.GetFigure(settings)}" : null,
+            outcome.Upload is SpeedTestResult upload ? $"Upload: {upload.GetFigure(settings)}" : null
         }.Where(field => !string.IsNullOrEmpty(field))));
 
         return outcome;
     }
-
-    /// <summary>
-    /// A measurement's figure as the line carries it: the speed in the unit the switches ask for,
-    /// followed by the failed-request note where there is one.
-    /// </summary>
-    private static string Speed(SpeedTestResult result, SpeedTestCommandSettings settings) =>
-        $"{result.GetSpeedString(settings.SpeedUnit, settings.SpeedUnitSystem, settings.SpeedScale)}{result.GetFailureAnnotation()}";
 }

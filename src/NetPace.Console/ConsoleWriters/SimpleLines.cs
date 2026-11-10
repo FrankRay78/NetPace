@@ -39,18 +39,11 @@ internal static class SimpleLines
         }
         if (outcome.Download is SpeedTestResult download)
         {
-            console.WriteLine($"Download: {Speed(download, settings)}");
+            console.WriteLine($"Download: {download.GetFigure(settings)}");
         }
         if (outcome.Upload is SpeedTestResult upload)
         {
-            console.WriteLine($"Upload: {Speed(upload, settings)}");
+            console.WriteLine($"Upload: {upload.GetFigure(settings)}");
         }
     }
-
-    /// <summary>
-    /// A measurement's figure as its line carries it: the speed in the unit the switches ask for,
-    /// followed by the failed-request note where there is one.
-    /// </summary>
-    private static string Speed(SpeedTestResult result, SpeedTestCommandSettings settings) =>
-        $"{result.GetSpeedString(settings.SpeedUnit, settings.SpeedUnitSystem, settings.SpeedScale)}{result.GetFailureAnnotation()}";
 }
