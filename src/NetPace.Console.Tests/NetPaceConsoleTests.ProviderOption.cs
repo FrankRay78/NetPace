@@ -153,7 +153,6 @@ public sealed partial class NetPaceConsoleTests
             Assert.Equal(0, libreSpeed.ExitCode);
             Assert.Equal(HeaderOf(ookla.Output), HeaderOf(libreSpeed.Output));
             Assert.Contains(LibreSpeedUrl, libreSpeed.Output);
-            await Verify(libreSpeed.Output);
 
             static string HeaderOf(string csv) => csv.ReplaceLineEndings("\n").TrimStart('﻿').Split('\n')[0];
         }
@@ -171,10 +170,77 @@ public sealed partial class NetPaceConsoleTests
             // Then the field names are the same, and the server fields show the URL tested.
             Assert.Equal(0, libreSpeed.ExitCode);
             Assert.Equal(FieldsOf(ookla.Output), FieldsOf(libreSpeed.Output));
-            await Verify(libreSpeed.Output);
+            Assert.Contains(LibreSpeedUrl, libreSpeed.Output);
 
             static string[] FieldsOf(string json) =>
                 JsonDocument.Parse(json).RootElement.EnumerateObject().Select(p => p.Name).ToArray();
+        }
+
+        [Fact]
+        public async Task Provider_LibreSpeed_CsvAndJsonNumbersAgree()
+        {
+            // SCENARIO: LibreSpeed result in CSV and JSON
+
+            // Given / When one LibreSpeed run reports as CSV and another as JSON.
+            var csv = await GetCommandLineTestHost(StubServices())
+                .RunAsync(["--provider", "librespeed", "--server-url", LibreSpeedUrl, "--csv"]);
+            var json = await GetCommandLineTestHost(StubServices())
+                .RunAsync(["--provider", "librespeed", "--server-url", LibreSpeedUrl, "--json"]);
+
+            // Then every figure one carries reads the same in the other. Both formats hold plain
+            // numbers in fixed units, so they are compared value for value under their shared names.
+            var lines = csv.Output.ReplaceLineEndings("\n").TrimStart('﻿').Split('\n');
+            var cells = lines[0].Split(',').Zip(lines[1].Split(','))
+                .ToDictionary(pair => pair.First, pair => pair.Second);
+            var fields = JsonDocument.Parse(json.Output).RootElement;
+
+            foreach (var field in fields.EnumerateObject().Where(p => p.Value.ValueKind == JsonValueKind.Number))
+            {
+                Assert.Equal(field.Value.GetRawText(), cells[field.Name]);
+            }
+        }
+
+        [Theory]
+        [InlineData("--csv")]
+        [InlineData("--json")]
+        [InlineData("--minimal")]
+        [InlineData("--simple")]
+        [InlineData(null)]
+        public async Task Provider_LibreSpeed_ReportsInEveryOutputFormat(string? format)
+        {
+            // SCENARIO: LibreSpeed result in CSV and JSON
+
+            // Given a LibreSpeed run in each format NetPace reports in, default included.
+            string[] args = format is null
+                ? ["--provider", "librespeed", "--server-url", LibreSpeedUrl]
+                : ["--provider", "librespeed", "--server-url", LibreSpeedUrl, format];
+
+            // When
+            var result = await GetCommandLineTestHost(StubServices()).RunAsync(args);
+
+            // Then the result is reported. Only CSV and JSON carry server fields, so only they name
+            // the URL; --simple and --minimal report figures alone, as they do for an Ookla run.
+            Assert.Equal(0, result.ExitCode);
+            if (format is "--csv" or "--json")
+            {
+                Assert.Contains(LibreSpeedUrl, result.Output);
+            }
+
+            await Verify(result.Output).UseParameters(format ?? "default");
+        }
+
+        [Theory]
+        [InlineData("--no-download")]
+        [InlineData("--no-upload")]
+        public async Task Provider_LibreSpeed_SkipsTheTestTheUserTurnedOff(string option)
+        {
+            // Given / When a LibreSpeed run with one transfer turned off.
+            var result = await GetCommandLineTestHost(StubServices())
+                .RunAsync(["--provider", "librespeed", "--server-url", LibreSpeedUrl, option, "--csv"]);
+
+            // Then the run completes and the skipped test's cells are empty, as for an Ookla run.
+            Assert.Equal(0, result.ExitCode);
+            await Verify(result.Output).UseParameters(option);
         }
 
         [Fact]
