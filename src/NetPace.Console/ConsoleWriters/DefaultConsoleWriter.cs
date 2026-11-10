@@ -54,7 +54,7 @@ public sealed class DefaultConsoleWriter(ILiveDisplayRefresh liveDisplayRefresh,
             ? await ChooseWithSpinnerAsync(animating, speedTestClient, settings, recorder, cancellationToken)
             : await ServerSelector.ChooseServerAsync(speedTestClient, settings, recorder, cancellationToken);
 
-        WriteHeader(animating, chosen, clock, settings);
+        WriteHeader(animating, chosen);
 
         var table = new SpeedTestTable(theme, settings.SpeedUnit, settings.SpeedUnitSystem, settings.SpeedScale, showLatency: !settings.NoLatency, animated: liveDisplayRefresh.AutoRefresh);
 
@@ -144,7 +144,7 @@ public sealed class DefaultConsoleWriter(ILiveDisplayRefresh liveDisplayRefresh,
             // The block above either set this or threw, in which case the run never reaches here.
             // Guarding on it instead would read as a condition that can fail, and would silently
             // leave a --file target empty if it ever did.
-            SimpleLines.Write(plain, clock, latency!, outcome, settings);
+            SimpleLines.Write(plain, latency!, outcome, settings);
         }
 
         return outcome;
@@ -178,17 +178,11 @@ public sealed class DefaultConsoleWriter(ILiveDisplayRefresh liveDisplayRefresh,
             });
 
     /// <summary>
-    /// What stands above the table: the timestamp on its own line where one was asked for, then
-    /// the server's sponsor and address.
+    /// What stands above the table: the chosen server's sponsor and address.
     /// </summary>
-    private void WriteHeader(IAnsiConsole console, ChosenServer chosen, IClock clock, SpeedTestCommandSettings settings)
+    private void WriteHeader(IAnsiConsole console, ChosenServer chosen)
     {
         console.WriteLine("");
-
-        if (settings.IncludeTimestamp)
-        {
-            console.WriteLine(clock.Now.ToHumanReadable(), theme.Figure);
-        }
 
         console.WriteLine(chosen.Server.Sponsor, theme.ServerName);
         console.WriteLine(chosen.Server.Url, theme.ServerUrl);

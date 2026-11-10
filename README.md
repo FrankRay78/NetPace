@@ -26,7 +26,7 @@ Fan of NetPace? Consider giving the [repo](https://github.com/FrankRay78/NetPace
 * Server discovery, latency measurement, download and upload speed testing.
 * Command-line application and C# Microsoft .Net [NuGet](https://www.nuget.org/packages/NetPace.Core/) library for developers.
 * A live table at the terminal: a row per test, with its speed and the latency measured while it ran, so idle and under-load latency read down one column.
-* User configurable output (eg. SI or IEC units, bits or bytes, CSV and Json formats). `--simple`, `--csv` and `--json` are the stable formats for scripts; the terminal layout is for people and may change in any release.
+* User configurable output (eg. SI or IEC units, bits or bytes, CSV and Json formats). `--minimal`, `--simple`, `--csv` and `--json` are the stable formats for scripts; the terminal layout is for people and may change in any release.
 * Colour themes, chosen once with `NETPACE_THEME` and applied to every command.
 * Highly configurable traffic profiles (see [LatencyTestSettings](https://github.com/FrankRay78/NetPace/blob/main/src/NetPace.Core/Clients/Ookla/Settings/LatencyTestSettings.cs), [DownloadTestSettings](https://github.com/FrankRay78/NetPace/blob/main/src/NetPace.Core/Clients/Ookla/Settings/DownloadTestSettings.cs) and [UploadTestSettings](https://github.com/FrankRay78/NetPace/blob/main/src/NetPace.Core/Clients/Ookla/Settings/UploadTestSettings.cs)).
 * Highly reliable, utilises [Ookla's](https://www.speedtest.net/) Speedtest servers.
@@ -120,6 +120,8 @@ OPTIONS:
                                       An appended --file target that already holds rows is never sent the header.
         --json                        Display output in Json format.
         --json-pretty                 Display output in Json format (pretty print).
+        --minimal                     Display the result as a single timestamped line per run.
+                                      Ideal for watching repeated runs with --loop or --count.
         --simple                      Display the result as one named line per figure: Ping, Download, Upload.
                                       Ideal for batch scripts and line-based parsing.
         --no-latency                  Do not perform latency test.
@@ -128,7 +130,6 @@ OPTIONS:
         --no-upload                   Do not perform upload test.
         --server-url                  The URL of a specific speed test server.
                                       'netpace servers -l' will return your nearest servers.
-    -t, --timestamp                   Include a timestamp in the output.
         --profile          medium     Profile bundle of payload settings. <tiny, small, medium, large, mega>
         --downloadsize                Stop the download test after this many megabytes (IEC MiB).
         --uploadsize                  Stop the upload test after this many megabytes (IEC MiB).
@@ -136,11 +137,11 @@ OPTIONS:
                                       Overrides the --profile connection count; the profile's data caps still apply.
                                       A maximum, so a profile with fewer transfers to run than this will not reach it.
     -u, --unit             bits       The speed unit. <bits, bytes>
-                                      Applies to the default and simple output.
+                                      Applies to the default, minimal and simple output.
         --unit-scale       auto       The speed unit scale. <auto, base, kilo, mega, giga, tera, peta>
-                                      Applies to the default and simple output.
+                                      Applies to the default, minimal and simple output.
         --unit-system      SI         The speed unit system. <SI, IEC>
-                                      Applies to the default and simple output.
+                                      Applies to the default, minimal and simple output.
                                       SI steps up in powers of 1000 (KB, MB, GB), common in networking,
                                       while IEC uses powers of 1024 (KiB, MiB, GiB), standard in computing and storage.
         --device-id                   Record a label for this machine in CSV and JSON output.

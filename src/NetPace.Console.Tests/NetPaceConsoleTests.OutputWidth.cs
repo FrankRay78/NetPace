@@ -117,11 +117,11 @@ public sealed partial class NetPaceConsoleTests
             var service = new ScriptedSpeedTester { DownloadFactory = _ => ScriptedSpeedTester.Partial(150, 5) };
 
             // When
-            var output = await RunAtWidthAsync(CommandLineTestHost.RedirectedWidth, ["--simple", "--timestamp"], service);
+            var output = await RunAtWidthAsync(CommandLineTestHost.RedirectedWidth, ["--simple"], service);
 
-            // Then the only line breaks are the ones the format defines - one per figure, and the
-            // timestamp above them - so the annotated figure arrives whole on its own line, which
-            // the snapshot carries. A line wider than the window is the narrow-terminal test's job.
+            // Then the only line breaks are the ones the format defines - one per figure - so the
+            // annotated figure arrives whole on its own line, which the snapshot carries. A line
+            // wider than the window is the narrow-terminal test's job.
             await Verify(output);
         }
 
@@ -148,6 +148,7 @@ public sealed partial class NetPaceConsoleTests
         [InlineData("--json-pretty")]
         [InlineData("--csv")]
         [InlineData("--simple")]
+        [InlineData("--minimal")]
         [Theory]
         public async Task Should_Write_Machine_Readable_Output_Unbroken_In_A_Narrow_Terminal(string formatSwitch)
         {

@@ -55,9 +55,9 @@ Show speeds in bytes/sec, using IEC units (KiB, MiB, GiB):
 netpace --unit bytes --unit-system IEC
 ```
 
-Add a timestamp to the result:  
+Watch one dated line per run scroll past, the way `ping` is read:  
 ```bash
-netpace --timestamp
+netpace --minimal --loop
 ```
 
 The timestamp has one fixed format per output mode, with no option to change it — see [Timestamps and regional settings](#timestamps-and-regional-settings).
@@ -92,25 +92,38 @@ Idle latency is the `Pinging` row; the latency and jitter beside a transfer are 
 
 Speeds follow `--unit`, `--unit-system` and `--unit-scale`. Every column sizes itself to the widest value it has been given, and a window too narrow for the table wraps it rather than dropping a column.
 
-The default layout is for a person watching a terminal. It is not a format to scrape, and it may change in any release — a script reads `--simple`, `--csv` or `--json`, all three of which are stable. Wherever default output cannot redraw — a pipe, a redirect, a `--file` target, or a terminal that cannot animate — it writes the `--simple` lines instead, and nothing else: no table, no server, and no control codes. Each destination is judged on its own, so `netpace --file results.txt` at a terminal shows the table on screen and writes the simple lines to the file.
+The default layout is for a person watching a terminal. It is not a format to scrape, and it may change in any release. A script reads `--minimal`, `--simple`, `--csv` or `--json`, all four of which are stable. Wherever default output cannot redraw (a pipe, a redirect, a `--file` target, or a terminal that cannot animate), it writes the `--simple` lines instead, and nothing else: no table, no server, and no control codes. Each destination is judged on its own, so `netpace --file results.txt` at a terminal shows the table on screen and writes the simple lines to the file.
 
-Three alternative formats are available instead:
+Four alternative formats are available instead:
 
 | Switch | Output |
 | --- | --- |
+| `--minimal` | One line per run, opening with the time it was taken. No live table, and no under-load latency probes. |
 | `--simple` | One named line per figure — `Ping`, `Download`, `Upload`. No live table, and no under-load latency probes. |
 | `--csv` | A single CSV row, always including a timestamp. `--no-csv-header` leaves the header row out — see [Collecting CSV in a log](#collecting-csv-in-a-log). |
 | `--json` | A JSON object. `--json-pretty` selects the same format and indents it for reading. |
 
-`--simple`, `--csv` and `--json` are peers, and exactly one format may be selected. Passing two together is an error naming the conflict, so a stray or mistyped flag in a script fails loudly instead of quietly producing the wrong format. `--json-pretty` counts as selecting JSON, so `--json --json-pretty` is the one combination allowed — they are the same format, indented — while `--csv --json-pretty` and `--json-pretty --simple` are conflicts like any other pair.
+`--minimal`, `--simple`, `--csv` and `--json` are peers, and exactly one format may be selected. Passing two together is an error naming the conflict, so a stray or mistyped flag in a script fails loudly instead of quietly producing the wrong format. `--json-pretty` counts as selecting JSON, so `--json --json-pretty` is the one combination allowed — they are the same format, indented — while `--csv --json-pretty` and `--json-pretty --simple` are conflicts like any other pair.
 
-`--simple`, `--csv` and `--json` are written for a program to read, so they carry no line breaks beyond the ones their own format defines — one `--simple` figure per line, one CSV record per line, and the indentation `--json-pretty` asks for. That holds however narrow the destination is: a pipe, a redirect, or a terminal window narrower than the line — and it holds for default output too, which writes those very lines wherever it cannot redraw. Only the live table wraps to fit the screen.
+`--minimal`, `--simple`, `--csv` and `--json` are written for a program to read, so they carry no line breaks beyond the ones their own format defines: one `--minimal` line per run, one `--simple` figure per line, one CSV record per line, and the indentation `--json-pretty` asks for. That holds however narrow the destination is: a pipe, a redirect, or a terminal window narrower than the line. It holds for default output too, which writes those very lines wherever it cannot redraw. Only the live table wraps to fit the screen.
 
-Every format composes with skipping individual tests — `--no-latency` / `--no-download` / `--no-upload`. `--no-latency` means no latency anywhere: no idle measurement, no latency or jitter in any format, and no probes sent while a transfer runs. `--timestamp`, `--unit`, `--unit-scale` and `--unit-system` are narrower: they shape the default and simple output only. `--device-id` and `--custom-field` are narrower the other way — they add fields to CSV and JSON only, and are described under [The fields CSV and JSON carry](#the-fields-csv-and-json-carry). CSV and JSON always carry a timestamp, and report their measurements as plain numbers in fixed units, so those options are accepted alongside `--csv`, `--json` and `--json-pretty` without an error and change nothing in the output — see [Numeric values in CSV](#numeric-values-in-csv) and [Numeric values in JSON](#numeric-values-in-json).
+Every format composes with skipping individual tests (`--no-latency`, `--no-download`, `--no-upload`). `--no-latency` means no latency anywhere: no idle measurement, no latency or jitter in any format, and no probes sent while a transfer runs. `--unit`, `--unit-scale` and `--unit-system` are narrower: they shape the default, minimal and simple output only. `--device-id` and `--custom-field` are narrower the other way: they add fields to CSV and JSON only, and are described under [The fields CSV and JSON carry](#the-fields-csv-and-json-carry). CSV and JSON always carry a timestamp, and report their measurements as plain numbers in fixed units, so the unit options are accepted alongside `--csv`, `--json` and `--json-pretty` without an error and change nothing in the output — see [Numeric values in CSV](#numeric-values-in-csv) and [Numeric values in JSON](#numeric-values-in-json).
 
 Two further options decide whether and where the result appears, and both work with any format: `--quiet` suppresses the result entirely, and `--file` writes it to disk.
 
-`--diagnostics` is not a fifth format — it adds a second stream alongside whichever format you picked, leaving the result untouched. See [Diagnosing a failure with `--diagnostics`](#diagnosing-a-failure-with---diagnostics).
+`--diagnostics` is not another format — it adds a second stream alongside whichever format you picked, leaving the result untouched. See [Diagnosing a failure with `--diagnostics`](#diagnosing-a-failure-with---diagnostics).
+
+### Minimal output
+
+`--minimal` writes one line per run, opening with the time the run was taken:
+
+```txt
+2026-10-16 08:21:17, Latency: 12 ms, Download: 93.12 Mbps, Upload: 18.4 Mbps
+```
+
+That is the format to leave running: `netpace --minimal --loop` scrolls one dated line past per run, and a column of them is read down the page for a slow period, the way `ping` is. The time is always there, in local time as `yyyy-MM-dd HH:mm:ss`, because a line in a running log says little without it; there is no switch to add or remove it. Speeds follow `--unit`, `--unit-scale` and `--unit-system` and read exactly as `--simple` and the default output show them for the same run. A test skipped with `--no-latency` / `--no-download` / `--no-upload` contributes no field at all, failed requests are noted on their own figure, and `--count`, `--loop` and `--file` each write one line per run.
+
+A run that faults writes a bare `Error: <message>` line instead, with no time in front of it: this format is a quick shorthand for someone watching a terminal, not a detailed log. Reach for `--csv` or `--json` where a run has to be recorded in full, and for `--simple` where a script reads one figure at a time.
 
 ### Simple output
 
@@ -122,7 +135,7 @@ Download: 93.12 Mbps
 Upload: 18.4 Mbps
 ```
 
-A script reads any of them the same way — `netpace --simple | grep '^Download:' | awk '{print $2}'` gives the download speed's number. Anchor the match to the start of the line: a run that faults writes an `Error:` message to the same stream, and an unanchored `grep Download` can pick a word out of that message instead of a figure. Speeds are auto-scaled and follow `--unit`, `--unit-scale` and `--unit-system`, so a figure can read `1.2 Gbps` on a fast line; pin the unit with `--unit-scale Mega` where a script compares numbers across runs. `--timestamp` adds a `Timestamp: <yyyy-MM-dd HH:mm:ss>` line above the figures, a test skipped with `--no-latency` / `--no-download` / `--no-upload` contributes no line at all, and runs under `--count` and `--loop` follow one another with no separator. Failed requests are noted on their own test's line. The format shows no jitter, server or under-load figure, and sends no under-load latency probes; scripts wanting more use CSV or JSON.
+A script reads any of them the same way — `netpace --simple | grep '^Download:' | awk '{print $2}'` gives the download speed's number. Anchor the match to the start of the line: a run that faults writes an `Error:` message to the same stream, and an unanchored `grep Download` can pick a word out of that message instead of a figure. Speeds are auto-scaled and follow `--unit`, `--unit-scale` and `--unit-system`, so a figure can read `1.2 Gbps` on a fast line; pin the unit with `--unit-scale Mega` where a script compares numbers across runs. These three lines are the whole output and carry no time, matching what `speedtest-cli --simple` writes; `--minimal` is the format with a timestamp on every line. A test skipped with `--no-latency` / `--no-download` / `--no-upload` contributes no line at all, and runs under `--count` and `--loop` follow one another with no separator. Failed requests are noted on their own test's line. The format shows no jitter, server or under-load figure, and sends no under-load latency probes; scripts wanting more use CSV or JSON.
 
 These are also the lines default output writes wherever it cannot redraw, so `netpace > results.txt` and `netpace --simple > results.txt` leave the same file. The one difference is the probes: default output sends the under-load latency probes whichever destination it ends up writing to, so a redirected run carries traffic that only `--diagnostics` reports, while `--simple` sends none.
 
@@ -208,7 +221,7 @@ Timestamp,LatencyMilliseconds,JitterMilliseconds,DownloadSpeedBitsPerSecond,Down
 
 **`--no-latency` empties only `LatencyMilliseconds` and `JitterMilliseconds`.** It skips the idle measurement, not the probes taken while a transfer runs, so each direction's four under-load figures are still reported; only `--no-download` or `--no-upload` empties them.
 
-**`--unit`, `--unit-scale` and `--unit-system` do not change CSV output at all.** They shape the default and simple output only. That is what makes a CSV log safe to append to: under the default automatic scale a formatted speed can be `Kbps` on one run and `Mbps` on the next, so a file collecting rows over weeks would mix units in one column. The numbers never shift, so `--csv` works with `--count` and `--loop` whatever the unit options say, and the numbers match [the numeric fields in JSON](#numeric-values-in-json) for the same run.
+**`--unit`, `--unit-scale` and `--unit-system` do not change CSV output at all.** They shape the default, minimal and simple output only. That is what makes a CSV log safe to append to: under the default automatic scale a formatted speed can be `Kbps` on one run and `Mbps` on the next, so a file collecting rows over weeks would mix units in one column. The numbers never shift, so `--csv` works with `--count` and `--loop` whatever the unit options say, and the numbers match [the numeric fields in JSON](#numeric-values-in-json) for the same run.
 
 The built-in columns are the same columns in the same order on every run, whichever tests ran, with one column per `--custom-field` pair after them — so two runs given different custom fields do not share a header. A test you skipped with `--no-latency`, `--no-download` or `--no-upload` leaves its cells empty rather than dropping its columns, so a script reading by position is not moved along by a skipped test:
 
@@ -303,22 +316,22 @@ NetPace --json-pretty
 
 The same nine figures CSV carries, under the same names and as the same numbers for the same run. **A figure that was not measured is left out rather than reported as `0`** — a direction's four fields are absent where the transfer measured nothing under load or the test did not run, and the lowest and highest are absent where no run of probe times was kept. `JitterMilliseconds` goes whenever `LatencyMilliseconds` does, so `--no-latency` leaves out both — and only those two: each direction's four under-load fields are still reported, and only `--no-download` or `--no-upload` leaves them out.
 
-**`--unit`, `--unit-scale` and `--unit-system` do not change JSON output at all.** They shape the default and simple output only. Passing one with `--json` or `--json-pretty` is accepted without an error or warning, and the result is byte-for-byte what the same run writes without it. That is what makes a saved JSON result comparable: a script comparing runs, writing to a database or checking a threshold reads the numbers and never has to strip a unit, convert between scales, or know which switches the run was made with.
+**`--unit`, `--unit-scale` and `--unit-system` do not change JSON output at all.** They shape the default, minimal and simple output only. Passing one with `--json` or `--json-pretty` is accepted without an error or warning, and the result is byte-for-byte what the same run writes without it. That is what makes a saved JSON result comparable: a script comparing runs, writing to a database or checking a threshold reads the numbers and never has to strip a unit, convert between scales, or know which switches the run was made with.
 
-Need a speed formatted for a person to read — for a notification, say? `--simple` writes exactly that figure on its own line, and follows the unit options.
+Need a speed formatted for a person to read — for a notification, say? `--simple` writes exactly that figure on its own line, and `--minimal` writes the whole run as one line; both follow the unit options.
 
 A test you skipped with `--no-latency`, `--no-download` or `--no-upload` omits every field it would have filled. A download or upload test that ran but failed entirely reports `0`, with its request counts beside it — see [Detecting failed measurements](#detecting-failed-measurements). A latency measurement that fails ends the run instead, so it reports nothing.
 
 ### Timestamps and regional settings
 
-The timestamp has one fixed format per output mode. There is no option to change it, so a script reading CSV or JSON never has to know which format a given run chose.
+The timestamp has one fixed format per output mode, and whether a format carries one at all is fixed too. There is no option to add or remove it, so a script reading a NetPace result never has to know what a given run was asked for. The default and `--simple` output carry no timestamp: the default is read live, and `--simple` keeps the shape `speedtest-cli --simple` writes.
 
 | Output | Timestamp | Example |
 | --- | --- | --- |
-| Default, `--simple` (with `--timestamp`) | Local time, `yyyy-MM-dd HH:mm:ss` | `2026-10-16 08:21:17` |
+| `--minimal` (always present) | Local time, `yyyy-MM-dd HH:mm:ss` | `2026-10-16 08:21:17` |
 | `--csv`, `--json` (always present) | ISO 8601 local time to the second with its offset from UTC | `2026-10-16T08:21:17+01:00` |
 
-The offset is what makes the machine-readable timestamp one unambiguous instant, so results logged from machines in different time zones — or from one machine either side of a clock change — sort and compare directly, and any date parser reads them without being told the format. Where the local offset is zero, that is written `+00:00`. Terminal output leaves the offset out: you already know the zone you are sitting in.
+The offset is what makes the machine-readable timestamp one unambiguous instant, so results logged from machines in different time zones (or from one machine either side of a clock change) sort and compare directly, and any date parser reads them without being told the format. Where the local offset is zero, that is written `+00:00`. The `--minimal` line leaves the offset out: someone watching their own terminal already knows the zone they are sitting in.
 
 **NetPace output does not follow the machine's regional settings.** Every value reads the same way on every machine: speeds use `.` as the decimal separator with no digit grouping, and timestamps use the Gregorian calendar with ASCII digits. A result logged on a machine set to German, Thai or any other locale is byte-for-byte comparable with one logged next to it, and a comma-delimited CSV row can never gain a field from a decimal comma. `NetPace.Core` formats speeds the same way, so a library consumer reads the same text whatever culture its thread carries.
 
@@ -418,7 +431,7 @@ export NETPACE_THEME=green
 
 Names are matched without regard to case, so `GREEN` and `green` are the same request. Set the variable to something that is not a theme and NetPace says so on the error stream, naming the theme it is drawing in instead — the run is never stopped by a typo. `--quiet` suppresses that notice along with everything else.
 
-The theme reaches every screen a person reads: the speed test, `servers` in all its forms, and `--help`. It never reaches output another program parses — `--csv` and `--json` are byte-for-byte the same whatever the theme is. `--file` output is always written without colour, and `--simple` has no colour to change.
+The theme reaches every screen a person reads: the speed test, `servers` in all its forms, and `--help`. It never reaches output another program parses — `--csv` and `--json` are byte-for-byte the same whatever the theme is. `--file` output is always written without colour, and `--minimal` and `--simple` have no colour to change.
 
 Colour never carries meaning on its own in anything NetPace composes itself, and there is no exception. A failure is marked by the word `Error:`, and in the live table each test carries a mark of its own — `✓` for a clean run, `!` where some requests failed, `✗` where every one did or the measurement could not be taken at all. Where a test reports how many of its requests failed, a `Failed` column appears beside the marks with the count. So the table reads the same where you cannot tell the colours apart or have turned colour off entirely. Where the terminal cannot draw those marks either, `OK`, `!` and `X` stand in for them.
 
@@ -445,6 +458,11 @@ Every output format carries the counts:
 Ping: 24 ms
 Download: 512.6 Mbps
 Upload: 0 bps (32 of 32 requests failed)
+```
+
+**`--minimal`** — the same annotation, after the figure of the test it belongs to:
+```
+2026-10-16 08:21:17, Latency: 24 ms, Download: 512.6 Mbps, Upload: 0 bps (32 of 32 requests failed)
 ```
 
 **CSV** — a `Succeeded` and `Failed` column sits next to each speed column, and a total failure reports a speed of `0` beside the counts that say so. Its latency-under-load cells are empty rather than `0`: a transfer whose every request failed never loaded the line, so there was nothing to measure.
@@ -496,11 +514,11 @@ What the records cover:
 | `server.selected` | The server used, and `selection=` — `auto-latency`, `specified` or `first-in-list`. `latency_ms` is the screening figure that chose it, and is absent when latency played no part in choosing. |
 | `test.start` / `test.end` | Which tests ran — `screening`, `latency`, `download`, `upload` — and, on `test.end`, the total `requests`, how many `succeeded`, `failed` or were `cancelled`, and the `bytes` the successful ones moved. Those totals cover exactly the `request` lines above them, so the two always reconcile. `probe` lines are not among them. |
 | `request` | One per request, with its sequence number, address, outcome, bytes, duration and — where it did not succeed — the `reason` and, if an exception was involved, its `exception` type. `status=` is `ok`, `failed` or `cancelled`. |
-| `probe` | One per latency probe sent *during* a download or upload, to measure the latency of the line while it is loaded. It carries a `request` line's fields, `status=` included, and is numbered in its own run of `seq` numbers, so it never displaces one of the transfer's requests — `event=` and `seq=` together identify a record within a test, since a probe and a transfer request can share a number. `--simple` and `--no-latency` both send no under-load probes, so a run with either carries no `probe` line at all. |
+| `probe` | One per latency probe sent *during* a download or upload, to measure the latency of the line while it is loaded. It carries a `request` line's fields, `status=` included, and is numbered in its own run of `seq` numbers, so it never displaces one of the transfer's requests — `event=` and `seq=` together identify a record within a test, since a probe and a transfer request can share a number. `--minimal`, `--simple` and `--no-latency` all send no under-load probes, so a run with any of them carries no `probe` line at all. |
 
 Every line repeats enough to stand alone, so `grep status=failed diagnostics.log` is a complete triage pass. Nothing is summarised away: every measured request gets its own record, including the latency probes made while choosing a server. Two kinds of request are not recorded individually: the initial server-list fetch, whose failure surfaces as the run's error instead; and a screening request that finishes after the selection ceiling has already passed, which arrives too late for the `test.end` it would belong to and is dropped so that summary stays exact — so a candidate you expected to see may be absent rather than untried. One request appears that you did not ask for: the upload test resolves its endpoint with an empty probe POST first, which takes the opening `seq` numbers of that test and reads `bytes=0`, so `test.end requests=` counts one more than the uploads measured (more, if the server redirects several times).
 
-The download and upload tests also each send a small latency probe at most about four times a second while they run, to measure the latency of the line under load, and every one of those gets a `probe` line of its own — except under `--simple` or `--no-latency`, which send none. They are deliberately not `request` lines: a probe is something the test does alongside its measurement rather than part of it, so `test.end` totals none of them and keeps reconciling with the transfer's own `request` lines. A probe that was still waiting when the transfer ended reads `status=cancelled reason="transfer ended"`, and one that errored reads `status=failed` — neither fails the transfer, and a run of them means the under-load figure came from fewer probes than went out, or from none. These probe lines carry the raw under-load samples; the average and the jitter computed from them are on each transfer's row of the live table, and the lowest and highest are available only to `NetPace.Core` consumers, on the transfer result. A transfer shorter than the probe interval produces no probe line at all. The probes made while *choosing* the server, and then measuring it, are a different thing: there the probes are the measurement, so the `screening` and `latency` tests record them as ordinary `request` lines and count them.
+The download and upload tests also each send a small latency probe at most about four times a second while they run, to measure the latency of the line under load, and every one of those gets a `probe` line of its own — except under `--minimal`, `--simple` or `--no-latency`, which send none. They are deliberately not `request` lines: a probe is something the test does alongside its measurement rather than part of it, so `test.end` totals none of them and keeps reconciling with the transfer's own `request` lines. A probe that was still waiting when the transfer ended reads `status=cancelled reason="transfer ended"`, and one that errored reads `status=failed` — neither fails the transfer, and a run of them means the under-load figure came from fewer probes than went out, or from none. These probe lines carry the raw under-load samples; the average and the jitter computed from them are on each transfer's row of the live table, and the lowest and highest are available only to `NetPace.Core` consumers, on the transfer result. A transfer shorter than the probe interval produces no probe line at all. The probes made while *choosing* the server, and then measuring it, are a different thing: there the probes are the measurement, so the `screening` and `latency` tests record them as ordinary `request` lines and count them.
 
 Record volume is driven by how many servers the feed offers — roughly three records per candidate screened — on top of the request counts your `--profile` sets and up to about four probe lines per second of transfer, so expect a few hundred lines from a default run.
 

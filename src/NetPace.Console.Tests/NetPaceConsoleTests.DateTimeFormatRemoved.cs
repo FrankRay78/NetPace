@@ -21,7 +21,7 @@ public sealed partial class NetPaceConsoleTests
             var (host, serviceCalls) = HostRecordingMeasurements();
 
             // When the retired option is passed, with a value that used to be accepted or not.
-            var result = await host.RunAsync(["--simple", "-t", "--datetimeformat", format]);
+            var result = await host.RunAsync(["--simple", "--datetimeformat", format]);
 
             // Then nothing was even discovered, the exit code reports the usage error, and the
             // message names the option so the user is not left with a bare failure.
@@ -37,7 +37,7 @@ public sealed partial class NetPaceConsoleTests
             var (host, serviceCalls) = HostRecordingMeasurements();
 
             // When the option is passed bare, which a parse error must also catch.
-            var result = await host.RunAsync(["--simple", "-t", "--datetimeformat"]);
+            var result = await host.RunAsync(["--simple", "--datetimeformat"]);
 
             // Then
             Assert.Empty(serviceCalls);

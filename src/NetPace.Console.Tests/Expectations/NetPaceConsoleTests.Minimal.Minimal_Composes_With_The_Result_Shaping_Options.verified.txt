@@ -1,0 +1,1 @@
+﻿1980-01-01 10:05:00, Latency: 100 ms, Download: 0.98 KiBps, Upload: 2.28 KiBps

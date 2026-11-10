@@ -254,15 +254,17 @@ public sealed partial class NetPaceConsoleTests
         [InlineData("--csv")]
         [InlineData("--json")]
         [InlineData("--simple")]
-        [InlineData("--timestamp")]
+        [InlineData("--minimal")]
+        [InlineData("")]
         public async Task Should_Reject_A_Malformed_Custom_Field_Whichever_Output_Mode_Is_Chosen(string modeSwitch)
         {
-            // Given a run in each output mode. --timestamp stands for the default output, which
-            // ignores custom fields altogether.
+            // Given a run in each output mode. The empty row is the default output, selected by no
+            // switch at all, which ignores custom fields altogether.
             var (host, serviceCalls) = HostRecordingMeasurements();
 
             // When a malformed custom field is passed.
-            var result = await host.RunAsync([modeSwitch, "--custom-field", "site"]);
+            string[] mode = modeSwitch.Length == 0 ? [] : [modeSwitch];
+            var result = await host.RunAsync([.. mode, "--custom-field", "site"]);
 
             // Then it is refused before anything is measured, whichever format was asked for: a
             // mistyped field in a script fails loudly rather than being silently dropped.
@@ -320,21 +322,23 @@ public sealed partial class NetPaceConsoleTests
         }
 
         [Theory]
-        [InlineData("--timestamp")]
+        [InlineData("")]
         [InlineData("--simple")]
-        public async Task Should_Leave_The_Default_And_Simple_Output_Untouched(string modeSwitch)
+        [InlineData("--minimal")]
+        public async Task Should_Leave_The_Default_Minimal_And_Simple_Output_Untouched(string modeSwitch)
         {
             // Given the same speed test run twice, once plainly and once with a device label and a
-            // custom field. Both describe the run for a log, not the measurement, so neither output
-            // written for a person to read shows them. --timestamp stands for the default output,
-            // and is read at a terminal: anywhere else default output writes the --simple lines,
-            // which would make both rows of this theory the same writer.
+            // custom field. Both describe the run for a log, not the measurement, so no output
+            // written for a person to read shows them. The empty row is the default output, read at
+            // a terminal: anywhere else default output writes the --simple lines, which would make
+            // two rows of this theory the same writer.
             Func<IServiceCollection?, CommandLineTestHost> host =
-                modeSwitch == "--simple" ? GetCommandLineTestHost : GetInteractiveCommandLineTestHost;
+                modeSwitch.Length == 0 ? GetInteractiveCommandLineTestHost : GetCommandLineTestHost;
 
-            var plain = await host(StubServices()).RunAsync([modeSwitch]);
+            string[] mode = modeSwitch.Length == 0 ? [] : [modeSwitch];
+            var plain = await host(StubServices()).RunAsync(mode);
             var labelled = await host(StubServices()).RunAsync(
-                [modeSwitch, "--device-id", "kitchen-pi", "--custom-field", "site=home"]);
+                [.. mode, "--device-id", "kitchen-pi", "--custom-field", "site=home"]);
 
             // Then both runs are accepted and the two outputs are the same.
             Assert.Equal(0, plain.ExitCode);

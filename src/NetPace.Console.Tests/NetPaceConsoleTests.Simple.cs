@@ -45,6 +45,7 @@ public sealed partial class NetPaceConsoleTests
         public async Task Simple_Reports_Ping_Download_And_Upload_Each_On_Its_Own_Line()
         {
             // SCENARIO: Simple output reports three lines
+            // SCENARIO: Simple output has no timestamp line
 
             // Given a run of all three tests
             var host = GetCommandLineTestHost(StubServices());
@@ -53,7 +54,7 @@ public sealed partial class NetPaceConsoleTests
             var result = await host.RunAsync(["--simple"]);
 
             // Then the whole output is a Ping line, a Download line and an Upload line, in that
-            // order, and nothing else - which the snapshot carries.
+            // order, and nothing else, so no timestamp line - which the snapshot carries.
             Assert.Equal(0, result.ExitCode);
             await Verify(result.Output);
         }
@@ -75,9 +76,9 @@ public sealed partial class NetPaceConsoleTests
             var word = SecondWordOfLineHolding(result.Output, "Download");
 
             // Then it is the download speed's number, not some other figure's. Pinned to the number
-            // itself rather than to any number: the one-line --minimal output this format replaced
-            // put the latency second on the line holding Download, and a check that the word merely
-            // parses would pass on it - the misparse this format exists to prevent.
+            // itself rather than to any number: the one-line --minimal format puts the time of day
+            // second on the line holding Download, and a check that the word merely parses could
+            // pass on such a line - the misparse this format exists to prevent.
             Assert.Equal(0, byDefault.ExitCode);
             Assert.Equal(0, result.ExitCode);
             Assert.NotEmpty(downloadNumber);
@@ -160,23 +161,6 @@ public sealed partial class NetPaceConsoleTests
             // line does, which the snapshot carries.
             Assert.Equal(0, result.ExitCode);
             await Verify(result.Output).UseParameters(attempts, failed);
-        }
-
-        [Fact]
-        public async Task Simple_With_Timestamp_Writes_It_On_Its_Own_First_Line()
-        {
-            // SCENARIO: A timestamp has its own first line
-
-            // Given a --simple run asked for a timestamp
-            var host = GetCommandLineTestHost(StubServices());
-
-            // When
-            var result = await host.RunAsync(["--simple", "--timestamp"]);
-
-            // Then the timestamp is alone above the figures, labelled like every other line so one
-            // parser reads them all, which the snapshot carries.
-            Assert.Equal(0, result.ExitCode);
-            await Verify(result.Output);
         }
 
         [Fact]
@@ -265,34 +249,16 @@ public sealed partial class NetPaceConsoleTests
             // When
             var result = await host.RunAsync([]);
 
-            // Then opting out is --simple's alone, and nothing else lost its probes with it.
+            // Then the default output keeps its probes: only --simple and --minimal opt out.
             Assert.Equal(0, result.ExitCode);
             Assert.True(accessor.Settings.LatencyTest.LoadedLatencyEnabled);
-        }
-
-        [Theory]
-        [InlineData("--minimal")]
-        [InlineData("--minimal", "true")]
-        public async Task Minimal_Is_Refused_With_A_Message_Naming_Simple(params string[] arguments)
-        {
-            // SCENARIO: The old switch says what replaced it
-
-            // Given a script still passing the old switch
-            var host = GetCommandLineTestHost(StubServices());
-
-            // When NetPace starts
-            var result = await host.RunAsync(arguments);
-
-            // Then it fails and names the switch to use instead.
-            Assert.Equal(1, result.ExitCode);
-            Assert.Contains("--minimal", result.Output, StringComparison.Ordinal);
-            Assert.Contains("--simple", result.Output, StringComparison.Ordinal);
         }
 
         [Theory]
         [InlineData("--csv")]
         [InlineData("--json")]
         [InlineData("--json-pretty")]
+        [InlineData("--minimal")]
         public async Task Simple_With_Another_Format_Is_An_Error_Naming_The_Conflict(string otherFormat)
         {
             // Given

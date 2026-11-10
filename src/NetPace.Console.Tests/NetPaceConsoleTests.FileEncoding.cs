@@ -104,6 +104,8 @@ public sealed partial class NetPaceConsoleTests
         [Theory]
         [InlineData(null, "Overwrite")]
         [InlineData(null, "Append")]
+        [InlineData("--minimal", "Overwrite")]
+        [InlineData("--minimal", "Append")]
         [InlineData("--simple", "Overwrite")]
         [InlineData("--simple", "Append")]
         [InlineData("--csv", "Overwrite")]

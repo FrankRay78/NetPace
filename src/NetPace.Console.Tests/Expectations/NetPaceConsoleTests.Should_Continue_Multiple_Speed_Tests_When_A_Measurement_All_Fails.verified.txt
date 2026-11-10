@@ -1,40 +1,10 @@
-﻿Timestamp: 1980-01-01 10:05:00
-Ping: 24 ms
-Download: 8 Kbps
-Upload: 8 Kbps
-Timestamp: 1980-01-01 10:05:05
-Ping: 24 ms
-Download: 0 bps (150 of 150 requests failed)
-Upload: 8 Kbps
-Timestamp: 1980-01-01 10:05:10
-Ping: 24 ms
-Download: 8 Kbps
-Upload: 8 Kbps
-Timestamp: 1980-01-01 10:05:15
-Ping: 24 ms
-Download: 8 Kbps
-Upload: 8 Kbps
-Timestamp: 1980-01-01 10:05:20
-Ping: 24 ms
-Download: 8 Kbps
-Upload: 8 Kbps
-Timestamp: 1980-01-01 10:05:25
-Ping: 24 ms
-Download: 8 Kbps
-Upload: 8 Kbps
-Timestamp: 1980-01-01 10:05:30
-Ping: 24 ms
-Download: 8 Kbps
-Upload: 8 Kbps
-Timestamp: 1980-01-01 10:05:35
-Ping: 24 ms
-Download: 8 Kbps
-Upload: 8 Kbps
-Timestamp: 1980-01-01 10:05:40
-Ping: 24 ms
-Download: 8 Kbps
-Upload: 8 Kbps
-Timestamp: 1980-01-01 10:05:45
-Ping: 24 ms
-Download: 8 Kbps
-Upload: 8 Kbps
+﻿1980-01-01 10:05:00, Latency: 24 ms, Download: 8 Kbps, Upload: 8 Kbps
+1980-01-01 10:05:05, Latency: 24 ms, Download: 0 bps (150 of 150 requests failed), Upload: 8 Kbps
+1980-01-01 10:05:10, Latency: 24 ms, Download: 8 Kbps, Upload: 8 Kbps
+1980-01-01 10:05:15, Latency: 24 ms, Download: 8 Kbps, Upload: 8 Kbps
+1980-01-01 10:05:20, Latency: 24 ms, Download: 8 Kbps, Upload: 8 Kbps
+1980-01-01 10:05:25, Latency: 24 ms, Download: 8 Kbps, Upload: 8 Kbps
+1980-01-01 10:05:30, Latency: 24 ms, Download: 8 Kbps, Upload: 8 Kbps
+1980-01-01 10:05:35, Latency: 24 ms, Download: 8 Kbps, Upload: 8 Kbps
+1980-01-01 10:05:40, Latency: 24 ms, Download: 8 Kbps, Upload: 8 Kbps
+1980-01-01 10:05:45, Latency: 24 ms, Download: 8 Kbps, Upload: 8 Kbps
