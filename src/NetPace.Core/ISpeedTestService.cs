@@ -104,8 +104,9 @@ public interface ISpeedTestService
     /// <remarks>
     /// Screening is a cheap ranking pass, not a measurement: every server is screened under one
     /// overall ceiling, and a server that is reachable but slow ranks lower rather than dropping
-    /// out. A server is reachable when at least one of its screening requests completes inside the
-    /// ceiling; only a server with no completed request drops out. The latency returned is
+    /// out. A server is reachable when at least one of its screening requests completes before the
+    /// pass ends - at the ceiling at the latest, and possibly sooner once another server has been
+    /// ranked; only a server with no completed request drops out. The latency returned is
     /// therefore a screening figure, and any jitter alongside it is not a measurement - call
     /// <see cref="GetServerLatencyAsync(IServer, CancellationToken)"/> on the winner for figures
     /// to report.
@@ -123,8 +124,9 @@ public interface ISpeedTestService
     /// <remarks>
     /// Screening is a cheap ranking pass, not a measurement: every server is screened under one
     /// overall ceiling, and a server that is reachable but slow ranks lower rather than dropping
-    /// out. A server is reachable when at least one of its screening requests completes inside the
-    /// ceiling; only a server with no completed request drops out. The latency returned is
+    /// out. A server is reachable when at least one of its screening requests completes before the
+    /// pass ends - at the ceiling at the latest, and possibly sooner once another server has been
+    /// ranked; only a server with no completed request drops out. The latency returned is
     /// therefore a screening figure, and any jitter alongside it is not a measurement - call
     /// <see cref="GetServerLatencyAsync(IServer, CancellationToken)"/> on the winner for figures
     /// to report.

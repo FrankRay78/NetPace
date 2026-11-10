@@ -160,10 +160,13 @@ public sealed class ListServersCommand(IAnsiConsole console, ISpeedTestService s
             .AutoClear(false)
             .StartAsync(async ctx =>
             {
-                // Screen each server through the same path auto-selection uses, so a latency
-                // listed here means a real run would consider that server. The servers are
-                // screened together, as selection screens them, so the listing takes about one
-                // screening ceiling rather than one per unreachable server. Each row is filled in
+                // Screen each server through the same path auto-selection uses, so the latency
+                // listed here is the figure a run ranks on. Each server is screened on its own,
+                // though, with no quicker sibling to end the pass early, so it is given the whole
+                // ceiling: a server listed with a latency may still be one a real run would stop
+                // waiting for once a quicker server had answered. The servers are screened
+                // together, as selection screens them, so the listing takes about one screening
+                // ceiling rather than one per unreachable server. Each row is filled in
                 // as its result comes back; the table is not safe to change from two rows at once.
                 var tableLock = new object();
 

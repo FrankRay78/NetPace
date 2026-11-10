@@ -310,7 +310,7 @@ The offset is what makes the machine-readable timestamp one unambiguous instant,
 
 With no `--server-url`, NetPace picks the server for you in two steps.
 
-**Screening.** Every server discovery returned is sent a few quick requests, all at the same time, to answer one question: did it answer, and roughly how fast? The whole pass is capped at a fixed couple of seconds, no matter how many servers were discovered or how many of them never answer. A server that answers slowly is not thrown out — it is simply ranked below the quicker ones. Only a server that does not answer at all inside the cap drops out of the running.
+**Screening.** Every server discovery returned is sent a few quick requests, all at the same time, to answer one question: did it answer, and roughly how fast? Screening normally ends within about two seconds, no matter how many servers were discovered or how many of them never answer. If no server has been ranked by then — as on a satellite link or a congested mobile connection — it waits up to ten seconds, so a slow link can still have a server chosen. A server that answers slowly is not thrown out — it is simply ranked below the quicker ones. Only a server that has not answered by the time screening ends drops out of the running.
 
 **Measuring.** The fastest server that answered is then measured properly, with the full latency probe, and that is the figure NetPace reports. Everything after it — latency, download, upload — runs against that same server; NetPace does not switch servers part-way through a run.
 
@@ -318,7 +318,7 @@ If nothing answered during screening, the run reports `Error: No servers availab
 
 The cap on screening exists to stop a single pathological server stalling a run: before it was introduced, a server taking 20–60 seconds to answer each request could hold up a test for minutes. If you want a particular server regardless, `--server-url <url>` skips selection entirely.
 
-`netpace servers -l` lists each discovered server with its screening latency, so what you see there is what auto-selection would rank. A server shown with `-` could not be reached, and a run would not have used it either. Rows stay in their listed order rather than being re-sorted by latency. Press Ctrl+C part-way through and the rows that had not answered yet stay blank instead: nothing had been decided about those servers.
+`netpace servers -l` lists each discovered server with its screening latency, the same figure auto-selection ranks on. It gives every server the full ten seconds to answer, though, where a run stops waiting after about two seconds once a quicker server has answered, so a server that is slow to answer can show a latency here and still be passed over by a run. A server shown with `-` could not be reached at all, and a run would not have used it either. Rows stay in their listed order rather than being re-sorted by latency. Press Ctrl+C part-way through and the rows that had not answered yet stay blank instead: nothing had been decided about those servers.
 
 ## Choosing a profile
 

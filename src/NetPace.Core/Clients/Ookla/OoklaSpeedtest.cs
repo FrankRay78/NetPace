@@ -253,10 +253,17 @@ public sealed class OoklaSpeedtest : ISpeedTestService
         }
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(settings.ServerDiscovery.ScreeningRequestCount, nameof(settings.ServerDiscovery.ScreeningRequestCount));
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(settings.ServerDiscovery.ServerTimeoutMilliseconds, nameof(settings.ServerDiscovery.ServerTimeoutMilliseconds));
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(settings.ServerDiscovery.FirstScreeningStageMilliseconds, nameof(settings.ServerDiscovery.FirstScreeningStageMilliseconds));
 
         var screened = new LatencyTestResult?[servers.Length];
         var screeningLock = new object();
         var serversScreened = 0;
+
+        // Counted as results are recorded rather than scanned for at the stage boundary below: a
+        // consumer's progress callback is invoked under screeningLock, so a handler of theirs that
+        // blocks would otherwise hold up the decision of whether to wait out the rest of the
+        // ceiling.
+        var ranked = 0;
 
         // One counter for the whole pass, not one per candidate: the consumer brackets the entire
         // pass in a single diagnostic scope, so numbering each candidate from one would issue the
@@ -279,6 +286,11 @@ public sealed class OoklaSpeedtest : ISpeedTestService
                 screened[index] = result;
                 serversScreened++;
 
+                if (result is not null)
+                {
+                    ranked++;
+                }
+
                 if (!ceilingCts.IsCancellationRequested)
                 {
                     ReportProgress(progress, new SpeedTestProgress
@@ -295,9 +307,28 @@ public sealed class OoklaSpeedtest : ISpeedTestService
             screenings[index] = ScreenAndRecordAsync(index);
         }
 
+        // The ceiling is reached in stages rather than waited out. A pass that has ranked a
+        // candidate by the end of the first stage takes it and moves on, so a link whose candidates
+        // finish all their screening requests inside that stage chooses a server as fast as it did
+        // when the first stage was the whole ceiling, however long the ceiling now is. A slower one
+        // does not: a candidate counts as ranked only once its whole request loop has returned.
+        // Only a pass that has ranked nothing - the run that would
+        // otherwise end in "no servers available" - waits for the rest, which is what gives a link
+        // with a round trip of a second or two the time to answer at all. The second stage then
+        // waits for every candidate rather than the first one ranked, so the ranking still compares
+        // every server that answers inside the ceiling.
         var allScreenings = Task.WhenAll(screenings);
-        var ceiling = Task.Delay(settings.ServerDiscovery.ServerTimeoutMilliseconds, ceilingCts.Token);
-        await Task.WhenAny(allScreenings, ceiling).ConfigureAwait(false);
+        var ceilingMilliseconds = settings.ServerDiscovery.ServerTimeoutMilliseconds;
+        var firstStageMilliseconds = Math.Min(settings.ServerDiscovery.FirstScreeningStageMilliseconds, ceilingMilliseconds);
+        var remainingMilliseconds = ceilingMilliseconds - firstStageMilliseconds;
+
+        await Task.WhenAny(allScreenings, Task.Delay(firstStageMilliseconds, ceilingCts.Token)).ConfigureAwait(false);
+
+        // A ceiling at or below the first stage leaves nothing remaining, and is spent in one stage.
+        if (remainingMilliseconds > 0 && !allScreenings.IsCompleted && Volatile.Read(ref ranked) == 0)
+        {
+            await Task.WhenAny(allScreenings, Task.Delay(remainingMilliseconds, ceilingCts.Token)).ConfigureAwait(false);
+        }
 
         // Stop the ceiling timer, and abandon any candidate still outstanding rather than waiting
         // on it: the ceiling is a wall-clock bound on choosing a server, and awaiting an
@@ -346,7 +377,7 @@ public sealed class OoklaSpeedtest : ISpeedTestService
     /// <summary>
     /// Screens one server - is it reachable, and roughly how fast? - returning <c>null</c> when the
     /// candidate cannot be ranked: its URL is missing or not a web address, no request completed
-    /// inside the ceiling, or what answered was not a speed test server. A server that answered
+    /// before the pass ended, or what answered was not a speed test server. A server that answered
     /// correctly at least once returns a figure and simply ranks lower when it is slow.
     /// </summary>
     /// <remarks>

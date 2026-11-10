@@ -252,6 +252,32 @@ public sealed partial class OoklaSpeedtestTests
         [InlineData(0)]
         [InlineData(-1)]
         [InlineData(-100)]
+        public async Task GetFastestServerByLatencyAsync_FirstScreeningStageMilliseconds_NotPositive_ThrowsArgumentOutOfRangeException(int firstScreeningStageMilliseconds)
+        {
+            // Given a first screening stage that is not a positive span of time. Zero would end the
+            // first stage before any candidate could be ranked, -1 (Timeout.Infinite) would make the
+            // first stage endless and so remove the bound on choosing a server, and any other
+            // negative value would throw from inside the pass - so it is rejected up front, as the
+            // ceiling it divides is.
+            var settings = new OoklaSpeedtestSettings
+            {
+                ServerDiscovery = new() { FirstScreeningStageMilliseconds = firstScreeningStageMilliseconds }
+            };
+            var speedtest = new OoklaSpeedtest(settings);
+            IServer[] servers = [new Server { Url = "http://example.com/", Sponsor = "Sponsor", Location = "Location" }];
+
+            // When
+            var exception = await Assert.ThrowsAsync<ArgumentOutOfRangeException>(
+                () => speedtest.GetFastestServerByLatencyAsync(servers));
+
+            // Then
+            Assert.Equal(nameof(ServerDiscoverySettings.FirstScreeningStageMilliseconds), exception.ParamName);
+        }
+
+        [Theory]
+        [InlineData(0)]
+        [InlineData(-1)]
+        [InlineData(-100)]
         public async Task GetServerLatencyAsync_HttpTimeoutMilliseconds_NotPositive_ThrowsArgumentOutOfRangeException(int httpTimeoutMilliseconds)
         {
             // Given a probe timeout that is not a positive span of time. Zero would abandon every
