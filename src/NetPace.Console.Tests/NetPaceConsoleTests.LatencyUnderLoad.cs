@@ -173,19 +173,6 @@ public sealed partial class NetPaceConsoleTests
         }
 
         /// <summary>
-        /// The registrations these tests need: the stub speed tester, whose transfers both report
-        /// under-load latency, a fixed clock, and a waiter that returns immediately.
-        /// </summary>
-        private static ServiceCollection StubServices()
-        {
-            var services = new ServiceCollection();
-            services.AddSingleton<ISpeedTestService, SpeedTestStub>();
-            services.AddSingleton<IClock, ClockStub>();
-            services.AddSingleton<IWaiter, NoDelayStub>();
-            return services;
-        }
-
-        /// <summary>
         /// A run whose download measured the line under its own load and whose upload did not, so
         /// one direction has figures to report and the other has none.
         /// </summary>

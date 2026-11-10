@@ -186,7 +186,9 @@ Timestamp,LatencyMilliseconds,JitterMilliseconds,DownloadSpeedBitsPerSecond,Down
 
 **Latency under load is where bufferbloat shows.** A line whose idle latency is 12 ms and whose download latency is 48 ms is filling a buffer somewhere between you and the server; the highest figure is what a video call hears. Each direction's four figures sit beside that direction's speed, so one row holds the whole picture of one run.
 
-**An unmeasured latency figure is an empty cell, never `0`.** A direction's four cells are empty where the transfer measured nothing under load — the measurement was switched off, the transfer ended before the first probe was due, no probe answered, or every one of the transfer's own requests failed — as well as where the test did not run at all. The lowest and highest are also empty where no run of probe times was kept. Nothing charting these columns can mistake a line that was not measured for a perfect one.
+**An unmeasured latency figure is an empty cell, never `0`.** A direction's four cells are empty where the transfer measured nothing under load — the transfer ended before the first probe was due, no probe answered, or every one of the transfer's own requests failed — as well as where the test did not run at all. The lowest and highest are also empty where no run of probe times was kept. Nothing charting these columns can mistake a line that was not measured for a perfect one.
+
+**`--no-latency` empties only `LatencyMilliseconds` and `JitterMilliseconds`.** It skips the idle measurement, not the probes taken while a transfer runs, so each direction's four under-load figures are still reported; only `--no-download` or `--no-upload` empties them.
 
 **`--unit`, `--unit-scale` and `--unit-system` do not change CSV output at all.** They shape the default and simple output only. That is what makes a CSV log safe to append to: under the default automatic scale a formatted speed can be `Kbps` on one run and `Mbps` on the next, so a file collecting rows over weeks would mix units in one column. The numbers never shift, so `--csv` works with `--count` and `--loop` whatever the unit options say, and the numbers match [the numeric fields in JSON](#numeric-values-in-json) for the same run.
 
@@ -281,7 +283,7 @@ NetPace --json-pretty
 }
 ```
 
-The same nine figures CSV carries, under the same names and as the same numbers for the same run. **A figure that was not measured is left out rather than reported as `0`** — a direction's four fields are absent where the transfer measured nothing under load or the test did not run, and the lowest and highest are absent where no run of probe times was kept. `JitterMilliseconds` goes whenever `LatencyMilliseconds` does, so `--no-latency` leaves out both.
+The same nine figures CSV carries, under the same names and as the same numbers for the same run. **A figure that was not measured is left out rather than reported as `0`** — a direction's four fields are absent where the transfer measured nothing under load or the test did not run, and the lowest and highest are absent where no run of probe times was kept. `JitterMilliseconds` goes whenever `LatencyMilliseconds` does, so `--no-latency` leaves out both — and only those two: each direction's four under-load fields are still reported, and only `--no-download` or `--no-upload` leaves them out.
 
 **`--unit`, `--unit-scale` and `--unit-system` do not change JSON output at all.** They shape the default and simple output only. Passing one with `--json` or `--json-pretty` is accepted without an error or warning, and the result is byte-for-byte what the same run writes without it. That is what makes a saved JSON result comparable: a script comparing runs, writing to a database or checking a threshold reads the numbers and never has to strip a unit, convert between scales, or know which switches the run was made with.
 

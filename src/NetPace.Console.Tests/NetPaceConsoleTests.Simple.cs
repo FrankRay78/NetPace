@@ -11,15 +11,6 @@ public sealed partial class NetPaceConsoleTests
 {
     public sealed class Simple
     {
-        private static ServiceCollection StubServices()
-        {
-            var services = new ServiceCollection();
-            services.AddSingleton<ISpeedTestService, SpeedTestStub>();
-            services.AddSingleton<IClock, ClockStub>();
-            services.AddSingleton<IWaiter, NoDelayStub>();
-            return services;
-        }
-
         private static CommandLineTestHost HostWith(ISpeedTestService service)
         {
             var services = new ServiceCollection();

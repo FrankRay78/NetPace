@@ -444,19 +444,5 @@ public sealed partial class NetPaceConsoleTests
             Assert.NotEqual(0, result.ExitCode);
             Assert.Contains("key=value", result.Output);
         }
-
-        /// <summary>
-        /// The registrations a result-fields test needs: a stub speed tester, a fixed clock, and a
-        /// waiter that returns immediately. A test that needs more adds it to the returned
-        /// collection.
-        /// </summary>
-        private static ServiceCollection StubServices()
-        {
-            var services = new ServiceCollection();
-            services.AddSingleton<ISpeedTestService, SpeedTestStub>();
-            services.AddSingleton<IClock, ClockStub>();
-            services.AddSingleton<IWaiter, NoDelayStub>();
-            return services;
-        }
     }
 }
