@@ -63,9 +63,11 @@ public sealed partial class NetPaceConsoleTests
         {
             // SCENARIO: A line-based parser reads the download speed
 
-            // Given a --simple result, and the download speed default output reports for the same run
-            var byDefault = await GetCommandLineTestHost(StubServices()).RunAsync([]);
-            var downloadNumber = Regex.Match(byDefault.Output, @"Download: ([^ ,\r\n]+)").Groups[1].Value;
+            // Given a --simple result, and the download speed default output reports for the same
+            // run. Default output is read at a terminal: anywhere else it writes these very lines,
+            // so a non-interactive host would compare the simple writer with itself.
+            var byDefault = await GetInteractiveCommandLineTestHost(StubServices()).RunAsync([]);
+            var downloadNumber = Regex.Match(LineHolding(byDefault.Output, "Downloading"), @"(\S+) [A-Za-z]*bps").Groups[1].Value;
             var host = GetCommandLineTestHost(StubServices());
 
             // When a script takes the second word of the line holding Download
@@ -88,25 +90,32 @@ public sealed partial class NetPaceConsoleTests
         public async Task Simple_Figures_Are_The_Ones_Default_Output_Reports(string unitSwitches)
         {
             // Given the same run written in each human-readable format, under the same unit
-            // switches - Kilo rather than Mega, so the stub's figures do not round to zero
+            // switches - Kilo rather than Mega, so the stub's figures do not round to zero. Default
+            // output is read at a terminal, which is the only place it draws a table of its own:
+            // anywhere else it writes these very lines.
             string[] units = unitSwitches.Split(' ', StringSplitOptions.RemoveEmptyEntries);
             var simple = await GetCommandLineTestHost(StubServices()).RunAsync(["--simple", .. units]);
-            var byDefault = await GetCommandLineTestHost(StubServices()).RunAsync(units);
+            var byDefault = await GetInteractiveCommandLineTestHost(StubServices()).RunAsync(units);
 
             // Then each figure reads the same in both, so neither format is formatting it alone.
             // Each is checked non-empty first: Figure returns "" for a label it cannot find, so a
             // label renamed on both sides would otherwise compare "" with "" and pass vacuously.
             Assert.Equal(0, simple.ExitCode);
             Assert.Equal(0, byDefault.ExitCode);
-            Assert.NotEmpty(Figure(byDefault.Output, "Download"));
-            Assert.NotEmpty(Figure(byDefault.Output, "Upload"));
-            Assert.NotEmpty(Figure(byDefault.Output, "Latency"));
-            Assert.Equal(Figure(byDefault.Output, "Download"), Figure(simple.Output, "Download"));
-            Assert.Equal(Figure(byDefault.Output, "Upload"), Figure(simple.Output, "Upload"));
-            Assert.Equal(Figure(byDefault.Output, "Latency"), Figure(simple.Output, "Ping"));
+
+            foreach ((string line, string row) in new[] { ("Ping", "Pinging"), ("Download", "Downloading"), ("Upload", "Uploading") })
+            {
+                var figure = Figure(simple.Output, line);
+
+                Assert.NotEmpty(figure);
+                Assert.Contains(figure, Row(byDefault.Output, row));
+            }
 
             static string Figure(string output, string label) =>
-                Regex.Match(output, $@"{label}: ([^,\r\n]+)").Groups[1].Value;
+                Regex.Match(output, $@"^{label}: (.+)$", RegexOptions.Multiline).Groups[1].Value.Trim();
+
+            static string Row(string output, string test) =>
+                output.Split('\n').Single(line => line.Contains(test, StringComparison.Ordinal));
         }
 
         [Theory]

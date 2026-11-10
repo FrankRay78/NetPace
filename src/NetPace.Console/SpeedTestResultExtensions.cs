@@ -22,7 +22,7 @@ internal static class SpeedTestResultExtensions
     public static bool HasFailures(this SpeedTestResult result) => result.RequestsFailed > 0;
 
     /// <summary>
-    /// The parenthetical annotation appended to a result token when any request failed
+    /// The parenthetical annotation appended to a <c>--simple</c> figure when any request failed
     /// (for example, <c>" (5 of 150 requests failed)"</c>); an empty string when none failed.
     /// </summary>
     public static string GetFailureAnnotation(this SpeedTestResult result) =>

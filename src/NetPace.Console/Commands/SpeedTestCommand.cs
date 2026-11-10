@@ -55,7 +55,7 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
             _ => new DefaultConsoleWriter(liveDisplayRefresh, theme)
         };
 
-        if (writer.MachineReadable)
+        if (writer.MachineReadable || !DefaultConsoleWriter.CanAnimate(console))
         {
             // Spectre wraps what it writes to the console's width - 80 when stdout is a pipe or a
             // redirect, the window width in a narrow terminal - and those breaks are real newlines in
@@ -67,6 +67,8 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
             // It covers the error lines this command writes once it is running; a parse or
             // validation error reported before the command exists is written at the unlifted width.
             // --file output has never wrapped: FileConsole reports no width limit of its own.
+            // Default output goes the same way wherever it cannot redraw, because there it writes
+            // the --simple lines and those are the same contract whichever switch asked for them.
             console.Profile.Width = int.MaxValue;
         }
 

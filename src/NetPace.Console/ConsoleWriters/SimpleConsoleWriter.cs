@@ -1,4 +1,3 @@
-using System.Globalization;
 using NetPace.Console.Diagnostics;
 using NetPace.Core;
 
@@ -15,6 +14,10 @@ namespace NetPace.Console.ConsoleWriters;
 /// included, so one expression reads any of them — but a run that faults writes an unlabelled
 /// <c>Error:</c> message to the same stream, so a reader anchors its match (<c>grep '^Download:'</c>)
 /// rather than trusting every line to be a figure.
+/// <para>
+/// These are also the lines default output writes wherever it cannot redraw, which is why the
+/// lines themselves live in <see cref="SimpleLines"/>.
+/// </para>
 /// </remarks>
 public sealed class SimpleConsoleWriter : IConsoleWriter
 {
@@ -23,37 +26,14 @@ public sealed class SimpleConsoleWriter : IConsoleWriter
 
     public async Task<SpeedTestOutcome> PerformSpeedTestAsync(bool initialSpeedTest, IAnsiConsole console, IClock clock, IClientInfoProvider clientInfoProvider, IDiagnosticRecorder recorder, ISpeedTestService speedTestClient, SpeedTestCommandSettings settings, CancellationToken cancellationToken)
     {
+        ArgumentNullException.ThrowIfNull(settings);
+
         // Get the server to use for speed testing, then measure.
         var fastest = await ServerSelector.GetServerAsync(speedTestClient, settings, recorder, cancellationToken);
         var outcome = await Measurements.PerformAsync(speedTestClient, fastest.Server, settings, recorder, cancellationToken);
 
-        // Display speed test result: one line per figure, in the order the tests ran, and no line
-        // at all for a test that did not run. Runs under --count and --loop follow one another
-        // with no separator, so a reader takes every line the same way whichever run wrote it.
-        if (settings.IncludeTimestamp)
-        {
-            console.WriteLine($"Timestamp: {clock.Now.ToHumanReadable()}");
-        }
-        if (!settings.NoLatency)
-        {
-            console.WriteLine($"Ping: {fastest.LatencyMilliseconds.ToString(CultureInfo.InvariantCulture)} ms");
-        }
-        if (outcome.Download is SpeedTestResult download)
-        {
-            console.WriteLine($"Download: {Speed(download, settings)}");
-        }
-        if (outcome.Upload is SpeedTestResult upload)
-        {
-            console.WriteLine($"Upload: {Speed(upload, settings)}");
-        }
+        SimpleLines.Write(console, clock, fastest, outcome, settings);
 
         return outcome;
     }
-
-    /// <summary>
-    /// A measurement's figure as its line carries it: the speed in the unit the switches ask for,
-    /// followed by the failed-request note where there is one.
-    /// </summary>
-    private static string Speed(SpeedTestResult result, SpeedTestCommandSettings settings) =>
-        $"{result.GetSpeedString(settings.SpeedUnit, settings.SpeedUnitSystem, settings.SpeedScale)}{result.GetFailureAnnotation()}";
 }

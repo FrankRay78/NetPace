@@ -29,7 +29,10 @@ namespace NetPace.Core.Clients.Testing;
 /// <para>
 /// A latency probe reports progress at 25, 50, 75 and 100 percent, screening at 33, 66 and 100,
 /// and a transfer reports <see cref="SpeedTestProgressClimb"/> towards the result it goes on to
-/// return. Constructed with a delay, the stub pauses by that many milliseconds before each report,
+/// return. A latency probe's report carries the running latency from the first probe and the
+/// running jitter from the second, landing on the figures its result states; screening carries
+/// neither, because those figures describe the one server under test and screening is measuring
+/// several. Constructed with a delay, the stub pauses by that many milliseconds before each report,
 /// so a stubbed measurement unfolds rather than completing at once. The pause blocks the calling
 /// thread rather than yielding, so the reports are observable only off that thread. A null progress
 /// receiver is treated as none, as the real provider treats it.
@@ -50,6 +53,9 @@ public sealed class SpeedTestStub : ISpeedTestService
     private const int LoadedMinimumMillisecondsPerServerNumber = 120;
     private const int LoadedMaximumMillisecondsPerServerNumber = 200;
     private const int LoadedJitterMillisecondsPerServerNumber = 20;
+
+    /// <summary>The completeness each of a latency measurement's four probe reports carries.</summary>
+    private static readonly int[] LatencyProbeProgress = [25, 50, 75, 100];
 
     private readonly IServer[] stubServers = new IServer[]
     {
@@ -102,18 +108,24 @@ public sealed class SpeedTestStub : ISpeedTestService
     {
         progress ??= new NullProgress<LatencyTestProgress>();
 
-        Task.Delay(delayMilliseconds).Wait();
-        progress.Report(new LatencyTestProgress { PercentageComplete = 25 });
-        Task.Delay(delayMilliseconds).Wait();
-        progress.Report(new LatencyTestProgress { PercentageComplete = 50 });
-        Task.Delay(delayMilliseconds).Wait();
-        progress.Report(new LatencyTestProgress { PercentageComplete = 75 });
-        Task.Delay(delayMilliseconds).Wait();
-        progress.Report(new LatencyTestProgress { PercentageComplete = 100 });
-
         var serverID = GetServerID(server.Url);
 
         var latencyResult = IdleLatencyFor(server, serverID);
+
+        // Four probes, each report carrying the figures of the probes answered so far: the latency
+        // from the first, and the jitter from the second, which is the first report with a
+        // consecutive pair behind it. Both land on the figures the result states.
+        for (var probe = 0; probe < LatencyProbeProgress.Length; probe++)
+        {
+            Task.Delay(delayMilliseconds).Wait();
+
+            progress.Report(new LatencyTestProgress
+            {
+                PercentageComplete = LatencyProbeProgress[probe],
+                LatencyMilliseconds = latencyResult.LatencyMilliseconds,
+                JitterMilliseconds = probe == 0 ? null : latencyResult.JitterMilliseconds
+            });
+        }
 
         return Task.FromResult(latencyResult);
     }

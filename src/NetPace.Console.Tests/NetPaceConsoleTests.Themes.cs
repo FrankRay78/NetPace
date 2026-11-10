@@ -36,6 +36,14 @@ public sealed partial class NetPaceConsoleTests
         private static CommandLineTestHost StaticScreenHost(IServiceCollection services) =>
             new(services, CommandLineTestHost.RedirectedWidth, recordColour: true);
 
+        /// <summary>
+        /// The host the screen a theory row names is drawn on: a terminal for the speed test,
+        /// whose default output is the live table and exists only where something can redraw, and
+        /// a redirected run for the screens that are the same either way.
+        /// </summary>
+        private static CommandLineTestHost HostFor(string screen, IServiceCollection services) =>
+            screen == "speed test" ? SpeedTestHost(services) : StaticScreenHost(services);
+
         private static ServiceCollection SpeedTestServices(IThemeProvider themeProvider)
         {
             var services = new ServiceCollection();
@@ -80,15 +88,17 @@ public sealed partial class NetPaceConsoleTests
         }
 
         [Fact]
-        public async Task PartlyFinishedProgressBar_WithNoThemeChosen_IsDrawnInTodaysColours()
+        public async Task PartlyFinishedTable_WithNoThemeChosen_IsDrawnInTodaysColours()
         {
             // SCENARIO: Unset theme keeps today's look
 
-            // Given a download that stops part-way, so the bar has both a done and a remaining part
-            var host = SpeedTestHost(PartWayDownloadServices(FromEnvironment()));
+            // Given a run that ends with one row still measuring, so the table carries a clean, a
+            // partially failed and a running row at once
+            using var cancellation = new CancellationTokenSource();
+            var host = SpeedTestHost(PartWayTableServices(FromEnvironment(), cancellation));
 
             // When
-            var result = await host.RunAsync(["--no-upload"]);
+            var result = await host.RunAsync([], cancellation.Token);
 
             // Then
             Assert.Equal(0, result.ExitCode);
@@ -234,7 +244,7 @@ public sealed partial class NetPaceConsoleTests
             async Task<string> Draw(string[] arguments, Theme theme)
             {
                 var services = SpeedTestServices(Chosen(theme));
-                var result = await StaticScreenHost(services).RunAsync(arguments);
+                var result = await HostFor(screen, services).RunAsync(arguments);
                 Assert.Equal(0, result.ExitCode);
                 return AnsiSnapshot.Readable(result.Output);
             }
@@ -253,7 +263,7 @@ public sealed partial class NetPaceConsoleTests
 
             // Given
             string[] args = ArgumentsFor(screen);
-            var host = StaticScreenHost(SpeedTestServices(FromEnvironment(("NETPACE_THEME", "plain"))));
+            var host = HostFor(screen, SpeedTestServices(FromEnvironment(("NETPACE_THEME", "plain"))));
 
             // When
             var result = await host.RunAsync(args);
@@ -264,38 +274,41 @@ public sealed partial class NetPaceConsoleTests
         }
 
         [Fact]
-        public async Task PartlyFinishedProgressBar_UnderThePlainTheme_StillShowsWhatIsDoneAndWhatRemains()
+        public async Task PartlyFinishedTable_UnderThePlainTheme_StillReadsWithoutColour()
         {
             // SCENARIO: Plain theme shows no colour
 
-            // Given a download that stops part-way, so the bar has both a done and a remaining part
-            var services = PartWayDownloadServices(FromEnvironment(("NETPACE_THEME", "plain")));
+            // Given a run that ends with one row still measuring, and a partial failure above it
+            using var cancellation = new CancellationTokenSource();
+            var services = PartWayTableServices(FromEnvironment(("NETPACE_THEME", "plain")), cancellation);
             var host = SpeedTestHost(services);
 
             // When
-            var result = await host.RunAsync(["--no-upload"]);
+            var result = await host.RunAsync([], cancellation.Token);
 
-            // Then the bar is drawn without colour, and the two parts of it are still told apart.
+            // Then nothing is styled, and every row's outcome still reads from its mark and its
+            // count rather than from a colour.
             Assert.Equal(0, result.ExitCode);
+            Assert.False(AnsiSnapshot.CarriesStyling(result.Output));
             await Verify(AnsiSnapshot.Readable(result.Output));
         }
 
         [Fact]
-        public async Task PartlyFinishedProgressBar_UnderTheGreenTheme_IsDrawnInGreen()
+        public async Task PartlyFinishedTable_UnderTheGreenTheme_IsDrawnInGreen()
         {
             // SCENARIO: Chosen theme applies to every command
 
-            // Given a download that stops part-way, so the bar has both a done and a remaining part
-            // and the running percentage is still short of the end
-            var host = SpeedTestHost(PartWayDownloadServices(Chosen(Theme.Green)));
+            // Given a run that ends with one row still measuring, and a partial failure above it
+            using var cancellation = new CancellationTokenSource();
+            var host = SpeedTestHost(PartWayTableServices(Chosen(Theme.Green), cancellation));
 
             // When
-            var result = await host.RunAsync(["--no-upload"]);
+            var result = await host.RunAsync([], cancellation.Token);
 
-            // Then the slots only a part-finished bar reaches — the transferred part, the part still
-            // to come and the running percentage — are drawn in the theme. The finished bars in the
-            // other green snapshots reach none of these. The spinner's style is not covered: its
-            // display is cleared before its last frame, so no snapshot draws a glyph.
+            // Then the slots only a part-finished table reaches — the spinner beside a row still
+            // measuring, its running percentage, and the mark and count of a partial failure — are
+            // drawn in the theme. The completed tables in the other green snapshots reach none of
+            // these.
             Assert.Equal(0, result.ExitCode);
             await Verify(AnsiSnapshot.Readable(result.Output));
         }
@@ -502,17 +515,23 @@ public sealed partial class NetPaceConsoleTests
         }
 
         /// <summary>
-        /// A service collection whose download stops part-way through, leaving the progress bar with
-        /// a finished part and a remaining part.
+        /// A service collection whose run ends with the upload still measuring, having measured a
+        /// partial failure on the way, so the last frame of the table carries one clean row, one
+        /// partially failed and one still running. A row that failed outright is not among them.
         /// </summary>
-        private static ServiceCollection PartWayDownloadServices(IThemeProvider themeProvider)
+        /// <remarks>
+        /// A completed run reaches none of the slots that only a row in flight is drawn with - the
+        /// spinner and the running percentage - because by the time the display closes every row
+        /// has finished. Ending the run part-way is the only way to draw them.
+        /// </remarks>
+        private static ServiceCollection PartWayTableServices(IThemeProvider themeProvider, CancellationTokenSource cancellation)
         {
-            var result = new SpeedTestResult
+            var partlyFailed = new SpeedTestResult
             {
                 BytesProcessed = 1000,
                 ElapsedMilliseconds = 1000,
-                RequestsSucceeded = 1,
-                RequestsFailed = 0,
+                RequestsSucceeded = 9,
+                RequestsFailed = 1,
                 Latency = null
             };
 
@@ -524,7 +543,13 @@ public sealed partial class NetPaceConsoleTests
                 GetDownloadSpeedAsyncFunc = (_, progress, _) =>
                 {
                     progress?.Report(new SpeedTestProgress { PercentageComplete = 40, BytesProcessed = 400, ElapsedMilliseconds = 400 });
-                    return Task.FromResult(result);
+                    return Task.FromResult(partlyFailed);
+                },
+                GetUploadSpeedAsyncFunc = (_, _, _) =>
+                {
+                    cancellation.Cancel();
+                    cancellation.Token.ThrowIfCancellationRequested();
+                    return Task.FromResult(partlyFailed);
                 }
             };
 

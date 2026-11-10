@@ -1,5 +1,3 @@
-
-[Unknown]
-http://test2.com
-
-Latency: 200 ms, Download: 4 Kbps, Upload: 9.33 Kbps
+﻿Ping: 200 ms
+Download: 4 Kbps
+Upload: 9.33 Kbps

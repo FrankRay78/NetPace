@@ -1,0 +1,5 @@
+﻿    Test         Done     Speed  Latency  Jitter
+⠋   Downloading   30%  2.4 Mbps    38 ms        
+
+    Test         Done     Speed  Latency  Jitter
+⠋   Downloading   70%  5.6 Mbps    42 ms    3 ms

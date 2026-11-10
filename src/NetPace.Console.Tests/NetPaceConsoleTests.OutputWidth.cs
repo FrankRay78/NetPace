@@ -173,17 +173,18 @@ public sealed partial class NetPaceConsoleTests
         }
 
         [Fact]
-        public async Task Should_Wrap_Default_Output_In_A_Narrow_Terminal()
+        public async Task Should_Leave_Default_Output_Unbroken_In_A_Narrow_Terminal()
         {
-            // Given a terminal window narrower than the default format's result line
+            // Given a destination that cannot redraw, narrower than the lines default output writes
+            // there. Those are the --simple lines, so they carry the same contract and must survive
+            // a narrow window whole, just as the machine-readable formats above do.
 
             // When
             var narrow = await RunAtWidthAsync(CommandLineTestHost.NarrowTerminalWidth, []);
 
-            // Then the width did reach it: human-readable output goes on wrapping to fit the screen,
-            // which is the half of the choice the machine-readable tests above cannot show.
+            // Then nothing the window's width did shows in the output.
             var unlimited = await RunAtWidthAsync(CommandLineTestHost.UnlimitedWidth, []);
-            Assert.NotEqual(unlimited, narrow);
+            Assert.Equal(unlimited, narrow);
 
             await Verify(narrow);
         }
@@ -191,22 +192,23 @@ public sealed partial class NetPaceConsoleTests
         [Fact]
         public async Task Should_Leave_File_Output_Unwrapped_In_A_Narrow_Terminal()
         {
-            // Given a --file target and a terminal narrow enough to wrap what reaches the screen. The
-            // default format is the only one that leaves the console's width in place, so it is the
-            // only configuration in which the file leg's independence can be observed at all.
+            // Given a --file target and a terminal narrow enough to wrap what reaches the screen.
+            // The screen must be a terminal for there to be anything the width applies to at all:
+            // default output draws its table only where something can redraw, and a table is the
+            // one thing NetPace writes that a narrow window folds.
             var narrowFile = Path.Join(Path.GetTempPath(), $"netpace-test-{Guid.NewGuid()}.txt");
             var unlimitedFile = Path.Join(Path.GetTempPath(), $"netpace-test-{Guid.NewGuid()}.txt");
 
             try
             {
-                // When the same run is made at a narrow width and with no width limit at all
-                var narrowOutput = await RunAtWidthAsync(CommandLineTestHost.NarrowTerminalWidth, ["--file", narrowFile]);
-                var unlimitedOutput = await RunAtWidthAsync(CommandLineTestHost.UnlimitedWidth, ["--file", unlimitedFile]);
+                // When the same run is made at a narrow terminal and at a wide one
+                var narrowOutput = await RunAtWidthAsync(CommandLineTestHost.NarrowTerminalWidth, ["--file", narrowFile], interactive: true);
+                var wideOutput = await RunAtWidthAsync(CommandLineTestHost.InteractiveTerminalWidth, ["--file", unlimitedFile], interactive: true);
 
-                // Then the console leg wrapped, which is what leaves the file leg with something to
-                // prove, and the file came out byte-identical either way: it never went through the
-                // console the terminal's width applies to.
-                Assert.NotEqual(unlimitedOutput, narrowOutput);
+                // Then the table on screen wrapped, which is what leaves the file leg with something
+                // to prove, and the file came out byte-identical either way: it never went through
+                // the console the terminal's width applies to.
+                Assert.NotEqual(wideOutput, narrowOutput);
 
                 var narrowContent = await System.IO.File.ReadAllTextAsync(narrowFile);
                 Assert.Equal(await System.IO.File.ReadAllTextAsync(unlimitedFile), narrowContent);
@@ -233,16 +235,17 @@ public sealed partial class NetPaceConsoleTests
 
         /// <summary>
         /// Runs NetPace at the given console width and returns what it wrote to stdout. A fresh host
-        /// per run, because a host registers its console once.
+        /// per run, because a host registers its console once. The destination is one that cannot
+        /// redraw unless <paramref name="interactive"/> says otherwise.
         /// </summary>
-        private static async Task<string> RunAtWidthAsync(int width, string[] args, ISpeedTestService? speedTestService = null, IWaiter? waiter = null, CancellationToken cancellationToken = default)
+        private static async Task<string> RunAtWidthAsync(int width, string[] args, ISpeedTestService? speedTestService = null, IWaiter? waiter = null, bool interactive = false, CancellationToken cancellationToken = default)
         {
             var services = new ServiceCollection();
             services.AddSingleton(speedTestService ?? new SpeedTestStub());
             services.AddSingleton<IClock, IncrementingClockStub>();
             services.AddSingleton(waiter ?? new NoDelayStub());
 
-            var result = await new CommandLineTestHost(services, width).RunAsync(args, cancellationToken);
+            var result = await new CommandLineTestHost(services, width, interactive).RunAsync(args, cancellationToken);
 
             Assert.Equal(0, result.ExitCode);
             return result.Output;

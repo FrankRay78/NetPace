@@ -1,5 +1,3 @@
-
-Test Sponsor 1
-http://test1.com
-
-Latency: 100 ms, Download: 7.81 Kibps, Upload: 18.23 Kibps
+﻿Ping: 100 ms
+Download: 7.81 Kibps
+Upload: 18.23 Kibps

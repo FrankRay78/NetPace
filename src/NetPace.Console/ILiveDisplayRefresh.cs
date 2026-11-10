@@ -1,7 +1,7 @@
 namespace NetPace.Console;
 
 /// <summary>
-/// Interface for whether a live display — the spinner and progress bars a run draws while it
+/// Interface for whether a live display — the spinner and the table a run draws while it
 /// measures — redraws itself as it goes.
 /// </summary>
 /// <remarks>
@@ -14,7 +14,7 @@ public interface ILiveDisplayRefresh
 {
     /// <summary>
     /// Whether the display redraws on Spectre.Console's own refresh interval, so a spinner turns
-    /// and a bar advances while a measurement is still in flight.
+    /// and the table's figures move while a measurement is still in flight.
     /// </summary>
     bool AutoRefresh { get; }
 }

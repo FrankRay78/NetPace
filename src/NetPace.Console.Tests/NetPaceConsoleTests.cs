@@ -217,8 +217,6 @@ public sealed partial class NetPaceConsoleTests
     [Theory]
     public async Task Should_Perform_Speed_Test_With_Server(string url)
     {
-        // SCENARIO: A named server is labelled with square brackets
-
         // Given
         var services = new ServiceCollection();
         services.AddSingleton<ISpeedTestService, SpeedTestStub>();
@@ -237,10 +235,9 @@ public sealed partial class NetPaceConsoleTests
     [Fact]
     public async Task Should_Perform_Speed_Test_With_Server_And_No_Latency()
     {
-        // SCENARIO: A named server is labelled with square brackets
-
-        // Given a named server and no latency test, so the sponsor on show is the console's own
-        // placeholder rather than the one the speed test service supplies.
+        // Given a named server and no latency test. This host is not a terminal, so what the
+        // snapshot carries is the --simple lines; the bracketed placeholder sponsor is covered by
+        // the interactive test that carries that scenario's marker.
         var services = new ServiceCollection();
         services.AddSingleton<ISpeedTestService, SpeedTestStub>();
         services.AddSingleton<IClock, ClockStub>();

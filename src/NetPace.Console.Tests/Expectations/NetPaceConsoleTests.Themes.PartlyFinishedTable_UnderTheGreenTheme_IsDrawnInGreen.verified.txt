@@ -1,0 +1,12 @@
+﻿\e[?25l                 
+  Choosing server
+                 
+\e[2K\e[1A\e[2K\e[1A\e[2K\e[?25h
+\e[1;38;5;28mTest Sponsor 1\e[0m
+\e[38;5;65mhttp://test1.com\e[0m
+
+\e[?25l    \e[38;5;29mTest\e[0m         \e[38;5;29mDone\e[0m   \e[38;5;29mSpeed\e[0m  \e[38;5;29mLatency\e[0m  \e[38;5;29mJitter\e[0m   \e[38;5;29mFailed\e[0m
+\e[38;5;28m✓\e[0m   \e[1;38;5;28mPinging\e[0m      \e[38;5;29m100%\e[0m           \e[1;38;5;28m100 ms\e[0m    \e[1;38;5;28m0 ms\e[0m         
+\e[1;38;5;29m!\e[0m   \e[1;38;5;28mDownloading\e[0m  \e[38;5;29m100%\e[0m  \e[1;38;5;28m8 Kbps\e[0m                   \e[1;38;5;29m1 of 10\e[0m
+\e[38;5;29m⠋\e[0m   \e[1;38;5;28mUploading\e[0m      \e[38;5;65m0%\e[0m                                  
+\e[?25h

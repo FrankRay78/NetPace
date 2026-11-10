@@ -1,0 +1,12 @@
+﻿\e[?25l                 
+  Choosing server
+                 
+\e[2K\e[1A\e[2K\e[1A\e[2K\e[?25h
+Test Sponsor 1
+http://test1.com
+
+\e[?25l    Test         Done   Speed  Latency  Jitter   Failed
+✓   Pinging      100%           100 ms    0 ms         
+!   Downloading  100%  8 Kbps                   1 of 10
+⠋   Uploading      0%                                  
+\e[?25h
