@@ -290,20 +290,6 @@ public sealed partial class NetPaceConsoleTests
         }
 
         [Fact]
-        public async Task The_Timestamp_Has_Its_Own_Line_Above_The_Server()
-        {
-            // Given a terminal and --timestamp.
-            var host = TerminalHost(Services(new SpeedTestStub()));
-
-            // When
-            var result = await host.RunAsync(["--timestamp"]);
-
-            // Then
-            Assert.Equal(0, result.ExitCode);
-            await Verify(result.Output);
-        }
-
-        [Fact]
         public async Task Output_That_Cannot_Animate_Is_Exactly_What_Simple_Writes()
         {
             // SCENARIO: Output that cannot animate falls back to simple

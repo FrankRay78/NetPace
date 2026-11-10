@@ -94,12 +94,12 @@ public sealed partial class NetPaceConsoleTests
         }
 
         /// <summary>
-        /// Every output mode, each asked for a timestamp where that is optional.
+        /// Every output mode that carries a timestamp. The default and <c>--simple</c> output are
+        /// absent because neither carries one at all.
         /// </summary>
         public static TheoryData<string> EveryOutputMode() =>
         [
-            "-t",
-            "--simple -t",
+            "--minimal",
             "--csv",
             "--json",
             "--json-pretty"
@@ -113,8 +113,8 @@ public sealed partial class NetPaceConsoleTests
         /// </summary>
         public static TheoryData<string> EveryModeWithAFormattedSpeed() =>
         [
-            "-t",
-            "--simple -t"
+            "--minimal",
+            "--simple"
         ];
 
         [Theory]
@@ -194,8 +194,7 @@ public sealed partial class NetPaceConsoleTests
         }
 
         [Theory]
-        [InlineData("-t")]
-        [InlineData("--simple -t")]
+        [InlineData("--minimal")]
         public async Task SpeedTest_HumanReadableOutput_WritesTheTimestampInItsFamiliarFormat(string commandLine)
         {
             // SCENARIO: Human-readable timestamp keeps its familiar format

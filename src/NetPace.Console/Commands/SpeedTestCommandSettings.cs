@@ -63,12 +63,6 @@ public sealed class SpeedTestCommandSettings
     public required string ServerUrl { get; init; }
 
     /// <summary>
-    /// Include a timestamp in the output. Governs the default and simple output only: CSV and JSON
-    /// always carry the timestamp, because a machine-readable row is of little use without one.
-    /// </summary>
-    public required bool IncludeTimestamp { get; init; }
-
-    /// <summary>
     /// The traffic-load profile that bundles per-request shape and total-byte cap defaults.
     /// </summary>
     public required Profile Profile { get; init; }
@@ -108,6 +102,11 @@ public sealed class SpeedTestCommandSettings
     /// Display the result as one named line per figure.
     /// </summary>
     public required bool Simple { get; init; }
+
+    /// <summary>
+    /// Display the result as a single line per run, opening with the time it was taken.
+    /// </summary>
+    public required bool Minimal { get; init; }
 
     /// <summary>
     /// Write output to file.
@@ -161,13 +160,14 @@ public static class SpeedTestCommandSettingsExtensions
         // Checked here rather than as a parse validator: a command-level parse error discards every
         // option-level error, which hid an unparseable --unit and the --verbosity removal notice
         // whenever a format conflict was present too.
-        var formatsSelected = (settings.CSV ? 1 : 0) + (settings.Json || settings.JsonPretty ? 1 : 0) + (settings.Simple ? 1 : 0);
+        var formatsSelected = (settings.CSV ? 1 : 0) + (settings.Json || settings.JsonPretty ? 1 : 0) + (settings.Minimal ? 1 : 0) + (settings.Simple ? 1 : 0);
         if (formatsSelected > 1)
         {
             var switches = new List<string>();
             if (settings.CSV) switches.Add("--csv");
             if (settings.Json) switches.Add("--json");
             if (settings.JsonPretty) switches.Add("--json-pretty");
+            if (settings.Minimal) switches.Add("--minimal");
             if (settings.Simple) switches.Add("--simple");
 
             throw new ArgumentException($"Only one output format may be specified: {string.Join(", ", switches)}.");

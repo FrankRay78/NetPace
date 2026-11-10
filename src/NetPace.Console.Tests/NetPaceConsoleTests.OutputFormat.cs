@@ -1,9 +1,9 @@
 namespace NetPace.Console.Tests;
 
 /// <summary>
-/// CLI behaviour for choosing an output format: <c>--simple</c>, <c>--csv</c> and <c>--json</c>
-/// are mutually exclusive peers, the retired <c>--verbosity</c> switch is rejected outright, and
-/// the default format carries no diagnostic prose.
+/// CLI behaviour for choosing an output format: <c>--minimal</c>, <c>--simple</c>, <c>--csv</c>
+/// and <c>--json</c> are mutually exclusive peers, the retired <c>--verbosity</c> switch is
+/// rejected outright, and the default format carries no diagnostic prose.
 /// </summary>
 public sealed partial class NetPaceConsoleTests
 {
@@ -43,10 +43,10 @@ public sealed partial class NetPaceConsoleTests
             // Given
             var host = HostWith();
 
-            // When the line-per-figure format is combined with timestamp, unit and scale selection.
-            var result = await host.RunAsync(["--simple", "-t", "--unit", "bytes", "--unit-scale", "Kilo", "--unit-system", "IEC"]);
+            // When the line-per-figure format is combined with unit and scale selection.
+            var result = await host.RunAsync(["--simple", "--unit", "bytes", "--unit-scale", "Kilo", "--unit-system", "IEC"]);
 
-            // Then the timestamp has its own line above figures carrying the chosen units.
+            // Then each figure carries the chosen units.
             Assert.Equal(0, result.ExitCode);
             await Verify(result.Output);
         }
@@ -54,6 +54,7 @@ public sealed partial class NetPaceConsoleTests
         [Theory]
         [InlineData("")]
         [InlineData("--simple")]
+        [InlineData("--minimal")]
         [InlineData("--csv")]
         [InlineData("--json")]
         [InlineData("--no-download")]
@@ -106,6 +107,9 @@ public sealed partial class NetPaceConsoleTests
         [InlineData("--csv --json-pretty", "--csv, --json-pretty")]
         [InlineData("--json-pretty --simple", "--json-pretty, --simple")]
         [InlineData("--csv --json --simple", "--csv, --json, --simple")]
+        [InlineData("--csv --minimal", "--csv, --minimal")]
+        [InlineData("--minimal --simple", "--minimal, --simple")]
+        [InlineData("--json --minimal", "--json, --minimal")]
         public async Task More_Than_One_Output_Format_Is_Rejected_Naming_The_Conflict(string commandLine, string conflict)
         {
             // Given

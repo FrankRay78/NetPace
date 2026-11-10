@@ -75,9 +75,9 @@ public sealed partial class NetPaceConsoleTests
             var word = SecondWordOfLineHolding(result.Output, "Download");
 
             // Then it is the download speed's number, not some other figure's. Pinned to the number
-            // itself rather than to any number: the one-line --minimal output this format replaced
-            // put the latency second on the line holding Download, and a check that the word merely
-            // parses would pass on it - the misparse this format exists to prevent.
+            // itself rather than to any number: the one-line --minimal format puts the latency
+            // second on the stretch holding Download, and a check that the word merely parses would
+            // pass on it - the misparse this format exists to prevent.
             Assert.Equal(0, byDefault.ExitCode);
             Assert.Equal(0, result.ExitCode);
             Assert.NotEmpty(downloadNumber);
@@ -163,20 +163,22 @@ public sealed partial class NetPaceConsoleTests
         }
 
         [Fact]
-        public async Task Simple_With_Timestamp_Writes_It_On_Its_Own_First_Line()
+        public async Task Simple_Writes_No_Timestamp_Line()
         {
-            // SCENARIO: A timestamp has its own first line
+            // SCENARIO: Simple output has no timestamp line
 
-            // Given a --simple run asked for a timestamp
+            // Given a run of all three tests
             var host = GetCommandLineTestHost(StubServices());
 
             // When
-            var result = await host.RunAsync(["--simple", "--timestamp"]);
+            var result = await host.RunAsync(["--simple"]);
 
-            // Then the timestamp is alone above the figures, labelled like every other line so one
-            // parser reads them all, which the snapshot carries.
+            // Then the output is the three figure lines and nothing else: this format matches
+            // speedtest-cli --simple, which carries no time, and --minimal is where a timestamped
+            // line comes from.
             Assert.Equal(0, result.ExitCode);
-            await Verify(result.Output);
+            Assert.Equal(3, Lines(result.Output).Length);
+            Assert.DoesNotContain("1980-01-01", result.Output);
         }
 
         [Fact]
@@ -271,28 +273,10 @@ public sealed partial class NetPaceConsoleTests
         }
 
         [Theory]
-        [InlineData("--minimal")]
-        [InlineData("--minimal", "true")]
-        public async Task Minimal_Is_Refused_With_A_Message_Naming_Simple(params string[] arguments)
-        {
-            // SCENARIO: The old switch says what replaced it
-
-            // Given a script still passing the old switch
-            var host = GetCommandLineTestHost(StubServices());
-
-            // When NetPace starts
-            var result = await host.RunAsync(arguments);
-
-            // Then it fails and names the switch to use instead.
-            Assert.Equal(1, result.ExitCode);
-            Assert.Contains("--minimal", result.Output, StringComparison.Ordinal);
-            Assert.Contains("--simple", result.Output, StringComparison.Ordinal);
-        }
-
-        [Theory]
         [InlineData("--csv")]
         [InlineData("--json")]
         [InlineData("--json-pretty")]
+        [InlineData("--minimal")]
         public async Task Simple_With_Another_Format_Is_An_Error_Naming_The_Conflict(string otherFormat)
         {
             // Given

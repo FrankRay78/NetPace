@@ -90,6 +90,12 @@ public static class Program
             DefaultValueFactory = _ => false
         };
 
+        var minimalOption = new Option<bool>("--minimal")
+        {
+            Description = "Display the result as a single timestamped line per run.\nIdeal for watching repeated runs with --loop or --count.",
+            DefaultValueFactory = _ => false
+        };
+
         var simpleOption = new Option<bool>("--simple")
         {
             Description = "Display the result as one named line per figure: Ping, Download, Upload.\nIdeal for batch scripts and line-based parsing.",
@@ -119,13 +125,6 @@ public static class Program
             Description = "The URL of a specific speed test server.\n'netpace servers -l' will return your nearest servers.",
             DefaultValueFactory = _ => string.Empty
         };
-
-        var timestampOption = new Option<bool>("--timestamp")
-        {
-            Description = "Include a timestamp in the output.",
-            DefaultValueFactory = _ => false
-        };
-        timestampOption.Aliases.Add("-t");
 
         var profileOption = new Option<Profile>("--profile")
         {
@@ -231,20 +230,6 @@ public static class Program
         };
         serverOption.Validators.Add(result => result.AddError("--server has been renamed --server-url, see --help."));
 
-        // --minimal is retired in favour of --simple, but stays registered so that a script still
-        // passing it gets a message naming the replacement rather than a generic unrecognised-option
-        // error. Typed as a string with an optional value, as the other retired switches are, so
-        // that the bare switch and the `--minimal true` form both land on the same error; a
-        // bool-typed option carries an implicit result whose validator would fire on every run.
-        // Hidden, and CustomHelpProvider strips hidden options, so --help advertises only the new
-        // name.
-        var minimalOption = new Option<string>("--minimal")
-        {
-            Arity = ArgumentArity.ZeroOrOne,
-            Hidden = true
-        };
-        minimalOption.Validators.Add(result => result.AddError("--minimal has been removed, use --simple, see --help."));
-
         // --verbosity is retired, but stays registered so that a script still passing it gets a
         // message naming the removal rather than a generic unrecognised-option error. It takes an
         // optional string so that every former value - and no value at all - lands on the same
@@ -302,12 +287,12 @@ public static class Program
         command.Options.Add(noCSVHeaderOption);
         command.Options.Add(jsonOption);
         command.Options.Add(jsonPrettyOption);
+        command.Options.Add(minimalOption);
         command.Options.Add(simpleOption);
         command.Options.Add(noLatencyOption);
         command.Options.Add(noDownloadOption);
         command.Options.Add(noUploadOption);
         command.Options.Add(serverUrlOption);
-        command.Options.Add(timestampOption);
         command.Options.Add(profileOption);
         command.Options.Add(downloadSizeOption);
         command.Options.Add(uploadSizeOption);
@@ -318,7 +303,6 @@ public static class Program
         command.Options.Add(deviceIdOption);
         command.Options.Add(customFieldOption);
         command.Options.Add(serverOption);
-        command.Options.Add(minimalOption);
         command.Options.Add(verbosityOption);
         command.Options.Add(fileOption);
         command.Options.Add(fileModeOption);
@@ -342,11 +326,11 @@ public static class Program
                     Json = parseResult.GetValue(jsonOption),
                     JsonPretty = parseResult.GetValue(jsonPrettyOption),
                     Simple = parseResult.GetValue(simpleOption),
+                    Minimal = parseResult.GetValue(minimalOption),
                     NoLatency = parseResult.GetValue(noLatencyOption),
                     NoDownload = parseResult.GetValue(noDownloadOption),
                     NoUpload = parseResult.GetValue(noUploadOption),
                     ServerUrl = parseResult.GetValue(serverUrlOption) ?? string.Empty,
-                    IncludeTimestamp = parseResult.GetValue(timestampOption),
                     Profile = parseResult.GetValue(profileOption),
                     DownloadSizeMb = parseResult.GetValue(downloadSizeOption),
                     UploadSizeMb = parseResult.GetValue(uploadSizeOption),
@@ -423,9 +407,9 @@ public static class Program
     /// Build the <see cref="OoklaSpeedtestSettings"/> from the parsed CLI settings.
     /// Profile sets per-request shape and cap defaults; explicit --downloadsize / --uploadsize
     /// override only the cap via with-expressions, and --connections overrides only the number of
-    /// transfers each direction runs at once. <c>--simple</c> additionally switches the under-load
-    /// latency probes off, because that format shows no under-load figure, and
-    /// <c>--no-latency</c> does because it asks for no latency at all.
+    /// transfers each direction runs at once. <c>--simple</c> and <c>--minimal</c> additionally
+    /// switch the under-load latency probes off, because neither format shows an under-load figure,
+    /// and <c>--no-latency</c> does because it asks for no latency at all.
     /// </summary>
     internal static OoklaSpeedtestSettings BuildOoklaSettings(SpeedTestCommandSettings settings)
     {
@@ -447,12 +431,12 @@ public static class Program
             };
         }
 
-        if (settings.Simple || settings.NoLatency)
+        if (settings.Simple || settings.Minimal || settings.NoLatency)
         {
-            // --simple reports no under-load figure, so the probes that would measure one are
-            // traffic nobody reads. Switching them off keeps this format's traffic as it was
-            // before the probes existed; the idle latency test still runs, being where Ping
-            // comes from. --no-latency switches them off for the opposite reason: asking for no
+            // --simple and --minimal report no under-load figure, so the probes that would measure
+            // one are traffic nobody reads. Switching them off keeps these formats' traffic as it
+            // was before the probes existed; the idle latency test still runs, being where the
+            // latency figure comes from. --no-latency switches them off for the opposite reason: asking for no
             // latency asks for none anywhere, so no probe goes out under a transfer either, in
             // whichever format the run reports.
             ooklaSettings = ooklaSettings with

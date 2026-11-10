@@ -144,7 +144,7 @@ public sealed partial class NetPaceConsoleTests
         var host = GetCommandLineTestHost(services);
 
         // When
-        var result = await host.RunAsync(["-t", "--loop", "--simple"], cancellationTokenSource.Token);
+        var result = await host.RunAsync(["--loop", "--minimal"], cancellationTokenSource.Token);
 
         // Then
         Assert.Equal(0, result.ExitCode);
@@ -163,7 +163,7 @@ public sealed partial class NetPaceConsoleTests
         var host = GetCommandLineTestHost(services);
 
         // When
-        var result = await host.RunAsync(["-t", "--count", $"{count}", "--simple"]);
+        var result = await host.RunAsync(["--count", $"{count}", "--minimal"]);
 
         // Then
         Assert.Equal(0, result.ExitCode);
@@ -184,7 +184,7 @@ public sealed partial class NetPaceConsoleTests
         var host = GetCommandLineTestHost(services);
 
         // When
-        var result = await host.RunAsync(["-t", "--count", $"{count}", "--delay", $"{delay}", "--simple"]);
+        var result = await host.RunAsync(["--count", $"{count}", "--delay", $"{delay}", "--minimal"]);
 
         // Then
         Assert.Equal(count - 1, waiter.CallCount);
@@ -274,26 +274,6 @@ public sealed partial class NetPaceConsoleTests
         // Then
         Assert.Equal(0, result.ExitCode);
         await Verify(result.Output).UseParameters(url);
-    }
-
-    [InlineData("-t")]
-    [InlineData("--timestamp")]
-    [Theory]
-    public async Task Should_Perform_Speed_Test_With_Timestamp(string timestamp)
-    {
-        // Given
-        var services = new ServiceCollection();
-        services.AddSingleton<ISpeedTestService, SpeedTestStub>();
-        services.AddSingleton<IClock, ClockStub>();
-        services.AddSingleton<IWaiter, NoDelayStub>();
-        var host = GetCommandLineTestHost(services);
-
-        // When
-        var result = await host.RunAsync([timestamp]);
-
-        // Then
-        Assert.Equal(0, result.ExitCode);
-        await Verify(result.Output).DisableRequireUniquePrefix();
     }
 
     [InlineData("bytes", SpeedUnitSystem.SI)]
@@ -462,7 +442,7 @@ public sealed partial class NetPaceConsoleTests
         var host = GetCommandLineTestHost(services);
 
         // When
-        var result = await host.RunAsync(["-t", "--loop", "--simple"], cancellationTokenSource.Token);
+        var result = await host.RunAsync(["--loop", "--minimal"], cancellationTokenSource.Token);
 
         // Then
         Assert.Equal(0, result.ExitCode);
@@ -483,7 +463,7 @@ public sealed partial class NetPaceConsoleTests
         var host = GetCommandLineTestHost(services);
 
         // When
-        var result = await host.RunAsync(["-t", "--count", "100", "--simple"], cancellationTokenSource.Token);
+        var result = await host.RunAsync(["--count", "100", "--minimal"], cancellationTokenSource.Token);
 
         // Then
         Assert.Equal(0, result.ExitCode);
@@ -560,7 +540,7 @@ public sealed partial class NetPaceConsoleTests
         var host = GetCommandLineTestHost(services);
 
         // When
-        var result = await host.RunAsync(["-t", "--count", "100", "--simple"], cancellationTokenSource.Token);
+        var result = await host.RunAsync(["--count", "100", "--minimal"], cancellationTokenSource.Token);
 
         // Then
         Assert.Equal(0, result.ExitCode);
@@ -589,7 +569,7 @@ public sealed partial class NetPaceConsoleTests
         var host = GetCommandLineTestHost(services);
 
         // When
-        var result = await host.RunAsync(["-t", "--count", "100", "--simple"], cancellationTokenSource.Token);
+        var result = await host.RunAsync(["--count", "100", "--minimal"], cancellationTokenSource.Token);
 
         // Then
         Assert.Equal(0, result.ExitCode);
@@ -623,7 +603,7 @@ public sealed partial class NetPaceConsoleTests
     /// Every output mode a speed test reports in, by the switch that selects it. The default mode
     /// is selected by no switch at all.
     /// </summary>
-    public static TheoryData<string> EveryOutputModeOfASpeedTest() => new("", "--simple", "--csv", "--json");
+    public static TheoryData<string> EveryOutputModeOfASpeedTest() => new("", "--minimal", "--simple", "--csv", "--json");
 
     [Theory]
     [MemberData(nameof(EveryOutputModeOfASpeedTest))]

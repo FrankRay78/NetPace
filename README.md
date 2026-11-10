@@ -120,6 +120,8 @@ OPTIONS:
                                       An appended --file target that already holds rows is never sent the header.
         --json                        Display output in Json format.
         --json-pretty                 Display output in Json format (pretty print).
+        --minimal                     Display the result as a single timestamped line per run.
+                                      Ideal for watching repeated runs with --loop or --count.
         --simple                      Display the result as one named line per figure: Ping, Download, Upload.
                                       Ideal for batch scripts and line-based parsing.
         --no-latency                  Do not perform latency test.
@@ -128,7 +130,6 @@ OPTIONS:
         --no-upload                   Do not perform upload test.
         --server-url                  The URL of a specific speed test server.
                                       'netpace servers -l' will return your nearest servers.
-    -t, --timestamp                   Include a timestamp in the output.
         --profile          medium     Profile bundle of payload settings. <tiny, small, medium, large, mega>
         --downloadsize                Stop the download test after this many megabytes (IEC MiB).
         --uploadsize                  Stop the upload test after this many megabytes (IEC MiB).

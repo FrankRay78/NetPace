@@ -18,25 +18,21 @@ internal static class SimpleLines
     /// Writes the figures of one completed run to <paramref name="console"/>.
     /// </summary>
     /// <param name="console">Where the lines go.</param>
-    /// <param name="clock">The clock the timestamp line reads, where one was asked for.</param>
     /// <param name="latency">The chosen server's measured latency.</param>
     /// <param name="outcome">What the transfers measured.</param>
     /// <param name="settings">What the run was asked for.</param>
     /// <exception cref="ArgumentNullException">Any argument is <c>null</c>.</exception>
-    public static void Write(IAnsiConsole console, IClock clock, LatencyTestResult latency, SpeedTestOutcome outcome, SpeedTestCommandSettings settings)
+    public static void Write(IAnsiConsole console, LatencyTestResult latency, SpeedTestOutcome outcome, SpeedTestCommandSettings settings)
     {
         ArgumentNullException.ThrowIfNull(console);
-        ArgumentNullException.ThrowIfNull(clock);
         ArgumentNullException.ThrowIfNull(latency);
         ArgumentNullException.ThrowIfNull(outcome);
         ArgumentNullException.ThrowIfNull(settings);
 
         // Runs under --count and --loop follow one another with no separator, so a reader takes
-        // every line the same way whichever run wrote it.
-        if (settings.IncludeTimestamp)
-        {
-            console.WriteLine($"Timestamp: {clock.Now.ToHumanReadable()}");
-        }
+        // every line the same way whichever run wrote it. None of them carries the time: this
+        // format is exactly the three lines speedtest-cli --simple writes, and --minimal is where
+        // a timestamped line per run comes from.
         if (!settings.NoLatency)
         {
             console.WriteLine($"Ping: {latency.LatencyMilliseconds.ToString(CultureInfo.InvariantCulture)} ms");

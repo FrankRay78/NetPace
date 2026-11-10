@@ -376,7 +376,6 @@ public sealed partial class NetPaceConsoleTests
         [InlineData("--quiet=true")]
         [InlineData("--quiet:true")]
         [InlineData("-q=true")]
-        [InlineData("-tq")]
         [Theory]
         public async Task UnrecognisedThemeName_UnderAQuietRun_SaysNothing(string quiet)
         {
@@ -450,6 +449,7 @@ public sealed partial class NetPaceConsoleTests
         [InlineData("--json")]
         [InlineData("--json-pretty")]
         [InlineData("--simple")]
+        [InlineData("--minimal")]
         [Theory]
         public async Task MachineReadableOutput_IsTheSameWhateverTheThemeIs(string format)
         {
@@ -460,7 +460,7 @@ public sealed partial class NetPaceConsoleTests
             foreach (var theme in Theme.All)
             {
                 var host = StaticScreenHost(SpeedTestServices(Chosen(theme)));
-                var result = await host.RunAsync([format, "--timestamp"]);
+                var result = await host.RunAsync([format]);
                 Assert.Equal(0, result.ExitCode);
                 outputs.Add(result.Output);
             }
