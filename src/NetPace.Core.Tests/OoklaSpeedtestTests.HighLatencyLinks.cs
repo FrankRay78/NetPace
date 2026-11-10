@@ -321,5 +321,136 @@ public sealed partial class OoklaSpeedtestTests
             exception.ShouldBeOfType<NoServersAvailableException>();
             stopwatch.Elapsed.ShouldBeLessThan(TimeSpan.FromMilliseconds(FormerLimitMilliseconds));
         }
+
+        /// <summary>
+        /// The round trip of the steady candidate in <see cref="ChooseBetweenASteadyAndAWarmingCandidateAsync"/>,
+        /// every request alike, so it is ranked after <see cref="StagedScreeningRequestCount"/> of
+        /// them - well before <see cref="FirstStageAfterTheSteadyCandidateMilliseconds"/>, and well
+        /// after <see cref="FirstStageBeforeAnyCandidateMilliseconds"/>.
+        /// </summary>
+        private const int SteadyRoundTripMilliseconds = 300;
+
+        /// <summary>
+        /// The first request to the warming candidate, which pays for connection setup the link is not
+        /// responsible for. Long enough that the candidate is ranked only after the steady one and
+        /// well after the default first stage, so a first stage that ignored its setting would stop
+        /// waiting before this candidate could be ranked; short enough to leave it ranked well inside
+        /// <see cref="StagedCeilingMilliseconds"/>.
+        /// </summary>
+        private const int WarmingFirstRequestMilliseconds = 2500;
+
+        /// <summary>
+        /// The warming candidate's round trip once its connection is set up: far below
+        /// <see cref="SteadyRoundTripMilliseconds"/>, so the warming candidate wins on its fastest
+        /// request whenever the pass waits for it to be ranked, and loses only by being abandoned.
+        /// </summary>
+        private const int WarmingRoundTripMilliseconds = 50;
+
+        /// <summary>
+        /// Enough screening requests for the warming candidate to show its real round trip after the
+        /// first has paid for connection setup.
+        /// </summary>
+        private const int StagedScreeningRequestCount = 2;
+
+        /// <summary>
+        /// A first stage that ends after the steady candidate is ranked and long before the warming one
+        /// is.
+        /// </summary>
+        private const int FirstStageAfterTheSteadyCandidateMilliseconds = 1000;
+
+        /// <summary>
+        /// A first stage that ends before either candidate is ranked, so the pass goes on into the
+        /// second stage.
+        /// </summary>
+        private const int FirstStageBeforeAnyCandidateMilliseconds = 200;
+
+        /// <summary>
+        /// Answers each request for <paramref name="latencyUrl"/> after the next round trip in
+        /// <paramref name="roundTripsMilliseconds"/>, repeating the last once they run out, on the
+        /// wall clock the stages are timed on.
+        /// </summary>
+        private static void RespondInTurn(MockHttpMessageHandler mockHttp, string latencyUrl, params int[] roundTripsMilliseconds)
+        {
+            var requestsReceived = 0;
+            mockHttp.When(latencyUrl)
+                    .Respond(async _ =>
+                    {
+                        var request = Interlocked.Increment(ref requestsReceived) - 1;
+                        await Task.Delay(roundTripsMilliseconds[Math.Min(request, roundTripsMilliseconds.Length - 1)]);
+                        return new HttpResponseMessage { Content = new StringContent(ScreeningResponseBody) };
+                    });
+        }
+
+        /// <summary>
+        /// Chooses between a steady candidate, ranked quickly at its middling round trip, and a
+        /// warming candidate, ranked only much later but with the lower round trip, under
+        /// <see cref="StagedCeilingMilliseconds"/> and the first stage given. Which of the two is
+        /// chosen says whether the pass waited for the warming candidate to be ranked.
+        /// </summary>
+        private static async Task<(LatencyTestResult Result, IServer Steady, IServer Warming)> ChooseBetweenASteadyAndAWarmingCandidateAsync(int firstStageMilliseconds)
+        {
+            using var mockHttp = new MockHttpMessageHandler();
+            RespondInTurn(mockHttp, "http://steady.com/latency.txt", SteadyRoundTripMilliseconds);
+            RespondInTurn(mockHttp, "http://warming.com/latency.txt", WarmingFirstRequestMilliseconds, WarmingRoundTripMilliseconds);
+
+            var settings = new OoklaSpeedtestSettings
+            {
+                ServerDiscovery = new()
+                {
+                    ServerTimeoutMilliseconds = StagedCeilingMilliseconds,
+                    FirstScreeningStageMilliseconds = firstStageMilliseconds,
+                    ScreeningRequestCount = StagedScreeningRequestCount
+                }
+            };
+
+            var speedtest = new OoklaSpeedtest(settings, mockHttp.ToHttpClient(), new DelayProviderStub());
+            var steady = new Server { Url = "http://steady.com/", Sponsor = "Steady", Location = "Nearby" };
+            var warming = new Server { Url = "http://warming.com/", Sponsor = "Warming", Location = "Nearby" };
+
+            var result = await speedtest.GetFastestServerByLatencyAsync([steady, warming]).WaitAsync(SlowLinkHangGuard);
+            return (result, steady, warming);
+        }
+
+        [Fact]
+        public async Task GetFastestServerByLatencyAsync_ACandidateRankedByTheConfiguredFirstStage_IsChosenWithoutWaitingForASlowerOne()
+        {
+            // Given a steady candidate ranked inside a first stage shorter than the default, and a
+            // warming candidate with the lower round trip that is ranked only after that stage.
+            // When a server is chosen.
+            var (result, steady, _) = await ChooseBetweenASteadyAndAWarmingCandidateAsync(FirstStageAfterTheSteadyCandidateMilliseconds);
+
+            // Then the pass settled for the candidate ranked by the end of the configured first stage,
+            // rather than waiting for the one that would have beaten it.
+            result.Server.ShouldBe(steady);
+        }
+
+        [Fact]
+        public async Task GetFastestServerByLatencyAsync_FirstStageAsLongAsTheCeiling_GivesASlowerCandidateTheWholeCeiling()
+        {
+            // Given a first stage as long as the ceiling, a steady candidate ranked quickly, and a
+            // warming candidate with the lower round trip that is ranked only after the default first
+            // stage is out.
+            // When a server is chosen.
+            var (result, _, warming) = await ChooseBetweenASteadyAndAWarmingCandidateAsync(StagedCeilingMilliseconds);
+
+            // Then the ceiling was spent as one stage, as it was before it was spent in stages: the
+            // warming candidate was given the time to be ranked beside the quicker one, and won.
+            result.Server.ShouldBe(warming);
+        }
+
+        [Fact]
+        public async Task GetFastestServerByLatencyAsync_NothingRankedByTheFirstStage_SecondStageWaitsForEveryCandidate()
+        {
+            // Given a first stage that ends before either candidate is ranked, a steady candidate
+            // ranked soon after it, and a warming candidate with the lower round trip ranked later
+            // still, both inside the ceiling.
+            // When a server is chosen.
+            var (result, _, warming) = await ChooseBetweenASteadyAndAWarmingCandidateAsync(FirstStageBeforeAnyCandidateMilliseconds);
+
+            // Then the second stage waited for every candidate rather than ending on the first one
+            // ranked, which would compare one server and choose the steady one: the warming candidate
+            // was ranked too, and won.
+            result.Server.ShouldBe(warming);
+        }
     }
 }

@@ -23,13 +23,6 @@ public sealed class OoklaSpeedtest : ISpeedTestService
     private const string CancelledByCaller = "cancelled by caller";
     private const string TransferEnded = "transfer ended";
 
-    // How much of the screening ceiling a pass waits before it is willing to wait out the rest of
-    // it - see ServerDiscoverySettings.ServerTimeoutMilliseconds. Two seconds, which was the whole
-    // ceiling before a slow link was given longer, so a quick link is screened exactly as it was.
-    // Not a setting: a caller sets how long choosing a server may take, and this is only how that
-    // allowance is spent.
-    private const int FirstScreeningStageMilliseconds = 2000;
-
     // Reasons a request failed on its own merits with no exception behind it.
     private const string NotASpeedTestServer = "not a speed test server";
     private const string EndpointProbeAnswered = "endpoint probe answered";
@@ -260,6 +253,7 @@ public sealed class OoklaSpeedtest : ISpeedTestService
         }
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(settings.ServerDiscovery.ScreeningRequestCount, nameof(settings.ServerDiscovery.ScreeningRequestCount));
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(settings.ServerDiscovery.ServerTimeoutMilliseconds, nameof(settings.ServerDiscovery.ServerTimeoutMilliseconds));
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(settings.ServerDiscovery.FirstScreeningStageMilliseconds, nameof(settings.ServerDiscovery.FirstScreeningStageMilliseconds));
 
         var screened = new LatencyTestResult?[servers.Length];
         var screeningLock = new object();
@@ -320,10 +314,12 @@ public sealed class OoklaSpeedtest : ISpeedTestService
         // does not: a candidate counts as ranked only once its whole request loop has returned.
         // Only a pass that has ranked nothing - the run that would
         // otherwise end in "no servers available" - waits for the rest, which is what gives a link
-        // with a round trip of a second or two the time to answer at all.
+        // with a round trip of a second or two the time to answer at all. The second stage then
+        // waits for every candidate rather than the first one ranked, so the ranking still compares
+        // every server that answers inside the ceiling.
         var allScreenings = Task.WhenAll(screenings);
         var ceilingMilliseconds = settings.ServerDiscovery.ServerTimeoutMilliseconds;
-        var firstStageMilliseconds = Math.Min(FirstScreeningStageMilliseconds, ceilingMilliseconds);
+        var firstStageMilliseconds = Math.Min(settings.ServerDiscovery.FirstScreeningStageMilliseconds, ceilingMilliseconds);
         var remainingMilliseconds = ceilingMilliseconds - firstStageMilliseconds;
 
         await Task.WhenAny(allScreenings, Task.Delay(firstStageMilliseconds, ceilingCts.Token)).ConfigureAwait(false);
