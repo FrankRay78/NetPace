@@ -26,7 +26,7 @@ Fan of NetPace? Consider giving the [repo](https://github.com/FrankRay78/NetPace
 * Server discovery, latency measurement, download and upload speed testing.
 * Command-line application and C# Microsoft .Net [NuGet](https://www.nuget.org/packages/NetPace.Core/) library for developers.
 * A live table at the terminal: a row per test, with its speed and the latency measured while it ran, so idle and under-load latency read down one column.
-* User configurable output (eg. SI or IEC units, bits or bytes, CSV and Json formats). `--simple`, `--csv` and `--json` are the stable formats for scripts; the terminal layout is for people and may change in any release.
+* User configurable output (eg. SI or IEC units, bits or bytes, CSV and Json formats). `--minimal`, `--simple`, `--csv` and `--json` are the stable formats for scripts; the terminal layout is for people and may change in any release.
 * Colour themes, chosen once with `NETPACE_THEME` and applied to every command.
 * Highly configurable traffic profiles (see [LatencyTestSettings](https://github.com/FrankRay78/NetPace/blob/main/src/NetPace.Core/Clients/Ookla/Settings/LatencyTestSettings.cs), [DownloadTestSettings](https://github.com/FrankRay78/NetPace/blob/main/src/NetPace.Core/Clients/Ookla/Settings/DownloadTestSettings.cs) and [UploadTestSettings](https://github.com/FrankRay78/NetPace/blob/main/src/NetPace.Core/Clients/Ookla/Settings/UploadTestSettings.cs)).
 * Highly reliable, utilises [Ookla's](https://www.speedtest.net/) Speedtest servers.

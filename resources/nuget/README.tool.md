@@ -35,6 +35,7 @@ On Windows, Linux and macOS, each on x64 and ARM64 (Intel and Apple silicon), th
 
 ```bash
 netpace --profile tiny        # ≤ 1 MiB total, for metered or IoT connections
+netpace --minimal --loop      # one timestamped line per run, scrolling past
 netpace --simple              # one named line per figure: Ping, Download, Upload
 netpace --json                # a JSON object, for scripting
 netpace servers               # list the nearest speed test servers
