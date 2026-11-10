@@ -30,6 +30,7 @@ Fan of NetPace? Consider giving the [repo](https://github.com/FrankRay78/NetPace
 * Colour themes, chosen once with `NETPACE_THEME` and applied to every command.
 * Highly configurable traffic profiles (see [LatencyTestSettings](https://github.com/FrankRay78/NetPace/blob/main/src/NetPace.Core/Settings/LatencyTestSettings.cs), [DownloadTestSettings](https://github.com/FrankRay78/NetPace/blob/main/src/NetPace.Core/Settings/DownloadTestSettings.cs) and [UploadTestSettings](https://github.com/FrankRay78/NetPace/blob/main/src/NetPace.Core/Settings/UploadTestSettings.cs)).
 * Highly reliable, utilises [Ookla's](https://www.speedtest.net/) Speedtest servers.
+* Or test against a [LibreSpeed](https://github.com/librespeed/speedtest) server you host yourself, with `--provider librespeed --server-url <address>`, to tell a problem inside the house from a problem with the line.
 
 <br />
 
@@ -128,8 +129,11 @@ OPTIONS:
                                       When used without --server-url, the first available server is selected.
         --no-download                 Do not perform download test.
         --no-upload                   Do not perform upload test.
+        --provider         ookla      The kind of server to test against. <ookla, librespeed>
+                                      'librespeed' needs --server-url naming where LibreSpeed is installed.
         --server-url                  The URL of a specific speed test server.
                                       'netpace servers -l' will return your nearest servers.
+                                      With --provider librespeed, the address LibreSpeed is installed at.
         --profile          medium     Profile bundle of payload settings. <tiny, small, medium, large, mega>
         --downloadsize                Stop the download test after this many megabytes (IEC MiB).
         --uploadsize                  Stop the upload test after this many megabytes (IEC MiB).

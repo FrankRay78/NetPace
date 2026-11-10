@@ -44,9 +44,15 @@ and upload speed testing.
                                       available server is selected.             
     \e[38;5;7m    --no-download\e[0m                 Do not perform download test.             
     \e[38;5;7m    --no-upload\e[0m                   Do not perform upload test.               
+    \e[38;5;7m    --provider\e[0m         \e[1mookla\e[0m      The kind of server to test against.       
+                                      <ookla, librespeed>                       
+                                      'librespeed' needs --server-url naming    
+                                      where LibreSpeed is installed.            
     \e[38;5;7m    --server-url\e[0m                  The URL of a specific speed test server.  
                                       'netpace servers -l' will return your     
                                       nearest servers.                          
+                                      With --provider librespeed, the address   
+                                      LibreSpeed is installed at.               
     \e[38;5;7m    --profile\e[0m          \e[1mmedium\e[0m     Profile bundle of payload settings. <tiny,
                                       small, medium, large, mega>               
     \e[38;5;7m    --downloadsize\e[0m                Stop the download test after this many    

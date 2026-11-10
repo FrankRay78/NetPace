@@ -6,7 +6,7 @@ public sealed partial class NetPaceConsoleTests
     {
         /// <summary>
         /// Regression: `netpace --test` reported "No service for type
-        /// 'NetPace.Console.OoklaSpeedtestSettingsAccessor' has been registered". Driven through
+        /// 'NetPace.Console.SpeedTestSettingsAccessor' has been registered". Driven through
         /// <see cref="Program.Main"/> rather than <see cref="CommandLineTestHost"/> on purpose — the
         /// test host supplies its own default registrations, which mask gaps in the production container.
         /// </summary>

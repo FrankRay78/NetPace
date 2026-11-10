@@ -1,0 +1,304 @@
+using System.Net;
+using NetPace.Core.Clients.LibreSpeed;
+using RichardSzalay.MockHttp;
+using Shouldly;
+
+namespace NetPace.Core.Tests;
+
+/// <summary>
+/// The LibreSpeed provider: which endpoints it speaks to inside a LibreSpeed install, what it
+/// accepts as an answer from them, and what it reports.
+/// </summary>
+public sealed class LibreSpeedtestTests
+{
+    private const string InstallUrl = "http://pi.local:8080/";
+    private const string PathInstallUrl = "http://nas.local/speedtest/";
+
+    /// <summary>
+    /// Settings that keep a test's traffic to a handful of requests and never wait between them.
+    /// </summary>
+    private static LibreSpeedtestSettings Quick(LibreSpeedtestSettings? from = null) =>
+        (from ?? new LibreSpeedtestSettings(Profile.Tiny)) with
+        {
+            LatencyTest = new()
+            {
+                LatencyTestIterations = 3,
+                LatencyTestIntervalMilliseconds = 0,
+                LoadedLatencyEnabled = false,
+            },
+        };
+
+    /// <summary>
+    /// Answers every LibreSpeed endpoint as the official image does: an empty body for the ping
+    /// and upload endpoint, and exactly the requested number of MiB for garbage.
+    /// </summary>
+    private static MockHttpMessageHandler LibreSpeedServer(string install, int garbageBytes = 1024)
+    {
+        var mockHttp = new MockHttpMessageHandler();
+
+        mockHttp.When($"{install}backend/empty.php")
+                .Respond(_ => new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(string.Empty) });
+
+        mockHttp.When($"{install}backend/garbage.php")
+                .Respond(_ => new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent(new byte[garbageBytes]) });
+
+        return mockHttp;
+    }
+
+    private static Server ServerAt(string url) => new() { Url = url, Sponsor = Server.UnknownSponsor };
+
+    [Fact]
+    public async Task GetServerLatencyAsync_AgainstALibreSpeedServer_ReportsLatencyAndJitter()
+    {
+        // SCENARIO: LibreSpeed run reports every measurement
+
+        // Given a reachable LibreSpeed server.
+        using var mockHttp = LibreSpeedServer(InstallUrl);
+        var speedtest = new LibreSpeedtest(Quick(), mockHttp.ToHttpClient(), new DelayProviderStub());
+
+        // When its latency is measured.
+        var result = await speedtest.GetServerLatencyAsync(ServerAt(InstallUrl));
+
+        // Then a figure and its unevenness are reported for that server.
+        result.Server.Url.ShouldBe(InstallUrl);
+        result.LatencyMilliseconds.ShouldBeGreaterThanOrEqualTo(0);
+        result.JitterMilliseconds.ShouldBeGreaterThanOrEqualTo(0);
+        result.MinimumLatencyMilliseconds.ShouldNotBeNull();
+        result.MaximumLatencyMilliseconds.ShouldNotBeNull();
+    }
+
+    [Fact]
+    public async Task GetServerLatencyAsync_ProbesThePingEndpointInsideTheInstall()
+    {
+        // Given a LibreSpeed server, with only its ping endpoint answering.
+        using var mockHttp = new MockHttpMessageHandler();
+        var probe = mockHttp.Expect($"{InstallUrl}backend/empty.php").Respond(_ => new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(string.Empty) });
+        var speedtest = new LibreSpeedtest(Quick() with { LatencyTest = new() { LatencyTestIterations = 1, LatencyTestIntervalMilliseconds = 0, LoadedLatencyEnabled = false } }, mockHttp.ToHttpClient(), new DelayProviderStub());
+
+        // When
+        await speedtest.GetServerLatencyAsync(ServerAt(InstallUrl));
+
+        // Then that is the endpoint that was asked.
+        mockHttp.GetMatchCount(probe).ShouldBe(1);
+    }
+
+    [Theory]
+    [InlineData("http://nas.local/speedtest/")]
+    [InlineData("http://nas.local/speedtest")]
+    public async Task GetServerLatencyAsync_ForAnInstallUnderAPath_ProbesInsideThatPath(string given)
+    {
+        // Given a LibreSpeed install under a path, named with and without its trailing slash.
+        using var mockHttp = LibreSpeedServer(PathInstallUrl);
+        var speedtest = new LibreSpeedtest(Quick(), mockHttp.ToHttpClient(), new DelayProviderStub());
+
+        // When
+        var result = await speedtest.GetServerLatencyAsync(ServerAt(given));
+
+        // Then both forms test the same server: the probe lands inside the install path, so the
+        // measurement completes rather than failing against the web root.
+        result.LatencyMilliseconds.ShouldBeGreaterThanOrEqualTo(0);
+    }
+
+    [Fact]
+    public async Task GetServerLatencyAsync_WhenTheServerAnswersWithAPage_FailsNamingTheUrl()
+    {
+        // SCENARIO: Unreachable LibreSpeed server is reported
+        //
+        // The ping endpoint sends no body, so a body is the evidence that whatever answered is not
+        // a LibreSpeed server. A plain web server is the case that matters: it answers 200 with a
+        // page, which no status check would catch.
+
+        // Given something at the address answers, but with a page.
+        using var mockHttp = new MockHttpMessageHandler();
+        mockHttp.When("*").Respond("text/html", "<html>It works!</html>");
+        var speedtest = new LibreSpeedtest(Quick(), mockHttp.ToHttpClient(), new DelayProviderStub());
+
+        // When
+        var exception = await Record.ExceptionAsync(() => speedtest.GetServerLatencyAsync(ServerAt(InstallUrl)));
+
+        // Then the run fails, naming the URL that answered wrongly, and reports no measurement.
+        exception.ShouldBeOfType<InvalidOperationException>();
+        exception.Message.ShouldContain($"{InstallUrl}backend/empty.php");
+        exception.Message.ShouldContain("LibreSpeed");
+    }
+
+    [Fact]
+    public async Task GetDownloadSpeedAsync_AgainstALibreSpeedServer_ReportsBytesAndLatencyUnderLoad()
+    {
+        // SCENARIO: LibreSpeed run reports every measurement
+
+        // Given a reachable LibreSpeed server, and a download held open until the first under-load
+        // probe has been taken, so the figure is reported rather than raced for.
+        using var probing = new HeldTransfer();
+        using var mockHttp = new MockHttpMessageHandler();
+        mockHttp.When($"{InstallUrl}backend/empty.php")
+                .Respond(_ => new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(string.Empty) });
+        mockHttp.When($"{InstallUrl}backend/garbage.php")
+                .Respond(async _ =>
+                {
+                    await probing.UntilFirstProbeTaken();
+                    return new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent(new byte[1024]) };
+                });
+        var settings = new LibreSpeedtestSettings(Profile.Tiny) with
+        {
+            LatencyTest = new() { LoadedLatencyIntervalMilliseconds = 1 },
+            DownloadRequestCount = 1,
+        };
+        var speedtest = new LibreSpeedtest(settings, mockHttp.ToHttpClient(), new DelayProviderStub());
+
+        // When
+        var result = await speedtest.GetDownloadSpeedAsync(ServerAt(InstallUrl), null, probing.Reporter);
+
+        // Then bytes and a duration are reported, with the latency measured while they moved, from
+        // probes sent to the install's own ping endpoint.
+        result.BytesProcessed.ShouldBe(1024);
+        result.RequestsSucceeded.ShouldBe(1);
+        result.ElapsedMilliseconds.ShouldBeGreaterThanOrEqualTo(0);
+        result.Latency.ShouldNotBeNull();
+        probing.ProbedUrls.ShouldAllBe(url => url == $"{InstallUrl}backend/empty.php");
+    }
+
+    [Fact]
+    public async Task GetDownloadSpeedAsync_AsksGarbageForTheConfiguredMibPerRequest()
+    {
+        // Given a LibreSpeed server and a two-request download of 3 MiB each.
+        using var mockHttp = new MockHttpMessageHandler();
+        var garbage = mockHttp.When($"{PathInstallUrl}backend/garbage.php")
+                              .WithQueryString("ckSize", "3")
+                              .Respond(_ => new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent(new byte[1024]) });
+        var settings = new LibreSpeedtestSettings(Profile.Tiny) with
+        {
+            LatencyTest = new() { LoadedLatencyEnabled = false },
+            DownloadRequestSizeMib = 3,
+            DownloadRequestCount = 2,
+        };
+        var speedtest = new LibreSpeedtest(settings, mockHttp.ToHttpClient(), new DelayProviderStub());
+
+        // When
+        var result = await speedtest.GetDownloadSpeedAsync(ServerAt(PathInstallUrl));
+
+        // Then every request asked garbage.php inside the install for that many MiB.
+        mockHttp.GetMatchCount(garbage).ShouldBe(2);
+        result.RequestsSucceeded.ShouldBe(2);
+    }
+
+    [Fact]
+    public async Task GetUploadSpeedAsync_AgainstALibreSpeedServer_PostsToThePingEndpointAndReportsBytes()
+    {
+        // SCENARIO: LibreSpeed run reports every measurement
+
+        // Given a reachable LibreSpeed server, and the upload held open until the first under-load
+        // probe has been taken, so the figure is reported rather than raced for.
+        using var probing = new HeldTransfer();
+        using var mockHttp = new MockHttpMessageHandler();
+        var uploads = mockHttp.When(HttpMethod.Post, $"{InstallUrl}backend/empty.php")
+                              .Respond(async _ =>
+                              {
+                                  await probing.UntilFirstProbeTaken();
+                                  return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(string.Empty) };
+                              });
+        mockHttp.When(HttpMethod.Get, $"{InstallUrl}backend/empty.php")
+                .Respond(_ => new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(string.Empty) });
+        var settings = new LibreSpeedtestSettings(Profile.Tiny) with
+        {
+            LatencyTest = new() { LoadedLatencyIntervalMilliseconds = 1 },
+        };
+        var speedtest = new LibreSpeedtest(settings, mockHttp.ToHttpClient(), new DelayProviderStub());
+
+        // When
+        var result = await speedtest.GetUploadSpeedAsync(ServerAt(InstallUrl), null, probing.Reporter);
+
+        // Then the bytes went to the install's upload endpoint, with the under-load figure beside
+        // them. No redirect probe is issued: a LibreSpeed address is given, not discovered, so the
+        // measured uploads are numbered from one.
+        mockHttp.GetMatchCount(uploads).ShouldBe(1);
+        result.BytesProcessed.ShouldBe(50 * 1024);
+        result.RequestsSucceeded.ShouldBe(1);
+        result.Latency.ShouldNotBeNull();
+        probing.TransferSequences.ShouldBe([1]);
+    }
+
+    /// <summary>
+    /// Holds a transfer's response until the first under-load probe has been taken, so a test can
+    /// assert the figure those probes produce without racing a transfer that would otherwise finish
+    /// first and report nothing measured.
+    /// </summary>
+    /// <remarks>
+    /// The probe is observed through the diagnostics channel rather than from the responder that
+    /// answered it: the responder returns before the probe's sample has been recorded, so releasing
+    /// the transfer there would still race. Every wait carries a hang guard, so a regression that
+    /// stops probing fails the test rather than hanging the run.
+    /// </remarks>
+    private sealed class HeldTransfer : IDisposable
+    {
+        private static readonly TimeSpan HangGuard = TimeSpan.FromSeconds(10);
+
+        private readonly TaskCompletionSource firstProbeTaken = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        private readonly List<RequestDiagnostic> records = [];
+
+        public IProgress<RequestDiagnostic> Reporter { get; }
+
+        public HeldTransfer()
+        {
+            Reporter = new SynchronousProgress<RequestDiagnostic>(record =>
+            {
+                lock (records)
+                {
+                    records.Add(record);
+                }
+
+                if (record is { Kind: RequestKind.LatencyProbe, Outcome: RequestOutcome.Succeeded })
+                {
+                    firstProbeTaken.TrySetResult();
+                }
+            });
+        }
+
+        /// <summary>The addresses the under-load probes were sent to.</summary>
+        public IReadOnlyList<string> ProbedUrls => Snapshot(RequestKind.LatencyProbe).Select(record => record.Url).ToArray();
+
+        /// <summary>The sequence numbers the measured transfers were given.</summary>
+        public IReadOnlyList<int> TransferSequences => Snapshot(RequestKind.Transfer).Select(record => record.Sequence).ToArray();
+
+        public Task UntilFirstProbeTaken() => firstProbeTaken.Task.WaitAsync(HangGuard);
+
+        public void Dispose() => firstProbeTaken.TrySetCanceled();
+
+        private RequestDiagnostic[] Snapshot(RequestKind kind)
+        {
+            lock (records)
+            {
+                return records.Where(record => record.Kind == kind).ToArray();
+            }
+        }
+    }
+
+    [Fact]
+    public async Task GetServersAsync_IsNotSupported()
+    {
+        // Given a LibreSpeed provider; LibreSpeed publishes no server feed NetPace reads.
+        using var mockHttp = LibreSpeedServer(InstallUrl);
+        var speedtest = new LibreSpeedtest(Quick(), mockHttp.ToHttpClient(), new DelayProviderStub());
+
+        // When / Then discovery says so rather than returning an empty list.
+        await Should.ThrowAsync<NotSupportedException>(() => speedtest.GetServersAsync());
+    }
+
+    [Fact]
+    public async Task GetFastestServerByLatencyAsync_ScreensACallerSuppliedList()
+    {
+        // Given two LibreSpeed installs, only one of which answers as LibreSpeed.
+        using var mockHttp = new MockHttpMessageHandler();
+        mockHttp.When($"{InstallUrl}backend/empty.php")
+                .Respond(_ => new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(string.Empty) });
+        mockHttp.When("*").Respond("text/html", "<html>not librespeed</html>");
+        var speedtest = new LibreSpeedtest(Quick(), mockHttp.ToHttpClient(), new DelayProviderStub());
+
+        // When
+        var fastest = await speedtest.GetFastestServerByLatencyAsync(
+            [ServerAt("http://elsewhere.local/"), ServerAt(InstallUrl)]);
+
+        // Then the one that answered as LibreSpeed is chosen, as screening a list does for Ookla.
+        fastest.Server.Url.ShouldBe(InstallUrl);
+    }
+}

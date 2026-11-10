@@ -50,6 +50,11 @@ Use a specific server URL for testing:
 netpace --server-url https://speedtest.example.com/
 ```
 
+Test against a LibreSpeed server on your own network:  
+```bash
+netpace --provider librespeed --server-url http://pi.local:8080/
+```
+
 Show speeds in bytes/sec, using IEC units (KiB, MiB, GiB):  
 ```bash
 netpace --unit bytes --unit-system IEC
@@ -337,7 +342,44 @@ The offset is what makes the machine-readable timestamp one unambiguous instant,
 
 ---
 
+## Choosing a server to test against
+
+`--provider` says what kind of server a run tests against. There are two.
+
+| Value | What it tests against |
+|---|---|
+| `ookla` | Ookla's Speedtest servers, discovered for you or named with `--server-url`. The default. |
+| `librespeed` | A [LibreSpeed](https://github.com/librespeed/speedtest) server, always named with `--server-url`. |
+
+Leave `--provider` out and a run behaves exactly as it always has: Ookla, with a server chosen for you.
+
+### Testing against a LibreSpeed server
+
+LibreSpeed is the open-source speed test server anyone can host, with one Docker command. Testing against one on your own network tells a problem inside the house from a problem with the line, which no public server can.
+
+```bash
+netpace --provider librespeed --server-url http://pi.local:8080/
+```
+
+`--server-url` names the address LibreSpeed is **installed at**, not one of its endpoints. A trailing slash is optional, so `http://pi.local:8080` tests the same server. An install served under a path is named with that path:
+
+```bash
+netpace --provider librespeed --server-url http://nas.local/speedtest/
+```
+
+A LibreSpeed run reports everything an Ookla run does, in every output format, and the options that shape an Ookla run shape it the same way: `--profile`, `--connections`, `--downloadsize`, `--uploadsize`, `--no-latency`, `--no-download`, `--no-upload`, and the repetition, file, exit-code and diagnostics options all apply. The server fields in CSV and JSON show the LibreSpeed URL tested; the sponsor and location read as they do for any server named by URL, because nothing else is known about one.
+
+There is nothing to discover: LibreSpeed publishes no server list, so `--provider librespeed` without `--server-url` is rejected before any test runs, and `netpace servers` goes on listing Ookla's nearby servers whatever `--provider` was set to.
+
+If the address answers but not as a LibreSpeed server, the run says which URL answered wrongly and what to check. If it cannot be reached at all, the run reports that the same way an Ookla run does. Either way nothing is reported as measured, and the exit code stays `0` unless you opt in with `--fail-on` (see [Exit codes](#exit-codes)).
+
+There is a local LibreSpeed server to try this against in [`docker/librespeed/`](https://github.com/FrankRay78/NetPace/tree/main/docker/librespeed): one script starts it and prints the command to run.
+
+---
+
 ## How a server is chosen
+
+This is how an Ookla run picks a server. A LibreSpeed run always names one, so none of it applies.
 
 With no `--server-url`, NetPace picks the server for you in two steps.
 
@@ -362,6 +404,8 @@ The `--profile` flag bundles per-request payload sizes, parallelism, and a total
 | `medium` | Typical home broadband — the default | ≤ 125 MiB (~100 MiB + ~25 MiB) |
 | `large`  | Fibre / business — saturates gigabit links | ≤ 1.25 GiB (~1 GiB + ~256 MiB) |
 | `mega`   | Inter-DC / 10 Gbps — saturates fibre, see warning below | ≤ 12 GiB (~10 GiB + ~2 GiB) |
+
+The approximate figures are what an Ookla run actually moves. A profile's ceilings bind both providers, but the request sizes under them are each provider's own, so a LibreSpeed run moves a slightly different amount inside the same ceiling: its downloads come in whole mebibytes, which makes `tiny` about 1 MiB down rather than about 245 KB.
 
 Decision guide:
 

@@ -231,7 +231,7 @@ head -c 1048576 /dev/urandom | curl -sS -o /dev/null -w '%{http_code}\n' \
 
 ## 5. Profile-driven defaults
 
-[`Profile`](../../src/NetPace.Core/Profile.cs) is the public, provider-agnostic vocabulary surfaced via `--profile`. [`OoklaSpeedtestSettings(Profile)`](../../src/NetPace.Core/Clients/Ookla/OoklaSpeedtestSettings.cs) maps each profile to a complete `DownloadTestSettings` / `UploadTestSettings` pair via an inline switch — the single source of truth for "what does Tiny mean, in Ookla terms?".
+[`Profile`](../../src/NetPace.Core/Profile.cs) is the public, provider-agnostic vocabulary surfaced via `--profile`. The ceilings and connection counts each profile means come from one table on [`SpeedTestSettings`](../../src/NetPace.Core/Settings/SpeedTestSettings.cs), shared by every provider so the two cannot drift apart; [`OoklaSpeedtestSettings(Profile)`](../../src/NetPace.Core/Clients/Ookla/OoklaSpeedtestSettings.cs) adds what each profile means in Ookla's own request sizes.
 
 ### 5.1 Download (per profile)
 
@@ -242,6 +242,8 @@ head -c 1048576 /dev/urandom | curl -sS -o /dev/null -w '%{http_code}\n' \
 | `Medium` | `[1500, 2000, 3000, 3500, 4000]`    | 2          | 4        | 100                  |
 | `Large`  | `[2000, 2500, 3000, 3500, 4000]`    | 12         | 16       | 1024                 |
 | `Mega`   | `[3000, 4000, 5000, 6000, 7000]`    | 40         | 32       | 10240                |
+
+LibreSpeed's own request shape, under the same ceilings and connection counts, is in [`LibreSpeedtestSettings`](../../src/NetPace.Core/Clients/LibreSpeed/LibreSpeedtestSettings.cs): one whole-mebibyte `ckSize` per profile and a request count large enough to reach the ceiling. Its endpoints and URL handling are documented on [`LibreSpeedtest`](../../src/NetPace.Core/Clients/LibreSpeed/LibreSpeedtest.cs). Only the request sizes differ, so §2 above describes a LibreSpeed transfer unchanged; for verifying one locally, [`docker/librespeed/`](../../docker/librespeed/) is the counterpart to §4's OoklaServer setup.
 
 ### 5.2 Upload (per profile)
 
