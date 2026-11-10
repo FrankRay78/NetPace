@@ -189,7 +189,7 @@ public sealed partial class NetPaceConsoleTests
             var host = NewHost();
 
             // When NetPace runs
-            var result = await host.RunAsync(["--minimal", "--no-csv-header"]);
+            var result = await host.RunAsync(["--simple", "--no-csv-header"]);
 
             // Then the run is accepted and the output is unchanged
             Assert.Equal(0, result.ExitCode);

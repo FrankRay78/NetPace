@@ -24,8 +24,8 @@ OPTIONS:
                                       An appended --file target that already holds rows is never sent the header.                                     
         --json                        Display output in Json format.                                                                                  
         --json-pretty                 Display output in Json format (pretty print).                                                                   
-        --minimal                     Display the result as a single compact line.                                                                    
-                                      Ideal for batch scripts and redirected output.                                                                  
+        --simple                      Display the result as one named line per figure: Ping, Download, Upload.                                        
+                                      Ideal for batch scripts and line-based parsing.                                                                 
         --no-latency                  Do not perform latency test.                                                                                    
                                       When used without --server-url, the first available server is selected.                                         
         --no-download                 Do not perform download test.                                                                                   
@@ -40,11 +40,11 @@ OPTIONS:
                                       Overrides the --profile connection count; the profile's data caps still apply.                                  
                                       A maximum, so a profile with fewer transfers to run than this will not reach it.                                
     -u, --unit             bits       The speed unit. <bits, bytes>                                                                                   
-                                      Applies to the default and minimal output.                                                                      
+                                      Applies to the default and simple output.                                                                       
         --unit-scale       auto       The speed unit scale. <auto, base, kilo, mega, giga, tera, peta>                                                
-                                      Applies to the default and minimal output.                                                                      
+                                      Applies to the default and simple output.                                                                       
         --unit-system      SI         The speed unit system. <SI, IEC>                                                                                
-                                      Applies to the default and minimal output.                                                                      
+                                      Applies to the default and simple output.                                                                       
                                       SI steps up in powers of 1000 (KB, MB, GB), common in networking,                                               
                                       while IEC uses powers of 1024 (KiB, MiB, GiB), standard in computing and storage.                               
         --device-id                   Record a label for this machine in CSV and JSON output.                                                         

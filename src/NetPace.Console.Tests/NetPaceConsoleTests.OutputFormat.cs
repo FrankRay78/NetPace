@@ -1,7 +1,7 @@
 namespace NetPace.Console.Tests;
 
 /// <summary>
-/// CLI behaviour for choosing an output format: <c>--minimal</c>, <c>--csv</c> and <c>--json</c>
+/// CLI behaviour for choosing an output format: <c>--simple</c>, <c>--csv</c> and <c>--json</c>
 /// are mutually exclusive peers, the retired <c>--verbosity</c> switch is rejected outright, and
 /// the default format carries no diagnostic prose.
 /// </summary>
@@ -24,36 +24,36 @@ public sealed partial class NetPaceConsoleTests
         }
 
         [Fact]
-        public async Task Minimal_Produces_The_Compact_Single_Line_Result()
+        public async Task Simple_Produces_A_Named_Line_Per_Figure()
         {
             // Given
             var host = HostWith();
 
             // When
-            var result = await host.RunAsync(["--minimal"]);
+            var result = await host.RunAsync(["--simple"]);
 
-            // Then the whole output is one result line.
+            // Then the whole output is a named line per figure.
             Assert.Equal(0, result.ExitCode);
             await Verify(result.Output);
         }
 
         [Fact]
-        public async Task Minimal_Composes_With_The_Result_Shaping_Options()
+        public async Task Simple_Composes_With_The_Result_Shaping_Options()
         {
             // Given
             var host = HostWith();
 
-            // When the compact format is combined with timestamp, unit and scale selection.
-            var result = await host.RunAsync(["--minimal", "-t", "--unit", "bytes", "--unit-scale", "Kilo", "--unit-system", "IEC"]);
+            // When the line-per-figure format is combined with timestamp, unit and scale selection.
+            var result = await host.RunAsync(["--simple", "-t", "--unit", "bytes", "--unit-scale", "Kilo", "--unit-system", "IEC"]);
 
-            // Then the single result line carries the timestamp and the chosen units.
+            // Then the timestamp has its own line above figures carrying the chosen units.
             Assert.Equal(0, result.ExitCode);
             await Verify(result.Output);
         }
 
         [Theory]
         [InlineData("")]
-        [InlineData("--minimal")]
+        [InlineData("--simple")]
         [InlineData("--csv")]
         [InlineData("--json")]
         [InlineData("--no-download")]
@@ -93,19 +93,19 @@ public sealed partial class NetPaceConsoleTests
             var result = await host.RunAsync(ArgsFrom(commandLine));
 
             // Then the error says the switch is gone and points at --help, and names no
-            // replacement - --minimal replaces only one of the three former values.
+            // replacement - --simple replaces only one of the three former values.
             Assert.Equal(1, result.ExitCode);
             Assert.Contains("--verbosity has been removed, see --help.", result.Output);
-            Assert.DoesNotContain("--minimal", result.Output);
+            Assert.DoesNotContain("--simple", result.Output);
         }
 
         [Theory]
         [InlineData("--csv --json", "--csv, --json")]
-        [InlineData("--csv --minimal", "--csv, --minimal")]
-        [InlineData("--json --minimal", "--json, --minimal")]
+        [InlineData("--csv --simple", "--csv, --simple")]
+        [InlineData("--json --simple", "--json, --simple")]
         [InlineData("--csv --json-pretty", "--csv, --json-pretty")]
-        [InlineData("--json-pretty --minimal", "--json-pretty, --minimal")]
-        [InlineData("--csv --json --minimal", "--csv, --json, --minimal")]
+        [InlineData("--json-pretty --simple", "--json-pretty, --simple")]
+        [InlineData("--csv --json --simple", "--csv, --json, --simple")]
         public async Task More_Than_One_Output_Format_Is_Rejected_Naming_The_Conflict(string commandLine, string conflict)
         {
             // Given
@@ -131,11 +131,11 @@ public sealed partial class NetPaceConsoleTests
             var host = HostWith();
 
             // When
-            var result = await host.RunAsync([quiet, "--csv", "--minimal"]);
+            var result = await host.RunAsync([quiet, "--csv", "--simple"]);
 
             // Then
             Assert.Equal(1, result.ExitCode);
-            Assert.Contains("Only one output format may be specified: --csv, --minimal.", result.Output);
+            Assert.Contains("Only one output format may be specified: --csv, --simple.", result.Output);
         }
 
         [Fact]

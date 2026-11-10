@@ -391,18 +391,5 @@ public sealed partial class NetPaceConsoleTests
             Assert.Equal("100", CsvOutput.Field(skippedRecords, "LatencyMilliseconds"));
             Assert.Equal("8000", CsvOutput.Field(skippedRecords, "DownloadSpeedBitsPerSecond"));
         }
-
-        /// <summary>
-        /// The registrations a CSV test needs: a stub speed tester, a fixed clock, and a waiter that
-        /// returns immediately. A test that needs more adds it to the returned collection.
-        /// </summary>
-        private static ServiceCollection StubServices()
-        {
-            var services = new ServiceCollection();
-            services.AddSingleton<ISpeedTestService, SpeedTestStub>();
-            services.AddSingleton<IClock, ClockStub>();
-            services.AddSingleton<IWaiter, NoDelayStub>();
-            return services;
-        }
     }
 }

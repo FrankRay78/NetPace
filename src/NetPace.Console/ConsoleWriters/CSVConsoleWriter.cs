@@ -11,46 +11,42 @@ public sealed class CSVConsoleWriter : IConsoleWriter
 
     public async Task<SpeedTestOutcome> PerformSpeedTestAsync(bool initialSpeedTest, IAnsiConsole console, IClock clock, IClientInfoProvider clientInfoProvider, IDiagnosticRecorder recorder, ISpeedTestService speedTestClient, SpeedTestCommandSettings settings, CancellationToken cancellationToken)
     {
-        // Get the server to use for speed testing.
+        // Get the server to use for speed testing, then measure.
         var fastest = await ServerSelector.GetServerAsync(speedTestClient, settings, recorder, cancellationToken);
-
-
-        // A test that did not run is absent, never a zeroed result.
-        SpeedTestResult? downloadResult = null;
-        SpeedTestResult? uploadResult = null;
-
-        // Perform speed test.
-        if (!settings.NoDownload)
-        {
-            using var download = DiagnosticTestScope.For(recorder, DiagnosticTests.Download);
-            downloadResult = await speedTestClient.GetDownloadSpeedAsync(fastest.Server, null, download, cancellationToken);
-        }
-        if (!settings.NoUpload)
-        {
-            using var upload = DiagnosticTestScope.For(recorder, DiagnosticTests.Upload);
-            uploadResult = await speedTestClient.GetUploadSpeedAsync(fastest.Server, null, upload, cancellationToken);
-        }
-
+        var outcome = await Measurements.PerformAsync(speedTestClient, fastest.Server, settings, recorder, cancellationToken);
 
         // Header row, emitted on the first iteration of a run, and not at all where
         // --no-csv-header asks for rows only. Which destinations receive it is settled below: one
         // that already holds content is not sent the header, so a log appended to across runs does
         // not gain a header line between every pair of rows. Every built-in column is present
-        // whichever tests ran, so a script can read by name or by position. The server and device
-        // columns follow Hostname, and any custom columns follow those, so the ten columns NetPace
-        // wrote before them keep their names, order and positions. The custom columns are per
-        // invocation, so only the built-in prefix keeps one shape across runs.
+        // whichever tests ran, so a script can read by name or by position within one run. Each
+        // figure sits beside the measurement it belongs to: idle jitter after the idle latency, and
+        // each direction's four under-load figures after that direction's speed and request counts.
+        // That placement moves every column from DownloadSpeedBitsPerSecond on, so while NetPace is
+        // below 1.0.0 no column keeps a fixed position across releases — a script reading CSV reads
+        // by header name, and a user starts a new log after an upgrade that changes them. The
+        // identity and server columns follow, then any custom columns, which are per invocation, so
+        // only the built-in prefix keeps one shape across runs.
         if (initialSpeedTest && !settings.NoCSVHeader)
         {
             string header = Record([
                 "Timestamp",
                 "LatencyMilliseconds",
+                "JitterMilliseconds",
                 "DownloadSpeedBitsPerSecond",
                 "DownloadSucceeded",
                 "DownloadFailed",
+                "DownloadLatencyMilliseconds",
+                "DownloadLowestLatencyMilliseconds",
+                "DownloadHighestLatencyMilliseconds",
+                "DownloadJitterMilliseconds",
                 "UploadSpeedBitsPerSecond",
                 "UploadSucceeded",
                 "UploadFailed",
+                "UploadLatencyMilliseconds",
+                "UploadLowestLatencyMilliseconds",
+                "UploadHighestLatencyMilliseconds",
+                "UploadJitterMilliseconds",
                 "IPAddress",
                 "Hostname",
                 "ServerLocation",
@@ -69,18 +65,30 @@ public sealed class CSVConsoleWriter : IConsoleWriter
         // --unit-scale and --unit-system leave CSV untouched and every row carries the same units,
         // within a run and across runs.
         // A test that did not run leaves its cells empty; one that ran and failed entirely reports
-        // a speed of 0 beside the request counts that say so.
+        // a speed of 0 beside the request counts that say so. A latency figure that was not
+        // measured — under-load latency the transfer never saw, or the idle latency and jitter
+        // under --no-latency — leaves its cell empty too, so nothing charting the column reads an
+        // unmeasured line as a perfect one.
         // The device label is empty when none was given, because every built-in column is present
         // whatever the run was asked for.
         console.WriteLine(Record([
             clock.Now.ToMachineReadable(),
             !settings.NoLatency ? fastest.LatencyMilliseconds.ToString(CultureInfo.InvariantCulture) : string.Empty,
-            downloadResult?.GetBitsPerSecond().ToString(CultureInfo.InvariantCulture) ?? string.Empty,
-            downloadResult?.RequestsSucceeded.ToString(CultureInfo.InvariantCulture) ?? string.Empty,
-            downloadResult?.RequestsFailed.ToString(CultureInfo.InvariantCulture) ?? string.Empty,
-            uploadResult?.GetBitsPerSecond().ToString(CultureInfo.InvariantCulture) ?? string.Empty,
-            uploadResult?.RequestsSucceeded.ToString(CultureInfo.InvariantCulture) ?? string.Empty,
-            uploadResult?.RequestsFailed.ToString(CultureInfo.InvariantCulture) ?? string.Empty,
+            !settings.NoLatency ? fastest.JitterMilliseconds.ToString(CultureInfo.InvariantCulture) : string.Empty,
+            outcome.Download?.GetBitsPerSecond().ToString(CultureInfo.InvariantCulture) ?? string.Empty,
+            outcome.Download?.RequestsSucceeded.ToString(CultureInfo.InvariantCulture) ?? string.Empty,
+            outcome.Download?.RequestsFailed.ToString(CultureInfo.InvariantCulture) ?? string.Empty,
+            outcome.Download?.Latency?.LatencyMilliseconds.ToString(CultureInfo.InvariantCulture) ?? string.Empty,
+            outcome.Download?.Latency?.MinimumLatencyMilliseconds?.ToString(CultureInfo.InvariantCulture) ?? string.Empty,
+            outcome.Download?.Latency?.MaximumLatencyMilliseconds?.ToString(CultureInfo.InvariantCulture) ?? string.Empty,
+            outcome.Download?.Latency?.JitterMilliseconds.ToString(CultureInfo.InvariantCulture) ?? string.Empty,
+            outcome.Upload?.GetBitsPerSecond().ToString(CultureInfo.InvariantCulture) ?? string.Empty,
+            outcome.Upload?.RequestsSucceeded.ToString(CultureInfo.InvariantCulture) ?? string.Empty,
+            outcome.Upload?.RequestsFailed.ToString(CultureInfo.InvariantCulture) ?? string.Empty,
+            outcome.Upload?.Latency?.LatencyMilliseconds.ToString(CultureInfo.InvariantCulture) ?? string.Empty,
+            outcome.Upload?.Latency?.MinimumLatencyMilliseconds?.ToString(CultureInfo.InvariantCulture) ?? string.Empty,
+            outcome.Upload?.Latency?.MaximumLatencyMilliseconds?.ToString(CultureInfo.InvariantCulture) ?? string.Empty,
+            outcome.Upload?.Latency?.JitterMilliseconds.ToString(CultureInfo.InvariantCulture) ?? string.Empty,
             clientInfoProvider.GetIPAddress(),
             clientInfoProvider.GetHostname(),
             fastest.Server.Location,
@@ -89,7 +97,7 @@ public sealed class CSVConsoleWriter : IConsoleWriter
             settings.DeviceId ?? string.Empty,
             .. settings.CustomFields.Select(field => field.Value)]));
 
-        return SpeedTestOutcome.Create(downloadResult, uploadResult);
+        return outcome;
     }
 
     /// <summary>

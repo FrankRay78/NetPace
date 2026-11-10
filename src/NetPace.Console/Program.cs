@@ -90,9 +90,9 @@ public static class Program
             DefaultValueFactory = _ => false
         };
 
-        var minimalOption = new Option<bool>("--minimal")
+        var simpleOption = new Option<bool>("--simple")
         {
-            Description = "Display the result as a single compact line.\nIdeal for batch scripts and redirected output.",
+            Description = "Display the result as one named line per figure: Ping, Download, Upload.\nIdeal for batch scripts and line-based parsing.",
             DefaultValueFactory = _ => false
         };
 
@@ -172,7 +172,7 @@ public static class Program
 
         var unitOption = new Option<SpeedUnit>("--unit")
         {
-            Description = $"The speed unit. {OptionValues.Units.HelpList}\nApplies to the default and minimal output.",
+            Description = $"The speed unit. {OptionValues.Units.HelpList}\nApplies to the default and simple output.",
             DefaultValueFactory = _ => SpeedUnit.BitsPerSecond,
             CustomParser = result => OptionValues.Units.Parse(result, "--unit")
         };
@@ -180,14 +180,14 @@ public static class Program
 
         var unitScaleOption = new Option<SpeedScale>("--unit-scale")
         {
-            Description = $"The speed unit scale. {OptionValues.UnitScales.HelpList}\nApplies to the default and minimal output.",
+            Description = $"The speed unit scale. {OptionValues.UnitScales.HelpList}\nApplies to the default and simple output.",
             DefaultValueFactory = _ => SpeedScale.Auto,
             CustomParser = result => OptionValues.UnitScales.Parse(result, "--unit-scale")
         };
 
         var unitSystemOption = new Option<SpeedUnitSystem>("--unit-system")
         {
-            Description = $"The speed unit system. {OptionValues.UnitSystems.HelpList}\nApplies to the default and minimal output.\nSI steps up in powers of 1000 (KB, MB, GB), common in networking,\nwhile IEC uses powers of 1024 (KiB, MiB, GiB), standard in computing and storage.",
+            Description = $"The speed unit system. {OptionValues.UnitSystems.HelpList}\nApplies to the default and simple output.\nSI steps up in powers of 1000 (KB, MB, GB), common in networking,\nwhile IEC uses powers of 1024 (KiB, MiB, GiB), standard in computing and storage.",
             DefaultValueFactory = _ => SpeedUnitSystem.SI,
             CustomParser = result => OptionValues.UnitSystems.Parse(result, "--unit-system")
         };
@@ -231,6 +231,20 @@ public static class Program
         };
         serverOption.Validators.Add(result => result.AddError("--server has been renamed --server-url, see --help."));
 
+        // --minimal is retired in favour of --simple, but stays registered so that a script still
+        // passing it gets a message naming the replacement rather than a generic unrecognised-option
+        // error. Typed as a string with an optional value, as the other retired switches are, so
+        // that the bare switch and the `--minimal true` form both land on the same error; a
+        // bool-typed option carries an implicit result whose validator would fire on every run.
+        // Hidden, and CustomHelpProvider strips hidden options, so --help advertises only the new
+        // name.
+        var minimalOption = new Option<string>("--minimal")
+        {
+            Arity = ArgumentArity.ZeroOrOne,
+            Hidden = true
+        };
+        minimalOption.Validators.Add(result => result.AddError("--minimal has been removed, use --simple, see --help."));
+
         // --verbosity is retired, but stays registered so that a script still passing it gets a
         // message naming the removal rather than a generic unrecognised-option error. It takes an
         // optional string so that every former value - and no value at all - lands on the same
@@ -241,7 +255,7 @@ public static class Program
             Arity = ArgumentArity.ZeroOrOne,
             Hidden = true
         };
-        // No replacement is named: --minimal covers only the former Minimal value, so pointing at
+        // No replacement is named: --simple covers only the former Minimal value, so pointing at
         // it would mislead anyone who was passing Normal or Debug.
         verbosityOption.Validators.Add(result => result.AddError("--verbosity has been removed, see --help."));
 
@@ -288,7 +302,7 @@ public static class Program
         command.Options.Add(noCSVHeaderOption);
         command.Options.Add(jsonOption);
         command.Options.Add(jsonPrettyOption);
-        command.Options.Add(minimalOption);
+        command.Options.Add(simpleOption);
         command.Options.Add(noLatencyOption);
         command.Options.Add(noDownloadOption);
         command.Options.Add(noUploadOption);
@@ -304,6 +318,7 @@ public static class Program
         command.Options.Add(deviceIdOption);
         command.Options.Add(customFieldOption);
         command.Options.Add(serverOption);
+        command.Options.Add(minimalOption);
         command.Options.Add(verbosityOption);
         command.Options.Add(fileOption);
         command.Options.Add(fileModeOption);
@@ -326,7 +341,7 @@ public static class Program
                     NoCSVHeader = parseResult.GetValue(noCSVHeaderOption),
                     Json = parseResult.GetValue(jsonOption),
                     JsonPretty = parseResult.GetValue(jsonPrettyOption),
-                    Minimal = parseResult.GetValue(minimalOption),
+                    Simple = parseResult.GetValue(simpleOption),
                     NoLatency = parseResult.GetValue(noLatencyOption),
                     NoDownload = parseResult.GetValue(noDownloadOption),
                     NoUpload = parseResult.GetValue(noUploadOption),
@@ -408,7 +423,8 @@ public static class Program
     /// Build the <see cref="OoklaSpeedtestSettings"/> from the parsed CLI settings.
     /// Profile sets per-request shape and cap defaults; explicit --downloadsize / --uploadsize
     /// override only the cap via with-expressions, and --connections overrides only the number of
-    /// transfers each direction runs at once.
+    /// transfers each direction runs at once. <c>--simple</c> additionally switches the under-load
+    /// latency probes off, because that format shows no under-load figure.
     /// </summary>
     internal static OoklaSpeedtestSettings BuildOoklaSettings(SpeedTestCommandSettings settings)
     {
@@ -427,6 +443,18 @@ public static class Program
             ooklaSettings = ooklaSettings with
             {
                 UploadTest = ooklaSettings.UploadTest with { UploadSizeMb = settings.UploadSizeMb }
+            };
+        }
+
+        if (settings.Simple)
+        {
+            // --simple reports no under-load figure, so the probes that would measure one are
+            // traffic nobody reads. Switching them off keeps this format's traffic as it was
+            // before the probes existed; the idle latency test still runs, being where Ping
+            // comes from.
+            ooklaSettings = ooklaSettings with
+            {
+                LatencyTest = ooklaSettings.LatencyTest with { LoadedLatencyEnabled = false }
             };
         }
 

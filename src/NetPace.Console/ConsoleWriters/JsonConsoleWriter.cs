@@ -11,26 +11,9 @@ public sealed class JsonConsoleWriter : IConsoleWriter
 
     public async Task<SpeedTestOutcome> PerformSpeedTestAsync(bool initialSpeedTest, IAnsiConsole console, IClock clock, IClientInfoProvider clientInfoProvider, IDiagnosticRecorder recorder, ISpeedTestService speedTestClient, SpeedTestCommandSettings settings, CancellationToken cancellationToken)
     {
-        // Get the server to use for speed testing.
+        // Get the server to use for speed testing, then measure.
         var fastest = await ServerSelector.GetServerAsync(speedTestClient, settings, recorder, cancellationToken);
-
-
-        // A test that did not run is absent, never a zeroed result.
-        SpeedTestResult? downloadResult = null;
-        SpeedTestResult? uploadResult = null;
-
-        // Perform speed test.
-        if (!settings.NoDownload)
-        {
-            using var download = DiagnosticTestScope.For(recorder, DiagnosticTests.Download);
-            downloadResult = await speedTestClient.GetDownloadSpeedAsync(fastest.Server, null, download, cancellationToken);
-        }
-        if (!settings.NoUpload)
-        {
-            using var upload = DiagnosticTestScope.For(recorder, DiagnosticTests.Upload);
-            uploadResult = await speedTestClient.GetUploadSpeedAsync(fastest.Server, null, upload, cancellationToken);
-        }
-
+        var outcome = await Measurements.PerformAsync(speedTestClient, fastest.Server, settings, recorder, cancellationToken);
 
         // Display speed test result. JSON holds data, not presentation, so every speed and
         // latency is a plain number in a fixed unit and the unit options do not reach here.
@@ -41,12 +24,21 @@ public sealed class JsonConsoleWriter : IConsoleWriter
             ServerUrl = fastest.Server.Url,
             Timestamp = clock.Now.ToWholeSecond(),
             LatencyMilliseconds = !settings.NoLatency ? fastest.LatencyMilliseconds : null,
-            DownloadSpeedBitsPerSecond = downloadResult?.GetBitsPerSecond(),
-            DownloadSucceeded = downloadResult?.RequestsSucceeded,
-            DownloadFailed = downloadResult?.RequestsFailed,
-            UploadSpeedBitsPerSecond = uploadResult?.GetBitsPerSecond(),
-            UploadSucceeded = uploadResult?.RequestsSucceeded,
-            UploadFailed = uploadResult?.RequestsFailed,
+            JitterMilliseconds = !settings.NoLatency ? fastest.JitterMilliseconds : null,
+            DownloadSpeedBitsPerSecond = outcome.Download?.GetBitsPerSecond(),
+            DownloadSucceeded = outcome.Download?.RequestsSucceeded,
+            DownloadFailed = outcome.Download?.RequestsFailed,
+            DownloadLatencyMilliseconds = outcome.Download?.Latency?.LatencyMilliseconds,
+            DownloadLowestLatencyMilliseconds = outcome.Download?.Latency?.MinimumLatencyMilliseconds,
+            DownloadHighestLatencyMilliseconds = outcome.Download?.Latency?.MaximumLatencyMilliseconds,
+            DownloadJitterMilliseconds = outcome.Download?.Latency?.JitterMilliseconds,
+            UploadSpeedBitsPerSecond = outcome.Upload?.GetBitsPerSecond(),
+            UploadSucceeded = outcome.Upload?.RequestsSucceeded,
+            UploadFailed = outcome.Upload?.RequestsFailed,
+            UploadLatencyMilliseconds = outcome.Upload?.Latency?.LatencyMilliseconds,
+            UploadLowestLatencyMilliseconds = outcome.Upload?.Latency?.MinimumLatencyMilliseconds,
+            UploadHighestLatencyMilliseconds = outcome.Upload?.Latency?.MaximumLatencyMilliseconds,
+            UploadJitterMilliseconds = outcome.Upload?.Latency?.JitterMilliseconds,
             IPAddress = clientInfoProvider.GetIPAddress(),
             Hostname = clientInfoProvider.GetHostname(),
             DeviceId = settings.DeviceId,
@@ -60,7 +52,7 @@ public sealed class JsonConsoleWriter : IConsoleWriter
 
         console.WriteLine(jsonString);
 
-        return SpeedTestOutcome.Create(downloadResult, uploadResult);
+        return outcome;
     }
 
     /// <summary>

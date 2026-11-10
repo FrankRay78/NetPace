@@ -1,4 +1,4 @@
-﻿Timestamp,LatencyMilliseconds,DownloadSpeedBitsPerSecond,DownloadSucceeded,DownloadFailed,UploadSpeedBitsPerSecond,UploadSucceeded,UploadFailed,IPAddress,Hostname,ServerLocation,ServerSponsor,ServerUrl,DeviceId
-1980-01-01T10:05:00+01:00,1000,800,150,0,1867,32,0,192.168.1.1,test-host,,[Unknown],http://random-speedtest-server.com,
-1980-01-01T10:05:00+01:00,1000,800,150,0,1867,32,0,192.168.1.1,test-host,,[Unknown],http://random-speedtest-server.com,
-1980-01-01T10:05:00+01:00,1000,800,150,0,1867,32,0,192.168.1.1,test-host,,[Unknown],http://random-speedtest-server.com,
+﻿Timestamp,LatencyMilliseconds,JitterMilliseconds,DownloadSpeedBitsPerSecond,DownloadSucceeded,DownloadFailed,DownloadLatencyMilliseconds,DownloadLowestLatencyMilliseconds,DownloadHighestLatencyMilliseconds,DownloadJitterMilliseconds,UploadSpeedBitsPerSecond,UploadSucceeded,UploadFailed,UploadLatencyMilliseconds,UploadLowestLatencyMilliseconds,UploadHighestLatencyMilliseconds,UploadJitterMilliseconds,IPAddress,Hostname,ServerLocation,ServerSponsor,ServerUrl,DeviceId
+1980-01-01T10:05:00+01:00,1000,100,800,150,0,1500,1200,2000,200,1867,32,0,1500,1200,2000,200,192.168.1.1,test-host,,[Unknown],http://random-speedtest-server.com,
+1980-01-01T10:05:00+01:00,1000,100,800,150,0,1500,1200,2000,200,1867,32,0,1500,1200,2000,200,192.168.1.1,test-host,,[Unknown],http://random-speedtest-server.com,
+1980-01-01T10:05:00+01:00,1000,100,800,150,0,1500,1200,2000,200,1867,32,0,1500,1200,2000,200,192.168.1.1,test-host,,[Unknown],http://random-speedtest-server.com,

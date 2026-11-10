@@ -436,7 +436,7 @@ public sealed partial class NetPaceConsoleTests
         [InlineData("--csv")]
         [InlineData("--json")]
         [InlineData("--json-pretty")]
-        [InlineData("--minimal")]
+        [InlineData("--simple")]
         [Theory]
         public async Task MachineReadableOutput_IsTheSameWhateverTheThemeIs(string format)
         {
@@ -452,8 +452,10 @@ public sealed partial class NetPaceConsoleTests
                 outputs.Add(result.Output);
             }
 
-            // Then
+            // Then - and no theme adds styling of any kind, colour-free emphasis included, which
+            // sameness alone would not catch
             Assert.All(outputs, output => Assert.Equal(outputs[0], output));
+            Assert.All(outputs, output => Assert.False(AnsiSnapshot.CarriesStyling(output)));
         }
 
         [InlineData("--csv --json")]

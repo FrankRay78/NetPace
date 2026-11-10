@@ -140,7 +140,7 @@ public sealed partial class NetPaceConsoleTests
         }
 
         [Theory]
-        [InlineData("--minimal")]
+        [InlineData("--simple")]
         [InlineData("--csv")]
         [InlineData("--json")]
         [InlineData("--json-pretty")]
@@ -167,7 +167,7 @@ public sealed partial class NetPaceConsoleTests
             var host = GetCommandLineTestHost(services);
 
             // When
-            var result = await host.RunAsync(["--connections", "3", "--count", "3", "--minimal"]);
+            var result = await host.RunAsync(["--connections", "3", "--count", "3", "--simple"]);
 
             // Then the two options parse together and the count binds. The accessor holds the settings
             // built once for the whole invocation, so this does not observe the individual runs.
@@ -188,7 +188,7 @@ public sealed partial class NetPaceConsoleTests
             var host = GetCommandLineTestHost(services);
 
             // When
-            var result = await host.RunAsync(["--connections", "3", "--loop", "--minimal"], cancellationTokenSource.Token);
+            var result = await host.RunAsync(["--connections", "3", "--loop", "--simple"], cancellationTokenSource.Token);
 
             // Then — --loop takes its own branch through the command, so the count has to be shown to
             // survive it as well as --count.

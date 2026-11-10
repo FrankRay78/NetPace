@@ -1,0 +1,2 @@
+﻿Ping: 100 ms
+Upload: 18.67 Kbps
