@@ -39,6 +39,13 @@ public sealed record JsonResult
     public long? LatencyMilliseconds { get; init; }
 
     /// <summary>
+    /// Gets the measured idle jitter in milliseconds — how uneven the idle round trips were — or
+    /// <see langword="null"/> when the latency test was not run. Present exactly when
+    /// <see cref="LatencyMilliseconds"/> is.
+    /// </summary>
+    public long? JitterMilliseconds { get; init; }
+
+    /// <summary>
     /// Gets the measured download speed in bits per second, or <see langword="null"/> when the
     /// download test was not run. A number in a fixed unit, so a script reads the same value
     /// whatever the unit options say. An all-failed test reports <c>0</c>, not
@@ -60,6 +67,32 @@ public sealed record JsonResult
     public int? DownloadFailed { get; init; }
 
     /// <summary>
+    /// Gets the average latency measured while the download ran — latency under load — in
+    /// milliseconds, or <see langword="null"/> where it was not measured or the download test was
+    /// not run. Comparable directly with <see cref="LatencyMilliseconds"/>, which is the same line
+    /// idle.
+    /// </summary>
+    public long? DownloadLatencyMilliseconds { get; init; }
+
+    /// <summary>
+    /// Gets the lowest of the probe times behind <see cref="DownloadLatencyMilliseconds"/>, in
+    /// milliseconds, or <see langword="null"/> where no run of probe times was recorded.
+    /// </summary>
+    public long? DownloadLowestLatencyMilliseconds { get; init; }
+
+    /// <summary>
+    /// Gets the highest of the probe times behind <see cref="DownloadLatencyMilliseconds"/>, in
+    /// milliseconds, or <see langword="null"/> where no run of probe times was recorded.
+    /// </summary>
+    public long? DownloadHighestLatencyMilliseconds { get; init; }
+
+    /// <summary>
+    /// Gets the jitter of the probes behind <see cref="DownloadLatencyMilliseconds"/>, in
+    /// milliseconds, or <see langword="null"/> on the same terms as that figure.
+    /// </summary>
+    public long? DownloadJitterMilliseconds { get; init; }
+
+    /// <summary>
     /// Gets the measured upload speed in bits per second, or <see langword="null"/> when the upload
     /// test was not run. A number in a fixed unit, so a script reads the same value whatever the
     /// unit options say. An all-failed test reports <c>0</c>, not <see langword="null"/>; the
@@ -78,6 +111,32 @@ public sealed record JsonResult
     /// test was not run.
     /// </summary>
     public int? UploadFailed { get; init; }
+
+    /// <summary>
+    /// Gets the average latency measured while the upload ran — latency under load — in
+    /// milliseconds, or <see langword="null"/> where it was not measured or the upload test was not
+    /// run. Comparable directly with <see cref="LatencyMilliseconds"/>, which is the same line
+    /// idle.
+    /// </summary>
+    public long? UploadLatencyMilliseconds { get; init; }
+
+    /// <summary>
+    /// Gets the lowest of the probe times behind <see cref="UploadLatencyMilliseconds"/>, in
+    /// milliseconds, or <see langword="null"/> where no run of probe times was recorded.
+    /// </summary>
+    public long? UploadLowestLatencyMilliseconds { get; init; }
+
+    /// <summary>
+    /// Gets the highest of the probe times behind <see cref="UploadLatencyMilliseconds"/>, in
+    /// milliseconds, or <see langword="null"/> where no run of probe times was recorded.
+    /// </summary>
+    public long? UploadHighestLatencyMilliseconds { get; init; }
+
+    /// <summary>
+    /// Gets the jitter of the probes behind <see cref="UploadLatencyMilliseconds"/>, in
+    /// milliseconds, or <see langword="null"/> on the same terms as that figure.
+    /// </summary>
+    public long? UploadJitterMilliseconds { get; init; }
 
     // Device identity
 

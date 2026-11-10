@@ -13,22 +13,37 @@ public sealed partial class NetPaceConsoleTests
     public sealed class ResultFields
     {
         /// <summary>
-        /// The ten columns CSV carried before the server and device fields were added, in the order
-        /// it carried them. A script reading by name or by position must be unaffected, so these
-        /// stay at the front of the header.
+        /// Every built-in CSV column, in the order the header names them: each measurement followed
+        /// by what was measured about it, then the identity of the machine, then the server, then
+        /// the device label, with any custom columns after those. The names and the order are an
+        /// interface contract — a script reads by header name — so a column added, renamed or moved
+        /// fails here before it reaches a user.
         /// </summary>
-        private static readonly string[] OriginalCsvColumns =
+        private static readonly string[] BuiltInCsvColumns =
         [
             "Timestamp",
             "LatencyMilliseconds",
+            "JitterMilliseconds",
             "DownloadSpeedBitsPerSecond",
             "DownloadSucceeded",
             "DownloadFailed",
+            "DownloadLatencyMilliseconds",
+            "DownloadLowestLatencyMilliseconds",
+            "DownloadHighestLatencyMilliseconds",
+            "DownloadJitterMilliseconds",
             "UploadSpeedBitsPerSecond",
             "UploadSucceeded",
             "UploadFailed",
+            "UploadLatencyMilliseconds",
+            "UploadLowestLatencyMilliseconds",
+            "UploadHighestLatencyMilliseconds",
+            "UploadJitterMilliseconds",
             "IPAddress",
-            "Hostname"
+            "Hostname",
+            "ServerLocation",
+            "ServerSponsor",
+            "ServerUrl",
+            "DeviceId"
         ];
 
         [Fact]
@@ -54,19 +69,16 @@ public sealed partial class NetPaceConsoleTests
         }
 
         [Fact]
-        public async Task Should_Keep_The_Original_Csv_Columns_At_The_Front_Of_The_Header()
+        public async Task Should_Name_Every_Built_In_Csv_Column_In_The_Agreed_Order()
         {
             // Given a run in CSV.
             var result = await GetCommandLineTestHost(StubServices()).RunAsync(["--csv"]);
 
-            // Then the ten original columns still open the header, in their original order, and the
-            // new built-in columns follow Hostname.
+            // Then the header names exactly the built-in columns, in the order each measurement's
+            // figures sit beside it, with nothing else before the custom columns.
             Assert.Equal(0, result.ExitCode);
             string[][] records = CsvOutput.Records(result.Output);
-            Assert.Equal(OriginalCsvColumns, records[0].Take(OriginalCsvColumns.Length));
-            Assert.Equal<string[]>(
-                ["ServerLocation", "ServerSponsor", "ServerUrl", "DeviceId"],
-                [.. records[0].Skip(OriginalCsvColumns.Length)]);
+            Assert.Equal(BuiltInCsvColumns, records[0]);
         }
 
         [Fact]
@@ -431,20 +443,6 @@ public sealed partial class NetPaceConsoleTests
             Assert.Empty(serviceCalls);
             Assert.NotEqual(0, result.ExitCode);
             Assert.Contains("key=value", result.Output);
-        }
-
-        /// <summary>
-        /// The registrations a result-fields test needs: a stub speed tester, a fixed clock, and a
-        /// waiter that returns immediately. A test that needs more adds it to the returned
-        /// collection.
-        /// </summary>
-        private static ServiceCollection StubServices()
-        {
-            var services = new ServiceCollection();
-            services.AddSingleton<ISpeedTestService, SpeedTestStub>();
-            services.AddSingleton<IClock, ClockStub>();
-            services.AddSingleton<IWaiter, NoDelayStub>();
-            return services;
         }
     }
 }

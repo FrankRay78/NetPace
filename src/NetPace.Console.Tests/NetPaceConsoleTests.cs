@@ -15,6 +15,20 @@ public sealed partial class NetPaceConsoleTests
     ];
 
     /// <summary>
+    /// The registrations most tests need: the stub speed tester, whose transfers both report
+    /// under-load latency, a fixed clock, and a waiter that returns immediately. A test that needs
+    /// more adds it to the returned collection. Shared by every nested class that runs the stub.
+    /// </summary>
+    private static ServiceCollection StubServices()
+    {
+        var services = new ServiceCollection();
+        services.AddSingleton<ISpeedTestService, SpeedTestStub>();
+        services.AddSingleton<IClock, ClockStub>();
+        services.AddSingleton<IWaiter, NoDelayStub>();
+        return services;
+    }
+
+    /// <summary>
     /// Build a service collection that captures the constructed <see cref="OoklaSpeedtestSettings"/>
     /// into a returned accessor instance. The action in <see cref="Program.CreateRootCommand"/> writes
     /// to it after option binding, so the test reads <c>accessor.Settings</c> after RunAsync to verify
@@ -22,10 +36,7 @@ public sealed partial class NetPaceConsoleTests
     /// </summary>
     private static (IServiceCollection services, OoklaSpeedtestSettingsAccessor accessor) BuildServicesWithSettingsAccessor()
     {
-        var services = new ServiceCollection();
-        services.AddSingleton<ISpeedTestService, SpeedTestStub>();
-        services.AddSingleton<IClock, ClockStub>();
-        services.AddSingleton<IWaiter, NoDelayStub>();
+        var services = StubServices();
         var accessor = new OoklaSpeedtestSettingsAccessor();
         services.AddSingleton(accessor);
         return (services, accessor);

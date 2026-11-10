@@ -364,14 +364,5 @@ public sealed partial class NetPaceConsoleTests
             Assert.Equal(0, switchedUnits.ExitCode);
             Assert.Equal(defaultUnits.Output, switchedUnits.Output);
         }
-
-        private static ServiceCollection StubServices()
-        {
-            var services = new ServiceCollection();
-            services.AddSingleton<ISpeedTestService, SpeedTestStub>();
-            services.AddSingleton<IClock, ClockStub>();
-            services.AddSingleton<IWaiter, NoDelayStub>();
-            return services;
-        }
     }
 }
