@@ -23,8 +23,8 @@ public sealed partial class NetPaceConsoleTests
             // Then — assert field-for-field (int[] DownloadSizes uses reference equality).
             Assert.Equal(0, result.ExitCode);
             var expected = new OoklaSpeedtestSettings(Profile.Tiny);
-            Assert.Equal(expected.DownloadTest.DownloadSizes, accessor.Settings.DownloadTest.DownloadSizes);
-            Assert.Equal(expected.DownloadTest.DownloadSizeIterations, accessor.Settings.DownloadTest.DownloadSizeIterations);
+            Assert.Equal(expected.DownloadSizes, accessor.Settings.DownloadSizes);
+            Assert.Equal(expected.DownloadSizeIterations, accessor.Settings.DownloadSizeIterations);
             Assert.Equal(expected.DownloadTest.DownloadParallelTasks, accessor.Settings.DownloadTest.DownloadParallelTasks);
             Assert.Equal(expected.DownloadTest.DownloadSizeMb, accessor.Settings.DownloadTest.DownloadSizeMb);
             Assert.Equal(expected.UploadTest.UploadSizeIncrementKb, accessor.Settings.UploadTest.UploadSizeIncrementKb);
@@ -65,10 +65,10 @@ public sealed partial class NetPaceConsoleTests
 
             // Then
             Assert.Equal(0, result.ExitCode);
-            Assert.Equal(new[] { 350 }, accessor.Settings.DownloadTest.DownloadSizes);
+            Assert.Equal(new[] { 350 }, accessor.Settings.DownloadSizes);
             Assert.Equal(1, accessor.Settings.DownloadTest.DownloadParallelTasks);
-            Assert.Equal(1, accessor.Settings.DownloadTest.DownloadSizeIterations);
-            Assert.All(accessor.Settings.DownloadTest.DownloadSizes, s => Assert.True(s <= 350));
+            Assert.Equal(1, accessor.Settings.DownloadSizeIterations);
+            Assert.All(accessor.Settings.DownloadSizes, s => Assert.True(s <= 350));
         }
 
         [Fact]
@@ -86,8 +86,8 @@ public sealed partial class NetPaceConsoleTests
             // Then — assert field-for-field (int[] DownloadSizes uses reference equality).
             Assert.Equal(0, result.ExitCode);
             var medium = new OoklaSpeedtestSettings(Profile.Medium);
-            Assert.Equal(medium.DownloadTest.DownloadSizes, accessor.Settings.DownloadTest.DownloadSizes);
-            Assert.Equal(medium.DownloadTest.DownloadSizeIterations, accessor.Settings.DownloadTest.DownloadSizeIterations);
+            Assert.Equal(medium.DownloadSizes, accessor.Settings.DownloadSizes);
+            Assert.Equal(medium.DownloadSizeIterations, accessor.Settings.DownloadSizeIterations);
             Assert.Equal(medium.DownloadTest.DownloadParallelTasks, accessor.Settings.DownloadTest.DownloadParallelTasks);
             Assert.Equal(medium.DownloadTest.DownloadSizeMb, accessor.Settings.DownloadTest.DownloadSizeMb);
             Assert.Equal(medium.UploadTest.UploadSizeIncrementKb, accessor.Settings.UploadTest.UploadSizeIncrementKb);
@@ -96,7 +96,7 @@ public sealed partial class NetPaceConsoleTests
             Assert.Equal(medium.UploadTest.UploadParallelTasks, accessor.Settings.UploadTest.UploadParallelTasks);
             Assert.Equal(medium.UploadTest.UploadSizeMb, accessor.Settings.UploadTest.UploadSizeMb);
             // Explicit per-spec assertions.
-            Assert.Equal(new[] { 1500, 2000, 3000, 3500, 4000 }, accessor.Settings.DownloadTest.DownloadSizes);
+            Assert.Equal(new[] { 1500, 2000, 3000, 3500, 4000 }, accessor.Settings.DownloadSizes);
             Assert.Equal(100, accessor.Settings.DownloadTest.DownloadSizeMb);
             Assert.Equal(25, accessor.Settings.UploadTest.UploadSizeMb);
         }
@@ -115,8 +115,8 @@ public sealed partial class NetPaceConsoleTests
 
             // Then
             Assert.Equal(0, result.ExitCode);
-            Assert.Equal(new[] { 350 }, accessor.Settings.DownloadTest.DownloadSizes);
-            Assert.Equal(1, accessor.Settings.DownloadTest.DownloadSizeIterations);
+            Assert.Equal(new[] { 350 }, accessor.Settings.DownloadSizes);
+            Assert.Equal(1, accessor.Settings.DownloadSizeIterations);
             Assert.Equal(1, accessor.Settings.DownloadTest.DownloadParallelTasks);
             Assert.Equal(5, accessor.Settings.DownloadTest.DownloadSizeMb);
         }

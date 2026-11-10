@@ -1,5 +1,5 @@
 using NetPace.Core.Clients.Ookla;
-using NetPace.Core.Clients.Ookla.Settings;
+using NetPace.Core.Settings;
 
 namespace NetPace.Core.Tests;
 
@@ -210,7 +210,7 @@ public sealed partial class OoklaSpeedtestTests
             // unreachable and the run would report that no servers were found.
             var settings = new OoklaSpeedtestSettings
             {
-                ServerDiscovery = new() { ScreeningRequestCount = screeningRequestCount }
+                ServerScreening = new() { ScreeningRequestCount = screeningRequestCount }
             };
             var speedtest = new OoklaSpeedtest(settings);
             IServer[] servers = [new Server { Url = "http://example.com/", Sponsor = "Sponsor", Location = "Location" }];
@@ -220,7 +220,7 @@ public sealed partial class OoklaSpeedtestTests
                 () => speedtest.GetFastestServerByLatencyAsync(servers));
 
             // Then
-            Assert.Equal(nameof(ServerDiscoverySettings.ScreeningRequestCount), exception.ParamName);
+            Assert.Equal(nameof(ServerScreeningSettings.ScreeningRequestCount), exception.ParamName);
         }
 
         [Theory]
@@ -235,7 +235,7 @@ public sealed partial class OoklaSpeedtestTests
             // ceiling is rejected up front rather than silently defeating itself.
             var settings = new OoklaSpeedtestSettings
             {
-                ServerDiscovery = new() { ServerTimeoutMilliseconds = serverTimeoutMilliseconds }
+                ServerScreening = new() { ServerTimeoutMilliseconds = serverTimeoutMilliseconds }
             };
             var speedtest = new OoklaSpeedtest(settings);
             IServer[] servers = [new Server { Url = "http://example.com/", Sponsor = "Sponsor", Location = "Location" }];
@@ -245,7 +245,7 @@ public sealed partial class OoklaSpeedtestTests
                 () => speedtest.GetFastestServerByLatencyAsync(servers));
 
             // Then
-            Assert.Equal(nameof(ServerDiscoverySettings.ServerTimeoutMilliseconds), exception.ParamName);
+            Assert.Equal(nameof(ServerScreeningSettings.ServerTimeoutMilliseconds), exception.ParamName);
         }
 
         [Theory]
@@ -261,7 +261,7 @@ public sealed partial class OoklaSpeedtestTests
             // ceiling it divides is.
             var settings = new OoklaSpeedtestSettings
             {
-                ServerDiscovery = new() { FirstScreeningStageMilliseconds = firstScreeningStageMilliseconds }
+                ServerScreening = new() { FirstScreeningStageMilliseconds = firstScreeningStageMilliseconds }
             };
             var speedtest = new OoklaSpeedtest(settings);
             IServer[] servers = [new Server { Url = "http://example.com/", Sponsor = "Sponsor", Location = "Location" }];
@@ -271,7 +271,7 @@ public sealed partial class OoklaSpeedtestTests
                 () => speedtest.GetFastestServerByLatencyAsync(servers));
 
             // Then
-            Assert.Equal(nameof(ServerDiscoverySettings.FirstScreeningStageMilliseconds), exception.ParamName);
+            Assert.Equal(nameof(ServerScreeningSettings.FirstScreeningStageMilliseconds), exception.ParamName);
         }
 
         [Theory]

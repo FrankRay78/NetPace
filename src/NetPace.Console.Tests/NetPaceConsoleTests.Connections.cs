@@ -28,8 +28,8 @@ public sealed partial class NetPaceConsoleTests
             var large = new OoklaSpeedtestSettings(Profile.Large);
             Assert.Equal(large.DownloadTest.DownloadSizeMb, accessor.Settings.DownloadTest.DownloadSizeMb);
             Assert.Equal(large.UploadTest.UploadSizeMb, accessor.Settings.UploadTest.UploadSizeMb);
-            Assert.Equal(large.DownloadTest.DownloadSizes, accessor.Settings.DownloadTest.DownloadSizes);
-            Assert.Equal(large.DownloadTest.DownloadSizeIterations, accessor.Settings.DownloadTest.DownloadSizeIterations);
+            Assert.Equal(large.DownloadSizes, accessor.Settings.DownloadSizes);
+            Assert.Equal(large.DownloadSizeIterations, accessor.Settings.DownloadSizeIterations);
             Assert.Equal(large.UploadTest.UploadSizeIncrementKb, accessor.Settings.UploadTest.UploadSizeIncrementKb);
             Assert.Equal(large.UploadTest.UploadIncrements, accessor.Settings.UploadTest.UploadIncrements);
             Assert.Equal(large.UploadTest.UploadSizeIterations, accessor.Settings.UploadTest.UploadSizeIterations);

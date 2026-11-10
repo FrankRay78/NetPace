@@ -1,4 +1,4 @@
-namespace NetPace.Core.Clients.Ookla.Settings;
+namespace NetPace.Core.Settings;
 
 /// <summary>
 /// Settings for the upload speed test.

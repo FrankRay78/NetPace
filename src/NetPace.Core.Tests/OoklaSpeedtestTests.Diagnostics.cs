@@ -38,10 +38,10 @@ public sealed partial class OoklaSpeedtestTests
             var settings = new OoklaSpeedtestSettings
             {
                 LatencyTest = new() { LoadedLatencyEnabled = false },
+                DownloadSizes = [100],
+                DownloadSizeIterations = 4,
                 DownloadTest = new()
                 {
-                    DownloadSizes = [100],
-                    DownloadSizeIterations = 4,
                     DownloadParallelTasks = 2
                 }
             };
@@ -74,10 +74,10 @@ public sealed partial class OoklaSpeedtestTests
             var settings = new OoklaSpeedtestSettings
             {
                 LatencyTest = new() { LoadedLatencyEnabled = false },
+                DownloadSizes = [100],
+                DownloadSizeIterations = 2,
                 DownloadTest = new()
                 {
-                    DownloadSizes = [100],
-                    DownloadSizeIterations = 2,
                     DownloadParallelTasks = 1
                 }
             };
@@ -205,7 +205,7 @@ public sealed partial class OoklaSpeedtestTests
 
             var settings = new OoklaSpeedtestSettings
             {
-                ServerDiscovery = new()
+                ServerScreening = new()
                 {
                     ScreeningRequestCount = 2,
                     ServerTimeoutMilliseconds = 30000
@@ -250,10 +250,10 @@ public sealed partial class OoklaSpeedtestTests
             var settings = new OoklaSpeedtestSettings
             {
                 LatencyTest = new() { LoadedLatencyEnabled = false },
+                DownloadSizes = [100],
+                DownloadSizeIterations = 2,
                 DownloadTest = new()
                 {
-                    DownloadSizes = [100],
-                    DownloadSizeIterations = 2,
                     DownloadParallelTasks = 1
                 }
             };
@@ -284,10 +284,10 @@ public sealed partial class OoklaSpeedtestTests
             var settings = new OoklaSpeedtestSettings
             {
                 LatencyTest = new() { LoadedLatencyEnabled = false },
+                DownloadSizes = [100],
+                DownloadSizeIterations = 8,
                 DownloadTest = new()
                 {
-                    DownloadSizes = [100],
-                    DownloadSizeIterations = 8,
                     DownloadParallelTasks = 8,
                     DownloadSizeMb = 1
                 }
@@ -296,7 +296,7 @@ public sealed partial class OoklaSpeedtestTests
             // Derived from the settings rather than restated, so raising the iteration count moves the
             // barrier below with it. It still assumes one request per size per iteration, which is what
             // the download path issues today.
-            var expectedRequests = settings.DownloadTest.DownloadSizes.Length * settings.DownloadTest.DownloadSizeIterations;
+            var expectedRequests = settings.DownloadSizes.Length * settings.DownloadSizeIterations;
 
             // The barrier's other premise, stated in the Given above: it waits for every request at
             // once, so a parallelism ceiling that queued any of them would leave it waiting for an
@@ -374,10 +374,10 @@ public sealed partial class OoklaSpeedtestTests
             var settings = new OoklaSpeedtestSettings
             {
                 LatencyTest = new() { LoadedLatencyEnabled = false },
+                DownloadSizes = [100],
+                DownloadSizeIterations = 2,
                 DownloadTest = new()
                 {
-                    DownloadSizes = [100],
-                    DownloadSizeIterations = 2,
                     DownloadParallelTasks = 1
                 }
             };
@@ -401,7 +401,7 @@ public sealed partial class OoklaSpeedtestTests
 
             var settings = new OoklaSpeedtestSettings
             {
-                ServerDiscovery = new()
+                ServerScreening = new()
                 {
                     ScreeningRequestCount = 1,
                     ServerTimeoutMilliseconds = 30000
@@ -442,7 +442,7 @@ public sealed partial class OoklaSpeedtestTests
 
             var settings = new OoklaSpeedtestSettings
             {
-                ServerDiscovery = new()
+                ServerScreening = new()
                 {
                     ScreeningRequestCount = 1,
                     ServerTimeoutMilliseconds = 30000
@@ -522,7 +522,7 @@ public sealed partial class OoklaSpeedtestTests
 
             var settings = new OoklaSpeedtestSettings
             {
-                ServerDiscovery = new()
+                ServerScreening = new()
                 {
                     ScreeningRequestCount = 1,
                     ServerTimeoutMilliseconds = 100
@@ -554,7 +554,7 @@ public sealed partial class OoklaSpeedtestTests
 
             var settings = new OoklaSpeedtestSettings
             {
-                ServerDiscovery = new()
+                ServerScreening = new()
                 {
                     ScreeningRequestCount = 2,
                     ServerTimeoutMilliseconds = 30000
@@ -615,7 +615,7 @@ public sealed partial class OoklaSpeedtestTests
 
             var settings = new OoklaSpeedtestSettings
             {
-                ServerDiscovery = new()
+                ServerScreening = new()
                 {
                     ScreeningRequestCount = 2,
                     ServerTimeoutMilliseconds = 30000
@@ -709,10 +709,10 @@ public sealed partial class OoklaSpeedtestTests
             var settings = new OoklaSpeedtestSettings
             {
                 LatencyTest = new() { LoadedLatencyEnabled = false },
+                DownloadSizes = [100],
+                DownloadSizeIterations = 1,
                 DownloadTest = new()
                 {
-                    DownloadSizes = [100],
-                    DownloadSizeIterations = 1,
                     DownloadParallelTasks = 1
                 }
             };
