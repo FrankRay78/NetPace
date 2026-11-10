@@ -381,7 +381,7 @@ public sealed class OoklaSpeedtest : ISpeedTestService
     /// <summary>
     /// Screens one server - is it reachable, and roughly how fast? - returning <c>null</c> when the
     /// candidate cannot be ranked: its URL is missing or not a web address, no request completed
-    /// inside the ceiling, or what answered was not a speed test server. A server that answered
+    /// before the pass ended, or what answered was not a speed test server. A server that answered
     /// correctly at least once returns a figure and simply ranks lower when it is slow.
     /// </summary>
     /// <remarks>
