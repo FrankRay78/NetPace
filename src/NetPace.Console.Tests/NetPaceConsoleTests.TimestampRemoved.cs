@@ -14,7 +14,7 @@ public sealed partial class NetPaceConsoleTests
         [InlineData("-t")]
         public async Task TimestampOption_IsRejectedAsAnUnrecognisedOption(string option)
         {
-            // SCENARIO: The timestamp switch says it was removed
+            // SCENARIO: The timestamp switch is rejected as unrecognised
 
             // Given
             var (host, serviceCalls) = HostRecordingMeasurements();

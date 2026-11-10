@@ -45,6 +45,7 @@ public sealed partial class NetPaceConsoleTests
         public async Task Simple_Reports_Ping_Download_And_Upload_Each_On_Its_Own_Line()
         {
             // SCENARIO: Simple output reports three lines
+            // SCENARIO: Simple output has no timestamp line
 
             // Given a run of all three tests
             var host = GetCommandLineTestHost(StubServices());
@@ -53,7 +54,7 @@ public sealed partial class NetPaceConsoleTests
             var result = await host.RunAsync(["--simple"]);
 
             // Then the whole output is a Ping line, a Download line and an Upload line, in that
-            // order, and nothing else - which the snapshot carries.
+            // order, and nothing else, so no timestamp line - which the snapshot carries.
             Assert.Equal(0, result.ExitCode);
             await Verify(result.Output);
         }
@@ -75,9 +76,9 @@ public sealed partial class NetPaceConsoleTests
             var word = SecondWordOfLineHolding(result.Output, "Download");
 
             // Then it is the download speed's number, not some other figure's. Pinned to the number
-            // itself rather than to any number: the one-line --minimal format puts the latency
-            // second on the stretch holding Download, and a check that the word merely parses would
-            // pass on it - the misparse this format exists to prevent.
+            // itself rather than to any number: the one-line --minimal format puts the time of day
+            // second on the line holding Download, and a check that the word merely parses could
+            // pass on such a line - the misparse this format exists to prevent.
             Assert.Equal(0, byDefault.ExitCode);
             Assert.Equal(0, result.ExitCode);
             Assert.NotEmpty(downloadNumber);
@@ -160,25 +161,6 @@ public sealed partial class NetPaceConsoleTests
             // line does, which the snapshot carries.
             Assert.Equal(0, result.ExitCode);
             await Verify(result.Output).UseParameters(attempts, failed);
-        }
-
-        [Fact]
-        public async Task Simple_Writes_No_Timestamp_Line()
-        {
-            // SCENARIO: Simple output has no timestamp line
-
-            // Given a run of all three tests
-            var host = GetCommandLineTestHost(StubServices());
-
-            // When
-            var result = await host.RunAsync(["--simple"]);
-
-            // Then the output is the three figure lines and nothing else: this format matches
-            // speedtest-cli --simple, which carries no time, and --minimal is where a timestamped
-            // line comes from.
-            Assert.Equal(0, result.ExitCode);
-            Assert.Equal(3, Lines(result.Output).Length);
-            Assert.DoesNotContain("1980-01-01", result.Output);
         }
 
         [Fact]

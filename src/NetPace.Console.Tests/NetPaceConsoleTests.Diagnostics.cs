@@ -15,7 +15,7 @@ public sealed partial class NetPaceConsoleTests
         /// The output formats this suite runs the diagnostic stream against, by the switch that
         /// selects each. The default format is selected by no switch at all.
         /// </summary>
-        public static TheoryData<string> OutputFormats() => new("", "--simple", "--csv", "--json");
+        public static TheoryData<string> OutputFormats() => new("", "--minimal", "--simple", "--csv", "--json");
 
         private static CommandLineTestHost HostWith(bool failEveryUpload = false)
         {
@@ -59,11 +59,13 @@ public sealed partial class NetPaceConsoleTests
         [InlineData("--csv")]
         [InlineData("--json")]
         [InlineData("--simple")]
+        [InlineData("--minimal")]
         public async Task Every_OutputFormat_ProducesTheSameDiagnostics(string outputFormat)
         {
-            // Given the simple, CSV and JSON formats pass no progress reporter at all, diagnostics
-            // must not ride on one. --simple turns the under-load probes off in a real run, but this
-            // stub reports its probe records whatever the settings say, so here it matches too.
+            // Given the minimal, simple, CSV and JSON formats pass no progress reporter at all,
+            // diagnostics must not ride on one. --minimal and --simple turn the under-load probes
+            // off in a real run, but this stub reports its probe records whatever the settings say,
+            // so here they match too.
             // When each runs with --diagnostics, alongside the default format.
             var expected = await HostWith().RunAsync(["--diagnostics"]);
             var actual = await HostWith().RunAsync([outputFormat, "--diagnostics"]);

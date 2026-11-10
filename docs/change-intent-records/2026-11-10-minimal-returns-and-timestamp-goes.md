@@ -4,17 +4,17 @@
 
 **Behaviour:** See issue #540 and its confirmed decisions.
 
-**Supersedes:** [`2026-11-09-simple-replaces-minimal`](2026-11-09-simple-replaces-minimal.md) — `--minimal` is a format again rather than a switch that fails, and `--simple` no longer carries a labelled `Timestamp` line. The reasoning for giving `speedtest-cli` migrants `--simple`'s name and shape stands.
+**Supersedes:** [`2026-11-09-simple-replaces-minimal`](2026-11-09-simple-replaces-minimal.md), which rejected a returning `--minimal` because its fields would shift under existing logs. That no longer outweighs the job: the line is the one `--minimal --timestamp` already wrote, so only scripts that never passed `-t` see a field move, and issue #540 states that break under the pre-1.0 stance.
 
 **Constraints:**
 
-- Four formats now share the one-of-these rule in `SpeedTestCommandSettingsExtensions.Validate`; `--minimal` and `--simple` alone share the probes-off decision in `Program.BuildOoklaSettings`, and a fifth format inherits probes-on unasked.
-- `--minimal` and `--simple` must render the same measurement identically, so the figure is one expression on `SpeedTestResultExtensions`.
+- `--minimal` and `--simple` alone turn the probes off, in `Program.BuildOoklaSettings`; a new format inherits probes-on unasked.
+- Both render a figure through one expression on `SpeedTestResultExtensions`.
 
 **Decisions:**
 
-- The time is always on the `--minimal` line. Rejected: keeping `--timestamp` to turn it on — a line in a scrolling log is of little use without it, and the switch then shaped only the one format that always wants it.
-- `--timestamp` is removed outright, with the parser's own unrecognised-option error. Rejected: a hidden switch naming the removal, as `--verbosity` and `--server` have — there is nowhere honest to point, since the time did not move to another switch.
-- Default output lost its timestamp with the switch. Rejected: making it unconditional there too — it is read live, where the clock is already on screen.
+- The time is always on the `--minimal` line. Rejected: keeping `--timestamp`, which would then shape only the format that always wants it.
+- `--timestamp` gets the parser's unrecognised-option error. Rejected: a hidden removal notice, since no other switch took the time over.
+- Default output carries no timestamp. Rejected: always showing one, since it is read live with the clock on screen.
 
 **Date:** 2026-11-10

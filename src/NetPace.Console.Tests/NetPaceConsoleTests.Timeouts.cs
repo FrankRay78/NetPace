@@ -81,6 +81,7 @@ public sealed partial class NetPaceConsoleTests
 
         [Theory]
         [InlineData("default", "")]
+        [InlineData("minimal", "--minimal")]
         [InlineData("simple", "--simple")]
         [InlineData("csv", "--csv")]
         [InlineData("json", "--json")]

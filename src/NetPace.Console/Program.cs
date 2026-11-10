@@ -240,8 +240,8 @@ public static class Program
             Arity = ArgumentArity.ZeroOrOne,
             Hidden = true
         };
-        // No replacement is named: --simple covers only the former Minimal value, so pointing at
-        // it would mislead anyone who was passing Normal or Debug.
+        // No replacement is named: --minimal stands in only for the former Minimal value, so
+        // pointing at it would mislead anyone who was passing Normal or Debug.
         verbosityOption.Validators.Add(result => result.AddError("--verbosity has been removed, see --help."));
 
         var fileOption = new Option<string>("--file")

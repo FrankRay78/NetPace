@@ -325,7 +325,7 @@ public sealed partial class NetPaceConsoleTests
         [InlineData("")]
         [InlineData("--simple")]
         [InlineData("--minimal")]
-        public async Task Should_Leave_The_Default_And_Simple_Output_Untouched(string modeSwitch)
+        public async Task Should_Leave_The_Default_Minimal_And_Simple_Output_Untouched(string modeSwitch)
         {
             // Given the same speed test run twice, once plainly and once with a device label and a
             // custom field. Both describe the run for a log, not the measurement, so no output
