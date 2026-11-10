@@ -1,5 +1,6 @@
 using System.Buffers;
 using System.Net;
+using System.Net.Http.Headers;
 using System.Text;
 using NetPace.Core.Settings;
 
@@ -108,6 +109,10 @@ public abstract class SpeedTestProviderBase : ISpeedTestService
     /// The download requests to make against a server at <paramref name="serverUrl"/>, in the
     /// order they are scheduled. The total-byte budget decides how many of them actually run.
     /// </summary>
+    /// <remarks>
+    /// Enumerated more than once, so the sequence must be re-enumerable and free of side
+    /// effects: the count is read before the transfer starts, and the addresses again as it runs.
+    /// </remarks>
     private protected abstract IEnumerable<string> DownloadRequestUrls(string serverUrl);
 
     /// <summary>
@@ -1169,7 +1174,7 @@ public abstract class SpeedTestProviderBase : ISpeedTestService
         httpClient.DefaultRequestHeaders.UserAgent.ParseAdd(
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.0.0 Safari/537.36");
         httpClient.DefaultRequestHeaders.Accept.ParseAdd("text/html, application/xhtml+xml, */*");
-        httpClient.DefaultRequestHeaders.CacheControl = new System.Net.Http.Headers.CacheControlHeaderValue { NoCache = true };
+        httpClient.DefaultRequestHeaders.CacheControl = new CacheControlHeaderValue { NoCache = true };
         return httpClient;
     }
 

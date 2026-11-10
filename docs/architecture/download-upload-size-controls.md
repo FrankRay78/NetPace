@@ -2,7 +2,7 @@
 
 **Status:** Reference (current as-is behaviour)
 **Last reviewed:** 2026-04-29
-**Source files:** [`NetPace.Core/Clients/Ookla/`](../../src/NetPace.Core/Clients/Ookla/), [`NetPace.Console/Program.cs`](../../src/NetPace.Console/Program.cs)
+**Source files:** [`NetPace.Core/SpeedTestProviderBase.cs`](../../src/NetPace.Core/SpeedTestProviderBase.cs), [`NetPace.Core/Settings/`](../../src/NetPace.Core/Settings/), [`NetPace.Core/Clients/Ookla/`](../../src/NetPace.Core/Clients/Ookla/), [`NetPace.Console/Program.cs`](../../src/NetPace.Console/Program.cs)
 
 Documents how `OoklaSpeedtest` decides the size, count, and parallelism of the HTTP requests it issues during a download and upload test, and which of those knobs are currently reachable from the command line.
 
@@ -192,7 +192,7 @@ Unlike download, this total is fully deterministic — NetPace generates the pay
 
 | Switch           | Property         | Default                | Effect                                                                                                                                  |
 | ---------------- | ---------------- | ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
-| `--profile`      | `Profile`        | `medium`               | Sets per-request shape (`DownloadSizes`, iterations, parallel tasks) and total-byte cap defaults via `new OoklaSpeedtestSettings(p)`.    |
+| `--profile`      | `Profile`        | `medium`               | Sets per-request shape (`DownloadSizes`, iterations, parallel tasks) and total-byte cap defaults, via the settings record the chosen provider builds.    |
 | `--downloadsize` | `DownloadSizeMb` | (profile-supplied)     | Overrides the download cap via a `with`-expression. Does **not** change per-request file size — the profile remains authoritative for shape. |
 | `--uploadsize`   | `UploadSizeMb`   | (profile-supplied)     | Overrides the upload cap via a `with`-expression. Does **not** change per-request payload — the profile remains authoritative for shape.     |
 | `--connections`  | `Connections`    | (profile-supplied)     | Overrides `DownloadParallelTasks` **and** `UploadParallelTasks` together, via a `with`-expression. Accepts 1–32; outside that range, or not a whole number, the run is refused before any test starts. Leaves per-request shape and both caps alone. |
@@ -243,7 +243,7 @@ head -c 1048576 /dev/urandom | curl -sS -o /dev/null -w '%{http_code}\n' \
 | `Large`  | `[2000, 2500, 3000, 3500, 4000]`    | 12         | 16       | 1024                 |
 | `Mega`   | `[3000, 4000, 5000, 6000, 7000]`    | 40         | 32       | 10240                |
 
-LibreSpeed's own request shape, under the same ceilings and connection counts, is in [`LibreSpeedtestSettings`](../../src/NetPace.Core/Clients/LibreSpeed/LibreSpeedtestSettings.cs): one whole-mebibyte `ckSize` per profile and a request count large enough to reach the ceiling. Its endpoints and URL handling are documented on [`LibreSpeedtest`](../../src/NetPace.Core/Clients/LibreSpeed/LibreSpeedtest.cs). Only the request sizes differ, so §2 above describes a LibreSpeed transfer unchanged; for verifying one locally, [`docker/librespeed/`](../../docker/librespeed/) is the counterpart to §4's OoklaServer setup.
+LibreSpeed's own request shape, under the same ceilings and connection counts, is in [`LibreSpeedtestSettings`](../../src/NetPace.Core/Clients/LibreSpeed/LibreSpeedtestSettings.cs): one whole-mebibyte `ckSize` per profile and a request count large enough to reach the ceiling. Its endpoints and URL handling are documented on [`LibreSpeedtest`](../../src/NetPace.Core/Clients/LibreSpeed/LibreSpeedtest.cs). The parallel-transfer loop and the byte-budget termination in §2 above apply to a LibreSpeed transfer unchanged; the request shape and the upload endpoint described there are Ookla's. For verifying one locally, [`docker/librespeed/`](../../docker/librespeed/) is the counterpart to §4's OoklaServer setup.
 
 ### 5.2 Upload (per profile)
 

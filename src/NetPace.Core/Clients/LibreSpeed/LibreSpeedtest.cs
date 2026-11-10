@@ -7,7 +7,7 @@ namespace NetPace.Core.Clients.LibreSpeed;
 /// <remarks>
 /// The measurement itself lives in <see cref="SpeedTestProviderBase"/>, shared with every other
 /// provider, so a LibreSpeed run reports every figure an Ookla run does. What is here is what a
-/// LibreSpeed server needs that an Ookla one does not: the three endpoints inside the install
+/// LibreSpeed server needs that an Ookla one does not: the two endpoints inside the install
 /// (<c>backend/empty.php</c> for the ping and for uploads, <c>backend/garbage.php</c> for
 /// downloads) and the empty body the ping endpoint answers with.
 /// <para>
@@ -71,7 +71,7 @@ public sealed class LibreSpeedtest : SpeedTestProviderBase
     /// The base class derives it from the transfer address by default, which suits a provider that
     /// resolves an upload redirect first. A LibreSpeed upload needs no resolving - its address is a
     /// file inside the install, not a directory to join a path onto - so the server's own address
-    /// is both correct and the one the transfer is using.
+    /// is correct, and reaches the same host, scheme and port the transfer is using.
     /// </remarks>
     private protected override string LoadedLatencyProbeUrl(IServer server, string transferUrl) => LatencyProbeUrl(server.Url);
 
@@ -138,7 +138,7 @@ public sealed class LibreSpeedtest : SpeedTestProviderBase
     /// Input:  "http://nas.local/speedtest"
     /// Output: "http://nas.local/speedtest/"
     /// </example>
-    internal static string InstallDirectory(string serverUrl)
+    private static string InstallDirectory(string serverUrl)
     {
         var uri = new Uri(serverUrl, UriKind.Absolute);
         var path = uri.GetLeftPart(UriPartial.Path);

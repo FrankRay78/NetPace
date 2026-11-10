@@ -2,7 +2,6 @@ using System.Text.Json;
 using NetPace.Console;
 using NetPace.Core.Clients.LibreSpeed;
 using NetPace.Core.Clients.Ookla;
-using NetPace.Core.Settings;
 
 namespace NetPace.Console.Tests;
 
@@ -210,7 +209,9 @@ public sealed partial class NetPaceConsoleTests
         {
             // SCENARIO: LibreSpeed result in CSV and JSON
 
-            // Given a LibreSpeed run in each format NetPace reports in, default included.
+            // Given a LibreSpeed run in each format NetPace reports in. The test host cannot
+            // redraw, so the default format is captured as the simple output it falls back to
+            // there, not as the live table.
             string[] args = format is null
                 ? ["--provider", "librespeed", "--server-url", LibreSpeedUrl]
                 : ["--provider", "librespeed", "--server-url", LibreSpeedUrl, format];
@@ -290,6 +291,36 @@ public sealed partial class NetPaceConsoleTests
 
             // Then
             Assert.Equal(1, result.ExitCode);
+        }
+
+        [Fact]
+        public void CreateSpeedTestService_BuildsTheProviderThatSpeaksTheSettingsRecordsProtocol()
+        {
+            // Given the settings records a run can be configured with.
+            // When each is resolved to the service that will do the measuring.
+            // Then the provider matches the record, so a LibreSpeed run speaks to LibreSpeed: this
+            // is the only step that turns --provider into a provider, and a run that took the wrong
+            // one would ask a LibreSpeed server for latency.txt.
+            Assert.IsType<OoklaSpeedtest>(Program.CreateSpeedTestService(new OoklaSpeedtestSettings()));
+            Assert.IsType<LibreSpeedtest>(Program.CreateSpeedTestService(new LibreSpeedtestSettings()));
+        }
+
+        [Theory]
+        [InlineData("ookla", typeof(OoklaSpeedtest))]
+        [InlineData("librespeed", typeof(LibreSpeedtest))]
+        public async Task Provider_EachAcceptedValue_RunsOnTheMatchingProvider(string provider, Type expected)
+        {
+            // Given a run naming each accepted --provider value.
+            var (services, accessor) = BuildServicesWithSettingsAccessor();
+            var host = GetCommandLineTestHost(services);
+
+            // When
+            var result = await host.RunAsync(["--provider", provider, "--server-url", LibreSpeedUrl]);
+
+            // Then the settings the option built resolve to that provider, so the option reaches
+            // the measurement rather than stopping at the settings record.
+            Assert.Equal(0, result.ExitCode);
+            Assert.IsType(expected, Program.CreateSpeedTestService(accessor.Settings));
         }
     }
 }

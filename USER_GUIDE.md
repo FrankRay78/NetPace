@@ -369,7 +369,7 @@ netpace --provider librespeed --server-url http://nas.local/speedtest/
 
 A LibreSpeed run reports everything an Ookla run does, in every output format, and the options that shape an Ookla run shape it the same way: `--profile`, `--connections`, `--downloadsize`, `--uploadsize`, `--no-latency`, `--no-download`, `--no-upload`, and the repetition, file, exit-code and diagnostics options all apply. The server fields in CSV and JSON show the LibreSpeed URL tested; the sponsor and location read as they do for any server named by URL, because nothing else is known about one.
 
-There is nothing to discover: LibreSpeed publishes no server list, so `--provider librespeed` without `--server-url` is rejected before any test runs, and `netpace servers` goes on listing Ookla's nearby servers whatever `--provider` was set to.
+There is nothing to discover: LibreSpeed publishes no server list, so `--provider librespeed` without `--server-url` is rejected before any test runs. `netpace servers` lists Ookla's nearby servers and takes no `--provider`.
 
 If the address answers but not as a LibreSpeed server, the run says which URL answered wrongly and what to check. If it cannot be reached at all, the run reports that the same way an Ookla run does. Either way nothing is reported as measured, and the exit code stays `0` unless you opt in with `--fail-on` (see [Exit codes](#exit-codes)).
 
@@ -399,7 +399,7 @@ The `--profile` flag bundles per-request payload sizes, parallelism, and a total
 
 | Profile | Use it when… | Total per run (down + up, approx) |
 |---|---|---|
-| `tiny`   | IoT / 10 MB-month plans — minimal traffic, single small request | ≤ 1 MiB (~245 KB + ~50 KB) |
+| `tiny`   | IoT / 10 MB-month plans — minimal traffic, single small request | ≤ 2 MiB (~245 KB + ~50 KB) |
 | `small`  | Cellular / metered — small budget, modest parallelism | ≤ 12 MiB (~10 MiB + ~2 MiB) |
 | `medium` | Typical home broadband — the default | ≤ 125 MiB (~100 MiB + ~25 MiB) |
 | `large`  | Fibre / business — saturates gigabit links | ≤ 1.25 GiB (~1 GiB + ~256 MiB) |

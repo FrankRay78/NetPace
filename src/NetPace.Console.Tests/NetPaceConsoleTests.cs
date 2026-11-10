@@ -1,3 +1,5 @@
+using NetPace.Core.Clients.Ookla;
+
 namespace NetPace.Console.Tests;
 
 public sealed partial class NetPaceConsoleTests
@@ -47,8 +49,8 @@ public sealed partial class NetPaceConsoleTests
     /// another provider. Asserted rather than cast, so a run that quietly built another provider's
     /// record fails here instead of further down the test.
     /// </summary>
-    private static NetPace.Core.Clients.Ookla.OoklaSpeedtestSettings Ookla(SpeedTestSettingsAccessor accessor) =>
-        Assert.IsType<NetPace.Core.Clients.Ookla.OoklaSpeedtestSettings>(accessor.Settings);
+    private static OoklaSpeedtestSettings Ookla(SpeedTestSettingsAccessor accessor) =>
+        Assert.IsType<OoklaSpeedtestSettings>(accessor.Settings);
 
     /// <summary>
     /// Create the CommandLineTestHost with System.CommandLine.

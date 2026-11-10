@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Start the local LibreSpeed server and print the netpace command that tests against it.
 #
-#   ./start.sh
+#   bash start.sh
 #
 # Every start replaces whatever was running, so there is no way to end up testing against
 # yesterday's container. No link profiles here: shaping lives in the OoklaServer setup
@@ -15,7 +15,7 @@ INSTALL_URL="http://localhost:${PORT}/"
 DEADLINE=60
 
 usage() {
-  echo "Usage: ./start.sh" >&2
+  echo "Usage: bash start.sh" >&2
   echo >&2
   echo "Starts the local LibreSpeed server on port ${PORT} and waits until it is ready." >&2
   echo "See README.md for what it serves and how to test against it." >&2
@@ -46,7 +46,7 @@ interrupted() {
   echo >&2
   echo "Interrupted — removing the container." >&2
   docker compose down --remove-orphans >&2 \
-    || echo "ERROR: could not remove the container — run ./stop.sh, or 'docker rm -f librespeed'." >&2
+    || echo "ERROR: could not remove the container — run bash stop.sh, or 'docker rm -f librespeed'." >&2
   exit 130
 }
 trap interrupted INT TERM
@@ -61,7 +61,7 @@ failed_start() {
   echo >&2
   echo "Removing the container." >&2
   docker compose down --remove-orphans >&2 \
-    || echo "ERROR: could not remove the container — run ./stop.sh, or 'docker rm -f librespeed'." >&2
+    || echo "ERROR: could not remove the container — run bash stop.sh, or 'docker rm -f librespeed'." >&2
   exit 1
 }
 
