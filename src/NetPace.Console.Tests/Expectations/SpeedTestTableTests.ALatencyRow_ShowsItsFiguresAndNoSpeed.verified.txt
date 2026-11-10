@@ -1,0 +1,2 @@
+﻿    Test     Done  Speed  Latency  Jitter
+✓   Pinging  100%            3 ms    1 ms

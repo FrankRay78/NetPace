@@ -78,6 +78,11 @@ public sealed class DefaultConsoleWriter(ILiveDisplayRefresh liveDisplayRefresh,
                     }
                 }
 
+                // Draw the rows before anything is measured: the display shows nothing until it is
+                // refreshed, and the first latency report arrives only once a probe has answered,
+                // so on a slow line the screen would otherwise name the server and then sit blank.
+                Redraw();
+
                 try
                 {
                     latency = await ServerSelector.MeasureLatencyAsync(speedTestClient, chosen, settings, recorder, LatencyReports(pinging, Redraw), cancellationToken);
@@ -100,11 +105,13 @@ public sealed class DefaultConsoleWriter(ILiveDisplayRefresh liveDisplayRefresh,
                         Redraw();
                     }
                 }
-                catch (OperationCanceledException)
+                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
                 {
                     // Cancellation stopped the measurements rather than failing them, so no row is
                     // marked failed: the table keeps whatever it had measured. The final frame is
-                    // drawn below for the reason the next handler gives.
+                    // drawn below for the reason the next handler gives. Filtered on the run's own
+                    // token, because a probe that timed out also throws a cancellation exception,
+                    // and that is a failure the next handler must mark.
                     context.Refresh();
                     throw;
                 }
@@ -236,11 +243,11 @@ public sealed class DefaultConsoleWriter(ILiveDisplayRefresh liveDisplayRefresh,
         0 => null,
         1 => destinations[0],
 
-        // No test reaches this arm, and none can today: it needs two destinations of the same
-        // kind, and the command builds at most one terminal and one --file target. It stays
-        // because the composite's contract allows more, and a silently dropped destination would
-        // be worse than an untested one. The wrapper is never disposed here: the composite the
-        // command built owns these destinations and closes them itself.
+        // Two destinations of the same kind: the path --file takes away from a terminal (under
+        // cron, through a pipe, or with a stream redirected), where the terminal and the file
+        // both cannot redraw and both get the simple lines. The File tests run this way. The
+        // wrapper is never disposed here: the composite the command built owns these
+        // destinations and closes them itself.
         _ => new CompositeAnsiConsole(destinations[0], destinations),
     };
 

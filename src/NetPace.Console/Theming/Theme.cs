@@ -65,9 +65,10 @@ public sealed record Theme
     public required Style Hint { get; init; }
 
     /// <summary>
-    /// The word that marks a message as a failure. Each theme may colour this differently, and
-    /// <see cref="Plain"/> not at all, because the word itself is what makes a failure
-    /// recognisable — never the colour alone.
+    /// The word that marks a message as a failure, and in the live table the mark against a
+    /// measurement that produced nothing and the count of its failed requests. Each theme may
+    /// colour this differently, and <see cref="Plain"/> not at all, because the word or mark itself
+    /// is what makes a failure recognisable, never the colour alone.
     /// </summary>
     public required Style Error { get; init; }
 
@@ -80,7 +81,10 @@ public sealed record Theme
     /// <summary>A column heading of the live table — Test, Done, Speed, Latency, Jitter, Failed.</summary>
     public required Style ColumnHeading { get; init; }
 
-    /// <summary>A measured figure in the live table, or the timestamp above it.</summary>
+    /// <summary>
+    /// A measured figure in the live table, the name of the test on its row (Pinging,
+    /// Downloading, Uploading), or the timestamp above the table.
+    /// </summary>
     public required Style Figure { get; init; }
 
     /// <summary>The lines a table is drawn with.</summary>

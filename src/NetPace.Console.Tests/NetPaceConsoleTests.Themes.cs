@@ -92,8 +92,8 @@ public sealed partial class NetPaceConsoleTests
         {
             // SCENARIO: Unset theme keeps today's look
 
-            // Given a run that ends with one row still measuring, so the table carries every
-            // outcome a row can be in at once
+            // Given a run that ends with one row still measuring, so the table carries a clean, a
+            // partially failed and a running row at once
             using var cancellation = new CancellationTokenSource();
             var host = SpeedTestHost(PartWayTableServices(FromEnvironment(), cancellation));
 
@@ -516,8 +516,8 @@ public sealed partial class NetPaceConsoleTests
 
         /// <summary>
         /// A service collection whose run ends with the upload still measuring, having measured a
-        /// partial failure on the way, so the last frame of the table carries every row outcome
-        /// there is: one clean, one partially failed, and one still running.
+        /// partial failure on the way, so the last frame of the table carries one clean row, one
+        /// partially failed and one still running. A row that failed outright is not among them.
         /// </summary>
         /// <remarks>
         /// A completed run reaches none of the slots that only a row in flight is drawn with - the

@@ -172,7 +172,7 @@ The value is everything after the first `=`, so it may contain `=` itself and ma
 
 NetPace does not police the keys. A key spelled like a built-in field, or one you give twice, is recorded as given, and each format resolves that in its own shape: CSV writes a second column of that name, while JSON — which cannot hold one key twice — keeps the last value given. A repeated key therefore reads back differently from the two formats, so it is worth avoiding.
 
-Neither option reaches the default or simple output. Both describe the run for a log rather than the measurement, and the default output already names the server; passing either alongside those formats is accepted without an error and changes nothing in what you see. A malformed `--custom-field` is still refused in every mode.
+Neither option reaches the default or simple output. Both describe the run for a log rather than the measurement, and the default output at a terminal already names the server; passing either alongside those formats is accepted without an error and changes nothing in what you see. A malformed `--custom-field` is still refused in every mode.
 
 #### When the columns change, start a new log
 

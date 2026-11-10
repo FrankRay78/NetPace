@@ -1,0 +1,2 @@
+﻿    Test         Done   Speed  Latency  Jitter   Failed
+!   Downloading  100%  8 Mbps    60 ms    4 ms  1 of 10

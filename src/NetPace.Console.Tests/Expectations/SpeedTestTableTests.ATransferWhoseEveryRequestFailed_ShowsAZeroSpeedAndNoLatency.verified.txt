@@ -1,0 +1,2 @@
+﻿    Test       Done  Speed  Latency  Jitter    Failed
+✗   Uploading  100%  0 bps                   30 of 30

@@ -107,17 +107,22 @@ public sealed partial class NetPaceConsoleTests
                 GetUploadSpeedAsyncFunc = (_, _, _) => Task.FromResult(Transfer(32, 0, 38)),
             };
 
+            // And a display that redraws as it goes, as a real terminal's does, so the screen holds
+            // whatever had been drawn by then rather than only the final frame.
             var services = Services(service);
             services.AddSingleton<IAnsiConsole>(console);
+            services.AddSingleton<ILiveDisplayRefresh, LiveDisplayRefresh>();
 
             // When
             var result = await TerminalHost(services).RunAsync([]);
 
-            // Then the sponsor and the URL were already on screen before the first probe went out,
-            // so a slow line names the server it is testing rather than showing a bare spinner.
+            // Then the sponsor, the URL and the running Pinging row were already on screen before
+            // the first probe went out, so a slow line names the server it is testing and shows
+            // the measurement under way rather than a blank screen.
             Assert.Equal(0, result.ExitCode);
             Assert.Contains("Hey! Broadband", screenWhenAsked);
             Assert.Contains(ScriptedSpeedTester.Url, screenWhenAsked);
+            Assert.Contains("Pinging", screenWhenAsked);
         }
 
         [Fact]
@@ -287,8 +292,6 @@ public sealed partial class NetPaceConsoleTests
         [Fact]
         public async Task The_Timestamp_Has_Its_Own_Line_Above_The_Server()
         {
-            // SCENARIO: The timestamp has its own line
-
             // Given a terminal and --timestamp.
             var host = TerminalHost(Services(new SpeedTestStub()));
 
@@ -315,9 +318,6 @@ public sealed partial class NetPaceConsoleTests
             // gets the stable format rather than a table drawn with no cursor to move.
             Assert.Equal(0, defaultRun.ExitCode);
             Assert.Equal(simpleRun.Output, defaultRun.Output);
-
-            // And nothing in it is a control code.
-            Assert.DoesNotContain('\u001b', defaultRun.Output);
         }
 
         [Fact]
@@ -377,6 +377,33 @@ public sealed partial class NetPaceConsoleTests
             // Then the server and URL are still on screen, the Pinging row shows the failure, and
             // the run reports the error.
             Assert.Equal(0, result.ExitCode);
+            await Verify(result.Output);
+        }
+
+        [Fact]
+        public async Task A_Probe_That_Times_Out_Leaves_No_Row_Looking_Like_It_Is_Still_Running()
+        {
+            // Given a terminal and an idle measurement whose probe timed out, which surfaces as a
+            // cancellation exception although nobody cancelled the run.
+            var service = new SpeedTestMock
+            {
+                GetServersAsyncFunc = _ => Task.FromResult<IServer[]>([new Server { Location = "Frankfurt", Sponsor = "Deutsche Telekom", Url = ScriptedSpeedTester.Url }]),
+                GetFastestServerByLatencyAsyncFunc = (servers, _, _) => Task.FromResult(new LatencyTestResult
+                {
+                    Server = servers[0],
+                    LatencyMilliseconds = 3,
+                    MinimumLatencyMilliseconds = null,
+                    MaximumLatencyMilliseconds = null,
+                    JitterMilliseconds = 1
+                }),
+                GetServerLatencyAsyncFunc = (_, _, _) => throw new TaskCanceledException("The probe timed out", new TimeoutException()),
+            };
+
+            // When
+            var result = await TerminalHost(Services(service)).RunAsync([]);
+
+            // Then every row is marked as failed rather than left spinning, as for any other
+            // failure: a timeout is the server not answering, not the user stopping the run.
             await Verify(result.Output);
         }
 

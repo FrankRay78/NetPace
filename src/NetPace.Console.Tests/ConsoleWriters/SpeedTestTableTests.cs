@@ -1,4 +1,3 @@
-using System.Text.RegularExpressions;
 using NetPace.Console.ConsoleWriters;
 using NetPace.Console.Theming;
 using NetPace.Core;
@@ -102,8 +101,14 @@ public sealed class SpeedTestTableTests
     private static string Mark(string rendered) =>
         rendered.Split('\n', StringSplitOptions.RemoveEmptyEntries)[1].TrimStart().Split(' ')[0];
 
+    /// <summary>
+    /// Several frames of the same table, one after another with a blank line between, so a
+    /// snapshot shows how the figures moved and in which column each one sat.
+    /// </summary>
+    private static string Frames(params string[] frames) => string.Join("\n", frames);
+
     [Fact]
-    public void AReportedFigure_IsShownBeforeTheMeasurementEnds()
+    public async Task AReportedFigure_IsShownBeforeTheMeasurementEnds()
     {
         // SCENARIO: Figures are live while a test runs
 
@@ -121,12 +126,7 @@ public sealed class SpeedTestTableTests
             JitterMilliseconds = null
         });
 
-        // Then the row already shows the running latency, and the jitter cell stays blank until a
-        // second probe has answered.
         var running = Render(table);
-        Assert.Contains("30%", running);
-        Assert.Contains("38 ms", running);
-        Assert.Single(Regex.Matches(running, "ms"));
 
         // And when a later report carries both.
         row.Report(new SpeedTestProgress
@@ -138,16 +138,16 @@ public sealed class SpeedTestTableTests
             JitterMilliseconds = 3
         });
 
-        // Then the row shows the newer figures, so what the user watches moves with the
-        // measurement.
+        // Then the first frame already shows the running latency under Latency, with the Jitter
+        // cell blank until a second probe has answered, and the later frame shows the newer
+        // figures, each under its own heading, so what the user watches moves with the
+        // measurement. The snapshot ties every figure to its column.
         var later = Render(table);
-        Assert.Contains("42 ms", later);
-        Assert.Contains("3 ms", later);
-        Assert.DoesNotContain("38 ms", later);
+        await Verify(Frames(running, later));
     }
 
     [Fact]
-    public void AReportedFigure_EndsOnTheFigureTheResultCarries()
+    public async Task AReportedFigure_EndsOnTheFigureTheResultCarries()
     {
         // Given a transfer row that reported a running latency.
         var table = Table();
@@ -157,12 +157,8 @@ public sealed class SpeedTestTableTests
         // When the measurement finishes with figures of its own.
         row.Settle(Transfer(succeeded: 10, failed: 0, latency: Latency(60, 4)));
 
-        // Then the row ends on the result's figures, not on the last one it was watching.
-        var settled = Render(table);
-        Assert.Contains("60 ms", settled);
-        Assert.Contains("4 ms", settled);
-        Assert.DoesNotContain("42 ms", settled);
-        Assert.Contains("100%", settled);
+        // Then the row ends on the result's figures at 100%, not on the last one it was watching.
+        await Verify(Render(table));
     }
 
     [Fact]
@@ -184,7 +180,7 @@ public sealed class SpeedTestTableTests
     }
 
     [Fact]
-    public void ATransferWithSomeFailedRequests_KeepsItsFiguresAndCountsTheFailures()
+    public async Task ATransferWithSomeFailedRequests_KeepsItsFiguresAndCountsTheFailures()
     {
         // SCENARIO: A partial failure keeps its figures
 
@@ -196,17 +192,12 @@ public sealed class SpeedTestTableTests
         row.Settle(Transfer(succeeded: 9, failed: 1, latency: Latency(60, 4)));
 
         // Then its figures stand, the count says how many failed, and the symbol marks it as a
-        // partial failure rather than a clean run.
-        var settled = Render(table);
-        Assert.Contains("8 Mbps", settled);
-        Assert.Contains("60 ms", settled);
-        Assert.Contains("4 ms", settled);
-        Assert.Contains("1 of 10", settled);
-        Assert.Contains("!", settled);
+        // partial failure rather than a clean run, each figure under its own heading.
+        await Verify(Render(table));
     }
 
     [Fact]
-    public void ATransferWhoseEveryRequestFailed_ShowsAZeroSpeedAndNoLatency()
+    public async Task ATransferWhoseEveryRequestFailed_ShowsAZeroSpeedAndNoLatency()
     {
         // SCENARIO: A total failure shows no latency
 
@@ -220,9 +211,8 @@ public sealed class SpeedTestTableTests
         // Then the speed reads zero, the latency and jitter cells are blank, and the count says
         // every request failed.
         var settled = Render(table);
-        Assert.Contains("0 bps", settled);
         Assert.DoesNotContain("ms", settled);
-        Assert.Contains("30 of 30", settled);
+        await Verify(settled);
     }
 
     [Fact]
@@ -262,23 +252,24 @@ public sealed class SpeedTestTableTests
     }
 
     [Fact]
-    public void AMeasurementThatFailed_MarksItsRowAndKeepsTheOthers()
+    public async Task AMeasurementThatFailed_MarksItsRowAndKeepsTheOthers()
     {
-        // Given a latency row that was running when its measurement threw.
+        // Given a settled latency row, and a download that had reported a figure when it threw.
         var table = Table();
-        var pinging = table.AddRow("Pinging");
+        table.AddRow("Pinging").Settle(Latency(3, 1));
+        var downloading = table.AddRow("Downloading");
+        downloading.Report(new SpeedTestProgress { PercentageComplete = 40, BytesProcessed = 400_000, ElapsedMilliseconds = 1000, LatencyMilliseconds = 38, JitterMilliseconds = 2 });
 
-        // When it is marked as failed.
-        pinging.Fail();
+        // When the download is marked as failed.
+        downloading.Fail();
 
-        // Then the row says so rather than disappearing.
-        var rendered = Render(table);
-        Assert.Contains("Pinging", rendered);
-        Assert.Contains("✗", rendered);
+        // Then its row says so rather than disappearing, keeps the figures it had already
+        // reported, and the settled row beside it is left as it was.
+        await Verify(Render(table));
     }
 
     [Fact]
-    public void ALatencyRow_ShowsItsFiguresAndNoSpeed()
+    public async Task ALatencyRow_ShowsItsFiguresAndNoSpeed()
     {
         // Given a latency row that has measured.
         var table = Table();
@@ -289,13 +280,12 @@ public sealed class SpeedTestTableTests
 
         // Then the figures are on the row and nothing stands in for a speed it never measured.
         var rendered = Render(table);
-        Assert.Contains("3 ms", rendered);
-        Assert.Contains("1 ms", rendered);
         Assert.DoesNotContain("bps", rendered);
+        await Verify(rendered);
     }
 
     [Fact]
-    public void ALatencyRow_ShowsTheRunningFiguresItIsReported()
+    public async Task ALatencyRow_ShowsTheRunningFiguresItIsReported()
     {
         // Given a latency row under way.
         var table = Table();
@@ -304,10 +294,8 @@ public sealed class SpeedTestTableTests
         // When a probe answers.
         pinging.Report(new LatencyTestProgress { PercentageComplete = 25, LatencyMilliseconds = 3, JitterMilliseconds = null });
 
-        // Then the figure is already on the row, with the jitter cell still blank.
-        var rendered = Render(table);
-        Assert.Contains("3 ms", rendered);
-        Assert.Contains("25%", rendered);
+        // Then the figure is already on the row under Latency, with the Jitter cell still blank.
+        await Verify(Render(table));
     }
 
     [Fact]
