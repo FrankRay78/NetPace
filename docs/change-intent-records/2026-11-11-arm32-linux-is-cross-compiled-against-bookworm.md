@@ -11,6 +11,6 @@
 - A Debian 12 armhf sysroot. Rejected: the Ubuntu runner's own armhf ports packages, which link against a far newer glibc, leaving a binary that will not start on a Bookworm board at all.
 - `docker export` of an emulated `debian:12` container. Rejected: `debootstrap` and dotnet/runtime's `build-rootfs.sh`, each adding a tool or a repository to assemble the filesystem the official image already is.
 - `lld`. Rejected: the runner's own `ld.bfd`, which is configured for x86 alone and refuses the ARM emulation mode.
-- Native-only, with no `standalone` or `net10` archive. Rejected: all three variants, which would put a 32-bit ARM row in the size contract with no baseline to measure against, for downloads that need a runtime these boards would rather not install.
+- Native-only, with no `standalone` or `net10` archive. Rejected: all three variants, two more large downloads per release for a minority architecture, one of them needing a runtime these boards would rather not install. The accepted cost is that nothing remains to measure the archive against, so the size contract gives way to a presence check.
 
 **Date:** 2026-11-11

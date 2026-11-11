@@ -50,7 +50,7 @@ The AOT jobs guard the runner they landed on: `RUNNER_OS` must match the RID's o
 - `binutils-arm-linux-gnueabihf`, because `StripSymbols` defaults to true on Linux and the binary is stripped with the target's `objcopy`, named by `-p:ObjCopyName=arm-linux-gnueabihf-objcopy`.
 - A **Debian 12 (Bookworm) armhf sysroot**, named by `-p:SysRoot=`. It is assembled in the job by running `apt-get install libc6-dev libgcc-12-dev zlib1g-dev` inside a `debian:12` armhf container under QEMU, then `docker export`ing the result. The step asserts that the sysroot holds `libc.so` and `crtbeginS.o` before the publish, so a drifting package set fails where the cause is still visible rather than pages later in the linker.
 
-**The sysroot sets the oldest system the binary starts on**, which is why it is Debian 12 rather than the armhf packages on the Ubuntu runner's own ports: Bookworm carries glibc 2.36, and a binary linked against Ubuntu's much newer glibc would not start on a Bookworm board at all. Raspberry Pi OS Bookworm is therefore NetPace's floor for these devices, and `INSTALLATION.md` states it. Moving the floor means changing the container tag in the sysroot step, the `libgcc-N-dev` package to the one that distribution ships, and the `12` in the `crtbeginS.o` probe path.
+**The sysroot sets the oldest system the binary starts on**, which is why it is Debian 12 rather than the armhf packages on the Ubuntu runner's own ports: Bookworm carries glibc 2.36, and a binary linked against Ubuntu's much newer glibc would not start on a Bookworm board at all. Raspberry Pi OS Bookworm is therefore NetPace's floor for these devices, and `INSTALLATION.md` states it. Moving the floor means changing the container tag in both the sysroot step and the smoke test, which must stay the same distribution, the `libgcc-N-dev` package to the one that distribution ships, the `12` in the `crtbeginS.o` probe path, and the floor `INSTALLATION.md` states.
 
 ARMv6 boards (the original Pi Zero and Pi 1) are out of reach because .NET does not support ARMv6, and musl-based 32-bit systems because the release has no musl target on any architecture.
 
@@ -71,7 +71,7 @@ Each AOT matrix entry runs two local-only commands against the freshly extracted
 
 The AOT binary is named `netpace` (same as all other variants). On Windows the binary is `netpace.exe`; on Linux/macOS it is `netpace`.
 
-`linux-arm` is the one emulated exception to "on its native runner". Its two commands run inside a stock `debian:12` armhf container under QEMU, registered earlier in the same job. The container is deliberately stock and deliberately Bookworm: running there asserts both that the binary really is 32-bit ARM, and that a board with nothing but a base Debian 12 install carries every library it needs to start. Both commands MUST still exit `0`, and the container's exit code is the step's.
+`linux-arm` is the one emulated exception to "on its native runner". Its two commands run inside a stock `debian:12` armhf container under QEMU, registered earlier in the same job. The container is deliberately stock and deliberately Bookworm: running there asserts that a board with nothing but a base Debian 12 install carries every library it needs to start. Both commands MUST still exit `0`, and the container's exit code is the step's. That the binary is 32-bit ARM is asserted separately, from its ELF header before the container runs, because passing inside an armhf rootfs is weaker evidence than it looks: a host-targeted binary fails there only for want of its interpreter, which a statically linked one would not need. Emulation is not hardware either, since QEMU accepts a wider instruction set than a real ARMv7 board, so a board-only failure remains possible.
 
 ## macOS code signing
 
@@ -103,7 +103,7 @@ The `attach-to-release` job validates two relative size invariants before attach
 
 Either invariant failing fails the entire release job; no archives are attached.
 
-`linux-arm` is native-only, so there is no standalone archive to measure it against and it sits outside both invariants. It is not thereby unchecked: a step of its own asserts the `linux-arm` AOT archive is present, and fails the release if it is not, so a build that quietly produced nothing cannot publish a release missing the 32-bit ARM download. A separate step rather than the loop's own missing-artifact branch, because what is being checked is different: presence alone, with no size to compare.
+`linux-arm` is native-only, so there is no standalone archive to measure it against and it sits outside both invariants. It is not thereby unchecked: a step of its own asserts the `linux-arm` AOT archive is present, and fails the release if it is not, so a build that quietly produced nothing cannot publish a release missing the 32-bit ARM download. A separate step rather than the loop's own missing-artifact branch, because what is being checked is different: the archive is named exactly and held to a size floor, there being no standalone archive to compare it against.
 
 ## winget package
 

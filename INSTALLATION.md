@@ -43,7 +43,7 @@ dotnet tool install -g netpace
 
 ## Any platform: release binaries
 
-Every [release](https://github.com/FrankRay78/NetPace/releases) carries archives for Windows, Linux and macOS, on x64 and ARM64: download, unzip and run. Each comes in three variants:
+Every [release](https://github.com/FrankRay78/NetPace/releases) carries archives for Windows, Linux and macOS, on x64 and ARM64: download, unzip and run. Each comes in three variants, and [32-bit ARM Linux](#32-bit-arm-linux-raspberry-pi-os-and-other-armhf-boards) has a single `aot` archive of its own:
 
 | Variant | What it is |
 |---|---|
@@ -62,7 +62,7 @@ tar -xzf netpace-{version}-linux-arm-aot.tar.gz
 ./netpace
 ```
 
-Run `uname -m` if you are unsure which archive you need. `armv7l` or `armv6l` means a 32-bit system, so this is the archive; `aarch64` means a 64-bit one, so take `linux-arm64` instead. A Raspberry Pi 2, 3 or 4 can report either, depending on the image installed, and a board already running a 64-bit image should take `linux-arm64` for the better performance.
+Run `dpkg --print-architecture` if you are unsure which archive you need. `armhf` means a 32-bit system, so this is the archive, unless the board is one of the ARMv6 models named below; `arm64` means a 64-bit one, so take `linux-arm64` instead. Use that command rather than `uname -m`, which reports the kernel and not the system running on top of it: 32-bit Raspberry Pi OS boots a 64-bit kernel on a Pi 4 or newer, where `uname -m` reports `aarch64` even though only this archive will run. A board genuinely running a 64-bit image should take `linux-arm64` for the better performance.
 
 Two limits to know about:
 

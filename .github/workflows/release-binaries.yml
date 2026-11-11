@@ -184,13 +184,15 @@ jobs:
       - name: Publish Console App
         run: |
           set -euo pipefail
-          # Only the cross-compiled target adds anything here, and the sysroot step is the only thing that sets
-          # NETPACE_SYSROOT, so every other matrix entry publishes exactly the command it did before. Held as a
-          # word-split string rather than an array because this script also runs under the macOS runners' bash
-          # 3.2, where expanding an empty array under `set -u` is an error; the path is one this workflow chose
-          # and contains no spaces.
-          cross_args=
-          if [ -n "${NETPACE_SYSROOT:-}" ]; then
+          # Only the cross-compiled target adds anything here, so every other matrix entry publishes exactly the
+          # command it did before. The RID is the condition and the sysroot step's variable is an assertion, not
+          # the other way about: keyed on the variable alone, a sysroot step that stopped running would silently
+          # publish a host-targeted build instead of failing. Held as a word-split string rather than an array
+          # because this script also runs under the macOS runners' bash 3.2, where expanding an empty array
+          # under `set -u` is an error; the path is one this workflow chose and contains no spaces.
+          cross_args=""
+          if [ "${{ matrix.runtime }}" = "linux-arm" ]; then
+            : "${NETPACE_SYSROOT:?the ARM32 sysroot step did not run or did not export NETPACE_SYSROOT}"
             cross_args="-p:SysRoot=$NETPACE_SYSROOT -p:LinkerFlavor=lld -p:ObjCopyName=arm-linux-gnueabihf-objcopy"
           fi
           if [ "${{ matrix.deployment }}" = "aot" ]; then
@@ -287,10 +289,18 @@ jobs:
           if [[ "${{ matrix.runtime }}" == "linux-arm" ]]; then
             # The one target checked under emulation rather than on its own hardware, because no hosted ARM32
             # runner exists. The container is stock debian:12 armhf — the oldest system NetPace supports on
-            # these boards, and what the binary was linked against — so this asserts both that the binary
-            # really is ARM32 and that a Bookworm board carries every library it needs to start.
+            # these boards, and what the binary was linked against — so running there asserts that a Bookworm
+            # board carries every library it needs to start. The architecture is read off the ELF header first
+            # rather than inferred from the container: a host-targeted binary fails in there only because the
+            # armhf rootfs lacks its interpreter, which stops being true of a statically linked one.
             archive="netpace-${{ steps.get_version.outputs.version }}-linux-arm-aot.tar.gz"
             tar -xzf "$archive" -C "$smoke_dir"
+            header="$(readelf -h "$smoke_dir/netpace")"
+            if ! { echo "$header" | grep -q "Class:.*ELF32" && echo "$header" | grep -q "Machine:.*ARM"; }; then
+              echo "FAIL: $archive is not a 32-bit ARM binary."
+              echo "$header"
+              exit 1
+            fi
             docker run --rm --platform linux/arm/v7 -v "$smoke_dir:/smoke:ro" -w /smoke debian:12 \
               sh -c './netpace --version && ./netpace --help'
           elif [[ "${{ matrix.runtime }}" == win-* ]]; then
@@ -367,12 +377,21 @@ jobs:
       - name: Verify the native-only ARM32 archive is present
         run: |
           set -euo pipefail
-          archive=$(find "./artifacts/netpace-linux-arm-aot" -type f 2>/dev/null | head -1 || true)
-          if [ -z "$archive" ]; then
+          # Named exactly rather than globbed: this is the only size or presence gate the RID has, so "some file
+          # arrived" is weaker than the contract needs. A floor rather than a comparison, there being nothing to
+          # compare against; it only has to reject the empty and truncated archives a glob would accept.
+          archive="./artifacts/netpace-linux-arm-aot/netpace-${{ steps.get_version.outputs.version }}-linux-arm-aot.tar.gz"
+          if [ ! -f "$archive" ]; then
             echo "FAIL: aot artifact missing for linux-arm — the release would publish without the 32-bit ARM download."
+            echo "Expected: $archive"
             exit 1
           fi
-          echo "linux-arm aot: $(stat -c%s "$archive") bytes (native-only RID, no standalone archive to compare against)"
+          size=$(stat -c%s "$archive")
+          if [ "$size" -lt 500000 ]; then
+            echo "FAIL: linux-arm aot archive is only $size bytes — truncated or empty."
+            exit 1
+          fi
+          echo "linux-arm aot: $size bytes (native-only RID, no standalone archive to compare against)"
 
       - name: Attach binaries to existing release
         uses: softprops/action-gh-release@v1
