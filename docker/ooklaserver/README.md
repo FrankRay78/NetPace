@@ -16,6 +16,8 @@ OoklaServer is Ookla's official speed-test daemon. It exposes the HTTP-Legacy en
 | `stop.sh`            | Stop and remove the container.                      |
 | `link-profiles.sh`   | The five slow-link profiles, as `tc netem` arguments. Sourced by `start.sh` and `shape.sh`. |
 | `shape.sh`           | Container entry point: applies the requested profile, then starts OoklaServer. |
+| `lab-properties.sh`  | Run when the image is built: turns off the OoklaServer settings that would make the server reach out to the internet on its own. |
+| `lab-properties.tests.sh` | Test matrix for `lab-properties.sh`.           |
 
 ---
 
@@ -109,6 +111,14 @@ netpace --server-url http://localhost:18080/speedtest/upload.php --profile tiny
 ```
 
 `--profile tiny` is worth the habit here. On the narrower profiles NetPace's default transfer sizes take a very long time — at 9.6 kbit, a single default-sized request is a wait measured in hours.
+
+### The server makes no traffic of its own
+
+The server itself adds no traffic to the shaped link. OoklaServer would otherwise reach out to the internet while it starts: it attempts a Let's Encrypt certificate about 17 seconds in, and it checks for updates to itself. On a full-speed link neither is noticeable. At 9.6 kbit a single TLS handshake costs seconds, and that traffic arrives after the container is healthy and after `start.sh` has said the lab is ready, so a run started at that moment measured the server's start-up rather than the link. On `radio` its first latency probe used up NetPace's 10 second limit every time.
+
+The image turns both settings off, in `lab-properties.sh` when the image is built, so nothing in the lab reaches the internet once it is running. The server log says `Server updates were disabled.` and carries no certificate lines. If a later OoklaServer release drops either setting's name from the properties file, the image build fails rather than quietly restoring the traffic.
+
+What still crosses the link is the lab's own readiness poll: `start.sh` confirms the published port by fetching `latency.txt` over it, and on the narrowest profiles those bytes are still draining when it prints the ready message. On `radio` that costs the first latency probe a few seconds: about 6 s, against NetPace's 10 second limit. **So the readiness poll accounts for a few seconds of the first probe, not for a latency stage that fails outright.** Look at the link and at NetPace's limits instead.
 
 ### Confirmed host platforms
 
