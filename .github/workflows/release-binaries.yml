@@ -28,6 +28,16 @@ jobs:
             publish_aot: true
             publish_single_file: false
             invariant_globalization: true
+          # 32-bit ARM Linux is the one deliberately cross-compiled AOT target, and native-only: there is no
+          # hosted ARM32 runner, and the hosted ARM64 runners do not execute ARM32 code. It is built on x64
+          # against a Debian 12 (Bookworm) armhf sysroot, the oldest system NetPace supports on these boards,
+          # and smoke-tested under emulation. See docs/RELEASING.md, Runner per RID and Smoke-test contract.
+          - runtime: linux-arm
+            deployment: aot
+            runs_on: ubuntu-latest
+            publish_aot: true
+            publish_single_file: false
+            invariant_globalization: true
           - runtime: win-x64
             deployment: aot
             runs_on: windows-latest
@@ -83,18 +93,60 @@ jobs:
             echo "A typo in matrix.include[*].runs_on would silently fall back to ubuntu-latest — guard catches that."
             exit 1
           fi
-          # The two macOS RIDs share a runner OS, so the check above cannot tell their runners apart. Swapping
-          # them would build osx-x64 on Apple silicon and smoke-test it through Rosetta, or fail obscurely in the
-          # linker — the architecture is checked directly instead.
+          # RIDs sharing a runner OS cannot be told apart by the check above, so their architecture is checked
+          # directly. Swapping the two macOS runners would build osx-x64 on Apple silicon and smoke-test it
+          # through Rosetta, or fail obscurely in the linker. linux-arm is the one cross-compiled target and the
+          # cross-toolchain step below assumes an x64 host, so it is pinned to one too; landing it on the ARM64
+          # runner would fail later and less clearly.
           case "${{ matrix.runtime }}" in
             osx-x64)   expected_arch="x86_64" ;;
             osx-arm64) expected_arch="arm64" ;;
+            linux-arm) expected_arch="x86_64" ;;
             *)         expected_arch="" ;;
           esac
           if [ -n "$expected_arch" ] && [ "$(uname -m)" != "$expected_arch" ]; then
             echo "FAIL: AOT runtime ${{ matrix.runtime }} requires a $expected_arch runner, got $(uname -m)."
             exit 1
           fi
+
+      # The sysroot step below and the smoke test both execute ARM32 code on an x64 host, so QEMU is
+      # registered once here for the whole job rather than twice where it is used.
+      - name: Register QEMU for ARM32 (linux-arm only)
+        if: matrix.runtime == 'linux-arm'
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: arm
+
+      # linux-arm is the one AOT target with no runner of its own, so it is cross-compiled, which needs three
+      # things beyond the SDK. clang and lld, because the runner's own ld.bfd is configured for x86 alone and
+      # refuses the ARM emulation mode the toolchain asks for; lld is multi-target and accepts it. The ARM32
+      # binutils, because the AOT targets strip the finished binary with objcopy, and that has to be the
+      # target's objcopy. And a sysroot holding the target's libc, libgcc and crt objects, which fixes the
+      # oldest system the binary will start on: Debian 12 (Bookworm) carries glibc 2.36, so the sysroot is
+      # Debian 12 armhf, taken from the official image with its development packages added under emulation.
+      # The armhf packages on the Ubuntu runner's own ports would link against a far newer glibc and the
+      # binary would not start on a Bookworm board at all. docs/RELEASING.md, Runner per RID.
+      - name: Set up ARM32 cross-compilation toolchain and Debian 12 armhf sysroot (linux-arm only)
+        if: matrix.runtime == 'linux-arm'
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends clang lld binutils-arm-linux-gnueabihf
+          sysroot="$RUNNER_TEMP/armhf-sysroot"
+          mkdir -p "$sysroot"
+          docker run --platform linux/arm/v7 --name netpace-armhf-sysroot debian:12 \
+            sh -c 'apt-get update -qq && apt-get install -y --no-install-recommends libc6-dev libgcc-12-dev zlib1g-dev'
+          docker export netpace-armhf-sysroot | tar -x -C "$sysroot"
+          docker rm netpace-armhf-sysroot
+          # An incomplete sysroot would otherwise surface pages later as an unreadable linker error, so the
+          # pieces the link needs are asserted here, where the cause is still in view.
+          for probe in usr/lib/arm-linux-gnueabihf/libc.so usr/lib/gcc/arm-linux-gnueabihf/12/crtbeginS.o; do
+            if [ ! -e "$sysroot/$probe" ]; then
+              echo "FAIL: Debian 12 armhf sysroot is missing $probe — the package set has drifted."
+              exit 1
+            fi
+          done
+          echo "NETPACE_SYSROOT=$sysroot" >> "$GITHUB_ENV"
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
@@ -132,6 +184,17 @@ jobs:
       - name: Publish Console App
         run: |
           set -euo pipefail
+          # Only the cross-compiled target adds anything here, so every other matrix entry publishes exactly the
+          # command it did before. The RID is the condition and the sysroot step's variable is an assertion, not
+          # the other way about: keyed on the variable alone, a sysroot step that stopped running would silently
+          # publish a host-targeted build instead of failing. Held as a word-split string rather than an array
+          # because this script also runs under the macOS runners' bash 3.2, where expanding an empty array
+          # under `set -u` is an error; the path is one this workflow chose and contains no spaces.
+          cross_args=""
+          if [ "${{ matrix.runtime }}" = "linux-arm" ]; then
+            : "${NETPACE_SYSROOT:?the ARM32 sysroot step did not run or did not export NETPACE_SYSROOT}"
+            cross_args="-p:SysRoot=$NETPACE_SYSROOT -p:LinkerFlavor=lld -p:ObjCopyName=arm-linux-gnueabihf-objcopy"
+          fi
           if [ "${{ matrix.deployment }}" = "aot" ]; then
             dotnet publish src/NetPace.Console/NetPace.Console.csproj \
               --configuration Release \
@@ -144,7 +207,8 @@ jobs:
               -p:InformationalVersion=${{ steps.get_version.outputs.version }} \
               -p:SelfContained=${{ steps.deployment_flags.outputs.self_contained }} \
               -p:PublishAot=true \
-              -p:InvariantGlobalization=true
+              -p:InvariantGlobalization=true \
+              $cross_args
           else
             dotnet publish src/NetPace.Console/NetPace.Console.csproj \
               --configuration Release \
@@ -222,7 +286,24 @@ jobs:
         run: |
           set -euo pipefail
           smoke_dir="$(mktemp -d)"
-          if [[ "${{ matrix.runtime }}" == win-* ]]; then
+          if [[ "${{ matrix.runtime }}" == "linux-arm" ]]; then
+            # The one target checked under emulation rather than on its own hardware, because no hosted ARM32
+            # runner exists. The container is stock debian:12 armhf — the oldest system NetPace supports on
+            # these boards, and what the binary was linked against — so running there asserts that a Bookworm
+            # board carries every library it needs to start. The architecture is read off the ELF header first
+            # rather than inferred from the container: a host-targeted binary fails in there only because the
+            # armhf rootfs lacks its interpreter, which stops being true of a statically linked one.
+            archive="netpace-${{ steps.get_version.outputs.version }}-linux-arm-aot.tar.gz"
+            tar -xzf "$archive" -C "$smoke_dir"
+            header="$(readelf -h "$smoke_dir/netpace")"
+            if ! { echo "$header" | grep -q "Class:.*ELF32" && echo "$header" | grep -q "Machine:.*ARM"; }; then
+              echo "FAIL: $archive is not a 32-bit ARM binary."
+              echo "$header"
+              exit 1
+            fi
+            docker run --rm --platform linux/arm/v7 -v "$smoke_dir:/smoke:ro" -w /smoke debian:12 \
+              sh -c './netpace --version && ./netpace --help'
+          elif [[ "${{ matrix.runtime }}" == win-* ]]; then
             archive="netpace-${{ steps.get_version.outputs.version }}-${{ matrix.runtime }}-aot.zip"
             unzip -q "$archive" -d "$smoke_dir"
             cd "$smoke_dir"
@@ -288,6 +369,29 @@ jobs:
             done
           done
           if [ "$failed" = "true" ]; then exit 1; fi
+
+      # linux-arm is native-only, so it has no standalone archive to be measured against and is left out of the
+      # loop above. Presence is still checked, and here rather than by the loop's own "artifact missing" branch,
+      # so that a release cannot quietly go out without the ARM32 download. docs/RELEASING.md,
+      # Size-assertion contract.
+      - name: Verify the native-only ARM32 archive is present
+        run: |
+          set -euo pipefail
+          # Named exactly rather than globbed: this is the only size or presence gate the RID has, so "some file
+          # arrived" is weaker than the contract needs. A floor rather than a comparison, there being nothing to
+          # compare against; it only has to reject the empty and truncated archives a glob would accept.
+          archive="./artifacts/netpace-linux-arm-aot/netpace-${{ steps.get_version.outputs.version }}-linux-arm-aot.tar.gz"
+          if [ ! -f "$archive" ]; then
+            echo "FAIL: aot artifact missing for linux-arm — the release would publish without the 32-bit ARM download."
+            echo "Expected: $archive"
+            exit 1
+          fi
+          size=$(stat -c%s "$archive")
+          if [ "$size" -lt 500000 ]; then
+            echo "FAIL: linux-arm aot archive is only $size bytes — truncated or empty."
+            exit 1
+          fi
+          echo "linux-arm aot: $size bytes (native-only RID, no standalone archive to compare against)"
 
       - name: Attach binaries to existing release
         uses: softprops/action-gh-release@v1

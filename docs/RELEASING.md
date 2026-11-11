@@ -4,7 +4,7 @@ This document describes the release pipeline that runs when a semver tag is push
 
 ## Release matrix
 
-Each tag produces one archive per cell of the matrix below — currently 18 (6 Native AOT plus 12 non-AOT).
+Each tag produces one archive per filled cell of the matrix below — currently 19 (7 Native AOT plus 12 non-AOT). Every RID but `linux-arm` fills all three cells; `linux-arm` is native-only, so its row has one.
 
 | Runtime ID | Self-contained | Framework-dependent | Native AOT |
 |------------|----------------|---------------------|------------|
@@ -12,6 +12,7 @@ Each tag produces one archive per cell of the matrix below — currently 18 (6 N
 | `win-arm64` | `netpace-{ver}-win-arm64-standalone.zip` | `netpace-{ver}-win-arm64-net10.zip` | `netpace-{ver}-win-arm64-aot.zip` |
 | `linux-x64` | `netpace-{ver}-linux-x64-standalone.tar.gz` | `netpace-{ver}-linux-x64-net10.tar.gz` | `netpace-{ver}-linux-x64-aot.tar.gz` |
 | `linux-arm64` | `netpace-{ver}-linux-arm64-standalone.tar.gz` | `netpace-{ver}-linux-arm64-net10.tar.gz` | `netpace-{ver}-linux-arm64-aot.tar.gz` |
+| `linux-arm` | — | — | `netpace-{ver}-linux-arm-aot.tar.gz` |
 | `osx-x64` | `netpace-{ver}-osx-x64-standalone.tar.gz` | `netpace-{ver}-osx-x64-net10.tar.gz` | `netpace-{ver}-osx-x64-aot.tar.gz` |
 | `osx-arm64` | `netpace-{ver}-osx-arm64-standalone.tar.gz` | `netpace-{ver}-osx-arm64-net10.tar.gz` | `netpace-{ver}-osx-arm64-aot.tar.gz` |
 
@@ -31,14 +32,29 @@ Each tag produces one archive per cell of the matrix below — currently 18 (6 N
 | All non-AOT entries | `ubuntu-latest` | Cross-compiles fine for non-AOT publishes; matches pre-feature behaviour. |
 | `linux-x64-aot` | `ubuntu-latest` | Native x64 host — no cross-compile toolchain needed. |
 | `linux-arm64-aot` | `ubuntu-24.04-arm` | Native ARM64 host — AOT cross-compilation is fragile, smoke test must run natively. GitHub-hosted ARM64 runners became free for public repos in January 2025. |
+| `linux-arm-aot` | `ubuntu-latest` | The one deliberately cross-compiled target. GitHub hosts no 32-bit ARM runner, and its ARM64 runners do not execute ARM32 code, so this one is built on x64 against a Debian 12 armhf sysroot and checked under emulation. See *32-bit ARM Linux cross-compilation*. |
 | `win-x64-aot` | `windows-latest` | Native x64 host — no cross-compile toolchain needed; `windows-latest` ships MSVC v143 and the Windows 11 SDK pre-installed. |
 | `win-arm64-aot` | `windows-11-arm` | Native ARM64 host — AOT cross-compilation across architectures is fragile, smoke test must run natively. `windows-11-arm` runners became free for public repos in April 2025. |
 | `osx-x64-aot` | `macos-15-intel` | Native Intel host. Building `osx-x64` on an Apple silicon runner would leave the smoke test depending on Rosetta. `macos-15-intel` is GitHub's last x86_64 macOS image, supported until around August 2027 — see *When the Intel Mac runner retires*. |
 | `osx-arm64-aot` | `macos-latest` | Native Apple silicon host. Hosted Mac runners are free for public repos. |
 
-Native AOT cannot be cross-compiled across operating systems — `dotnet publish` errors out with `Cross-OS native compilation is not supported`. Hence the per-RID native runners on Linux, Windows and macOS. Splitting the two Mac RIDs across two runners is the smoke test's doing rather than the compiler's — see the table above.
+Native AOT cannot be cross-compiled across operating systems — `dotnet publish` errors out with `Cross-OS native compilation is not supported`. Hence the per-RID native runners on Linux, Windows and macOS. Splitting the two Mac RIDs across two runners is the smoke test's doing rather than the compiler's. Crossing architectures within one operating system is a different matter and does work; `linux-arm` is the only target that relies on it, because no hosted 32-bit ARM runner exists. Every other target builds on its own architecture, so its smoke test needs no emulator.
 
-The AOT jobs guard the runner they landed on: `RUNNER_OS` must match the RID's operating system, which catches a `runs_on` typo falling back to `ubuntu-latest`. The two macOS RIDs share an operating system, so they are additionally checked against `uname -m` — nothing else would notice the two Mac runners being swapped.
+The AOT jobs guard the runner they landed on: `RUNNER_OS` must match the RID's operating system, which catches a `runs_on` typo falling back to `ubuntu-latest`. The two macOS RIDs share an operating system, so they are additionally checked against `uname -m` — nothing else would notice the two Mac runners being swapped. `linux-arm` is pinned to `x86_64` by the same check, because its cross-toolchain step assumes an x64 host.
+
+### 32-bit ARM Linux cross-compilation
+
+`linux-arm` is the only target not built on its own architecture, because none of GitHub's hosted runners is a 32-bit ARM machine and the ARM64 runners do not execute ARM32 code. Cross-compiling across architectures within one operating system does work, unlike across operating systems, so the job builds on `ubuntu-latest` with three additions:
+
+- `clang` and `lld`, installed by apt. The AOT toolchain's link command passes `--target=armv7-linux-gnueabihf`, which the runner's default `gcc` rejects outright, and its `ld.bfd` is configured for x86 alone and refuses the ARM emulation mode. `lld` is multi-target and accepts both, selected with `-p:LinkerFlavor=lld`.
+- `binutils-arm-linux-gnueabihf`, because `StripSymbols` defaults to true on Linux and the binary is stripped with the target's `objcopy`, named by `-p:ObjCopyName=arm-linux-gnueabihf-objcopy`.
+- A **Debian 12 (Bookworm) armhf sysroot**, named by `-p:SysRoot=`. It is assembled in the job by running `apt-get install libc6-dev libgcc-12-dev zlib1g-dev` inside a `debian:12` armhf container under QEMU, then `docker export`ing the result. The step asserts that the sysroot holds `libc.so` and `crtbeginS.o` before the publish, so a drifting package set fails where the cause is still visible rather than pages later in the linker.
+
+**The sysroot sets the oldest system the binary starts on**, which is why it is Debian 12 rather than the armhf packages on the Ubuntu runner's own ports: Bookworm carries glibc 2.36, and a binary linked against Ubuntu's much newer glibc would not start on a Bookworm board at all. Raspberry Pi OS Bookworm is therefore NetPace's floor for these devices, and `INSTALLATION.md` states it. Moving the floor means changing the container tag in both the sysroot step and the smoke test, which must stay the same distribution, the `libgcc-N-dev` package to the one that distribution ships, the `12` in the `crtbeginS.o` probe path, and the floor `INSTALLATION.md` states.
+
+ARMv6 boards (the original Pi Zero and Pi 1) are out of reach because .NET does not support ARMv6, and musl-based 32-bit systems because the release has no musl target on any architecture.
+
+The alternatives weighed and rejected, for the sysroot and for the linker, are in CIR [`2026-11-11-arm32-linux-is-cross-compiled-against-bookworm`](change-intent-records/2026-11-11-arm32-linux-is-cross-compiled-against-bookworm.md).
 
 ### When the Intel Mac runner retires
 
@@ -54,6 +70,8 @@ Each AOT matrix entry runs two local-only commands against the freshly extracted
 ```
 
 The AOT binary is named `netpace` (same as all other variants). On Windows the binary is `netpace.exe`; on Linux/macOS it is `netpace`.
+
+`linux-arm` is the one emulated exception to "on its native runner". Its two commands run inside a stock `debian:12` armhf container under QEMU, registered earlier in the same job. The container is deliberately stock and deliberately Bookworm: running there asserts that a board with nothing but a base Debian 12 install carries every library it needs to start. Both commands MUST still exit `0`, and the container's exit code is the step's. That the binary is 32-bit ARM is asserted separately, from its ELF header before the container runs, because passing inside an armhf rootfs is weaker evidence than it looks: a host-targeted binary fails there only for want of its interpreter, which a statically linked one would not need. Emulation is not hardware either, since QEMU accepts a wider instruction set than a real ARMv7 board, so a board-only failure remains possible.
 
 ## macOS code signing
 
@@ -80,10 +98,12 @@ End-user CLI binaries don't ship symbols — maintainers reproduce locally with 
 
 The `attach-to-release` job validates two relative size invariants before attaching any archive to the release:
 
-1. For every RID: `framework-dependent < self-contained` (existing pre-feature check).
-2. For every RID: `aot < self-contained`.
+1. For every RID with a self-contained archive: `framework-dependent < self-contained` (existing pre-feature check).
+2. For every RID with a self-contained archive: `aot < self-contained`.
 
 Either invariant failing fails the entire release job; no archives are attached.
+
+`linux-arm` is native-only, so there is no standalone archive to measure it against and it sits outside both invariants. It is not thereby unchecked: a step of its own asserts the `linux-arm` AOT archive is present, and fails the release if it is not, so a build that quietly produced nothing cannot publish a release missing the 32-bit ARM download. A separate step rather than the loop's own missing-artifact branch, because what is being checked is different: the archive is named exactly and held to a size floor, there being no standalone archive to compare it against.
 
 ## winget package
 
@@ -175,6 +195,7 @@ The GitHub Release and its archives are unaffected by any of this. A tap update 
 - `<IsAotCompatible>true</IsAotCompatible>` is declared in both `src/NetPace.Core/NetPace.Core.csproj` and `src/NetPace.Console/NetPace.Console.csproj`. This activates the AOT/trim analyzers continuously during `dotnet build` and surfaces `IL2026`/`IL2090`/`IL3050`/`IL3056` warnings at compile time, not just at publish time.
 - AOT publishes set `PublishAot=true`, which activates a conditional `<WarningsAsErrors>IL2026;IL2090;IL3050;IL3056</WarningsAsErrors>` block in `NetPace.Console.csproj`. The workflow also passes `-p:InvariantGlobalization=true`. `-p:PublishSingleFile=true` is **not** passed for AOT — native AOT already produces a single executable.
 - `<PublishAot>` is **never** set as a static property in any csproj. AOT is opt-in via the workflow's `-p:PublishAot=true` flag; dev-machine builds remain non-AOT.
+- The `linux-arm` entry additionally passes `-p:SysRoot=`, `-p:LinkerFlavor=lld` and `-p:ObjCopyName=arm-linux-gnueabihf-objcopy`, the three properties its cross-compile needs. They are appended from a variable the sysroot step sets, which nothing else sets, so every other entry publishes the command it published before. See *32-bit ARM Linux cross-compilation* for what each one buys.
 
 ## NuGet metadata
 
