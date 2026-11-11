@@ -64,16 +64,19 @@ public sealed class LibreSpeedtest : SpeedTestProviderBase
     private protected override string LatencyProbeUrl(string serverUrl) => InstallDirectory(serverUrl) + PingPath;
 
     /// <summary>
-    /// The under-load probes go to the install's ping endpoint, derived from the server rather than
-    /// from the transfer's own address.
+    /// The under-load probes go to the install's ping endpoint, on the address the transfer is
+    /// actually using.
     /// </summary>
     /// <remarks>
-    /// The base class derives it from the transfer address by default, which suits a provider that
-    /// resolves an upload redirect first. A LibreSpeed upload needs no resolving - its address is a
-    /// file inside the install, not a directory to join a path onto - so the server's own address
-    /// is correct, and reaches the same host, scheme and port the transfer is using.
+    /// An upload is sent to the ping endpoint itself, once any redirect in front of it has been
+    /// resolved, so that resolved address is probed as it stands: joining the ping path onto it as
+    /// onto an install address would probe a file that does not exist. A download's transfer
+    /// address is the install's own, which the ping path is joined onto as for the idle probe.
     /// </remarks>
-    private protected override string LoadedLatencyProbeUrl(IServer server, string transferUrl) => LatencyProbeUrl(server.Url);
+    private protected override string LoadedLatencyProbeUrl(IServer server, string transferUrl) =>
+        new Uri(transferUrl, UriKind.Absolute).AbsolutePath.EndsWith("/" + PingPath, StringComparison.Ordinal)
+            ? transferUrl
+            : LatencyProbeUrl(transferUrl);
 
     /// <summary>
     /// Whether the ping endpoint answered as LibreSpeed: with nothing at all.
@@ -83,9 +86,22 @@ public sealed class LibreSpeedtest : SpeedTestProviderBase
     /// <c>text/html</c>, so that says nothing either way, and the body is the only part of the
     /// answer that distinguishes a LibreSpeed install from a plain web server serving a page at the
     /// same address. A non-success status, which is what an Ookla server gives this request, has
-    /// already failed the request before it reaches here.
+    /// already failed the request before it reaches here; see
+    /// <see cref="IsNonSuccessLatencyStatusTheWrongServer"/>.
     /// </remarks>
     private protected override bool IsLatencyResponseValid(string response) => response.Length == 0;
+
+    /// <summary>
+    /// A non-success status from the ping endpoint is reported as the wrong server, naming the
+    /// address and what to check.
+    /// </summary>
+    /// <remarks>
+    /// The user names a LibreSpeed server, so a status such as 404 almost always means the address
+    /// is wrong rather than that the server failed: naming the web root of an install under a path,
+    /// or an Ookla server, answers exactly that. It is the same mistake as an address answering
+    /// with a page, so it gets the same guidance.
+    /// </remarks>
+    private protected override bool IsNonSuccessLatencyStatusTheWrongServer => true;
 
     /// <inheritdoc/>
     private protected override string LatencyResponseRejectedMessage(string probeUrl) =>
@@ -111,17 +127,14 @@ public sealed class LibreSpeedtest : SpeedTestProviderBase
     }
 
     /// <summary>
-    /// The install's ping endpoint, which also accepts the upload POSTs, with no requests issued to
-    /// find it.
+    /// The install's ping endpoint, which also accepts the upload POSTs.
     /// </summary>
     /// <remarks>
-    /// Nothing to resolve: the user named the install, and LibreSpeed accepts a streamed body at
-    /// <c>backend/empty.php</c> on the same address it answers the ping on. The redirect probe the
-    /// Ookla provider sends exists for Ookla's HTTPS migration and has no counterpart here, so the
-    /// measured uploads are numbered from one.
+    /// LibreSpeed accepts a streamed body at <c>backend/empty.php</c> on the same address it answers
+    /// the ping on. A redirect in front of the install, such as a reverse proxy sending plain HTTP
+    /// to HTTPS, is resolved before the uploads begin, as it is for every provider.
     /// </remarks>
-    private protected override Task<(string Url, int RequestsIssued)> ResolveUploadUrlAsync(string serverUrl, IProgress<RequestDiagnostic>? diagnostics, CancellationToken cancellationToken) =>
-        Task.FromResult((InstallDirectory(serverUrl) + PingPath, 0));
+    private protected override string UploadUrl(string serverUrl) => InstallDirectory(serverUrl) + PingPath;
 
     /// <summary>
     /// The directory a LibreSpeed install is served from, as a prefix the endpoint paths are joined

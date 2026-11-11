@@ -51,23 +51,6 @@ public sealed partial class NetPaceConsoleTests
             await Verify(result.Output);
         }
 
-        [Fact]
-        public async Task Provider_UnknownValue_IsRejectedNamingTheAcceptedValues()
-        {
-            // Given
-            var (services, _) = BuildServicesWithSettingsAccessor();
-            var host = GetCommandLineTestHost(services);
-
-            // When
-            var result = await host.RunAsync(["--provider", "fibrebox"]);
-
-            // Then
-            Assert.NotEqual(0, result.ExitCode);
-            Assert.Contains("fibrebox", result.Output);
-            Assert.Contains("ookla", result.Output);
-            Assert.Contains("librespeed", result.Output);
-        }
-
         [Theory]
         [InlineData(null)]
         [InlineData("ookla")]

@@ -109,13 +109,13 @@ public sealed class LibreSpeedtestTests
     }
 
     [Fact]
-    public async Task GetServerLatencyAsync_WhenThePingEndpointIsNotThere_FailsReportingTheStatus()
+    public async Task GetServerLatencyAsync_WhenThePingEndpointIsNotThere_FailsNamingTheUrl()
     {
         // SCENARIO: Unreachable LibreSpeed server is reported
         //
         // Naming the web root when the install sits under a path is the likeliest way to get this
-        // wrong, and it answers 404. A non-success status fails the request before the body is
-        // read, so this reports the status rather than the guidance the wrong-body case gives.
+        // wrong, and the ping endpoint is then not found. That is as much a server that is not
+        // LibreSpeed as one answering with a page, so it is reported the same way.
 
         // Given an address where the ping endpoint is not served.
         using var mockHttp = new MockHttpMessageHandler();
@@ -125,9 +125,9 @@ public sealed class LibreSpeedtestTests
         // When
         var exception = await Record.ExceptionAsync(() => speedtest.GetServerLatencyAsync(ServerAt(InstallUrl)));
 
-        // Then the run fails and nothing is reported as measured.
-        exception.ShouldNotBeNull();
-        exception.Message.ShouldContain("404");
+        // Then the run fails, naming the server that answered wrongly, and reports no measurement.
+        exception.ShouldBeOfType<InvalidOperationException>();
+        exception.Message.ShouldContain(InstallUrl);
     }
 
     [Fact]
@@ -224,9 +224,15 @@ public sealed class LibreSpeedtestTests
         using var probing = new HeldTransfer();
         using var mockHttp = new MockHttpMessageHandler();
         var uploads = mockHttp.When(HttpMethod.Post, $"{InstallUrl}backend/empty.php")
-                              .Respond(async _ =>
+                              .Respond(async request =>
                               {
-                                  await probing.UntilFirstProbeTaken();
+                                  // The empty POST that resolves the upload address is answered
+                                  // at once; only a measured upload, which carries a body, waits.
+                                  if (request.Content?.Headers.ContentLength > 0)
+                                  {
+                                      await probing.UntilFirstProbeTaken();
+                                  }
+
                                   return EmptyAnswer();
                               });
         mockHttp.When(HttpMethod.Get, $"{InstallUrl}backend/empty.php")
@@ -241,13 +247,47 @@ public sealed class LibreSpeedtestTests
         var result = await speedtest.GetUploadSpeedAsync(ServerAt(InstallUrl), null, probing.Reporter);
 
         // Then the bytes went to the install's upload endpoint, with the under-load figure beside
-        // them. No redirect probe is issued: a LibreSpeed address is given, not discovered, so the
-        // measured uploads are numbered from one.
-        mockHttp.GetMatchCount(uploads).ShouldBe(1);
+        // them.
+        mockHttp.GetMatchCount(uploads).ShouldBeGreaterThan(0);
         result.BytesProcessed.ShouldBe(50 * 1024);
         result.RequestsSucceeded.ShouldBe(1);
         result.Latency.ShouldNotBeNull();
-        probing.TransferSequences.ShouldBe([1]);
+    }
+
+    [Fact]
+    public async Task GetUploadSpeedAsync_WhenTheInstallRedirectsToHttps_MeasuresTheUploadsWhereTheyLand()
+    {
+        // SCENARIO: LibreSpeed run reports every measurement
+        //
+        // A self-hosted install behind a reverse proxy that redirects plain HTTP to HTTPS: the
+        // ping and the downloads follow the redirect unnoticed, but a streamed upload body cannot
+        // survive it, so the uploads must go straight to where the install really is.
+
+        const string redirectedInstall = "https://pi.local/";
+
+        // Given an install whose plain-HTTP address redirects every request to HTTPS, and an
+        // HTTPS address that accepts the uploads.
+        using var mockHttp = new MockHttpMessageHandler();
+        mockHttp.When(HttpMethod.Post, $"{InstallUrl}backend/empty.php")
+                .Respond(_ => new HttpResponseMessage(HttpStatusCode.PermanentRedirect)
+                {
+                    Headers = { Location = new Uri($"{redirectedInstall}backend/empty.php") }
+                });
+        mockHttp.When(HttpMethod.Post, $"{redirectedInstall}backend/empty.php")
+                .Respond(_ => EmptyAnswer());
+        var settings = new LibreSpeedtestSettings(Profile.Tiny) with
+        {
+            LatencyTest = new() { LoadedLatencyEnabled = false },
+        };
+        var speedtest = new LibreSpeedtest(settings, mockHttp.ToHttpClient(), new DelayProviderStub());
+
+        // When the upload test runs against the address the user named.
+        var result = await speedtest.GetUploadSpeedAsync(ServerAt(InstallUrl));
+
+        // Then the uploads are measured rather than failed.
+        result.RequestsFailed.ShouldBe(0);
+        result.RequestsSucceeded.ShouldBe(1);
+        result.BytesProcessed.ShouldBe(50 * 1024);
     }
 
     [Fact]
@@ -317,9 +357,6 @@ public sealed class LibreSpeedtestTests
 
         /// <summary>The addresses the under-load probes were sent to.</summary>
         public IReadOnlyList<string> ProbedUrls => Snapshot(RequestKind.LatencyProbe).Select(record => record.Url).ToArray();
-
-        /// <summary>The sequence numbers the measured transfers were given.</summary>
-        public IReadOnlyList<int> TransferSequences => Snapshot(RequestKind.Transfer).Select(record => record.Sequence).ToArray();
 
         public Task UntilFirstProbeTaken() => firstProbeTaken.Task.WaitAsync(HangGuard);
 

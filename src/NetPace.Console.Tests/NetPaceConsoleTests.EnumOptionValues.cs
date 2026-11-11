@@ -21,6 +21,7 @@ public sealed partial class NetPaceConsoleTests
         [InlineData("--unit-system", "Imperial")]
         [InlineData("--file-mode", "Truncate")]
         [InlineData("--fail-on", "Everything")]
+        [InlineData("--provider", "fibrebox")]
         [Theory]
         public async Task UnknownOptionValue_IsRejectedAndTheValidValuesAreListed(string option, string value)
         {

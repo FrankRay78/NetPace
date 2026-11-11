@@ -83,11 +83,9 @@ public abstract class SpeedTestProviderBase : ISpeedTestService
     /// </summary>
     /// <remarks>
     /// Probed against the address the transfer is actually using by default, not the server's
-    /// listed one: an Ookla upload resolves a redirect first, and those can differ in scheme, host
-    /// and port, so probing the listed address would time a line that is carrying nothing. A
-    /// provider that does no such resolution overrides this to probe the server itself, because
-    /// its transfer address is a file inside the install rather than a directory to resolve
-    /// against.
+    /// listed one: an upload resolves a redirect first, and those can differ in scheme, host and
+    /// port, so probing the listed address would time a line that is carrying nothing. A provider
+    /// whose transfer address cannot have the probe path joined onto it overrides this.
     /// </remarks>
     /// <param name="server">The server being measured.</param>
     /// <param name="transferUrl">The address the transfer's requests are going to.</param>
@@ -95,9 +93,22 @@ public abstract class SpeedTestProviderBase : ISpeedTestService
 
     /// <summary>
     /// Whether <paramref name="response"/> is the answer a speed test server of this kind gives to
-    /// a latency probe. A non-success status never reaches here; it has already failed the request.
+    /// a latency probe. A non-success status never reaches here; it has already failed the request,
+    /// as <see cref="IsNonSuccessLatencyStatusTheWrongServer"/> describes.
     /// </summary>
     private protected abstract bool IsLatencyResponseValid(string response);
+
+    /// <summary>
+    /// Whether a non-success status from the latency probe means the address is not a speed test
+    /// server of this kind, and is reported with <see cref="LatencyResponseRejectedMessage"/>
+    /// rather than as the bare HTTP failure.
+    /// </summary>
+    /// <remarks>
+    /// <see langword="false"/> by default: the status is reported as it came. A provider whose
+    /// server is named by the user, where a wrong address answers with a status such as 404, says
+    /// so here, so the user is told which address answered and what to check.
+    /// </remarks>
+    private protected virtual bool IsNonSuccessLatencyStatusTheWrongServer => false;
 
     /// <summary>
     /// What to tell the caller when something answered <paramref name="probeUrl"/> but not as a
@@ -116,13 +127,10 @@ public abstract class SpeedTestProviderBase : ISpeedTestService
     private protected abstract IEnumerable<string> DownloadRequestUrls(string serverUrl);
 
     /// <summary>
-    /// The address uploads should go to for a server at <paramref name="serverUrl"/>, and how many
-    /// requests were issued finding it out - the measured uploads are numbered after those.
+    /// The address uploads are sent to for a server at <paramref name="serverUrl"/>, before any
+    /// redirect is resolved; see <see cref="ResolveUploadUrlAsync"/>.
     /// </summary>
-    /// <param name="serverUrl">The server being measured.</param>
-    /// <param name="diagnostics">A reporter that receives one <see cref="RequestDiagnostic"/> per request issued here, or <see langword="null"/> for none.</param>
-    /// <param name="cancellationToken">The token to allow the operation to be cancelled.</param>
-    private protected abstract Task<(string Url, int RequestsIssued)> ResolveUploadUrlAsync(string serverUrl, IProgress<RequestDiagnostic>? diagnostics, CancellationToken cancellationToken);
+    private protected abstract string UploadUrl(string serverUrl);
 
     /// <inheritdoc/>
     public abstract Task<IServer[]> GetServersAsync(CancellationToken cancellationToken = default);
@@ -211,8 +219,15 @@ public abstract class SpeedTestProviderBase : ISpeedTestService
                 // The failure still surfaces to the caller - a latency measurement that cannot be
                 // taken is not a measurement. It is recorded first, so a diagnostic log names the
                 // cause of a run that ended here, and the duration is frozen before that recording.
+                // The record keeps the HTTP failure itself, status and all, for whoever triages it.
                 var failedElapsedMilliseconds = ElapsedMillisecondsSince(startTimestamp);
                 ReportRequestFailure(diagnostics, RequestKind.LatencyProbe, startedAt, sequence, latencyUrl, failedElapsedMilliseconds, e, cancellationToken);
+
+                if (e is HttpRequestException { StatusCode: not null } && IsNonSuccessLatencyStatusTheWrongServer)
+                {
+                    throw new InvalidOperationException(LatencyResponseRejectedMessage(latencyUrl), e);
+                }
+
                 throw;
             }
 
@@ -687,10 +702,10 @@ public abstract class SpeedTestProviderBase : ISpeedTestService
         // Generate upload sizes (in bytes) rather than allocating large buffers up-front.
         var testDataLengths = GenerateUploadDataLengths(settings.UploadTest.UploadIncrements, settings.UploadTest.UploadSizeIncrementKb, settings.UploadTest.UploadSizeIterations);
 
-        // Where uploads go is the provider's business: Ookla resolves a redirect first, because a
-        // migrated server answers a plain-HTTP upload POST with one and a streaming body cannot
-        // survive it. Whatever requests that takes are numbered before the measured uploads.
-        var (uploadUrl, probeRequests) = await ResolveUploadUrlAsync(server.Url, diagnostics, cancellationToken).ConfigureAwait(false);
+        // Where uploads go is the provider's business, but any redirect in front of it is resolved
+        // first, because a streaming body cannot survive one. Whatever requests that takes are
+        // numbered before the measured uploads.
+        var (uploadUrl, probeRequests) = await ResolveUploadUrlAsync(UploadUrl(server.Url), diagnostics, cancellationToken).ConfigureAwait(false);
 
         // Upload content to a specified URL and return the size of the data in bytes.
         Func<HttpClient, int, CancellationToken, Task<int>> UploadAndMeasureAsync = async (client, length, cancellationToken) =>
@@ -712,6 +727,125 @@ public abstract class SpeedTestProviderBase : ISpeedTestService
 
         return uploadResult;
     }
+
+    /// <summary>
+    /// Resolves the address the server actually wants uploads sent to, following any redirects
+    /// with an empty probe POST before the measured uploads begin.
+    /// </summary>
+    /// <remarks>
+    /// Ookla is migrating its fleet to HTTPS, and a migrated server answers a plain-HTTP upload
+    /// POST with a redirect; so does a self-hosted server behind a reverse proxy that sends plain
+    /// HTTP to HTTPS. The streaming body cannot survive that redirect - the server responds and
+    /// closes the request stream while the body is still being written, or the body is sent twice
+    /// and counted once, or dropped altogether when the POST is replayed as a GET - so the real
+    /// endpoint is resolved once, cheaply, and the uploads go straight to it.
+    /// <para>
+    /// The probe carries no body: a redirect is decided by scheme and host rather than payload, so
+    /// an empty POST draws the same answer with nothing to write and nothing to tear down mid-write.
+    /// Sending no bytes also keeps the probe out of the measurement entirely. Whether the redirect is
+    /// followed by the underlying handler or reported back to us, the endpoint that answered the probe
+    /// is the one returned - whether or not it answered with success. A rejection is recorded so a
+    /// triager can see it, not acted on. The probe never fails the test, other than on caller
+    /// cancellation, which propagates: if it cannot complete at all, the original URL is used and
+    /// any real fault surfaces through the uploads themselves.
+    /// </para>
+    /// </remarks>
+    /// <returns>
+    /// The address to upload to, and how many requests the probe issued getting there - the
+    /// measured uploads are numbered after those. The under-load latency probes are numbered
+    /// separately, so a sequence number is distinct only within one kind; see
+    /// <see cref="RequestDiagnostic.Sequence"/>.
+    /// </returns>
+    private async Task<(string Url, int RequestsIssued)> ResolveUploadUrlAsync(string serverUrl, IProgress<RequestDiagnostic>? diagnostics, CancellationToken cancellationToken)
+    {
+        const int maximumHops = 5;
+
+        var currentUrl = serverUrl;
+        var requestsIssued = 0;
+
+        for (var hop = 0; hop < maximumHops; hop++)
+        {
+            var probeUrl = currentUrl;
+            var (startedAt, startTimestamp) = StartRequest();
+            requestsIssued++;
+
+            try
+            {
+                using var probeContent = new RandomStreamContent(0);
+                using var response = await Client.PostAsync(currentUrl, probeContent, cancellationToken).ConfigureAwait(false);
+
+                // PostAsync does not throw on a non-success status and the probe never calls
+                // EnsureSuccessStatusCode, so without this the one request that can quietly
+                // misdirect every upload that follows is the one record that always reads ok.
+                var redirected = IsRedirect(response.StatusCode);
+                var probeAnswered = response.IsSuccessStatusCode || redirected;
+
+                if (diagnostics is not null)
+                {
+                    ReportProgress(diagnostics, new RequestDiagnostic
+                    {
+                        StartedAt = startedAt,
+                        Kind = RequestKind.EndpointProbe,
+                        Sequence = requestsIssued,
+                        Url = probeUrl,
+                        Outcome = probeAnswered ? RequestOutcome.Succeeded : RequestOutcome.Failed,
+                        BytesProcessed = 0,
+                        ElapsedMilliseconds = ElapsedMillisecondsSince(startTimestamp),
+                        FailureReason = probeAnswered ? null : $"{EndpointProbeAnswered} {(int)response.StatusCode}"
+                    });
+                }
+
+                // The handler did not follow the redirect for us - follow it explicitly. A
+                // Location that will not compose into an address is not a transport failure, so it
+                // ends the hops here rather than being recorded as a failed request.
+                if (redirected && response.Headers.Location is { } location)
+                {
+                    if (Uri.TryCreate(new Uri(currentUrl), location, out var redirectTarget))
+                    {
+                        currentUrl = redirectTarget.ToString();
+                        continue;
+                    }
+
+                    return (currentUrl, requestsIssued);
+                }
+
+                // Otherwise the endpoint that answered is the one to upload to. When the handler
+                // followed redirects itself, that is the final hop rather than where we started.
+                return (response.RequestMessage?.RequestUri?.ToString() ?? currentUrl, requestsIssued);
+            }
+            catch (Exception e) when (e is HttpRequestException or IOException or OperationCanceledException)
+            {
+                ReportRequestFailure(diagnostics, RequestKind.EndpointProbe, startedAt, requestsIssued, probeUrl, ElapsedMillisecondsSince(startTimestamp), e, cancellationToken);
+
+                if (cancellationToken.IsCancellationRequested)
+                {
+                    throw;
+                }
+
+                // Probing is best-effort; fall back to the configured URL.
+                return (serverUrl, requestsIssued);
+            }
+        }
+
+        return (currentUrl, requestsIssued);
+    }
+
+    /// <summary>
+    /// Determines whether a status code asks the caller to repeat the request elsewhere.
+    /// </summary>
+    /// <remarks>
+    /// The permanent and temporary redirects are treated alike because this resolves an address
+    /// rather than replaying a transfer: an HTTPS migration is as likely to be announced with a
+    /// permanent 301 as with the 307 that prompted this, and either way the answer we want is
+    /// simply "go here instead". The method rewriting that a handler applies to 301/302/303 when
+    /// replaying a request does not apply - the probe is discarded once its address is known.
+    /// </remarks>
+    private static bool IsRedirect(HttpStatusCode statusCode) => statusCode is
+        HttpStatusCode.MovedPermanently or
+        HttpStatusCode.Found or
+        HttpStatusCode.SeeOther or
+        HttpStatusCode.TemporaryRedirect or
+        HttpStatusCode.PermanentRedirect;
 
     /// <summary>
     /// Executes a generic speed test by processing a collection of test data in parallel,
