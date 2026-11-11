@@ -18,6 +18,12 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
     private const string TimedOutMessage = "The speed test failed because the server did not respond in time.";
 
     /// <summary>
+    /// The test count that stands for a run with no end of its own: what <c>--loop</c> asks for,
+    /// where only a cancellation, <c>--fail-on</c> or an operational fault stops the run.
+    /// </summary>
+    private const int Unbounded = -1;
+
+    /// <summary>
     /// Executes the speed test command using the provided settings.
     /// </summary>
     /// <remarks>
@@ -97,103 +103,17 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
 
         try
         {
-            if (settings.Loop)
+            // How many tests this run performs. The three ways to ask for a run - once, --count
+            // times, or --loop until something stops it - differ in nothing but this, so every rule
+            // a run obeys is written once below: what a failed test does, what --fail-on does, what
+            // a cancellation does, which faults end the run, and when the pause happens.
+            var tests = settings.Loop ? Unbounded : Math.Max(settings.Count, 1);
+
+            for (var test = 0; tests == Unbounded || test < tests; test++)
             {
-                // Run continuously.
-                var firstLoop = true;
-                do
-                {
-                    try
-                    {
-                        var outcome = await writer.PerformSpeedTestAsync(initialSpeedTest: firstLoop, console, clock, clientInfoProvider, recorder, speedTestClient, settings, cancellationToken);
-                        if (FailOnTriggered(outcome, settings)) return 1;
-                    }
-                    catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-                    {
-                        // User requested cancellation.
-                        return 0;
-                    }
-                    catch (Exception e) when (OperationalFault.Matches(e))
-                    {
-                        throw;
-                    }
-                    catch (Exception e)
-                    {
-                        console.WriteErrorLine(theme, Describe(e));
-
-                        if (FailOnRequested(settings)) return 1;
-                    }
-
-                    // Flushed per iteration so a long run reports as it goes and the buffer does
-                    // not grow without bound.
-                    FlushDiagnostics();
-
-                    firstLoop = false;
-
-                    try
-                    {
-                        // Pause before the next speed test.
-                        await waiter.Delay(settings.Delay, cancellationToken);
-                    }
-                    catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-                    {
-                        // User requested cancellation.
-                        return 0;
-                    }
-                }
-                while (true);
-            }
-            else if (settings.Count > 1)
-            {
-                // Run multiple times.
-                for (int i = 0; i < settings.Count; i++)
-                {
-                    try
-                    {
-                        var outcome = await writer.PerformSpeedTestAsync(initialSpeedTest: (i == 0), console, clock, clientInfoProvider, recorder, speedTestClient, settings, cancellationToken);
-                        if (FailOnTriggered(outcome, settings)) return 1;
-                    }
-                    catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-                    {
-                        // User requested cancellation.
-                        return 0;
-                    }
-                    catch (Exception e) when (OperationalFault.Matches(e))
-                    {
-                        throw;
-                    }
-                    catch (Exception e)
-                    {
-                        console.WriteErrorLine(theme, Describe(e));
-
-                        if (FailOnRequested(settings)) return 1;
-                    }
-
-                    // Flushed per iteration so a long run reports as it goes and the buffer does
-                    // not grow without bound.
-                    FlushDiagnostics();
-
-                    if ((i + 1) < settings.Count)
-                    {
-                        try
-                        {
-                            // Pause before the next speed test.
-                            await waiter.Delay(settings.Delay, cancellationToken);
-                        }
-                        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-                        {
-                            // User requested cancellation.
-                            return 0;
-                        }
-                    }
-                }
-            }
-            else
-            {
-                // Run once.
                 try
                 {
-                    var outcome = await writer.PerformSpeedTestAsync(initialSpeedTest: true, console, clock, clientInfoProvider, recorder, speedTestClient, settings, cancellationToken);
+                    var outcome = await writer.PerformSpeedTestAsync(initialSpeedTest: test == 0, console, clock, clientInfoProvider, recorder, speedTestClient, settings, cancellationToken);
                     if (FailOnTriggered(outcome, settings)) return 1;
                 }
                 catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
@@ -210,6 +130,24 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
                     console.WriteErrorLine(theme, Describe(e));
 
                     if (FailOnRequested(settings)) return 1;
+                }
+
+                // Flushed per iteration so a long run reports as it goes and the buffer does
+                // not grow without bound.
+                FlushDiagnostics();
+
+                // Nothing to pause for after the last test.
+                if (tests != Unbounded && test + 1 >= tests) break;
+
+                try
+                {
+                    // Pause before the next speed test.
+                    await waiter.Delay(settings.Delay, cancellationToken);
+                }
+                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                {
+                    // User requested cancellation.
+                    return 0;
                 }
             }
 
