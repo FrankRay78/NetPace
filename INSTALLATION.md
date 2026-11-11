@@ -39,7 +39,7 @@ dotnet tool install -g netpace
 - `netpace` is on your path provided the .NET global tools directory (`~/.dotnet/tools`, or `%USERPROFILE%\.dotnet\tools` on Windows) is; `dotnet tool install` tells you if it is not.
 - `dotnet tool update -g netpace` moves to the latest release, and `dotnet tool install -g netpace --version <release>` pins any release from 0.27.0 onward, the first to publish the tool package.
 - `dnx netpace` runs NetPace once without installing it. The first run asks you to confirm the download, so pass `--yes` where nothing can answer, such as a CI job: `dnx --yes netpace -- --json`.
-- **Platforms covered:** Windows, Linux and macOS, each on x64 and ARM64. All six get the Native AOT build, which needs no .NET runtime (on macOS, from 0.28.0). Anything else — Alpine-style Linux among them — is not covered, and no release binary targets it either; [build from source](#building-from-source) instead.
+- **Platforms covered:** Windows, Linux and macOS, each on x64 and ARM64. All six get the Native AOT build, which needs no .NET runtime (on macOS, from 0.28.0). Nothing else is covered here. 32-bit ARM Linux has a release binary instead, described below; for anything further (Alpine-style Linux among it), [build from source](#building-from-source).
 
 ## Any platform: release binaries
 
@@ -52,6 +52,24 @@ Every [release](https://github.com/FrankRay78/NetPace/releases) carries archives
 | `net10` | A small download that needs the [.NET 10 runtime](https://dotnet.microsoft.com/en-us/download/dotnet/10.0) already installed |
 
 On macOS, a browser download carries the quarantine flag, so the `aot` and `standalone` binaries raise a Gatekeeper warning the first time they run; NetPace's macOS binaries are not signed or notarised. Homebrew and the .NET tool avoid the warning.
+
+### 32-bit ARM Linux (Raspberry Pi OS and other armhf boards)
+
+If your board runs a 32-bit ARM operating system, download `netpace-{version}-linux-arm-aot.tar.gz`. It holds a single `netpace` binary that needs no .NET runtime, which suits a small board and a cron job:
+
+```bash
+tar -xzf netpace-{version}-linux-arm-aot.tar.gz
+./netpace
+```
+
+Run `uname -m` if you are unsure which archive you need. `armv7l` or `armv6l` means a 32-bit system, so this is the archive; `aarch64` means a 64-bit one, so take `linux-arm64` instead. A Raspberry Pi 2, 3 or 4 can report either, depending on the image installed, and a board already running a 64-bit image should take `linux-arm64` for the better performance.
+
+Two limits to know about:
+
+- **Debian 12 (Bookworm) or newer.** The binary is built against Bookworm's system libraries, the version Raspberry Pi OS has shipped since late 2023, so an older image such as Bullseye will refuse to start it. Upgrade the image, or [build from source](#building-from-source) on the board.
+- **ARMv7 with hardware floating point, on glibc.** ARMv6 boards (the original Raspberry Pi and the Pi Zero or Zero W, but not the Zero 2 W) are not supported, because .NET does not support ARMv6 at all. Musl-based systems such as Alpine on ARMv7 are not supported either: no release carries a musl archive on any architecture, so a musl board needs a source build targeting it.
+
+There is no `standalone` or `net10` archive for 32-bit ARM, and no winget, Homebrew or `dotnet tool` route: the native archive above is the whole offering.
 
 ## Building from source
 
