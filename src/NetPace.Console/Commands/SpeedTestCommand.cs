@@ -104,13 +104,32 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
         try
         {
             // How many tests this run performs. The three ways to ask for a run - once, --count
-            // times, or --loop until something stops it - differ in nothing but this, so every rule
-            // a run obeys is written once below: what a failed test does, what --fail-on does, what
-            // a cancellation does, which faults end the run, and when the pause happens.
-            var tests = settings.Loop ? Unbounded : Math.Max(settings.Count, 1);
+            // times, or --loop until something stops it - differ in nothing below but this, so
+            // every rule a run obeys is written once: what a failed test does, what --fail-on does,
+            // what a cancellation does, which faults end the run, and when the pause happens.
+            // --count carries no validator, so a count below one arrives here and is floored at one
+            // test, which is also what keeps a user's -1 off the Unbounded sentinel.
+            int tests = settings.Loop ? Unbounded : Math.Max(settings.Count, 1);
 
             for (var test = 0; tests == Unbounded || test < tests; test++)
             {
+                // Pause between tests - before each one but the first, rather than after each one
+                // but the last, so where the run ends is stated only in the loop condition above:
+                // a pause waiting on the next test would have to ask whether there is one,
+                // repeating that bound and testing the sentinel the other way round.
+                if (test > 0)
+                {
+                    try
+                    {
+                        await waiter.Delay(settings.Delay, cancellationToken);
+                    }
+                    catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                    {
+                        // User requested cancellation.
+                        return 0;
+                    }
+                }
+
                 try
                 {
                     var outcome = await writer.PerformSpeedTestAsync(initialSpeedTest: test == 0, console, clock, clientInfoProvider, recorder, speedTestClient, settings, cancellationToken);
@@ -135,20 +154,6 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
                 // Flushed per iteration so a long run reports as it goes and the buffer does
                 // not grow without bound.
                 FlushDiagnostics();
-
-                // Nothing to pause for after the last test.
-                if (tests != Unbounded && test + 1 >= tests) break;
-
-                try
-                {
-                    // Pause before the next speed test.
-                    await waiter.Delay(settings.Delay, cancellationToken);
-                }
-                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-                {
-                    // User requested cancellation.
-                    return 0;
-                }
             }
 
             return 0;

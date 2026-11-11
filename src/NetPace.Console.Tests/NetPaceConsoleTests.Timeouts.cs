@@ -4,13 +4,13 @@ public sealed partial class NetPaceConsoleTests
 {
     /// <summary>
     /// CLI behaviour when a request is abandoned at its own timeout rather than failing on its own
-    /// merits: a timeout is reported like any other network failure, honours <c>--fail-on</c>, and is
-    /// told apart from the cancellation the user asked for.
+    /// merits: a timeout is reported like any other network failure, and honours <c>--fail-on</c>.
     /// </summary>
     /// <remarks>
     /// What a timeout does to a run that repeats, and how it is told apart from a cancellation in
     /// each run mode, belong to <see cref="RunModes"/>: those are rules of the run block, checked
-    /// there against every mode at once and against a plain network failure as well as a timeout.
+    /// there against every mode at once, and every rule about a failed test is checked against a
+    /// plain network failure as well as a timeout.
     /// This class holds what is particular to a timeout - the line composed for it, and the places
     /// it can surface from.
     /// </remarks>

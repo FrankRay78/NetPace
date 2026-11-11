@@ -1,4 +1,5 @@
 using System.Globalization;
+using NetPace.Console.Diagnostics;
 
 namespace NetPace.Console.Tests;
 
@@ -12,8 +13,9 @@ public sealed partial class NetPaceConsoleTests
     /// <remarks>
     /// The rules are what a test succeeding does, what a failed test does with and without
     /// <c>--fail-on</c>, what the <c>--fail-on</c> threshold does, what a cancellation does during a
-    /// test and during the pause between tests, and what an operational fault does. Timeout wording
-    /// and output shape are not this set's business: snapshots live beside the format they belong to.
+    /// test and during the pause between tests, what one the user did not ask for does, and what an
+    /// operational fault does. This set counts the lines those rules produce rather than reviewing
+    /// them: the reviewed snapshots live beside the format they belong to.
     /// </remarks>
     public sealed class RunModes
     {
@@ -32,8 +34,8 @@ public sealed partial class NetPaceConsoleTests
         /// <summary>
         /// A request abandoned at its own timeout, which NetPace composes its own line for. It
         /// arrives as a cancellation, so it is the failure shape most likely to be mistaken for the
-        /// one the user asked for, and every rule below is checked against it as well as against a
-        /// plain network failure.
+        /// one the user asked for, and every rule about a failed test is checked against it as well
+        /// as against a plain network failure.
         /// </summary>
         private const string Timeout = "timeout";
 
@@ -153,7 +155,7 @@ public sealed partial class NetPaceConsoleTests
             RunAsync(mode, _ => service, pausesBeforeCancelling, extra);
 
         /// <summary>The <c>--fail-on</c> options for a run that either opted in or did not.</summary>
-        private static string[] FailOn(bool failOn) => failOn ? ["--fail-on", "Total"] : [];
+        private static string[] FailOnArgs(bool failOn) => failOn ? ["--fail-on", "Total"] : [];
 
         [Theory]
         [InlineData(Single)]
@@ -257,7 +259,7 @@ public sealed partial class NetPaceConsoleTests
             // measurement, and a run the user stopped is not one, so the outcome is the same either
             // way.
             // When
-            var result = await RunAsync(mode, ServiceCancelledMidTest, TestsPerRun, FailOn(failOn));
+            var result = await RunAsync(mode, ServiceCancelledMidTest, TestsPerRun, FailOnArgs(failOn));
 
             // Then nothing is reported as an error and the run exits 0.
             Assert.DoesNotContain("Error:", result.Output);
@@ -278,7 +280,7 @@ public sealed partial class NetPaceConsoleTests
 
             // Given a run the user cancels during the pause after its first test.
             // When
-            var result = await RunAsync(mode, new ScriptedSpeedTester(), 1, FailOn(failOn));
+            var result = await RunAsync(mode, new ScriptedSpeedTester(), 1, FailOnArgs(failOn));
 
             // Then the test that did run reported its result, nothing is reported as an error, and
             // the run exits 0.
@@ -349,6 +351,129 @@ public sealed partial class NetPaceConsoleTests
             // it.
             Assert.NotEqual(0, result.ExitCode);
             Assert.Equal(1, Occurrences(result.Output, ResultLine));
+        }
+
+        [Theory]
+        [InlineData(null, 1, 0)]
+        [InlineData("1", 1, 0)]
+        [InlineData("3", 3, 2)]
+        public async Task A_Run_Pauses_Between_Its_Tests_And_Never_After_The_Last(string? count, int tests, int pauses)
+        {
+            // A run that paused after its last test would hold the process open for the whole
+            // --delay with its result already written, so the rule is counted rather than inferred
+            // from the run finishing.
+
+            // Given a run of this many tests.
+            // When it runs.
+            var (result, pausesTaken) = await RunCountedAsync(count);
+
+            // Then it performed that many tests and paused once between each pair of them.
+            Assert.Equal(0, result.ExitCode);
+            Assert.Equal(tests, Occurrences(result.Output, ResultLine));
+            Assert.Equal(pauses, pausesTaken);
+        }
+
+        [Theory]
+        [InlineData("0")]
+        [InlineData("-1")]
+        public async Task A_Count_Below_One_Performs_One_Test(string count)
+        {
+            // A count below one is floored rather than rejected, because --count carries no
+            // validator. -1 is the value that matters: it is what the run block uses internally for
+            // a run with no end of its own, so a count reaching that far unfloored would loop for
+            // ever rather than running once.
+
+            // Given a run asked for this many tests.
+            // When it runs.
+            var (result, pausesTaken) = await RunCountedAsync(count);
+
+            // Then it performed one test, paused for no later one, and succeeded.
+            Assert.Equal(0, result.ExitCode);
+            Assert.Equal(1, Occurrences(result.Output, ResultLine));
+            Assert.Equal(0, pausesTaken);
+        }
+
+        [Fact]
+        public async Task Loop_Outranks_Count()
+        {
+            // Given a run asked for both --loop and a count, cancelled at its fourth pause.
+            // When it runs.
+            var (result, _) = await RunCountedAsync("2", "--loop", pausesBeforeCancelling: 4);
+
+            // Then --loop decided how long it ran: it went on past the count, and only the
+            // cancellation ended it.
+            Assert.Equal(0, result.ExitCode);
+            Assert.Equal(4, Occurrences(result.Output, ResultLine));
+        }
+
+        [Fact]
+        public async Task Each_Test_Is_Flushed_Before_The_Pause_After_It()
+        {
+            // A run that held its records until it ended would report nothing as it went, which is
+            // what a long run is watched through, and would grow its buffer without bound.
+
+            // Given a two-test run whose diagnostic stream is read at the pause between the tests.
+            using var diagnostics = new StringWriter();
+            string? atFirstPause = null;
+
+            var services = new ServiceCollection();
+            services.AddSingleton<ISpeedTestService>(new ScriptedSpeedTester());
+            services.AddSingleton<IClock, ClockStub>();
+            services.AddSingleton(new DiagnosticOutput(diagnostics));
+            services.AddSingleton<IWaiter>(new PauseObserver(() => atFirstPause ??= diagnostics.ToString()));
+
+            // When it runs.
+            var result = await new CommandLineTestHost(services).RunAsync(
+                ["--server-url", ServerUrl, "--count", "2", "--simple", "--diagnostics"]);
+
+            // Then the first test's records had already been written when the pause began.
+            Assert.Equal(0, result.ExitCode);
+            Assert.NotNull(atFirstPause);
+            Assert.Contains("event=test.end", atFirstPause, StringComparison.Ordinal);
+        }
+
+        /// <summary>
+        /// Runs a measuring server for <paramref name="count"/> tests, or for a single test where
+        /// that is <c>null</c>, and reports how many pauses the run took.
+        /// </summary>
+        /// <param name="count">What to pass as <c>--count</c>, or <c>null</c> to pass none.</param>
+        /// <param name="extra">Further options to pass.</param>
+        /// <param name="pausesBeforeCancelling">
+        /// How many pauses may elapse before the run is cancelled. A bound, so a rule that stops
+        /// ending a run fails an assertion rather than never returning.
+        /// </param>
+        private static async Task<(TestResult Result, int Pauses)> RunCountedAsync(string? count, string? extra = null, int pausesBeforeCancelling = 10)
+        {
+            using var cancellation = new CancellationTokenSource();
+            var waiter = new SelfCancellingWaiter(pausesBeforeCancelling, cancellation);
+
+            var services = new ServiceCollection();
+            services.AddSingleton<ISpeedTestService>(new ScriptedSpeedTester());
+            services.AddSingleton<IClock, ClockStub>();
+            services.AddSingleton<IWaiter>(waiter);
+
+            string[] args =
+            [
+                "--server-url", ServerUrl, "--simple",
+                .. count is null ? Array.Empty<string>() : ["--count", count],
+                .. extra is null ? Array.Empty<string>() : new[] { extra }
+            ];
+
+            var result = await new CommandLineTestHost(services).RunAsync(args, cancellation.Token);
+            return (result, waiter.CallCount);
+        }
+
+        /// <summary>
+        /// A waiter that reads something at every pause, for a rule about what a run has already
+        /// done by the time it pauses.
+        /// </summary>
+        private sealed class PauseObserver(Action onPause) : IWaiter
+        {
+            public Task Delay(TimeSpan delay, CancellationToken cancellationToken)
+            {
+                onPause();
+                return Task.CompletedTask;
+            }
         }
     }
 }
