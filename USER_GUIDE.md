@@ -401,11 +401,11 @@ The `--profile` flag bundles per-request payload sizes, parallelism, and a total
 |---|---|---|
 | `tiny`   | IoT / 10 MB-month plans — minimal traffic, single small request | ≤ 2 MiB (~245 KB + ~50 KB) |
 | `small`  | Cellular / metered — small budget, modest parallelism | ≤ 12 MiB (~10 MiB + ~2 MiB) |
-| `medium` | Typical home broadband — the default | ≤ 125 MiB (~100 MiB + ~25 MiB) |
-| `large`  | Fibre / business — saturates gigabit links | ≤ 1.25 GiB (~1 GiB + ~256 MiB) |
+| `medium` | Typical home broadband — the default | ≤ 125 MiB (~100 MiB + ~20 MiB) |
+| `large`  | Fibre / business — saturates gigabit links | ≤ 1.25 GiB (~1 GiB + ~211 MiB) |
 | `mega`   | Inter-DC / 10 Gbps — saturates fibre, see warning below | ≤ 12 GiB (~10 GiB + ~2 GiB) |
 
-The approximate figures are what an Ookla run actually moves. A profile's ceilings bind both providers, but the request sizes under them are each provider's own, so a LibreSpeed run moves a slightly different amount inside the same ceiling: its downloads come in whole mebibytes, which makes `tiny` about 1 MiB down rather than about 245 KB.
+The approximate figures are what an Ookla run actually moves, and the ≤ figure is the profile's ceiling. A run can move less than its ceiling: `medium` and `large` schedule fewer upload bytes than their upload ceilings allow. A profile's ceilings bind both providers, but the request sizes under them are each provider's own, so a LibreSpeed run moves a slightly different amount inside the same ceiling: its downloads come in whole mebibytes, which makes `tiny` about 1 MiB down rather than about 245 KB.
 
 Decision guide:
 

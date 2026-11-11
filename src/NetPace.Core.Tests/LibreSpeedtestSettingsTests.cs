@@ -45,6 +45,10 @@ public sealed class LibreSpeedtestSettingsTests
         var scheduledMib = (long)settings.DownloadRequestSizeMib * settings.DownloadRequestCount;
         scheduledMib.ShouldBeGreaterThanOrEqualTo(settings.DownloadTest.DownloadSizeMb);
 
+        // And no single request is larger than the ceiling, so reaching it never needs one
+        // response to carry the run past it.
+        settings.DownloadRequestSizeMib.ShouldBeLessThanOrEqualTo(settings.DownloadTest.DownloadSizeMb);
+
         // And there are enough requests for the profile's connection count to be reached at all.
         settings.DownloadRequestCount.ShouldBeGreaterThanOrEqualTo(settings.DownloadTest.DownloadParallelTasks);
     }
@@ -53,8 +57,9 @@ public sealed class LibreSpeedtestSettingsTests
     [MemberData(nameof(EveryProfile))]
     public void Profile_RequestSize_IsAWholeNumberOfMebibytesGarbageAccepts(Profile profile)
     {
-        // garbage.php takes ckSize as a whole number of MiB and clamps it to 1024, so a request
-        // size outside that range would be silently answered with something else.
+        // garbage.php takes ckSize as a whole number of MiB, answers zero or less with its own
+        // default and caps it at 1024, so a request size outside that range would be silently
+        // answered with something else.
 
         // Given / When
         var settings = new LibreSpeedtestSettings(profile);

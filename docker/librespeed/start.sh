@@ -46,7 +46,7 @@ interrupted() {
   echo >&2
   echo "Interrupted — removing the container." >&2
   docker compose down --remove-orphans >&2 \
-    || echo "ERROR: could not remove the container — run bash stop.sh, or 'docker rm -f librespeed'." >&2
+    || echo "ERROR: could not remove the container — run bash stop.sh, or 'docker rm -f netpace-librespeed'." >&2
   exit 130
 }
 trap interrupted INT TERM
@@ -61,7 +61,7 @@ failed_start() {
   echo >&2
   echo "Removing the container." >&2
   docker compose down --remove-orphans >&2 \
-    || echo "ERROR: could not remove the container — run bash stop.sh, or 'docker rm -f librespeed'." >&2
+    || echo "ERROR: could not remove the container — run bash stop.sh, or 'docker rm -f netpace-librespeed'." >&2
   exit 1
 }
 
@@ -71,8 +71,8 @@ echo "Waiting for LibreSpeed (up to ${DEADLINE}s)..."
 # so counting iterations would overrun the figure printed above.
 DEADLINE_AT=$(( $(date +%s) + DEADLINE ))
 while [ "$(date +%s)" -lt "$DEADLINE_AT" ]; do
-  status="$(docker inspect -f '{{.State.Status}}' librespeed 2>/dev/null || echo missing)"
-  restarts="$(docker inspect -f '{{.RestartCount}}' librespeed 2>/dev/null || echo 0)"
+  status="$(docker inspect -f '{{.State.Status}}' netpace-librespeed 2>/dev/null || echo missing)"
+  restarts="$(docker inspect -f '{{.RestartCount}}' netpace-librespeed 2>/dev/null || echo 0)"
 
   if [ "$status" = "exited" ] || [ "$status" = "dead" ] || [ "$status" = "missing" ]; then
     failed_start "the container stopped before it was ready."

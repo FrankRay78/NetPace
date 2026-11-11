@@ -24,16 +24,16 @@ public sealed record LibreSpeedtestSettings : SpeedTestSettings
     /// </summary>
     /// <remarks>
     /// LibreSpeed answers <c>garbage.php</c> with exactly this many MiB, so it is the per-request
-    /// size rather than a hint. The endpoint takes a whole number of MiB and clamps it to the range
-    /// 1 to 1024, so a value outside that is answered with something else; the profiles stay inside
-    /// it. The total a download phase moves is bounded by
-    /// <see cref="DownloadTestSettings.DownloadSizeMb"/>, not by this.
+    /// size rather than a hint. The endpoint takes a whole number of MiB, answers zero or less with
+    /// its own default of 4 and caps anything above 1024, so a value outside 1 to 1024 is rejected
+    /// when the download runs rather than measured as a size nobody asked for. The total a download
+    /// phase moves is bounded by <see cref="DownloadTestSettings.DownloadSizeMb"/>, not by this.
     /// </remarks>
     public int DownloadRequestSizeMib { get; init; }
 
     /// <summary>
     /// How many download requests are scheduled. The total-byte budget decides how many of them
-    /// actually run.
+    /// actually run. Zero or less is rejected when the download runs.
     /// </summary>
     /// <remarks>
     /// Enough of them, per profile, that their sizes sum to at least the profile's ceiling, so the

@@ -16,10 +16,8 @@ public sealed partial class NetPaceConsoleTests
         private const string LibreSpeedUrl = "http://pi.local:8080/";
 
         [Fact]
-        public async Task Provider_LibreSpeed_WithAServerUrl_TestsAgainstALibreSpeedServer()
+        public async Task Provider_LibreSpeed_WithAServerUrl_ConfiguresALibreSpeedRun()
         {
-            // SCENARIO: LibreSpeed run reports every measurement
-
             // Given
             var (services, accessor) = BuildServicesWithSettingsAccessor();
             var host = GetCommandLineTestHost(services);
@@ -47,7 +45,6 @@ public sealed partial class NetPaceConsoleTests
             // Then nothing is measured, the user is told a server URL is needed, and the exit code
             // is non-zero: a missing option is a usage error, not a network outcome.
             Assert.NotEqual(0, result.ExitCode);
-            Assert.Contains("--server-url", result.Output);
             await Verify(result.Output);
         }
 
@@ -202,14 +199,10 @@ public sealed partial class NetPaceConsoleTests
             // When
             var result = await GetCommandLineTestHost(StubServices()).RunAsync(args);
 
-            // Then the result is reported. Only CSV and JSON carry server fields, so only they name
-            // the URL; --simple and --minimal report figures alone, as they do for an Ookla run.
+            // Then the result is reported. Only CSV and JSON carry server fields, so only their
+            // snapshots name the URL; --simple and --minimal report figures alone, as they do for an
+            // Ookla run.
             Assert.Equal(0, result.ExitCode);
-            if (format is "--csv" or "--json")
-            {
-                Assert.Contains(LibreSpeedUrl, result.Output);
-            }
-
             await Verify(result.Output).UseParameters(format ?? "default");
         }
 

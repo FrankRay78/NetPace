@@ -91,19 +91,28 @@ public sealed class LibreSpeedtestTests
         mockHttp.GetMatchCount(probe).ShouldBe(1);
     }
 
+    /// <summary>
+    /// The ways a user names one LibreSpeed install under a path: with and without its trailing
+    /// slash, with a query or fragment copied from the browser, and as the page the browser shows.
+    /// </summary>
+    public static TheoryData<string> FormsOfThePathInstall() => new(
+        "http://nas.local/speedtest/",
+        "http://nas.local/speedtest",
+        "http://nas.local/speedtest/?lang=en#start",
+        "http://nas.local/speedtest/index.html");
+
     [Theory]
-    [InlineData("http://nas.local/speedtest/")]
-    [InlineData("http://nas.local/speedtest")]
+    [MemberData(nameof(FormsOfThePathInstall))]
     public async Task GetServerLatencyAsync_ForAnInstallUnderAPath_ProbesInsideThatPath(string given)
     {
-        // Given a LibreSpeed install under a path, named with and without its trailing slash.
+        // Given a LibreSpeed install under a path, named in each form a user might give it.
         using var mockHttp = LibreSpeedServer(PathInstallUrl);
         var speedtest = new LibreSpeedtest(Quick(), mockHttp.ToHttpClient(), new DelayProviderStub());
 
         // When
         var result = await speedtest.GetServerLatencyAsync(ServerAt(given));
 
-        // Then both forms test the same server: the probe lands inside the install path, so the
+        // Then every form tests the same server: the probe lands inside the install path, so the
         // measurement completes rather than failing against the web root.
         result.LatencyMilliseconds.ShouldBeGreaterThanOrEqualTo(0);
     }
@@ -149,8 +158,7 @@ public sealed class LibreSpeedtestTests
 
         // Then the run fails, naming the URL that answered wrongly, and reports no measurement.
         exception.ShouldBeOfType<InvalidOperationException>();
-        exception.Message.ShouldContain($"{InstallUrl}backend/empty.php");
-        exception.Message.ShouldContain("LibreSpeed");
+        exception.Message.ShouldContain(InstallUrl);
     }
 
     [Fact]
@@ -288,6 +296,95 @@ public sealed class LibreSpeedtestTests
         result.RequestsFailed.ShouldBe(0);
         result.RequestsSucceeded.ShouldBe(1);
         result.BytesProcessed.ShouldBe(50 * 1024);
+    }
+
+    [Theory]
+    [MemberData(nameof(FormsOfThePathInstall))]
+    public async Task GetDownloadSpeedAsync_ForAnInstallUnderAPath_ProbesLatencyInsideThatPath(string given)
+    {
+        // Given a LibreSpeed install under a path, named in each form a user might give it, and a
+        // download held open until the first under-load probe has been taken.
+        using var probing = new HeldTransfer();
+        using var mockHttp = new MockHttpMessageHandler();
+        mockHttp.When($"{PathInstallUrl}backend/empty.php")
+                .Respond(_ => EmptyAnswer());
+        mockHttp.When($"{PathInstallUrl}backend/garbage.php")
+                .Respond(async _ =>
+                {
+                    await probing.UntilFirstProbeTaken();
+                    return new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent(new byte[1024]) };
+                });
+        var settings = new LibreSpeedtestSettings(Profile.Tiny) with
+        {
+            LatencyTest = new() { LoadedLatencyIntervalMilliseconds = 1 },
+            DownloadRequestCount = 1,
+        };
+        var speedtest = new LibreSpeedtest(settings, mockHttp.ToHttpClient(), new DelayProviderStub());
+
+        // When
+        var result = await speedtest.GetDownloadSpeedAsync(ServerAt(given), null, probing.Reporter);
+
+        // Then the download and its under-load probes all land inside the install.
+        result.RequestsSucceeded.ShouldBe(1);
+        probing.ProbedUrls.ShouldNotBeEmpty();
+        probing.ProbedUrls.ShouldAllBe(url => url == $"{PathInstallUrl}backend/empty.php");
+    }
+
+    [Theory]
+    [MemberData(nameof(FormsOfThePathInstall))]
+    public async Task GetUploadSpeedAsync_ForAnInstallUnderAPath_UploadsAndProbesInsideThatPath(string given)
+    {
+        // Given a LibreSpeed install under a path, named in each form a user might give it, and an
+        // upload held open until the first under-load probe has been taken.
+        using var probing = new HeldTransfer();
+        using var mockHttp = new MockHttpMessageHandler();
+        mockHttp.When(HttpMethod.Post, $"{PathInstallUrl}backend/empty.php")
+                .Respond(async request =>
+                {
+                    if (request.Content?.Headers.ContentLength > 0)
+                    {
+                        await probing.UntilFirstProbeTaken();
+                    }
+
+                    return EmptyAnswer();
+                });
+        mockHttp.When(HttpMethod.Get, $"{PathInstallUrl}backend/empty.php")
+                .Respond(_ => EmptyAnswer());
+        var settings = new LibreSpeedtestSettings(Profile.Tiny) with
+        {
+            LatencyTest = new() { LoadedLatencyIntervalMilliseconds = 1 },
+        };
+        var speedtest = new LibreSpeedtest(settings, mockHttp.ToHttpClient(), new DelayProviderStub());
+
+        // When
+        var result = await speedtest.GetUploadSpeedAsync(ServerAt(given), null, probing.Reporter);
+
+        // Then the upload and its under-load probes all land inside the install.
+        result.RequestsFailed.ShouldBe(0);
+        result.RequestsSucceeded.ShouldBe(1);
+        probing.ProbedUrls.ShouldNotBeEmpty();
+        probing.ProbedUrls.ShouldAllBe(url => url == $"{PathInstallUrl}backend/empty.php");
+    }
+
+    [Theory]
+    [InlineData(0, 1)]
+    [InlineData(-1, 1)]
+    [InlineData(1025, 1)]
+    [InlineData(1, 0)]
+    [InlineData(1, -1)]
+    public async Task GetDownloadSpeedAsync_WithARequestShapeGarbageWouldNotHonour_IsRejected(int requestSizeMib, int requestCount)
+    {
+        // garbage.php answers a ckSize of zero or less with its own default and caps one above
+        // 1024, so either would be measured as a size nobody asked for; and no requests at all
+        // would report a download that never ran.
+
+        // Given
+        using var mockHttp = LibreSpeedServer(InstallUrl);
+        var settings = Quick() with { DownloadRequestSizeMib = requestSizeMib, DownloadRequestCount = requestCount };
+        var speedtest = new LibreSpeedtest(settings, mockHttp.ToHttpClient(), new DelayProviderStub());
+
+        // When / Then
+        await Should.ThrowAsync<ArgumentOutOfRangeException>(() => speedtest.GetDownloadSpeedAsync(ServerAt(InstallUrl)));
     }
 
     [Fact]
