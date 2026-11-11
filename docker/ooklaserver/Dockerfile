@@ -33,7 +33,8 @@ COPY link-profiles.sh shape.sh lab-properties.sh ./
 
 # Turn off the server's own outbound traffic, which would otherwise cross a shaped link while
 # NetPace is measuring it. Build-time rather than entry-point work: the properties file is baked
-# into the image, so doing it here also means a renamed upstream setting fails the build.
+# into the image, so doing it here also means a setting the upstream file no longer names fails
+# the build.
 RUN bash lab-properties.sh OoklaServer.properties
 
 EXPOSE 8080/tcp 8080/udp

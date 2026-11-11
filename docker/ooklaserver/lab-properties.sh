@@ -11,17 +11,17 @@
 # container is healthy and `start.sh` has said the lab is ready. A NetPace run started at that
 # moment then measures the server's start-up rather than the link, and on the `radio` profile its
 # first latency probe ran out the 10 s limit every time. Nothing in the lab needs either setting:
-# it serves plain HTTP on loopback and is rebuilt from the upstream bundle whenever the image is.
+# it serves plain HTTP and never terminates TLS, and is rebuilt from the upstream bundle whenever
+# the image is.
 #
 # Fails rather than report success it cannot stand behind. Each setting must already be named in
-# the file, commented or not, so an upstream rename fails the image build instead of quietly
-# restoring the traffic — the same reason shape.sh reads its qdiscs back rather than trusting that
-# tc accepted the arguments.
+# the file, commented or not, so a release that drops a setting's name fails the image build
+# instead of quietly restoring the traffic.
 
 set -uo pipefail
 
 # The settings to turn off, each a key the upstream properties file documents.
-OUTBOUND_KEYS="OoklaServer.ssl.useLetsEncrypt OoklaServer.enableAutoUpdate"
+OUTBOUND_KEYS=(OoklaServer.ssl.useLetsEncrypt OoklaServer.enableAutoUpdate)
 
 say() { echo "lab-properties: $*"; }
 die() {
@@ -40,12 +40,10 @@ PROPS="$1"
 [ -f "$PROPS" ] || die "'$PROPS' is not a file."
 [ -w "$PROPS" ] || die "'$PROPS' is not writable."
 
-# A key is a dotted name, and the dots are regex wildcards unless escaped. Harmless against this
-# file's own keys, but a pattern that means what it says is one less thing to reason about.
-escape() { sed 's/\./\\./g' <<<"$1"; }
-
-for key in $OUTBOUND_KEYS; do
-  pattern="$(escape "$key")"
+for key in "${OUTBOUND_KEYS[@]}"; do
+  # A key is a dotted name, and the dots are regex wildcards unless escaped. Harmless against
+  # this file's own keys, but a pattern that means what it says is one less thing to reason about.
+  pattern="${key//./\\.}"
 
   grep -qE "^[[:space:]]*#?[[:space:]]*${pattern}[[:space:]]*=" "$PROPS" \
     || die "'$PROPS' does not mention $key, so this version of OoklaServer may have renamed or dropped it. Check the setting's name in OoklaServer.properties.default and update OUTBOUND_KEYS."
@@ -59,7 +57,8 @@ for key in $OUTBOUND_KEYS; do
     "$key" >> "$PROPS" \
     || die "could not append to '$PROPS'."
 
-  # Read back, as the one check that distinguishes "the edit ran" from "the setting is off".
+  # Count the active assignments, so a delete that missed one cannot leave the server picking
+  # between two.
   assignments="$(grep -cE "^[[:space:]]*${pattern}[[:space:]]*=[[:space:]]*false[[:space:]]*$" "$PROPS")"
   [ "$assignments" = 1 ] \
     || die "after editing, '$PROPS' holds $assignments assignment(s) of $key set to false, expected exactly 1."
@@ -67,4 +66,4 @@ for key in $OUTBOUND_KEYS; do
   say "$key = false"
 done
 
-say "the server's own outbound traffic is off — nothing but NetPace's traffic crosses the link."
+say "the server's own outbound traffic is off."
