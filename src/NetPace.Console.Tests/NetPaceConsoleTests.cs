@@ -1,3 +1,5 @@
+using NetPace.Core.Clients.Ookla;
+
 namespace NetPace.Console.Tests;
 
 public sealed partial class NetPaceConsoleTests
@@ -29,18 +31,26 @@ public sealed partial class NetPaceConsoleTests
     }
 
     /// <summary>
-    /// Build a service collection that captures the constructed <see cref="OoklaSpeedtestSettings"/>
-    /// into a returned accessor instance. The action in <see cref="Program.CreateRootCommand"/> writes
-    /// to it after option binding, so the test reads <c>accessor.Settings</c> after RunAsync to verify
+    /// Build a service collection that captures the constructed settings record into a returned
+    /// accessor instance. The action in <see cref="Program.CreateRootCommand"/> writes to it after
+    /// option binding, so the test reads <c>accessor.Settings</c> after RunAsync to verify
     /// CLI → settings binding.
     /// </summary>
-    private static (IServiceCollection services, OoklaSpeedtestSettingsAccessor accessor) BuildServicesWithSettingsAccessor()
+    private static (IServiceCollection services, SpeedTestSettingsAccessor accessor) BuildServicesWithSettingsAccessor()
     {
         var services = StubServices();
-        var accessor = new OoklaSpeedtestSettingsAccessor();
+        var accessor = new SpeedTestSettingsAccessor();
         services.AddSingleton(accessor);
         return (services, accessor);
     }
+
+    /// <summary>
+    /// The captured settings as the Ookla record they are for every run that does not ask for
+    /// another provider. Asserted rather than cast, so a run that quietly built another provider's
+    /// record fails here instead of further down the test.
+    /// </summary>
+    private static OoklaSpeedtestSettings Ookla(SpeedTestSettingsAccessor accessor) =>
+        Assert.IsType<OoklaSpeedtestSettings>(accessor.Settings);
 
     /// <summary>
     /// Create the CommandLineTestHost with System.CommandLine.

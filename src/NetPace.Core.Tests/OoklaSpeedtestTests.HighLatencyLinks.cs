@@ -138,7 +138,7 @@ public sealed partial class OoklaSpeedtestTests
             // test, and the default three would spend three round trips per candidate to reach it.
             var settings = new OoklaSpeedtestSettings
             {
-                ServerDiscovery = new() { ScreeningRequestCount = 1 }
+                ServerScreening = new() { ScreeningRequestCount = 1 }
             };
 
             var httpClient = mockHttp.ToHttpClient();
@@ -268,7 +268,7 @@ public sealed partial class OoklaSpeedtestTests
 
             var settings = new OoklaSpeedtestSettings
             {
-                ServerDiscovery = new() { ServerTimeoutMilliseconds = StagedCeilingMilliseconds }
+                ServerScreening = new() { ServerTimeoutMilliseconds = StagedCeilingMilliseconds }
             };
 
             var speedtest = new OoklaSpeedtest(settings, mockHttp.ToHttpClient(), new DelayProviderStub());
@@ -395,7 +395,7 @@ public sealed partial class OoklaSpeedtestTests
 
             var settings = new OoklaSpeedtestSettings
             {
-                ServerDiscovery = new()
+                ServerScreening = new()
                 {
                     ServerTimeoutMilliseconds = StagedCeilingMilliseconds,
                     FirstScreeningStageMilliseconds = firstStageMilliseconds,

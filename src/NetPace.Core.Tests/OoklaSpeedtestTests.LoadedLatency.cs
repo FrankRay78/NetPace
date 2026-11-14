@@ -5,7 +5,7 @@ using System.Net;
 using System.Net.Http;
 using System.Threading;
 using NetPace.Core.Clients.Ookla;
-using NetPace.Core.Clients.Ookla.Settings;
+using NetPace.Core.Settings;
 using RichardSzalay.MockHttp;
 using Shouldly;
 
@@ -60,10 +60,10 @@ public sealed partial class OoklaSpeedtestTests
         private static OoklaSpeedtestSettings SingleDownloadSettings(LatencyTestSettings? latencyTest = null) =>
             new()
             {
+                DownloadSizes = [100],
+                DownloadSizeIterations = 1,
                 DownloadTest = new()
                 {
-                    DownloadSizes = [100],
-                    DownloadSizeIterations = 1,
                     DownloadParallelTasks = 1
                 },
                 LatencyTest = latencyTest ?? new LatencyTestSettings()
@@ -475,10 +475,10 @@ public sealed partial class OoklaSpeedtestTests
 
             var settings = new OoklaSpeedtestSettings
             {
+                DownloadSizes = [100],
+                DownloadSizeIterations = 2,
                 DownloadTest = new()
                 {
-                    DownloadSizes = [100],
-                    DownloadSizeIterations = 2,
                     DownloadParallelTasks = 2
                 }
             };

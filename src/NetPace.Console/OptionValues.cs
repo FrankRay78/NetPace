@@ -16,6 +16,10 @@ namespace NetPace.Console;
 /// </remarks>
 internal static class OptionValues
 {
+    public static readonly OptionValueSet<Provider> Providers = new(
+        ("ookla", Provider.Ookla),
+        ("librespeed", Provider.LibreSpeed));
+
     public static readonly OptionValueSet<Profile> Profiles = new(
         ("tiny", Profile.Tiny),
         ("small", Profile.Small),
@@ -57,6 +61,7 @@ internal static class OptionValues
     {
         return value switch
         {
+            Provider provider => Providers.Spell(provider),
             Profile profile => Profiles.Spell(profile),
             SpeedUnit unit => Units.Spell(unit),
             SpeedScale scale => UnitScales.Spell(scale),

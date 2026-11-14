@@ -242,7 +242,7 @@ public sealed partial class NetPaceConsoleTests
             // Then no probe goes out while a transfer runs either: asking for no latency asks for
             // none anywhere, in whichever format the run reports.
             Assert.Equal(0, result.ExitCode);
-            Assert.False(accessor.Settings.LatencyTest.LoadedLatencyEnabled);
+            Assert.False(Ookla(accessor).LatencyTest.LoadedLatencyEnabled);
         }
 
         [Theory]

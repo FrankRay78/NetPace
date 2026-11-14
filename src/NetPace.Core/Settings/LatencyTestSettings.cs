@@ -1,4 +1,4 @@
-namespace NetPace.Core.Clients.Ookla.Settings;
+namespace NetPace.Core.Settings;
 
 /// <summary>
 /// Settings used to configure how server latency is measured during a speed test.
