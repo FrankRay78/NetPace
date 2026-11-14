@@ -66,8 +66,8 @@ Run `dpkg --print-architecture` if you are unsure which archive you need. `armhf
 
 Two limits to know about:
 
-- **Debian 12 (Bookworm) or newer.** The binary is built against Bookworm's system libraries, the version Raspberry Pi OS has shipped since late 2023, so an older image such as Bullseye will refuse to start it. Upgrade the image, or [build from source](#building-from-source) on the board.
-- **ARMv7 with hardware floating point, on glibc.** ARMv6 boards (the original Raspberry Pi and the Pi Zero or Zero W, but not the Zero 2 W) are not supported, because .NET does not support ARMv6 at all. Musl-based systems such as Alpine on ARMv7 are not supported either: no release carries a musl archive on any architecture, so a musl board needs a source build targeting it.
+- **Debian 12 (Bookworm) or newer, or any armhf system with glibc 2.36 or newer.** The binary is built against Bookworm's system libraries, the version Raspberry Pi OS has shipped since late 2023, so an older image such as Bullseye will refuse to start it. Upgrade the image, or [build from source](#building-from-source) on the board.
+- **ARMv7 with hardware floating point, on glibc.** ARMv6 boards (the original Raspberry Pi 1, Pi Zero and Pi Zero W, but not the Zero 2 W) are not supported, because .NET does not support ARMv6 at all. Musl-based systems such as Alpine on ARMv7 are not supported either: no release carries a musl archive on any architecture, so a musl board needs a source build targeting it.
 
 There is no `standalone` or `net10` archive for 32-bit ARM, and no winget, Homebrew or `dotnet tool` route: the native archive above is the whole offering.
 

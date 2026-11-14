@@ -52,7 +52,7 @@ The AOT jobs guard the runner they landed on: `RUNNER_OS` must match the RID's o
 
 **The sysroot sets the oldest system the binary starts on**, which is why it is Debian 12 rather than the armhf packages on the Ubuntu runner's own ports: Bookworm carries glibc 2.36, and a binary linked against Ubuntu's much newer glibc would not start on a Bookworm board at all. Raspberry Pi OS Bookworm is therefore NetPace's floor for these devices, and `INSTALLATION.md` states it. Moving the floor means changing the container tag in both the sysroot step and the smoke test, which must stay the same distribution, the `libgcc-N-dev` package to the one that distribution ships, the `12` in the `crtbeginS.o` probe path, and the floor `INSTALLATION.md` states.
 
-ARMv6 boards (the original Pi Zero and Pi 1) are out of reach because .NET does not support ARMv6, and musl-based 32-bit systems because the release has no musl target on any architecture.
+ARMv6 boards (the original Raspberry Pi 1, Pi Zero and Pi Zero W) are out of reach because .NET does not support ARMv6, and musl-based 32-bit systems because the release has no musl target on any architecture.
 
 The alternatives weighed and rejected, for the sysroot and for the linker, are in CIR [`2026-11-11-arm32-linux-is-cross-compiled-against-bookworm`](change-intent-records/2026-11-11-arm32-linux-is-cross-compiled-against-bookworm.md).
 
@@ -195,7 +195,7 @@ The GitHub Release and its archives are unaffected by any of this. A tap update 
 - `<IsAotCompatible>true</IsAotCompatible>` is declared in both `src/NetPace.Core/NetPace.Core.csproj` and `src/NetPace.Console/NetPace.Console.csproj`. This activates the AOT/trim analyzers continuously during `dotnet build` and surfaces `IL2026`/`IL2090`/`IL3050`/`IL3056` warnings at compile time, not just at publish time.
 - AOT publishes set `PublishAot=true`, which activates a conditional `<WarningsAsErrors>IL2026;IL2090;IL3050;IL3056</WarningsAsErrors>` block in `NetPace.Console.csproj`. The workflow also passes `-p:InvariantGlobalization=true`. `-p:PublishSingleFile=true` is **not** passed for AOT — native AOT already produces a single executable.
 - `<PublishAot>` is **never** set as a static property in any csproj. AOT is opt-in via the workflow's `-p:PublishAot=true` flag; dev-machine builds remain non-AOT.
-- The `linux-arm` entry additionally passes `-p:SysRoot=`, `-p:LinkerFlavor=lld` and `-p:ObjCopyName=arm-linux-gnueabihf-objcopy`, the three properties its cross-compile needs. They are appended from a variable the sysroot step sets, which nothing else sets, so every other entry publishes the command it published before. See *32-bit ARM Linux cross-compilation* for what each one buys.
+- The `linux-arm` entry additionally passes `-p:SysRoot=`, `-p:LinkerFlavor=lld` and `-p:ObjCopyName=arm-linux-gnueabihf-objcopy`, the three properties its cross-compile needs. They are appended only when the matrix RID is `linux-arm`, so every other entry publishes the command it published before. The RID is the condition; the `NETPACE_SYSROOT` variable the sysroot step exports is only asserted, with `${NETPACE_SYSROOT:?…}`, never used as the condition. Keyed on the variable instead, a sysroot step that stopped running would silently publish a host-targeted build rather than fail. See *32-bit ARM Linux cross-compilation* for what each one buys.
 
 ## NuGet metadata
 
