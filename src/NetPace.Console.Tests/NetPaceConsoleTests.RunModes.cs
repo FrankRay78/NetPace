@@ -297,8 +297,8 @@ public sealed partial class NetPaceConsoleTests
         {
             // Only the run's own token says a cancellation is the user's. One the user never asked
             // for - here with no TimeoutException inside it to say what it was - is a test that ended
-            // without a result, and ending the run silently on it was the original bug in another
-            // shape.
+            // without a result. Ending the run silently on it would repeat the bug of a timeout being
+            // taken for the user cancelling.
 
             // Given a probe that is cancelled while the user's token stays live.
             var service = ServiceWhoseProbeThrows(_ => true, () => new OperationCanceledException());
