@@ -55,10 +55,10 @@ public sealed partial class OoklaSpeedtestTests
             new(
                 new OoklaSpeedtestSettings
                 {
+                    DownloadSizes = [100],
+                    DownloadSizeIterations = 1,
                     DownloadTest = new()
                     {
-                        DownloadSizes = [100],
-                        DownloadSizeIterations = 1,
                         DownloadParallelTasks = 1
                     }
                 },

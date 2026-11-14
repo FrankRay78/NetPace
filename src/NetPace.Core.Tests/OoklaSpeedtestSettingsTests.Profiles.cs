@@ -24,8 +24,8 @@ public sealed partial class OoklaSpeedtestSettingsTests
             var s = new OoklaSpeedtestSettings(Profile.Tiny);
 
             // Then
-            s.DownloadTest.DownloadSizes.ShouldBe(new[] { 350 });
-            s.DownloadTest.DownloadSizeIterations.ShouldBe(1);
+            s.DownloadSizes.ShouldBe(new[] { 350 });
+            s.DownloadSizeIterations.ShouldBe(1);
             s.DownloadTest.DownloadParallelTasks.ShouldBe(1);
             s.DownloadTest.DownloadSizeMb.ShouldBe(1);
 
@@ -47,8 +47,8 @@ public sealed partial class OoklaSpeedtestSettingsTests
             var s = new OoklaSpeedtestSettings(Profile.Small);
 
             // Then
-            s.DownloadTest.DownloadSizes.ShouldBe(new[] { 1000, 1500 });
-            s.DownloadTest.DownloadSizeIterations.ShouldBe(2);
+            s.DownloadSizes.ShouldBe(new[] { 1000, 1500 });
+            s.DownloadSizeIterations.ShouldBe(2);
             s.DownloadTest.DownloadParallelTasks.ShouldBe(2);
             s.DownloadTest.DownloadSizeMb.ShouldBe(10);
 
@@ -66,8 +66,8 @@ public sealed partial class OoklaSpeedtestSettingsTests
             var s = new OoklaSpeedtestSettings(Profile.Medium);
 
             // Then
-            s.DownloadTest.DownloadSizes.ShouldBe(new[] { 1500, 2000, 3000, 3500, 4000 });
-            s.DownloadTest.DownloadSizeIterations.ShouldBe(2);
+            s.DownloadSizes.ShouldBe(new[] { 1500, 2000, 3000, 3500, 4000 });
+            s.DownloadSizeIterations.ShouldBe(2);
             s.DownloadTest.DownloadParallelTasks.ShouldBe(4);
             s.DownloadTest.DownloadSizeMb.ShouldBe(100);
 
@@ -85,8 +85,8 @@ public sealed partial class OoklaSpeedtestSettingsTests
             var s = new OoklaSpeedtestSettings(Profile.Large);
 
             // Then
-            s.DownloadTest.DownloadSizes.ShouldBe(new[] { 2000, 2500, 3000, 3500, 4000 });
-            s.DownloadTest.DownloadSizeIterations.ShouldBe(12);
+            s.DownloadSizes.ShouldBe(new[] { 2000, 2500, 3000, 3500, 4000 });
+            s.DownloadSizeIterations.ShouldBe(12);
             s.DownloadTest.DownloadParallelTasks.ShouldBe(16);
             s.DownloadTest.DownloadSizeMb.ShouldBe(1024);
 
@@ -104,8 +104,8 @@ public sealed partial class OoklaSpeedtestSettingsTests
             var s = new OoklaSpeedtestSettings(Profile.Mega);
 
             // Then
-            s.DownloadTest.DownloadSizes.ShouldBe(new[] { 3000, 4000, 5000, 6000, 7000 });
-            s.DownloadTest.DownloadSizeIterations.ShouldBe(40);
+            s.DownloadSizes.ShouldBe(new[] { 3000, 4000, 5000, 6000, 7000 });
+            s.DownloadSizeIterations.ShouldBe(40);
             s.DownloadTest.DownloadParallelTasks.ShouldBe(32);
             s.DownloadTest.DownloadSizeMb.ShouldBe(10240);
 
@@ -143,9 +143,9 @@ public sealed partial class OoklaSpeedtestSettingsTests
             var s = new OoklaSpeedtestSettings(Profile.Mega);
 
             // Then — three separate asserts so a single failure pinpoints which bonus value is missing.
-            s.DownloadTest.DownloadSizes.ShouldContain(5000);
-            s.DownloadTest.DownloadSizes.ShouldContain(6000);
-            s.DownloadTest.DownloadSizes.ShouldContain(7000);
+            s.DownloadSizes.ShouldContain(5000);
+            s.DownloadSizes.ShouldContain(6000);
+            s.DownloadSizes.ShouldContain(7000);
         }
     }
 }

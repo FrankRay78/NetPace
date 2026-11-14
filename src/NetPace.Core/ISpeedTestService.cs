@@ -24,6 +24,10 @@ public interface ISpeedTestService
     /// </summary>
     /// <param name="cancellationToken">The token to allow the operation to be cancelled.</param>
     /// <returns>An array of available servers that can be used for speed testing.</returns>
+    /// <exception cref="NotSupportedException">
+    /// Thrown by a provider that publishes no server list to read, and whose server must
+    /// therefore be named by its URL. Screening a list supplied by the caller still works.
+    /// </exception>
     public Task<IServer[]> GetServersAsync(CancellationToken cancellationToken = default);
 
     /// <summary>

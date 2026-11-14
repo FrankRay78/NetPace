@@ -124,9 +124,9 @@ public sealed class CommandLineTestHost
         // the same way.
         serviceCollection.TryAddSingleton<ILiveDisplayRefresh, NoRefreshStub>();
 
-        // Default OoklaSpeedtestSettingsAccessor (matches production DI). Tests that want to
+        // Default SpeedTestSettingsAccessor (matches production DI). Tests that want to
         // inspect the bound settings register their own instance before calling RunAsync.
-        serviceCollection.TryAddSingleton<OoklaSpeedtestSettingsAccessor>();
+        serviceCollection.TryAddSingleton<SpeedTestSettingsAccessor>();
 
         await using var serviceProvider = serviceCollection.BuildServiceProvider();
         var exitCode = await Program.RunAsync(serviceProvider, args, cancellationToken);

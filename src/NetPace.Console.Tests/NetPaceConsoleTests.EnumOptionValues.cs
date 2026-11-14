@@ -21,6 +21,7 @@ public sealed partial class NetPaceConsoleTests
         [InlineData("--unit-system", "Imperial")]
         [InlineData("--file-mode", "Truncate")]
         [InlineData("--fail-on", "Everything")]
+        [InlineData("--provider", "fibrebox")]
         [Theory]
         public async Task UnknownOptionValue_IsRejectedAndTheValidValuesAreListed(string option, string value)
         {
@@ -110,15 +111,16 @@ public sealed partial class NetPaceConsoleTests
             // Then — assert field-for-field (int[] DownloadSizes uses reference equality).
             Assert.Equal(0, result.ExitCode);
             var expected = new OoklaSpeedtestSettings(profile);
-            Assert.Equal(expected.DownloadTest.DownloadSizes, accessor.Settings.DownloadTest.DownloadSizes);
-            Assert.Equal(expected.DownloadTest.DownloadSizeIterations, accessor.Settings.DownloadTest.DownloadSizeIterations);
-            Assert.Equal(expected.DownloadTest.DownloadParallelTasks, accessor.Settings.DownloadTest.DownloadParallelTasks);
-            Assert.Equal(expected.DownloadTest.DownloadSizeMb, accessor.Settings.DownloadTest.DownloadSizeMb);
-            Assert.Equal(expected.UploadTest.UploadSizeIncrementKb, accessor.Settings.UploadTest.UploadSizeIncrementKb);
-            Assert.Equal(expected.UploadTest.UploadIncrements, accessor.Settings.UploadTest.UploadIncrements);
-            Assert.Equal(expected.UploadTest.UploadSizeIterations, accessor.Settings.UploadTest.UploadSizeIterations);
-            Assert.Equal(expected.UploadTest.UploadParallelTasks, accessor.Settings.UploadTest.UploadParallelTasks);
-            Assert.Equal(expected.UploadTest.UploadSizeMb, accessor.Settings.UploadTest.UploadSizeMb);
+            var ookla = Ookla(accessor);
+            Assert.Equal(expected.DownloadSizes, ookla.DownloadSizes);
+            Assert.Equal(expected.DownloadSizeIterations, ookla.DownloadSizeIterations);
+            Assert.Equal(expected.DownloadTest.DownloadParallelTasks, ookla.DownloadTest.DownloadParallelTasks);
+            Assert.Equal(expected.DownloadTest.DownloadSizeMb, ookla.DownloadTest.DownloadSizeMb);
+            Assert.Equal(expected.UploadTest.UploadSizeIncrementKb, ookla.UploadTest.UploadSizeIncrementKb);
+            Assert.Equal(expected.UploadTest.UploadIncrements, ookla.UploadTest.UploadIncrements);
+            Assert.Equal(expected.UploadTest.UploadSizeIterations, ookla.UploadTest.UploadSizeIterations);
+            Assert.Equal(expected.UploadTest.UploadParallelTasks, ookla.UploadTest.UploadParallelTasks);
+            Assert.Equal(expected.UploadTest.UploadSizeMb, ookla.UploadTest.UploadSizeMb);
         }
 
         [InlineData("auto")]

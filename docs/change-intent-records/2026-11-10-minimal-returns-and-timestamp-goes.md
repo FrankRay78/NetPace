@@ -8,7 +8,7 @@
 
 **Constraints:**
 
-- `--minimal` and `--simple` alone turn the probes off, in `Program.BuildOoklaSettings`; a new format inherits probes-on unasked.
+- `--minimal` and `--simple` alone turn the probes off, in `Program.BuildSpeedTestSettings`; a new format inherits probes-on unasked.
 - Both render a figure through one expression on `SpeedTestResultExtensions`.
 
 **Decisions:**
