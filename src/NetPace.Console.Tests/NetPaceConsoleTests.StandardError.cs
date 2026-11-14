@@ -1,7 +1,7 @@
 using NetPace.Console.Diagnostics;
-using Spectre.Console;
 using NetPace.Console.Tests.Theming;
 using NetPace.Console.Theming;
+using Spectre.Console;
 
 namespace NetPace.Console.Tests;
 
