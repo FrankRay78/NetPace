@@ -81,7 +81,7 @@ Sizes outside this set return HTTP 404; the server does **not** generate JPEGs o
 
 NetPace's default `DownloadSizes` keeps only the larger half of the historic ten — biased toward modern fast links where smaller payloads are too short to reach steady state. The other eight (smaller five + bonus three) are still served on every OoklaServer, just not requested by default.
 
-The numbers below were measured against the local Docker OoklaServer ([`docker/ooklaserver/`](../../docker/ooklaserver/)) and *confirmed identical* across nine independent UK OoklaServer operators (see [Cross-server validation](#cross-server-validation)). They are pinned to the current upstream OoklaServer stable build; a future upstream release could change them.
+The numbers below were measured against the local Docker OoklaServer in the slow-link lab ([`docker/lab/`](../../docker/lab/README.md)) and *confirmed identical* across nine independent UK OoklaServer operators (see [Cross-server validation](#cross-server-validation)). They are pinned to the current upstream OoklaServer stable build; a future upstream release could change them.
 
 | URL                       | Bytes           | Approx.       | NetPace default |
 | ------------------------- | --------------: | ------------: | :-------------: |
@@ -209,7 +209,7 @@ The library-level cap-removal default — a fresh `new DownloadTestSettings()` l
 
 ## 4. Local verification
 
-The repo includes a Docker OoklaServer at [`docker/ooklaserver/`](../../docker/ooklaserver/), exposing the real endpoints the test code drives:
+The repo's slow-link lab ([`docker/lab/`](../../docker/lab/README.md)) includes a Docker OoklaServer, exposing the real endpoints the test code drives:
 
 | Endpoint                                             | Purpose                                                    |
 | ---------------------------------------------------- | ---------------------------------------------------------- |
@@ -217,7 +217,7 @@ The repo includes a Docker OoklaServer at [`docker/ooklaserver/`](../../docker/o
 | `http://localhost:18080/speedtest/upload.php`        | Upload sink (used by `UploadTest`).                        |
 | `http://localhost:18080/speedtest/latency.txt`       | Health/latency probe.                                      |
 
-After `./docker/ooklaserver/start.sh`, the endpoints can be probed directly:
+After `./docker/lab/start.sh --ookla`, the endpoints can be probed directly:
 
 ```bash
 # A single download URL at one of the default sizes
@@ -243,7 +243,7 @@ head -c 1048576 /dev/urandom | curl -sS -o /dev/null -w '%{http_code}\n' \
 | `Large`  | `[2000, 2500, 3000, 3500, 4000]`    | 12         | 16       | 1024                 |
 | `Mega`   | `[3000, 4000, 5000, 6000, 7000]`    | 40         | 32       | 10240                |
 
-LibreSpeed's own request shape, under the same ceilings and connection counts, is in [`LibreSpeedtestSettings`](../../src/NetPace.Core/Clients/LibreSpeed/LibreSpeedtestSettings.cs): one whole-mebibyte `ckSize` per profile and a request count large enough to reach the ceiling. Its endpoints and URL handling are documented on [`LibreSpeedtest`](../../src/NetPace.Core/Clients/LibreSpeed/LibreSpeedtest.cs). The parallel-transfer loop and the byte-budget termination in §2 above apply to a LibreSpeed transfer unchanged; the request shape and the upload endpoint described there are Ookla's. For verifying one locally, [`docker/librespeed/`](../../docker/librespeed/) is the counterpart to §4's OoklaServer setup.
+LibreSpeed's own request shape, under the same ceilings and connection counts, is in [`LibreSpeedtestSettings`](../../src/NetPace.Core/Clients/LibreSpeed/LibreSpeedtestSettings.cs): one whole-mebibyte `ckSize` per profile and a request count large enough to reach the ceiling. Its endpoints and URL handling are documented on [`LibreSpeedtest`](../../src/NetPace.Core/Clients/LibreSpeed/LibreSpeedtest.cs). The parallel-transfer loop and the byte-budget termination in §2 above apply to a LibreSpeed transfer unchanged; the request shape and the upload endpoint described there are Ookla's. For verifying one locally, the same lab serves LibreSpeed on port 18081: `./docker/lab/start.sh --librespeed`.
 
 ### 5.2 Upload (per profile)
 

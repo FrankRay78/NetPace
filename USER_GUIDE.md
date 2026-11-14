@@ -373,7 +373,7 @@ There is nothing to discover: LibreSpeed publishes no server list, so `--provide
 
 If the address answers but not as a LibreSpeed server, the run says which URL answered wrongly and what to check. If it answers with a server error, the run names the URL and the status, since the address is likely right but the server is failing. If it cannot be reached at all, the run reports that the same way an Ookla run does. Either way nothing is reported as measured, and the exit code stays `0` unless you opt in with `--fail-on` (see [Exit codes](#exit-codes)).
 
-There is a local LibreSpeed server to try this against in [`docker/librespeed/`](https://github.com/FrankRay78/NetPace/tree/main/docker/librespeed): one script starts it and prints the command to run.
+There is a local LibreSpeed server to try this against in [`docker/lab/`](https://github.com/FrankRay78/NetPace/tree/main/docker/lab): one script starts it and prints the command to run, on a full-speed link or behind one of the lab's slow-link profiles.
 
 ---
 
