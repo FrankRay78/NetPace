@@ -16,6 +16,8 @@ OoklaServer is Ookla's official speed-test daemon. It exposes the HTTP-Legacy en
 | `stop.sh`            | Stop and remove the container.                      |
 | `link-profiles.sh`   | The five slow-link profiles, as `tc netem` arguments. Sourced by `start.sh` and `shape.sh`. |
 | `shape.sh`           | Container entry point: applies the requested profile, then starts OoklaServer. |
+| `lab-properties.sh`  | Run when the image is built: turns off the OoklaServer settings that would make the server reach out to the internet on its own. |
+| `lab-properties.tests.sh` | Test matrix for `lab-properties.sh`.           |
 
 ---
 
@@ -109,6 +111,14 @@ netpace --server-url http://localhost:18080/speedtest/upload.php --profile tiny
 ```
 
 `--profile tiny` is worth the habit here. On the narrower profiles NetPace's default transfer sizes take a very long time — at 9.6 kbit, a single default-sized request is a wait measured in hours.
+
+### The server's start-up traffic is turned off
+
+Two OoklaServer settings would make the server add traffic of its own to the shaped link, and the image turns both off. OoklaServer would otherwise reach out to the internet while it starts: it attempts a Let's Encrypt certificate about 17 seconds in, and it checks for updates to itself. On a full-speed link neither is noticeable. At 9.6 kbit a single TLS handshake costs seconds, and that traffic arrives after the container is healthy and after `start.sh` has said the lab is ready, so a run started at that moment measured the server's start-up rather than the link. On `radio` its first latency probe used up NetPace's 10 second limit every time.
+
+`lab-properties.sh` turns them off when the image is built, so the server no longer requests a certificate or checks for updates. The server log says `Server updates were disabled.` and carries no certificate lines. If a later OoklaServer release drops either setting's name from the properties file, the image build fails rather than quietly restoring the traffic.
+
+The first latency probe straight after start is still a few seconds slower than one a couple of minutes later. On `radio` it took about 6 s, against about 3 s once the lab had settled, and NetPace's limit is 10 s. The cause of that gap is not established. `start.sh` prints the ready message only after its readiness poll has read `latency.txt` back, so the poll's own response is not still crossing the link at that point. **A latency stage that fails outright straight after start is not explained by this gap.** Look at the link and at NetPace's limits instead.
 
 ### Confirmed host platforms
 
