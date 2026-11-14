@@ -19,6 +19,7 @@ cd "$(dirname "$0")"
 
 OOKLA_PORT=18080
 LIBRESPEED_PORT=18081
+OOKLA_URL="http://localhost:${OOKLA_PORT}/speedtest/"
 LIBRESPEED_URL="http://localhost:${LIBRESPEED_PORT}/"
 
 # The container names docker-compose.yml fixes, so a status check here and the name a reader
@@ -30,7 +31,6 @@ LIBRESPEED_CONTAINER=netpace-lab-librespeed
 PROFILE=""
 WANT_OOKLA=""
 WANT_LIBRESPEED=""
-NAMED_A_SERVER=""
 
 usage() {
   echo "Usage: ./start.sh [profile] [--ookla] [--librespeed]" >&2
@@ -61,11 +61,9 @@ while [ "$#" -gt 0 ]; do
       ;;
     --ookla)
       WANT_OOKLA=1
-      NAMED_A_SERVER=1
       ;;
     --librespeed)
       WANT_LIBRESPEED=1
-      NAMED_A_SERVER=1
       ;;
     -*)
       echo "ERROR: unknown option '$1'." >&2
@@ -86,7 +84,8 @@ while [ "$#" -gt 0 ]; do
   shift
 done
 
-if [ -z "$NAMED_A_SERVER" ]; then
+# Neither server named: start both, which is the provider comparison the lab exists for.
+if [ -z "$WANT_OOKLA" ] && [ -z "$WANT_LIBRESPEED" ]; then
   WANT_OOKLA=1
   WANT_LIBRESPEED=1
 fi
@@ -118,12 +117,20 @@ fi
 
 # This lab replaces two earlier ones, in docker/ooklaserver/ and docker/librespeed/. A container
 # either of them left running holds host port 18080 or 18081, so the lab would fail to publish
-# it. Matched on the Compose project and service labels rather than the container name, so a
-# project of the contributor's own that happens to use the same name is never touched.
+# it. Matched on the Compose project and service labels, both of which must match, so this lab's
+# own ooklaserver service (project netpace-lab) is never caught by it.
+#
+# The old librespeed lab named its project netpace-librespeed, so that call can match nothing
+# else. The old ookla lab named no project, so Compose derived one from its directory and the
+# label is the generic `ooklaserver`: a contributor's own Compose project of that name, with a
+# service of that name, would also be removed. Narrow enough to be worth the port it frees.
 remove_old_lab() {
+  # No `|| true`: docker ps exits 0 with no output when nothing matches, so a non-zero exit means
+  # the daemon could not be reached. Letting set -e stop here says that, where carrying on would
+  # report the old labs cleared and then fail on a port one of them still holds.
   old_ids="$(docker ps -aq \
     --filter "label=com.docker.compose.project=$1" \
-    --filter "label=com.docker.compose.service=$2" 2>/dev/null || true)"
+    --filter "label=com.docker.compose.service=$2")"
   if [ -n "$old_ids" ]; then
     echo "Removing a container left by the old '$1' lab."
     # shellcheck disable=SC2086
@@ -139,14 +146,24 @@ remove_old_lab netpace-librespeed librespeed
 # was asked for, or carrying a server that was not.
 docker compose down --remove-orphans
 
+# Every path out of a started lab removes it, so the removal is written once. Reported on stderr
+# and never fatal: the caller is already on its way out with a status of its own to return, and a
+# removal that failed is something the maintainer has to be told, not something to abort on.
+remove_lab() {
+  # The remedy names the containers rather than ./stop.sh, which is this same command: advising it
+  # here would send the maintainer back to the thing that has just failed, with the host ports
+  # still held and the next start failing on a conflict that looks nothing like the real cause.
+  docker compose down --remove-orphans >&2 \
+    || echo "ERROR: could not remove the lab — run 'docker rm -f $LINK_CONTAINER $OOKLA_CONTAINER $LIBRESPEED_CONTAINER'." >&2
+}
+
 # Ctrl-C during the build or the wait removes what was started, as a failed start does: a lab
 # left up would be one nobody confirmed ready.
 interrupted() {
   trap - INT TERM
   echo >&2
   echo "Interrupted — removing the lab." >&2
-  docker compose down --remove-orphans >&2 \
-    || echo "ERROR: could not remove the lab — run ./stop.sh." >&2
+  remove_lab
   exit 130
 }
 trap interrupted INT TERM
@@ -162,8 +179,7 @@ failed_start() {
   docker compose logs --tail=50 $SERVICES >&2 || echo "(could not read the container logs)" >&2
   echo >&2
   echo "Removing the lab — a start either brings up everything asked for, or nothing." >&2
-  docker compose down --remove-orphans >&2 \
-    || echo "ERROR: could not remove the lab — run ./stop.sh." >&2
+  remove_lab
   exit 1
 }
 
@@ -187,16 +203,19 @@ if [ -n "$PROFILE" ]; then
   esac
 fi
 
+# Neither check suppresses curl's own error text. The polling loop below silences it per attempt,
+# and shows it once on the timeout path: a proxy inherited from the environment, a refused
+# loopback connection or an exceeded --max-time are all host-side, so curl is the only thing that
+# names them and none of them appear in the container logs failed_start prints.
 ready_ookla() {
-  curl -fsS --max-time 10 "http://localhost:${OOKLA_PORT}/speedtest/latency.txt" 2>/dev/null \
-    | grep -q "^test=test"
+  curl -fsS --max-time 10 "${OOKLA_URL}latency.txt" | grep -q "^test=test"
 }
 
 # The check NetPace itself makes: a success status and an empty body from the ping endpoint. A
 # plain web server answering with a page would pass a status-only check and fail every run.
 ready_librespeed() {
   answer="$(curl -fsS --max-time 10 -o /dev/null -w '%{http_code} %{size_download}' \
-    "${LIBRESPEED_URL}backend/empty.php" 2>/dev/null)" || return 1
+    "${LIBRESPEED_URL}backend/empty.php")" || return 1
   [ "$answer" = "200 0" ]
 }
 
@@ -224,12 +243,15 @@ await() {
       esac
     done
 
-    if "$check"; then
+    if "$check" 2>/dev/null; then
       return 0
     fi
     sleep 1
   done
 
+  # One unsuppressed attempt, so the timeout carries curl's own reason for it.
+  echo "The last readiness attempt reported:" >&2
+  "$check" >/dev/null || true
   failed_start "$name did not answer on port ${port} within ${DEADLINE}s."
 }
 
@@ -239,6 +261,19 @@ fi
 if [ -n "$WANT_LIBRESPEED" ]; then
   await "$LIBRESPEED_CONTAINER" ready_librespeed LibreSpeed "$LIBRESPEED_PORT"
 fi
+
+# `await` watches only the server it is waiting for, so a server that answered and then exited is
+# not looked at again — and the second wait can run for the whole deadline. Without this sweep the
+# lab would print the ready message, and the command to use, for a container that is gone.
+# OoklaServer is the one that dies late in practice: it aborts on an out-of-date warning or
+# missing AES-NI, both of which happen after it has served latency.txt.
+# shellcheck disable=SC2086
+for c in "$LINK_CONTAINER" \
+         ${WANT_OOKLA:+"$OOKLA_CONTAINER"} ${WANT_LIBRESPEED:+"$LIBRESPEED_CONTAINER"}; do
+  status="$(docker inspect -f '{{.State.Status}}' "$c" 2>/dev/null || echo missing)"
+  [ "$status" = "running" ] \
+    || failed_start "the '$c' container is $status, so the lab did not come up in full."
+done
 
 echo
 if [ -n "$PROFILE" ]; then
@@ -252,7 +287,7 @@ echo
 
 echo "Point NetPace at it with:"
 if [ -n "$WANT_OOKLA" ]; then
-  echo "  netpace --server-url http://localhost:${OOKLA_PORT}/speedtest/upload.php${PROFILE:+ --profile tiny}"
+  echo "  netpace --server-url ${OOKLA_URL}upload.php${PROFILE:+ --profile tiny}"
 fi
 if [ -n "$WANT_LIBRESPEED" ]; then
   echo "  netpace --provider librespeed --server-url ${LIBRESPEED_URL}${PROFILE:+ --profile tiny}"
@@ -273,7 +308,7 @@ if [ -n "$PROFILE" ]; then
   echo "a wait measured in hours."
 else
   echo
-  echo "A full run on the default profile moves a little over 100 MiB over loopback. Use"
+  echo "A full run on the default profile moves about 120 MiB over loopback. Use"
   echo "--profile tiny while you are only checking that the lab works."
 fi
 exit 0

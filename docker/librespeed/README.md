@@ -12,5 +12,3 @@ Nothing to run here. From `docker/lab/`:
 ```
 
 The server is still at `http://localhost:18081/`, and the first start removes any container this directory's setup left running.
-
-Why one lab: both providers share one measurement in `NetPace.Core`, so a change to how NetPace measures a slow link changes both at once. Two sets of profiles to keep in step would make any difference between the providers' figures impossible to read. See [`docker/lab/README.md`](../lab/README.md).

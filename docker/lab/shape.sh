@@ -27,9 +27,13 @@ IFACE=eth0
 # block device that incoming traffic is redirected through.
 IFB=ifb0
 
-# Written once both directions are shaped and read back. The image's healthcheck tests for it,
-# and each server waits for that healthcheck, so this file is what admits a server to the link.
-READY=/run/netpace-lab/shaped
+# Written once the link is in the state that was asked for: both directions shaped and read back,
+# or deliberately unshaped. The image's healthcheck tests for it, and each server waits for that
+# healthcheck, so this file is what admits a server to the link.
+#
+# Overridable so that the refusal paths can be exercised off-container, where /run is not
+# writable; nothing in the lab sets it, and Dockerfile.link's healthcheck tests the default.
+READY="${NETPACE_LAB_READY:-/run/netpace-lab/shaped}"
 
 cd "$(dirname "$0")"
 
@@ -54,10 +58,14 @@ die() {
 # process running is what gives them a network at all. Signals are trapped because this is the
 # container's PID 1, where the default action for SIGTERM is to ignore it: `docker compose down`
 # would then wait out its whole kill timeout on every stop.
+# Never returns, so neither caller can fall through to the code below it: the no-profile branch
+# would otherwise reach the unknown-profile check and report `unknown link profile ''` for a lab
+# that is configured correctly.
 hold() {
   trap 'echo; say "stopping — the link is going away."; exit 0' TERM INT
   sleep infinity &
   wait
+  exit 0
 }
 
 # A leftover from an earlier run of this container would declare the link shaped before anything

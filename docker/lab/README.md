@@ -53,7 +53,9 @@ LibreSpeed needs no `Dockerfile`: it publishes an official image, which the lab 
 
 With no profile the link runs at full local speed. With neither `--ookla` nor `--librespeed`, both servers are started. `./start.sh --help` lists the profiles and the servers.
 
-When ready, the script prints the exact NetPace command for each server it started:
+Both host ports are published by the link container, which every start brings up, so a single-server start still needs 18080 and 18081 free. Starting one server does not release the other's port.
+
+When ready, the script prints the NetPace command for each server it started (on a shaped link each one carries `--profile tiny`, for the reason under *A full run moves a lot of data*):
 
 ```bash
 netpace --server-url http://localhost:18080/speedtest/upload.php
@@ -70,7 +72,7 @@ To stop everything the lab started, whichever servers those were:
 
 To change profile or server choice, start again. Every start replaces whatever was running with exactly the state you asked for, so there is no way to end up on yesterday's profile or with a server you did not ask for. The ready message always names the profile in effect, or says there is none.
 
-`start.sh` rebuilds the images each time (`--build`), so an upgrade happens by starting again. Force a clean image pull with:
+`start.sh` rebuilds the images each time (`--build`), so an upgrade happens by starting again. Force a cache-free rebuild with:
 
 ```bash
 docker compose build --no-cache
@@ -85,7 +87,7 @@ Measure one provider, then the other. The lab prints this reminder whenever it s
 
 ### A full run moves a lot of data
 
-On the default profile a run moves a little over 100 MiB. Add `--profile tiny` while you are only checking that the lab works, and on the narrower link profiles treat it as a habit: at 9.6 kbit a single default-sized request is a wait measured in hours.
+On the default profile a run moves about 120 MiB: up to 100 MiB of downloads, plus about 20 MiB of uploads. Add `--profile tiny` while you are only checking that the lab works, and on the narrower link profiles treat it as a habit: at 9.6 kbit a single default-sized request is a wait measured in hours.
 
 ---
 
@@ -164,7 +166,7 @@ That shape is what gives the lab its guarantees:
 
 **Neither server ever holds the capability that shapes the link.** Only the `link` container is granted `NET_ADMIN`. The servers are not, so there is nothing to drop before starting them: a compromised server cannot lift its own shaping.
 
-**No server is started on a link that is not shaped yet.** Each server declares the link container *healthy* as its start condition, and the link reports healthy only once both directions are shaped and read back. A profile that cannot be applied in full exits the link container non-zero instead, so no server is ever started behind it.
+**No server is started on a link that is not shaped yet.** Each server declares the link container *healthy* as its start condition, and the link reports healthy only once it is in the state that was asked for: both directions shaped and read back, or deliberately unshaped when no profile was requested. A profile that cannot be applied in full exits the link container non-zero instead, so no server is ever started behind it.
 
 **Both directions, or nothing.** A half-shaped link is worse than an unshaped one: you would read a plausible number off a link that is only slow one way, with nothing on screen to say so.
 
@@ -176,7 +178,7 @@ That shape is what gives the lab its guarantees:
 
 **The lab does not restart itself.** After a crash or a reboot it stays down until you start it again, so a container can never come back fast while still claiming to be slow.
 
-**A start clears the old labs.** This lab replaces two earlier ones, in `docker/ooklaserver/` and `docker/librespeed/`. A container either of them left running holds one of the host ports, so a start removes it first, matched on its Compose project and service labels rather than on its name alone.
+**A start clears the old labs.** This lab replaces two earlier ones, in `docker/ooklaserver/` and `docker/librespeed/`. A container either of them left running holds one of the host ports, so a start removes it first, matched on its Compose project and service labels rather than on its name alone. The old librespeed lab named its project, so that match is exact; the old ookla lab did not, so its label is the directory-derived `ooklaserver` and a Compose project of your own by that name, with a service by that name, would be removed too.
 
 `start.sh` polls each server through its published port, which is the address you are about to use, rather than loopback inside the container. For LibreSpeed it waits for the answer NetPace itself requires: a success status **and an empty body**. A plain web server answering at the same address with a page would satisfy a status-only check and then fail every NetPace run.
 
@@ -249,7 +251,7 @@ Both ports are published by the `link` service, because that is the container th
 
 Then point NetPace at the new ports. Update `start.sh`'s `OOKLA_PORT` and `LIBRESPEED_PORT` to match if you want the readiness checks and the printed commands to follow.
 
-The **right** side of each mapping is the port inside the containers, and the two must stay different: both servers share one network namespace. 8081 for LibreSpeed is set by `WEBPORT` in `docker-compose.yml`, and OoklaServer's 8080 is not configurable.
+The **right** side of each mapping is the port inside the containers, and the two must stay different: both servers share one network namespace. 8081 for LibreSpeed is set by `WEBPORT` in `docker-compose.yml`. OoklaServer's ports are set by `OoklaServer.tcpPorts` and `OoklaServer.udpPorts` in its properties file, which would mean editing the file at image build time, so LibreSpeed is the cheaper of the two to move. Note that OoklaServer binds 5060 as well as 8080, so both are taken inside the namespace.
 
 ---
 
@@ -257,7 +259,7 @@ The **right** side of each mapping is the port inside the containers, and the tw
 
 ### `start.sh` refuses to start a profile
 
-A link container that stops before the servers start, followed by a log tail whose `shape: ERROR:` line names the direction that could not be shaped, means the host could not apply the profile in full. Nothing is left serving an unshaped link. Usual causes:
+A link container that stops before the servers start, followed by a log tail whose `shape: ERROR:` line names what could not be applied, means the host could not apply the profile in full. Nothing is left serving an unshaped link. Usual causes:
 
 - The `NET_ADMIN` capability is missing. Check `cap_add` on the `link` service in `docker-compose.yml` is intact, and that no local override drops it.
 - The host kernel has no `ifb` module, so the upload direction cannot be shaped. Expected on Docker Desktop for Windows and macOS; see *Confirmed host platforms* above.

@@ -44,7 +44,7 @@ services:
     # published 18080, and over the link container's shaped interface.
     network_mode: "service:link"
     depends_on:
-      # The link image's healthcheck passes only once both directions are shaped and read back,
+      # The link image's healthcheck passes only once the link is in the state that was asked for,
       # so the server never accepts a connection on a link that is not shaped yet. A profile that
       # cannot be applied stops the link container, and this server is then never started.
       link:
@@ -66,6 +66,7 @@ services:
       # /backend/empty.php and /backend/garbage.php.
       MODE: standalone
       # 8081 inside the container, not the image's default 8080: both servers share the link
-      # container's network namespace, and OoklaServer's port is not configurable. The image's
-      # own WEBPORT setting moves its listener, so the official image is still used unchanged.
+      # container's network namespace, so their inside ports have to differ. LibreSpeed's is the
+      # cheaper one to move — WEBPORT is an image setting, where OoklaServer's ports would need
+      # its properties file edited — so the official image is still used unchanged.
       WEBPORT: "8081"

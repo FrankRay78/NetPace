@@ -13,8 +13,9 @@ WORKDIR /opt/lab
 
 COPY link-profiles.sh shape.sh ./
 
-# shape.sh writes this file once both directions are shaped and read back, and deletes it on the
-# way in, so it is never left over from an earlier run. Each server declares this container
+# shape.sh writes this file once the link is in the state that was asked for — both directions
+# shaped and read back, or deliberately unshaped when no profile was requested — and deletes it
+# on the way in, so it is never left over from an earlier run. Each server declares this container
 # healthy as its start condition, which is what keeps a server from accepting its first
 # connection on a link that is not shaped yet.
 HEALTHCHECK --interval=1s --timeout=3s --start-period=2s --retries=60 \

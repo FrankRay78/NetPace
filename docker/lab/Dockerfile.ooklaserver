@@ -12,7 +12,7 @@ WORKDIR /opt/ookla
 
 # The upstream OoklaServer.tgz is a bundle of per-platform archives. Pick the
 # static-musl Linux build for the target architecture, then extract its
-# binary and default properties file at the image root.
+# binary and default properties file into the working directory above.
 RUN set -eux; \
     case "${TARGETARCH}" in \
       amd64) inner="OoklaServer-linux-x86_64-static-musl.tgz" ;; \
@@ -38,6 +38,8 @@ EXPOSE 8080/tcp 8080/udp
 
 # Loopback, deliberately: shaping is applied to the link container's eth0, so the healthcheck
 # stays fast and honest on every profile and reports on OoklaServer itself rather than the link.
+# Nothing gates on it — it is what `docker ps` reports. start.sh polls the published port, and
+# that poll plus its final status sweep are what decide whether the lab came up.
 HEALTHCHECK --interval=10s --timeout=3s --start-period=10s --retries=3 \
   CMD wget -q --spider http://localhost:8080/speedtest/latency.txt || exit 1
 

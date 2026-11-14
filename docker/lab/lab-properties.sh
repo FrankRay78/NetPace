@@ -45,12 +45,17 @@ for key in "${OUTBOUND_KEYS[@]}"; do
   # this file's own keys, but a pattern that means what it says is one less thing to reason about.
   pattern="${key//./\\.}"
 
+  # An assignment the server reads, as opposed to a commented line documenting the setting. Named
+  # once because the delete below and the two read-backs after it have to mean the same thing by
+  # it; were they written out separately, one could be narrowed without the others.
+  active="^[[:space:]]*${pattern}[[:space:]]*="
+
   grep -qE "^[[:space:]]*#?[[:space:]]*${pattern}[[:space:]]*=" "$PROPS" \
     || die "'$PROPS' does not mention $key, so this version of OoklaServer may have renamed or dropped it. Check the setting's name in OoklaServer.properties.default and update OUTBOUND_KEYS."
 
   # Drop any assignment already in force, so what is appended below is the only one. A commented
   # line is left where it is: it is the upstream documentation of the setting.
-  sed -i -E "/^[[:space:]]*${pattern}[[:space:]]*=/d" "$PROPS" \
+  sed -i -E "/${active}/d" "$PROPS" \
     || die "could not edit '$PROPS'."
 
   printf '\n# Turned off for the NetPace slow-link lab: see lab-properties.sh.\n%s = false\n' \
@@ -60,10 +65,10 @@ for key in "${OUTBOUND_KEYS[@]}"; do
   # Read every active assignment back, whatever its value, so a delete that missed one cannot
   # leave the server picking between two. Counting only the `false` ones would always find the
   # line just appended, and so could never fail.
-  assignments="$(grep -cE "^[[:space:]]*${pattern}[[:space:]]*=" "$PROPS")"
+  assignments="$(grep -cE "$active" "$PROPS")"
   [ "$assignments" = 1 ] \
     || die "after editing, '$PROPS' holds $assignments active assignment(s) of $key, expected exactly 1."
-  grep -qE "^[[:space:]]*${pattern}[[:space:]]*=[[:space:]]*false[[:space:]]*$" "$PROPS" \
+  grep -qE "${active}[[:space:]]*false[[:space:]]*$" "$PROPS" \
     || die "after editing, the one active assignment of $key in '$PROPS' is not false."
 
   say "$key = false"
