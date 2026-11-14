@@ -63,6 +63,11 @@ public sealed class SpeedTestCommandSettings
     public required string ServerUrl { get; init; }
 
     /// <summary>
+    /// Which kind of speed test server the run tests against.
+    /// </summary>
+    public required Provider Provider { get; init; }
+
+    /// <summary>
     /// The traffic-load profile that bundles per-request shape and total-byte cap defaults.
     /// </summary>
     public required Profile Profile { get; init; }
@@ -176,6 +181,14 @@ public static class SpeedTestCommandSettingsExtensions
         if (settings.NoLatency && settings.NoDownload && settings.NoUpload)
         {
             throw new ArgumentException("No tests selected. At least one of --no-latency, --no-download, or --no-upload must be omitted.");
+        }
+
+        // A LibreSpeed server is always named, never discovered: LibreSpeed publishes no server
+        // list to pick one from. Rejected here, before any test runs, so the user is told what is
+        // missing rather than watching a run fail against nothing.
+        if (settings.Provider == Provider.LibreSpeed && string.IsNullOrWhiteSpace(settings.ServerUrl))
+        {
+            throw new ArgumentException("A LibreSpeed server URL is needed: pass --server-url with the address LibreSpeed is installed at, such as --server-url http://pi.local:8080/.");
         }
     }
 }

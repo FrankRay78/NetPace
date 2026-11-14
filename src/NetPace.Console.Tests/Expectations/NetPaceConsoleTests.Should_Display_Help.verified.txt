@@ -32,8 +32,11 @@ OPTIONS:
                                       When used without --server-url, the first available server is selected.                                         
         --no-download                 Do not perform download test.                                                                                   
         --no-upload                   Do not perform upload test.                                                                                     
+        --provider         ookla      The kind of server to test against. <ookla, librespeed>                                                         
+                                      'librespeed' needs --server-url naming where LibreSpeed is installed.                                           
         --server-url                  The URL of a specific speed test server.                                                                        
                                       'netpace servers -l' will return your nearest servers.                                                          
+                                      With --provider librespeed, the address LibreSpeed is installed at.                                             
         --profile          medium     Profile bundle of payload settings. <tiny, small, medium, large, mega>                                          
         --downloadsize                Stop the download test after this many megabytes (IEC MiB).                                                     
         --uploadsize                  Stop the upload test after this many megabytes (IEC MiB).                                                       

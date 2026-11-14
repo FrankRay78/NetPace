@@ -18,7 +18,7 @@ internal static class Measurements
     /// <c>--csv</c> and <c>--json</c> run the same tests, so which tests ran, the order they ran in
     /// and the scope each was recorded under are settled in one place. The one way they differ in
     /// what they measure, <c>--minimal</c> and <c>--simple</c> turning the under-load probes off, is
-    /// decided in <c>Program.BuildOoklaSettings</c>, not here. The default writer keeps its own copy, because it
+    /// decided in <c>Program.BuildSpeedTestSettings</c>, not here. The default writer keeps its own copy, because it
     /// feeds a live display as each transfer runs.
     /// </remarks>
     public static async Task<SpeedTestOutcome> PerformAsync(ISpeedTestService speedTestClient, IServer server, SpeedTestCommandSettings settings, IDiagnosticRecorder recorder, CancellationToken cancellationToken)

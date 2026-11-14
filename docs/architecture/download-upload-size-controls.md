@@ -2,7 +2,7 @@
 
 **Status:** Reference (current as-is behaviour)
 **Last reviewed:** 2026-04-29
-**Source files:** [`NetPace.Core/Clients/Ookla/`](../../src/NetPace.Core/Clients/Ookla/), [`NetPace.Console/Program.cs`](../../src/NetPace.Console/Program.cs)
+**Source files:** [`NetPace.Core/SpeedTestProviderBase.cs`](../../src/NetPace.Core/SpeedTestProviderBase.cs), [`NetPace.Core/Settings/`](../../src/NetPace.Core/Settings/), [`NetPace.Core/Clients/Ookla/`](../../src/NetPace.Core/Clients/Ookla/), [`NetPace.Console/Program.cs`](../../src/NetPace.Console/Program.cs)
 
 Documents how `OoklaSpeedtest` decides the size, count, and parallelism of the HTTP requests it issues during a download and upload test, and which of those knobs are currently reachable from the command line.
 
@@ -11,34 +11,39 @@ Documents how `OoklaSpeedtest` decides the size, count, and parallelism of the H
 `OoklaSpeedtest` reads everything from a single nested record:
 
 ```text
-OoklaSpeedtestSettings
-├── ServerDiscovery : ServerDiscoverySettings
-├── LatencyTest     : LatencyTestSettings
-├── DownloadTest    : DownloadTestSettings
-├── UploadTest      : UploadTestSettings
-└── Proxy*          (UseProxy, ProxyAddress, ProxyCredential)
+OoklaSpeedtestSettings : SpeedTestSettings
+├── (shared, on SpeedTestSettings)
+│   ├── ServerScreening : ServerScreeningSettings
+│   ├── LatencyTest     : LatencyTestSettings
+│   ├── DownloadTest    : DownloadTestSettings   (DownloadSizeMb, DownloadParallelTasks)
+│   ├── UploadTest      : UploadTestSettings
+│   └── Proxy*          (UseProxy, ProxyAddress, ProxyCredential)
+└── (Ookla's own)
+    ├── DownloadSizes          : int[]
+    ├── DownloadSizeIterations : int
+    └── ServersUrl             : string
 ```
 
-Source: [`OoklaSpeedtestSettings.cs`](../../src/NetPace.Core/Clients/Ookla/OoklaSpeedtestSettings.cs).
+The shared half lives on [`SpeedTestSettings`](../../src/NetPace.Core/Settings/SpeedTestSettings.cs), which every provider's settings record derives from, so a profile's data ceilings and connection counts are read from one table whichever provider runs. What shapes an individual Ookla request is on [`OoklaSpeedtestSettings.cs`](../../src/NetPace.Core/Clients/Ookla/OoklaSpeedtestSettings.cs), because only an Ookla server has it.
 
-### 1.1 `DownloadTestSettings`
+### 1.1 Download request shape and ceiling
 
-Source: [`Settings/DownloadTestSettings.cs`](../../src/NetPace.Core/Clients/Ookla/Settings/DownloadTestSettings.cs).
+Sources: [`Settings/DownloadTestSettings.cs`](../../src/NetPace.Core/Settings/DownloadTestSettings.cs) for the shared ceiling and concurrency, [`OoklaSpeedtestSettings.cs`](../../src/NetPace.Core/Clients/Ookla/OoklaSpeedtestSettings.cs) for the Ookla request sizes.
 
-Defaults below are the values supplied by `new OoklaSpeedtestSettings()` (which chains to `Profile.Medium`). A bare `new DownloadTestSettings()` uses the type's field initializers (`DownloadSizeIterations = 4`, `DownloadParallelTasks = 8`, `DownloadSizeMb = int.MaxValue`); see §5 for per-profile values.
+Defaults below are the values supplied by `new OoklaSpeedtestSettings()` (which chains to `Profile.Medium`). A bare `new DownloadTestSettings()` uses the type's field initializers (`DownloadParallelTasks = 8`, `DownloadSizeMb = int.MaxValue`); see §5 for per-profile values.
 
 | Property                 | Default (Medium profile)         | Meaning                                                                                |
 | ------------------------ | -------------------------------- | -------------------------------------------------------------------------------------- |
-| `DownloadSizes`          | `[1500, 2000, 3000, 3500, 4000]` | Pixel sizes used to build URLs of the form `random{N}x{N}.jpg`. Bigger N → bigger file. The default is the larger half of the historic ten-element Ookla Flash-client array (see §2.1). |
-| `DownloadSizeIterations` | `2`                              | How many times each size is requested (URL gets a `?r={i}` cache-buster).              |
-| `DownloadParallelTasks`  | `4`                              | Concurrent HTTP GETs.                                                                  |
-| `DownloadSizeMb`         | `100`                            | Total-byte budget cap in IEC MiB. The download loop terminates once cumulative bytes received reach this threshold. Default sentinel for a bare record is `int.MaxValue` (no cap). |
+| `DownloadSizes`          | `[1500, 2000, 3000, 3500, 4000]` | Pixel sizes used to build URLs of the form `random{N}x{N}.jpg`. Bigger N → bigger file. The default is the larger half of the historic ten-element Ookla Flash-client array (see §2.1). On `OoklaSpeedtestSettings`. |
+| `DownloadSizeIterations` | `2`                              | How many times each size is requested (URL gets a `?r={i}` cache-buster). On `OoklaSpeedtestSettings`. |
+| `DownloadParallelTasks`  | `4`                              | Concurrent HTTP GETs. On `DownloadTest`.                                               |
+| `DownloadSizeMb`         | `100`                            | Total-byte budget cap in IEC MiB. The download loop terminates once cumulative bytes received reach this threshold. Default sentinel for a bare record is `int.MaxValue` (no cap). On `DownloadTest`. |
 
 Total candidate requests = `DownloadSizes.Length × DownloadSizeIterations` (Medium default = 5 × 2 = **10**).
 
 ### 1.2 `UploadTestSettings`
 
-Source: [`Settings/UploadTestSettings.cs`](../../src/NetPace.Core/Clients/Ookla/Settings/UploadTestSettings.cs).
+Source: [`Settings/UploadTestSettings.cs`](../../src/NetPace.Core/Settings/UploadTestSettings.cs).
 
 Defaults below are the values supplied by `new OoklaSpeedtestSettings()` (Medium profile). A bare `new UploadTestSettings()` uses the type's field initializers (`UploadSizeIterations = 10`, `UploadParallelTasks = 8`, `UploadSizeMb = int.MaxValue`); see §5 for per-profile values.
 
@@ -54,9 +59,9 @@ Total candidate requests = `UploadIncrements × UploadSizeIterations` (Medium de
 
 ## 2. How the settings shape network behaviour
 
-### 2.1 Download — [`OoklaSpeedtest.GetDownloadSpeedAsync`](../../src/NetPace.Core/Clients/Ookla/OoklaSpeedtest.cs)
+### 2.1 Download — [`SpeedTestProviderBase.GetDownloadSpeedAsync`](../../src/NetPace.Core/SpeedTestProviderBase.cs)
 
-1. `GenerateDownloadUrls(server.Url, DownloadSizes, DownloadSizeIterations)` produces a flat list of URLs:
+1. `DownloadRequestUrls(server.Url)` produces a flat list of URLs:
    ```
    {base}/random1500x1500.jpg?r=0
    {base}/random1500x1500.jpg?r=1
@@ -148,14 +153,14 @@ These three sizes were searched for in public Ookla docs, third-party speedtest 
 
 If a future OoklaServer release changes these values, re-run the same HEAD probe (any one of the URLs above is enough as a spot-check) and update the tables in §2.1.
 
-### 2.2 Upload — [`OoklaSpeedtest.GetUploadSpeedAsync`](../../src/NetPace.Core/Clients/Ookla/OoklaSpeedtest.cs)
+### 2.2 Upload — [`SpeedTestProviderBase.GetUploadSpeedAsync`](../../src/NetPace.Core/SpeedTestProviderBase.cs)
 
 1. `GenerateUploadDataLengths(UploadIncrements, UploadSizeIncrementKb, UploadSizeIterations)` produces a flat list of byte-lengths. The size of increment `i` (1-indexed) is computed as:
    ```
    bytes = i × UploadSizeIncrementKb × 1024
    ```
    Note that the `Kb` suffix is **binary** (1024), not decimal. Each increment is then yielded `UploadSizeIterations` times.
-2. Each length is POSTed to `server.Url` (the OoklaServer `upload.php`-style endpoint) using `RandomStreamContent` to stream cryptographically-random bytes in 8 KB chunks (avoids LOH allocations). `UploadParallelTasks` workers run concurrently.
+2. Each length is POSTed to the provider's upload address for the server (`server.Url` itself for Ookla, the install's `backend/empty.php` for LibreSpeed), after an empty probe POST has resolved any redirect in front of it, using `RandomStreamContent` to stream cryptographically-random bytes in 8 KB chunks (avoids LOH allocations). `UploadParallelTasks` workers run concurrently.
 3. The loop **terminates early** once `uploadSizeMb × 1024 × 1024` bytes have been sent (the budget cap from the `--uploadsize` overload).
 
 #### Default total under defaults
@@ -187,7 +192,7 @@ Unlike download, this total is fully deterministic — NetPace generates the pay
 
 | Switch           | Property         | Default                | Effect                                                                                                                                  |
 | ---------------- | ---------------- | ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
-| `--profile`      | `Profile`        | `medium`               | Sets per-request shape (`DownloadSizes`, iterations, parallel tasks) and total-byte cap defaults via `new OoklaSpeedtestSettings(p)`.    |
+| `--profile`      | `Profile`        | `medium`               | Sets per-request shape (`DownloadSizes`, iterations, parallel tasks) and total-byte cap defaults, via the settings record the chosen provider builds.    |
 | `--downloadsize` | `DownloadSizeMb` | (profile-supplied)     | Overrides the download cap via a `with`-expression. Does **not** change per-request file size — the profile remains authoritative for shape. |
 | `--uploadsize`   | `UploadSizeMb`   | (profile-supplied)     | Overrides the upload cap via a `with`-expression. Does **not** change per-request payload — the profile remains authoritative for shape.     |
 | `--connections`  | `Connections`    | (profile-supplied)     | Overrides `DownloadParallelTasks` **and** `UploadParallelTasks` together, via a `with`-expression. Accepts 1–32; outside that range, or not a whole number, the run is refused before any test starts. Leaves per-request shape and both caps alone. |
@@ -226,7 +231,7 @@ head -c 1048576 /dev/urandom | curl -sS -o /dev/null -w '%{http_code}\n' \
 
 ## 5. Profile-driven defaults
 
-[`Profile`](../../src/NetPace.Core/Profile.cs) is the public, provider-agnostic vocabulary surfaced via `--profile`. [`OoklaSpeedtestSettings(Profile)`](../../src/NetPace.Core/Clients/Ookla/OoklaSpeedtestSettings.cs) maps each profile to a complete `DownloadTestSettings` / `UploadTestSettings` pair via an inline switch — the single source of truth for "what does Tiny mean, in Ookla terms?".
+[`Profile`](../../src/NetPace.Core/Profile.cs) is the public, provider-agnostic vocabulary surfaced via `--profile`. The ceilings and connection counts each profile means come from one table on [`SpeedTestSettings`](../../src/NetPace.Core/Settings/SpeedTestSettings.cs), shared by every provider so the two cannot drift apart; [`OoklaSpeedtestSettings(Profile)`](../../src/NetPace.Core/Clients/Ookla/OoklaSpeedtestSettings.cs) adds what each profile means in Ookla's own request sizes.
 
 ### 5.1 Download (per profile)
 
@@ -237,6 +242,8 @@ head -c 1048576 /dev/urandom | curl -sS -o /dev/null -w '%{http_code}\n' \
 | `Medium` | `[1500, 2000, 3000, 3500, 4000]`    | 2          | 4        | 100                  |
 | `Large`  | `[2000, 2500, 3000, 3500, 4000]`    | 12         | 16       | 1024                 |
 | `Mega`   | `[3000, 4000, 5000, 6000, 7000]`    | 40         | 32       | 10240                |
+
+LibreSpeed's own request shape, under the same ceilings and connection counts, is in [`LibreSpeedtestSettings`](../../src/NetPace.Core/Clients/LibreSpeed/LibreSpeedtestSettings.cs): one whole-mebibyte `ckSize` per profile and a request count large enough to reach the ceiling. Its endpoints and URL handling are documented on [`LibreSpeedtest`](../../src/NetPace.Core/Clients/LibreSpeed/LibreSpeedtest.cs). The parallel-transfer loop and the byte-budget termination in §2 above apply to a LibreSpeed transfer unchanged; the request shape and the upload endpoint described there are Ookla's. For verifying one locally, [`docker/librespeed/`](../../docker/librespeed/) is the counterpart to §4's OoklaServer setup.
 
 ### 5.2 Upload (per profile)
 
