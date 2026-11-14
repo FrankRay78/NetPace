@@ -1,0 +1,24 @@
+# Named, so the start and stop scripts' `down --remove-orphans` can only ever touch this
+# project, never a LibreSpeed Compose project of the contributor's own in a directory that
+# happens to share the name.
+name: netpace-librespeed
+
+services:
+  librespeed:
+    # The official LibreSpeed server image, so there is nothing to download and build: the
+    # OoklaServer setup beside this one needs a Dockerfile because its binary is only
+    # published as a tarball.
+    # Pinned, so a local run tests against the server the docs describe rather than whatever
+    # was published last. Bump it deliberately.
+    image: ghcr.io/librespeed/speedtest:6.3.1
+    container_name: netpace-librespeed
+    ports:
+      # 18081, so this can run alongside the OoklaServer setup on 18080. Loopback only: it is
+      # for testing NetPace on this machine, not a server for the network.
+      - "127.0.0.1:18081:8080/tcp"
+    restart: unless-stopped
+    environment:
+      # Standalone serves the test backend with no telemetry database behind it, which is
+      # all NetPace speaks to. The install directory is then the web root, so the endpoints
+      # are at /backend/empty.php and /backend/garbage.php.
+      MODE: standalone

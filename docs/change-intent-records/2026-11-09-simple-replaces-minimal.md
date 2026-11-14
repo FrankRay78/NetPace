@@ -9,7 +9,7 @@
 **Constraints:**
 
 - The line shape is a contract: `<name>: <value>`, one figure per line, the timestamp labelled like the rest.
-- Only `--simple` turns the under-load probes off, in `Program.BuildOoklaSettings`, not the writer — a new format inherits probes-on unasked.
+- Only `--simple` turns the under-load probes off, in `Program.BuildSpeedTestSettings`, not the writer — a new format inherits probes-on unasked.
 - So its diagnostics carry no `probe` record; the diagnostics snapshots that need one run on `--csv`.
 
 **Decisions:**

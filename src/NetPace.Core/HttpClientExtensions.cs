@@ -1,6 +1,6 @@
 using System.Globalization;
 
-namespace NetPace.Core.Clients.Ookla.Extensions;
+namespace NetPace.Core;
 
 internal static class HttpClientExtensions
 {
