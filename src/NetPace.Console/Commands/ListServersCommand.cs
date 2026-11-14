@@ -3,7 +3,7 @@ using NetPace.Core;
 
 namespace NetPace.Console.Commands;
 
-public sealed class ListServersCommand(IAnsiConsole console, ISpeedTestService speedTestClient, Theme theme)
+public sealed class ListServersCommand(IAnsiConsole console, ErrorOutput errorOutput, ISpeedTestService speedTestClient, Theme theme)
 {
     /// <summary>
     /// Executes the list servers command, displaying available speed test servers.
@@ -32,7 +32,9 @@ public sealed class ListServersCommand(IAnsiConsole console, ISpeedTestService s
         }
         catch (Exception e)
         {
-            console.WriteErrorLine(theme, e.Message);
+            // The listing itself is the result; what went wrong while fetching it is not, so it
+            // goes to the error stream.
+            errorOutput.Console.WriteErrorLine(theme, e.Message);
         }
 
         return 0;

@@ -130,17 +130,22 @@ public sealed partial class NetPaceConsoleTests
         {
             // Given stdout is redirected, and discovery fails with a message longer than that width.
             // A network condition is data rather than a fault, so the run reports it and still exits 0.
-            var service = new SpeedTestMock
+            var services = new ServiceCollection();
+            services.AddSingleton<ISpeedTestService>(new SpeedTestMock
             {
                 GetServersAsyncFunc = _ => throw new HttpRequestException(LongErrorMessage),
-            };
+            });
+            services.AddSingleton<IClock, IncrementingClockStub>();
+            services.AddSingleton<IWaiter, NoDelayStub>();
 
             // When
-            var output = await RunAtWidthAsync(CommandLineTestHost.RedirectedWidth, ["--csv"], service);
+            var result = await new CommandLineTestHost(services, CommandLineTestHost.RedirectedWidth).RunAsync(["--csv"]);
 
-            // Then the error shares the records' stream and is unbroken on it, so a reader taking the
-            // output a line at a time still sees the whole message.
-            Assert.Contains($"Error: {LongErrorMessage}", Lines(output));
+            // Then the error is unbroken on the error stream, so a reader taking it a line at a
+            // time still sees the whole message, and the records' own stream never carries it.
+            Assert.Equal(0, result.ExitCode);
+            Assert.Contains($"Error: {LongErrorMessage}", Lines(result.ErrorOutput));
+            Assert.DoesNotContain("Error:", result.Output, StringComparison.Ordinal);
         }
 
         // SCENARIO: Machine-readable output is unbroken in a narrow terminal

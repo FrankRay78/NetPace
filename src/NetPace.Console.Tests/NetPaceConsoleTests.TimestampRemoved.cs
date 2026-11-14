@@ -28,7 +28,7 @@ public sealed partial class NetPaceConsoleTests
             // below 1.0.0.
             Assert.Empty(serviceCalls);
             Assert.NotEqual(0, result.ExitCode);
-            await Verify(result.Output).UseParameters(option);
+            await Verify(result.ErrorOutput).UseParameters(option);
         }
 
         [Fact]

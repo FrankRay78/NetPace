@@ -396,13 +396,15 @@ public static class Program
                 recorder.Record("run.invocation", ("args", string.Join(' ', args)));
 
                 // Create and execute command
-                var command = new SpeedTestCommand(ansiConsole, speedTestService, clock, clientInfoProvider, recorder, waiter, liveDisplayRefresh, theme);
+                var command = new SpeedTestCommand(ansiConsole, serviceProvider.GetRequiredService<ErrorOutput>(), speedTestService, clock, clientInfoProvider, recorder, waiter, liveDisplayRefresh, theme);
                 return await command.ExecuteAsync(settings, cancellationToken);
             }
             catch (Exception ex)
             {
-                // Usage/configuration errors and operational failures are reported to the console.
-                var console = serviceProvider.GetRequiredService<IAnsiConsole>();
+                // Usage/configuration errors and operational failures go to the error stream, so a
+                // redirect of the result never swallows them and no reader of the result ever meets
+                // a line that is not part of its format.
+                var console = serviceProvider.GetRequiredService<ErrorOutput>().Console;
                 console.WriteErrorLine(theme, ex.Message);
                 return 1;
             }
@@ -546,15 +548,15 @@ public static class Program
                 var speedTestService = serviceProvider.GetRequiredService<ISpeedTestService>();
 
                 // Create and execute command
-                var command = new ListServersCommand(ansiConsole, speedTestService, theme);
+                var command = new ListServersCommand(ansiConsole, serviceProvider.GetRequiredService<ErrorOutput>(), speedTestService, theme);
                 return await command.ExecuteAsync(settings, cancellationToken);
             }
             catch (Exception ex)
             {
-                // Usage/configuration errors and operational failures are reported to the console.
+                // Usage/configuration errors and operational failures go to the error stream.
                 // Network and discovery outcomes never reach here: ListServersCommand reports those
                 // itself and leaves the exit code at 0, as a speed test does.
-                var ansiConsole = serviceProvider.GetRequiredService<IAnsiConsole>();
+                var ansiConsole = serviceProvider.GetRequiredService<ErrorOutput>().Console;
                 ansiConsole.WriteErrorLine(theme, ex.Message);
                 return 1;
             }
@@ -581,6 +583,15 @@ public static class Program
         // A word to the user about how the run was asked for goes to the error stream, so it never
         // lands in the middle of a result another program is reading.
         services.AddSingleton(new NoticeOutput(System.Console.Error));
+
+        // Every error goes to the error stream, for the same reason and one more: a run whose
+        // result is redirected still shows the user what went wrong. Its own console rather than
+        // the result's, so --quiet and --file never reach it; its colour follows whether the error
+        // stream itself is a terminal, which Spectre.Console settles from the writer.
+        services.AddSingleton(new ErrorOutput(AnsiConsole.Create(new AnsiConsoleSettings
+        {
+            Out = new AnsiConsoleOutput(System.Console.Error)
+        })));
 
         // Needed by both stacks: the root command populates the accessor after option binding,
         // before it knows which ISpeedTestService is in play.
@@ -647,9 +658,13 @@ public static class Program
         var ansiConsole = serviceProvider.GetRequiredService<IAnsiConsole>();
 
         // Settled before anything is drawn, because --help is rendered below without the options
-        // ever being parsed, and a theme that arrived later would not reach it.
+        // ever being parsed, and a theme that arrived later would not reach it. The error stream is
+        // themed here too, so an error is drawn the way the rest of the run is.
         var selection = serviceProvider.GetRequiredService<IThemeProvider>().Resolve();
         selection.Theme.ApplyTo(ansiConsole);
+
+        var errorConsole = serviceProvider.GetRequiredService<ErrorOutput>().Console;
+        selection.Theme.ApplyTo(errorConsole);
 
         var rootCommand = CreateRootCommand(serviceProvider, args, selection.Theme);
         var parseResult = rootCommand.Parse(args);
@@ -686,7 +701,7 @@ public static class Program
         {
             foreach (var error in parseResult.Errors)
             {
-                ansiConsole.WriteErrorLine(selection.Theme, error.Message);
+                errorConsole.WriteErrorLine(selection.Theme, error.Message);
             }
             return 1;
         }

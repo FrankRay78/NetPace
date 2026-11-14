@@ -360,9 +360,11 @@ public sealed partial class NetPaceConsoleTests
             // When
             var result = await TerminalHost(Services(service)).RunAsync([]);
 
-            // Then the server and URL are still on screen, the Pinging row shows the failure, and
-            // the run reports the error.
+            // Then the server and URL are still on screen and the Pinging row shows the failure.
+            // The error itself is on the error stream, so the table the snapshot holds is the whole
+            // of what a person reading standard output sees.
             Assert.Equal(0, result.ExitCode);
+            Assert.Contains("The server did not answer", result.ErrorOutput, StringComparison.Ordinal);
             await Verify(result.Output);
         }
 
@@ -390,6 +392,7 @@ public sealed partial class NetPaceConsoleTests
 
             // Then every row is marked as failed rather than left spinning, as for any other
             // failure: a timeout is the server not answering, not the user stopping the run.
+            Assert.Contains("did not respond in time", result.ErrorOutput, StringComparison.Ordinal);
             await Verify(result.Output);
         }
 
@@ -409,6 +412,7 @@ public sealed partial class NetPaceConsoleTests
             // run has ended, so a row still marked as measuring would say a measurement is in
             // flight after the process has exited. The snapshot carries what each row says.
             Assert.Equal(0, result.ExitCode);
+            Assert.Contains("The connection was reset", result.ErrorOutput, StringComparison.Ordinal);
             await Verify(result.Output);
         }
 

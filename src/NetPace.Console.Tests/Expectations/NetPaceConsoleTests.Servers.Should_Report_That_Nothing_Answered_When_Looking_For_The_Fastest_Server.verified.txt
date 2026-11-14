@@ -1,4 +1,1 @@
-﻿
-Press CTRL+C to exit.
-
-Error: No servers available
+﻿Error: No servers available

@@ -403,9 +403,11 @@ public sealed partial class NetPaceConsoleTests
         // When
         var result = await host.RunAsync(["--no-latency", "--no-download", "--no-upload"]);
 
-        // Then the validation error is reported on the console.
+        // Then the validation error is reported on the error stream, and nothing is written to
+        // standard output.
         Assert.Equal(1, result.ExitCode);
-        await Verify(result.Output);
+        Assert.Empty(result.Output);
+        await Verify(result.ErrorOutput);
     }
 
     [Fact]
@@ -495,7 +497,8 @@ public sealed partial class NetPaceConsoleTests
 
         // Then
         Assert.Equal(1, result.ExitCode);
-        await Verify(result.Output);
+        Assert.Empty(result.Output);
+        await Verify(result.ErrorOutput);
     }
 
     [Fact]
@@ -516,9 +519,11 @@ public sealed partial class NetPaceConsoleTests
         // When
         var result = await host.RunAsync(Array.Empty<string>());
 
-        // Then an unreachable discovery endpoint is a reported data outcome (exit 0), surfaced on the console.
+        // Then an unreachable discovery endpoint is a reported data outcome (exit 0), surfaced on
+        // the error stream.
         Assert.Equal(0, result.ExitCode);
-        await Verify(result.Output);
+        Assert.Empty(result.Output);
+        await Verify(result.ErrorOutput);
     }
 
     [Fact]
@@ -552,8 +557,10 @@ public sealed partial class NetPaceConsoleTests
         // When
         var result = await host.RunAsync(["--count", "100", "--minimal"], cancellationTokenSource.Token);
 
-        // Then
+        // Then the run carried on past the failed test: standard output holds a line per measured
+        // test and none for the failed one, and the error stream holds that test's error alone.
         Assert.Equal(0, result.ExitCode);
+        Assert.Equal($"Error: Communication with 'Test Sponsor 1' has failed{Environment.NewLine}", result.ErrorOutput);
         await Verify(result.Output);
     }
 
@@ -604,9 +611,10 @@ public sealed partial class NetPaceConsoleTests
         // When
         var result = await host.RunAsync(Array.Empty<string>());
 
-        // Then the no-servers condition is reported on the console and exits 0.
+        // Then the no-servers condition is reported on the error stream and exits 0.
         Assert.Equal(0, result.ExitCode);
-        await Verify(result.Output);
+        Assert.Empty(result.Output);
+        await Verify(result.ErrorOutput);
     }
 
     /// <summary>
@@ -638,7 +646,7 @@ public sealed partial class NetPaceConsoleTests
         // reports that NetPace itself worked. The servers command now follows the same rule, and
         // this is what holds the speed test to it.
         Assert.Equal(0, result.ExitCode);
-        Assert.Contains("No servers available", result.Output);
+        Assert.Contains("No servers available", result.ErrorOutput);
     }
 
     [Fact]
@@ -659,9 +667,10 @@ public sealed partial class NetPaceConsoleTests
         // When
         var result = await host.RunAsync(["--no-latency"]);
 
-        // Then the no-servers condition is reported on the console and exits 0.
+        // Then the no-servers condition is reported on the error stream and exits 0.
         Assert.Equal(0, result.ExitCode);
-        await Verify(result.Output);
+        Assert.Empty(result.Output);
+        await Verify(result.ErrorOutput);
     }
 
     [InlineData("-h")]

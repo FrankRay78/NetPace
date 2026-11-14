@@ -78,9 +78,11 @@ public sealed partial class NetPaceConsoleTests
             // When
             var result = await host.RunAsync([]);
 
-            // Then the measurement failure is what the user is told about, and no download or
-            // upload figure is reported for a server whose latency could not be measured.
-            await Verify(result.Output);
+            // Then the measurement failure is what the user is told about, on the error stream,
+            // and no download or upload figure is reported for a server whose latency could not be
+            // measured.
+            Assert.Empty(result.Output);
+            await Verify(result.ErrorOutput);
         }
 
         [Fact]
@@ -147,10 +149,11 @@ public sealed partial class NetPaceConsoleTests
             // When
             var result = await host.RunAsync(["servers", "-l"]);
 
-            // Then the user is told about the misconfiguration, instead of reading a table that
-            // says no server could be reached.
+            // Then the user is told about the misconfiguration, on the error stream, instead of
+            // reading a table that says no server could be reached.
             Assert.NotEqual(0, result.ExitCode);
-            await Verify(result.Output);
+            Assert.DoesNotContain("Error:", result.Output, StringComparison.Ordinal);
+            await Verify(result.ErrorOutput);
         }
 
         [Fact]

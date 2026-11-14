@@ -247,7 +247,7 @@ public sealed partial class NetPaceConsoleTests
             // form expected so the user is not left with a bare failure.
             Assert.Empty(serviceCalls);
             Assert.NotEqual(0, result.ExitCode);
-            Assert.Contains("key=value", result.Output);
+            Assert.Contains("key=value", result.ErrorOutput);
         }
 
         [Theory]
@@ -270,7 +270,7 @@ public sealed partial class NetPaceConsoleTests
             // mistyped field in a script fails loudly rather than being silently dropped.
             Assert.Empty(serviceCalls);
             Assert.NotEqual(0, result.ExitCode);
-            Assert.Contains("key=value", result.Output);
+            Assert.Contains("key=value", result.ErrorOutput);
         }
 
         [Theory]
@@ -451,7 +451,7 @@ public sealed partial class NetPaceConsoleTests
             // under two names.
             Assert.Empty(serviceCalls);
             Assert.NotEqual(0, result.ExitCode);
-            Assert.Contains("key=value", result.Output);
+            Assert.Contains("key=value", result.ErrorOutput);
         }
     }
 }

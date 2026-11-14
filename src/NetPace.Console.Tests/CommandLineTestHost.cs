@@ -106,6 +106,21 @@ public sealed class CommandLineTestHost
         using var noticeWriter = new StringWriter();
         serviceCollection.TryAddSingleton(new NoticeOutput(noticeWriter));
 
+        // Where every error goes — the process error stream in production, captured apart from the
+        // result for the same reason. Built at the width the run was given rather than at an
+        // unlimited one, so the lift that keeps an error on one line is the production code's and
+        // not this host's; colour follows the result console, so a test about an error's colour
+        // asks for it the same way.
+        using var errorConsole = new TestConsole().Width(consoleWidth);
+
+        if (_recordColour)
+        {
+            errorConsole.Colors(ColorSystem.TrueColor);
+            errorConsole.EmitAnsiSequences();
+        }
+
+        serviceCollection.TryAddSingleton(new ErrorOutput(errorConsole));
+
         // A fixed theme unless a test chooses otherwise, so no snapshot depends on what the person
         // running the tests has NETPACE_THEME set to.
         serviceCollection.TryAddSingleton<IThemeProvider>(new FixedThemeProvider(Theme.Default));
@@ -137,6 +152,7 @@ public sealed class CommandLineTestHost
             Output = testConsole.Output,
             DiagnosticOutput = diagnosticWriter.ToString(),
             NoticeOutput = noticeWriter.ToString(),
+            ErrorOutput = errorConsole.Output,
         };
     }
 }
@@ -166,4 +182,9 @@ public sealed record TestResult
     /// way NetPace was asked to run needed remarking on.
     /// </summary>
     public required string NoticeOutput { get; init; }
+
+    /// <summary>
+    /// Gets what was written to the error stream — empty unless something went wrong.
+    /// </summary>
+    public required string ErrorOutput { get; init; }
 }

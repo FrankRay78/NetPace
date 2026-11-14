@@ -135,13 +135,14 @@ public sealed partial class NetPaceConsoleTests
             // When
             var result = await host.RunAsync(["--connections", value]);
 
-            // Then the run is refused up front and nothing is measured — the snapshot is the whole
-            // output, so a result line appearing would fail it.
+            // Then the run is refused up front and nothing is measured — standard output is empty
+            // and the snapshot is the whole error stream, so a result line appearing would fail it.
             Assert.NotEqual(0, result.ExitCode);
+            Assert.Empty(result.Output);
 
             // The snapshot is named for the rejected value in words, so the filename reads as the case
             // it covers rather than as the raw value.
-            await Verify(result.Output).UseTextForParameters(valueName);
+            await Verify(result.ErrorOutput).UseTextForParameters(valueName);
         }
 
         [Theory]
