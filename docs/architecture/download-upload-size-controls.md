@@ -160,7 +160,7 @@ If a future OoklaServer release changes these values, re-run the same HEAD probe
    bytes = i × UploadSizeIncrementKb × 1024
    ```
    Note that the `Kb` suffix is **binary** (1024), not decimal. Each increment is then yielded `UploadSizeIterations` times.
-2. Each length is POSTed to `server.Url` (the OoklaServer `upload.php`-style endpoint) using `RandomStreamContent` to stream cryptographically-random bytes in 8 KB chunks (avoids LOH allocations). `UploadParallelTasks` workers run concurrently.
+2. Each length is POSTed to the provider's upload address for the server (`server.Url` itself for Ookla, the install's `backend/empty.php` for LibreSpeed), after an empty probe POST has resolved any redirect in front of it, using `RandomStreamContent` to stream cryptographically-random bytes in 8 KB chunks (avoids LOH allocations). `UploadParallelTasks` workers run concurrently.
 3. The loop **terminates early** once `uploadSizeMb × 1024 × 1024` bytes have been sent (the budget cap from the `--uploadsize` overload).
 
 #### Default total under defaults

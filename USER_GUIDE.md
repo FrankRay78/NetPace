@@ -371,7 +371,7 @@ A LibreSpeed run reports everything an Ookla run does, in every output format, a
 
 There is nothing to discover: LibreSpeed publishes no server list, so `--provider librespeed` without `--server-url` is rejected before any test runs. `netpace servers` lists Ookla's nearby servers and takes no `--provider`.
 
-If the address answers but not as a LibreSpeed server, the run says which URL answered wrongly and what to check. If it cannot be reached at all, the run reports that the same way an Ookla run does. Either way nothing is reported as measured, and the exit code stays `0` unless you opt in with `--fail-on` (see [Exit codes](#exit-codes)).
+If the address answers but not as a LibreSpeed server, the run says which URL answered wrongly and what to check. If it answers with a server error, the run names the URL and the status, since the address is likely right but the server is failing. If it cannot be reached at all, the run reports that the same way an Ookla run does. Either way nothing is reported as measured, and the exit code stays `0` unless you opt in with `--fail-on` (see [Exit codes](#exit-codes)).
 
 There is a local LibreSpeed server to try this against in [`docker/librespeed/`](https://github.com/FrankRay78/NetPace/tree/main/docker/librespeed): one script starts it and prints the command to run.
 
@@ -405,7 +405,7 @@ The `--profile` flag bundles per-request payload sizes, parallelism, and a total
 | `large`  | Fibre / business — saturates gigabit links | ≤ 1.25 GiB (~1 GiB + ~211 MiB) |
 | `mega`   | Inter-DC / 10 Gbps — saturates fibre, see warning below | ≤ 12 GiB (~10 GiB + ~2 GiB) |
 
-The approximate figures are what an Ookla run actually moves, and the ≤ figure is the profile's ceiling. A run can move less than its ceiling: `medium` and `large` schedule fewer upload bytes than their upload ceilings allow. A profile's ceilings bind both providers, but the request sizes under them are each provider's own, so a LibreSpeed run moves a slightly different amount inside the same ceiling: its downloads come in whole mebibytes, which makes `tiny` about 1 MiB down rather than about 245 KB.
+The approximate figures are what an Ookla run actually moves, and the ≤ figure is the profile's ceiling. A run can move less than its ceiling, because most profiles schedule fewer upload bytes than their upload ceilings allow. A profile's ceilings bind both providers, but the request sizes under them are each provider's own, so a LibreSpeed run moves a slightly different amount inside the same ceiling: its downloads come in whole mebibytes, which makes `tiny` about 1 MiB down rather than about 245 KB.
 
 Decision guide:
 

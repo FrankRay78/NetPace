@@ -1,3 +1,5 @@
+using System.Net;
+
 namespace NetPace.Core.Clients.LibreSpeed;
 
 /// <summary>
@@ -96,21 +98,27 @@ public sealed class LibreSpeedtest : SpeedTestProviderBase
     /// answer that distinguishes a LibreSpeed install from a plain web server serving a page at the
     /// same address. A non-success status, which is what an Ookla server gives this request, has
     /// already failed the request before it reaches here; see
-    /// <see cref="IsNonSuccessLatencyStatusTheWrongServer"/>.
+    /// <see cref="LatencyStatusFailureMessage"/>.
     /// </remarks>
     private protected override bool IsLatencyResponseValid(string response) => response.Length == 0;
 
     /// <summary>
-    /// A non-success status from the ping endpoint is reported as the wrong server, naming the
-    /// address and what to check.
+    /// A client error from the ping endpoint is reported as the wrong server, and any other
+    /// non-success status as a server that failed. Both name the address.
     /// </summary>
     /// <remarks>
     /// The user names a LibreSpeed server, so a status such as 404 almost always means the address
-    /// is wrong rather than that the server failed: naming the web root of an install under a path,
-    /// or an Ookla server, answers exactly that. It is the same mistake as an address answering
-    /// with a page, so it gets the same guidance.
+    /// is wrong: naming the web root of an install under a path, or an Ookla server, answers
+    /// exactly that. It is the same mistake as an address answering with a page, so it gets the
+    /// same guidance. A server error such as 503 says the opposite: something at the right address
+    /// is failing, often a proxy whose backend is down, so the user is told the status rather than
+    /// to recheck an address that is correct.
     /// </remarks>
-    private protected override bool IsNonSuccessLatencyStatusTheWrongServer => true;
+    private protected override string LatencyStatusFailureMessage(string probeUrl, HttpStatusCode status) =>
+        (int)status is >= 400 and < 500
+            ? LatencyResponseRejectedMessage(probeUrl)
+            : $"The server at {probeUrl} answered with HTTP status {(int)status}, so it could not be measured. " +
+              "Check that the LibreSpeed server, and any proxy in front of it, is running.";
 
     /// <inheritdoc/>
     private protected override string LatencyResponseRejectedMessage(string probeUrl) =>

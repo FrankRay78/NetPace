@@ -22,6 +22,7 @@ Nothing is built: LibreSpeed publishes an official image, so there is no `Docker
 
 - Docker Desktop (Windows, macOS) or Docker Engine (Linux), running.
 - Host TCP port 18081 free. The OoklaServer setup uses 18080, so the two can run side by side.
+- The port is bound to `127.0.0.1` only, so the server is reachable from this machine and not from elsewhere on the network (unlike the OoklaServer setup, which binds every interface).
 - `bash` and `curl` on PATH.
 
 ---

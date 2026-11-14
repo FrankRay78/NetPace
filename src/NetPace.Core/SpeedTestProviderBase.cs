@@ -94,21 +94,21 @@ public abstract class SpeedTestProviderBase : ISpeedTestService
     /// <summary>
     /// Whether <paramref name="response"/> is the answer a speed test server of this kind gives to
     /// a latency probe. A non-success status never reaches here; it has already failed the request,
-    /// as <see cref="IsNonSuccessLatencyStatusTheWrongServer"/> describes.
+    /// as <see cref="LatencyStatusFailureMessage"/> describes.
     /// </summary>
     private protected abstract bool IsLatencyResponseValid(string response);
 
     /// <summary>
-    /// Whether a non-success status from the latency probe means the address is not a speed test
-    /// server of this kind, and is reported with <see cref="LatencyResponseRejectedMessage"/>
-    /// rather than as the bare HTTP failure.
+    /// What to tell the caller when the latency probe at <paramref name="probeUrl"/> is answered
+    /// with the non-success <paramref name="status"/>, or <see langword="null"/> to report the
+    /// HTTP failure as it came.
     /// </summary>
     /// <remarks>
-    /// <see langword="false"/> by default: the status is reported as it came. A provider whose
-    /// server is named by the user, where a wrong address answers with a status such as 404, says
-    /// so here, so the user is told which address answered and what to check.
+    /// <see langword="null"/> by default. A provider whose server is named by the user, where a
+    /// wrong address answers with a status such as 404, gives a message here, so the user is told
+    /// which address answered and what to check.
     /// </remarks>
-    private protected virtual bool IsNonSuccessLatencyStatusTheWrongServer => false;
+    private protected virtual string? LatencyStatusFailureMessage(string probeUrl, HttpStatusCode status) => null;
 
     /// <summary>
     /// What to tell the caller when something answered <paramref name="probeUrl"/> but not as a
@@ -223,9 +223,9 @@ public abstract class SpeedTestProviderBase : ISpeedTestService
                 var failedElapsedMilliseconds = ElapsedMillisecondsSince(startTimestamp);
                 ReportRequestFailure(diagnostics, RequestKind.LatencyProbe, startedAt, sequence, latencyUrl, failedElapsedMilliseconds, e, cancellationToken);
 
-                if (e is HttpRequestException { StatusCode: not null } && IsNonSuccessLatencyStatusTheWrongServer)
+                if (e is HttpRequestException { StatusCode: { } status } && LatencyStatusFailureMessage(latencyUrl, status) is { } message)
                 {
-                    throw new InvalidOperationException(LatencyResponseRejectedMessage(latencyUrl), e);
+                    throw new InvalidOperationException(message, e);
                 }
 
                 throw;
