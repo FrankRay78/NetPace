@@ -81,6 +81,24 @@ ok "succeeds" '[ "$RC" = 0 ]'
 ok "leaves exactly one assignment, off, rather than two the server picks between" \
   '[ "$(active OoklaServer.enableAutoUpdate | wc -l)" = 1 ] && active OoklaServer.enableAutoUpdate | grep -qE "=[[:space:]]*false[[:space:]]*$"'
 
+# Written the other way the file may hold it: indented, with no spaces around the `=`. A delete
+# that only matched a line starting `key = ` would leave this one in force.
+echo "A properties file that sets one of them on, indented and with no spaces:"
+props "$UPSTREAM"$'\n  OoklaServer.ssl.useLetsEncrypt=true\n'
+run
+ok "succeeds" '[ "$RC" = 0 ]'
+ok "leaves exactly one assignment, off" \
+  '[ "$(active OoklaServer.ssl.useLetsEncrypt | wc -l)" = 1 ] && active OoklaServer.ssl.useLetsEncrypt | grep -qE "=[[:space:]]*false[[:space:]]*$"'
+
+# Named only by an active assignment, with no commented documentation: the setting is still there
+# for the server to read, so this is not a release that dropped it.
+echo "A properties file that names both settings only by active assignments:"
+props $'OoklaServer.enableAutoUpdate = true\nOoklaServer.ssl.useLetsEncrypt = true\n'
+run
+ok "succeeds" '[ "$RC" = 0 ]'
+ok "turns both off, once each" \
+  '[ "$(active OoklaServer.ssl.useLetsEncrypt | wc -l)" = 1 ] && [ "$(active OoklaServer.enableAutoUpdate | wc -l)" = 1 ] && ! grep -qE "=[[:space:]]*true" "$PROPS"'
+
 echo "Run twice over the same file:"
 props "$UPSTREAM"
 run

@@ -57,11 +57,14 @@ for key in "${OUTBOUND_KEYS[@]}"; do
     "$key" >> "$PROPS" \
     || die "could not append to '$PROPS'."
 
-  # Count the active assignments, so a delete that missed one cannot leave the server picking
-  # between two.
-  assignments="$(grep -cE "^[[:space:]]*${pattern}[[:space:]]*=[[:space:]]*false[[:space:]]*$" "$PROPS")"
+  # Read every active assignment back, whatever its value, so a delete that missed one cannot
+  # leave the server picking between two. Counting only the `false` ones would always find the
+  # line just appended, and so could never fail.
+  assignments="$(grep -cE "^[[:space:]]*${pattern}[[:space:]]*=" "$PROPS")"
   [ "$assignments" = 1 ] \
-    || die "after editing, '$PROPS' holds $assignments assignment(s) of $key set to false, expected exactly 1."
+    || die "after editing, '$PROPS' holds $assignments active assignment(s) of $key, expected exactly 1."
+  grep -qE "^[[:space:]]*${pattern}[[:space:]]*=[[:space:]]*false[[:space:]]*$" "$PROPS" \
+    || die "after editing, the one active assignment of $key in '$PROPS' is not false."
 
   say "$key = false"
 done

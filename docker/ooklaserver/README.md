@@ -112,13 +112,13 @@ netpace --server-url http://localhost:18080/speedtest/upload.php --profile tiny
 
 `--profile tiny` is worth the habit here. On the narrower profiles NetPace's default transfer sizes take a very long time — at 9.6 kbit, a single default-sized request is a wait measured in hours.
 
-### The server makes no traffic of its own
+### The server's start-up traffic is turned off
 
-The server itself adds no traffic to the shaped link. OoklaServer would otherwise reach out to the internet while it starts: it attempts a Let's Encrypt certificate about 17 seconds in, and it checks for updates to itself. On a full-speed link neither is noticeable. At 9.6 kbit a single TLS handshake costs seconds, and that traffic arrives after the container is healthy and after `start.sh` has said the lab is ready, so a run started at that moment measured the server's start-up rather than the link. On `radio` its first latency probe used up NetPace's 10 second limit every time.
+Two OoklaServer settings would make the server add traffic of its own to the shaped link, and the image turns both off. OoklaServer would otherwise reach out to the internet while it starts: it attempts a Let's Encrypt certificate about 17 seconds in, and it checks for updates to itself. On a full-speed link neither is noticeable. At 9.6 kbit a single TLS handshake costs seconds, and that traffic arrives after the container is healthy and after `start.sh` has said the lab is ready, so a run started at that moment measured the server's start-up rather than the link. On `radio` its first latency probe used up NetPace's 10 second limit every time.
 
-The image turns both settings off, in `lab-properties.sh` when the image is built, so nothing in the lab reaches the internet once it is running. The server log says `Server updates were disabled.` and carries no certificate lines. If a later OoklaServer release drops either setting's name from the properties file, the image build fails rather than quietly restoring the traffic.
+`lab-properties.sh` turns them off when the image is built, so the server no longer requests a certificate or checks for updates. The server log says `Server updates were disabled.` and carries no certificate lines. If a later OoklaServer release drops either setting's name from the properties file, the image build fails rather than quietly restoring the traffic.
 
-What still crosses the link is the lab's own readiness poll: `start.sh` confirms the published port by fetching `latency.txt` over it, and on the narrowest profiles those bytes are still draining when it prints the ready message. On `radio` that costs the first latency probe a few seconds: about 6 s, against NetPace's 10 second limit. **So the readiness poll accounts for a few seconds of the first probe, not for a latency stage that fails outright.** Look at the link and at NetPace's limits instead.
+The first latency probe straight after start is still a few seconds slower than one a couple of minutes later. On `radio` it took about 6 s, against about 3 s once the lab had settled, and NetPace's limit is 10 s. The cause of that gap is not established. `start.sh` prints the ready message only after its readiness poll has read `latency.txt` back, so the poll's own response is not still crossing the link at that point. **A latency stage that fails outright straight after start is not explained by this gap.** Look at the link and at NetPace's limits instead.
 
 ### Confirmed host platforms
 
