@@ -1,4 +1,4 @@
-namespace NetPace.Core.Clients.Ookla.Settings;
+namespace NetPace.Core.Settings;
 
 /// <summary>
 /// Settings for the upload speed test.
@@ -46,6 +46,12 @@ public sealed record UploadTestSettings
     /// Distinct from the per-request size, which is derived from
     /// <see cref="UploadSizeIncrementKb"/> × <see cref="UploadIncrements"/>.
     /// The default <see cref="int.MaxValue"/> sentinel means "no cap".
+    /// <para>
+    /// On every profile but <see cref="Profile.Mega"/> the scheduled requests sum to less than
+    /// this cap, so what ends the phase is the request list running out rather than the budget
+    /// binding. A profile's figure is therefore a ceiling on what it may move, not an estimate of
+    /// what it does.
+    /// </para>
     /// </remarks>
     public int UploadSizeMb { get; init; } = int.MaxValue;
 }

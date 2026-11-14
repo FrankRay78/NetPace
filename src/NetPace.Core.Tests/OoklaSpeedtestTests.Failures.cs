@@ -61,10 +61,10 @@ public sealed partial class OoklaSpeedtestTests
             var httpClient = mockHttp.ToHttpClient();
             var settings = new OoklaSpeedtestSettings
             {
+                DownloadSizes = new[] { 100 },
+                DownloadSizeIterations = 4,
                 DownloadTest = new()
                 {
-                    DownloadSizes = new[] { 100 },
-                    DownloadSizeIterations = 4,
                     DownloadParallelTasks = 2
                 }
             };

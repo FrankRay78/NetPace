@@ -22,17 +22,18 @@ public sealed partial class NetPaceConsoleTests
             // Then neither direction may run more than two transfers at once, while Large's
             // total-byte caps and per-request shape are untouched.
             Assert.Equal(0, result.ExitCode);
-            Assert.Equal(2, accessor.Settings.DownloadTest.DownloadParallelTasks);
-            Assert.Equal(2, accessor.Settings.UploadTest.UploadParallelTasks);
+            var ookla = Ookla(accessor);
+            Assert.Equal(2, ookla.DownloadTest.DownloadParallelTasks);
+            Assert.Equal(2, ookla.UploadTest.UploadParallelTasks);
 
             var large = new OoklaSpeedtestSettings(Profile.Large);
-            Assert.Equal(large.DownloadTest.DownloadSizeMb, accessor.Settings.DownloadTest.DownloadSizeMb);
-            Assert.Equal(large.UploadTest.UploadSizeMb, accessor.Settings.UploadTest.UploadSizeMb);
-            Assert.Equal(large.DownloadTest.DownloadSizes, accessor.Settings.DownloadTest.DownloadSizes);
-            Assert.Equal(large.DownloadTest.DownloadSizeIterations, accessor.Settings.DownloadTest.DownloadSizeIterations);
-            Assert.Equal(large.UploadTest.UploadSizeIncrementKb, accessor.Settings.UploadTest.UploadSizeIncrementKb);
-            Assert.Equal(large.UploadTest.UploadIncrements, accessor.Settings.UploadTest.UploadIncrements);
-            Assert.Equal(large.UploadTest.UploadSizeIterations, accessor.Settings.UploadTest.UploadSizeIterations);
+            Assert.Equal(large.DownloadTest.DownloadSizeMb, ookla.DownloadTest.DownloadSizeMb);
+            Assert.Equal(large.UploadTest.UploadSizeMb, ookla.UploadTest.UploadSizeMb);
+            Assert.Equal(large.DownloadSizes, ookla.DownloadSizes);
+            Assert.Equal(large.DownloadSizeIterations, ookla.DownloadSizeIterations);
+            Assert.Equal(large.UploadTest.UploadSizeIncrementKb, ookla.UploadTest.UploadSizeIncrementKb);
+            Assert.Equal(large.UploadTest.UploadIncrements, ookla.UploadTest.UploadIncrements);
+            Assert.Equal(large.UploadTest.UploadSizeIterations, ookla.UploadTest.UploadSizeIterations);
         }
 
         [Fact]
@@ -49,8 +50,9 @@ public sealed partial class NetPaceConsoleTests
 
             // Then
             Assert.Equal(0, result.ExitCode);
-            Assert.Equal(1, accessor.Settings.DownloadTest.DownloadParallelTasks);
-            Assert.Equal(1, accessor.Settings.UploadTest.UploadParallelTasks);
+            var ookla = Ookla(accessor);
+            Assert.Equal(1, ookla.DownloadTest.DownloadParallelTasks);
+            Assert.Equal(1, ookla.UploadTest.UploadParallelTasks);
         }
 
         [Theory]
@@ -68,8 +70,9 @@ public sealed partial class NetPaceConsoleTests
             // Then both ends bind, so a range check written one off - rejecting its own boundary -
             // fails here rather than only when a user tries the end of the documented range.
             Assert.Equal(0, result.ExitCode);
-            Assert.Equal(int.Parse(value), accessor.Settings.DownloadTest.DownloadParallelTasks);
-            Assert.Equal(int.Parse(value), accessor.Settings.UploadTest.UploadParallelTasks);
+            var ookla = Ookla(accessor);
+            Assert.Equal(int.Parse(value), ookla.DownloadTest.DownloadParallelTasks);
+            Assert.Equal(int.Parse(value), ookla.UploadTest.UploadParallelTasks);
         }
 
         [Fact]
@@ -85,10 +88,11 @@ public sealed partial class NetPaceConsoleTests
             // Then the connection count and the user's own caps all survive together, so an override
             // that rebuilt the test settings instead of amending them would be caught.
             Assert.Equal(0, result.ExitCode);
-            Assert.Equal(2, accessor.Settings.DownloadTest.DownloadParallelTasks);
-            Assert.Equal(2, accessor.Settings.UploadTest.UploadParallelTasks);
-            Assert.Equal(200, accessor.Settings.DownloadTest.DownloadSizeMb);
-            Assert.Equal(60, accessor.Settings.UploadTest.UploadSizeMb);
+            var ookla = Ookla(accessor);
+            Assert.Equal(2, ookla.DownloadTest.DownloadParallelTasks);
+            Assert.Equal(2, ookla.UploadTest.UploadParallelTasks);
+            Assert.Equal(200, ookla.DownloadTest.DownloadSizeMb);
+            Assert.Equal(60, ookla.UploadTest.UploadSizeMb);
         }
 
         [Fact]
@@ -106,11 +110,12 @@ public sealed partial class NetPaceConsoleTests
             // Then
             Assert.Equal(0, result.ExitCode);
             var small = new OoklaSpeedtestSettings(Profile.Small);
-            Assert.Equal(small.DownloadTest.DownloadParallelTasks, accessor.Settings.DownloadTest.DownloadParallelTasks);
-            Assert.Equal(small.UploadTest.UploadParallelTasks, accessor.Settings.UploadTest.UploadParallelTasks);
+            var ookla = Ookla(accessor);
+            Assert.Equal(small.DownloadTest.DownloadParallelTasks, ookla.DownloadTest.DownloadParallelTasks);
+            Assert.Equal(small.UploadTest.UploadParallelTasks, ookla.UploadTest.UploadParallelTasks);
             // Explicit per-spec assertions: Small runs two transfers at once in each direction.
-            Assert.Equal(2, accessor.Settings.DownloadTest.DownloadParallelTasks);
-            Assert.Equal(2, accessor.Settings.UploadTest.UploadParallelTasks);
+            Assert.Equal(2, ookla.DownloadTest.DownloadParallelTasks);
+            Assert.Equal(2, ookla.UploadTest.UploadParallelTasks);
         }
 
         [Theory]
@@ -156,8 +161,9 @@ public sealed partial class NetPaceConsoleTests
 
             // Then
             Assert.Equal(0, result.ExitCode);
-            Assert.Equal(3, accessor.Settings.DownloadTest.DownloadParallelTasks);
-            Assert.Equal(3, accessor.Settings.UploadTest.UploadParallelTasks);
+            var ookla = Ookla(accessor);
+            Assert.Equal(3, ookla.DownloadTest.DownloadParallelTasks);
+            Assert.Equal(3, ookla.UploadTest.UploadParallelTasks);
         }
 
         [Fact]
@@ -173,8 +179,9 @@ public sealed partial class NetPaceConsoleTests
             // Then the two options parse together and the count binds. The accessor holds the settings
             // built once for the whole invocation, so this does not observe the individual runs.
             Assert.Equal(0, result.ExitCode);
-            Assert.Equal(3, accessor.Settings.DownloadTest.DownloadParallelTasks);
-            Assert.Equal(3, accessor.Settings.UploadTest.UploadParallelTasks);
+            var ookla = Ookla(accessor);
+            Assert.Equal(3, ookla.DownloadTest.DownloadParallelTasks);
+            Assert.Equal(3, ookla.UploadTest.UploadParallelTasks);
         }
 
         [Fact]
@@ -194,8 +201,9 @@ public sealed partial class NetPaceConsoleTests
             // Then — --loop takes its own branch through the command, so the count has to be shown to
             // survive it as well as --count.
             Assert.Equal(0, result.ExitCode);
-            Assert.Equal(3, accessor.Settings.DownloadTest.DownloadParallelTasks);
-            Assert.Equal(3, accessor.Settings.UploadTest.UploadParallelTasks);
+            var ookla = Ookla(accessor);
+            Assert.Equal(3, ookla.DownloadTest.DownloadParallelTasks);
+            Assert.Equal(3, ookla.UploadTest.UploadParallelTasks);
         }
     }
 }

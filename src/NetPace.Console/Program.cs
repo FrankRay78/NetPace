@@ -8,7 +8,9 @@ using NetPace.Console.ConsoleWriters;
 using NetPace.Console.Diagnostics;
 using NetPace.Console.Theming;
 using NetPace.Core;
+using NetPace.Core.Clients.LibreSpeed;
 using NetPace.Core.Clients.Ookla;
+using NetPace.Core.Settings;
 using Spectre.Console;
 
 namespace NetPace.Console;
@@ -120,9 +122,16 @@ public static class Program
             DefaultValueFactory = _ => false
         };
 
+        var providerOption = new Option<Provider>("--provider")
+        {
+            Description = $"The kind of server to test against. {OptionValues.Providers.HelpList}\n'librespeed' needs --server-url naming where LibreSpeed is installed.",
+            DefaultValueFactory = _ => Provider.Ookla,
+            CustomParser = result => OptionValues.Providers.Parse(result, "--provider")
+        };
+
         var serverUrlOption = new Option<string>("--server-url")
         {
-            Description = "The URL of a specific speed test server.\n'netpace servers -l' will return your nearest servers.",
+            Description = "The URL of a specific speed test server.\n'netpace servers -l' will return your nearest servers.\nWith --provider librespeed, the address LibreSpeed is installed at.",
             DefaultValueFactory = _ => string.Empty
         };
 
@@ -292,6 +301,7 @@ public static class Program
         command.Options.Add(noLatencyOption);
         command.Options.Add(noDownloadOption);
         command.Options.Add(noUploadOption);
+        command.Options.Add(providerOption);
         command.Options.Add(serverUrlOption);
         command.Options.Add(profileOption);
         command.Options.Add(downloadSizeOption);
@@ -330,6 +340,7 @@ public static class Program
                     NoLatency = parseResult.GetValue(noLatencyOption),
                     NoDownload = parseResult.GetValue(noDownloadOption),
                     NoUpload = parseResult.GetValue(noUploadOption),
+                    Provider = parseResult.GetValue(providerOption),
                     ServerUrl = parseResult.GetValue(serverUrlOption) ?? string.Empty,
                     Profile = parseResult.GetValue(profileOption),
                     DownloadSizeMb = parseResult.GetValue(downloadSizeOption),
@@ -350,11 +361,12 @@ public static class Program
                 // Validate settings
                 settings.Validate();
 
-                // Build the OoklaSpeedtestSettings from --profile + per-cap overrides.
-                // The settings accessor is the test seam: production resolves OoklaSpeedtest from it;
-                // tests inspect Settings post-run to verify CLI → settings binding.
-                var accessor = serviceProvider.GetRequiredService<OoklaSpeedtestSettingsAccessor>();
-                accessor.Settings = BuildOoklaSettings(settings);
+                // Build the provider's settings from --provider, --profile and the per-cap
+                // overrides. The settings accessor is the test seam: production resolves the
+                // provider from it; tests inspect Settings post-run to verify CLI → settings
+                // binding.
+                var accessor = serviceProvider.GetRequiredService<SpeedTestSettingsAccessor>();
+                accessor.Settings = BuildSpeedTestSettings(settings);
 
                 // Get services from DI
                 var ansiConsole = serviceProvider.GetRequiredService<IAnsiConsole>();
@@ -404,30 +416,36 @@ public static class Program
     }
 
     /// <summary>
-    /// Build the <see cref="OoklaSpeedtestSettings"/> from the parsed CLI settings.
-    /// Profile sets per-request shape and cap defaults; explicit --downloadsize / --uploadsize
-    /// override only the cap via with-expressions, and --connections overrides only the number of
-    /// transfers each direction runs at once. <c>--simple</c> and <c>--minimal</c> additionally
-    /// switch the under-load latency probes off, because neither format shows an under-load figure,
-    /// and <c>--no-latency</c> does because it asks for no latency at all.
+    /// Build the provider's <see cref="SpeedTestSettings"/> from the parsed CLI settings.
+    /// <c>--provider</c> picks which record is built; everything after that is provider-neutral and
+    /// is applied once, to the shared half of it. Profile sets per-request shape and cap defaults;
+    /// explicit --downloadsize / --uploadsize override only the cap via with-expressions, and
+    /// --connections overrides only the number of transfers each direction runs at once.
+    /// <c>--simple</c> and <c>--minimal</c> additionally switch the under-load latency probes off,
+    /// because neither format shows an under-load figure, and <c>--no-latency</c> does because it
+    /// asks for no latency at all.
     /// </summary>
-    internal static OoklaSpeedtestSettings BuildOoklaSettings(SpeedTestCommandSettings settings)
+    internal static SpeedTestSettings BuildSpeedTestSettings(SpeedTestCommandSettings settings)
     {
-        var ooklaSettings = new OoklaSpeedtestSettings(settings.Profile);
+        SpeedTestSettings speedTestSettings = settings.Provider switch
+        {
+            Provider.LibreSpeed => new LibreSpeedtestSettings(settings.Profile),
+            _ => new OoklaSpeedtestSettings(settings.Profile),
+        };
 
         if (settings.DownloadSizeMb != int.MaxValue)
         {
-            ooklaSettings = ooklaSettings with
+            speedTestSettings = speedTestSettings with
             {
-                DownloadTest = ooklaSettings.DownloadTest with { DownloadSizeMb = settings.DownloadSizeMb }
+                DownloadTest = speedTestSettings.DownloadTest with { DownloadSizeMb = settings.DownloadSizeMb }
             };
         }
 
         if (settings.UploadSizeMb != int.MaxValue)
         {
-            ooklaSettings = ooklaSettings with
+            speedTestSettings = speedTestSettings with
             {
-                UploadTest = ooklaSettings.UploadTest with { UploadSizeMb = settings.UploadSizeMb }
+                UploadTest = speedTestSettings.UploadTest with { UploadSizeMb = settings.UploadSizeMb }
             };
         }
 
@@ -439,23 +457,37 @@ public static class Program
             // latency figure comes from. --no-latency switches them off for the opposite reason:
             // asking for no latency asks for none anywhere, so no probe goes out under a transfer
             // either, in whichever format the run reports.
-            ooklaSettings = ooklaSettings with
+            speedTestSettings = speedTestSettings with
             {
-                LatencyTest = ooklaSettings.LatencyTest with { LoadedLatencyEnabled = false }
+                LatencyTest = speedTestSettings.LatencyTest with { LoadedLatencyEnabled = false }
             };
         }
 
         if (settings.Connections is int connections)
         {
-            ooklaSettings = ooklaSettings with
+            speedTestSettings = speedTestSettings with
             {
-                DownloadTest = ooklaSettings.DownloadTest with { DownloadParallelTasks = connections },
-                UploadTest = ooklaSettings.UploadTest with { UploadParallelTasks = connections }
+                DownloadTest = speedTestSettings.DownloadTest with { DownloadParallelTasks = connections },
+                UploadTest = speedTestSettings.UploadTest with { UploadParallelTasks = connections }
             };
         }
 
-        return ooklaSettings;
+        return speedTestSettings;
     }
+
+    /// <summary>
+    /// The provider to measure with, chosen from the kind of settings record it was given.
+    /// </summary>
+    /// <remarks>
+    /// Reading the provider off the record leaves nothing to disagree with it: a run cannot end up
+    /// with LibreSpeed settings in an Ookla provider.
+    /// </remarks>
+    internal static ISpeedTestService CreateSpeedTestService(SpeedTestSettings settings) => settings switch
+    {
+        OoklaSpeedtestSettings ookla => new OoklaSpeedtest(ookla),
+        LibreSpeedtestSettings libreSpeed => new LibreSpeedtest(libreSpeed),
+        _ => throw new ArgumentOutOfRangeException(nameof(settings), settings.GetType().Name, "No speed test provider is registered for these settings."),
+    };
 
     /// <summary>
     /// Parse a <c>--connections</c> value the way its validator does: digits only, culture
@@ -552,7 +584,7 @@ public static class Program
 
         // Needed by both stacks: the root command populates the accessor after option binding,
         // before it knows which ISpeedTestService is in play.
-        services.AddSingleton<OoklaSpeedtestSettingsAccessor>();
+        services.AddSingleton<SpeedTestSettingsAccessor>();
 
         // Diagnostics go to the error stream, never through the Spectre console: one record per
         // line, whatever the terminal width, and whatever --quiet or --file were set to.
@@ -574,7 +606,7 @@ public static class Program
         }
         else
         {
-            services.AddSingleton<ISpeedTestService>(sp => new OoklaSpeedtest(sp.GetRequiredService<OoklaSpeedtestSettingsAccessor>().Settings));
+            services.AddSingleton<ISpeedTestService>(sp => CreateSpeedTestService(sp.GetRequiredService<SpeedTestSettingsAccessor>().Settings));
             services.AddSingleton<IClock, Clock>();
             services.AddSingleton<IClientInfoProvider, ClientInfoProvider>();
             services.AddSingleton<IEnvironmentInfoProvider, EnvironmentInfoProvider>();

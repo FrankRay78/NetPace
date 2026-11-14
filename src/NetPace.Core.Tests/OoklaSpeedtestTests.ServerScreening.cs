@@ -210,7 +210,7 @@ public sealed partial class OoklaSpeedtestTests
             var httpClient = mockHttp.ToHttpClient();
             var settings = new OoklaSpeedtestSettings
             {
-                ServerDiscovery = new() { ServerTimeoutMilliseconds = ceilingMilliseconds }
+                ServerScreening = new() { ServerTimeoutMilliseconds = ceilingMilliseconds }
             };
 
             var speedtest = new OoklaSpeedtest(settings, httpClient, new DelayProviderStub());
@@ -240,7 +240,7 @@ public sealed partial class OoklaSpeedtestTests
             var httpClient = mockHttp.ToHttpClient();
             var settings = new OoklaSpeedtestSettings
             {
-                ServerDiscovery = new() { ServerTimeoutMilliseconds = ceilingMilliseconds }
+                ServerScreening = new() { ServerTimeoutMilliseconds = ceilingMilliseconds }
             };
 
             var speedtest = new OoklaSpeedtest(settings, httpClient, new DelayProviderStub());

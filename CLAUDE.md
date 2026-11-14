@@ -29,7 +29,9 @@ NetPace is a cross-platform network speed testing CLI built with .NET 10.0, usin
 
 ### Speed Test Provider Pattern
 
-Providers implement `ISpeedTestService` (`src/NetPace.Core/ISpeedTestService.cs`): server discovery, latency, download and upload. Each returns a result record (`LatencyTestResult`, `SpeedTestResult`) and has `CancellationToken` and `IProgress<T>` overloads. Provider code stays in `src/NetPace.Core/Clients/{Provider}/` (today only `Clients/Ookla/`).
+Providers implement `ISpeedTestService` (`src/NetPace.Core/ISpeedTestService.cs`): server discovery, latency, download and upload. Each returns a result record (`LatencyTestResult`, `SpeedTestResult`) and has `CancellationToken` and `IProgress<T>` overloads. Provider code stays in `src/NetPace.Core/Clients/{Provider}/` — today `Clients/Ookla/` and `Clients/LibreSpeed/`.
+
+The measurement is written once, in `SpeedTestProviderBase` (`src/NetPace.Core/SpeedTestProviderBase.cs`), which implements the whole interface over HTTP; a provider is a sealed subclass supplying only its latency probe address and what counts as a valid answer there, its download requests, where uploads go, and server discovery. The base class is closed to outside inheritance (internal constructor, `private protected` override points) until a third provider proves the shape. Settings split the same way: `SpeedTestSettings` (`src/NetPace.Core/Settings/`) holds latency, screening, upload and the download byte ceiling and connection count, with each profile's ceilings and counts in one table, and a provider's record adds only what its own protocol needs. Rationale: CIR [`2026-11-10-one-measurement-two-providers`](docs/change-intent-records/2026-11-10-one-measurement-two-providers.md).
 
 ### CLI Help Behaviour
 
@@ -61,7 +63,7 @@ Load these on demand for the matching topic:
 - **Change Intent Records** — `docs/conventions/change-intent-records.md` — read when deciding whether a change warrants documenting intent.
 - **Release Pipeline** — `docs/RELEASING.md` — release matrix (RIDs × variants), naming convention, runner-per-RID rationale, smoke-test contract, size-assertion contract.
 - **Server Screening and Measurement** — `docs/architecture/server-screening-and-measurement.md` — read before changing server selection, the latency probe, or the settings that bound either; records why choosing and measuring are separate jobs and why the ceiling on choosing must stay.
-- **Ookla Download/Upload Sizing** — `docs/architecture/download-upload-size-controls.md` — how `OoklaSpeedtestSettings` shapes per-request sizing, iterations, and parallelism; what `--downloadsize`/`--uploadsize` actually cap (total-byte budget); Docker OoklaServer endpoints for local verification.
+- **Ookla Download/Upload Sizing** — `docs/architecture/download-upload-size-controls.md` — how `OoklaSpeedtestSettings` shapes per-request sizing, iterations, and parallelism; what `--downloadsize`/`--uploadsize` actually cap (total-byte budget); Docker OoklaServer endpoints for local verification; where LibreSpeed's own request shape sits under the same ceilings.
 
 ---
 

@@ -20,8 +20,8 @@ public sealed partial class OoklaSpeedtestSettingsTests
 
         // Then — assert field-for-field equality (int[] DownloadSizes doesn't have
         // structural equality, so record-level .Equals would compare arrays by reference).
-        parameterless.DownloadTest.DownloadSizes.ShouldBe(medium.DownloadTest.DownloadSizes);
-        parameterless.DownloadTest.DownloadSizeIterations.ShouldBe(medium.DownloadTest.DownloadSizeIterations);
+        parameterless.DownloadSizes.ShouldBe(medium.DownloadSizes);
+        parameterless.DownloadSizeIterations.ShouldBe(medium.DownloadSizeIterations);
         parameterless.DownloadTest.DownloadParallelTasks.ShouldBe(medium.DownloadTest.DownloadParallelTasks);
         parameterless.DownloadTest.DownloadSizeMb.ShouldBe(medium.DownloadTest.DownloadSizeMb);
 
@@ -32,8 +32,8 @@ public sealed partial class OoklaSpeedtestSettingsTests
         parameterless.UploadTest.UploadSizeMb.ShouldBe(medium.UploadTest.UploadSizeMb);
 
         // Spot-check Medium field values so any value drift surfaces here too.
-        parameterless.DownloadTest.DownloadSizes.ShouldBe(new[] { 1500, 2000, 3000, 3500, 4000 });
-        parameterless.DownloadTest.DownloadSizeIterations.ShouldBe(2);
+        parameterless.DownloadSizes.ShouldBe(new[] { 1500, 2000, 3000, 3500, 4000 });
+        parameterless.DownloadSizeIterations.ShouldBe(2);
         parameterless.DownloadTest.DownloadParallelTasks.ShouldBe(4);
         parameterless.DownloadTest.DownloadSizeMb.ShouldBe(100);
 
@@ -71,9 +71,9 @@ public sealed partial class OoklaSpeedtestSettingsTests
         s.UseProxy.ShouldBeTrue();
 
         // Mega's per-request shape is preserved.
-        s.DownloadTest.DownloadSizes.ShouldContain(5000);
-        s.DownloadTest.DownloadSizes.ShouldContain(6000);
-        s.DownloadTest.DownloadSizes.ShouldContain(7000);
+        s.DownloadSizes.ShouldContain(5000);
+        s.DownloadSizes.ShouldContain(6000);
+        s.DownloadSizes.ShouldContain(7000);
         s.DownloadTest.DownloadParallelTasks.ShouldBe(32);
         s.UploadTest.UploadSizeIncrementKb.ShouldBe(1024);
     }

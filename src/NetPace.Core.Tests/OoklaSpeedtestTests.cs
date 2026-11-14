@@ -586,7 +586,7 @@ public sealed partial class OoklaSpeedtestTests
         var httpClient = mockHttp.ToHttpClient();
         var settings = new OoklaSpeedtestSettings
         {
-            ServerDiscovery = new() { ScreeningRequestCount = 1 }
+            ServerScreening = new() { ScreeningRequestCount = 1 }
         };
 
         var speedtest = new OoklaSpeedtest(settings, httpClient, new DelayProviderStub(), clock);
@@ -947,9 +947,9 @@ public sealed partial class OoklaSpeedtestTests
         var httpClient = mockHttp.ToHttpClient();
         var settings = new OoklaSpeedtestSettings
         {
+            DownloadSizes = new[] { 100, 200, 500, 1000, 1500, 2000, 3000, 3500, 4000 },
             DownloadTest = new()
             {
-                DownloadSizes = new[] { 100, 200, 500, 1000, 1500, 2000, 3000, 3500, 4000 },
                 DownloadParallelTasks = 1,
                 DownloadSizeMb = downloadSizeMb
             }
@@ -990,10 +990,10 @@ public sealed partial class OoklaSpeedtestTests
         var httpClient = mockHttp.ToHttpClient();
         var settings = new OoklaSpeedtestSettings
         {
+            DownloadSizes = new[] { 100 },
+            DownloadSizeIterations = 10,
             DownloadTest = new()
             {
-                DownloadSizes = new[] { 100 },
-                DownloadSizeIterations = 10,
                 DownloadParallelTasks = 1,
                 DownloadSizeMb = downloadSizeMb
             }
@@ -1056,10 +1056,10 @@ public sealed partial class OoklaSpeedtestTests
         var httpClient = mockHttp.ToHttpClient();
         var settings = new OoklaSpeedtestSettings
         {
+            DownloadSizes = new[] { 100 },
+            DownloadSizeIterations = 4,
             DownloadTest = new()
             {
-                DownloadSizes = new[] { 100 },
-                DownloadSizeIterations = 4,
                 DownloadParallelTasks = 1
             }
         };
@@ -1092,10 +1092,10 @@ public sealed partial class OoklaSpeedtestTests
         var httpClient = mockHttp.ToHttpClient();
         var settings = new OoklaSpeedtestSettings
         {
+            DownloadSizes = new[] { 100 },
+            DownloadSizeIterations = 2,
             DownloadTest = new()
             {
-                DownloadSizes = new[] { 100 },
-                DownloadSizeIterations = 2,
                 DownloadParallelTasks = 1
             }
         };
@@ -1125,10 +1125,10 @@ public sealed partial class OoklaSpeedtestTests
         var httpClient = mockHttp.ToHttpClient();
         var settings = new OoklaSpeedtestSettings
         {
+            DownloadSizes = new[] { 100 },
+            DownloadSizeIterations = 5,
             DownloadTest = new()
             {
-                DownloadSizes = new[] { 100 },
-                DownloadSizeIterations = 5,
                 DownloadParallelTasks = 1
             }
         };
@@ -1159,10 +1159,10 @@ public sealed partial class OoklaSpeedtestTests
         var httpClient = mockHttp.ToHttpClient();
         var settings = new OoklaSpeedtestSettings
         {
+            DownloadSizes = new[] { 100 },
+            DownloadSizeIterations = 3,
             DownloadTest = new()
             {
-                DownloadSizes = new[] { 100 },
-                DownloadSizeIterations = 3,
                 DownloadParallelTasks = 1
             }
         };
@@ -1196,10 +1196,10 @@ public sealed partial class OoklaSpeedtestTests
         var httpClient = mockHttp.ToHttpClient();
         var settings = new OoklaSpeedtestSettings
         {
+            DownloadSizes = new[] { 100 },
+            DownloadSizeIterations = 3,
             DownloadTest = new()
             {
-                DownloadSizes = new[] { 100 },
-                DownloadSizeIterations = 3,
                 DownloadParallelTasks = 1
             }
         };
@@ -1227,10 +1227,10 @@ public sealed partial class OoklaSpeedtestTests
         var httpClient = mockHttp.ToHttpClient();
         var settings = new OoklaSpeedtestSettings
         {
+            DownloadSizes = new[] { 100 },
+            DownloadSizeIterations = 4,
             DownloadTest = new()
             {
-                DownloadSizes = new[] { 100 },
-                DownloadSizeIterations = 4,
                 DownloadParallelTasks = 1
             }
         };
@@ -1261,10 +1261,10 @@ public sealed partial class OoklaSpeedtestTests
         var httpClient = mockHttp.ToHttpClient();
         var settings = new OoklaSpeedtestSettings
         {
+            DownloadSizes = new[] { 100 },
+            DownloadSizeIterations = 4,
             DownloadTest = new()
             {
-                DownloadSizes = new[] { 100 },
-                DownloadSizeIterations = 4,
                 DownloadParallelTasks = 1
             }
         };

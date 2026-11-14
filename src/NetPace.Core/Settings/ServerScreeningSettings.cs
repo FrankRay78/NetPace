@@ -1,18 +1,15 @@
-namespace NetPace.Core.Clients.Ookla.Settings;
+namespace NetPace.Core.Settings;
 
 /// <summary>
-/// Settings for discovering available speed test servers.
+/// Settings for screening candidate speed test servers to choose one.
 /// </summary>
-public sealed record ServerDiscoverySettings
+/// <remarks>
+/// Screening a caller-supplied list is provider-neutral, so these settings are. Where the list
+/// itself comes from is not: a provider that discovers servers names its own feed on its own
+/// settings record.
+/// </remarks>
+public sealed record ServerScreeningSettings
 {
-    /// <summary>
-    /// Gets or sets the URL to retrieve the list of available Speedtest servers.
-    /// </summary>
-    /// <remarks>
-    /// Defaults to the official Speedtest.net server list endpoint.
-    /// </remarks>
-    public string ServersUrl { get; init; } = "http://www.speedtest.net/speedtest-servers.php";
-
     /// <summary>
     /// The overall ceiling in milliseconds on screening the discovered servers to choose one.
     /// </summary>

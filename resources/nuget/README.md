@@ -27,6 +27,17 @@ Console.WriteLine($"Upload: {uploadResult.GetSpeedString(SpeedUnit.BitsPerSecond
 
 The example above uses the `OoklaSpeedtest` implementation which uses Ookla Speedtest servers under the hood. Ookla and Speedtest are trademarks of Ookla, LLC; this project is not affiliated with or endorsed by Ookla.
 
+`LibreSpeedtest` is the other implementation, for a [LibreSpeed](https://github.com/librespeed/speedtest) server you host yourself. It speaks the same `ISpeedTestService` and reports the same figures, with the server named by the address LibreSpeed is installed at. It discovers no servers, so `GetServersAsync` throws `NotSupportedException`; screening a list you supply yourself works as it does for Ookla.
+
+```csharp
+using NetPace.Core.Clients.LibreSpeed;
+
+var speedTester = new LibreSpeedtest() as ISpeedTestService;
+
+var latency = await speedTester.GetServerLatencyAsync("http://pi.local:8080/");
+var downloadResult = await speedTester.GetDownloadSpeedAsync(latency.Server);
+```
+
 See the [full example](https://github.com/FrankRay78/NetPace/tree/main/examples/ConsoleApp/Program.cs) on GitHub.
 
 ## API Overview

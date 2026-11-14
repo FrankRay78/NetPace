@@ -236,7 +236,7 @@ public sealed partial class NetPaceConsoleTests
             // Then no under-load probe goes out: this format shows no under-load figure, so its
             // traffic is as it was before the probes existed.
             Assert.Equal(0, result.ExitCode);
-            Assert.False(accessor.Settings.LatencyTest.LoadedLatencyEnabled);
+            Assert.False(Ookla(accessor).LatencyTest.LoadedLatencyEnabled);
         }
 
         [Fact]
@@ -251,7 +251,7 @@ public sealed partial class NetPaceConsoleTests
 
             // Then the default output keeps its probes: only --simple and --minimal opt out.
             Assert.Equal(0, result.ExitCode);
-            Assert.True(accessor.Settings.LatencyTest.LoadedLatencyEnabled);
+            Assert.True(Ookla(accessor).LatencyTest.LoadedLatencyEnabled);
         }
 
         [Theory]
