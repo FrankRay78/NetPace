@@ -18,7 +18,7 @@
 #
 # Exits non-zero on any failure.
 #
-#   Usage:  docker/ooklaserver/lab-properties.tests.sh
+#   Usage:  docker/lab/lab-properties.tests.sh
 
 set -uo pipefail
 
@@ -142,13 +142,13 @@ ok "a second argument is a usage error rather than ignored" '[ "$RC" = 2 ]'
 
 # The whole RUN instruction, not the filename: a bare grep for the filename is satisfied by the
 # COPY line below, so it stays green when the image copies the script in and never runs it. The
-# argument is part of the assertion because the Dockerfile holds two properties files, and running
-# over OoklaServer.properties.default would leave the served copy untouched.
+# argument is part of the assertion because the OoklaServer image holds two properties files, and
+# running over OoklaServer.properties.default would leave the served copy untouched.
 echo "The real lab:"
 props "$UPSTREAM"
 ok "the image runs the script over the properties file it serves" \
-  'grep -qE "^RUN[[:space:]]+bash[[:space:]]+lab-properties\.sh[[:space:]]+OoklaServer\.properties[[:space:]]*$" "$HERE/Dockerfile"'
-ok "and copies it in" 'grep -E "^COPY" "$HERE/Dockerfile" | grep -qF "lab-properties.sh"'
+  'grep -qE "^RUN[[:space:]]+bash[[:space:]]+lab-properties\.sh[[:space:]]+OoklaServer\.properties[[:space:]]*$" "$HERE/Dockerfile.ooklaserver"'
+ok "and copies it in" 'grep -E "^COPY" "$HERE/Dockerfile.ooklaserver" | grep -qF "lab-properties.sh"'
 
 echo ""
 echo "RESULT: $pass passed, $fail failed"
