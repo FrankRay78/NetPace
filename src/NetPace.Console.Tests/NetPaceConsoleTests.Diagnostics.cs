@@ -216,8 +216,8 @@ public sealed partial class NetPaceConsoleTests
         [Fact]
         public async Task Under_Loop_TheRunLevelRecordsAppearOnceAndTheTestsPerIteration()
         {
-            // Given a loop that cancels itself after two waits. --loop has its own flush site,
-            // separate from the one --count uses.
+            // Given a loop that cancels itself after two waits. Every run mode flushes from the one
+            // shared site in the run block, so this checks that site through --loop.
             using var cancellation = new CancellationTokenSource();
             var services = new ServiceCollection();
             services.AddSingleton<ISpeedTestService>(new DiagnosticSpeedTester());
