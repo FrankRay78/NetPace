@@ -364,7 +364,7 @@ public sealed partial class NetPaceConsoleTests
 
             // Then the process stops at the first iteration rather than reporting all five.
             Assert.Equal(1, result.ExitCode);
-            Assert.Equal(1, result.ErrorOutput.Split("No such host is known").Length - 1);
+            Assert.Equal(1, Occurrences(result.ErrorOutput, "No such host is known"));
         }
     }
 }

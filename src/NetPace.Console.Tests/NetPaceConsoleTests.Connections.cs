@@ -135,8 +135,9 @@ public sealed partial class NetPaceConsoleTests
             // When
             var result = await host.RunAsync(["--connections", value]);
 
-            // Then the run is refused up front and nothing is measured — standard output is empty
-            // and the snapshot is the whole error stream, so a result line appearing would fail it.
+            // Then the run is refused up front and nothing is measured — the assertion below holds
+            // standard output empty, so a result line appearing would fail, and the snapshot is the
+            // whole of what the error stream carried.
             Assert.NotEqual(0, result.ExitCode);
             Assert.Empty(result.Output);
 

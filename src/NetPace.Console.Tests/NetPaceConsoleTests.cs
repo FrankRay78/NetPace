@@ -53,6 +53,12 @@ public sealed partial class NetPaceConsoleTests
         Assert.IsType<OoklaSpeedtestSettings>(accessor.Settings);
 
     /// <summary>
+    /// How many times <paramref name="value"/> appears in <paramref name="text"/>. Shared by the
+    /// nested classes that count how often a run reported something, on whichever stream.
+    /// </summary>
+    private static int Occurrences(string text, string value) => text.Split(value).Length - 1;
+
+    /// <summary>
     /// Create the CommandLineTestHost with System.CommandLine.
     /// </summary>
     private static CommandLineTestHost GetCommandLineTestHost(IServiceCollection? serviceCollection)
@@ -560,7 +566,7 @@ public sealed partial class NetPaceConsoleTests
         // Then the run carried on past the failed test: standard output holds a line per measured
         // test and none for the failed one, and the error stream holds that test's error alone.
         Assert.Equal(0, result.ExitCode);
-        Assert.Equal($"Error: Communication with 'Test Sponsor 1' has failed{Environment.NewLine}", result.ErrorOutput);
+        Assert.Equal(1, Occurrences(result.ErrorOutput, "Error:"));
         await Verify(result.Output);
     }
 

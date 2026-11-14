@@ -228,6 +228,7 @@ public sealed partial class NetPaceConsoleTests
             // output carries only the hint the listing had already written.
             Assert.Equal(0, result.ExitCode);
             Assert.DoesNotContain("Error:", result.Output, StringComparison.Ordinal);
+            Assert.Contains("Press CTRL+C to exit.", result.Output, StringComparison.Ordinal);
             await Verify(result.ErrorOutput);
         }
 

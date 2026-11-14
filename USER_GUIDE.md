@@ -269,7 +269,7 @@ netpace --csv --no-csv-header >> ~/netpace.csv
 
 `--no-csv-header` leaves the header out of everything: the terminal, redirected or piped standard output, and a `--file` target even when it is new or empty, on every iteration of `--loop` and `--count`. It is accepted alongside the other formats and changes nothing there.
 
-A run that fails before it writes a row leaves the log as it found it: errors go to standard error, never into the file ([Where errors are written](#where-errors-are-written)), so a new log whose first run failed is still empty, and the first run that writes a row gives it the header.
+Errors go to standard error, never into the file ([Where errors are written](#where-errors-are-written)), so a new log whose first run failed is still empty, and the first run that writes a row gives it the header.
 
 **Start a new log after an upgrade that changes the columns.** While NetPace is below 1.0.0 the CSV columns may gain or move fields between releases, and nothing checks an existing log's header against the columns being written. Rows from a newer version appended to an older log sit under a header that no longer describes them. After an upgrade that changes the columns, move the old log aside and let NetPace start a fresh one.
 
@@ -487,7 +487,7 @@ If you have set `NO_COLOR` — the [convention](https://no-color.org/) for askin
 
 Every error NetPace reports goes to standard error, in every output format and from every command: a measurement that failed, an option the parser rejects, a combination of options it refuses, and an operational fault such as a `--file` target that cannot be written. Standard output and a `--file` target carry the result and nothing else, so a script reading `--csv`, `--json`, `--minimal` or `--simple` never meets a line that is not part of its format, and a log on a schedule collects results only.
 
-At a terminal both streams land on the screen, so an error reads exactly as it always has. Redirect the result and the error still reaches you:
+At a terminal both streams land on the screen, so an error still appears where you are reading. Redirect the result and the error still reaches you:
 
 ```bash
 netpace --csv > result.csv           # the row goes to the file, the error to the screen
@@ -499,6 +499,8 @@ Each error is one unbroken line, however narrow the terminal, so a reader taking
 `--quiet` does not suppress errors. It silences the result; an error still reaches standard error, with or without `--file`.
 
 Exit codes are unaffected. A network condition is still data and still exits `0`, and only an operational failure or a usage error exits non-zero (see [Exit codes](#exit-codes)).
+
+---
 
 ## Detecting failed measurements
 

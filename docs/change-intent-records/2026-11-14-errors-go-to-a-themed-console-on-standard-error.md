@@ -9,7 +9,7 @@
 **Decisions:**
 
 - An `IAnsiConsole` over the error stream. Rejected: a plain `TextWriter`, as `NoticeOutput` and `DiagnosticOutput` use. Those two carry no style, but an error is drawn in the theme, and the markup hazard they avoid does not arise here: `WriteErrorLine` hands the message to Spectre.Console as text, never as markup.
-- Its own console. Rejected: adding an error leg to the composite the run already builds, which `--quiet` and `--file` reach and which is torn down before the last flush.
+- Its own console. Rejected: adding an error leg to the composite the run already builds, which `--quiet` and `--file` reach and which is disposed before the last error is written.
 - Records flushed before a failed test's error, so the stream reads what was attempted before what went wrong.
 
 **Date:** 2026-11-14

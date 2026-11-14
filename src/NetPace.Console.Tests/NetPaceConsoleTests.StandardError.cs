@@ -22,14 +22,16 @@ public sealed partial class NetPaceConsoleTests
         /// <summary>
         /// A host whose every test fails the way an unreachable network does: a condition NetPace
         /// reports and exits 0 on, so the run reaches the end and each format writes whatever it
-        /// writes for a test that produced nothing.
+        /// writes for a test that produced nothing. <paramref name="message"/> is the failure's
+        /// own wording, for a test about how a message is rendered rather than which stream it
+        /// reached.
         /// </summary>
-        private static CommandLineTestHost FailingHost(int consoleWidth = CommandLineTestHost.UnlimitedWidth, bool recordColour = false, IServiceCollection? services = null)
+        private static CommandLineTestHost FailingHost(int consoleWidth = CommandLineTestHost.UnlimitedWidth, bool recordColour = false, IServiceCollection? services = null, string message = NetworkFailure)
         {
             services ??= new ServiceCollection();
             services.AddSingleton<ISpeedTestService>(new SpeedTestMock
             {
-                GetServersAsyncFunc = _ => throw new HttpRequestException(NetworkFailure)
+                GetServersAsyncFunc = _ => throw new HttpRequestException(message)
             });
             services.AddSingleton<IClock, ClockStub>();
             services.AddSingleton<IWaiter, NoDelayStub>();
@@ -52,7 +54,7 @@ public sealed partial class NetPaceConsoleTests
             var result = await host.RunAsync([format, "--count", "2"]);
 
             // Then every error is on standard error, and standard output carries none of them.
-            Assert.Equal(2, result.ErrorOutput.Split(NetworkFailure).Length - 1);
+            Assert.Equal(2, Occurrences(result.ErrorOutput, NetworkFailure));
             Assert.DoesNotContain(NetworkFailure, result.Output, StringComparison.Ordinal);
             Assert.DoesNotContain("Error:", result.Output, StringComparison.Ordinal);
         }
@@ -62,14 +64,14 @@ public sealed partial class NetPaceConsoleTests
         {
             // SCENARIO: A failed test's error goes to standard error
 
-            // Given a looping run whose tests fail, in the format a person reads.
+            // Given a run of two tests, both of which fail, in the format a person reads.
             var host = FailingHost();
 
             // When
             var result = await host.RunAsync(["--count", "2"]);
 
             // Then
-            Assert.Equal(2, result.ErrorOutput.Split(NetworkFailure).Length - 1);
+            Assert.Equal(2, Occurrences(result.ErrorOutput, NetworkFailure));
             Assert.DoesNotContain(NetworkFailure, result.Output, StringComparison.Ordinal);
         }
 
@@ -90,9 +92,9 @@ public sealed partial class NetPaceConsoleTests
                 // Then the log holds results only, and the error reached standard error.
                 Assert.Contains(NetworkFailure, result.ErrorOutput, StringComparison.Ordinal);
 
+                // The run measured nothing, so the log is not merely free of the error: it is empty.
                 var fileContent = await System.IO.File.ReadAllTextAsync(testFile);
-                Assert.DoesNotContain(NetworkFailure, fileContent, StringComparison.Ordinal);
-                Assert.DoesNotContain("Error:", fileContent, StringComparison.Ordinal);
+                Assert.Empty(fileContent);
             }
             finally
             {
@@ -114,11 +116,7 @@ public sealed partial class NetPaceConsoleTests
                 Assert.Equal(0, failed.ExitCode);
 
                 // When a later CSV run into the same file succeeds.
-                var services = new ServiceCollection();
-                services.AddSingleton<ISpeedTestService, SpeedTestStub>();
-                services.AddSingleton<IClock, ClockStub>();
-                services.AddSingleton<IWaiter, NoDelayStub>();
-                var succeeded = await new CommandLineTestHost(services).RunAsync(["--csv", "--file", testFile]);
+                var succeeded = await GetCommandLineTestHost(StubServices()).RunAsync(["--csv", "--file", testFile]);
                 Assert.Equal(0, succeeded.ExitCode);
 
                 // Then the file's first line is the header and its second is that run's data row.
@@ -203,11 +201,7 @@ public sealed partial class NetPaceConsoleTests
         {
             // Given a --file target that cannot be opened for writing.
             var unwritable = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName(), "out.csv");
-            var services = new ServiceCollection();
-            services.AddSingleton<ISpeedTestService, SpeedTestStub>();
-            services.AddSingleton<IClock, ClockStub>();
-            services.AddSingleton<IWaiter, NoDelayStub>();
-            var host = new CommandLineTestHost(services);
+            var host = GetCommandLineTestHost(StubServices());
 
             // When
             var result = await host.RunAsync(["--file", unwritable]);
@@ -240,8 +234,8 @@ public sealed partial class NetPaceConsoleTests
         [Fact]
         public async Task A_Failed_Tests_Error_Follows_That_Runs_Diagnostic_Records()
         {
-            // Given both streams written to one place, as they are in a terminal, and a run whose
-            // test fails under --diagnostics.
+            // Given diagnostics and errors written to one place, as they share the error stream in
+            // every run, and a run whose test fails under --diagnostics.
             using var stream = new StringWriter();
             var services = new ServiceCollection();
             services.AddSingleton(new DiagnosticOutput(stream));
@@ -281,14 +275,7 @@ public sealed partial class NetPaceConsoleTests
             // Given a terminal narrower than the message, and a run whose test fails with one long
             // enough to wrap.
             var sentence = string.Join(' ', Enumerable.Repeat("unreachable", 12));
-            var services = new ServiceCollection();
-            services.AddSingleton<ISpeedTestService>(new SpeedTestMock
-            {
-                GetServersAsyncFunc = _ => throw new HttpRequestException(sentence)
-            });
-            services.AddSingleton<IClock, ClockStub>();
-            services.AddSingleton<IWaiter, NoDelayStub>();
-            var host = new CommandLineTestHost(services, CommandLineTestHost.NarrowTerminalWidth);
+            var host = FailingHost(CommandLineTestHost.NarrowTerminalWidth, message: sentence);
 
             // When
             var result = await host.RunAsync([]);
@@ -343,6 +330,43 @@ public sealed partial class NetPaceConsoleTests
             // Then
             Assert.Contains(NetworkFailure, AnsiSnapshot.WithoutStyling(result.ErrorOutput), StringComparison.Ordinal);
             Assert.False(AnsiSnapshot.CarriesStyling(result.ErrorOutput));
+        }
+
+        /// <summary>
+        /// The registrations a real run makes, which the test host replaces with its own captures:
+        /// every test above would pass just the same with the process wired to the wrong stream.
+        /// </summary>
+        public sealed class Wiring
+        {
+            [Fact]
+            public void Every_Output_That_Is_Not_The_Result_Carries_The_Process_Error_Stream()
+            {
+                // Given
+                var services = new ServiceCollection();
+                Program.AddStreamOutputs(services);
+                using var provider = services.BuildServiceProvider();
+
+                // Then
+                Assert.Same(System.Console.Error, provider.GetRequiredService<NoticeOutput>().Writer);
+                Assert.Same(System.Console.Error, provider.GetRequiredService<DiagnosticOutput>().Writer);
+                Assert.Same(System.Console.Error, provider.GetRequiredService<ErrorOutput>().Console.Profile.Out.Writer);
+            }
+
+            [Fact]
+            public void An_Errors_Colour_Commands_Go_To_The_Stream_Carrying_It()
+            {
+                // Given
+                var services = new ServiceCollection();
+                Program.AddStreamOutputs(services);
+                using var provider = services.BuildServiceProvider();
+
+                // Then the error console writes its escape sequences to the writer it was given.
+                // Left to detect ANSI support, Spectre.Console reads a redirected error stream as
+                // unable to take them and falls back to setting colour through System.Console's
+                // colour properties, which .NET writes to standard OUTPUT - escape bytes in a
+                // result that is meant to carry nothing but its format.
+                Assert.True(provider.GetRequiredService<ErrorOutput>().Console.Profile.Capabilities.Ansi);
+            }
         }
     }
 }

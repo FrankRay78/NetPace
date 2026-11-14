@@ -370,6 +370,7 @@ public static class Program
 
                 // Get services from DI
                 var ansiConsole = serviceProvider.GetRequiredService<IAnsiConsole>();
+                var errorOutput = serviceProvider.GetRequiredService<ErrorOutput>();
                 var speedTestService = serviceProvider.GetRequiredService<ISpeedTestService>();
                 var clock = serviceProvider.GetRequiredService<IClock>();
                 var clientInfoProvider = serviceProvider.GetRequiredService<IClientInfoProvider>();
@@ -396,16 +397,17 @@ public static class Program
                 recorder.Record("run.invocation", ("args", string.Join(' ', args)));
 
                 // Create and execute command
-                var command = new SpeedTestCommand(ansiConsole, serviceProvider.GetRequiredService<ErrorOutput>(), speedTestService, clock, clientInfoProvider, recorder, waiter, liveDisplayRefresh, theme);
+                var command = new SpeedTestCommand(ansiConsole, errorOutput, speedTestService, clock, clientInfoProvider, recorder, waiter, liveDisplayRefresh, theme);
                 return await command.ExecuteAsync(settings, cancellationToken);
             }
             catch (Exception ex)
             {
                 // Usage/configuration errors and operational failures go to the error stream, so a
                 // redirect of the result never swallows them and no reader of the result ever meets
-                // a line that is not part of its format.
-                var console = serviceProvider.GetRequiredService<ErrorOutput>().Console;
-                console.WriteErrorLine(theme, ex.Message);
+                // a line that is not part of its format. Resolved again here rather than reused
+                // from above, because the throw may have come before that line ran.
+                var errorConsole = serviceProvider.GetRequiredService<ErrorOutput>().Console;
+                errorConsole.WriteErrorLine(theme, ex.Message);
                 return 1;
             }
         }));
@@ -545,10 +547,11 @@ public static class Program
 
                 // Get services from DI
                 var ansiConsole = serviceProvider.GetRequiredService<IAnsiConsole>();
+                var errorOutput = serviceProvider.GetRequiredService<ErrorOutput>();
                 var speedTestService = serviceProvider.GetRequiredService<ISpeedTestService>();
 
                 // Create and execute command
-                var command = new ListServersCommand(ansiConsole, serviceProvider.GetRequiredService<ErrorOutput>(), speedTestService, theme);
+                var command = new ListServersCommand(ansiConsole, errorOutput, speedTestService, theme);
                 return await command.ExecuteAsync(settings, cancellationToken);
             }
             catch (Exception ex)
@@ -556,13 +559,53 @@ public static class Program
                 // Usage/configuration errors and operational failures go to the error stream.
                 // Network and discovery outcomes never reach here: ListServersCommand reports those
                 // itself and leaves the exit code at 0, as a speed test does.
-                var ansiConsole = serviceProvider.GetRequiredService<ErrorOutput>().Console;
-                ansiConsole.WriteErrorLine(theme, ex.Message);
+                var errorConsole = serviceProvider.GetRequiredService<ErrorOutput>().Console;
+                errorConsole.WriteErrorLine(theme, ex.Message);
                 return 1;
             }
         });
 
         return command;
+    }
+
+    /// <summary>
+    /// Registers the three outputs that go to the process error stream rather than to the result:
+    /// a notice about the way the run was asked for, an error, and the diagnostic records.
+    /// </summary>
+    /// <remarks>
+    /// Its own method so a test can resolve these three and assert which stream each carries;
+    /// built inline in <see cref="Main"/>, the one line that decides it was reachable by nothing.
+    /// </remarks>
+    /// <param name="services">The collection to register the outputs in.</param>
+    internal static void AddStreamOutputs(IServiceCollection services)
+    {
+        // A word to the user about how the run was asked for goes to the error stream, so it never
+        // lands in the middle of a result another program is reading.
+        services.AddSingleton(new NoticeOutput(System.Console.Error));
+
+        // Every error goes to the error stream, for the same reason and one more: a run whose
+        // result is redirected still shows the user what went wrong. Its own console rather than
+        // the result's, so --quiet and --file never reach it.
+        //
+        // Ansi is forced on rather than detected. Left to detect it, Spectre.Console reads a
+        // redirected error stream as unable to take escape sequences and falls back to a backend
+        // that sets colour through System.Console's own colour properties - which .NET writes to
+        // standard OUTPUT, putting escape bytes in the result this change exists to keep clean.
+        // The ANSI backend always writes to the writer it was given, so the error stream is the
+        // only stream an error can reach. Colour is the part that follows the stream: none where
+        // it is redirected, detected where it is a terminal.
+        services.AddSingleton(new ErrorOutput(AnsiConsole.Create(new AnsiConsoleSettings
+        {
+            Out = new AnsiConsoleOutput(System.Console.Error),
+            Ansi = AnsiSupport.Yes,
+            ColorSystem = System.Console.IsErrorRedirected
+                ? ColorSystemSupport.NoColors
+                : ColorSystemSupport.Detect
+        })));
+
+        // Diagnostics go to the error stream, never through the Spectre console: one record per
+        // line, whatever the terminal width, and whatever --quiet or --file were set to.
+        services.AddSingleton(new DiagnosticOutput(System.Console.Error));
     }
 
     /// <summary>
@@ -580,26 +623,11 @@ public static class Program
         // thing about a run a stub would make harder to look at rather than easier.
         services.AddSingleton<IThemeProvider, EnvironmentThemeProvider>();
 
-        // A word to the user about how the run was asked for goes to the error stream, so it never
-        // lands in the middle of a result another program is reading.
-        services.AddSingleton(new NoticeOutput(System.Console.Error));
-
-        // Every error goes to the error stream, for the same reason and one more: a run whose
-        // result is redirected still shows the user what went wrong. Its own console rather than
-        // the result's, so --quiet and --file never reach it; its colour follows whether the error
-        // stream itself is a terminal, which Spectre.Console settles from the writer.
-        services.AddSingleton(new ErrorOutput(AnsiConsole.Create(new AnsiConsoleSettings
-        {
-            Out = new AnsiConsoleOutput(System.Console.Error)
-        })));
+        AddStreamOutputs(services);
 
         // Needed by both stacks: the root command populates the accessor after option binding,
         // before it knows which ISpeedTestService is in play.
         services.AddSingleton<SpeedTestSettingsAccessor>();
-
-        // Diagnostics go to the error stream, never through the Spectre console: one record per
-        // line, whatever the terminal width, and whatever --quiet or --file were set to.
-        services.AddSingleton(new DiagnosticOutput(System.Console.Error));
 
         // Needed by both stacks: a person running either one wants the live displays to redraw as
         // the measurement goes. Only the test host turns that off, so a capture holds one frame.

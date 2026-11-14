@@ -153,6 +153,7 @@ public sealed partial class NetPaceConsoleTests
             // reading a table that says no server could be reached.
             Assert.NotEqual(0, result.ExitCode);
             Assert.DoesNotContain("Error:", result.Output, StringComparison.Ordinal);
+            Assert.Contains("Press CTRL+C to exit.", result.Output, StringComparison.Ordinal);
             await Verify(result.ErrorOutput);
         }
 

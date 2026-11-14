@@ -23,7 +23,12 @@ public sealed class ErrorOutput
     /// <summary>
     /// Initializes a new instance of the <see cref="ErrorOutput"/> class.
     /// </summary>
-    /// <param name="console">The console errors are written to.</param>
+    /// <param name="console">
+    /// The console errors are written to. This type takes it over and removes its width limit, so
+    /// it must be the error stream's alone: a console whose profile is shared with the result —
+    /// which <see cref="CompositeAnsiConsole"/>'s is with its primary's — would lose its own limit
+    /// too.
+    /// </param>
     /// <exception cref="ArgumentNullException"><paramref name="console"/> is <c>null</c>.</exception>
     public ErrorOutput(IAnsiConsole console)
     {

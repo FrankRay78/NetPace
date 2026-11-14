@@ -302,7 +302,7 @@ public sealed partial class NetPaceConsoleTests
             Assert.Empty(result.Output);
 
             // Normalize directory separators to Windows-style backslashes so the Windows snapshots match across platforms.
-            var normalizedOutput = (result.ErrorOutput ?? string.Empty).Replace('/', '\\');
+            var normalizedOutput = result.ErrorOutput.Replace('/', '\\');
             await Verify(normalizedOutput);
         }
 

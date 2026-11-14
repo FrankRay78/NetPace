@@ -53,8 +53,6 @@ public sealed partial class NetPaceConsoleTests
         /// </summary>
         private const string ResultLine = "Ping: 24 ms";
 
-        private static int Occurrences(string text, string value) => text.Split(value).Length - 1;
-
         private static LatencyTestResult Latency(string serverUrl) =>
             new()
             {

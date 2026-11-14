@@ -14,9 +14,9 @@ namespace NetPace.Console.ConsoleWriters;
 /// exists for, which is a column of lines compared by eye.
 /// <para>
 /// The timestamp is always there rather than behind a switch, because a line in a running log is of
-/// little use without the time it was taken. A run that faults writes an unlabelled <c>Error:</c>
-/// line to the same stream instead, with no timestamp in front of it: this format is a quick
-/// shorthand, not a detailed log.
+/// little use without the time it was taken. A run that faults writes no line here at all: its
+/// unlabelled <c>Error:</c> line goes to the error stream, with no timestamp in front of it, this
+/// format being a quick shorthand rather than a detailed log.
 /// </para>
 /// </remarks>
 public sealed class MinimalConsoleWriter : IConsoleWriter
