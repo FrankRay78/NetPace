@@ -570,7 +570,9 @@ Under `--count` or `--loop`, `run.start`, `run.invocation` and `run.end` appear 
 
 ### Exit codes
 
-The exit code reports only whether **NetPace itself** functioned. Network conditions like a total outage, 100% request failure, or no servers found are *data*, not errors, and NetPace will exit `0`. Only an operational failure (for example, being unable to write the `--file` output) or a usage error (an unusable option value, or two output formats at once) exits non-zero. So a `0 bps` measurement still exits `0` by default: inspect the counts (or use `--fail-on`) to detect it.
+The exit code reports only whether **NetPace itself** functioned. Network conditions like a total outage, 100% request failure, or no servers found are *data*, not errors, and NetPace will exit `0`. Only an operational failure (for example, being unable to write the `--file` output) or a usage error (an unusable option value, or two output formats at once) exits non-zero, with `1`. So a `0 bps` measurement still exits `0` by default: inspect the counts (or use `--fail-on`) to detect it.
+
+Two opt-ins change that, and only when you ask for them: `--fail-on` exits `1` on a failed measurement, and a missed `--min-download`, `--min-upload` or `--max-latency` target exits `3`. Those are the only codes NetPace returns.
 
 **The rule covers every command, not just a speed test.** `netpace servers`, `netpace servers --latency` and `netpace servers --fastest` each report an empty server list, and a failed or timed-out attempt to fetch it — and exit `0` for both. A list no server answered on only arises where screening runs: `--fastest` reports it, `--latency` shows `-` against each row, and both exit `0`. Pressing Ctrl+C exits `0` as well, wherever you press it, and reports no error — it leaves whatever had already been drawn on screen. A script that wants to know whether servers were found reads the output, not the exit code.
 
@@ -590,6 +592,29 @@ A measurement that never ran at all — the network was down, or no server could
 # Treat a totally-failed test as a failure
 netpace --fail-on total
 ```
+
+#### Checking the line against a target
+
+A scheduled run can say whether the line met the level you pay for. `--min-download` and `--min-upload` set a speed the run must reach, `--max-latency` a latency it must stay under, and any combination of the three may be given:
+
+```bash
+# Alert when the line falls short of a 100/20 plan
+netpace --quiet --min-download 50Mbps --min-upload 10Mbps --max-latency 40ms
+```
+
+A speed takes any unit NetPace displays a speed in: bits or bytes per second, SI or IEC, at any scale (`Kbps`, `Mbps`, `Gbps`, `MBps`, `Mibps` and so on). The scale prefix is read in any case, so `50mbps` and `50Mbps` are the same, but `b` and `B` are not: `50MBps` is 50 megabytes a second, eight times `50Mbps`. Decimals are accepted (`2.5Mbps`). `--max-latency` takes milliseconds, and is checked against the idle latency, the headline figure every output format reports. `--unit`, `--unit-system` and `--unit-scale` change how the result is displayed and have no effect on how a target is read.
+
+A target is missed when the figure is below a minimum or above a maximum. A figure exactly at its target meets it, a test whose every request failed measures zero and so misses any minimum, and a target with no figure at all to compare, because no server could be reached, is missed too. When a target is missed:
+
+- The result is written exactly as it would be without the targets, in every output format and in a `--file` target.
+- One line per missed target goes to standard error, naming the measurement, the figure measured where there is one, and the target. `--quiet` does not suppress it.
+- NetPace exits `3`.
+
+So a cron line or a systemd timer can act on the exit code with no wrapper script: `0` means the line met every target, `3` means it fell short, and `1` still means NetPace itself did not work. An operational fault, a usage error or a `--fail-on` trigger exits `1` whatever the targets say.
+
+A target answers one question about one run, so it is refused, before any test runs, alongside `--loop` or `--count` above 1, and alongside the `--no-` switch for its own test. Schedule repeated checks with cron or a timer. A value with no unit, an unrecognised unit, or a value that is not positive is refused the same way, with a workable example. Pressing Ctrl+C writes no target lines and exits `0`, as it does today.
+
+Targets are not marked in CSV or JSON output: both carry the plain figures, and a script reading them compares the numbers itself.
 
 ---
 

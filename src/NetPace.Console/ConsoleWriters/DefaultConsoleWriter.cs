@@ -137,7 +137,10 @@ public sealed class DefaultConsoleWriter(ILiveDisplayRefresh liveDisplayRefresh,
                 }
             });
 
-        var outcome = SpeedTestOutcome.Create(downloadResult, uploadResult);
+        // Under --no-latency nothing was probed, so the latency is absent from the outcome rather
+        // than reported as the zero the unmeasured result states, matching what the line-based
+        // writers do.
+        var outcome = SpeedTestOutcome.Create(settings.NoLatency ? null : latency, downloadResult, uploadResult);
 
         if (plain is not null)
         {

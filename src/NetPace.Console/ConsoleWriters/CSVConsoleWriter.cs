@@ -13,7 +13,7 @@ public sealed class CSVConsoleWriter : IConsoleWriter
     {
         // Get the server to use for speed testing, then measure.
         var fastest = await ServerSelector.GetServerAsync(speedTestClient, settings, recorder, cancellationToken);
-        var outcome = await Measurements.PerformAsync(speedTestClient, fastest.Server, settings, recorder, cancellationToken);
+        var outcome = await Measurements.PerformAsync(speedTestClient, fastest, settings, recorder, cancellationToken);
 
         // Header row, emitted on the first iteration of a run, and not at all where
         // --no-csv-header asks for rows only. Which destinations receive it is settled below: one

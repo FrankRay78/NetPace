@@ -30,7 +30,7 @@ public sealed class SimpleConsoleWriter : IConsoleWriter
 
         // Get the server to use for speed testing, then measure.
         var fastest = await ServerSelector.GetServerAsync(speedTestClient, settings, recorder, cancellationToken);
-        var outcome = await Measurements.PerformAsync(speedTestClient, fastest.Server, settings, recorder, cancellationToken);
+        var outcome = await Measurements.PerformAsync(speedTestClient, fastest, settings, recorder, cancellationToken);
 
         SimpleLines.Write(console, fastest, outcome, settings);
 
