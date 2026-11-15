@@ -127,6 +127,11 @@ public sealed class CommandLineTestHost
         // the same way.
         serviceCollection.TryAddSingleton<ILiveDisplayRefresh, NoRefreshStub>();
 
+        // And a run time limit no test ever reaches, so a run that does not care about the limit
+        // behaves as it did before there was one. A test about the limit registers a
+        // RecordingRunTimeLimit of its own and reaches it when it chooses.
+        serviceCollection.TryAddSingleton<IRunTimeLimit>(new RecordingRunTimeLimit());
+
         // Default SpeedTestSettingsAccessor (matches production DI). Tests that want to
         // inspect the bound settings register their own instance before calling RunAsync.
         serviceCollection.TryAddSingleton<SpeedTestSettingsAccessor>();

@@ -120,6 +120,23 @@ internal sealed class SpeedTestTable(
         return row;
     }
 
+    /// <summary>
+    /// Drops <paramref name="row"/> from the table, for a measurement that turned out not to run
+    /// at all.
+    /// </summary>
+    /// <remarks>
+    /// A row is added for every test the run was asked for, before any of them has started, so
+    /// that the screen shows what is coming rather than filling in from blank. A test the run then
+    /// never reached - because its turn came after the run's time limit - is not a measurement that
+    /// failed, and leaving its row behind with a spinner or a cross would say it was. Dropping it
+    /// leaves the table reading exactly as it does for a test nobody asked for.
+    /// </remarks>
+    public void Remove(SpeedTestTableRow row)
+    {
+        rows.Remove(row);
+        Changed();
+    }
+
     /// <summary>Called by a row when something it shows has changed.</summary>
     /// <remarks>
     /// Also what turns the spinner, so the screen moves whenever the measurement has something new

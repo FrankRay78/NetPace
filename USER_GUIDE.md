@@ -40,6 +40,11 @@ Run 3 tests in a row, with 30 seconds delay between each:
 netpace --count 3 --delay 00:00:30
 ```
 
+Bound a run to two minutes instead of the default ten:
+```bash
+netpace --time-limit 00:02:00
+```
+
 List the nearest speed test servers:  
 ```bash
 netpace servers
@@ -456,6 +461,37 @@ Reach for it when:
 
 > [!NOTE]\
 > More connections means more data in flight when a cap is reached. NetPace stops scheduling transfers and cancels those still running once the total-byte cap is hit, so the bytes actually transferred can overshoot the profile's cap (or `--downloadsize` / `--uploadsize`) by roughly what was in flight at that moment — and that overshoot grows with the connection count. On a metered connection, choose the profile and the connection count together.
+
+---
+
+## How long a run may take
+
+Every run is bounded. Left alone it ends after ten minutes, and `--time-limit` sets a bound of your own:
+
+```bash
+netpace --time-limit 00:02:00
+```
+
+The value is hours, minutes and seconds, the same form `--delay` takes. A bare number is refused, because `5` would mean five days rather than five seconds.
+
+A run that reaches the limit has not failed. NetPace ends it and reports what it measured up to then, in the same output and with the same exit code as a run that finished on its own:
+
+- The test in progress reports a figure for the data it delivered before it stopped, measured over the time it ran.
+- A test the run never reached is reported the way a test you switched off is: no line under `--simple` or `--minimal`, an empty cell in CSV, an absent field in JSON, no row in the table on screen.
+- Requests stopped at the limit count as neither successes nor failures, so `--fail-on` is tripped by real failures only.
+- Nothing is printed about the limit, in any output format.
+
+Under `--count` and `--loop` each run gets the limit afresh, and the `--delay` between runs does not count towards it. That is what keeps `netpace --loop --delay 00:05:00` from ever having one run overlap the next, whatever the server does.
+
+Reach for it when:
+
+- You run NetPace on a schedule (cron, a systemd timer, or `--loop`) and need every run to finish before the next one starts. The ten minute default already does this for you.
+- You want a quick reading and would rather have a rough figure soon than an exact one eventually.
+
+To see where a run was cut short, pass `--diagnostics`: every request stopped at the limit is recorded as cancelled, with a reason naming the time limit, and counted among its test's cancelled requests.
+
+> [!NOTE]\
+> A cut-short run reports only the data its finished requests delivered. Whatever was still in flight when the limit arrived is not counted, so on a slow link the figure reads lower than the link can really do. If a run on your link does not finish inside the limit, either raise the limit or ask for less data with `--profile small`.
 
 ---
 

@@ -33,7 +33,7 @@ public sealed class DefaultConsoleWriter(ILiveDisplayRefresh liveDisplayRefresh,
     /// <inheritdoc/>
     public bool MachineReadable => false;
 
-    public async Task<SpeedTestOutcome> PerformSpeedTestAsync(bool initialSpeedTest, IAnsiConsole console, IClock clock, IClientInfoProvider clientInfoProvider, IDiagnosticRecorder recorder, ISpeedTestService speedTestClient, SpeedTestCommandSettings settings, CancellationToken cancellationToken)
+    public async Task<SpeedTestOutcome> PerformSpeedTestAsync(bool initialSpeedTest, IAnsiConsole console, IClock clock, IClientInfoProvider clientInfoProvider, IDiagnosticRecorder recorder, ISpeedTestService speedTestClient, SpeedTestCommandSettings settings, CancellationToken cancellationToken, CancellationToken timeLimitToken = default)
     {
         ArgumentNullException.ThrowIfNull(console);
         ArgumentNullException.ThrowIfNull(settings);
@@ -44,15 +44,15 @@ public sealed class DefaultConsoleWriter(ILiveDisplayRefresh liveDisplayRefresh,
         {
             // Nothing this run writes to can redraw, so default output is the simple lines - which
             // is exactly what that writer already produces, rather than a second rendering of it.
-            return await new SimpleConsoleWriter().PerformSpeedTestAsync(initialSpeedTest, plain ?? console, clock, clientInfoProvider, recorder, speedTestClient, settings, cancellationToken);
+            return await new SimpleConsoleWriter().PerformSpeedTestAsync(initialSpeedTest, plain ?? console, clock, clientInfoProvider, recorder, speedTestClient, settings, cancellationToken, timeLimitToken);
         }
 
         // Choose the server first, so the screen can name it before the first probe answers. The
         // spinner covers the wait, and is skipped where the user named the server and there was
         // nothing to choose.
         var chosen = string.IsNullOrEmpty(settings.ServerUrl)
-            ? await ChooseWithSpinnerAsync(animating, speedTestClient, settings, recorder, cancellationToken)
-            : await ServerSelector.ChooseServerAsync(speedTestClient, settings, recorder, cancellationToken);
+            ? await ChooseWithSpinnerAsync(animating, speedTestClient, settings, recorder, cancellationToken, timeLimitToken)
+            : await ServerSelector.ChooseServerAsync(speedTestClient, settings, recorder, cancellationToken, timeLimitToken);
 
         WriteHeader(animating, chosen);
 
@@ -85,23 +85,48 @@ public sealed class DefaultConsoleWriter(ILiveDisplayRefresh liveDisplayRefresh,
 
                 try
                 {
-                    latency = await ServerSelector.MeasureLatencyAsync(speedTestClient, chosen, settings, recorder, LatencyReports(pinging, Redraw), cancellationToken);
-                    pinging?.Settle(latency);
-                    Redraw();
+                    // Each test asks whether the run still has time before it starts, because
+                    // the test before it may be what used the last of it. A test that never ran
+                    // loses its row rather than keeping a spinner or gaining a cross: it did not
+                    // fail, and the table says so by reading as it does for a test nobody asked
+                    // for.
+                    latency = await ServerSelector.MeasureLatencyAsync(speedTestClient, chosen, settings, recorder, LatencyReports(pinging, Redraw), cancellationToken, timeLimitToken);
+
+                    if (pinging is not null)
+                    {
+                        Settle(table, pinging, latency);
+                        Redraw();
+                    }
 
                     if (downloading is not null)
                     {
-                        using var download = DiagnosticTestScope.For(recorder, DiagnosticTests.Download);
-                        downloadResult = await speedTestClient.GetDownloadSpeedAsync(chosen.Server, TransferReports(downloading, Redraw), download, cancellationToken);
-                        downloading.Settle(downloadResult);
+                        if (timeLimitToken.IsCancellationRequested)
+                        {
+                            table.Remove(downloading);
+                        }
+                        else
+                        {
+                            using var download = DiagnosticTestScope.For(recorder, DiagnosticTests.Download);
+                            downloadResult = await speedTestClient.GetDownloadSpeedAsync(chosen.Server, TransferReports(downloading, Redraw), download, cancellationToken, timeLimitToken);
+                            downloading.Settle(downloadResult);
+                        }
+
                         Redraw();
                     }
 
                     if (uploading is not null)
                     {
-                        using var upload = DiagnosticTestScope.For(recorder, DiagnosticTests.Upload);
-                        uploadResult = await speedTestClient.GetUploadSpeedAsync(chosen.Server, TransferReports(uploading, Redraw), upload, cancellationToken);
-                        uploading.Settle(uploadResult);
+                        if (timeLimitToken.IsCancellationRequested)
+                        {
+                            table.Remove(uploading);
+                        }
+                        else
+                        {
+                            using var upload = DiagnosticTestScope.For(recorder, DiagnosticTests.Upload);
+                            uploadResult = await speedTestClient.GetUploadSpeedAsync(chosen.Server, TransferReports(uploading, Redraw), upload, cancellationToken, timeLimitToken);
+                            uploading.Settle(uploadResult);
+                        }
+
                         Redraw();
                     }
                 }
@@ -141,10 +166,7 @@ public sealed class DefaultConsoleWriter(ILiveDisplayRefresh liveDisplayRefresh,
 
         if (plain is not null)
         {
-            // The block above either set this or threw, in which case the run never reaches here.
-            // Guarding on it instead would read as a condition that can fail, and would silently
-            // leave a --file target empty if it ever did.
-            SimpleLines.Write(plain, latency!, outcome, settings);
+            SimpleLines.Write(plain, latency, outcome, settings);
         }
 
         return outcome;
@@ -154,7 +176,7 @@ public sealed class DefaultConsoleWriter(ILiveDisplayRefresh liveDisplayRefresh,
     /// Chooses the server behind a spinner, so a wait of seconds on a slow link shows that
     /// something is happening.
     /// </summary>
-    private async Task<ChosenServer> ChooseWithSpinnerAsync(IAnsiConsole console, ISpeedTestService speedTestClient, SpeedTestCommandSettings settings, IDiagnosticRecorder recorder, CancellationToken cancellationToken) =>
+    private async Task<ChosenServer> ChooseWithSpinnerAsync(IAnsiConsole console, ISpeedTestService speedTestClient, SpeedTestCommandSettings settings, IDiagnosticRecorder recorder, CancellationToken cancellationToken, CancellationToken timeLimitToken) =>
         await console.Progress()
             .AutoClear(true)
             .AutoRefresh(liveDisplayRefresh.AutoRefresh)
@@ -169,7 +191,7 @@ public sealed class DefaultConsoleWriter(ILiveDisplayRefresh liveDisplayRefresh,
 
                 try
                 {
-                    return await ServerSelector.ChooseServerAsync(speedTestClient, settings, recorder, cancellationToken);
+                    return await ServerSelector.ChooseServerAsync(speedTestClient, settings, recorder, cancellationToken, timeLimitToken);
                 }
                 finally
                 {
@@ -187,6 +209,21 @@ public sealed class DefaultConsoleWriter(ILiveDisplayRefresh liveDisplayRefresh,
         console.WriteLine(chosen.Server.Sponsor, theme.ServerName);
         console.WriteLine(chosen.Server.Url, theme.ServerUrl);
         console.WriteLine("");
+    }
+
+    /// <summary>
+    /// Ends the latency row on what the measurement reported, or drops it where nothing was
+    /// measured: no latency test ran, so the row would be reporting on nothing.
+    /// </summary>
+    private static void Settle(SpeedTestTable table, SpeedTestTableRow row, LatencyTestResult? latency)
+    {
+        if (latency is LatencyTestResult measured)
+        {
+            row.Settle(measured);
+            return;
+        }
+
+        table.Remove(row);
     }
 
     /// <summary>

@@ -20,6 +20,18 @@ namespace NetPace.Console.Diagnostics;
 /// </remarks>
 internal sealed class DiagnosticTestScope : IProgress<RequestDiagnostic>, IDisposable
 {
+    /// <summary>
+    /// What a request stopped because the run ran out of time is recorded as.
+    /// </summary>
+    /// <remarks>
+    /// <c>NetPace.Core</c> records such a request with its own generic wording
+    /// (<see cref="RequestDiagnostic.StoppedByCaller"/>), because the library knows only that its
+    /// caller asked it to stop. Here that caller is known, and the one thing that stops a NetPace
+    /// run while keeping its measurement is the run's time limit - so the record names it, and a
+    /// triager reading a cut-short run is told why it was cut short.
+    /// </remarks>
+    private const string TimeLimitReached = "run time limit reached";
+
     private readonly IDiagnosticRecorder recorder;
     private readonly string test;
     private readonly object countLock = new();
@@ -106,7 +118,7 @@ internal sealed class DiagnosticTestScope : IProgress<RequestDiagnostic>, IDispo
                 ("status", StatusOf(value.Outcome)),
                 ("bytes", value.BytesProcessed.ToString(CultureInfo.InvariantCulture)),
                 ("duration_ms", value.ElapsedMilliseconds.ToString(CultureInfo.InvariantCulture)),
-                ("reason", value.FailureReason),
+                ("reason", ReasonOf(value)),
                 ("exception", value.FailureType));
 
             if (isLoadedLatencyProbe)
@@ -162,6 +174,15 @@ internal sealed class DiagnosticTestScope : IProgress<RequestDiagnostic>, IDispo
                 ("bytes", bytes.ToString(CultureInfo.InvariantCulture)));
         }
     }
+
+    /// <summary>
+    /// Why a request did not succeed, as the record words it: the provider's own reason, unless it
+    /// is the generic stop the library records, which only the run's time limit asks for here.
+    /// </summary>
+    private static string? ReasonOf(RequestDiagnostic value) =>
+        string.Equals(value.FailureReason, RequestDiagnostic.StoppedByCaller, StringComparison.Ordinal)
+            ? TimeLimitReached
+            : value.FailureReason;
 
     /// <summary>
     /// The wire value for an outcome. <c>ok</c> rather than <c>succeeded</c>, because

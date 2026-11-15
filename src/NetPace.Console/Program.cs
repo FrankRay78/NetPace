@@ -407,6 +407,7 @@ public static class Program
                 var clock = serviceProvider.GetRequiredService<IClock>();
                 var clientInfoProvider = serviceProvider.GetRequiredService<IClientInfoProvider>();
                 var waiter = serviceProvider.GetRequiredService<IWaiter>();
+                var runTimeLimit = serviceProvider.GetRequiredService<IRunTimeLimit>();
                 var liveDisplayRefresh = serviceProvider.GetRequiredService<ILiveDisplayRefresh>();
 
                 // Switched off, nothing is recorded and nothing is written - so no call site
@@ -429,7 +430,7 @@ public static class Program
                 recorder.Record("run.invocation", ("args", string.Join(' ', args)));
 
                 // Create and execute command
-                var command = new SpeedTestCommand(ansiConsole, errorOutput, speedTestService, clock, clientInfoProvider, recorder, waiter, liveDisplayRefresh, theme);
+                var command = new SpeedTestCommand(ansiConsole, errorOutput, speedTestService, clock, clientInfoProvider, recorder, waiter, runTimeLimit, liveDisplayRefresh, theme);
                 return await command.ExecuteAsync(settings, cancellationToken);
             }
             catch (Exception ex)
@@ -702,6 +703,11 @@ public static class Program
         // Needed by both stacks: a person running either one wants the live displays to redraw as
         // the measurement goes. Only the test host turns that off, so a capture holds one frame.
         services.AddSingleton<ILiveDisplayRefresh, LiveDisplayRefresh>();
+
+        // Needed by both stacks: a run is bounded by a real clock whichever speed tester is behind
+        // it, --test included. Only the test host replaces it, so a suite does not wait the limit
+        // out to watch it fire.
+        services.AddSingleton<IRunTimeLimit, RunTimeLimit>();
 
         if (args != null && args.Contains("--test"))
         {
