@@ -413,4 +413,9 @@ FodyWeavers.xsd
 # Claude scratch and staging files (transient drafts, not source)
 .claude/scratch/
 
+# check-slow-links.sh keeps one timestamped folder of results and diagnostics per run,
+# and builds the NetPace it measures from the working tree. Both are local output.
+docker/lab/runs/
+docker/lab/.build/
+
 *.lscache
