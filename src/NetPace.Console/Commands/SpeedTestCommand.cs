@@ -79,6 +79,12 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
             console.Profile.Width = int.MaxValue;
         }
 
+        // The one destination this run opens, and so the only one it closes. The terminal console
+        // was handed to this command and outlives it: the top-level handler writes an operational
+        // fault to that same console once this method has thrown, so closing it here would take
+        // the error line with it. Null wherever the run writes to no file.
+        FileConsole? openedFile = null;
+
         if (settings.Quiet || !string.IsNullOrWhiteSpace(settings.OutputFile))
         {
             var consoles = new List<IAnsiConsole>();
@@ -94,10 +100,12 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
                 // Add file output. Whether the target already holds content is read here, once per
                 // run and before the file is opened: a run that appends is itself about to add
                 // content, so asking any later would answer about this run's own output.
-                consoles.Add(new FileConsole(settings.OutputFile, settings.FileModeValue, StartsEmpty(settings)));
+                openedFile = new FileConsole(settings.OutputFile, settings.FileModeValue, StartsEmpty(settings));
+                consoles.Add(openedFile);
             }
 
-            // Composite console based on output targets.
+            // Composite console based on output targets. The composite owns none of them, so it is
+            // not closed either; the file below is closed on its own.
             console = new CompositeAnsiConsole(console, consoles.ToArray());
         }
 
@@ -160,10 +168,7 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
         }
         finally
         {
-            if (console is IDisposable disposable)
-            {
-                disposable.Dispose();
-            }
+            openedFile?.Dispose();
         }
     }
 
@@ -231,8 +236,7 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
     /// and from the <c>finally</c> in <see cref="ExecuteAsync"/> it would replace the very exception
     /// the records were written to explain. Nothing is written about the failure either, because
     /// there is nowhere to write it: the stream that would carry the message is the one that just
-    /// failed, and <see cref="RunAsync"/> has already torn the console down by the time the last
-    /// flush runs. The unwritten records stay buffered, so a later flush still carries them.
+    /// failed. The unwritten records stay buffered, so a later flush still carries them.
     /// </remarks>
     private void FlushDiagnostics()
     {
