@@ -1,0 +1,1 @@
+﻿Error: --min-upload needs the upload test, so it cannot be used with --no-upload.

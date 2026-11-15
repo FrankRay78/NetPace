@@ -13,7 +13,7 @@ public sealed class JsonConsoleWriter : IConsoleWriter
     {
         // Get the server to use for speed testing, then measure.
         var fastest = await ServerSelector.GetServerAsync(speedTestClient, settings, recorder, cancellationToken);
-        var outcome = await Measurements.PerformAsync(speedTestClient, fastest.Server, settings, recorder, cancellationToken);
+        var outcome = await Measurements.PerformAsync(speedTestClient, fastest, settings, recorder, cancellationToken);
 
         // Display speed test result. JSON holds data, not presentation, so every speed and
         // latency is a plain number in a fixed unit and the unit options do not reach here.

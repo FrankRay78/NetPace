@@ -1,0 +1,2 @@
+﻿Download 0.01 Mbps is below the 50 Mbps minimum.
+Upload 0.02 Mbps is below the 10 Mbps minimum.

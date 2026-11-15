@@ -100,6 +100,21 @@ and upload speed testing.
                                       all-failed;                               
                                       'partial' triggers on any failed request. 
                                       Fail-fast across --count and --loop.      
+    \e[38;5;65m    --min-download\e[0m                Exit 3 when the download speed is below   
+                                      this, such as 50Mbps.                     
+                                      Takes any unit NetPace writes a speed in, 
+                                      whatever --unit and --unit-system say.    
+                                      Checks one run, so not with --loop,       
+                                      --count above 1, or --no-download.        
+    \e[38;5;65m    --min-upload\e[0m                  Exit 3 when the upload speed is below     
+                                      this, such as 10Mbps.                     
+                                      Read the same way as --min-download; not  
+                                      with --loop, --count above 1, or          
+                                      --no-upload.                              
+    \e[38;5;65m    --max-latency\e[0m                 Exit 3 when the idle latency is above     
+                                      this, such as 40ms.                       
+                                      Milliseconds only; not with --loop,       
+                                      --count above 1, or --no-latency.         
     \e[38;5;65m    --diagnostics\e[0m                 Write per-request diagnostic detail about 
                                       the run to the error stream.              
                                       The result is unchanged, so 'netpace      

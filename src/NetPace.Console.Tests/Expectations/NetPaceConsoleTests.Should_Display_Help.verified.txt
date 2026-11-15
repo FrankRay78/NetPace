@@ -61,6 +61,13 @@ OPTIONS:
         --fail-on          none       Exit with a non-zero code on a failed measurement. <none, total, partial>                                       
                                       With 'none' the exit code is never affected; 'total' triggers when a test is all-failed;                        
                                       'partial' triggers on any failed request. Fail-fast across --count and --loop.                                  
+        --min-download                Exit 3 when the download speed is below this, such as 50Mbps.                                                   
+                                      Takes any unit NetPace writes a speed in, whatever --unit and --unit-system say.                                
+                                      Checks one run, so not with --loop, --count above 1, or --no-download.                                          
+        --min-upload                  Exit 3 when the upload speed is below this, such as 10Mbps.                                                     
+                                      Read the same way as --min-download; not with --loop, --count above 1, or --no-upload.                          
+        --max-latency                 Exit 3 when the idle latency is above this, such as 40ms.                                                       
+                                      Milliseconds only; not with --loop, --count above 1, or --no-latency.                                           
         --diagnostics                 Write per-request diagnostic detail about the run to the error stream.                                          
                                       The result is unchanged, so 'netpace --json --diagnostics > result.json 2> diagnostics.log' keeps the two apart.
 

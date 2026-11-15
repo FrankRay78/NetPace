@@ -21,23 +21,29 @@ internal static class Measurements
     /// decided in <c>Program.BuildSpeedTestSettings</c>, not here. The default writer keeps its own copy, because it
     /// feeds a live display as each transfer runs.
     /// </remarks>
-    public static async Task<SpeedTestOutcome> PerformAsync(ISpeedTestService speedTestClient, IServer server, SpeedTestCommandSettings settings, IDiagnosticRecorder recorder, CancellationToken cancellationToken)
+    public static async Task<SpeedTestOutcome> PerformAsync(ISpeedTestService speedTestClient, LatencyTestResult latency, SpeedTestCommandSettings settings, IDiagnosticRecorder recorder, CancellationToken cancellationToken)
     {
+        ArgumentNullException.ThrowIfNull(latency);
+        ArgumentNullException.ThrowIfNull(settings);
+
         SpeedTestResult? downloadResult = null;
         SpeedTestResult? uploadResult = null;
 
         if (!settings.NoDownload)
         {
             using var download = DiagnosticTestScope.For(recorder, DiagnosticTests.Download);
-            downloadResult = await speedTestClient.GetDownloadSpeedAsync(server, null, download, cancellationToken);
+            downloadResult = await speedTestClient.GetDownloadSpeedAsync(latency.Server, null, download, cancellationToken);
         }
 
         if (!settings.NoUpload)
         {
             using var upload = DiagnosticTestScope.For(recorder, DiagnosticTests.Upload);
-            uploadResult = await speedTestClient.GetUploadSpeedAsync(server, null, upload, cancellationToken);
+            uploadResult = await speedTestClient.GetUploadSpeedAsync(latency.Server, null, upload, cancellationToken);
         }
 
-        return SpeedTestOutcome.Create(downloadResult, uploadResult);
+        // Under --no-latency nothing was probed, and the figures that result stands for a run which
+        // never asked are zeroes: absent from the outcome, on the same terms as a transfer the run
+        // was told to skip.
+        return SpeedTestOutcome.Create(settings.NoLatency ? null : latency, downloadResult, uploadResult);
     }
 }
