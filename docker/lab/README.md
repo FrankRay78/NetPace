@@ -177,8 +177,8 @@ The pairing is what the check means. If a row stops finishing in a reasonable ti
 The summary names each profile, the NetPace profile used, pass or fail, the download and upload figures and the run time, and exits non-zero if any run did not complete. The figures are there because `--fail-on total` is a weak test on its own: a run can complete and still report a figure nothing like what the link carries, and only a figure beside the result shows it.
 
 ```text
-LINK          NETPACE PROFILE   RESULT  DOWNLOAD       UPLOAD         RUN TIME
-satellite     default           PASS    8.52 Mbit/s    1.81 Mbit/s    4m 11s
+LINK          NETPACE PROFILE   RESULT  DOWNLOAD         UPLOAD           RUN TIME
+satellite     default           PASS    8.52 Mbit/s      1.81 Mbit/s      4m 11s
 ```
 
 Each run's result and its per-request diagnostics are kept in a new timestamped folder under `runs/`, which is git-ignored; the summary names the folder. The NetPace under test is built once into `.build/`, also git-ignored, so every run in a check measures the same binary.

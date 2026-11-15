@@ -178,10 +178,10 @@ echo
 echo "=============================================================="
 echo "  Summary"
 echo "=============================================================="
-printf '%-12s  %-16s  %-6s  %-13s  %-13s  %s\n' "LINK" "NETPACE PROFILE" "RESULT" "DOWNLOAD" "UPLOAD" "RUN TIME"
+printf '%-12s  %-16s  %-6s  %-15s  %-15s  %s\n' "LINK" "NETPACE PROFILE" "RESULT" "DOWNLOAD" "UPLOAD" "RUN TIME"
 echo "$RESULTS" | while IFS='|' read -r lab_label netpace_profile outcome exit_code elapsed download upload; do
   [ -n "$lab_label" ] || continue
-  printf '%-12s  %-16s  %-6s  %-13s  %-13s  %s\n' \
+  printf '%-12s  %-16s  %-6s  %-15s  %-15s  %s\n' \
     "$lab_label" "$netpace_profile" "$outcome" "$download" "$upload" "$(format_duration "$elapsed")"
 done
 
