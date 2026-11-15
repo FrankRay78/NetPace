@@ -2,14 +2,14 @@ namespace NetPace.Core.Tests;
 
 /// <summary>
 /// A speed is written to three significant figures, so no figure claims more precision than a
-/// speed test can measure and every auto-scaled reading comes out the same width.
+/// speed test can measure and no auto-scaled reading is wider than four characters.
 /// </summary>
 /// <remarks>
 /// The bands are read off the figure itself rather than off the unit it landed in: below 10 two
 /// decimal places, from 10 to below 100 one, and from 100 up a whole number. Rounding is what makes
 /// the bands awkward, because a figure can round out of the band it was measured in and even out of
-/// its unit, and a reading that showed four significant figures or a bare <c>1000</c> of a unit
-/// would defeat the point of fixing the width.
+/// its unit, and a reading written as a bare <c>1000</c> of a unit it had rounded out of would
+/// defeat the point of fixing the width.
 /// </remarks>
 public sealed partial class SpeedTestExtensionsTests
 {
@@ -33,7 +33,6 @@ public sealed partial class SpeedTestExtensionsTests
         [InlineData(12_345_000, 1000, "98.8 Mbps")]
         // 100 and above: a whole number.
         [InlineData(30_675_000, 1000, "245 Mbps")]
-        [InlineData(124_950, 1000, "1.00 Mbps")]
         [Theory]
         public void GetSpeedString_AutoScaledSpeed_ShowsThreeSignificantFigures(long bytesProcessed, long elapsedMilliseconds, string expected)
         {

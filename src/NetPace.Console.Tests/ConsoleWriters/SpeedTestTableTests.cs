@@ -17,8 +17,8 @@ namespace NetPace.Console.Tests.ConsoleWriters;
 /// </remarks>
 public sealed class SpeedTestTableTests
 {
-    private static SpeedTestTable Table(bool showLatency = true) =>
-        new(Theme.Plain, SpeedUnit.BitsPerSecond, SpeedUnitSystem.SI, SpeedScale.Auto, showLatency, animated: false);
+    private static SpeedTestTable Table(bool showLatency = true, SpeedUnitSystem unitSystem = SpeedUnitSystem.SI) =>
+        new(Theme.Plain, SpeedUnit.BitsPerSecond, unitSystem, SpeedScale.Auto, showLatency, animated: false);
 
     /// <summary>
     /// What the table looks like on a wide, Unicode-capable screen with nothing styled, so an
@@ -327,6 +327,31 @@ public sealed class SpeedTestTableTests
 
         // Then every frame's headings sit at the same offsets, so the Speed column and the columns
         // to its right stay where they are while the figure under them changes scale.
+        Assert.All(frames, frame => Assert.Equal(Headings(frames[0]), Headings(frame)));
+        await Verify(Frames([.. frames]));
+    }
+
+    [Fact]
+    public async Task TheSpeedColumn_UnderIecAutoScaling_HoldsItsWidthThroughTheFourDigitBand()
+    {
+        // Given an IEC auto-scaled table, whose Kibps band runs up to 1023 and so writes a
+        // four-figure whole number that SI auto-scaling, capped at 999, never produces.
+        var table = Table(unitSystem: SpeedUnitSystem.IEC);
+        table.AddRow("Pinging").Settle(Latency(3, 1));
+        var row = table.AddRow("Downloading");
+        List<string> frames = [Render(table)];
+
+        // When the transfer climbs through that band and on into Mibps, then falls back.
+        foreach ((long bytes, int percentage) in new[] { (1_024L, 10), (64_000L, 30), (129_280L, 55), (262_144L, 80), (64_000L, 95) })
+        {
+            row.Report(new SpeedTestProgress { PercentageComplete = percentage, BytesProcessed = bytes, ElapsedMilliseconds = 1000, LatencyMilliseconds = 38, JitterMilliseconds = 3 });
+            frames.Add(Render(table));
+        }
+
+        // Then the four-figure reading is drawn, and every frame's headings sit at the same
+        // offsets: the width reserved for the widest IEC reading covers it, so a column never
+        // has to grow mid-run on the unit system whose figures run widest.
+        Assert.Contains("1010 Kibps", frames[3]);
         Assert.All(frames, frame => Assert.Equal(Headings(frames[0]), Headings(frame)));
         await Verify(Frames([.. frames]));
     }

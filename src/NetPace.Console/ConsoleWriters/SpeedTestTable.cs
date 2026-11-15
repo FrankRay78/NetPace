@@ -19,11 +19,10 @@ namespace NetPace.Console.ConsoleWriters;
 /// </para>
 /// <para>
 /// A column's width is therefore the one thing that cannot be read off a single draw, and it is
-/// held here instead: each figure column opens at a reserved width wide enough for any figure it
-/// can expect, grows where an outsized one arrives, and never narrows again for the rest of the
-/// run. Letting a column size itself to its current widest value moved the figures sideways while
-/// the user was reading them - a speed passing from Kbps to Mbps, or a latency from two digits to
-/// three, shifted every column to its right. The widths belong to this instance, and a run builds
+/// held here instead: a held column opens at the width reserved for it, grows where a wider
+/// value arrives, and never narrows again for the rest of the run. Letting a column size itself to
+/// its current widest value moved the figures sideways while the user was reading them - a speed
+/// passing from Kbps to Mbps shifted every column to its right. The widths belong to this instance, and a run builds
 /// its own table, so a width grown under <c>--count</c> or <c>--loop</c> does not carry into the
 /// next run.
 /// </para>
@@ -89,14 +88,17 @@ internal sealed class SpeedTestTable(
     /// <summary>
     /// The widest figure an auto-scaled speed is ever written as. Three significant figures gives
     /// <c>9.99</c>, <c>99.9</c> or <c>999</c> under SI, and IEC adds <c>1023</c>, which is the
-    /// widest of them: four characters, whichever band and unit system a reading lands in.
+    /// widest of them: four characters at most, whichever band and unit system a reading lands in.
+    /// A pinned <see cref="SpeedScale"/> has no such bound, and widens the column instead.
     /// </summary>
     private const int WidestSpeedFigure = 4;
 
     /// <summary>
     /// What the latency and jitter columns reserve: three digits and the unit beside them, which
-    /// covers every reading on a link anyone would run a speed test over. A slower one widens the
-    /// column on its first reading and keeps it there.
+    /// covers every reading on a link anyone would run a speed test over. The <c>Latency</c> and
+    /// <c>Jitter</c> headings are already this wide or wider, so today this floor is what the
+    /// headings would give anyway; it states the intent and outlives a shorter heading. A slower
+    /// reading widens the column when it arrives and keeps it there.
     /// </summary>
     private const int ReservedMillisecondsWidth = 6;
 
@@ -107,8 +109,6 @@ internal sealed class SpeedTestTable(
     /// through <see cref="AtColumnWidth"/>, which is what keeps it a running maximum.
     /// </summary>
     private readonly Dictionary<string, int> columnWidths = [];
-
-    private int? reservedSpeedWidth;
 
     private int reportsTaken;
 
@@ -273,7 +273,7 @@ internal sealed class SpeedTestTable(
     /// </remarks>
     private int ReservedWidth(string heading) => heading switch
     {
-        SpeedHeading => reservedSpeedWidth ??= WidestSpeedFigure + 1 + WidestUnitName(),
+        SpeedHeading => WidestSpeedFigure + 1 + WidestUnitName(),
         LatencyHeading or JitterHeading => ReservedMillisecondsWidth,
         _ => 0,
     };
@@ -293,9 +293,11 @@ internal sealed class SpeedTestTable(
             ? Enum.GetValues<SpeedScale>().Where(candidate => candidate != SpeedScale.Auto)
             : [scale];
 
+        // Any non-zero measurement will do: a unit name does not depend on the figure beside it.
+        var oneByteInOneSecond = new SpeedTestProgress { BytesProcessed = 1, ElapsedMilliseconds = 1000 };
+
         return reachable.Max(candidate =>
-            new SpeedTestProgress { BytesProcessed = 1, ElapsedMilliseconds = 1000 }
-                .GetSpeedStringParts(unit, unitSystem, candidate).unit.Length);
+            oneByteInOneSecond.GetSpeedStringParts(unit, unitSystem, candidate).unit.Length);
     }
 
     /// <summary>

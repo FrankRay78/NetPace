@@ -16,13 +16,13 @@ namespace NetPace.Core;
 /// A speed is written to three significant figures, which is as much precision as a speed test
 /// supports: run-to-run variance is several percent, so a fourth figure would be noise. The
 /// decimal places follow the figure's own size - below 10 two places (<c>8.00</c>), from 10 to
-/// below 100 one place (<c>18.7</c>), and from 100 up a whole number (<c>245</c>) - so every
-/// auto-scaled reading comes out the same width. Rounding never leaves a figure in the wrong band
+/// below 100 one place (<c>18.7</c>), and from 100 up a whole number (<c>245</c>) - so no
+/// auto-scaled reading is ever wider than four characters. Rounding never leaves a figure in the wrong band
 /// or unit: <c>9.996</c> reads <c>10.0</c>, <c>99.96</c> reads <c>100</c>, and a speed that rounds
 /// up to its unit system's divisor is written as <c>1.00</c> of the next unit rather than as
 /// <c>1000 Kbps</c>. Digits before the decimal point are never rounded away, so a speed pinned to
 /// a small unit with <see cref="SpeedScale"/> keeps every one of them (<c>125000 Kbps</c>), and a
-/// zero speed reads as a bare <c>0</c>. For the measurement itself without rounding, read
+/// zero speed reads as a bare <c>0</c>. For the measurement without this rounding, read
 /// <see cref="GetBitsPerSecond"/>.
 /// </para>
 /// </remarks>
@@ -150,7 +150,7 @@ public static class SpeedTestExtensions
     // through the invariant culture rather than the caller's, so a consumer on a comma-decimal
     // thread reads the same text as everyone else, and a CSV row cannot gain a field from a stray
     // comma.
-    private static readonly string[] FigureFormats = { "0", "0.0", "0.00" };
+    private static readonly string[] FigureFormats = ["0", "0.0", "0.00"];
 
     private const double BitsPerByte = 8.0;
     private const double MillisecondsPerSecond = 1000.0;
@@ -256,7 +256,7 @@ public static class SpeedTestExtensions
 
     /// <summary>
     /// How many decimal places a figure of this size is written to, so that it carries three
-    /// significant figures and no more.
+    /// significant figures where the figure is below 1000.
     /// </summary>
     private static int DecimalPlacesFor(double figure) => figure switch
     {
@@ -281,9 +281,12 @@ public static class SpeedTestExtensions
         var rounded = Math.Round(speed, places, MidpointRounding.AwayFromZero);
         var placesAfterRounding = DecimalPlacesFor(rounded);
 
-        return placesAfterRounding == places
-            ? (rounded, places)
-            : (Math.Round(speed, placesAfterRounding, MidpointRounding.AwayFromZero), placesAfterRounding);
+        if (placesAfterRounding == places)
+        {
+            return (rounded, places);
+        }
+
+        return (Math.Round(speed, placesAfterRounding, MidpointRounding.AwayFromZero), placesAfterRounding);
     }
 
     /// <summary>

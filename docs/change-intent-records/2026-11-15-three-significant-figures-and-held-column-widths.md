@@ -7,7 +7,7 @@
 **Constraints:**
 
 - The three-significant-figure rule is now part of `NetPace.Core`'s published surface: every format that shows a speed to a person reads it from the same extensions, so a new one cannot format a speed of its own.
-- CSV and JSON stay outside it, and `GetBitsPerSecond` remains the unrounded figure.
+- CSV and JSON stay outside it, and `GetBitsPerSecond` stays outside it too, reporting bits per second to the nearest whole bit.
 
 **Decisions:**
 
