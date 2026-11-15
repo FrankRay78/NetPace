@@ -392,6 +392,49 @@ public sealed partial class NetPaceConsoleTests
         }
 
         [Theory]
+        [InlineData(Counted)]
+        [InlineData(Looping)]
+        public async Task Operational_Fault_Leaves_The_File_The_Run_Opened_Closed(string mode)
+        {
+            // SCENARIO: An operational fault is reported to the user
+
+            // The run owns the file it opened and nothing else closes it, so a run ending on a
+            // fault has to leave that file closed with the results written before the fault in it.
+            // A run that stopped closing it would strand the handle for the rest of the process,
+            // which no assertion about the screen would notice.
+
+            // Given a run that saves to a file, whose first test measures and whose second meets an
+            // operational fault.
+            var testFile = Path.Join(Path.GetTempPath(), $"netpace-test-{Guid.NewGuid()}.txt");
+            var service = ServiceWhoseProbeThrows(probe => probe == 2, () => new IOException("There is not enough space on the disk."));
+
+            try
+            {
+                // When the run is asked for in this mode.
+                var result = await RunAsync(mode, service, TestsPerRun, "--file", testFile);
+
+                // Then the fault ended the run.
+                Assert.Contains("There is not enough space on the disk.", result.Output);
+                Assert.NotEqual(0, result.ExitCode);
+
+                // And reading the file back under an exclusive share settles both halves at once:
+                // opening it throws while anything still holds the file, so this succeeds only
+                // because the run closed what it opened, and what it reads is the one result the
+                // run wrote before the fault.
+                using var reopened = new FileStream(testFile, System.IO.FileMode.Open, FileAccess.Read, FileShare.None);
+                using var reader = new StreamReader(reopened);
+                Assert.Equal(1, Occurrences(await reader.ReadToEndAsync(), ResultLine));
+            }
+            finally
+            {
+                if (System.IO.File.Exists(testFile))
+                {
+                    System.IO.File.Delete(testFile);
+                }
+            }
+        }
+
+        [Theory]
         [InlineData(null, 1, 0)]
         [InlineData("1", 1, 0)]
         [InlineData("3", 3, 2)]
