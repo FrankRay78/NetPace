@@ -169,24 +169,27 @@ internal static class ThresholdOption
     /// </summary>
     private static (string Suffix, decimal BitsPerUnit)[] BuildSpeedUnits()
     {
-        var units = new List<(string, decimal)>();
+        var units = new List<(string Suffix, decimal BitsPerUnit)>();
 
-        Add(units, SIPrefixes, SIStep);
-        Add(units, IECPrefixes, IECStep);
+        AddScales(units, SIPrefixes, SIStep);
+        AddScales(units, IECPrefixes, IECStep);
 
         return units.ToArray();
+    }
 
-        static void Add(List<(string, decimal)> units, string[] prefixes, decimal step)
+    /// <summary>
+    /// Adds one unit system's suffixes, in bits and in bytes, at every scale its prefixes name.
+    /// </summary>
+    private static void AddScales(List<(string Suffix, decimal BitsPerUnit)> units, string[] prefixes, decimal step)
+    {
+        var scale = 1m;
+
+        foreach (string prefix in prefixes)
         {
-            var scale = 1m;
+            units.Add((prefix + BitsLetter + PerSecond, scale));
+            units.Add((prefix + BytesLetter + PerSecond, scale * BitsPerByte));
 
-            foreach (string prefix in prefixes)
-            {
-                units.Add((prefix + BitsLetter + PerSecond, scale));
-                units.Add((prefix + BytesLetter + PerSecond, scale * BitsPerByte));
-
-                scale *= step;
-            }
+            scale *= step;
         }
     }
 
