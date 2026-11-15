@@ -505,11 +505,13 @@ Exit codes are unaffected. A network condition is still data and still exits `0`
 
 ## Detecting failed measurements
 
-A speed test runs many small requests in parallel and reports the aggregate throughput. If some of those requests fail (a dropped connection, a TLS error, a timeout, or a server that rejects the transfer), NetPace does **not** silently treat them as zero-speed data — it counts them, so you can tell a genuinely slow link from a server that isn't transferring at all. When *every* request in a test fails, the speed reads zero, and the counts tell you it was a total failure rather than a 0 bps link.
+A speed test runs many small requests in parallel and reports the aggregate throughput. If some of those requests fail (a dropped connection, a TLS error, a timeout, or a server that rejects the transfer), NetPace does **not** silently treat them as zero-speed data — it counts them, so you can tell a genuinely slow link from a server that isn't transferring at all.
+
+The speed is about the link, so it counts every byte that arrived, including the bytes of a request that then failed. A slow link whose transfers the server keeps cutting off still reports close to what it carries, rather than a fraction of it. The speed reads zero only where nothing arrived at all (a connection refused, a TLS handshake that failed, a server rejecting the transfer outright), and the counts, not the figure, are what tell you a test failed.
 
 Every output format carries the counts:
 
-**Default** — a `Failed` column appears as soon as a test finishes with failures, and the test's mark says which kind of failure it was. A test whose every request failed reports a zero speed, and no latency under load: its probes never saw a loaded line, so those cells stay blank.
+**Default** — a `Failed` column appears as soon as a test finishes with failures, and the test's mark says which kind of failure it was. A test whose every request failed reports whatever those requests moved before they failed (zero in the example below, where nothing arrived) and no latency under load: its probes never saw a loaded line, so those cells stay blank.
 ```
     Test         Done      Speed  Latency  Jitter    Failed
 ✓   Pinging      100%               24 ms    3 ms
@@ -529,13 +531,13 @@ Upload: 0 bps (32 of 32 requests failed)
 2026-10-16 08:21:17, Latency: 24 ms, Download: 513 Mbps, Upload: 0 bps (32 of 32 requests failed)
 ```
 
-**CSV** — a `Succeeded` and `Failed` column sits next to each speed column, and a total failure reports a speed of `0` beside the counts that say so. Its latency-under-load cells are empty rather than `0`: a transfer whose every request failed never loaded the line, so there was nothing to measure.
+**CSV** — a `Succeeded` and `Failed` column sits next to each speed column, and a test where nothing arrived reports a speed of `0` beside the counts that say so. Its latency-under-load cells are empty rather than `0`: a transfer whose every request failed never loaded the line, so there was nothing to measure.
 ```
 Timestamp,LatencyMilliseconds,JitterMilliseconds,DownloadSpeedBitsPerSecond,DownloadSucceeded,DownloadFailed,DownloadLatencyMilliseconds,DownloadLowestLatencyMilliseconds,DownloadHighestLatencyMilliseconds,DownloadJitterMilliseconds,UploadSpeedBitsPerSecond,UploadSucceeded,UploadFailed,UploadLatencyMilliseconds,UploadLowestLatencyMilliseconds,UploadHighestLatencyMilliseconds,UploadJitterMilliseconds,IPAddress,Hostname,ServerLocation,ServerSponsor,ServerUrl,DeviceId
 1980-01-01T10:05:00+01:00,24,5,512600000,150,0,61,34,148,14,0,0,32,,,,,192.168.1.1,test-host,London,Foo Telecom,http://speedtest.foo.example:8080/speedtest/upload.php,
 ```
 
-**JSON** — each test that ran gains integer `…Succeeded` / `…Failed` fields alongside its speed. A total failure reports `0` with the counts beside it, exactly as the other formats do, and leaves out its latency-under-load fields, since nothing was measured. Only a test you skipped (`--no-download`, `--no-upload`) omits its fields entirely:
+**JSON** — each test that ran gains integer `…Succeeded` / `…Failed` fields alongside its speed. A test where nothing arrived reports `0` with the counts beside it, exactly as the other formats do, and leaves out its latency-under-load fields, since nothing was measured. Only a test you skipped (`--no-download`, `--no-upload`) omits its fields entirely:
 ```json
 { "UploadSpeedBitsPerSecond": 0, "UploadSucceeded": 0, "UploadFailed": 32, … }
 ```
@@ -576,8 +578,8 @@ What the records cover:
 | `run.start` | The NetPace version, the .NET runtime, the operating system and the architecture. |
 | `run.invocation` | How NetPace was invoked. |
 | `server.selected` | The server used, and `selection=` — `auto-latency`, `specified` or `first-in-list`. `latency_ms` is the screening figure that chose it, and is absent when latency played no part in choosing. |
-| `test.start` / `test.end` | Which tests ran — `screening`, `latency`, `download`, `upload` — and, on `test.end`, the total `requests`, how many `succeeded`, `failed` or were `cancelled`, and the `bytes` the successful ones moved. Those totals cover exactly the `request` lines above them, so the two always reconcile. `probe` lines are not among them. |
-| `request` | One per request, with its sequence number, address, outcome, bytes, duration and — where it did not succeed — the `reason` and, if an exception was involved, its `exception` type. `status=` is `ok`, `failed` or `cancelled`. |
+| `test.start` / `test.end` | Which tests ran — `screening`, `latency`, `download`, `upload` — and, on `test.end`, the total `requests`, how many `succeeded`, `failed` or were `cancelled`, and the `bytes` they moved between them, whatever their outcome. Those totals cover exactly the `request` lines above them, so the two always reconcile, and the `bytes` figure is the one the reported speed is built from. `probe` lines are not among them. |
+| `request` | One per request, with its sequence number, address, outcome, bytes, duration and — where it did not succeed — the `reason` and, if an exception was involved, its `exception` type. `status=` is `ok`, `failed` or `cancelled`. `bytes=` is what that request moved before it ended, so a request the server cut off partway reports what had arrived rather than nothing. |
 | `probe` | One per latency probe sent *during* a download or upload, to measure the latency of the line while it is loaded. It carries a `request` line's fields, `status=` included, and is numbered in its own run of `seq` numbers, so it never displaces one of the transfer's requests — `event=` and `seq=` together identify a record within a test, since a probe and a transfer request can share a number. `--minimal`, `--simple` and `--no-latency` all send no under-load probes, so a run with any of them carries no `probe` line at all. |
 
 Every line repeats enough to stand alone, so `grep status=failed diagnostics.log` is a complete triage pass. Nothing is summarised away: every measured request gets its own record, including the latency probes made while choosing a server. Two kinds of request are not recorded individually: the initial server-list fetch, whose failure surfaces as the run's error instead; and a screening request that finishes after the selection ceiling has already passed, which arrives too late for the `test.end` it would belong to and is dropped so that summary stays exact — so a candidate you expected to see may be absent rather than untried. One request appears that you did not ask for: the upload test resolves its endpoint with an empty probe POST first, which takes the opening `seq` numbers of that test and reads `bytes=0`, so `test.end requests=` counts one more than the uploads measured (more, if the server redirects several times).
