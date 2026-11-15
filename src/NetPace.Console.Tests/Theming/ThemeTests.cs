@@ -154,30 +154,6 @@ public sealed class ThemeTests
         }
     }
 
-    /// <summary>
-    /// How far apart two colours are to read, by the WCAG contrast-ratio formula: 1:1 for two
-    /// identical colours and 21:1 for black against white.
-    /// </summary>
-    private static double ContrastRatio(Color one, Color other)
-    {
-        double first = RelativeLuminance(one);
-        double second = RelativeLuminance(other);
-
-        return (Math.Max(first, second) + 0.05) / (Math.Min(first, second) + 0.05);
-    }
-
-    /// <summary>The WCAG relative luminance of <paramref name="colour"/>, from 0 for black to 1 for white.</summary>
-    private static double RelativeLuminance(Color colour) =>
-        (0.2126 * Channel(colour.R)) + (0.7152 * Channel(colour.G)) + (0.0722 * Channel(colour.B));
-
-    /// <summary>One colour channel, gamma-corrected as the WCAG formula asks.</summary>
-    private static double Channel(byte value)
-    {
-        double channel = value / 255.0;
-
-        return channel <= 0.03928 ? channel / 12.92 : Math.Pow((channel + 0.055) / 1.055, 2.4);
-    }
-
     [Fact]
     public void ApplyTo_ThePlainTheme_LeavesTheConsoleUnableToDrawColour()
     {
@@ -206,5 +182,29 @@ public sealed class ThemeTests
 
         // Then
         Assert.Equal(ColorSystem.TrueColor, console.Profile.Capabilities.ColorSystem);
+    }
+
+    /// <summary>
+    /// How far apart two colours are to read, by the WCAG contrast-ratio formula: 1:1 for two
+    /// identical colours and 21:1 for black against white.
+    /// </summary>
+    private static double ContrastRatio(Color one, Color other)
+    {
+        double first = RelativeLuminance(one);
+        double second = RelativeLuminance(other);
+
+        return (Math.Max(first, second) + 0.05) / (Math.Min(first, second) + 0.05);
+    }
+
+    /// <summary>The WCAG relative luminance of <paramref name="colour"/>, from 0 for black to 1 for white.</summary>
+    private static double RelativeLuminance(Color colour) =>
+        (0.2126 * Channel(colour.R)) + (0.7152 * Channel(colour.G)) + (0.0722 * Channel(colour.B));
+
+    /// <summary>One colour channel, gamma-corrected as the WCAG formula asks.</summary>
+    private static double Channel(byte value)
+    {
+        double channel = value / 255.0;
+
+        return channel <= 0.03928 ? channel / 12.92 : Math.Pow((channel + 0.055) / 1.055, 2.4);
     }
 }
