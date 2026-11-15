@@ -283,7 +283,7 @@ public static class Program
 
         var minUploadOption = new Option<MeasurementThreshold?>("--min-upload")
         {
-            Description = $"Exit {ThresholdCheck.MissedExitCode} when the upload speed is below this, such as 10Mbps.\nRead the same way as --min-download; not with --loop, --count above 1, or --no-upload.",
+            Description = $"Exit {ThresholdCheck.MissedExitCode} when the upload speed is below this, such as {ThresholdOption.SpeedExample}.\nRead the same way as --min-download; not with --loop, --count above 1, or --no-upload.",
             DefaultValueFactory = _ => null,
             CustomParser = result => ThresholdOption.ParseSpeed(result, "--min-upload")
         };

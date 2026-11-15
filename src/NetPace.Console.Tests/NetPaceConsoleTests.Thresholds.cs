@@ -112,6 +112,8 @@ public sealed partial class NetPaceConsoleTests
         [InlineData("--min-download", "2,5Mbps")]
         [InlineData("--max-latency", "40s")]
         [InlineData("--max-latency", "0ms")]
+        [InlineData("--min-download", "9999999999999999999999Pbps")]
+        [InlineData("--min-download", "50MBPS")]
         public async Task A_Threshold_Without_A_Usable_Value_Is_Refused(string option, string value)
         {
             // SCENARIO: A threshold with no unit is refused
@@ -188,7 +190,7 @@ public sealed partial class NetPaceConsoleTests
         {
             // SCENARIO: A test with no figure misses its threshold
 
-            // Given a download test in which every request fails, so it produced no figure.
+            // Given a download test in which every request fails, so the figure it measures is zero.
             var service = new ScriptedSpeedTester { DownloadFactory = _ => ScriptedSpeedTester.AllFailed(150) };
             var host = HostWith(service);
 
@@ -353,6 +355,42 @@ public sealed partial class NetPaceConsoleTests
         }
 
         [Fact]
+        public async Task A_Latency_Above_Its_Maximum_Is_Reported_In_Default_Output()
+        {
+            // Given a maximum below the idle latency the run measures, with no format flag, so
+            // the figure comes from the writer that feeds the live display rather than from the
+            // one the line-based formats share.
+            var host = StubHost();
+
+            // When
+            var result = await host.RunAsync(["--max-latency", "40ms"]);
+
+            // Then the miss names the latency the run measured, not an absent one.
+            Assert.Equal(MissedExitCode, result.ExitCode);
+            await Verify(result.NoticeOutput);
+        }
+
+        [Fact]
+        public async Task A_Near_Miss_Is_Reported_Without_Rounding_Onto_Its_Target()
+        {
+            // Given a download a thousandth of a megabit under its minimum, which is closer to
+            // the target than the two decimal places a speed is usually written to.
+            var service = new ScriptedSpeedTester
+            {
+                DownloadFactory = _ => new SpeedTestResult { BytesProcessed = 320_375, ElapsedMilliseconds = 1_000, RequestsSucceeded = 1, RequestsFailed = 0, Latency = null }
+            };
+            var host = HostWith(service);
+
+            // When
+            var result = await host.RunAsync(["--simple", "--min-download", "2.564Mbps"]);
+
+            // Then both figures carry the decimals it takes for the measured one to read below
+            // the target it missed.
+            Assert.Equal(MissedExitCode, result.ExitCode);
+            await Verify(result.NoticeOutput);
+        }
+
+        [Fact]
         public async Task A_FailOn_Trigger_Exits_One_Even_When_A_Threshold_Was_Missed()
         {
             // Given a download test whose every request failed, with both --fail-on and a target
@@ -363,8 +401,10 @@ public sealed partial class NetPaceConsoleTests
             // When
             var result = await host.RunAsync(["--simple", "--fail-on", "total", "--min-download", "50Mbps"]);
 
-            // Then --fail-on decides the exit code, as it does today.
+            // Then --fail-on decides the exit code, as it does today, and the user still hears
+            // what the line fell short of.
             Assert.Equal(1, result.ExitCode);
+            await Verify(result.NoticeOutput);
         }
 
         [Fact]
@@ -384,19 +424,19 @@ public sealed partial class NetPaceConsoleTests
         [Fact]
         public async Task A_Cancelled_Run_Writes_No_Miss_Lines()
         {
-            // Given a run the user stops while discovery is still out.
+            // Given a run the user stops while discovery is still out. The stop is raised by
+            // discovery itself, so the ordering is settled by the test rather than by how long
+            // the suite's host takes to reach it.
+            using var cancellation = new CancellationTokenSource();
             var service = new SpeedTestMock
             {
-                GetServersAsyncFunc = async cancellationToken =>
+                GetServersAsyncFunc = _ =>
                 {
-                    await Task.Delay(1000, cancellationToken);
-                    return Array.Empty<IServer>();
+                    cancellation.Cancel();
+                    throw new OperationCanceledException(cancellation.Token);
                 }
             };
             var host = HostWith(service);
-
-            using var cancellation = new CancellationTokenSource();
-            cancellation.CancelAfter(200);
 
             // When
             var result = await host.RunAsync(["--simple", "--min-download", "50Mbps"], cancellation.Token);

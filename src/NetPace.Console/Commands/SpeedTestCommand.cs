@@ -161,8 +161,9 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
                 {
                     console.WriteErrorLine(theme, Describe(e));
 
-                    // The test produced no figure at all, which misses every target it was given:
-                    // a check that could not see the line is not a check that passed.
+                    // No outcome survived the failure, so there is no figure to hold to any
+                    // target the run was given, and all of them are missed: a check that cannot
+                    // see the line is not a check that passed.
                     missedThreshold |= ReportMisses(outcome: null, settings);
 
                     if (FailOnRequested(settings)) return 1;

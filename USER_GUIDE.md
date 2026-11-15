@@ -604,10 +604,10 @@ netpace --quiet --min-download 50Mbps --min-upload 10Mbps --max-latency 40ms
 
 A speed takes any unit NetPace displays a speed in: bits or bytes per second, SI or IEC, at any scale (`Kbps`, `Mbps`, `Gbps`, `MBps`, `Mibps` and so on). The scale prefix is read in any case, so `50mbps` and `50Mbps` are the same, but `b` and `B` are not: `50MBps` is 50 megabytes a second, eight times `50Mbps`. Decimals are accepted (`2.5Mbps`). `--max-latency` takes milliseconds, and is checked against the idle latency, the headline figure every output format reports. `--unit`, `--unit-system` and `--unit-scale` change how the result is displayed and have no effect on how a target is read.
 
-A target is missed when the figure is below a minimum or above a maximum. A figure exactly at its target meets it, and a test that produced no figure at all (every request failed, or no server could be reached) misses its target. When a target is missed:
+A target is missed when the figure is below a minimum or above a maximum. A figure exactly at its target meets it, a test whose every request failed measures zero and so misses any minimum, and a target with no figure at all to compare, because no server could be reached, is missed too. When a target is missed:
 
 - The result is written exactly as it would be without the targets, in every output format and in a `--file` target.
-- One line per missed target goes to standard error, naming the measurement, the figure measured and the target. `--quiet` does not suppress it.
+- One line per missed target goes to standard error, naming the measurement, the figure measured where there is one, and the target. `--quiet` does not suppress it.
 - NetPace exits `3`.
 
 So a cron line or a systemd timer can act on the exit code with no wrapper script: `0` means the line met every target, `3` means it fell short, and `1` still means NetPace itself did not work. An operational fault, a usage error or a `--fail-on` trigger exits `1` whatever the targets say.

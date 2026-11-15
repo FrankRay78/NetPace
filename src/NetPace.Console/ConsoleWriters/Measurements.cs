@@ -4,14 +4,16 @@ using NetPace.Core;
 namespace NetPace.Console.ConsoleWriters;
 
 /// <summary>
-/// Helper class for running the download and upload measurements of a single speed test.
+/// Helper class for running the download and upload measurements of a single speed test, and
+/// settling which of the three measurements the outcome carries.
 /// </summary>
 internal static class Measurements
 {
     /// <summary>
     /// Performs the download and upload tests the settings ask for, each inside its own diagnostic
-    /// test scope. A test switched off with <c>--no-download</c> or <c>--no-upload</c> is absent
-    /// from the outcome, never a zeroed result.
+    /// test scope, and returns them with the latency already measured. A test switched off with
+    /// <c>--no-latency</c>, <c>--no-download</c> or <c>--no-upload</c> is absent from the outcome,
+    /// never a zeroed result.
     /// </summary>
     /// <remarks>
     /// Run here rather than in each of the line-based writers: <c>--minimal</c>, <c>--simple</c>,
@@ -41,9 +43,9 @@ internal static class Measurements
             uploadResult = await speedTestClient.GetUploadSpeedAsync(latency.Server, null, upload, cancellationToken);
         }
 
-        // Under --no-latency nothing was probed, and the figures that result stands for a run which
-        // never asked are zeroes: absent from the outcome, on the same terms as a transfer the run
-        // was told to skip.
+        // Under --no-latency nothing was probed, so the latency is absent from the outcome rather
+        // than reported as the zero the unmeasured result carries, on the same terms as a transfer
+        // the run was told to skip.
         return SpeedTestOutcome.Create(settings.NoLatency ? null : latency, downloadResult, uploadResult);
     }
 }

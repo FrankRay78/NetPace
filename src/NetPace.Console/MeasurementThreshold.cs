@@ -23,10 +23,12 @@ public sealed record MeasurementThreshold
 
     /// <summary>
     /// The most decimal places a figure is written to. Enough that two figures a single fixed unit
-    /// apart are still told apart in the largest unit NetPace writes, which is a petabit per
+    /// apart are still told apart in the largest unit NetPace writes, which is a pebibyte per
     /// second.
     /// </summary>
     private const int MostDecimals = 16;
+
+    private readonly decimal fixedUnitsPerUnit;
 
     /// <summary>
     /// Gets the target in the measurement's own fixed unit: whole bits per second for a speed,
@@ -42,14 +44,27 @@ public sealed record MeasurementThreshold
 
     /// <summary>
     /// Gets how many of the measurement's fixed units one <see cref="Unit"/> is worth: a thousand
-    /// for <c>Kbps</c>, eight thousand for <c>KBps</c>, one for <c>ms</c>.
+    /// for <c>Kbps</c>, eight thousand for <c>KBps</c>, one for <c>ms</c>. Never zero or less:
+    /// every figure this type writes is divided by it.
     /// </summary>
-    public required decimal FixedUnitsPerUnit { get; init; }
+    public required decimal FixedUnitsPerUnit
+    {
+        get => fixedUnitsPerUnit;
+        init => fixedUnitsPerUnit = value > 0
+            ? value
+            : throw new ArgumentOutOfRangeException(nameof(value), value, "A unit must be worth at least one of the measurement's fixed units.");
+    }
 
     /// <summary>
-    /// Gets the target as the user asked for it, for example <c>50 Mbps</c>.
+    /// Gets the target in the unit it was given in, for example <c>50 Mbps</c>.
     /// </summary>
-    public string TargetFigure => Write(Target, LeastDecimals);
+    /// <remarks>
+    /// Written to as many decimal places as it takes to state the target exactly, so a measured
+    /// figure reported beside it can never read as the higher number: a 2.564 Mbps minimum is
+    /// reported as <c>2.564 Mbps</c>, not rounded to the <c>2.56 Mbps</c> that a measurement of
+    /// 2.563 Mbps would read above.
+    /// </remarks>
+    public string TargetFigure => Write(Target, MostDecimals);
 
     /// <summary>
     /// A measured figure written in the target's own unit, for example <c>0.01 Mbps</c>.
@@ -64,7 +79,7 @@ public sealed record MeasurementThreshold
     {
         for (var decimals = LeastDecimals; decimals < MostDecimals; decimals++)
         {
-            var written = Write(figure, decimals);
+            string written = Write(figure, decimals);
             if (written != Write(Target, decimals))
             {
                 return written;

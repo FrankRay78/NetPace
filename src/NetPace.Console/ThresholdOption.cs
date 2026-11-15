@@ -1,5 +1,4 @@
 using System.CommandLine.Parsing;
-using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 
 namespace NetPace.Console;
@@ -11,13 +10,15 @@ namespace NetPace.Console;
 /// <remarks>
 /// The units accepted are the ones NetPace displays speeds in, listed here rather than in
 /// <c>NetPace.Core</c>: how a command line is read is a CLI concern, and the library's own
-/// suffixes are an output format with no parser of its own. The two lists are held together by a
-/// test that reads every suffix the library writes back through this parser, so one list gaining a
-/// unit the other does not have fails the suite.
+/// suffixes are an output format with no parser of its own. A test reads every suffix the library
+/// writes back through this parser, so a unit the library gains or renames shows up as a threshold
+/// value the CLI refuses.
 /// <para>
-/// A suffix is matched with the scale prefix in any case and the bits-or-bytes letter exactly, so
+/// A suffix is matched with the scale prefix in any case and the rest of it exactly, so
 /// <c>50mbps</c> and <c>50Mbps</c> are the same 50 megabits while <c>50MBps</c> is 50 megabytes,
-/// eight times as much. The target is rounded to a whole bit per second or a whole millisecond,
+/// eight times as much. A spelling that folds the bits-or-bytes letter away, such as
+/// <c>50MBPS</c>, is refused: it could be either, and reading it as the eight-times target would
+/// be the costlier guess. The target is rounded to a whole bit per second or a whole millisecond,
 /// which is the unit the measurement itself reports in.
 /// </para>
 /// </remarks>
@@ -41,8 +42,8 @@ internal static class ThresholdOption
     private const string LatencyUnit = "ms";
 
     /// <summary>
-    /// What every speed suffix ends in. Its length locates the bits-or-bytes letter in front of
-    /// it, which is the one character of a suffix whose case carries meaning.
+    /// What every speed suffix ends in, spelled as NetPace writes it. Its length locates the
+    /// bits-or-bytes letter in front of it.
     /// </summary>
     private const string PerSecond = "ps";
 
@@ -70,34 +71,25 @@ internal static class ThresholdOption
     /// Reads a <c>--min-download</c> or <c>--min-upload</c> value, reporting an unreadable one
     /// against <paramref name="optionName"/> with a workable example.
     /// </summary>
-    /// <remarks>
-    /// A missing token means the option was not given at all, which is how the parser is asked for
-    /// the absent default; nothing is reported for it.
-    /// </remarks>
-    public static MeasurementThreshold? ParseSpeed(ArgumentResult result, string optionName)
-    {
-        ArgumentNullException.ThrowIfNull(result);
-
-        if (result.Tokens.Count == 0)
-        {
-            return null;
-        }
-
-        var value = result.Tokens[0].Value;
-        if (TryParseSpeed(value, out MeasurementThreshold? threshold))
-        {
-            return threshold;
-        }
-
-        result.AddError($"'{value}' is not a valid value for {optionName}. Give a positive speed with its unit, such as {SpeedExample}.");
-        return null;
-    }
+    public static MeasurementThreshold? ParseSpeed(ArgumentResult result, string optionName) =>
+        Parse(result, optionName, ReadSpeed, $"Give a positive speed with its unit, such as {SpeedExample}.");
 
     /// <summary>
     /// Reads a <c>--max-latency</c> value, reporting an unreadable one against
     /// <paramref name="optionName"/> with a workable example.
     /// </summary>
-    public static MeasurementThreshold? ParseLatency(ArgumentResult result, string optionName)
+    public static MeasurementThreshold? ParseLatency(ArgumentResult result, string optionName) =>
+        Parse(result, optionName, ReadLatency, $"Give a positive latency in milliseconds, such as {LatencyExample}.");
+
+    /// <summary>
+    /// Reads one threshold value, reporting an unreadable one against <paramref name="optionName"/>
+    /// with the <paramref name="advice"/> that names a workable example.
+    /// </summary>
+    /// <remarks>
+    /// A missing token means the option was not given at all, which is how the parser is asked for
+    /// the absent default; nothing is reported for it.
+    /// </remarks>
+    private static MeasurementThreshold? Parse(ArgumentResult result, string optionName, Func<string, MeasurementThreshold?> read, string advice)
     {
         ArgumentNullException.ThrowIfNull(result);
 
@@ -107,60 +99,55 @@ internal static class ThresholdOption
         }
 
         var value = result.Tokens[0].Value;
-        if (TryParseLatency(value, out MeasurementThreshold? threshold))
+        MeasurementThreshold? threshold = read(value);
+
+        if (threshold is null)
         {
-            return threshold;
+            result.AddError($"'{value}' is not a valid value for {optionName}. {advice}");
         }
 
-        result.AddError($"'{value}' is not a valid value for {optionName}. Give a positive latency in milliseconds, such as {LatencyExample}.");
-        return null;
+        return threshold;
     }
 
     /// <summary>
-    /// Reads a speed with its unit, such as <c>50Mbps</c> or <c>2.5MBps</c>.
+    /// Reads a speed with its unit, such as <c>50Mbps</c> or <c>2.5MBps</c>, or
+    /// <see langword="null"/> where the value named no positive speed in a unit NetPace writes.
     /// </summary>
-    /// <returns><see langword="true"/> where the value named a positive speed in a unit NetPace writes.</returns>
-    public static bool TryParseSpeed(string value, [NotNullWhen(true)] out MeasurementThreshold? threshold)
+    private static MeasurementThreshold? ReadSpeed(string value)
     {
-        threshold = null;
-
         if (!TrySplit(value, out decimal figure, out string suffix))
         {
-            return false;
+            return null;
         }
 
         foreach ((string candidate, decimal bitsPerUnit) in SpeedUnits)
         {
-            if (!SuffixMatches(suffix, candidate))
+            if (SuffixMatches(suffix, candidate))
             {
-                continue;
+                return Build(figure, bitsPerUnit, candidate);
             }
-
-            return TryBuild(figure, bitsPerUnit, candidate, out threshold);
         }
 
-        return false;
+        return null;
     }
 
     /// <summary>
-    /// Reads a latency with its unit, such as <c>40ms</c>.
+    /// Reads a latency with its unit, such as <c>40ms</c>, or <see langword="null"/> where the
+    /// value named no positive latency in milliseconds.
     /// </summary>
-    /// <returns><see langword="true"/> where the value named a positive latency in milliseconds.</returns>
-    public static bool TryParseLatency(string value, [NotNullWhen(true)] out MeasurementThreshold? threshold)
+    private static MeasurementThreshold? ReadLatency(string value)
     {
-        threshold = null;
-
         if (!TrySplit(value, out decimal figure, out string suffix))
         {
-            return false;
+            return null;
         }
 
         if (!string.Equals(suffix, LatencyUnit, StringComparison.OrdinalIgnoreCase))
         {
-            return false;
+            return null;
         }
 
-        return TryBuild(figure, 1m, LatencyUnit, out threshold);
+        return Build(figure, 1m, LatencyUnit);
     }
 
     /// <summary>
@@ -174,7 +161,7 @@ internal static class ThresholdOption
         AddScales(units, SIPrefixes, SIStep);
         AddScales(units, IECPrefixes, IECStep);
 
-        return units.ToArray();
+        return [.. units];
     }
 
     /// <summary>
@@ -207,12 +194,7 @@ internal static class ThresholdOption
         figure = 0;
         suffix = string.Empty;
 
-        if (value is null)
-        {
-            return false;
-        }
-
-        var text = value.Trim();
+        string text = value.Trim();
 
         var end = 0;
         while (end < text.Length && (char.IsAsciiDigit(text[end]) || text[end] == '.'))
@@ -227,8 +209,10 @@ internal static class ThresholdOption
     }
 
     /// <summary>
-    /// Whether a typed suffix names a known one: every character matched in either case, bar the
-    /// bits-or-bytes letter, whose case is what tells <c>Mbps</c> from <c>MBps</c>.
+    /// Whether a typed suffix names a known one: the scale prefix matched in either case, and the
+    /// bits-or-bytes letter and the <c>ps</c> after it matched exactly. The letter's case is what
+    /// tells <c>Mbps</c> from <c>MBps</c>, so a spelling that folds it away, such as
+    /// <c>MBPS</c>, names neither and is refused rather than read as one of them.
     /// </summary>
     private static bool SuffixMatches(string typed, string known)
     {
@@ -239,47 +223,33 @@ internal static class ThresholdOption
 
         var unitLetter = known.Length - PerSecond.Length - 1;
 
-        for (var index = 0; index < known.Length; index++)
-        {
-            var matches = index == unitLetter
-                ? typed[index] == known[index]
-                : char.ToUpperInvariant(typed[index]) == char.ToUpperInvariant(known[index]);
-
-            if (!matches)
-            {
-                return false;
-            }
-        }
-
-        return true;
+        return typed[unitLetter] == known[unitLetter]
+            && string.Equals(typed[..unitLetter], known[..unitLetter], StringComparison.OrdinalIgnoreCase)
+            && string.Equals(typed[(unitLetter + 1)..], known[(unitLetter + 1)..], StringComparison.Ordinal);
     }
 
     /// <summary>
     /// Builds the threshold, refusing a figure that does not come to at least one whole fixed unit
     /// or that no measurement could ever reach.
     /// </summary>
-    private static bool TryBuild(decimal figure, decimal fixedUnitsPerUnit, string unit, [NotNullWhen(true)] out MeasurementThreshold? threshold)
+    private static MeasurementThreshold? Build(decimal figure, decimal fixedUnitsPerUnit, string unit)
     {
-        threshold = null;
-
         if (figure > long.MaxValue / fixedUnitsPerUnit)
         {
-            return false;
+            return null;
         }
 
-        var target = Math.Round(figure * fixedUnitsPerUnit, MidpointRounding.AwayFromZero);
+        decimal target = Math.Round(figure * fixedUnitsPerUnit, MidpointRounding.AwayFromZero);
         if (target < 1)
         {
-            return false;
+            return null;
         }
 
-        threshold = new MeasurementThreshold
+        return new MeasurementThreshold
         {
             Target = (long)target,
             Unit = unit,
             FixedUnitsPerUnit = fixedUnitsPerUnit
         };
-
-        return true;
     }
 }

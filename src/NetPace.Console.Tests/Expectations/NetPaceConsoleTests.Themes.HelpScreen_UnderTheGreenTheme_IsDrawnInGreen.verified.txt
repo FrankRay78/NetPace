@@ -107,7 +107,7 @@ and upload speed testing.
                                       Checks one run, so not with --loop,       
                                       --count above 1, or --no-download.        
     \e[38;5;65m    --min-upload\e[0m                  Exit 3 when the upload speed is below     
-                                      this, such as 10Mbps.                     
+                                      this, such as 50Mbps.                     
                                       Read the same way as --min-download; not  
                                       with --loop, --count above 1, or          
                                       --no-upload.                              
