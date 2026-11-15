@@ -82,7 +82,7 @@ public sealed class DiagnosticSpeedTester : ISpeedTestService
         GetServerLatencyAsync(server, progress, null, cancellationToken);
 
     /// <inheritdoc />
-    public Task<LatencyTestResult> GetServerLatencyAsync(IServer server, IProgress<LatencyTestProgress>? progress, IProgress<RequestDiagnostic>? diagnostics, CancellationToken cancellationToken = default)
+    public Task<LatencyTestResult> GetServerLatencyAsync(IServer server, IProgress<LatencyTestProgress>? progress, IProgress<RequestDiagnostic>? diagnostics, CancellationToken cancellationToken = default, CancellationToken stopAndReportToken = default)
     {
         for (var sequence = 1; sequence <= 2; sequence++)
         {
@@ -101,7 +101,7 @@ public sealed class DiagnosticSpeedTester : ISpeedTestService
         GetServerLatencyAsync(serverUrl, progress, null, cancellationToken);
 
     /// <inheritdoc />
-    public Task<LatencyTestResult> GetServerLatencyAsync(string serverUrl, IProgress<LatencyTestProgress>? progress, IProgress<RequestDiagnostic>? diagnostics, CancellationToken cancellationToken = default) =>
+    public Task<LatencyTestResult> GetServerLatencyAsync(string serverUrl, IProgress<LatencyTestProgress>? progress, IProgress<RequestDiagnostic>? diagnostics, CancellationToken cancellationToken = default, CancellationToken stopAndReportToken = default) =>
         GetServerLatencyAsync(new Server { Location = "Frankfurt", Sponsor = "Deutsche Telekom", Url = serverUrl }, progress, diagnostics, cancellationToken);
 
     /// <inheritdoc />
@@ -134,7 +134,7 @@ public sealed class DiagnosticSpeedTester : ISpeedTestService
         GetDownloadSpeedAsync(server, progress, null, cancellationToken);
 
     /// <inheritdoc />
-    public Task<SpeedTestResult> GetDownloadSpeedAsync(IServer server, IProgress<SpeedTestProgress>? progress, IProgress<RequestDiagnostic>? diagnostics, CancellationToken cancellationToken = default)
+    public Task<SpeedTestResult> GetDownloadSpeedAsync(IServer server, IProgress<SpeedTestProgress>? progress, IProgress<RequestDiagnostic>? diagnostics, CancellationToken cancellationToken = default, CancellationToken stopAndReportToken = default)
     {
         for (var sequence = 1; sequence <= 2; sequence++)
         {
@@ -157,7 +157,7 @@ public sealed class DiagnosticSpeedTester : ISpeedTestService
         GetUploadSpeedAsync(server, progress, null, cancellationToken);
 
     /// <inheritdoc />
-    public Task<SpeedTestResult> GetUploadSpeedAsync(IServer server, IProgress<SpeedTestProgress>? progress, IProgress<RequestDiagnostic>? diagnostics, CancellationToken cancellationToken = default)
+    public Task<SpeedTestResult> GetUploadSpeedAsync(IServer server, IProgress<SpeedTestProgress>? progress, IProgress<RequestDiagnostic>? diagnostics, CancellationToken cancellationToken = default, CancellationToken stopAndReportToken = default)
     {
         for (var sequence = 1; sequence <= 2; sequence++)
         {
