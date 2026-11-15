@@ -34,6 +34,18 @@ public static class Program
     internal const int MaximumConnections = 32;
 
     /// <summary>
+    /// How long one speed test run may take when <c>--time-limit</c> is not given. On by default,
+    /// so a scheduled run is bounded without the user having to configure anything.
+    /// </summary>
+    internal static readonly TimeSpan DefaultTimeLimit = TimeSpan.FromMinutes(10);
+
+    /// <summary>
+    /// <see cref="DefaultTimeLimit"/> written the way the option accepts it, so <c>--help</c> and
+    /// the parser cannot come to disagree about what the default is.
+    /// </summary>
+    internal static string DefaultTimeLimitText => DefaultTimeLimit.ToString("hh\\:mm\\:ss", CultureInfo.InvariantCulture);
+
+    /// <summary>
     /// Create the RootCommand with System.CommandLine.
     /// </summary>
     /// <remarks>
@@ -67,6 +79,24 @@ public static class Program
             Description = "Time between multiple speed tests (HH:MM:SS).",
             DefaultValueFactory = _ => TimeSpan.Zero
         };
+
+        // Taken as a string rather than an Option<TimeSpan> so that every rejected value lands on
+        // one message naming the form that works. An Option<TimeSpan> reads a bare 600 as six
+        // hundred days and binds it without complaint, which is the one wrong answer a scheduled
+        // run has no way of noticing.
+        var timeLimitOption = new Option<string>("--time-limit")
+        {
+            Description = "Stop a speed test run after this long (HH:MM:SS).\nA run that reaches the limit reports what it measured up to then.\nEach run of --count or --loop gets the limit afresh, and --delay is not counted.",
+            DefaultValueFactory = _ => DefaultTimeLimitText
+        };
+        timeLimitOption.Validators.Add(result =>
+        {
+            var value = result.GetValueOrDefault<string>();
+            if (!TryParseTimeLimit(value, out _))
+            {
+                result.AddError($"--time-limit must be a positive duration written as hours, minutes and seconds, such as {DefaultTimeLimitText}, but was '{value}'.");
+            }
+        });
 
         var csvOption = new Option<bool>("--csv")
         {
@@ -292,6 +322,7 @@ public static class Program
         command.Options.Add(loopOption);
         command.Options.Add(countOption);
         command.Options.Add(delayOption);
+        command.Options.Add(timeLimitOption);
         command.Options.Add(csvOption);
         command.Options.Add(noCSVHeaderOption);
         command.Options.Add(jsonOption);
@@ -331,6 +362,7 @@ public static class Program
                     Loop = parseResult.GetValue(loopOption),
                     Count = parseResult.GetValue(countOption),
                     Delay = parseResult.GetValue(delayOption),
+                    TimeLimit = ParseTimeLimit(parseResult.GetValue(timeLimitOption)),
                     CSV = parseResult.GetValue(csvOption),
                     NoCSVHeader = parseResult.GetValue(noCSVHeaderOption),
                     Json = parseResult.GetValue(jsonOption),
@@ -491,6 +523,37 @@ public static class Program
         LibreSpeedtestSettings libreSpeed => new LibreSpeedtest(libreSpeed),
         _ => throw new ArgumentOutOfRangeException(nameof(settings), settings.GetType().Name, "No speed test provider is registered for these settings."),
     };
+
+    /// <summary>
+    /// Parse a <c>--time-limit</c> value the way its validator does: hours, minutes and seconds,
+    /// culture independent, and a duration of more than nothing.
+    /// </summary>
+    /// <remarks>
+    /// The colon is what separates the accepted form from a bare number, which
+    /// <see cref="TimeSpan"/> reads as a count of days: a user asking for ten minutes with
+    /// <c>600</c> would otherwise get a limit of six hundred days, which is no limit at all.
+    /// <c>--delay</c> is left as it was, so only the option this method serves is strict.
+    /// </remarks>
+    private static bool TryParseTimeLimit(string? value, out TimeSpan limit)
+    {
+        limit = TimeSpan.Zero;
+
+        if (value is null || !value.Contains(':', StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        return TimeSpan.TryParse(value, CultureInfo.InvariantCulture, out limit) && limit > TimeSpan.Zero;
+    }
+
+    /// <summary>
+    /// The requested run time limit. A value that is present but will not parse means the
+    /// validator never ran, and throwing beats bounding a run by a duration nobody asked for.
+    /// </summary>
+    private static TimeSpan ParseTimeLimit(string? value) =>
+        TryParseTimeLimit(value, out var limit)
+            ? limit
+            : throw new ArgumentException($"--time-limit must be a positive duration written as hours, minutes and seconds, such as {DefaultTimeLimitText}, but was '{value}'.");
 
     /// <summary>
     /// Parse a <c>--connections</c> value the way its validator does: digits only, culture
