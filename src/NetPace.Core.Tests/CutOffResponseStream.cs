@@ -1,7 +1,5 @@
 using System;
 using System.IO;
-using System.Net;
-using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -81,77 +79,3 @@ internal sealed class CutOffResponseStream : Stream
     public override void Write(byte[] buffer, int offset, int count) => throw new NotSupportedException();
 }
 
-/// <summary>
-/// A request body sink that accepts a fixed number of bytes and is then cut off, the way a server
-/// behaves when it closes a connection while the client is still writing to it.
-/// </summary>
-internal sealed class CutOffRequestStream : Stream
-{
-    private readonly int bytesBeforeCutOff;
-
-    public CutOffRequestStream(int bytesBeforeCutOff) => this.bytesBeforeCutOff = bytesBeforeCutOff;
-
-    /// <summary>How many bytes the sink accepted before it was cut off.</summary>
-    public int BytesAccepted { get; private set; }
-
-    public override bool CanRead => false;
-    public override bool CanSeek => false;
-    public override bool CanWrite => true;
-    public override long Length => throw new NotSupportedException();
-    public override long Position { get => throw new NotSupportedException(); set => throw new NotSupportedException(); }
-
-    public override ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken = default)
-    {
-        if (BytesAccepted + buffer.Length > bytesBeforeCutOff)
-        {
-            throw new IOException("The server closed the connection.");
-        }
-
-        BytesAccepted += buffer.Length;
-        return ValueTask.CompletedTask;
-    }
-
-    public override void Write(byte[] buffer, int offset, int count) =>
-        WriteAsync(buffer.AsMemory(offset, count), CancellationToken.None).AsTask().GetAwaiter().GetResult();
-
-    public override void Flush() { }
-    public override int Read(byte[] buffer, int offset, int count) => throw new NotSupportedException();
-    public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
-    public override void SetLength(long value) => throw new NotSupportedException();
-}
-
-/// <summary>
-/// A server that accepts a fixed number of bytes of an upload and then closes the connection,
-/// which the client sees as a transport failure partway through sending the body.
-/// </summary>
-/// <remarks>
-/// A handler of its own rather than a mocked response, because the point of the test it serves is
-/// that the body was really being serialised when the connection went: a mock that never reads the
-/// request content has nothing to cut off.
-/// </remarks>
-internal sealed class CutOffUploadHandler : HttpMessageHandler
-{
-    private readonly int bytesBeforeCutOff;
-
-    public CutOffUploadHandler(int bytesBeforeCutOff) => this.bytesBeforeCutOff = bytesBeforeCutOff;
-
-    protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
-    {
-        if (request.Content is not null)
-        {
-            var sink = new CutOffRequestStream(bytesBeforeCutOff);
-
-            try
-            {
-                await request.Content.CopyToAsync(sink, cancellationToken).ConfigureAwait(false);
-            }
-            catch (Exception e)
-            {
-                // What a client is handed when a connection goes while it is still writing.
-                throw new HttpRequestException("Error while copying content to a stream.", e);
-            }
-        }
-
-        return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(string.Empty) };
-    }
-}

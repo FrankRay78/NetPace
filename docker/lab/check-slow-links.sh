@@ -107,11 +107,21 @@ format_speed() {
 # not that it measured anything like what the link carries, which is the failure this whole
 # check exists to make visible.
 json_number() {
-  # Guarded and swallowed deliberately: `set -o pipefail` is on, so a run that left no result
-  # behind - the `radio` row does exactly that - would otherwise abort the whole check while
-  # reading the figure of a run that had already failed.
+  # A run that left no result behind - the `radio` row does exactly that - has no figure to read,
+  # and that is not worth a word: the FAIL beside it already says what happened. `set -o pipefail`
+  # is on, so this returns rather than letting the missing file abort the whole check.
   [ -f "$1" ] || return 0
-  sed -n "s/.*\"$2\":\\([0-9][0-9]*\\).*/\\1/p" "$1" 2>/dev/null || true
+
+  # A result file that exists but carries no such field is a different matter, and is said out
+  # loud: it means the field was renamed or the figure is not a plain integer, and a silent `-`
+  # in the summary would read as "this run measured nothing" when the run measured fine.
+  value=$(sed -n "s/.*\"$2\":\\([0-9][0-9]*\\).*/\\1/p" "$1" || true)
+
+  if [ -z "$value" ]; then
+    echo "WARNING: $1 carries no $2 - the figure below is unreadable, not absent." >&2
+  fi
+
+  printf '%s\n' "$value"
 }
 
 # check <lab profile, empty for the full-speed server> <NetPace profile, or `default`>

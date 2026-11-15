@@ -507,7 +507,7 @@ Exit codes are unaffected. A network condition is still data and still exits `0`
 
 A speed test runs many small requests in parallel and reports the aggregate throughput. If some of those requests fail (a dropped connection, a TLS error, a timeout, or a server that rejects the transfer), NetPace does **not** silently treat them as zero-speed data — it counts them, so you can tell a genuinely slow link from a server that isn't transferring at all.
 
-The speed is about the link, so it counts every byte that arrived, including the bytes of a request that then failed. A slow link whose transfers the server keeps cutting off still reports close to what it carries, rather than a fraction of it. The speed reads zero only where nothing arrived at all (a connection refused, a TLS handshake that failed, a server rejecting the transfer outright), and the counts, not the figure, are what tell you a test failed.
+The speed is about the link, so it counts every byte that arrived, including the bytes of a request that then failed. A slow link whose transfers the server keeps cutting off still reports close to what it carries, rather than a fraction of it. The speed reads zero only where nothing moved at all, such as a connection refused or a TLS handshake that failed. An upload the server rejects still counts what it sent, because the body goes out before the rejection comes back. The counts, not the figure, are what tell you a test failed.
 
 Every output format carries the counts:
 

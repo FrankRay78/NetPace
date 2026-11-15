@@ -45,8 +45,8 @@ public abstract class SpeedTestProviderBase : ISpeedTestService
 
     /// <summary>
     /// The shortest gap between two progress reports sent from inside a running request. It paces
-    /// the live figure only; a request finishing always reports at once, because that is where the
-    /// percentage changes. Not a setting: it is the refresh rate of something a person is watching,
+    /// the live figure only; a request that finishes and is counted reports at once, because that
+    /// is where the percentage changes. Not a setting: it is the refresh rate of something a person is watching,
     /// which no caller has a reason to tune, and it bounds no measurement.
     /// </summary>
     private const int LiveFigureIntervalMilliseconds = 250;
@@ -724,9 +724,12 @@ public abstract class SpeedTestProviderBase : ISpeedTestService
         {
             // Use RandomStreamContent to stream generated random bytes in small chunks to avoid LOH
             // allocations. It reports each chunk once written, so an upload the server cuts off
-            // partway still counts what it had sent. What was sent is the closest thing to what was
-            // delivered that a client can see: the last of it may still have been in flight when
-            // the connection closed, which over-counts by a buffer at most.
+            // partway still counts what it had sent. What was written is the closest thing to what
+            // was delivered that a client can see, and it is a ceiling rather than a measurement:
+            // a write returns once the transport has taken the data, so whatever the send buffer
+            // still held when the connection closed is counted as sent. On a link slow enough that
+            // the buffer holds a whole request - which the narrow profiles under
+            // docker/ooklaserver are - a cut-off upload can be credited with most of its body.
             using var content = new RandomStreamContent(length, recordBytesDelivered);
             using var response = await client.PostAsync(uploadUrl, content, cancellationToken).ConfigureAwait(false);
 
@@ -734,15 +737,14 @@ public abstract class SpeedTestProviderBase : ISpeedTestService
             // mirror the download path so error statuses are aggregated into the failure count.
             response.EnsureSuccessStatusCode();
 
-            // An upload the server accepted sent the whole body, whatever the transport underneath
-            // reported writing, so the count is topped up to the length asked for. The chunk
-            // reports are what a cut-off upload is left with; this keeps a successful one at
-            // exactly its length, as it has always been.
-            var shortfall = length - content.BytesWritten;
-
-            if (shortfall > 0)
+            // A handler that never serialised the body at all reported no chunks, and an upload the
+            // server accepted is then counted at the length asked for. A body that was partway
+            // through when it stopped keeps what it actually wrote: topping that up to the full
+            // length would credit the request with bytes the transport never took, which is the
+            // over-count this measurement exists to remove.
+            if (content.BytesWritten == 0 && length > 0)
             {
-                recordBytesDelivered((int)shortfall);
+                recordBytesDelivered(length);
             }
         };
 
@@ -946,18 +948,29 @@ public abstract class SpeedTestProviderBase : ISpeedTestService
                 return;
             }
 
-            lastPercentageComplete = percentageComplete;
-
-            (long? latencyMilliseconds, long? jitterMilliseconds) = probing?.Running ?? (null, null);
-
-            ReportProgress(progress, new SpeedTestProgress
+            // Composed and handed over under lockObject, so a consumer's IProgress is called one
+            // report at a time. Reports used to come only from the finally block below, which
+            // already holds this lock, so serialisation was free; a report from inside a running
+            // request holds nothing, and two threads reporting at once would let a consumer see
+            // the figure go backwards and would hand a live display two frames to draw together.
+            // The lock is re-entrant, so the callers that already hold it are unaffected. A slow
+            // consumer callback therefore holds up the request that is reporting, as an inline
+            // report already did before this.
+            lock (lockObject)
             {
-                PercentageComplete = percentageComplete,
-                BytesProcessed = Interlocked.Read(ref totalBytesDelivered),
-                ElapsedMilliseconds = ElapsedMillisecondsSince(testStartTimestamp),
-                LatencyMilliseconds = latencyMilliseconds,
-                JitterMilliseconds = jitterMilliseconds
-            });
+                lastPercentageComplete = percentageComplete;
+
+                (long? latencyMilliseconds, long? jitterMilliseconds) = probing?.Running ?? (null, null);
+
+                ReportProgress(progress, new SpeedTestProgress
+                {
+                    PercentageComplete = percentageComplete,
+                    BytesProcessed = Interlocked.Read(ref totalBytesDelivered),
+                    ElapsedMilliseconds = ElapsedMillisecondsSince(testStartTimestamp),
+                    LatencyMilliseconds = latencyMilliseconds,
+                    JitterMilliseconds = jitterMilliseconds
+                });
+            }
         }
 
         // A report from inside a request, so the live figure climbs while data is arriving rather

@@ -12,7 +12,7 @@
 **Decisions:**
 
 - A transfer keeps two totals: delivered bytes for the figure, successfully-returned bytes for the byte budget. Rejected: one total, with the budget spent on delivered bytes, which is arguably truer to what a budget means but trips the cap sooner and so moves the succeeded and failed counts this change holds fixed.
-- An upload counts what was written to the transport. Rejected: counting only what the server acknowledged, which a client cannot see; the over-count is one buffer.
+- An upload counts what was written to the transport, which is a ceiling rather than a measurement: whatever the send buffer still held when a connection closed is counted as sent, and on a link narrow enough that the buffer holds a whole request that is most of a cut-off upload's body. Rejected: counting only what the server acknowledged, which a client cannot see.
 - The live figure is paced rather than reported per chunk. Rejected: a report per chunk, which redraws a consumer thousands of times a second on a fast link.
 
 **Date:** 2026-11-15

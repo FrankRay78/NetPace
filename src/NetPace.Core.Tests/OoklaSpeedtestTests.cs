@@ -1254,7 +1254,10 @@ public sealed partial class OoklaSpeedtestTests
     [Fact]
     public async Task GetDownloadSpeedAsync_WithProgress_ShouldReportBytesAndElapsedTime()
     {
-        // Given
+        // Given a held clock, so the exact report count below is the four the finishing requests
+        // send. The paced mid-request report is timed on this clock, so a transfer measured on the
+        // wall clock would gain an extra report whenever a chunk happened to arrive a quarter of a
+        // second after the transfer began, and every index here would shift.
         using var mockHttp = new MockHttpMessageHandler();
         mockHttp.When("*").Respond("text/plain", new string('X', 1024));
 
@@ -1269,7 +1272,7 @@ public sealed partial class OoklaSpeedtestTests
             }
         };
 
-        var speedtest = new OoklaSpeedtest(settings, httpClient);
+        var speedtest = new OoklaSpeedtest(settings, httpClient, timeProviderOverride: new ControlledTimeProvider(ClockStart));
         var server = new Server { Url = "http://example.com/", Sponsor = "Test", Location = "Test" };
         var progressReports = new List<SpeedTestProgress>();
 
@@ -1636,7 +1639,9 @@ public sealed partial class OoklaSpeedtestTests
     [Fact]
     public async Task GetUploadSpeedAsync_WithProgress_ShouldReportBytesAndElapsedTime()
     {
-        // Given
+        // Given a held clock, for the same reason as the download twin above: the paced
+        // mid-request report is timed on it, and on the wall clock this exact count would gain an
+        // extra report whenever a chunk landed a quarter of a second into the transfer.
         using var mockHttp = new MockHttpMessageHandler();
         mockHttp.When("*").Respond(HttpStatusCode.OK);
 
@@ -1652,7 +1657,7 @@ public sealed partial class OoklaSpeedtestTests
             }
         };
 
-        var speedtest = new OoklaSpeedtest(settings, httpClient);
+        var speedtest = new OoklaSpeedtest(settings, httpClient, timeProviderOverride: new ControlledTimeProvider(ClockStart));
         var server = new Server { Url = "http://example.com/", Sponsor = "Test", Location = "Test" };
         var progressReports = new List<SpeedTestProgress>();
 
