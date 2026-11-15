@@ -44,11 +44,14 @@ public sealed partial class NetPaceConsoleTests
         private static CommandLineTestHost HostFor(string screen, IServiceCollection services) =>
             screen == "speed test" ? SpeedTestHost(services) : StaticScreenHost(services);
 
-        private static ServiceCollection SpeedTestServices(IThemeProvider themeProvider)
+        /// <summary>
+        /// The services a speed-test run needs, on the clock given or on the standing stub.
+        /// </summary>
+        private static ServiceCollection SpeedTestServices(IThemeProvider themeProvider, IClock? clock = null)
         {
             var services = new ServiceCollection();
             services.AddSingleton<ISpeedTestService, SpeedTestStub>();
-            services.AddSingleton<IClock, ClockStub>();
+            services.AddSingleton(clock ?? new ClockStub());
             services.AddSingleton<IWaiter, NoDelayStub>();
             services.AddSingleton(themeProvider);
             return services;
@@ -224,9 +227,10 @@ public sealed partial class NetPaceConsoleTests
         [InlineData("--help")]
         [InlineData("servers --help")]
         [Theory]
-        public async Task EveryScreen_UnderTheGreenTheme_ChangesColourAndNothingElse(string screen)
+        public async Task EveryScreen_UnderEachColouredTheme_ChangesColourAndNothingElse(string screen)
         {
             // SCENARIO: Chosen theme applies to every command
+            // SCENARIO: Halloween theme applies to every command
 
             // Given
             string[] args = ArgumentsFor(screen);
@@ -234,12 +238,17 @@ public sealed partial class NetPaceConsoleTests
             // When the same screen is drawn in each theme
             var asDefault = await Draw(args, Theme.Default);
             var asGreen = await Draw(args, Theme.Green);
+            var asHalloween = await Draw(args, Theme.Halloween);
 
-            // Then the theme reaches this screen,
+            // Then every theme reaches this screen, and each draws it unlike the theme beside it,
             Assert.NotEqual(asDefault, asGreen);
+            Assert.NotEqual(asDefault, asHalloween);
+            Assert.NotEqual(asGreen, asHalloween);
 
             // and changes only how it is drawn, never what it says.
-            Assert.Equal(AnsiSnapshot.WithoutStyling(asDefault), AnsiSnapshot.WithoutStyling(asGreen));
+            string saysTheSame = AnsiSnapshot.WithoutStyling(asDefault);
+            Assert.Equal(saysTheSame, AnsiSnapshot.WithoutStyling(asGreen));
+            Assert.Equal(saysTheSame, AnsiSnapshot.WithoutStyling(asHalloween));
 
             async Task<string> Draw(string[] arguments, Theme theme)
             {
@@ -379,42 +388,6 @@ public sealed partial class NetPaceConsoleTests
             await Verify(AnsiSnapshot.Readable(result.Output));
         }
 
-        [InlineData("speed test")]
-        [InlineData("servers")]
-        [InlineData("servers --latency")]
-        [InlineData("servers --fastest")]
-        [InlineData("--help")]
-        [InlineData("servers --help")]
-        [Theory]
-        public async Task EveryScreen_UnderTheHalloweenTheme_LooksUnlikeTheOtherThemesAndSaysTheSame(string screen)
-        {
-            // SCENARIO: Halloween theme applies to every command
-
-            // Given
-            string[] args = ArgumentsFor(screen);
-
-            // When the same screen is drawn in each theme
-            var asDefault = await Draw(args, Theme.Default);
-            var asGreen = await Draw(args, Theme.Green);
-            var asHalloween = await Draw(args, Theme.Halloween);
-
-            // Then the theme reaches this screen, and is its own look rather than a near-copy of
-            // the theme beside it,
-            Assert.NotEqual(asDefault, asHalloween);
-            Assert.NotEqual(asGreen, asHalloween);
-
-            // and changes only how it is drawn, never what it says.
-            Assert.Equal(AnsiSnapshot.WithoutStyling(asDefault), AnsiSnapshot.WithoutStyling(asHalloween));
-
-            async Task<string> Draw(string[] arguments, Theme theme)
-            {
-                var services = SpeedTestServices(Chosen(theme));
-                var result = await HostFor(screen, services).RunAsync(arguments);
-                Assert.Equal(0, result.ExitCode);
-                return AnsiSnapshot.Readable(result.Output);
-            }
-        }
-
         [Fact]
         public async Task HalloweenTheme_IsNamedWhereverTheValidThemesAreListed()
         {
@@ -438,17 +411,12 @@ public sealed partial class NetPaceConsoleTests
             var ordinary = await Draw(new ClockStub());
             var halloweenNight = await Draw(new FixedClock(new DateTimeOffset(2026, 10, 31, 23, 0, 0, TimeSpan.Zero)));
 
-            // Then the date changes nothing: the theme is applied only when the user names it.
+            // Then the date on the clock the run is given changes nothing about what is drawn.
             Assert.Equal(ordinary, halloweenNight);
 
             async Task<string> Draw(IClock clock)
             {
-                var services = new ServiceCollection();
-                services.AddSingleton<ISpeedTestService, SpeedTestStub>();
-                services.AddSingleton(clock);
-                services.AddSingleton<IWaiter, NoDelayStub>();
-                services.AddSingleton<IThemeProvider>(new EnvironmentThemeProvider(_ => null));
-                var result = await SpeedTestHost(services).RunAsync([]);
+                var result = await SpeedTestHost(SpeedTestServices(FromEnvironment(), clock)).RunAsync([]);
                 Assert.Equal(0, result.ExitCode);
                 return AnsiSnapshot.Readable(result.Output);
             }
@@ -659,15 +627,6 @@ public sealed partial class NetPaceConsoleTests
         }
 
         /// <summary>
-        /// A clock standing at whatever date and time a test puts it at, so a run can be drawn on
-        /// a given day of the year.
-        /// </summary>
-        private sealed class FixedClock(DateTimeOffset now) : IClock
-        {
-            public DateTimeOffset Now { get; } = now;
-        }
-
-        /// <summary>
         /// A service collection whose run ends with the upload still measuring, having measured a
         /// partial failure on the way, so the last frame of the table carries one clean row, one
         /// partially failed and one still running. A row that failed outright is not among them.
@@ -712,6 +671,15 @@ public sealed partial class NetPaceConsoleTests
             services.AddSingleton<IWaiter, NoDelayStub>();
             services.AddSingleton(themeProvider);
             return services;
+        }
+
+        /// <summary>
+        /// A clock standing at whatever date and time a test puts it at, so a run can be drawn on
+        /// a given day of the year.
+        /// </summary>
+        private sealed class FixedClock(DateTimeOffset now) : IClock
+        {
+            public DateTimeOffset Now { get; } = now;
         }
     }
 }

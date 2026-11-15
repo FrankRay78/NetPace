@@ -7,6 +7,12 @@ namespace NetPace.Console.Tests.Theming;
 
 public sealed class ThemeTests
 {
+    /// <summary>
+    /// The contrast ratio a themed colour must clear against both terminal backgrounds: the WCAG
+    /// floor for large text and user-interface parts.
+    /// </summary>
+    private const double ContrastFloor = 3.0;
+
     [InlineData("default")]
     [InlineData("DEFAULT")]
     [InlineData("Default")]
@@ -79,8 +85,8 @@ public sealed class ThemeTests
             .GetProperties(BindingFlags.Public | BindingFlags.Instance)
             .Count(property => property.PropertyType == typeof(Style));
 
-        // Then the list the two whole-theme sweeps read covers all of them. Without this, a slot
-        // added to the type and forgotten here would drop out of both sweeps and neither would fail.
+        // Then the list the whole-theme sweeps read covers all of them. Without this, a slot
+        // added to the type and forgotten here would drop out of every sweep and none would fail.
         Assert.Equal(declared, Theme.Default.Styles.Count);
     }
 
@@ -101,35 +107,20 @@ public sealed class ThemeTests
         }
     }
 
-    [Fact]
-    public void GreenTheme_DrawsEveryElementDifferentlyFromTheDefaultTheme()
+    [InlineData("green")]
+    [InlineData("halloween")]
+    [Theory]
+    public void AColouredTheme_DrawsEveryElementDifferentlyFromTheDefaultTheme(string name)
     {
         // Given
-        var green = Theme.Green;
-        var @default = Theme.Default;
-
-        // Then no element is left at the default theme's colour, so the difference shows on every
-        // line rather than only on the elements that happened to be easy to change.
-        Assert.NotEqual(@default.Banner, green.Banner);
-        for (var slot = 0; slot < green.Styles.Count; slot++)
-        {
-            Assert.NotEqual(@default.Styles[slot], green.Styles[slot]);
-        }
-    }
-
-    [Fact]
-    public void HalloweenTheme_DrawsEveryElementDifferentlyFromTheDefaultTheme()
-    {
-        // Given
-        var halloween = Theme.Halloween;
-        var @default = Theme.Default;
+        Theme.TryParse(name, out var theme);
 
         // Then no element is left at the default theme's colour, so every line is drawn in the
         // chosen theme rather than only the elements that happened to be easy to change.
-        Assert.NotEqual(@default.Banner, halloween.Banner);
-        for (var slot = 0; slot < halloween.Styles.Count; slot++)
+        Assert.NotEqual(Theme.Default.Banner, theme.Banner);
+        for (var slot = 0; slot < theme.Styles.Count; slot++)
         {
-            Assert.NotEqual(@default.Styles[slot], halloween.Styles[slot]);
+            Assert.NotEqual(Theme.Default.Styles[slot], theme.Styles[slot]);
         }
     }
 
@@ -144,13 +135,16 @@ public sealed class ThemeTests
             .Distinct()
             .ToArray();
 
-        // Then each clears the 3:1 contrast floor against pure black and pure white alike, so the
+        // Then each clears the contrast floor against pure black and pure white alike, so the
         // palette reads on either terminal background rather than only the one it was picked on.
         Assert.NotEmpty(colours);
         foreach (var colour in colours)
         {
-            Assert.True(ContrastRatio(colour, Color.Black) >= 3.0, $"#{colour.ToHex()} against black is {ContrastRatio(colour, Color.Black):F2}:1");
-            Assert.True(ContrastRatio(colour, Color.White) >= 3.0, $"#{colour.ToHex()} against white is {ContrastRatio(colour, Color.White):F2}:1");
+            double againstBlack = ContrastRatio(colour, Color.Black);
+            double againstWhite = ContrastRatio(colour, Color.White);
+
+            Assert.True(againstBlack >= ContrastFloor, $"#{colour.ToHex()} against black is {againstBlack:F2}:1");
+            Assert.True(againstWhite >= ContrastFloor, $"#{colour.ToHex()} against white is {againstWhite:F2}:1");
         }
     }
 

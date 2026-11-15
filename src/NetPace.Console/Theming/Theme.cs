@@ -114,11 +114,11 @@ public sealed record Theme
     /// </summary>
     /// <remarks>
     /// Every <see cref="Style"/> slot added above belongs here too; <see cref="Banner"/> is a
-    /// <see cref="Color"/> and so cannot be, and is asserted on separately by the same two tests. A
+    /// <see cref="Color"/> and so cannot be, and is asserted on separately by the same sweeps. A
     /// test pins this list against the <see cref="Style"/> properties the type declares, so a slot
-    /// left out of it fails rather than quietly going uncovered. Two tests read the list — one
-    /// asserting that the plain theme leaves every slot unstyled, the other that the green theme
-    /// moves every slot off the default theme's value.
+    /// left out of it fails rather than quietly going uncovered. The whole-theme sweeps read the
+    /// list: the plain theme leaves every slot unstyled, and each coloured theme moves every slot
+    /// off the default theme's value.
     /// </remarks>
     public IReadOnlyList<Style> Styles =>
     [
@@ -243,8 +243,9 @@ public sealed record Theme
     /// <remarks>
     /// Four roles carry the screen: orange for what the eye should land on, purple for the things
     /// beside it, green for what has finished, and a grey for what is deliberately quiet. Two more
-    /// tones mark a measurement that went wrong — a dimmer orange where some requests failed and a
-    /// deep red where the whole thing did — so an outcome is never told apart by brightness alone.
+    /// tones mark a measurement that went wrong: a dimmer orange where some requests failed and a
+    /// deep red where the whole thing did. Neither outcome rests on its colour, since the mark and
+    /// the failed count say how the measurement went, as <see cref="Error"/> describes.
     /// <para>
     /// Every colour is picked from the 256-colour palette by name, as <see cref="Green"/> is, and
     /// every one of them clears a 3:1 contrast ratio against pure black and pure white alike, so
