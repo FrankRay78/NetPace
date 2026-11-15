@@ -24,6 +24,9 @@ internal sealed class CutOffResponseStream : Stream
 
     private int bytesDelivered;
 
+    /// <summary>
+    /// Constructs a response body that is cut off after the given number of bytes.
+    /// </summary>
     /// <param name="bytesBeforeCutOff">How many bytes the stream hands over before it stops.</param>
     /// <param name="cutOffReached">Signalled once those bytes have been handed over, so a test can order what happens next.</param>
     /// <param name="waitForCancellationInsteadOfFaulting">
