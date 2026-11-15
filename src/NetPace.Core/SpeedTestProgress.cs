@@ -11,7 +11,9 @@ public sealed record SpeedTestProgress
     public int PercentageComplete { get; init; }
 
     /// <summary>
-    /// Gets the total number of bytes processed.
+    /// Gets the number of bytes the transfer has moved so far, counted as they arrive and on the
+    /// same terms as <see cref="SpeedTestResult.BytesProcessed"/>, so the figure shown while a
+    /// test runs is never contradicted by the one it ends with.
     /// </summary>
     public long BytesProcessed { get; init; }
 

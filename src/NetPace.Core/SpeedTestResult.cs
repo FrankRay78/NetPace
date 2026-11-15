@@ -13,8 +13,16 @@ namespace NetPace.Core;
 public sealed record SpeedTestResult
 {
     /// <summary>
-    /// Gets the total number of bytes processed.
+    /// Gets the total number of bytes the transfer moved across the link.
     /// </summary>
+    /// <remarks>
+    /// Every byte any request delivered, whatever became of that request: one the server cut off
+    /// partway through, and one dropped because the byte budget was reached, both moved data and
+    /// both took time this figure's <see cref="ElapsedMilliseconds"/> counts. The figure is about
+    /// the link rather than about the requests, which <see cref="RequestsSucceeded"/> and
+    /// <see cref="RequestsFailed"/> are. An upload counts what was sent, which may over-count by
+    /// whatever was still in flight when a connection closed.
+    /// </remarks>
     public required long BytesProcessed { get; init; }
 
     /// <summary>
@@ -23,18 +31,20 @@ public sealed record SpeedTestResult
     public required long ElapsedMilliseconds { get; init; }
 
     /// <summary>
-    /// Gets the number of requests that completed successfully and contributed to <see cref="BytesProcessed"/>.
+    /// Gets the number of requests that completed successfully.
     /// </summary>
     /// <remarks>
-    /// Zero, with <see cref="RequestsFailed"/> greater than zero, means every request failed and the
-    /// reported speed is not a valid measurement. Requests skipped because the configured byte
-    /// budget was reached are counted as neither succeeded nor failed.
+    /// Zero, with <see cref="RequestsFailed"/> greater than zero, means every request failed. The
+    /// speed is still what the link delivered while they were failing, but it is a measurement of
+    /// a link that is not working. Requests skipped because the configured byte budget was reached
+    /// are counted as neither succeeded nor failed.
     /// </remarks>
     public required int RequestsSucceeded { get; init; }
 
     /// <summary>
     /// Gets the number of requests that failed (a transport error, timeout, or non-success HTTP status).
-    /// Failed requests contribute no bytes to <see cref="BytesProcessed"/>.
+    /// Whatever a failed request delivered before it failed is still part of
+    /// <see cref="BytesProcessed"/>.
     /// </summary>
     public required int RequestsFailed { get; init; }
 
