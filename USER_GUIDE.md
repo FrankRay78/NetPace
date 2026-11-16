@@ -269,7 +269,7 @@ netpace --csv --no-csv-header >> ~/netpace.csv
 
 `--no-csv-header` leaves the header out of everything: the terminal, redirected or piped standard output, and a `--file` target even when it is new or empty, on every iteration of `--loop` and `--count`. It is accepted alongside the other formats and changes nothing there.
 
-Errors go to standard error, never into the file ([Where errors are written](#where-errors-are-written)), so a new log whose first run failed is still empty, and the first run that writes a row gives it the header.
+Errors go to standard error, never into the file ([Where errors are written](#where-errors-are-written)), so a new log whose first run failed is still empty, and the next run that writes a row gives it the header. Within one `--loop` or `--count` run, though, the header is written only by the first iteration: if that iteration fails before it writes anything, the rows that follow arrive without a header. Stop the run and start it again to get one.
 
 **Start a new log after an upgrade that changes the columns.** While NetPace is below 1.0.0 the CSV columns may gain or move fields between releases, and nothing checks an existing log's header against the columns being written. Rows from a newer version appended to an older log sit under a header that no longer describes them. After an upgrade that changes the columns, move the old log aside and let NetPace start a fresh one.
 
@@ -473,7 +473,7 @@ export NETPACE_THEME=green
 | `plain` | No colour and no bold anywhere. The live table still says how each test went, by its mark and its failed count. |
 | `green` | A green-led look, in mid-tone greens chosen to read on a light terminal as well as a dark one. |
 
-Names are matched without regard to case, so `GREEN` and `green` are the same request. Set the variable to something that is not a theme and NetPace says so on the error stream, naming the theme it is drawing in instead — the run is never stopped by a typo. `--quiet` suppresses that notice along with everything else.
+Names are matched without regard to case, so `GREEN` and `green` are the same request. Set the variable to something that is not a theme and NetPace says so on the error stream, naming the theme it is drawing in instead — the run is never stopped by a typo. `--quiet` suppresses that notice along with the result. Errors are not suppressed (see [Where errors are written](#where-errors-are-written)).
 
 The theme reaches every screen a person reads: the speed test, `servers` in all its forms, and `--help`. It never reaches output another program parses — `--csv` and `--json` are byte-for-byte the same whatever the theme is. `--file` output is always written without colour, and `--minimal` and `--simple` have no colour to change.
 
@@ -591,7 +591,7 @@ Under `--count` or `--loop`, `run.start`, `run.invocation` and `run.end` appear 
 
 The exit code reports only whether **NetPace itself** functioned. Network conditions like a total outage, 100% request failure, or no servers found are *data*, not errors, and NetPace will exit `0`. Only an operational failure (for example, being unable to write the `--file` output) or a usage error (an unusable option value, or two output formats at once) exits non-zero. So a `0 bps` measurement still exits `0` by default: inspect the counts (or use `--fail-on`) to detect it.
 
-**The rule covers every command, not just a speed test.** `netpace servers`, `netpace servers --latency` and `netpace servers --fastest` each report an empty server list, and a failed or timed-out attempt to fetch it — and exit `0` for both. A list no server answered on only arises where screening runs: `--fastest` reports it, `--latency` shows `-` against each row, and both exit `0`. Pressing Ctrl+C exits `0` as well, wherever you press it, and reports no error — it leaves whatever had already been drawn on screen. A script that wants to know whether servers were found reads the output, not the exit code.
+**The rule covers every command, not just a speed test.** `netpace servers`, `netpace servers --latency` and `netpace servers --fastest` each report an empty server list, and a failed or timed-out attempt to fetch it — and exit `0` for both. A list no server answered on only arises where screening runs: `--fastest` reports it, `--latency` shows `-` against each row, and both exit `0`. Pressing Ctrl+C exits `0` as well, wherever you press it, and reports no error — it leaves whatever had already been drawn on screen. A script that wants to know whether servers were found reads standard error, where each of these conditions is reported, not the exit code.
 
 If you want a failed measurement to fail the process, opt in with `--fail-on`. It applies to a speed test; the `servers` command has no opt-in of its own:
 
