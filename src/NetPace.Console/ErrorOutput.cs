@@ -49,9 +49,24 @@ public sealed class ErrorOutput
     }
 
     /// <summary>
-    /// Gets the console errors are written to.
+    /// Gets the console errors are written to, for a test to inspect how it was built.
     /// </summary>
-    public IAnsiConsole Console { get; }
+    /// <remarks>
+    /// Not public, so nothing writes an error past <see cref="WriteLine"/>: written to directly,
+    /// an error would skip the decision that keeps a redirected stream free of escape bytes.
+    /// </remarks>
+    internal IAnsiConsole Console { get; }
+
+    /// <summary>
+    /// Draws errors in the given theme, so they look the way the rest of the run does.
+    /// </summary>
+    /// <param name="theme">The theme the run is drawn in.</param>
+    public void ApplyTheme(Theme theme)
+    {
+        ArgumentNullException.ThrowIfNull(theme);
+
+        theme.ApplyTo(Console);
+    }
 
     /// <summary>
     /// Writes one error, marked as such, on a line of its own.

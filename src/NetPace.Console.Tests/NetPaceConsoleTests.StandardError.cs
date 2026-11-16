@@ -376,7 +376,7 @@ public sealed partial class NetPaceConsoleTests
                 // sequence even where colour has been taken away.
                 using var stream = new StringWriter();
                 var errorOutput = Program.CreateErrorOutput(stream, isRedirected: true);
-                Theme.Green.ApplyTo(errorOutput.Console);
+                errorOutput.ApplyTheme(Theme.Green);
 
                 // When
                 errorOutput.WriteLine(Theme.Green, NetworkFailure);
@@ -392,7 +392,7 @@ public sealed partial class NetPaceConsoleTests
                 // Given the production error console over a stream that is a terminal.
                 using var stream = new StringWriter();
                 var errorOutput = Program.CreateErrorOutput(stream, isRedirected: false);
-                Theme.Green.ApplyTo(errorOutput.Console);
+                errorOutput.ApplyTheme(Theme.Green);
 
                 // When
                 errorOutput.WriteLine(Theme.Green, NetworkFailure);

@@ -699,7 +699,7 @@ public static class Program
         selection.Theme.ApplyTo(ansiConsole);
 
         var errorOutput = serviceProvider.GetRequiredService<ErrorOutput>();
-        selection.Theme.ApplyTo(errorOutput.Console);
+        errorOutput.ApplyTheme(selection.Theme);
 
         var rootCommand = CreateRootCommand(serviceProvider, args, selection.Theme);
         var parseResult = rootCommand.Parse(args);
