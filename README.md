@@ -81,7 +81,7 @@ On a metered or IoT connection? Use the `tiny` profile (≤ 1 MiB total per run)
 netpace --profile tiny
 ```
 
-Prefer a different look? Set `NETPACE_THEME` once — `default` (NetPace's own colours), `plain` (no colour at all) or `green` — and every command is drawn that way:
+Prefer a different look? Set `NETPACE_THEME` once (`default` for NetPace's own colours, `plain` for no colour at all, `green`, or `halloween`) and every command is drawn that way:
 
 ```bash
 export NETPACE_THEME=green
@@ -165,7 +165,7 @@ COMMANDS:
     servers    Show the nearest speed test servers.
 
 ENVIRONMENT:
-    NETPACE_THEME  Colour theme to draw in. <default, plain, green>
+    NETPACE_THEME  Colour theme to draw in. <default, plain, green, halloween>
 
 SEE ALSO:
     https://github.com/FrankRay78/NetPace/blob/main/USER_GUIDE.md
