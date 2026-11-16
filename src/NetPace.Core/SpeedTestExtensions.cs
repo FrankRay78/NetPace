@@ -20,7 +20,7 @@ namespace NetPace.Core;
 /// auto-scaled reading is ever wider than four characters. Rounding never leaves a figure in the wrong band
 /// or unit: <c>9.996</c> reads <c>10.0</c>, <c>99.96</c> reads <c>100</c>, and under auto-scaling a
 /// speed that rounds up to its unit system's divisor is written as <c>1.00</c> of the next unit
-/// rather than as <c>1000 Kbps</c>. The three figures hold only under auto-scaling. Digits before
+/// rather than as <c>1000 Kbps</c>. The three figures are only guaranteed under auto-scaling. Digits before
 /// the decimal point are never rounded away, so a speed pinned to a small unit with
 /// <see cref="SpeedScale"/> keeps every one of them (<c>125000 Kbps</c>), while one pinned to a
 /// large unit keeps two decimal places and so can read <c>0.00 Gbps</c> without being zero. A zero
