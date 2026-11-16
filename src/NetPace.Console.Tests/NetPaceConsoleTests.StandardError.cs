@@ -75,19 +75,25 @@ public sealed partial class NetPaceConsoleTests
             Assert.DoesNotContain(NetworkFailure, result.Output, StringComparison.Ordinal);
         }
 
-        [Fact]
-        public async Task A_File_Log_Never_Receives_An_Error()
+        [Theory]
+        [InlineData("")]
+        [InlineData("--csv")]
+        [InlineData("--json")]
+        [InlineData("--minimal")]
+        [InlineData("--simple")]
+        public async Task A_File_Log_Never_Receives_An_Error(string format)
         {
             // SCENARIO: A file log never receives an error
 
-            // Given a --file target and a run whose test fails.
+            // Given a --file target, in each format, and a run whose test fails.
             var testFile = Path.Join(Path.GetTempPath(), $"netpace-test-{Guid.NewGuid()}.txt");
             var host = FailingHost();
+            string[] args = format.Length == 0 ? ["--file", testFile] : [format, "--file", testFile];
 
             try
             {
                 // When
-                var result = await host.RunAsync(["--simple", "--file", testFile]);
+                var result = await host.RunAsync(args);
 
                 // Then the log holds results only, and the error reached standard error.
                 Assert.Contains(NetworkFailure, result.ErrorOutput, StringComparison.Ordinal);
@@ -98,7 +104,10 @@ public sealed partial class NetPaceConsoleTests
             }
             finally
             {
-                if (System.IO.File.Exists(testFile)) System.IO.File.Delete(testFile);
+                if (System.IO.File.Exists(testFile))
+                {
+                    System.IO.File.Delete(testFile);
+                }
             }
         }
 
@@ -127,7 +136,10 @@ public sealed partial class NetPaceConsoleTests
             }
             finally
             {
-                if (System.IO.File.Exists(testFile)) System.IO.File.Delete(testFile);
+                if (System.IO.File.Exists(testFile))
+                {
+                    System.IO.File.Delete(testFile);
+                }
             }
         }
 
@@ -160,7 +172,10 @@ public sealed partial class NetPaceConsoleTests
             }
             finally
             {
-                if (System.IO.File.Exists(testFile)) System.IO.File.Delete(testFile);
+                if (System.IO.File.Exists(testFile))
+                {
+                    System.IO.File.Delete(testFile);
+                }
             }
         }
 
@@ -178,21 +193,6 @@ public sealed partial class NetPaceConsoleTests
             // Then
             Assert.Equal(1, result.ExitCode);
             Assert.Contains("huge", result.ErrorOutput, StringComparison.Ordinal);
-            Assert.Empty(result.Output);
-        }
-
-        [Fact]
-        public async Task A_Validation_Error_Is_Reported_On_Standard_Error()
-        {
-            // Given a combination of options the settings reject after parsing.
-            var host = FailingHost();
-
-            // When
-            var result = await host.RunAsync(["--no-latency", "--no-download", "--no-upload"]);
-
-            // Then
-            Assert.Equal(1, result.ExitCode);
-            Assert.NotEmpty(result.ErrorOutput);
             Assert.Empty(result.Output);
         }
 

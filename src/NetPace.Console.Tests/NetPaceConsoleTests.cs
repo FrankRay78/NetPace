@@ -566,7 +566,7 @@ public sealed partial class NetPaceConsoleTests
         // Then the run carried on past the failed test: standard output holds a line per measured
         // test and none for the failed one, and the error stream holds that test's error alone.
         Assert.Equal(0, result.ExitCode);
-        Assert.Equal(1, Occurrences(result.ErrorOutput, "Error:"));
+        Assert.Equal("Error: Communication with 'Test Sponsor 1' has failed", result.ErrorOutput.TrimEnd());
         await Verify(result.Output);
     }
 
