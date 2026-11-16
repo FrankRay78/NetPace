@@ -162,7 +162,7 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ErrorOutput errorOutp
                     }
                     finally
                     {
-                        errorOutput.Console.WriteErrorLine(theme, Describe(e));
+                        errorOutput.WriteLine(theme, Describe(e));
                     }
 
                     if (FailOnRequested(settings)) return 1;

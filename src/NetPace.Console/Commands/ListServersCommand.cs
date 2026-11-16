@@ -34,7 +34,7 @@ public sealed class ListServersCommand(IAnsiConsole console, ErrorOutput errorOu
         {
             // The listing itself is the result; what went wrong while fetching it is not, so it
             // goes to the error stream.
-            errorOutput.Console.WriteErrorLine(theme, e.Message);
+            errorOutput.WriteLine(theme, e.Message);
         }
 
         return 0;

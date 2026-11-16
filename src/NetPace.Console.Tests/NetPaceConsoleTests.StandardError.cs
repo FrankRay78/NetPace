@@ -367,6 +367,40 @@ public sealed partial class NetPaceConsoleTests
                 // result that is meant to carry nothing but its format.
                 Assert.True(provider.GetRequiredService<ErrorOutput>().Console.Profile.Capabilities.Ansi);
             }
+
+            [Fact]
+            public void An_Error_Written_To_A_Redirected_Stream_Carries_No_Escape_Bytes()
+            {
+                // Given the production error console over a redirected stream, under the one theme
+                // whose error marker is bold as well as coloured: emphasis is written as an escape
+                // sequence even where colour has been taken away.
+                using var stream = new StringWriter();
+                var errorOutput = Program.CreateErrorOutput(stream, isRedirected: true);
+                Theme.Green.ApplyTo(errorOutput.Console);
+
+                // When
+                errorOutput.WriteLine(Theme.Green, NetworkFailure);
+
+                // Then a scheduler's captured error log holds the words and nothing else.
+                Assert.Equal($"Error: {NetworkFailure}", stream.ToString().TrimEnd());
+                Assert.DoesNotContain('\u001b', stream.ToString());
+            }
+
+            [Fact]
+            public void An_Error_Written_To_A_Terminal_Is_Drawn_In_The_Theme()
+            {
+                // Given the production error console over a stream that is a terminal.
+                using var stream = new StringWriter();
+                var errorOutput = Program.CreateErrorOutput(stream, isRedirected: false);
+                Theme.Green.ApplyTo(errorOutput.Console);
+
+                // When
+                errorOutput.WriteLine(Theme.Green, NetworkFailure);
+
+                // Then the error marker is styled, and the words are intact beneath it.
+                Assert.True(AnsiSnapshot.CarriesStyling(stream.ToString()));
+                Assert.Equal($"Error: {NetworkFailure}", AnsiSnapshot.WithoutStyling(stream.ToString()).TrimEnd());
+            }
         }
     }
 }

@@ -1,3 +1,5 @@
+using NetPace.Console.Theming;
+
 namespace NetPace.Console;
 
 /// <summary>
@@ -20,6 +22,8 @@ namespace NetPace.Console;
 /// </remarks>
 public sealed class ErrorOutput
 {
+    private readonly bool styled;
+
     /// <summary>
     /// Initializes a new instance of the <see cref="ErrorOutput"/> class.
     /// </summary>
@@ -29,17 +33,31 @@ public sealed class ErrorOutput
     /// which <see cref="CompositeAnsiConsole"/>'s is with its primary's — would lose its own limit
     /// too.
     /// </param>
+    /// <param name="styled">
+    /// Whether an error is drawn in the theme at all. <c>false</c> where the stream is not a
+    /// terminal, so a captured error log holds the words and no escape bytes: taking colour away
+    /// from a console still leaves emphasis such as bold, which is written as an escape sequence.
+    /// </param>
     /// <exception cref="ArgumentNullException"><paramref name="console"/> is <c>null</c>.</exception>
-    public ErrorOutput(IAnsiConsole console)
+    public ErrorOutput(IAnsiConsole console, bool styled = true)
     {
         ArgumentNullException.ThrowIfNull(console);
 
         console.Profile.Width = int.MaxValue;
         Console = console;
+        this.styled = styled;
     }
 
     /// <summary>
     /// Gets the console errors are written to.
     /// </summary>
     public IAnsiConsole Console { get; }
+
+    /// <summary>
+    /// Writes one error, marked as such, on a line of its own.
+    /// </summary>
+    /// <param name="theme">The colours and emphasis to draw in, where errors are styled at all.</param>
+    /// <param name="message">What went wrong, in the words the user should read.</param>
+    public void WriteLine(Theme theme, string message) =>
+        Console.WriteErrorLine(styled ? theme : Theme.Plain, message);
 }

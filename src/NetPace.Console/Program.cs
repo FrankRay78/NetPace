@@ -406,8 +406,7 @@ public static class Program
                 // redirect of the result never swallows them and no reader of the result ever meets
                 // a line that is not part of its format. Resolved again here rather than reused
                 // from above, because the throw may have come before that line ran.
-                var errorConsole = serviceProvider.GetRequiredService<ErrorOutput>().Console;
-                errorConsole.WriteErrorLine(theme, ex.Message);
+                serviceProvider.GetRequiredService<ErrorOutput>().WriteLine(theme, ex.Message);
                 return 1;
             }
         }));
@@ -559,8 +558,7 @@ public static class Program
                 // Usage/configuration errors and operational failures go to the error stream.
                 // Network and discovery outcomes never reach here: ListServersCommand reports those
                 // itself and leaves the exit code at 0, as a speed test does.
-                var errorConsole = serviceProvider.GetRequiredService<ErrorOutput>().Console;
-                errorConsole.WriteErrorLine(theme, ex.Message);
+                serviceProvider.GetRequiredService<ErrorOutput>().WriteLine(theme, ex.Message);
                 return 1;
             }
         });
@@ -586,27 +584,36 @@ public static class Program
         // Every error goes to the error stream, for the same reason and one more: a run whose
         // result is redirected still shows the user what went wrong. Its own console rather than
         // the result's, so --quiet and --file never reach it.
-        //
-        // Ansi is forced on rather than detected. Left to detect it, Spectre.Console reads a
-        // redirected error stream as unable to take escape sequences and falls back to a backend
-        // that sets colour through System.Console's own colour properties - which .NET writes to
-        // standard OUTPUT, putting escape bytes in the result this change exists to keep clean.
-        // The ANSI backend always writes to the writer it was given, so the error stream is the
-        // only stream an error can reach. Colour is the part that follows the stream: none where
-        // it is redirected, detected where it is a terminal.
-        services.AddSingleton(new ErrorOutput(AnsiConsole.Create(new AnsiConsoleSettings
-        {
-            Out = new AnsiConsoleOutput(System.Console.Error),
-            Ansi = AnsiSupport.Yes,
-            ColorSystem = System.Console.IsErrorRedirected
-                ? ColorSystemSupport.NoColors
-                : ColorSystemSupport.Detect
-        })));
+        services.AddSingleton(CreateErrorOutput(System.Console.Error, System.Console.IsErrorRedirected));
 
         // Diagnostics go to the error stream, never through the Spectre console: one record per
         // line, whatever the terminal width, and whatever --quiet or --file were set to.
         services.AddSingleton(new DiagnosticOutput(System.Console.Error));
     }
+
+    /// <summary>
+    /// Builds the console every error is written to, over the given stream.
+    /// </summary>
+    /// <remarks>
+    /// Ansi is forced on rather than detected. Left to detect it, Spectre.Console reads a
+    /// redirected error stream as unable to take escape sequences and falls back to a backend that
+    /// sets colour through System.Console's own colour properties - which .NET writes to standard
+    /// OUTPUT, putting escape bytes in the result the error stream exists to keep clean. The ANSI
+    /// backend always writes to the writer it was given, so the error stream is the only stream an
+    /// error can reach. Where the stream is redirected, errors are not styled at all, so a captured
+    /// error log carries the words and no escape bytes.
+    /// </remarks>
+    /// <param name="writer">The stream errors are written to.</param>
+    /// <param name="isRedirected">Whether that stream goes somewhere other than a terminal.</param>
+    internal static ErrorOutput CreateErrorOutput(TextWriter writer, bool isRedirected) =>
+        new(
+            AnsiConsole.Create(new AnsiConsoleSettings
+            {
+                Out = new AnsiConsoleOutput(writer),
+                Ansi = AnsiSupport.Yes,
+                ColorSystem = ColorSystemSupport.Detect
+            }),
+            styled: !isRedirected);
 
     /// <summary>
     /// Run the command line application with the given arguments.
@@ -691,8 +698,8 @@ public static class Program
         var selection = serviceProvider.GetRequiredService<IThemeProvider>().Resolve();
         selection.Theme.ApplyTo(ansiConsole);
 
-        var errorConsole = serviceProvider.GetRequiredService<ErrorOutput>().Console;
-        selection.Theme.ApplyTo(errorConsole);
+        var errorOutput = serviceProvider.GetRequiredService<ErrorOutput>();
+        selection.Theme.ApplyTo(errorOutput.Console);
 
         var rootCommand = CreateRootCommand(serviceProvider, args, selection.Theme);
         var parseResult = rootCommand.Parse(args);
@@ -729,7 +736,7 @@ public static class Program
         {
             foreach (var error in parseResult.Errors)
             {
-                errorConsole.WriteErrorLine(selection.Theme, error.Message);
+                errorOutput.WriteLine(selection.Theme, error.Message);
             }
             return 1;
         }
