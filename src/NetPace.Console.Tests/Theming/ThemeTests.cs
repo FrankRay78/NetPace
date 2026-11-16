@@ -107,13 +107,12 @@ public sealed class ThemeTests
         }
     }
 
-    [InlineData("green")]
-    [InlineData("halloween")]
+    [MemberData(nameof(ThemeRows.ColouredNames), MemberType = typeof(ThemeRows))]
     [Theory]
     public void AColouredTheme_DrawsEveryElementDifferentlyFromTheDefaultTheme(string name)
     {
         // Given
-        Theme.TryParse(name, out var theme);
+        var theme = ThemeRows.Named(name);
 
         // Then no element is left at the default theme's colour, so every line is drawn in the
         // chosen theme rather than only the elements that happened to be easy to change.
@@ -124,13 +123,15 @@ public sealed class ThemeTests
         }
     }
 
-    [Fact]
-    public void HalloweenTheme_ReadsOnABlackTerminalAndAWhiteOneAlike()
+    [MemberData(nameof(ThemeRows.ColouredNames), MemberType = typeof(ThemeRows))]
+    [Theory]
+    public void AColouredTheme_ReadsOnABlackTerminalAndAWhiteOneAlike(string name)
     {
         // Given every colour the theme draws in, the banner among them
-        var colours = Theme.Halloween.Styles
+        var theme = ThemeRows.Named(name);
+        var colours = theme.Styles
             .SelectMany(style => new[] { style.Foreground, style.Background })
-            .Append(Theme.Halloween.Banner)
+            .Append(theme.Banner)
             .Where(colour => colour != Color.Default)
             .Distinct()
             .ToArray();
@@ -161,15 +162,13 @@ public sealed class ThemeTests
         Assert.Equal(ColorSystem.NoColors, console.Profile.Capabilities.ColorSystem);
     }
 
-    [InlineData("default")]
-    [InlineData("green")]
-    [InlineData("halloween")]
+    [MemberData(nameof(ThemeRows.InColourNames), MemberType = typeof(ThemeRows))]
     [Theory]
     public void ApplyTo_AColouredTheme_LeavesTheConsoleAsItFoundIt(string name)
     {
         // Given
         using var console = new TestConsole().Colors(ColorSystem.TrueColor);
-        Theme.TryParse(name, out var theme);
+        var theme = ThemeRows.Named(name);
 
         // When
         theme.ApplyTo(console);

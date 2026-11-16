@@ -1,0 +1,22 @@
+﻿
+\e[38;5;166m    _   __         __     ____                      \e[0m
+\e[38;5;166m   / | / /  ___   / /_   / __ \  ____ _  _____  ___ \e[0m
+\e[38;5;166m  /  |/ /  / _ \ / __/  / /_/ / / __ `/ / ___/ / _ \\e[0m
+\e[38;5;166m / /|  /  /  __// /_   / ____/ / /_/ / / /__  /  __/\e[0m
+\e[38;5;166m/_/ |_/   \___/ \__/  /_/      \__,_/  \___/  \___/ \e[0m
+\e[38;5;166m                                                    \e[0m
+
+\e[1;38;5;166mDESCRIPTION:\e[0m
+Show the nearest speed test servers.
+
+\e[1;38;5;166mUSAGE:\e[0m
+    netpace servers \e[38;5;102m[OPTIONS]\e[0m
+
+\e[1;38;5;166mOPTIONS:\e[0m
+    \e[38;5;104m-h, --help\e[0m       Prints help information.                                   
+    \e[38;5;104m-l, --latency\e[0m    Include server latency in the results.                     
+    \e[38;5;104m-f, --fastest\e[0m    Show the fastest server details, selected by lowest        
+                     latency.                                                   
+
+\e[1;38;5;166mSEE ALSO:\e[0m
+    \e]8;id=0;https://github.com/FrankRay78/NetPace/blob/main/USER_GUIDE.md\e\https://github.com/FrankRay78/NetPace/blob/main/USER_GUIDE.md\e]8;;\e\
