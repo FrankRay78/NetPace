@@ -377,10 +377,9 @@ public sealed class SpeedTestTableTests
             frames.Add(Render(table));
         }
 
-        // Then the four-figure reading is drawn, and every frame's headings sit at the same
-        // offsets: the width reserved for the widest IEC reading covers it, so a column never
-        // has to grow mid-run on the unit system whose figures run widest.
-        Assert.Contains("1010 Kibps", frames[3]);
+        // Then every frame's headings sit at the same offsets, including the one drawing the
+        // four-figure reading: the width reserved for the widest IEC reading covers it, so a
+        // column never has to grow mid-run on the unit system whose figures run widest.
         Assert.All(frames, frame => Assert.Equal(Headings(frames[0]), Headings(frame)));
         await Verify(Frames([.. frames]));
     }
