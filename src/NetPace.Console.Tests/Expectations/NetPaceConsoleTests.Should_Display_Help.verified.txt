@@ -68,7 +68,7 @@ COMMANDS:
     servers    Show the nearest speed test servers.
 
 ENVIRONMENT:
-    NETPACE_THEME  Colour theme to draw in. <default, plain, green>
+    NETPACE_THEME  Colour theme to draw in. <default, plain, green, halloween>
 
 SEE ALSO:
     https://github.com/FrankRay78/NetPace/blob/main/USER_GUIDE.md

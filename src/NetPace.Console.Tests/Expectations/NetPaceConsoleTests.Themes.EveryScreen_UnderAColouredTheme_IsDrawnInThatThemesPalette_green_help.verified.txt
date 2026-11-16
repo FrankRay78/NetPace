@@ -110,7 +110,7 @@ and upload speed testing.
     \e[38;5;29mservers    \e[0mShow the nearest speed test servers.
 
 \e[1;38;5;28mENVIRONMENT:\e[0m
-    \e[38;5;65mNETPACE_THEME\e[0m  Colour theme to draw in. <default, plain, green>
+    \e[38;5;65mNETPACE_THEME\e[0m  Colour theme to draw in. <default, plain, green, halloween>
 
 \e[1;38;5;28mSEE ALSO:\e[0m
     \e]8;id=0;https://github.com/FrankRay78/NetPace/blob/main/USER_GUIDE.md\e\https://github.com/FrankRay78/NetPace/blob/main/USER_GUIDE.md\e]8;;\e\

@@ -472,6 +472,7 @@ export NETPACE_THEME=green
 | `default` | NetPace's own colours. What you get when `NETPACE_THEME` is unset or empty. |
 | `plain` | No colour and no bold anywhere. The live table still says how each test went, by its mark and its failed count. |
 | `green` | A green-led look, in mid-tone greens chosen to read on a light terminal as well as a dark one. |
+| `halloween` | An orange-led look for Halloween, with purple beside it and green for what has finished. Chosen by name, never by the date. |
 
 Names are matched without regard to case, so `GREEN` and `green` are the same request. Set the variable to something that is not a theme and NetPace says so on the error stream, naming the theme it is drawing in instead — the run is never stopped by a typo. `--quiet` suppresses that notice along with the result. Errors are not suppressed (see [Where errors are written](#where-errors-are-written)).
 
