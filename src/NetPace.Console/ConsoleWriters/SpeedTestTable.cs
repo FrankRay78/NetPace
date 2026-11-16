@@ -202,7 +202,7 @@ internal sealed class SpeedTestTable(
 
             var cells = new List<IRenderable>
             {
-                Cell(Mark(row, unicode), outcome),
+                Cell(Mark(row, unicode).PadRight(WidestMark(unicode)), outcome),
                 Cell(row.Name, theme.Figure),
                 Cell(AtColumnWidth(DoneHeading, row.PercentageText), row.IsRunning ? theme.Percentage : theme.PercentageComplete),
                 Cell(AtColumnWidth(SpeedHeading, row.Speed), theme.Figure),
@@ -317,6 +317,19 @@ internal sealed class SpeedTestTable(
         SpeedTestTableRowState.PartiallyFailed => PartiallyFailedMark,
         _ => unicode ? FailedMark : FailedMarkAscii,
     };
+
+    /// <summary>
+    /// The width of the widest mark or spinner frame the console can be shown, which every mark is
+    /// padded to. Without Unicode the spinner's frames are one character and <c>OK</c> is two, so
+    /// a column sized by its contents would widen as the first row settled and move every column
+    /// to its right while the user was reading them.
+    /// </summary>
+    private static int WidestMark(bool unicode) =>
+        (unicode
+            ? Spinner.Known.Dots.Frames.Append(SucceededMark).Append(FailedMark)
+            : Spinner.Known.Ascii.Frames.Append(SucceededMarkAscii).Append(FailedMarkAscii))
+        .Append(PartiallyFailedMark)
+        .Max(mark => mark.Length);
 
     private Style OutcomeStyle(SpeedTestTableRow row) => row.State switch
     {

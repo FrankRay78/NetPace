@@ -97,6 +97,35 @@ public sealed class SpeedTestTableTests
         Assert.DoesNotContain("\u2717", console.Output);
     }
 
+    [Fact]
+    public async Task OnAConsoleThatCannotDrawUnicode_TheColumnsHoldTheirPlaceAsARowSettles()
+    {
+        // Given a console that reports no Unicode, where a running row's spinner frame and a
+        // settled row's mark are not the same width, and a table whose first frame is drawn with
+        // every row still running, as a run's is.
+        var table = Table();
+        var pinging = table.AddRow("Pinging");
+        table.AddRow("Downloading");
+        var running = RenderWithoutUnicode(table);
+
+        // When the first row settles.
+        pinging.Settle(Latency(3, 1));
+        var settled = RenderWithoutUnicode(table);
+
+        // Then the headings sit at the same offsets in both frames, so no column moves sideways
+        // when its row's mark changes from the spinner to the outcome.
+        Assert.Equal(Headings(running), Headings(settled));
+        await Verify(Frames(running, settled));
+    }
+
+    private static string RenderWithoutUnicode(SpeedTestTable table)
+    {
+        var console = new TestConsole().Width(120);
+        console.Profile.Capabilities.Unicode = false;
+        console.Write(table);
+        return console.Output;
+    }
+
     /// <summary>The first column of the first row of figures: the mark or spinner frame.</summary>
     private static string Mark(string rendered) =>
         rendered.Split('\n', StringSplitOptions.RemoveEmptyEntries)[1].TrimStart().Split(' ')[0];
