@@ -5,8 +5,8 @@
 \e[1;38;5;166mTest Sponsor 1\e[0m
 \e[38;5;102mhttp://test1.com\e[0m
 
-\e[?25l    \e[38;5;104mTest\e[0m         \e[38;5;104mDone\e[0m   \e[38;5;104mSpeed\e[0m  \e[38;5;104mLatency\e[0m  \e[38;5;104mJitter\e[0m   \e[38;5;104mFailed\e[0m
-\e[38;5;28m✓\e[0m   \e[1;38;5;166mPinging\e[0m      \e[38;5;28m100%\e[0m           \e[1;38;5;166m100 ms\e[0m    \e[1;38;5;166m0 ms\e[0m         
-\e[1;38;5;130m!\e[0m   \e[1;38;5;166mDownloading\e[0m  \e[38;5;28m100%\e[0m  \e[1;38;5;166m8 Kbps\e[0m                   \e[1;38;5;130m1 of 10\e[0m
-\e[38;5;166m⠋\e[0m   \e[1;38;5;166mUploading\e[0m      \e[38;5;104m0%\e[0m                                  
+\e[?25l    \e[38;5;104mTest\e[0m         \e[38;5;104mDone\e[0m      \e[38;5;104mSpeed\e[0m  \e[38;5;104mLatency\e[0m  \e[38;5;104mJitter\e[0m   \e[38;5;104mFailed\e[0m
+\e[38;5;28m✓\e[0m   \e[1;38;5;166mPinging\e[0m      \e[38;5;28m100%\e[0m  \e[1;38;5;166m         \e[0m   \e[1;38;5;166m100 ms\e[0m  \e[1;38;5;166m  0 ms\e[0m         
+\e[1;38;5;130m!\e[0m   \e[1;38;5;166mDownloading\e[0m  \e[38;5;28m100%\e[0m  \e[1;38;5;166m8.00 Kbps\e[0m   \e[1;38;5;166m      \e[0m  \e[1;38;5;166m      \e[0m  \e[1;38;5;130m1 of 10\e[0m
+\e[38;5;166m⠋\e[0m   \e[1;38;5;166mUploading\e[0m    \e[38;5;104m  0%\e[0m  \e[1;38;5;166m         \e[0m   \e[1;38;5;166m      \e[0m  \e[1;38;5;166m      \e[0m  \e[38;5;166m       \e[0m
 \e[?25h
