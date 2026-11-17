@@ -1,0 +1,72 @@
+# Named, so the start and stop scripts' `down --remove-orphans` can only ever touch this project,
+# never a Compose project of the contributor's own in a directory that happens to share the name.
+name: netpace-lab
+
+services:
+  # The link, and the only container in the lab that shapes anything. It holds the profile table,
+  # the NET_ADMIN capability and the published ports; each server joins its network namespace
+  # instead of having a network of its own. One shaped link therefore carries both servers, with
+  # one set of profiles behind it, so a difference between two providers' figures can only come
+  # from the providers.
+  link:
+    build:
+      context: .
+      dockerfile: Dockerfile.link
+    image: netpace-lab-link
+    container_name: netpace-lab-link
+    ports:
+      # OoklaServer, on the port it has always had. Every interface, so another machine on the
+      # LAN can test against it.
+      - "18080:8080/tcp"
+      - "18080:8080/udp"
+      # LibreSpeed, on the port it has always had. Loopback only, as before.
+      - "127.0.0.1:18081:8081/tcp"
+    # tc needs NET_ADMIN to shape this container's own interface. Compose cannot grant a
+    # capability conditionally on an environment variable, so it is granted always and shape.sh
+    # is what refuses: asked for a profile it cannot apply, it exits rather than hold open a fast
+    # link while claiming to be slow. Neither server container is granted it, so neither server
+    # ever holds it.
+    cap_add:
+      - NET_ADMIN
+    environment:
+      # Set by start.sh from its argument. Empty means no shaping — the full-speed lab. The
+      # default keeps a bare `docker compose up` working unchanged.
+      NETPACE_LINK_PROFILE: "${NETPACE_LINK_PROFILE:-}"
+
+  # OoklaServer. Built rather than pulled: Ookla publishes the daemon only as a tarball.
+  ooklaserver:
+    build:
+      context: .
+      dockerfile: Dockerfile.ooklaserver
+    image: netpace-lab-ooklaserver
+    container_name: netpace-lab-ooklaserver
+    # No ports, and not granted NET_ADMIN: it reaches the host through the link container's
+    # published 18080, and over the link container's shaped interface.
+    network_mode: "service:link"
+    depends_on:
+      # The link image's healthcheck passes only once the link is in the state that was asked for,
+      # so the server never accepts a connection on a link that is not shaped yet. A profile that
+      # cannot be applied stops the link container, and this server is then never started.
+      link:
+        condition: service_healthy
+
+  # LibreSpeed's official image, so there is nothing to build for it.
+  # Pinned, so a local run tests against the server the docs describe rather than whatever was
+  # published last. Bump it deliberately.
+  librespeed:
+    image: ghcr.io/librespeed/speedtest:6.3.1
+    container_name: netpace-lab-librespeed
+    network_mode: "service:link"
+    depends_on:
+      link:
+        condition: service_healthy
+    environment:
+      # Standalone serves the test backend with no telemetry database behind it, which is all
+      # NetPace speaks to. The install directory is then the web root, so the endpoints are at
+      # /backend/empty.php and /backend/garbage.php.
+      MODE: standalone
+      # 8081 inside the container, not the image's default 8080: both servers share the link
+      # container's network namespace, so their inside ports have to differ. LibreSpeed's is the
+      # cheaper one to move — WEBPORT is an image setting, where OoklaServer's ports would need
+      # its properties file edited — so the official image is still used unchanged.
+      WEBPORT: "8081"

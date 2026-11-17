@@ -1,15 +1,16 @@
 #!/usr/bin/env bash
-# The five fixed slow-link profiles the local OoklaServer can be started behind.
+# The five fixed slow-link profiles the lab's servers can be started behind.
 #
 # Sourced, never run: by start.sh on the host, to validate the requested name and
-# report what is in effect, and by shape.sh inside the container, to apply it. One
-# copy of the table so the two can never disagree about what a profile means.
+# report what is in effect, and by shape.sh inside the link container, to apply it.
+# One copy of the table, so the two can never disagree about what a profile means —
+# and one shaped link for every server in the lab, so neither can a provider.
 #
 # Each profile gives netem arguments for both directions, named from NetPace's point
 # of view on the host:
 #
-#   LINK_DOWN   traffic leaving the container   — what NetPace downloads
-#   LINK_UP     traffic entering the container  — what NetPace uploads
+#   LINK_DOWN   traffic leaving the link container   — what NetPace downloads
+#   LINK_UP     traffic entering the link container  — what NetPace uploads
 #
 # Round trip, jitter and loss are stated end to end in the profile table and split
 # evenly between the two directions here, so each direction carries half of each.
