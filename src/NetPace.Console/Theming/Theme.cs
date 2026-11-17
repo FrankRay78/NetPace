@@ -114,11 +114,11 @@ public sealed record Theme
     /// </summary>
     /// <remarks>
     /// Every <see cref="Style"/> slot added above belongs here too; <see cref="Banner"/> is a
-    /// <see cref="Color"/> and so cannot be, and is asserted on separately by the same two tests. A
+    /// <see cref="Color"/> and so cannot be, and is asserted on separately by the same sweeps. A
     /// test pins this list against the <see cref="Style"/> properties the type declares, so a slot
-    /// left out of it fails rather than quietly going uncovered. Two tests read the list — one
-    /// asserting that the plain theme leaves every slot unstyled, the other that the green theme
-    /// moves every slot off the default theme's value.
+    /// left out of it fails rather than quietly going uncovered. The whole-theme sweeps read the
+    /// list: the plain theme leaves every slot unstyled, and each coloured theme moves every slot
+    /// off the default theme's value.
     /// </remarks>
     public IReadOnlyList<Style> Styles =>
     [
@@ -238,9 +238,49 @@ public sealed record Theme
     };
 
     /// <summary>
+    /// An orange-led look for Halloween, chosen by name and never by the date.
+    /// </summary>
+    /// <remarks>
+    /// Four roles carry the screen: orange for what the eye should land on, purple for the things
+    /// beside it, green for what has finished, and a grey for what is deliberately quiet. Two more
+    /// tones mark a measurement that went wrong: a dimmer orange where some requests failed and a
+    /// deep red where the whole thing did. Neither outcome rests on its colour, since the mark and
+    /// the failed count say how the measurement went, as <see cref="Error"/> describes.
+    /// <para>
+    /// Every colour is picked from the 256-colour palette by name, as <see cref="Green"/> is, and
+    /// every one of them clears a 3:1 contrast ratio against pure black and pure white alike, so
+    /// the palette reads on a dark terminal and a light one. A terminal that can draw only sixteen
+    /// colours approximates them, and nothing here promises how that approximation reads.
+    /// </para>
+    /// </remarks>
+    public static Theme Halloween { get; } = new()
+    {
+        Name = "halloween",
+        Banner = Color.DarkOrange3_1,
+        Heading = new Style(foreground: Color.DarkOrange3_1, decoration: Decoration.Bold),
+        Placeholder = new Style(foreground: Color.Grey53),
+        CommandName = new Style(foreground: Color.DarkOrange3_1),
+        DefaultColumnHeading = new Style(foreground: Color.MediumPurple),
+        OptionName = new Style(foreground: Color.MediumPurple),
+        DefaultValue = new Style(foreground: Color.DarkOrange3_1, decoration: Decoration.Bold),
+        Hint = new Style(foreground: Color.Grey53),
+        Error = new Style(foreground: Color.Red3_1, decoration: Decoration.Bold),
+        ServerName = new Style(foreground: Color.DarkOrange3_1, decoration: Decoration.Bold),
+        ServerUrl = new Style(foreground: Color.Grey53),
+        ColumnHeading = new Style(foreground: Color.MediumPurple),
+        Figure = new Style(foreground: Color.DarkOrange3_1, decoration: Decoration.Bold),
+        TableBorder = new Style(foreground: Color.MediumPurple),
+        Success = new Style(foreground: Color.Green4),
+        PartialFailure = new Style(foreground: Color.DarkOrange3, decoration: Decoration.Bold),
+        Percentage = new Style(foreground: Color.MediumPurple),
+        PercentageComplete = new Style(foreground: Color.Green4),
+        Spinner = new Style(foreground: Color.DarkOrange3_1)
+    };
+
+    /// <summary>
     /// Every theme a user can choose, in the order the help screen lists them.
     /// </summary>
-    public static IReadOnlyList<Theme> All { get; } = [Default, Plain, Green];
+    public static IReadOnlyList<Theme> All { get; } = [Default, Plain, Green, Halloween];
 
     /// <summary>
     /// The theme names as the help screen spells them, in the notation the options table uses for a

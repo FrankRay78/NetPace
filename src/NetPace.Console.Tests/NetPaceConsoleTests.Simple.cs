@@ -269,9 +269,9 @@ public sealed partial class NetPaceConsoleTests
 
             // Then
             Assert.NotEqual(0, result.ExitCode);
-            Assert.Contains("Only one output format may be specified", result.Output, StringComparison.Ordinal);
-            Assert.Contains("--simple", result.Output, StringComparison.Ordinal);
-            Assert.Contains(otherFormat, result.Output, StringComparison.Ordinal);
+            Assert.Contains("Only one output format may be specified", result.ErrorOutput, StringComparison.Ordinal);
+            Assert.Contains("--simple", result.ErrorOutput, StringComparison.Ordinal);
+            Assert.Contains(otherFormat, result.ErrorOutput, StringComparison.Ordinal);
         }
     }
 }

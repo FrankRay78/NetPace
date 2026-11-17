@@ -81,17 +81,11 @@ public sealed class CommandLineTestHost
     /// <returns>A test result containing the exit code and output.</returns>
     public async Task<TestResult> RunAsync(string[] args, CancellationToken cancellationToken = default)
     {
-        using var testConsole = new TestConsole().Width(consoleWidth);
+        using var testConsole = CreateConsole();
 
         if (_interactive)
         {
             testConsole.Interactive();
-        }
-
-        if (_recordColour)
-        {
-            testConsole.Colors(ColorSystem.TrueColor);
-            testConsole.EmitAnsiSequences();
         }
 
         serviceCollection.TryAddSingleton<IAnsiConsole>(testConsole);
@@ -105,6 +99,15 @@ public sealed class CommandLineTestHost
         // from both the result and the diagnostics, so a test can assert which stream carried what.
         using var noticeWriter = new StringWriter();
         serviceCollection.TryAddSingleton(new NoticeOutput(noticeWriter));
+
+        // Where every error goes — the process error stream in production, captured apart from the
+        // result for the same reason. Built the same way as the result console: at the width the
+        // run was given rather than at an unlimited one, so the lift that keeps an error on one
+        // line is the production code's and not this host's, and with the same colour, so a test
+        // about an error's colour asks for it the same way.
+        using var errorConsole = CreateConsole();
+
+        serviceCollection.TryAddSingleton(new ErrorOutput(errorConsole));
 
         // A fixed theme unless a test chooses otherwise, so no snapshot depends on what the person
         // running the tests has NETPACE_THEME set to.
@@ -137,7 +140,27 @@ public sealed class CommandLineTestHost
             Output = testConsole.Output,
             DiagnosticOutput = diagnosticWriter.ToString(),
             NoticeOutput = noticeWriter.ToString(),
+            ErrorOutput = errorConsole.Output,
         };
+    }
+
+    /// <summary>
+    /// A console capturing what is written to it, at the width this host was given and emitting
+    /// ANSI sequences only where the host was asked to record colour. Every console the run writes
+    /// through is built here, so neither the result nor the error stream sees a width or a colour
+    /// capability the other does not.
+    /// </summary>
+    private TestConsole CreateConsole()
+    {
+        var console = new TestConsole().Width(consoleWidth);
+
+        if (_recordColour)
+        {
+            console.Colors(ColorSystem.TrueColor);
+            console.EmitAnsiSequences();
+        }
+
+        return console;
     }
 }
 
@@ -166,4 +189,9 @@ public sealed record TestResult
     /// way NetPace was asked to run needed remarking on.
     /// </summary>
     public required string NoticeOutput { get; init; }
+
+    /// <summary>
+    /// Gets what was written to the error stream — empty unless something went wrong.
+    /// </summary>
+    public required string ErrorOutput { get; init; }
 }

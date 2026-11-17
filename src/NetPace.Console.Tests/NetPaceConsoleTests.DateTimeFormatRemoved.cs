@@ -27,7 +27,7 @@ public sealed partial class NetPaceConsoleTests
             // message names the option so the user is not left with a bare failure.
             Assert.Empty(serviceCalls);
             Assert.NotEqual(0, result.ExitCode);
-            Assert.Contains("--datetimeformat", result.Output);
+            Assert.Contains("--datetimeformat", result.ErrorOutput);
         }
 
         [Fact]
@@ -42,7 +42,7 @@ public sealed partial class NetPaceConsoleTests
             // Then
             Assert.Empty(serviceCalls);
             Assert.NotEqual(0, result.ExitCode);
-            Assert.Contains("--datetimeformat", result.Output);
+            Assert.Contains("--datetimeformat", result.ErrorOutput);
         }
 
         [Fact]

@@ -26,7 +26,7 @@ public sealed partial class NetPaceConsoleTests
             // message names the option so the user is not left with a bare failure.
             Assert.Empty(serviceCalls);
             Assert.NotEqual(0, result.ExitCode);
-            Assert.Contains("--csv-delimiter", result.Output);
+            Assert.Contains("--csv-delimiter", result.ErrorOutput);
         }
 
         [Fact]
@@ -42,7 +42,7 @@ public sealed partial class NetPaceConsoleTests
             // suite's only snapshot of an unrecognised option, so it is what pins that rendering.
             Assert.Empty(serviceCalls);
             Assert.NotEqual(0, result.ExitCode);
-            await Verify(result.Output);
+            await Verify(result.ErrorOutput);
         }
 
         [Fact]

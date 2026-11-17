@@ -136,11 +136,13 @@ public sealed partial class NetPaceConsoleTests
             };
 
             // When
-            var output = await RunAtWidthAsync(CommandLineTestHost.RedirectedWidth, ["--csv"], service);
+            var result = await RunResultAtWidthAsync(CommandLineTestHost.RedirectedWidth, ["--csv"], service);
 
-            // Then the error shares the records' stream and is unbroken on it, so a reader taking the
-            // output a line at a time still sees the whole message.
-            Assert.Contains($"Error: {LongErrorMessage}", Lines(output));
+            // Then the error is unbroken on the error stream, so a reader taking it a line at a
+            // time still sees the whole message, and standard output never carries it.
+            Assert.Equal(0, result.ExitCode);
+            Assert.Contains($"Error: {LongErrorMessage}", Lines(result.ErrorOutput));
+            Assert.DoesNotContain("Error:", result.Output, StringComparison.Ordinal);
         }
 
         // SCENARIO: Machine-readable output is unbroken in a narrow terminal
@@ -235,21 +237,32 @@ public sealed partial class NetPaceConsoleTests
             new() { Server = new Server { Location = LongLocation, Sponsor = LongSponsor, Url = LongUrl } };
 
         /// <summary>
-        /// Runs NetPace at the given console width and returns what it wrote to stdout. A fresh host
-        /// per run, because a host registers its console once. The destination is one that cannot
-        /// redraw unless <paramref name="interactive"/> says otherwise.
+        /// Runs NetPace at the given console width and returns what it wrote to stdout, having
+        /// checked the run succeeded. A test asking about another stream calls
+        /// <see cref="RunResultAtWidthAsync"/> instead.
         /// </summary>
         private static async Task<string> RunAtWidthAsync(int width, string[] args, ISpeedTestService? speedTestService = null, IWaiter? waiter = null, bool interactive = false, CancellationToken cancellationToken = default)
+        {
+            var result = await RunResultAtWidthAsync(width, args, speedTestService, waiter, interactive, cancellationToken);
+
+            Assert.Equal(0, result.ExitCode);
+            return result.Output;
+        }
+
+        /// <summary>
+        /// Runs NetPace at the given console width and hands back the whole result, every stream
+        /// included. A fresh host per run, because a host registers its consoles once. The
+        /// destination is one that cannot redraw unless <paramref name="interactive"/> says
+        /// otherwise.
+        /// </summary>
+        private static async Task<TestResult> RunResultAtWidthAsync(int width, string[] args, ISpeedTestService? speedTestService = null, IWaiter? waiter = null, bool interactive = false, CancellationToken cancellationToken = default)
         {
             var services = new ServiceCollection();
             services.AddSingleton(speedTestService ?? new SpeedTestStub());
             services.AddSingleton<IClock, IncrementingClockStub>();
             services.AddSingleton(waiter ?? new NoDelayStub());
 
-            var result = await new CommandLineTestHost(services, width, interactive).RunAsync(args, cancellationToken);
-
-            Assert.Equal(0, result.ExitCode);
-            return result.Output;
+            return await new CommandLineTestHost(services, width, interactive).RunAsync(args, cancellationToken);
         }
 
         /// <summary>

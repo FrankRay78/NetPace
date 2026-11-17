@@ -149,10 +149,12 @@ public sealed partial class NetPaceConsoleTests
             // When
             var result = await HostWith(service).RunAsync(["--minimal"]);
 
-            // Then the line is the bare Error: message, with no timestamp in front of it: this
-            // format is a quick shorthand, not a detailed log.
+            // Then the error stream carries the bare Error: message, with no timestamp in front of
+            // it: this format is a quick shorthand, not a detailed log. A run that measured nothing
+            // writes no minimal line at all, so standard output is empty.
             Assert.Equal(0, result.ExitCode);
-            await Verify(result.Output);
+            Assert.Empty(result.Output);
+            await Verify(result.ErrorOutput);
         }
 
         [Theory]
@@ -219,9 +221,9 @@ public sealed partial class NetPaceConsoleTests
 
             // Then
             Assert.NotEqual(0, result.ExitCode);
-            Assert.Contains("Only one output format may be specified", result.Output, StringComparison.Ordinal);
-            Assert.Contains("--minimal", result.Output, StringComparison.Ordinal);
-            Assert.Contains(otherFormat, result.Output, StringComparison.Ordinal);
+            Assert.Contains("Only one output format may be specified", result.ErrorOutput, StringComparison.Ordinal);
+            Assert.Contains("--minimal", result.ErrorOutput, StringComparison.Ordinal);
+            Assert.Contains(otherFormat, result.ErrorOutput, StringComparison.Ordinal);
         }
 
         [Fact]

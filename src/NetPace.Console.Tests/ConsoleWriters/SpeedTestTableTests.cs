@@ -17,8 +17,8 @@ namespace NetPace.Console.Tests.ConsoleWriters;
 /// </remarks>
 public sealed class SpeedTestTableTests
 {
-    private static SpeedTestTable Table(bool showLatency = true) =>
-        new(Theme.Plain, SpeedUnit.BitsPerSecond, SpeedUnitSystem.SI, SpeedScale.Auto, showLatency, animated: false);
+    private static SpeedTestTable Table(bool showLatency = true, SpeedUnitSystem unitSystem = SpeedUnitSystem.SI) =>
+        new(Theme.Plain, SpeedUnit.BitsPerSecond, unitSystem, SpeedScale.Auto, showLatency, animated: false);
 
     /// <summary>
     /// What the table looks like on a wide, Unicode-capable screen with nothing styled, so an
@@ -97,9 +97,45 @@ public sealed class SpeedTestTableTests
         Assert.DoesNotContain("\u2717", console.Output);
     }
 
+    [Fact]
+    public async Task OnAConsoleThatCannotDrawUnicode_TheColumnsHoldTheirPlaceAsARowSettles()
+    {
+        // Given a console that reports no Unicode, where a running row's spinner frame and a
+        // settled row's mark are not the same width, and a table whose first frame is drawn with
+        // every row still running, as a run's is.
+        var table = Table();
+        var pinging = table.AddRow("Pinging");
+        table.AddRow("Downloading");
+        var running = RenderWithoutUnicode(table);
+
+        // When the first row settles.
+        pinging.Settle(Latency(3, 1));
+        var settled = RenderWithoutUnicode(table);
+
+        // Then the headings sit at the same offsets in both frames, so no column moves sideways
+        // when its row's mark changes from the spinner to the outcome.
+        Assert.Equal(Headings(running), Headings(settled));
+        await Verify(Frames(running, settled));
+    }
+
+    private static string RenderWithoutUnicode(SpeedTestTable table)
+    {
+        var console = new TestConsole().Width(120);
+        console.Profile.Capabilities.Unicode = false;
+        console.Write(table);
+        return console.Output;
+    }
+
     /// <summary>The first column of the first row of figures: the mark or spinner frame.</summary>
     private static string Mark(string rendered) =>
         rendered.Split('\n', StringSplitOptions.RemoveEmptyEntries)[1].TrimStart().Split(' ')[0];
+
+    /// <summary>
+    /// The heading line of a frame. Every column's heading sits over its own values, so comparing
+    /// this line between two frames is how a test reads whether a column has moved sideways.
+    /// </summary>
+    private static string Headings(string rendered) =>
+        rendered.Split('\n', StringSplitOptions.RemoveEmptyEntries)[0].TrimEnd('\r');
 
     /// <summary>
     /// Several frames of the same table, one after another with a blank line between, so a
@@ -175,7 +211,7 @@ public sealed class SpeedTestTableTests
 
         // Then the speed is shown and nothing stands in for the figures that were not measured.
         var settled = Render(table);
-        Assert.Contains("8 Mbps", settled);
+        Assert.Contains("8.00 Mbps", settled);
         Assert.DoesNotContain("ms", settled);
     }
 
@@ -296,6 +332,77 @@ public sealed class SpeedTestTableTests
 
         // Then the figure is already on the row under Latency, with the Jitter cell still blank.
         await Verify(Render(table));
+    }
+
+    [Fact]
+    public async Task TheSpeedColumn_HoldsItsWidthAsTheSpeedChangesScale()
+    {
+        // SCENARIO: Speed column holds its width as the speed changes scale
+
+        // Given a table whose first frame is drawn before any speed has been reported, as a run's
+        // is while the idle latency is still being measured.
+        var table = Table();
+        table.AddRow("Pinging").Settle(Latency(3, 1));
+        var row = table.AddRow("Downloading");
+        List<string> frames = [Render(table)];
+
+        // When the transfer reports speeds that pass from Kbps up to Mbps and back down again,
+        // each a different number of characters wide.
+        foreach ((long bytes, int percentage) in new[] { (1_000L, 10), (100_000L, 30), (1_000_000L, 55), (120_000L, 80), (1_000L, 95) })
+        {
+            row.Report(new SpeedTestProgress { PercentageComplete = percentage, BytesProcessed = bytes, ElapsedMilliseconds = 1000, LatencyMilliseconds = 38, JitterMilliseconds = 3 });
+            frames.Add(Render(table));
+        }
+
+        // Then every frame's headings sit at the same offsets, so the Speed column and the columns
+        // to its right stay where they are while the figure under them changes scale.
+        Assert.All(frames, frame => Assert.Equal(Headings(frames[0]), Headings(frame)));
+        await Verify(Frames([.. frames]));
+    }
+
+    [Fact]
+    public async Task TheSpeedColumn_UnderIecAutoScaling_HoldsItsWidthThroughTheFourDigitBand()
+    {
+        // Given an IEC auto-scaled table, whose Kibps band runs up to 1023 and so writes a
+        // four-figure whole number that SI auto-scaling, capped at 999, never produces.
+        var table = Table(unitSystem: SpeedUnitSystem.IEC);
+        table.AddRow("Pinging").Settle(Latency(3, 1));
+        var row = table.AddRow("Downloading");
+        List<string> frames = [Render(table)];
+
+        // When the transfer climbs through that band and on into Mibps, then falls back.
+        foreach ((long bytes, int percentage) in new[] { (1_024L, 10), (64_000L, 30), (129_280L, 55), (262_144L, 80), (64_000L, 95) })
+        {
+            row.Report(new SpeedTestProgress { PercentageComplete = percentage, BytesProcessed = bytes, ElapsedMilliseconds = 1000, LatencyMilliseconds = 38, JitterMilliseconds = 3 });
+            frames.Add(Render(table));
+        }
+
+        // Then every frame's headings sit at the same offsets, including the one drawing the
+        // four-figure reading: the width reserved for the widest IEC reading covers it, so a
+        // column never has to grow mid-run on the unit system whose figures run widest.
+        Assert.All(frames, frame => Assert.Equal(Headings(frames[0]), Headings(frame)));
+        await Verify(Frames([.. frames]));
+    }
+
+    [Fact]
+    public async Task AColumnWidenedByAnOutsizedValue_DoesNotNarrowAgain()
+    {
+        // SCENARIO: A column widened by an outsized value does not narrow again
+
+        // Given a latency row that has reported a reading wider than the Latency column reserves.
+        var table = Table();
+        var row = table.AddRow("Pinging");
+        row.Report(new LatencyTestProgress { PercentageComplete = 50, LatencyMilliseconds = 12345, JitterMilliseconds = 6 });
+        var widened = Render(table);
+
+        // When a later reading is narrower again.
+        row.Report(new LatencyTestProgress { PercentageComplete = 75, LatencyMilliseconds = 42, JitterMilliseconds = 6 });
+
+        // Then the column keeps the width the outsized reading gave it, so the run's remaining
+        // frames do not shuffle back the other way.
+        var narrower = Render(table);
+        Assert.Equal(Headings(widened), Headings(narrower));
+        await Verify(Frames(widened, narrower));
     }
 
     [Fact]

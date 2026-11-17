@@ -55,9 +55,9 @@ public sealed partial class SpeedTestExtensionsTests
             Assert.Equal(0L, bitsPerSecond);
         }
 
-        [InlineData(SpeedUnit.BitsPerSecond, SpeedUnitSystem.SI, SpeedScale.Auto, "18.67 Kbps")]
-        [InlineData(SpeedUnit.BytesPerSecond, SpeedUnitSystem.IEC, SpeedScale.Mega, "0 MiBps")]
-        [InlineData(SpeedUnit.BytesPerSecond, SpeedUnitSystem.SI, SpeedScale.Base, "2333.33 Bps")]
+        [InlineData(SpeedUnit.BitsPerSecond, SpeedUnitSystem.SI, SpeedScale.Auto, "18.7 Kbps")]
+        [InlineData(SpeedUnit.BytesPerSecond, SpeedUnitSystem.IEC, SpeedScale.Mega, "0.00 MiBps")]
+        [InlineData(SpeedUnit.BytesPerSecond, SpeedUnitSystem.SI, SpeedScale.Base, "2333 Bps")]
         [Theory]
         public void GetBitsPerSecond_WhateverTheFormattingOptions_IsUnchanged(SpeedUnit unit, SpeedUnitSystem unitSystem, SpeedScale scale, string expectedFormatted)
         {

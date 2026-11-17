@@ -79,7 +79,7 @@ public sealed partial class NetPaceConsoleTests
 
             // Then the network condition is reported as data, not as a NetPace fault.
             Assert.Equal(0, result.ExitCode);
-            Assert.Contains("The response ended prematurely", result.Output);
+            Assert.Contains("The response ended prematurely", result.ErrorOutput);
         }
 
         [Fact]
@@ -98,7 +98,7 @@ public sealed partial class NetPaceConsoleTests
 
             // Then the path renders literally and the process reports the fault.
             Assert.Equal(1, result.ExitCode);
-            Assert.Contains("out[1].csv", result.Output);
+            Assert.Contains("out[1].csv", result.ErrorOutput);
         }
 
         [Fact]
@@ -305,9 +305,9 @@ public sealed partial class NetPaceConsoleTests
             // When run with the default latency probe enabled.
             var result = await host.RunAsync(["--server-url", "http://unreachable.example/upload.php"]);
 
-            // Then the reason reaches the console and the process exits 0 (not 1).
+            // Then the reason reaches the error stream and the process exits 0 (not 1).
             Assert.Equal(0, result.ExitCode);
-            Assert.Contains("Could not open socket", result.Output);
+            Assert.Contains("Could not open socket", result.ErrorOutput);
         }
 
         [Fact]
@@ -364,7 +364,7 @@ public sealed partial class NetPaceConsoleTests
 
             // Then the process stops at the first iteration rather than reporting all five.
             Assert.Equal(1, result.ExitCode);
-            Assert.Equal(1, result.Output.Split("No such host is known").Length - 1);
+            Assert.Equal(1, Occurrences(result.ErrorOutput, "No such host is known"));
         }
     }
 }

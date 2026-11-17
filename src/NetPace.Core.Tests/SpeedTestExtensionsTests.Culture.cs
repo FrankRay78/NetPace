@@ -12,7 +12,7 @@ public sealed partial class SpeedTestExtensionsTests
     {
         /// <summary>
         /// 7000 bytes in 3 seconds is 18666.67 bits per second, which renders as the fractional
-        /// "18.67 Kbps" — a value whose decimal separator a comma-decimal culture would change.
+        /// "18.7 Kbps" — a value whose decimal separator a comma-decimal culture would change.
         /// </summary>
         private static SpeedTestResult FractionalSpeed() =>
             new() { BytesProcessed = 7000, ElapsedMilliseconds = 3000, RequestsSucceeded = 1, RequestsFailed = 0, Latency = null };
@@ -51,7 +51,7 @@ public sealed partial class SpeedTestExtensionsTests
             var formatted = UnderCulture(culture, () => result.GetSpeedString(SpeedUnit.BitsPerSecond, SpeedUnitSystem.SI));
 
             // Then the text reads the same as it does under an English culture.
-            Assert.Equal("18.67 Kbps", formatted);
+            Assert.Equal("18.7 Kbps", formatted);
         }
 
         [Theory]
@@ -66,7 +66,7 @@ public sealed partial class SpeedTestExtensionsTests
             var (speed, unit) = UnderCulture(culture, () => result.GetSpeedStringParts(SpeedUnit.BitsPerSecond, SpeedUnitSystem.SI));
 
             // Then
-            Assert.Equal("18.67", speed);
+            Assert.Equal("18.7", speed);
             Assert.Equal("Kbps", unit);
         }
 
@@ -82,7 +82,7 @@ public sealed partial class SpeedTestExtensionsTests
             var formatted = UnderCulture(culture, () => result.GetSpeedString(SpeedUnit.BitsPerSecond, SpeedUnitSystem.SI, SpeedScale.Kilo));
 
             // Then
-            Assert.Equal("18.67 Kbps", formatted);
+            Assert.Equal("18.7 Kbps", formatted);
         }
 
         [Theory]
@@ -97,7 +97,7 @@ public sealed partial class SpeedTestExtensionsTests
             var formatted = UnderCulture(culture, () => progress.GetSpeedString(SpeedUnit.BitsPerSecond, SpeedUnitSystem.SI));
 
             // Then
-            Assert.Equal("18.67 Kbps", formatted);
+            Assert.Equal("18.7 Kbps", formatted);
         }
     }
 }
