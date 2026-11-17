@@ -118,9 +118,9 @@ else
   DEADLINE=60
 fi
 
-# This lab replaces two earlier ones, in docker/ooklaserver/ and docker/librespeed/. A container
-# either of them left running holds host port 18080 or 18081, so the lab would fail to publish
-# it. Matched on the Compose project and service labels, both of which must match, so this lab's
+# This lab replaces two earlier ones, since removed, in docker/ooklaserver/ and
+# docker/librespeed/. A container either of them left running holds host port 18080 or 18081, so
+# the lab would fail to publish it. Matched on the Compose project and service labels, both of which must match, so this lab's
 # own ooklaserver service (project netpace-lab) is never caught by it.
 #
 # The old librespeed lab named its project netpace-librespeed, so that call can match nothing

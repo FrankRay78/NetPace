@@ -46,9 +46,11 @@ LibreSpeed needs no `Dockerfile`: it publishes an official image, which the lab 
 
 ```bash
 ./start.sh                        # both servers, full local speed
-./start.sh satellite              # both servers behind a geostationary satellite link
-./start.sh satellite --librespeed # LibreSpeed alone, behind that link
 ./start.sh --ookla                # OoklaServer alone, full local speed
+./start.sh --librespeed           # LibreSpeed alone, full local speed
+./start.sh satellite              # both servers behind a geostationary satellite link
+./start.sh satellite --ookla      # OoklaServer alone, behind that link
+./start.sh satellite --librespeed # LibreSpeed alone, behind that link
 ```
 
 With no profile the link runs at full local speed. With neither `--ookla` nor `--librespeed`, both servers are started. `./start.sh --help` lists the profiles and the servers.
@@ -178,7 +180,7 @@ That shape is what gives the lab its guarantees:
 
 **The lab does not restart itself.** After a crash or a reboot it stays down until you start it again, so a container can never come back fast while still claiming to be slow.
 
-**A start clears the old labs.** This lab replaces two earlier ones, in `docker/ooklaserver/` and `docker/librespeed/`. A container either of them left running holds one of the host ports, so a start removes it first, matched on its Compose project and service labels rather than on its name alone. The old librespeed lab named its project, so that match is exact; the old ookla lab did not, so its label is the directory-derived `ooklaserver` and a Compose project of your own by that name, with a service by that name, would be removed too.
+**A start clears the old labs.** This lab replaces two earlier ones, which lived in `docker/ooklaserver/` and `docker/librespeed/` and have since been removed. A container either of them left running holds one of the host ports, so a start removes it first, matched on its Compose project and service labels rather than on its name alone. The old librespeed lab named its project, so that match is exact. The old ookla lab did not, so its label is the directory-derived `ooklaserver`; the match also requires the container name that lab fixed, `ooklaserver`, so a Compose project of your own is removed only if its project, service and container all carry that name.
 
 `start.sh` polls each server through its published port, which is the address you are about to use, rather than loopback inside the container. For LibreSpeed it waits for the answer NetPace itself requires: a success status **and an empty body**. A plain web server answering at the same address with a page would satisfy a status-only check and then fail every NetPace run.
 
