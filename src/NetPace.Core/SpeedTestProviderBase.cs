@@ -1083,6 +1083,12 @@ public abstract class SpeedTestProviderBase : ISpeedTestService
                 // Limit concurrent executions by waiting for a permit from the semaphore.
                 await throttler.WaitAsync(cts.Token).ConfigureAwait(false);
 
+                // SemaphoreSlim.WaitAsync can return a permit after its token was cancelled, when a
+                // Release lands before the cancelled waiter is dequeued. Checked again here, before
+                // the request counts as started, so a request the test ended while it waited its
+                // turn is never sent and leaves no record.
+                cts.Token.ThrowIfCancellationRequested();
+
                 sequence = Interlocked.Increment(ref sequenceIssued);
                 startedAt = timeProvider.GetLocalNow().DateTime;
                 startTimestamp = timeProvider.GetTimestamp();

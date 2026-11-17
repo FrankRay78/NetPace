@@ -244,19 +244,36 @@ public sealed partial class OoklaSpeedtestTests
         private static void AnswerTwiceThenHang(MockHttpMessageHandler mockHttp) =>
             AnswerThenHang(mockHttp, answers: 2, payloadBytes: 0);
 
+        /// <remarks>
+        /// The last answered request is held back until the request after it has reached the
+        /// server. Without that, a fast enough first answer can complete, report progress and so
+        /// trigger the stop before the second request has even started, leaving nothing in flight.
+        /// </remarks>
         private static void AnswerThenHang(MockHttpMessageHandler mockHttp, int answers, int payloadBytes)
         {
-            var answered = 0;
+            var arrived = 0;
+            var nextRequestInFlight = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
 
-            mockHttp.When("*").Respond(_ =>
+            mockHttp.When("*").Respond(async _ =>
             {
-                if (Interlocked.Increment(ref answered) <= answers)
+                var order = Interlocked.Increment(ref arrived);
+
+                if (order < answers)
                 {
-                    return Task.FromResult(new HttpResponseMessage { Content = new ByteArrayContent(new byte[payloadBytes]) });
+                    return Answer(payloadBytes);
                 }
 
-                return new TaskCompletionSource<HttpResponseMessage>().Task;
+                if (order == answers)
+                {
+                    await nextRequestInFlight.Task;
+                    return Answer(payloadBytes);
+                }
+
+                nextRequestInFlight.TrySetResult();
+                return await new TaskCompletionSource<HttpResponseMessage>().Task;
             });
+
+            static HttpResponseMessage Answer(int payloadBytes) => new() { Content = new ByteArrayContent(new byte[payloadBytes]) };
         }
 
         /// <summary>
