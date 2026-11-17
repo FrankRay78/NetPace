@@ -108,14 +108,16 @@ public sealed partial class NetPaceConsoleTests
             try
             {
                 // When both run.
-                await HostWith().RunAsync(["--diagnostics-file", alone]);
-                await HostWith().RunAsync(["--diagnostics", "--diagnostics-file", withSwitch]);
+                var fileOnly = await HostWith().RunAsync(["--diagnostics-file", alone]);
+                var bothSwitches = await HostWith().RunAsync(["--diagnostics", "--diagnostics-file", withSwitch]);
 
                 // Then the file was written either way, and the extra switch added nothing to it
                 // and sent nothing to the error stream.
                 Assert.Equal(
                     WithoutInvocation(await System.IO.File.ReadAllTextAsync(alone)),
                     WithoutInvocation(await System.IO.File.ReadAllTextAsync(withSwitch)));
+                Assert.Equal(string.Empty, fileOnly.DiagnosticOutput);
+                Assert.Equal(string.Empty, bothSwitches.DiagnosticOutput);
             }
             finally
             {
