@@ -19,6 +19,52 @@ public sealed partial class NetPaceConsoleTests
             return GetCommandLineTestHost(services);
         }
 
+        /// <summary>
+        /// A host whose tests fail or measure as <paramref name="service"/> decides, pausing between
+        /// tests as <paramref name="waiter"/> decides. The clock advances per test, so every row
+        /// carries its own timestamp and a snapshot cannot be satisfied by one row written twice.
+        /// </summary>
+        private static CommandLineTestHost NewHost(ISpeedTestService service, IWaiter waiter)
+        {
+            var services = new ServiceCollection();
+            services.AddSingleton(service);
+            services.AddSingleton<IClock, IncrementingClockStub>();
+            services.AddSingleton(waiter);
+            return GetCommandLineTestHost(services);
+        }
+
+        /// <summary>
+        /// The server a run under <see cref="ServiceWhoseProbeThrows"/> is pointed at, so its tests
+        /// go through the by-URL latency probe and nothing is discovered.
+        /// </summary>
+        private const string ProbedServerUrl = "http://slow.example/upload.php";
+
+        /// <summary>
+        /// A service whose latency probe throws on the probes <paramref name="throwsOn"/> selects,
+        /// counted from one, and measures normally on the rest. The probe is where a test is
+        /// abandoned whole, so a failed test leaves no part of a row behind.
+        /// </summary>
+        private static ISpeedTestService ServiceWhoseProbeThrows(Func<int, bool> throwsOn)
+        {
+            var probes = 0;
+
+            return new SpeedTestMock
+            {
+                GetServerLatencyByServerUrlAsyncFunc = (url, _, _) => throwsOn(Interlocked.Increment(ref probes))
+                    ? throw new HttpRequestException("Could not open socket")
+                    : Task.FromResult(new LatencyTestResult
+                    {
+                        Server = new Server { Sponsor = "Deutsche Telekom", Location = "Frankfurt", Url = url },
+                        LatencyMilliseconds = 24,
+                        MinimumLatencyMilliseconds = null,
+                        MaximumLatencyMilliseconds = null,
+                        JitterMilliseconds = 3
+                    }),
+                GetDownloadSpeedAsyncFunc = (_, _, _) => Task.FromResult(ScriptedSpeedTester.Clean(150)),
+                GetUploadSpeedAsyncFunc = (_, _, _) => Task.FromResult(ScriptedSpeedTester.Clean(32))
+            };
+        }
+
         // SCENARIO: Repeated appends to one file keep a single header
         [Fact]
         public async Task Should_Keep_One_Header_When_Csv_Is_Appended_To_The_Same_File_Repeatedly()
@@ -430,6 +476,76 @@ public sealed partial class NetPaceConsoleTests
 
             var fileContent = await System.IO.File.ReadAllTextAsync(target.FilePath);
             await Verify(fileContent);
+        }
+
+        // SCENARIO: A looping run whose first test fails still gets its header
+        [Fact]
+        public async Task Should_Write_The_Header_Above_The_First_Row_When_The_First_Test_Of_A_Looping_Run_Failed()
+        {
+            // Given a looping run whose first test fails and whose later tests measure normally,
+            // cancelled by its own pause after the third test
+            var cancellationTokenSource = new CancellationTokenSource();
+            var host = NewHost(
+                ServiceWhoseProbeThrows(probe => probe == 1),
+                new SelfCancellingWaiter(3, cancellationTokenSource));
+
+            // When NetPace runs with --csv --loop
+            var result = await host.RunAsync(
+                ["--server-url", ProbedServerUrl, "--csv", "--loop"],
+                cancellationTokenSource.Token);
+
+            // Then standard output holds one header line, directly above the first row the run
+            // managed to write
+            Assert.Equal(0, result.ExitCode);
+            await Verify(result.Output);
+        }
+
+        [Fact]
+        public async Task Should_Write_The_Header_Above_The_First_Row_When_An_Earlier_Test_In_A_Counted_Run_Failed()
+        {
+            // Given a run of three tests whose first fails and whose later tests measure normally
+            var host = NewHost(ServiceWhoseProbeThrows(probe => probe == 1), new NoDelayStub());
+
+            // When NetPace runs with --csv --count 3
+            var result = await host.RunAsync(["--server-url", ProbedServerUrl, "--csv", "--count", "3"]);
+
+            // Then standard output holds one header line, directly above the first of the two rows
+            Assert.Equal(0, result.ExitCode);
+            await Verify(result.Output);
+        }
+
+        [Fact]
+        public async Task Should_Write_One_Header_To_A_New_Log_When_An_Earlier_Test_In_A_Counted_Run_Failed()
+        {
+            // Given no log file exists, and a run of three tests whose first fails
+            using var log = new TempLogFile();
+            var host = NewHost(ServiceWhoseProbeThrows(probe => probe == 1), new NoDelayStub());
+
+            // When NetPace appends that run's results to it
+            var result = await host.RunAsync(
+                ["--server-url", ProbedServerUrl, "--csv", "--file", log.FilePath, "--count", "3"]);
+
+            // Then the log holds one header line followed by the two rows, rather than collecting
+            // rows under no column names
+            Assert.Equal(0, result.ExitCode);
+
+            var fileContent = await System.IO.File.ReadAllTextAsync(log.FilePath);
+            await Verify(fileContent);
+        }
+
+        [Fact]
+        public async Task Should_Write_No_Header_When_Every_Test_In_A_Counted_Run_Failed()
+        {
+            // Given a run of three tests, every one of which fails
+            var host = NewHost(ServiceWhoseProbeThrows(_ => true), new NoDelayStub());
+
+            // When NetPace runs with --csv --count 3
+            var result = await host.RunAsync(["--server-url", ProbedServerUrl, "--csv", "--count", "3"]);
+
+            // Then it wrote no row, so it wrote no header either
+            Assert.Equal(0, result.ExitCode);
+            Assert.DoesNotContain("Timestamp,LatencyMilliseconds", result.Output, StringComparison.Ordinal);
+            Assert.Equal(string.Empty, result.Output);
         }
 
         /// <summary>

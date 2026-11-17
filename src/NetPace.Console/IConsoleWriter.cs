@@ -19,10 +19,12 @@ public interface IConsoleWriter
     /// <summary>
     /// Performs a speed test and writes the result to the console.
     /// </summary>
-    /// <param name="initialSpeedTest">
-    /// <see langword="true"/> if this is the first test in a sequence; used by writers that emit a
-    /// header row (e.g. CSV) to decide whether to include it.
-    /// </param>
+    /// <remarks>
+    /// One writer serves a whole run, so a format with anything to say once per run - the CSV
+    /// header line - remembers that for itself rather than being told which test it is on. A run
+    /// writes nothing on a test that failed, and the header is the one thing whose place depends on
+    /// what earlier tests managed to write.
+    /// </remarks>
     /// <param name="console">The Spectre.Console instance used for output.</param>
     /// <param name="clock">Clock used to obtain the current timestamp for each result.</param>
     /// <param name="clientInfoProvider">Provider for device identity values (IP address and hostname).</param>
@@ -34,5 +36,5 @@ public interface IConsoleWriter
     /// The download and upload measurements this run produced, each <see langword="null"/> when
     /// that test was not requested; used by the command to apply exit-code policy.
     /// </returns>
-    Task<SpeedTestOutcome> PerformSpeedTestAsync(bool initialSpeedTest, IAnsiConsole console, IClock clock, IClientInfoProvider clientInfoProvider, IDiagnosticRecorder recorder, ISpeedTestService speedTestClient, SpeedTestCommandSettings settings, CancellationToken cancellationToken);
+    Task<SpeedTestOutcome> PerformSpeedTestAsync(IAnsiConsole console, IClock clock, IClientInfoProvider clientInfoProvider, IDiagnosticRecorder recorder, ISpeedTestService speedTestClient, SpeedTestCommandSettings settings, CancellationToken cancellationToken);
 }
