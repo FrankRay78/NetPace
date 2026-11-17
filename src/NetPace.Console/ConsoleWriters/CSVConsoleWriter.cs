@@ -7,8 +7,10 @@ namespace NetPace.Console.ConsoleWriters;
 public sealed class CSVConsoleWriter : IConsoleWriter
 {
     /// <summary>
-    /// Whether this run has written its header line. One writer serves a whole run, so the run's
-    /// first row is the one it sits above, whatever happened before that row.
+    /// Whether this run has settled its header line, which is not the same as having written one:
+    /// a destination that already holds content is sent no header, and the run is still done
+    /// deciding. One writer serves a whole run, so the run's first row is the one the header sits
+    /// above, whatever happened before that row.
     /// </summary>
     private bool headerWritten;
 
@@ -22,11 +24,11 @@ public sealed class CSVConsoleWriter : IConsoleWriter
         var outcome = await Measurements.PerformAsync(speedTestClient, fastest.Server, settings, recorder, cancellationToken);
 
         // Header row, emitted directly above the run's first data row rather than on its first
-        // attempt: a test that failed writes no row, and the one that follows it must still find its
-        // column names above it. The first test of a run is the likeliest to fail - a loop started
-        // before the network is up - so a run keyed off the attempt left exactly the longest logs
-        // headerless. Not emitted at all where --no-csv-header asks for rows only. Which
-        // destinations receive it is settled below: one
+        // attempt: a test abandoned by an exception reaches no row, and the one that follows it
+        // must still find its column names above it. The first test of a run is the likeliest to be
+        // lost that way (a loop started before the network is up), so keying the header off the
+        // attempt left the longest-running logs headerless. Not emitted at all where
+        // --no-csv-header asks for rows only. Which destinations receive it is settled below: one
         // that already holds content is not sent the header, so a log appended to across runs does
         // not gain a header line between every pair of rows. Every built-in column is present
         // whichever tests ran, so a script can read by name or by position within one run. Each

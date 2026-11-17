@@ -7,6 +7,12 @@ public sealed partial class NetPaceConsoleTests
 {
     public sealed class CSVHeader
     {
+        /// <summary>
+        /// The server a run under <see cref="ServiceWhoseProbeThrows"/> is pointed at, so its tests
+        /// go through the by-URL latency probe and nothing is discovered.
+        /// </summary>
+        private const string ProbedServerUrl = "http://slow.example/upload.php";
+
         private static CommandLineTestHost NewHost(bool incrementingClock = false) =>
             NewHost(incrementingClock ? new IncrementingClockStub() : new ClockStub());
 
@@ -21,8 +27,10 @@ public sealed partial class NetPaceConsoleTests
 
         /// <summary>
         /// A host whose tests fail or measure as <paramref name="service"/> decides, pausing between
-        /// tests as <paramref name="waiter"/> decides. The clock advances per test, so every row
-        /// carries its own timestamp and a snapshot cannot be satisfied by one row written twice.
+        /// tests as <paramref name="waiter"/> decides. The clock advances on each row written, so
+        /// every row carries its own timestamp and a snapshot cannot be satisfied by one row
+        /// written twice. A test abandoned before it composes a row reads the clock not at all,
+        /// which is why a run whose first test failed still opens at the base time.
         /// </summary>
         private static CommandLineTestHost NewHost(ISpeedTestService service, IWaiter waiter)
         {
@@ -31,38 +39,6 @@ public sealed partial class NetPaceConsoleTests
             services.AddSingleton<IClock, IncrementingClockStub>();
             services.AddSingleton(waiter);
             return GetCommandLineTestHost(services);
-        }
-
-        /// <summary>
-        /// The server a run under <see cref="ServiceWhoseProbeThrows"/> is pointed at, so its tests
-        /// go through the by-URL latency probe and nothing is discovered.
-        /// </summary>
-        private const string ProbedServerUrl = "http://slow.example/upload.php";
-
-        /// <summary>
-        /// A service whose latency probe throws on the probes <paramref name="throwsOn"/> selects,
-        /// counted from one, and measures normally on the rest. The probe is where a test is
-        /// abandoned whole, so a failed test leaves no part of a row behind.
-        /// </summary>
-        private static ISpeedTestService ServiceWhoseProbeThrows(Func<int, bool> throwsOn)
-        {
-            var probes = 0;
-
-            return new SpeedTestMock
-            {
-                GetServerLatencyByServerUrlAsyncFunc = (url, _, _) => throwsOn(Interlocked.Increment(ref probes))
-                    ? throw new HttpRequestException("Could not open socket")
-                    : Task.FromResult(new LatencyTestResult
-                    {
-                        Server = new Server { Sponsor = "Deutsche Telekom", Location = "Frankfurt", Url = url },
-                        LatencyMilliseconds = 24,
-                        MinimumLatencyMilliseconds = null,
-                        MaximumLatencyMilliseconds = null,
-                        JitterMilliseconds = 3
-                    }),
-                GetDownloadSpeedAsyncFunc = (_, _, _) => Task.FromResult(ScriptedSpeedTester.Clean(150)),
-                GetUploadSpeedAsyncFunc = (_, _, _) => Task.FromResult(ScriptedSpeedTester.Clean(32))
-            };
         }
 
         // SCENARIO: Repeated appends to one file keep a single header
@@ -495,8 +471,9 @@ public sealed partial class NetPaceConsoleTests
                 cancellationTokenSource.Token);
 
             // Then standard output holds one header line, directly above the first row the run
-            // managed to write
+            // managed to write, and the test that failed was reported on standard error
             Assert.Equal(0, result.ExitCode);
+            Assert.Equal(1, Occurrences(result.ErrorOutput, "Could not open socket"));
             await Verify(result.Output);
         }
 
@@ -509,8 +486,10 @@ public sealed partial class NetPaceConsoleTests
             // When NetPace runs with --csv --count 3
             var result = await host.RunAsync(["--server-url", ProbedServerUrl, "--csv", "--count", "3"]);
 
-            // Then standard output holds one header line, directly above the first of the two rows
+            // Then standard output holds one header line, directly above the first of the two rows,
+            // and the test that failed was reported on standard error
             Assert.Equal(0, result.ExitCode);
+            Assert.Equal(1, Occurrences(result.ErrorOutput, "Could not open socket"));
             await Verify(result.Output);
         }
 
@@ -526,8 +505,9 @@ public sealed partial class NetPaceConsoleTests
                 ["--server-url", ProbedServerUrl, "--csv", "--file", log.FilePath, "--count", "3"]);
 
             // Then the log holds one header line followed by the two rows, rather than collecting
-            // rows under no column names
+            // rows under no column names, and the test that failed was reported on standard error
             Assert.Equal(0, result.ExitCode);
+            Assert.Equal(1, Occurrences(result.ErrorOutput, "Could not open socket"));
 
             var fileContent = await System.IO.File.ReadAllTextAsync(log.FilePath);
             await Verify(fileContent);
@@ -542,10 +522,11 @@ public sealed partial class NetPaceConsoleTests
             // When NetPace runs with --csv --count 3
             var result = await host.RunAsync(["--server-url", ProbedServerUrl, "--csv", "--count", "3"]);
 
-            // Then it wrote no row, so it wrote no header either
+            // Then it wrote no row, so it wrote no header either, and all three failures were
+            // reported on standard error rather than passing in silence
             Assert.Equal(0, result.ExitCode);
-            Assert.DoesNotContain("Timestamp,LatencyMilliseconds", result.Output, StringComparison.Ordinal);
-            Assert.Equal(string.Empty, result.Output);
+            Assert.Equal(3, Occurrences(result.ErrorOutput, "Could not open socket"));
+            Assert.Empty(result.Output);
         }
 
         /// <summary>
