@@ -100,11 +100,14 @@ fi
 # `if` rather than `[ … ] && …`: under `set -e` a test that comes out false is a failed command
 # on its own, and the script would exit before it ever reached Docker.
 SERVICES="link"
+SERVERS=""
 if [ -n "$WANT_OOKLA" ]; then
   SERVICES="$SERVICES ooklaserver"
+  SERVERS="OoklaServer"
 fi
 if [ -n "$WANT_LIBRESPEED" ]; then
   SERVICES="$SERVICES librespeed"
+  SERVERS="${SERVERS:+$SERVERS and }LibreSpeed"
 fi
 
 # A shaped link makes every step slower, including the readiness poll itself: on the radio
@@ -122,15 +125,17 @@ fi
 #
 # The old librespeed lab named its project netpace-librespeed, so that call can match nothing
 # else. The old ookla lab named no project, so Compose derived one from its directory and the
-# label is the generic `ooklaserver`: a contributor's own Compose project of that name, with a
-# service of that name, would also be removed. Narrow enough to be worth the port it frees.
+# label is the generic `ooklaserver`. That call also passes the container name the old lab fixed,
+# matched exactly as the optional third argument, so a contributor's own project and service of
+# that name is caught only if its container carries that name too.
 remove_old_lab() {
   # No `|| true`: docker ps exits 0 with no output when nothing matches, so a non-zero exit means
   # the daemon could not be reached. Letting set -e stop here says that, where carrying on would
   # report the old labs cleared and then fail on a port one of them still holds.
   old_ids="$(docker ps -aq \
     --filter "label=com.docker.compose.project=$1" \
-    --filter "label=com.docker.compose.service=$2")"
+    --filter "label=com.docker.compose.service=$2" \
+    ${3:+--filter "name=^$3\$"})"
   if [ -n "$old_ids" ]; then
     echo "Removing a container left by the old '$1' lab."
     # shellcheck disable=SC2086
@@ -138,7 +143,7 @@ remove_old_lab() {
       || echo "ERROR: could not remove it — run 'docker rm -f $old_ids'." >&2
   fi
 }
-remove_old_lab ooklaserver ooklaserver
+remove_old_lab ooklaserver ooklaserver ooklaserver
 remove_old_lab netpace-librespeed librespeed
 
 # Down first, not just `up -d`: the profile travels as an environment variable, and tearing the
@@ -186,10 +191,12 @@ failed_start() {
 export NETPACE_LINK_PROFILE="$PROFILE"
 
 # Each server waits for the link container's healthcheck, which passes only once both directions
-# are shaped, so a profile that cannot be applied fails here rather than starting a server.
+# are shaped, so a profile that cannot be applied fails here rather than starting a server. So does
+# everything else that stops Compose — a held port, a failed build or pull — so the message names
+# what did not start and leaves the cause to Compose's own output, which is printed above it.
 # shellcheck disable=SC2086
 docker compose up -d --build $SERVICES \
-  || failed_start "the lab did not start. A profile that cannot be applied in full stops the link container rather than serving an unshaped link."
+  || failed_start "the lab did not start, so $SERVERS is not running. Docker's output above names the cause.${PROFILE:+ If the '$PROFILE' profile could not be applied, the link log below says so.}"
 
 if [ -n "$PROFILE" ]; then
   # The values printed at the end come from the argument, so take the claim from the container

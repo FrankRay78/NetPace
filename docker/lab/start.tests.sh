@@ -12,8 +12,11 @@
 # wiring invariant a passing lab run cannot distinguish — which container is granted the
 # capability used to shape the link.
 #
-# The argument cases run the real start.sh, and all of them end before its first Docker call, so
-# nothing here starts a container or needs a daemon. The shaping cases run the real shape.sh,
+# The argument cases run the real start.sh with `docker` stubbed out, so nothing here
+# starts a container or needs a daemon, and a parse regression that carried on past the arguments
+# reaches the stub rather than a maintainer's running lab. The stub records every call and fails
+# `compose up`, which is how the server-selection cases see which services each choice asks for
+# and then end, on start.sh's failed-start path. The shaping cases run the real shape.sh,
 # pointed at a sandbox readiness file. The last group runs no script at all: it reads the lab's
 # configuration files, because what it checks is how they are wired rather than what they do.
 #
@@ -38,10 +41,27 @@ ok() {
   if eval "$2"; then echo "  ok   $1"; pass=$((pass+1)); else echo "  FAIL $1 -- rc=$RC output:[$OUTPUT]"; fail=$((fail+1)); fi
 }
 
-# run [args...] — run start.sh with <args>. Sets OUTPUT (stdout and stderr) and RC. Cleared
-# first: they are what `ok` reads, so a case whose `run` was lost or mis-edited would otherwise
-# silently re-assert the previous case's result.
-run() { OUTPUT=; RC=; OUTPUT="$(bash "$START" "$@" 2>&1)"; RC=$?; }
+# run [args...] — run start.sh with <args>, against the stub docker. Sets OUTPUT (stdout and
+# stderr), RC and DOCKER_CALLS (one line per docker invocation). Cleared first: they are what `ok`
+# reads, so a case whose `run` was lost or mis-edited would otherwise silently re-assert the
+# previous case's result.
+run() {
+  OUTPUT=; RC=; DOCKER_CALLS=
+  : > "$DOCKER_LOG"
+  OUTPUT="$(bash "$START" "$@" 2>&1)"; RC=$?
+  DOCKER_CALLS="$(cat "$DOCKER_LOG")"
+}
+
+# error_line — the ERROR line start.sh printed, without the usage text after it. Every refusal
+# prints usage, and usage names every profile and both server flags, so a check against the whole
+# output would pass whatever the error said.
+error_line() { grep -m1 "^ERROR:" <<<"$OUTPUT"; }
+
+# up_services — the services the stubbed `docker compose up` was asked for, sorted onto one line.
+up_services() {
+  grep "^compose up " <<<"$DOCKER_CALLS" | head -1 | tr ' ' '\n' \
+    | grep -vE "^(compose|up|-d|--build)$" | sort | tr '\n' ' ' | sed 's/ $//'
+}
 
 for f in "$START" "$COMPOSE" "$PROFILES"; do
   [ -f "$f" ] || { echo "FAIL -- $f is missing, so the lab cannot be checked." >&2; exit 1; }
@@ -62,12 +82,27 @@ SB="$(mktemp -d)" || { echo "FAIL -- could not create a sandbox directory." >&2;
 trap 'rm -rf "$SB"' EXIT
 SHAPE_READY="$SB/shaped"
 
+# The stub docker: an exported function, which bash resolves before any binary on PATH, so the
+# start.sh each case runs never reaches the real one. It records each call and answers as a daemon
+# with nothing running would, except that `compose up` fails, so every run that reaches it ends on
+# start.sh's failed-start path within a second instead of waiting on servers that do not exist.
+DOCKER_LOG="$SB/docker-calls"
+docker() {
+  echo "$*" >> "$DOCKER_LOG"
+  case "$1 ${2:-}" in
+    "compose up") echo "stub: compose up refused" >&2; return 1 ;;
+    "inspect "*)  return 1 ;;
+    *)            return 0 ;;
+  esac
+}
+export -f docker
+export DOCKER_LOG
+
 # run_shape <profile> — run the real shape.sh for <profile>, with its readiness file redirected
 # into the sandbox. Sets OUTPUT (stdout and stderr) and RC, cleared first for the reason `run`
 # clears them.
 run_shape() {
   OUTPUT=; RC=
-  rm -f "$SHAPE_READY"
   OUTPUT="$(NETPACE_LINK_PROFILE="$1" NETPACE_LAB_READY="$SHAPE_READY" bash "$HERE/shape.sh" 2>&1)"
   RC=$?
 }
@@ -76,7 +111,8 @@ run_shape() {
 # SCENARIO: One server at full speed
 # The traceability markers for the labels of those names. Both outcomes are gated by the lab runs
 # recorded with the change, per the header above; what the cases below verify is the argument
-# handling that selects each one, and the configuration the outcomes rest on.
+# handling that selects each one, which services each choice asks Compose for, and the
+# configuration the outcomes rest on.
 
 echo "Help:"
 run --help
@@ -90,31 +126,59 @@ ok "names every profile the table defines" \
 ok "names both servers, so a reader can start either alone" \
   'grep -qF -- "--ookla" <<<"$OUTPUT" && grep -qF -- "--librespeed" <<<"$OUTPUT"'
 ok "says what running neither flag does" 'grep -qF "both servers are started" <<<"$OUTPUT"'
+ok "and touches no Docker at all" '[ -z "$DOCKER_CALLS" ]'
 
 # An argument the table does not define must be refused before anything is built: a typo that
 # started an unshaped lab would be read as if it were the profile asked for.
 echo "An unknown profile:"
 run sattelite
-ok "is refused" '[ "$RC" != 0 ]'
-ok "and names the profile it could not use" 'grep -qF "sattelite" <<<"$OUTPUT"'
+ok "is refused as a usage error" '[ "$RC" = 2 ]'
+ok "and its error names the profile it could not use" 'error_line | grep -qF "sattelite"'
 ok "and lists the profiles that do exist" 'grep -qF "satellite" <<<"$OUTPUT" && grep -qF "radio" <<<"$OUTPUT"'
+ok "before touching Docker" '[ -z "$DOCKER_CALLS" ]'
 
 echo "Two profiles at once:"
 run satellite radio
-ok "is refused rather than one of them silently winning" '[ "$RC" != 0 ]'
-ok "and names both" 'grep -qF "satellite" <<<"$OUTPUT" && grep -qF "radio" <<<"$OUTPUT"'
+ok "is refused as a usage error rather than one of them silently winning" '[ "$RC" = 2 ]'
+ok "and its error names both" 'error_line | grep -qF "satellite" && error_line | grep -qF "radio"'
+ok "before touching Docker" '[ -z "$DOCKER_CALLS" ]'
 
 echo "An unknown option:"
 run --ooklaserver
-ok "is refused rather than treated as no server choice at all" '[ "$RC" != 0 ]'
-ok "and names the option it could not use" 'grep -qF -- "--ooklaserver" <<<"$OUTPUT"'
+ok "is refused as a usage error rather than treated as no server choice at all" '[ "$RC" = 2 ]'
+ok "and its error names the option it could not use" 'error_line | grep -qF -- "--ooklaserver"'
+ok "before touching Docker" '[ -z "$DOCKER_CALLS" ]'
 
 # A server flag is not a profile. Were they parsed in one list, this would be read as a profile
 # name and reported as unknown, which is a confusing way to say "you may not pick twice".
 echo "A profile given twice over, once as a server flag's neighbour:"
 run --librespeed satellite gprs
-ok "is refused" '[ "$RC" != 0 ]'
-ok "and complains about the profile, not the server flag" 'grep -qF "gprs" <<<"$OUTPUT"'
+ok "is refused as a usage error" '[ "$RC" = 2 ]'
+ok "and its error is about the profile, not the server flag" \
+  'error_line | grep -qF "gprs" && ! error_line | grep -qF -- "--librespeed"'
+ok "before touching Docker" '[ -z "$DOCKER_CALLS" ]'
+
+# Which servers each choice starts. The stub's `compose up` fails, so each run below also takes
+# the failed-start path: the error must name what did not start, and the lab must be removed.
+echo "Naming neither server:"
+run
+ok "asks Compose for the link and both servers" '[ "$(up_services)" = "librespeed link ooklaserver" ]'
+ok "and its error names both servers when the start fails" \
+  'error_line | grep -qF "OoklaServer" && error_line | grep -qF "LibreSpeed"'
+ok "and removes the lab after the failed start" \
+  'sed -n "/^compose up /,\$p" <<<"$DOCKER_CALLS" | grep -q "^compose down"'
+
+echo "--ookla alone:"
+run --ookla
+ok "asks Compose for the link and OoklaServer only" '[ "$(up_services)" = "link ooklaserver" ]'
+ok "and its error names OoklaServer, not LibreSpeed" \
+  'error_line | grep -qF "OoklaServer" && ! error_line | grep -qF "LibreSpeed"'
+
+echo "--librespeed alone, on a profile:"
+run --librespeed satellite
+ok "asks Compose for the link and LibreSpeed only" '[ "$(up_services)" = "librespeed link" ]'
+ok "and its error names LibreSpeed, not OoklaServer" \
+  'error_line | grep -qF "LibreSpeed" && ! error_line | grep -qF "OoklaServer"'
 
 echo "The profile table:"
 ok "defines at least one profile" '[ -n "$ALL_PROFILES" ]'
@@ -154,11 +218,15 @@ ok "refuses a name it does not define" '! (. "$PROFILES"; link_profile no-such-p
 # apply must leave the file unwritten — that, not the exit code, is what keeps a server off an
 # unshaped link. The cases that need tc and a container are gated by the recorded lab run.
 echo "The shaping script, asked for a profile it cannot apply:"
+# A readiness file left by an earlier run would admit both servers to an unshaped link, so it is
+# planted first: the case below checks shape.sh removes it, not merely that it writes none.
+: > "$SHAPE_READY"
 run_shape no-such-profile
 ok "exits non-zero" '[ "$RC" != 0 ]'
 ok "and names the profile it could not use" 'grep -qF "no-such-profile" <<<"$OUTPUT"'
 ok "and lists the profiles that do exist" 'grep -qF "satellite" <<<"$OUTPUT"'
-ok "and writes no readiness file, so no server is admitted" '[ ! -f "$SHAPE_READY" ]'
+ok "and leaves no readiness file, not even one from an earlier run, so no server is admitted" \
+  '[ ! -f "$SHAPE_READY" ]'
 
 # The capability that shapes the link. A lab run cannot tell whether a server container also
 # holds it: the link is shaped either way and every figure reads the same. Checked here instead,

@@ -40,7 +40,7 @@ services:
       dockerfile: Dockerfile.ooklaserver
     image: netpace-lab-ooklaserver
     container_name: netpace-lab-ooklaserver
-    # No ports and no capabilities of its own: it reaches the host through the link container's
+    # No ports, and not granted NET_ADMIN: it reaches the host through the link container's
     # published 18080, and over the link container's shaped interface.
     network_mode: "service:link"
     depends_on:

@@ -158,7 +158,7 @@ Docker Desktop for Windows and macOS run containers inside a virtual machine, an
 The lab is three containers in one Compose project, `netpace-lab`:
 
 - **`link`** holds the profile table, the `NET_ADMIN` capability and both published ports. `shape.sh` runs as its entry point and applies the profile with `tc netem`. The download direction is plain egress `netem` on the container's interface; `netem` cannot shape ingress, so the upload direction redirects incoming traffic through an `ifb` device and shapes that device's egress instead. Once both directions are read back, the container reports healthy and holds its network namespace open for as long as the lab runs.
-- **`ooklaserver`** and **`librespeed`** each run their provider's server and join the link container's network namespace (`network_mode: "service:link"`). They publish nothing and are granted no capabilities. LibreSpeed listens on 8081 inside rather than its default 8080, because OoklaServer has 8080 and the two share one namespace; the official image's own `WEBPORT` setting moves it, so the image is used unchanged.
+- **`ooklaserver`** and **`librespeed`** each run their provider's server and join the link container's network namespace (`network_mode: "service:link"`). They publish nothing and are not granted `NET_ADMIN`. LibreSpeed listens on 8081 inside rather than its default 8080, because OoklaServer has 8080 and the two share one namespace; the official image's own `WEBPORT` setting moves it, so the image is used unchanged.
 
 That shape is what gives the lab its guarantees:
 

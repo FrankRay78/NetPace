@@ -12,7 +12,7 @@
 **Decisions:**
 
 - One shaping container, with each server joining its network namespace. Rejected: a shaping container per server, and copying the profiles into the LibreSpeed lab. Both leave two shaped links to keep in step, and any drift makes a provider difference unreadable.
-- The servers are granted no capability at all. Rejected: granting `NET_ADMIN` and dropping it before `exec`, as the single-server lab did. Not holding it is simpler than dropping it.
+- The servers are not granted `NET_ADMIN`. Rejected: granting `NET_ADMIN` and dropping it before `exec`, as the single-server lab did. Not holding it is simpler than dropping it.
 - Server choice as `--ookla` / `--librespeed` flags. Rejected: Compose profiles, which would put a second meaning on the word the link profiles already own.
 
 **Date:** 2026-11-15
