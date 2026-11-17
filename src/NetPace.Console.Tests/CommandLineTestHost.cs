@@ -95,6 +95,10 @@ public sealed class CommandLineTestHost
         using var diagnosticWriter = new StringWriter();
         serviceCollection.TryAddSingleton(new DiagnosticOutput(diagnosticWriter));
 
+        // The real opener, so a run asked for a diagnostics file writes one the test can read back.
+        // A test about a destination that fails once the run is under way registers its own.
+        serviceCollection.TryAddSingleton<IDiagnosticFileOpener, DiagnosticFileOpener>();
+
         // Where a notice to the user goes — the process error stream in production. Captured apart
         // from both the result and the diagnostics, so a test can assert which stream carried what.
         using var noticeWriter = new StringWriter();

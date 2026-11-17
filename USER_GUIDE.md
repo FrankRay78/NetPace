@@ -546,15 +546,29 @@ The counts are the whole signal — no output format adds a prose warning on top
 
 The counts tell you *that* requests failed. `--diagnostics` tells you *why*, and does it from one run — which is the whole point of the switch, because a bug report that needs a second run is a conversation rather than a report.
 
-Diagnostics go to the error stream, never to the result stream, so the two can be captured separately:
+By default the records go to the error stream, never to the result stream, so the two can be captured separately:
 
 ```bash
 netpace --json --diagnostics > result.json 2> diagnostics.log
 ```
 
+Or name a file and skip the redirection altogether (see [Writing the records to a file](#writing-the-records-to-a-file)).
+
 The result is byte-for-byte what the same invocation produces without the switch, in every output format — so adding `--diagnostics` to a script that parses `--csv` or `--json` cannot break the parsing. Without the switch, the error stream carries only what went wrong ([Where errors are written](#where-errors-are-written)) and the notice about an unrecognised `NETPACE_THEME` (see [Choosing a colour theme](#choosing-a-colour-theme)). At a terminal with nothing redirected, the records appear after the result, leaving the live table intact. A failed test's records are written before its error, so the stream reads what was attempted before what went wrong.
 
 `--diagnostics` works alongside whichever output format you chose, and is unaffected by `--quiet`. It never writes to the `--file` target.
+
+#### Writing the records to a file
+
+`--diagnostics-file` takes a path and writes the records there instead of to the error stream:
+
+```bash
+netpace --json --diagnostics-file diagnostics.log > result.json
+```
+
+This is the one to reach for when you have been asked to attach the records to a bug report. It turns diagnostics on by itself, so `--diagnostics` alongside it adds nothing, and it needs no `2>` redirection, whose syntax differs between shells. The file holds exactly what `--diagnostics` would have written to the error stream for the same run, and no record reaches the error stream at all, so a failing run still shows you its `Error:` line on screen while the records go quietly to the file.
+
+The file is replaced on every run, so each one describes a single run, and `--file-mode` does not apply to it. It is opened before the first test, so a path that cannot be written stops the run there and then with a message naming it, and exits non-zero. If writing fails later, once the run is under way, NetPace says so once on the error stream and leaves the result and the exit code alone.
 
 Each line is one record, as `key=value` pairs (an excerpt — a real run also carries the `screening` and `latency` test blocks, with `server.selected` between them: the choice is recorded as soon as it is made, which is before the chosen server's latency is measured). If `NETPACE_THEME` names no theme, its one-line notice comes first on the same stream, ahead of the records:
 

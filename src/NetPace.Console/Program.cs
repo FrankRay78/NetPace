@@ -280,6 +280,12 @@ public static class Program
             DefaultValueFactory = _ => false
         };
 
+        var diagnosticsFileOption = new Option<string>("--diagnostics-file")
+        {
+            Description = "Write the diagnostic detail to this file instead of the error stream.\nTurns diagnostics on by itself, and replaces the file on every run.",
+            DefaultValueFactory = _ => string.Empty
+        };
+
         var failOnOption = new Option<FailOn>("--fail-on")
         {
             Description = $"Exit with a non-zero code on a failed measurement. {OptionValues.FailOnModes.HelpList}\nWith 'none' the exit code is never affected; 'total' triggers when a test is all-failed;\n'partial' triggers on any failed request. Fail-fast across --count and --loop.",
@@ -319,10 +325,15 @@ public static class Program
         command.Options.Add(quietOption);
         command.Options.Add(failOnOption);
         command.Options.Add(diagnosticsOption);
+        command.Options.Add(diagnosticsFileOption);
 
         // Set command action
         command.SetAction((Func<ParseResult, CancellationToken, Task<int>>)(async (parseResult, cancellationToken) =>
         {
+            // Declared out here so the diagnostics file is closed however the run ends, including
+            // the throws the catch below turns into exit code 1.
+            TextWriter? diagnosticsFile = null;
+
             try
             {
                 // Get option values and populate settings
@@ -354,6 +365,7 @@ public static class Program
                     Quiet = parseResult.GetValue(quietOption),
                     FailOn = parseResult.GetValue(failOnOption),
                     Diagnostics = parseResult.GetValue(diagnosticsOption),
+                    DiagnosticsFile = parseResult.GetValue(diagnosticsFileOption) ?? string.Empty,
                     DeviceId = parseResult.GetValue(deviceIdOption),
                     CustomFields = CustomField.ParseAll(parseResult.GetValue(customFieldOption))
                 };
@@ -378,12 +390,26 @@ public static class Program
                 var liveDisplayRefresh = serviceProvider.GetRequiredService<ILiveDisplayRefresh>();
 
                 // Switched off, nothing is recorded and nothing is written - so no call site
-                // downstream has to ask whether diagnostics are on.
-                IDiagnosticRecorder recorder = settings.Diagnostics
-                    ? new BufferingDiagnosticRecorder(
+                // downstream has to ask whether diagnostics are on. A named file switches them on
+                // by itself, so --diagnostics alongside it asks for nothing more; the file wins
+                // either way, and the error stream carries no record at all.
+                //
+                // The file is opened here, before the first test and inside this action's own error
+                // handling, so a path that cannot be written ends the run with the path named
+                // rather than surfacing part way through a measurement.
+                IDiagnosticRecorder recorder = NullDiagnosticRecorder.Instance;
+
+                if (!string.IsNullOrWhiteSpace(settings.DiagnosticsFile))
+                {
+                    diagnosticsFile = serviceProvider.GetRequiredService<IDiagnosticFileOpener>().Open(settings.DiagnosticsFile);
+                    recorder = new BufferingDiagnosticRecorder(serviceProvider.GetRequiredService<IDiagnosticClock>(), diagnosticsFile);
+                }
+                else if (settings.Diagnostics)
+                {
+                    recorder = new BufferingDiagnosticRecorder(
                         serviceProvider.GetRequiredService<IDiagnosticClock>(),
-                        serviceProvider.GetRequiredService<DiagnosticOutput>().Writer)
-                    : NullDiagnosticRecorder.Instance;
+                        serviceProvider.GetRequiredService<DiagnosticOutput>().Writer);
+                }
 
                 // Recorded once per process, before the first test: what NetPace is, what it is
                 // running on, and how it was asked to run.
@@ -408,6 +434,11 @@ public static class Program
                 // from above, because the throw may have come before that line ran.
                 serviceProvider.GetRequiredService<ErrorOutput>().WriteLine(theme, ex.Message);
                 return 1;
+            }
+            finally
+            {
+                // Closed after the command has returned, so the last flush it makes is on disk.
+                diagnosticsFile?.Dispose();
             }
         }));
 
@@ -631,6 +662,10 @@ public static class Program
         services.AddSingleton<IThemeProvider, EnvironmentThemeProvider>();
 
         AddStreamOutputs(services);
+
+        // Needed by both stacks: --diagnostics-file writes a real file whether the measurement
+        // behind it was stubbed or not.
+        services.AddSingleton<IDiagnosticFileOpener, DiagnosticFileOpener>();
 
         // Needed by both stacks: the root command populates the accessor after option binding,
         // before it knows which ISpeedTestService is in play.

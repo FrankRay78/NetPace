@@ -139,6 +139,13 @@ public sealed class SpeedTestCommandSettings
     public required bool Diagnostics { get; init; }
 
     /// <summary>
+    /// The file the diagnostic records are written to instead of the error stream, or an empty
+    /// string when none was named. A path here switches diagnostics on by itself, so
+    /// <see cref="Diagnostics"/> adds nothing alongside it.
+    /// </summary>
+    public required string DiagnosticsFile { get; init; }
+
+    /// <summary>
     /// The label for this machine recorded in CSV and JSON output, or <see langword="null"/> when
     /// no label was given. Null and empty are distinct: CSV writes an empty cell for either, while
     /// JSON leaves the field out only when no label was given at all.
