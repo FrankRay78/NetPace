@@ -244,11 +244,12 @@ public sealed partial class OoklaSpeedtestTests
         private static void AnswerTwiceThenHang(MockHttpMessageHandler mockHttp) =>
             AnswerThenHang(mockHttp, answers: 2, payloadBytes: 0);
 
-        /// <remarks>
-        /// The last answered request is held back until the request after it has reached the
-        /// server. Without that, a fast enough first answer can complete, report progress and so
-        /// trigger the stop before the second request has even started, leaving nothing in flight.
-        /// </remarks>
+        /// <summary>
+        /// Answers the first <paramref name="answers"/> requests and never answers another. The last
+        /// answered request is held back until the request after it has reached the server.
+        /// Without that, a fast enough answer can complete, report progress and so trigger the
+        /// stop before the next request has even started, leaving nothing in flight.
+        /// </summary>
         private static void AnswerThenHang(MockHttpMessageHandler mockHttp, int answers, int payloadBytes)
         {
             var arrived = 0;
