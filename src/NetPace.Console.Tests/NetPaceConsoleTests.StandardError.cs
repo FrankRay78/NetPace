@@ -364,8 +364,38 @@ public sealed partial class NetPaceConsoleTests
                 // Left to detect ANSI support, Spectre.Console reads a redirected error stream as
                 // unable to take them and falls back to setting colour through System.Console's
                 // colour properties, which .NET writes to standard OUTPUT - escape bytes in a
-                // result that is meant to carry nothing but its format.
+                // result that is meant to carry nothing but its format. A test run's error stream
+                // is captured, so this is the forced answer on every platform; the two tests below
+                // cover the one case that detects instead.
                 Assert.True(provider.GetRequiredService<ErrorOutput>().Console.Profile.Capabilities.Ansi);
+            }
+
+            [Theory]
+            [InlineData(false, false)]
+            [InlineData(false, true)]
+            [InlineData(true, true)]
+            public void An_Errors_Ansi_Support_Is_Forced_Wherever_Detecting_It_Could_Colour_Standard_Output(bool isWindows, bool isRedirected)
+            {
+                // Given a platform and a stream for which detection would be unsafe or pointless:
+                // any Unix stream, where a detection that comes back negative sets colour through
+                // System.Console's properties and .NET writes those to standard OUTPUT, and a
+                // redirected stream, which detection reads as unable to take escape sequences.
+
+                // Then Spectre.Console is told ANSI is supported instead of detecting it, so the
+                // error console keeps writing to the one writer it was given.
+                Assert.Equal(AnsiSupport.Yes, Program.ErrorAnsiSupport(isWindows, isRedirected));
+            }
+
+            [Fact]
+            public void An_Errors_Ansi_Support_Is_Detected_On_A_Windows_Terminal_So_The_Console_Mode_Is_Switched_On()
+            {
+                // Given Windows, and an error stream that is a terminal rather than a capture.
+
+                // Then Spectre.Console detects support for itself, because detecting it is what
+                // switches virtual terminal processing on for the error handle. Told outright that
+                // ANSI is supported, it never makes that call, and a classic console window whose
+                // mode nothing else switched on shows the escape sequences instead of the colour.
+                Assert.Equal(AnsiSupport.Detect, Program.ErrorAnsiSupport(isWindows: true, isRedirected: false));
             }
 
             [Fact]

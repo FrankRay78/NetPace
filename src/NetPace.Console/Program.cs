@@ -595,13 +595,9 @@ public static class Program
     /// Builds the console every error is written to, over the given stream.
     /// </summary>
     /// <remarks>
-    /// Ansi is forced on rather than detected. Left to detect it, Spectre.Console reads a
-    /// redirected error stream as unable to take escape sequences and falls back to a backend that
-    /// sets colour through System.Console's own colour properties - which .NET writes to standard
-    /// OUTPUT, putting escape bytes in the result the error stream exists to keep clean. The ANSI
-    /// backend always writes to the writer it was given, so the error stream is the only stream an
-    /// error can reach. Where the stream is redirected, errors are not styled at all, so a captured
-    /// error log carries the words and no escape bytes.
+    /// How ANSI support is settled is <see cref="ErrorAnsiSupport"/>'s decision. Where the stream
+    /// is redirected, errors are not styled at all, so a captured error log carries the words and
+    /// no escape bytes.
     /// </remarks>
     /// <param name="writer">The stream errors are written to.</param>
     /// <param name="isRedirected">Whether that stream goes somewhere other than a terminal.</param>
@@ -610,10 +606,43 @@ public static class Program
             AnsiConsole.Create(new AnsiConsoleSettings
             {
                 Out = new AnsiConsoleOutput(writer),
-                Ansi = AnsiSupport.Yes,
+                Ansi = ErrorAnsiSupport(OperatingSystem.IsWindows(), isRedirected),
                 ColorSystem = ColorSystemSupport.Detect
             }),
             styled: !isRedirected);
+
+    /// <summary>
+    /// Whether Spectre.Console detects the error stream's ANSI support or is told it outright.
+    /// </summary>
+    /// <remarks>
+    /// Platform-specific behaviour, and the only such behaviour in the error stream: a Windows
+    /// terminal detects, everything else is told.
+    /// <para>
+    /// Told outright, Spectre.Console writes colour as escape sequences to the writer it was
+    /// given, and to no other stream. That is what the error stream needs almost everywhere. But
+    /// being told also means Spectre.Console never looks at the terminal, and on Windows looking
+    /// is what switches virtual terminal processing on for the handle. A classic console window
+    /// renders escape sequences only once something has switched that mode on. Normally the
+    /// console that writes the result does it, and the error stream benefits because both share
+    /// the window; when the result is redirected or piped, nothing does, and the error line shows
+    /// literal escape characters. So on Windows, where the error stream is a terminal, support is
+    /// detected: Spectre.Console reads the error handle and switches the mode on. Where that call
+    /// fails, it falls back to setting colour through System.Console's own colour properties,
+    /// which on Windows are console API calls that write no bytes to any stream.
+    /// </para>
+    /// <para>
+    /// Detecting is unsafe anywhere else. On Unix that same fallback is reached whenever
+    /// <c>TERM</c> names no ANSI-capable terminal, and there .NET writes those colour properties
+    /// to standard OUTPUT - escape bytes in the result the error stream exists to keep clean. A
+    /// redirected stream is read as unable to take escape sequences at all, reaching the fallback
+    /// on every platform. Both keep the forced answer.
+    /// </para>
+    /// </remarks>
+    /// <param name="isWindows">Whether the run is on Windows.</param>
+    /// <param name="isRedirected">Whether the error stream goes somewhere other than a terminal.</param>
+    /// <returns>What to set <see cref="AnsiConsoleSettings.Ansi"/> to.</returns>
+    internal static AnsiSupport ErrorAnsiSupport(bool isWindows, bool isRedirected) =>
+        isWindows && !isRedirected ? AnsiSupport.Detect : AnsiSupport.Yes;
 
     /// <summary>
     /// Run the command line application with the given arguments.
