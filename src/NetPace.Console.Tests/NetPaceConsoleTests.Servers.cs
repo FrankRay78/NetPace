@@ -224,12 +224,11 @@ public sealed partial class NetPaceConsoleTests
             // When
             var result = await host.RunAsync(["servers", "--fastest"]);
 
-            // Then the failure is on the error stream, which the snapshot holds, and standard
-            // output carries only the hint the listing had already written.
+            // Then the failure is on the error stream, and standard output carries only the hint
+            // the listing had already written.
             Assert.Equal(0, result.ExitCode);
-            Assert.DoesNotContain("Error:", result.Output, StringComparison.Ordinal);
-            Assert.Contains("Press CTRL+C to exit.", result.Output, StringComparison.Ordinal);
-            await Verify(result.ErrorOutput);
+            await Verify(result.Output).UseTextForParameters("stdout");
+            await Verify(result.ErrorOutput).UseTextForParameters("stderr");
         }
 
         [Fact]

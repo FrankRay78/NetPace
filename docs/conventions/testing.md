@@ -31,6 +31,13 @@ Note the interaction with NetPace's console-snapshot rule (`CONVENTIONS.md` → 
 
 A test that ends in a snapshot does not also assert on text the snapshot already shows, present or absent. `Assert.Contains`, `Assert.DoesNotContain` or `TryGetProperty` checks ahead of a `Verify` restate part of the snapshot, so they catch nothing the snapshot would miss and leave two places to update when the output changes. Keep the facts a snapshot cannot hold, such as the exit code or the equality of two runs, and let the snapshot carry everything about what the output says.
 
+The same holds across the two console streams. A test that cares what both standard output and standard error say snapshots each one, rather than snapshotting one and checking the other by hand. Two `Verify` calls in one test need distinct snapshot names, so suffix each with its stream:
+
+```csharp
+await Verify(result.Output).UseTextForParameters("stdout");
+await Verify(result.ErrorOutput).UseTextForParameters("stderr");
+```
+
 **Regression exception**: a test that pins a specific mechanism is permitted only when it exists to prevent a named, previously-fixed bug. Reference the bug in the test name or a one-line comment at the site (e.g. `// GH#176 — release archive omitted .pdb after AOT publish`), so a future reader knows why the coupling is deliberate.
 
 ---
