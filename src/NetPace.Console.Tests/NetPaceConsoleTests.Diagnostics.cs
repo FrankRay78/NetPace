@@ -26,9 +26,6 @@ public sealed partial class NetPaceConsoleTests
             return new CommandLineTestHost(services);
         }
 
-        private static string[] Invocation(string outputFormat, params string[] rest) =>
-            [.. (string.IsNullOrEmpty(outputFormat) ? Array.Empty<string>() : new[] { outputFormat }), .. rest];
-
         [Theory]
         [MemberData(nameof(OutputFormats))]
         public async Task Diagnostics_LeaveTheResultStreamByteIdentical(string outputFormat)
@@ -318,11 +315,6 @@ public sealed partial class NetPaceConsoleTests
             public override void WriteLine(string? value) =>
                 throw new IOException("There is not enough space on the disk.");
         }
-
-        private static string[] WithoutInvocation(string diagnosticOutput) =>
-            diagnosticOutput.Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries)
-                .Where(line => !line.Contains(" event=run.invocation ", StringComparison.Ordinal))
-                .ToArray();
 
         private static int CountLines(string text, string value) =>
             text.Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries)

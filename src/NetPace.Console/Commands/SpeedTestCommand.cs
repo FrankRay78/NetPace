@@ -27,7 +27,7 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ErrorOutput errorOutp
     /// Whether the user has already been told that the diagnostics file could not be written, so a
     /// run that keeps failing to write says it once.
     /// </summary>
-    private bool diagnosticWriteReported;
+    private bool _diagnosticWriteReported;
 
     /// <summary>
     /// Executes the speed test command using the provided settings.
@@ -260,7 +260,7 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ErrorOutput errorOutp
     /// otherwise learn that only when they went looking for it. Under <c>--diagnostics</c> alone
     /// there is nowhere to say it: the stream that would carry the message is the one that just
     /// failed, and <see cref="RunAsync"/> has already torn the console down by the time the last
-    /// flush runs. Once per run either way, so a <c>--loop</c> over a destination that is gone for
+    /// flush runs. At most once per run, so a <c>--loop</c> over a destination that is gone for
     /// good does not fill the error stream with the same line.
     /// </para>
     /// </remarks>
@@ -273,10 +273,11 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ErrorOutput errorOutp
         }
         catch (IOException e)
         {
-            if (diagnosticWriteReported || string.IsNullOrWhiteSpace(settings.DiagnosticsFile)) return;
-
-            diagnosticWriteReported = true;
-            errorOutput.WriteLine(theme, $"The diagnostics could not be written to {settings.DiagnosticsFile}: {e.Message}");
+            if (!_diagnosticWriteReported && !string.IsNullOrWhiteSpace(settings.DiagnosticsFile))
+            {
+                _diagnosticWriteReported = true;
+                errorOutput.WriteLine(theme, $"The diagnostics could not be written to {settings.DiagnosticsFile}: {e.Message}");
+            }
         }
     }
 

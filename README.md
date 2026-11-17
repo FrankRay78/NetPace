@@ -95,7 +95,7 @@ For common scenarios and advanced usage (such as scripting, restricting payload 
 
 ```txt
 C:\>netpace.exe --help
-﻿
+
     _   __         __     ____
    / | / /  ___   / /_   / __ \  ____ _  _____  ___
   /  |/ /  / _ \ / __/  / /_/ / / __ `/ / ___/ / _ \
