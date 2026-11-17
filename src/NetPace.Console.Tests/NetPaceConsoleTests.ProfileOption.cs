@@ -49,7 +49,7 @@ public sealed partial class NetPaceConsoleTests
 
             // Then — non-zero exit and the offending token surfaces in error output.
             Assert.NotEqual(0, result.ExitCode);
-            Assert.Contains("huge", result.Output, StringComparison.OrdinalIgnoreCase);
+            Assert.Contains("huge", result.ErrorOutput, StringComparison.OrdinalIgnoreCase);
         }
 
         [Fact]

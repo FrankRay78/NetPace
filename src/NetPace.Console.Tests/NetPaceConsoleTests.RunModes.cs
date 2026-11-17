@@ -53,8 +53,6 @@ public sealed partial class NetPaceConsoleTests
         /// </summary>
         private const string ResultLine = "Ping: 24 ms";
 
-        private static int Occurrences(string text, string value) => text.Split(value).Length - 1;
-
         private static LatencyTestResult Latency(string serverUrl) =>
             new()
             {
@@ -190,10 +188,12 @@ public sealed partial class NetPaceConsoleTests
             // When the run is asked for in this mode, without --fail-on.
             var result = await RunAsync(mode, service, TestsPerRun);
 
-            // Then the failure is reported once, the run succeeded, and every test after the first
-            // still reported a result - a single run, having no later test, reports none.
+            // Then the failure is reported once on the error stream, the run succeeded, and every
+            // test after the first still reported a result on standard output - a single run, having
+            // no later test, reports none.
             Assert.Equal(0, result.ExitCode);
-            Assert.Equal(1, Occurrences(result.Output, ReportedBy(shape)));
+            Assert.Equal(1, Occurrences(result.ErrorOutput, ReportedBy(shape)));
+            Assert.Equal(0, Occurrences(result.Output, ReportedBy(shape)));
             Assert.Equal(mode == Single ? 0 : TestsPerRun - 1, Occurrences(result.Output, ResultLine));
         }
 
@@ -216,7 +216,7 @@ public sealed partial class NetPaceConsoleTests
 
             // Then it stopped at that failure and exited 1: no later test reported a result.
             Assert.Equal(1, result.ExitCode);
-            Assert.Equal(1, Occurrences(result.Output, ReportedBy(shape)));
+            Assert.Equal(1, Occurrences(result.ErrorOutput, ReportedBy(shape)));
             Assert.Equal(0, Occurrences(result.Output, ResultLine));
         }
 
@@ -262,7 +262,7 @@ public sealed partial class NetPaceConsoleTests
             var result = await RunAsync(mode, ServiceCancelledMidTest, TestsPerRun, FailOnArgs(failOn));
 
             // Then nothing is reported as an error and the run exits 0.
-            Assert.DoesNotContain("Error:", result.Output);
+            Assert.DoesNotContain("Error:", result.ErrorOutput);
             Assert.Equal(0, result.ExitCode);
         }
 
@@ -285,7 +285,7 @@ public sealed partial class NetPaceConsoleTests
             // Then the test that did run reported its result, nothing is reported as an error, and
             // the run exits 0.
             Assert.Equal(1, Occurrences(result.Output, ResultLine));
-            Assert.DoesNotContain("Error:", result.Output);
+            Assert.DoesNotContain("Error:", result.ErrorOutput);
             Assert.Equal(0, result.ExitCode);
         }
 
@@ -307,7 +307,7 @@ public sealed partial class NetPaceConsoleTests
             var result = await RunAsync(mode, service, TestsPerRun, "--fail-on", "Total");
 
             // Then the failure is reported and the run exits 1.
-            Assert.Contains("Error:", result.Output);
+            Assert.Contains("Error:", result.ErrorOutput);
             Assert.Equal(1, result.ExitCode);
         }
 

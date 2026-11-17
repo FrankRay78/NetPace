@@ -63,11 +63,13 @@ public sealed partial class NetPaceConsoleTests
             var result = await host.RunAsync(args);
 
             // Then the whole of what each mode emits is the reviewed contract: a substring match
-            // would pass wherever the line landed, and what this has to hold is that the machine
-            // readable modes carry the failure the same way every other network failure does. The
-            // exit code stays 0 - a network condition is data, not a NetPace fault.
+            // would pass wherever the line landed, and what this has to hold is that every mode
+            // carries the failure the same way, on the error stream, leaving standard output to the
+            // format alone. The exit code stays 0 - a network condition is data, not a NetPace
+            // fault.
             Assert.Equal(0, result.ExitCode);
-            await Verify(result.Output).UseParameters(mode);
+            Assert.Empty(result.Output);
+            await Verify(result.ErrorOutput).UseParameters(mode);
         }
 
         [Fact]
@@ -84,9 +86,9 @@ public sealed partial class NetPaceConsoleTests
             var result = await host.RunAsync(["--server-url", ServerUrl]);
 
             // Then the composed line is what the user reads, with no cancellation wording beside it.
-            Assert.Contains("did not respond in time", result.Output);
-            Assert.DoesNotContain("canceled", result.Output);
-            Assert.DoesNotContain("cancelled", result.Output);
+            Assert.Contains("did not respond in time", result.ErrorOutput);
+            Assert.DoesNotContain("canceled", result.ErrorOutput);
+            Assert.DoesNotContain("cancelled", result.ErrorOutput);
         }
 
         [Theory]
@@ -103,7 +105,7 @@ public sealed partial class NetPaceConsoleTests
             var result = await host.RunAsync(["--server-url", ServerUrl, "--fail-on", failOn]);
 
             // Then the failure is reported and the run exits 1.
-            Assert.Contains("did not respond in time", result.Output);
+            Assert.Contains("did not respond in time", result.ErrorOutput);
             Assert.Equal(1, result.ExitCode);
         }
 
@@ -121,7 +123,7 @@ public sealed partial class NetPaceConsoleTests
             var result = await host.RunAsync([]);
 
             // Then
-            Assert.Contains("did not respond in time", result.Output);
+            Assert.Contains("did not respond in time", result.ErrorOutput);
             Assert.Equal(0, result.ExitCode);
         }
     }

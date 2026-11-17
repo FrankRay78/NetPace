@@ -202,10 +202,11 @@ public sealed partial class NetPaceConsoleTests
             // When
             var result = await host.RunAsync(commandLine.Split(' '));
 
-            // Then the user is told no servers were available, and the exit code reports that
-            // NetPace itself worked - the same as a speed test that finds none.
+            // Then the user is told no servers were available, on the error stream, and the exit
+            // code reports that NetPace itself worked - the same as a speed test that finds none.
             Assert.Equal(0, result.ExitCode);
-            await Verify(result.Output).DisableRequireUniquePrefix();
+            Assert.Empty(result.Output);
+            await Verify(result.ErrorOutput).DisableRequireUniquePrefix();
         }
 
         [Fact]
@@ -223,9 +224,11 @@ public sealed partial class NetPaceConsoleTests
             // When
             var result = await host.RunAsync(["servers", "--fastest"]);
 
-            // Then
+            // Then the failure is on the error stream, and standard output carries only the hint
+            // the listing had already written.
             Assert.Equal(0, result.ExitCode);
-            await Verify(result.Output);
+            await Verify(result.Output).UseTextForParameters("stdout");
+            await Verify(result.ErrorOutput).UseTextForParameters("stderr");
         }
 
         [Fact]
@@ -262,9 +265,11 @@ public sealed partial class NetPaceConsoleTests
             // When
             var result = await host.RunAsync(commandLine.Split(' '));
 
-            // Then the failure is reported, and the exit code reports that NetPace itself worked.
+            // Then the failure is reported on the error stream, and the exit code reports that
+            // NetPace itself worked.
             Assert.Equal(0, result.ExitCode);
-            await Verify(result.Output).DisableRequireUniquePrefix();
+            Assert.Empty(result.Output);
+            await Verify(result.ErrorOutput).DisableRequireUniquePrefix();
         }
 
         [Theory]
@@ -285,10 +290,11 @@ public sealed partial class NetPaceConsoleTests
             // When
             var result = await host.RunAsync(commandLine.Split(' '));
 
-            // Then the user is told what went wrong, rather than the command stopping silently as
-            // though they had pressed Ctrl+C.
+            // Then the user is told what went wrong on the error stream, rather than the command
+            // stopping silently as though they had pressed Ctrl+C.
             Assert.Equal(0, result.ExitCode);
-            await Verify(result.Output).DisableRequireUniquePrefix();
+            Assert.Empty(result.Output);
+            await Verify(result.ErrorOutput).DisableRequireUniquePrefix();
         }
 
         [Theory]

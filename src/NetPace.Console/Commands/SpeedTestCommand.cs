@@ -7,7 +7,7 @@ using NetPace.Core;
 
 namespace NetPace.Console.Commands;
 
-public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService speedTestClient, IClock clock, IClientInfoProvider clientInfoProvider, IDiagnosticRecorder recorder, IWaiter waiter, ILiveDisplayRefresh liveDisplayRefresh, Theme theme)
+public sealed class SpeedTestCommand(IAnsiConsole console, ErrorOutput errorOutput, ISpeedTestService speedTestClient, IClock clock, IClientInfoProvider clientInfoProvider, IDiagnosticRecorder recorder, IWaiter waiter, ILiveDisplayRefresh liveDisplayRefresh, Theme theme)
 {
     /// <summary>
     /// What the user is told about a request abandoned at its own timeout: one composed line for
@@ -71,8 +71,8 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
             // these writers while the default human-readable output goes on wrapping to fit the
             // screen. CompositeAnsiConsole delegates Profile to its primary, so the terminal leg
             // shares this profile object and the lift reaches it wherever the composite is built.
-            // It covers the error lines this command writes once it is running; a parse or
-            // validation error reported before the command exists is written at the unlifted width.
+            // An error needs no part of this: it goes to the error stream, whose console is given
+            // no width limit at all.
             // --file output has never wrapped: FileConsole reports no width limit of its own.
             // Default output goes the same way wherever it cannot redraw, because there it writes
             // the --simple lines and those are the same contract whichever switch asked for them.
@@ -146,7 +146,24 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
                 }
                 catch (Exception e)
                 {
-                    console.WriteErrorLine(theme, Describe(e));
+                    // The records this test produced are flushed before the error is written, so a
+                    // reader of the error stream meets them in the order they explain the failure:
+                    // what was attempted first, what went wrong last. Diagnostics and errors share
+                    // the error stream in every run, so their order on it is the order they are
+                    // read in.
+                    //
+                    // From a finally, because the flush must not be able to cost the user the
+                    // message. FlushDiagnostics absorbs the failure it is written for, but a
+                    // writer that throws anything else would otherwise leave the test's own
+                    // error unreported and replace it with a complaint about diagnostics.
+                    try
+                    {
+                        FlushDiagnostics();
+                    }
+                    finally
+                    {
+                        errorOutput.WriteLine(theme, Describe(e));
+                    }
 
                     if (FailOnRequested(settings)) return 1;
                 }
