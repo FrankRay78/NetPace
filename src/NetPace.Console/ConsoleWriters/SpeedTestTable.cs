@@ -15,9 +15,16 @@ namespace NetPace.Console.ConsoleWriters;
 /// Built afresh on every draw rather than updated in place. Spectre.Console's table refuses a
 /// column added once it holds rows, and the <c>Failed</c> column appears only when a transfer
 /// turns out to have failed, so a table kept between draws would have to be rebuilt at exactly
-/// that moment anyway. Rebuilding always is one path instead of two, and it is what lets every
-/// column size itself to the widest value it has been given: no width is reserved in advance, and
-/// the table redraws to fit when a larger figure arrives.
+/// that moment anyway. Rebuilding always is one path instead of two.
+/// </para>
+/// <para>
+/// A column's width is therefore the one thing that cannot be read off a single draw, and it is
+/// held here instead: a held column opens at the width reserved for it, grows where a wider
+/// value arrives, and never narrows again for the rest of the run. Letting a column size itself to
+/// its current widest value moved the figures sideways while the user was reading them - a speed
+/// passing from Kbps to Mbps shifted every column to its right. The widths belong to this instance, and a run builds
+/// its own table, so a width grown under <c>--count</c> or <c>--loop</c> does not carry into the
+/// next run.
 /// </para>
 /// <para>
 /// Every column is drawn at every width. A window too narrow for the table wraps it rather than
@@ -71,7 +78,37 @@ internal sealed class SpeedTestTable(
     /// </summary>
     private const int ColumnGap = 2;
 
+    /// <summary>The headings of the columns whose width is held between draws.</summary>
+    private const string DoneHeading = "Done";
+    private const string SpeedHeading = "Speed";
+    private const string LatencyHeading = "Latency";
+    private const string JitterHeading = "Jitter";
+    private const string FailedHeading = "Failed";
+
+    /// <summary>
+    /// The widest figure an auto-scaled speed is ever written as. Three significant figures gives
+    /// <c>9.99</c>, <c>99.9</c> or <c>999</c> under SI, and IEC adds <c>1023</c>, which is the
+    /// widest of them: four characters at most, whichever band and unit system a reading lands in.
+    /// A pinned <see cref="SpeedScale"/> has no such bound, and widens the column instead.
+    /// </summary>
+    private const int WidestSpeedFigure = 4;
+
+    /// <summary>
+    /// What the latency and jitter columns reserve: three digits and the unit beside them, which
+    /// covers every reading on a link anyone would run a speed test over. The <c>Latency</c> and
+    /// <c>Jitter</c> headings are already this wide or wider, so today this floor is what the
+    /// headings would give anyway; it states the intent and outlives a shorter heading. A slower
+    /// reading widens the column when it arrives and keeps it there.
+    /// </summary>
+    private const int ReservedMillisecondsWidth = 6;
+
     private readonly List<SpeedTestTableRow> rows = [];
+
+    /// <summary>
+    /// The width each held column has been drawn at so far, by heading. Read and written only
+    /// through <see cref="AtColumnWidth"/>, which is what keeps it a running maximum.
+    /// </summary>
+    private readonly Dictionary<string, int> columnWidths = [];
 
     private int reportsTaken;
 
@@ -133,19 +170,19 @@ internal sealed class SpeedTestTable(
         [
             new TableColumn(string.Empty) { Alignment = Justify.Left, Padding = Gap(MarkGap) },
             Heading("Test", Justify.Left),
-            Heading("Done", Justify.Right),
-            Heading("Speed", Justify.Right),
+            Heading(DoneHeading, Justify.Right),
+            Heading(SpeedHeading, Justify.Right),
         ];
 
         if (showLatency)
         {
-            columns.Add(Heading("Latency", Justify.Right));
-            columns.Add(Heading("Jitter", Justify.Right));
+            columns.Add(Heading(LatencyHeading, Justify.Right));
+            columns.Add(Heading(JitterHeading, Justify.Right));
         }
 
         if (showFailed)
         {
-            columns.Add(Heading("Failed", Justify.Right));
+            columns.Add(Heading(FailedHeading, Justify.Right));
         }
 
         // The gap belongs between columns, so the last one carries none: a line ends at its last
@@ -165,21 +202,21 @@ internal sealed class SpeedTestTable(
 
             var cells = new List<IRenderable>
             {
-                Cell(Mark(row, unicode), outcome),
+                Cell(Mark(row, unicode).PadRight(WidestMark(unicode)), outcome),
                 Cell(row.Name, theme.Figure),
-                Cell(row.PercentageText, row.IsRunning ? theme.Percentage : theme.PercentageComplete),
-                Cell(row.Speed, theme.Figure),
+                Cell(AtColumnWidth(DoneHeading, row.PercentageText), row.IsRunning ? theme.Percentage : theme.PercentageComplete),
+                Cell(AtColumnWidth(SpeedHeading, row.Speed), theme.Figure),
             };
 
             if (showLatency)
             {
-                cells.Add(Cell(Milliseconds(row.LatencyMilliseconds), theme.Figure));
-                cells.Add(Cell(Milliseconds(row.JitterMilliseconds), theme.Figure));
+                cells.Add(Cell(AtColumnWidth(LatencyHeading, Milliseconds(row.LatencyMilliseconds)), theme.Figure));
+                cells.Add(Cell(AtColumnWidth(JitterHeading, Milliseconds(row.JitterMilliseconds)), theme.Figure));
             }
 
             if (showFailed)
             {
-                cells.Add(Cell(row.FailedText, outcome));
+                cells.Add(Cell(AtColumnWidth(FailedHeading, row.FailedText), outcome));
             }
 
             table.AddRow(cells);
@@ -203,6 +240,67 @@ internal sealed class SpeedTestTable(
     private static Padding Gap(int width) => new(0, 0, width, 0);
 
     /// <summary>
+    /// <paramref name="text"/> padded out to the width the column headed <paramref name="heading"/>
+    /// holds, widening that column where the text is wider than anything it has held before.
+    /// </summary>
+    /// <remarks>
+    /// Padding the value rather than fixing the column's width leaves Spectre.Console sizing the
+    /// column as it always has - to the widest thing in it, heading included - and only raises the
+    /// floor it sizes against. A value too wide for the floor is still drawn whole, which is the
+    /// one thing a column must not refuse. Blank cells are padded too, so a column is at its
+    /// reserved width from the first draw rather than from the first figure.
+    /// </remarks>
+    private string AtColumnWidth(string heading, string text)
+    {
+        var width = Math.Max(
+            columnWidths.TryGetValue(heading, out var held) ? held : ReservedWidth(heading),
+            text.Length);
+
+        columnWidths[heading] = width;
+
+        return text.PadLeft(width);
+    }
+
+    /// <summary>
+    /// The width a column opens at, before any value has been drawn in it.
+    /// </summary>
+    /// <remarks>
+    /// Only the columns whose figures change width while a run is under way reserve anything. The
+    /// <c>Done</c> and <c>Failed</c> columns reserve nothing: a percentage never outgrows its own
+    /// heading, and a failure count is written once, when the measurement that failed settles. They
+    /// are still held, so that the no-narrowing guarantee covers every column rather than the ones
+    /// it happened to be needed for.
+    /// </remarks>
+    private int ReservedWidth(string heading) => heading switch
+    {
+        SpeedHeading => WidestSpeedFigure + 1 + WidestUnitName(),
+        LatencyHeading or JitterHeading => ReservedMillisecondsWidth,
+        _ => 0,
+    };
+
+    /// <summary>
+    /// The longest unit name a speed in this run can be written in: every scale auto-scaling can
+    /// reach, or the one the run pinned.
+    /// </summary>
+    /// <remarks>
+    /// Read back out of the formatter rather than from a list of unit names kept here, so the
+    /// reserved width cannot drift from the units a speed is actually written in - a new unit
+    /// system, or a renamed unit, widens the reserve by itself.
+    /// </remarks>
+    private int WidestUnitName()
+    {
+        IEnumerable<SpeedScale> reachable = scale == SpeedScale.Auto
+            ? Enum.GetValues<SpeedScale>().Where(candidate => candidate != SpeedScale.Auto)
+            : [scale];
+
+        // Any non-zero measurement will do: a unit name does not depend on the figure beside it.
+        var oneByteInOneSecond = new SpeedTestProgress { BytesProcessed = 1, ElapsedMilliseconds = 1000 };
+
+        return reachable.Max(candidate =>
+            oneByteInOneSecond.GetSpeedStringParts(unit, unitSystem, candidate).unit.Length);
+    }
+
+    /// <summary>
     /// One cell, drawn literally: a sponsor or a unit holding a square bracket is text, not markup.
     /// </summary>
     private static IRenderable Cell(string text, Style style) => new Markup(Markup.Escape(text), style);
@@ -219,6 +317,19 @@ internal sealed class SpeedTestTable(
         SpeedTestTableRowState.PartiallyFailed => PartiallyFailedMark,
         _ => unicode ? FailedMark : FailedMarkAscii,
     };
+
+    /// <summary>
+    /// The width of the widest mark or spinner frame the console can be shown, which every mark is
+    /// padded to. Without Unicode the spinner's frames are one character and <c>OK</c> is two, so
+    /// a column sized by its contents would widen as the first row settled and move every column
+    /// to its right while the user was reading them.
+    /// </summary>
+    private static int WidestMark(bool unicode) =>
+        (unicode
+            ? Spinner.Known.Dots.Frames.Append(SucceededMark).Append(FailedMark)
+            : Spinner.Known.Ascii.Frames.Append(SucceededMarkAscii).Append(FailedMarkAscii))
+        .Append(PartiallyFailedMark)
+        .Max(mark => mark.Length);
 
     private Style OutcomeStyle(SpeedTestTableRow row) => row.State switch
     {

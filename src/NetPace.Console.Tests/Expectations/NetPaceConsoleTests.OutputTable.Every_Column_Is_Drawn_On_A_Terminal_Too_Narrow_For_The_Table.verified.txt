@@ -8,7 +8,7 @@ http://test1.com
                                y        
 ✓   Pingin  100%          100 ms   10 ms
     g                                   
-✓   Downlo  100%  8 Kbps  150 ms   20 ms
-    ading                               
-✓   Upload  100%  18.67   150 ms   20 ms
+✓   Downlo  100%   8.00   150 ms   20 ms
+    ading           Kbps                
+✓   Upload  100%   18.7   150 ms   20 ms
     ing             Kbps                
