@@ -729,7 +729,7 @@ public abstract class SpeedTestProviderBase : ISpeedTestService
             // a write returns once the transport has taken the data, so whatever the send buffer
             // still held when the connection closed is counted as sent. On a link slow enough that
             // the buffer holds a whole request - which the narrow profiles under
-            // docker/ooklaserver are - a cut-off upload can be credited with most of its body.
+            // docker/lab are - a cut-off upload can be credited with most of its body.
             using var content = new RandomStreamContent(length, recordBytesDelivered);
             using var response = await client.PostAsync(uploadUrl, content, cancellationToken).ConfigureAwait(false);
 
