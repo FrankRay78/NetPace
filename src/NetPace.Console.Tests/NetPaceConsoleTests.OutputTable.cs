@@ -32,10 +32,16 @@ public sealed partial class NetPaceConsoleTests
             new(services, CommandLineTestHost.RedirectedWidth);
 
         /// <summary>A transfer result carrying latency measured under its own load.</summary>
-        private static SpeedTestResult Transfer(int succeeded, int failed, long? latencyMilliseconds, long jitterMilliseconds = 4) =>
+        /// <remarks>
+        /// By default a transfer with no successes carries no bytes, which is what a link that
+        /// never answered looks like. Pass <paramref name="bytesProcessed"/> to say otherwise: a
+        /// transfer whose every request failed after delivering something reports a real figure
+        /// beside the count, and that shape needs drawing too.
+        /// </remarks>
+        private static SpeedTestResult Transfer(int succeeded, int failed, long? latencyMilliseconds, long jitterMilliseconds = 4, long? bytesProcessed = null) =>
             new()
             {
-                BytesProcessed = succeeded == 0 ? 0 : 1_000_000,
+                BytesProcessed = bytesProcessed ?? (succeeded == 0 ? 0 : 1_000_000),
                 ElapsedMilliseconds = 1000,
                 RequestsSucceeded = succeeded,
                 RequestsFailed = failed,
@@ -192,6 +198,27 @@ public sealed partial class NetPaceConsoleTests
             var result = await TerminalHost(Services(service)).RunAsync([]);
 
             // Then
+            Assert.Equal(0, result.ExitCode);
+            await Verify(result.Output);
+        }
+
+        [Fact]
+        public async Task A_Total_Failure_That_Delivered_Data_Shows_Its_Figure_Beside_The_Count()
+        {
+            // Given a terminal and an upload whose every request failed after delivering data,
+            // which is what a link looks like when a server keeps cutting its transfers off.
+            var service = new ScriptedSpeedTester
+            {
+                DownloadFactory = _ => Transfer(150, 0, 60),
+                UploadFactory = _ => Transfer(0, 30, null, bytesProcessed: 1_000_000),
+            };
+
+            // When
+            var result = await TerminalHost(Services(service)).RunAsync([]);
+
+            // Then the row carries the speed those requests delivered rather than a zero, with the
+            // failure count beside it saying the test did not succeed. Compare
+            // A_Total_Failure_Shows_A_Zero_Speed_And_No_Latency, where nothing arrived at all.
             Assert.Equal(0, result.ExitCode);
             await Verify(result.Output);
         }

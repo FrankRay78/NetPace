@@ -13,10 +13,10 @@ namespace NetPace.Console.Diagnostics;
 /// The scope is the <see cref="IProgress{T}"/> the provider reports requests to, so the test's name
 /// is attached here rather than being something <c>NetPace.Core</c> has to know. Its
 /// <c>test.end</c> counts are derived from the records it saw, so the summary cannot count a
-/// record that is not above it - its <c>bytes</c> total covers the successful ones, which is less
-/// than every record's bytes added up where a request moved data and was then excluded. It can also
-/// report a cancelled count, which the measured result does not carry. Under-load latency probes are
-/// the one thing it records without counting; see <see cref="Report"/> for why.
+/// record that is not above it: its <c>bytes</c> total is every record's bytes added up, whatever
+/// their outcome, which is what the measurement itself counts. It can also report a cancelled
+/// count, which the measured result does not carry. Under-load latency probes are the one thing it
+/// records without counting; see <see cref="Report"/> for why.
 /// </remarks>
 internal sealed class DiagnosticTestScope : IProgress<RequestDiagnostic>, IDisposable
 {
@@ -116,11 +116,16 @@ internal sealed class DiagnosticTestScope : IProgress<RequestDiagnostic>, IDispo
 
             requests++;
 
+            // Totalled whatever the outcome, because the measurement counts the bytes the same
+            // way: a request the server cut off, and one dropped at the byte budget, each moved
+            // what their record says they moved. Summing only the successful ones would put a
+            // figure in the summary that no reported speed agrees with.
+            bytes += value.BytesProcessed;
+
             switch (value.Outcome)
             {
                 case RequestOutcome.Succeeded:
                     succeeded++;
-                    bytes += value.BytesProcessed;
                     break;
                 case RequestOutcome.Failed:
                     failed++;

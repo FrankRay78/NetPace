@@ -36,11 +36,11 @@ public sealed record UploadTestSettings
     public int UploadParallelTasks { get; init; } = 8;
 
     /// <summary>
-    /// Total-byte budget cap for the upload phase, in IEC MiB. Once the running total of
-    /// bytes uploaded across all parallel uploads reaches this value, the phase is cancelled:
-    /// in-flight uploads are cancelled rather than awaited (their bytes are excluded) and no
-    /// further uploads are scheduled. Actual bytes processed may still exceed the cap
-    /// depending on parallelism and per-request size.
+    /// Total-byte budget cap for the upload phase, in IEC MiB. Once the bytes sent by the uploads
+    /// that completed successfully reach this value, the phase is cancelled: in-flight uploads are
+    /// cancelled rather than awaited, and no further uploads are scheduled. What those in-flight
+    /// uploads had already sent still counts towards the reported figure, so actual bytes
+    /// processed may exceed the cap, by more the more parallel the phase is.
     /// </summary>
     /// <remarks>
     /// Distinct from the per-request size, which is derived from
