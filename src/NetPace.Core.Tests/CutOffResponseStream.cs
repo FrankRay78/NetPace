@@ -64,7 +64,9 @@ internal sealed class CutOffResponseStream : Stream
         {
             if (handOverAfter is not null)
             {
-                await handOverAfter.ConfigureAwait(false);
+                // Bounded, so a regression that never opens the gate fails the test rather than
+                // hanging it.
+                await handOverAfter.WaitAsync(TimeSpan.FromSeconds(5)).ConfigureAwait(false);
             }
 
             var count = Math.Min(remaining, buffer.Length);

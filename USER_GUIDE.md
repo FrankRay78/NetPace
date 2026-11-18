@@ -238,7 +238,7 @@ Timestamp,LatencyMilliseconds,JitterMilliseconds,DownloadSpeedBitsPerSecond,Down
 1980-01-01T10:05:00+01:00,12,3,512600000,150,0,48,31,96,9,,,,,,,,192.168.1.1,test-host,London,Foo Telecom,http://speedtest.foo.example:8080/speedtest/upload.php,
 ```
 
-A download or upload test that ran but failed entirely reports whatever its requests moved before they failed, which is `0` only where nothing arrived, with its request counts beside it. See [Detecting failed measurements](#detecting-failed-measurements).
+A download or upload test that ran but failed entirely reports the speed of whatever its requests moved before they failed, which is `0` only where nothing arrived, with its request counts beside it. See [Detecting failed measurements](#detecting-failed-measurements).
 
 CSV output is always comma-separated — there is no option to choose another separator, so every log NetPace writes has one shape. A value that would otherwise disturb the row is written as CSV requires: any field containing a comma or a double quote — most often a server's sponsor or location name, a `--device-id` label or a `--custom-field` value — is wrapped in double quotes, with any double quote of its own written twice, so a standard CSV reader hands back the original text and the row still has one field per column. A line break inside any field is written as a space, so every record stays on one line.
 
@@ -325,7 +325,7 @@ The same nine figures CSV carries, under the same names and as the same numbers 
 
 Need a speed formatted for a person to read — for a notification, say? `--simple` writes exactly that figure on its own line, and `--minimal` writes the whole run as one line; both follow the unit options.
 
-A test you skipped with `--no-latency`, `--no-download` or `--no-upload` omits every field it would have filled. A download or upload test that ran but failed entirely reports whatever its requests moved before they failed, which is `0` only where nothing arrived, with its request counts beside it. See [Detecting failed measurements](#detecting-failed-measurements). A latency measurement that fails ends the run instead, so it reports nothing.
+A test you skipped with `--no-latency`, `--no-download` or `--no-upload` omits every field it would have filled. A download or upload test that ran but failed entirely reports the speed of whatever its requests moved before they failed, which is `0` only where nothing arrived, with its request counts beside it. See [Detecting failed measurements](#detecting-failed-measurements). A latency measurement that fails ends the run instead, so it reports nothing.
 
 ### Timestamps and regional settings
 
@@ -511,7 +511,7 @@ The speed is about the link, so it counts every byte that arrived, including the
 
 Every output format carries the counts:
 
-**Default** — a `Failed` column appears as soon as a test finishes with failures, and the test's mark says which kind of failure it was. A test whose every request failed reports whatever those requests moved before they failed (zero in the example below, where nothing arrived) and no latency under load: its probes never saw a loaded line, so those cells stay blank.
+**Default** — a `Failed` column appears as soon as a test finishes with failures, and the test's mark says which kind of failure it was. A test whose every request failed reports the speed of whatever those requests moved before they failed (zero in the example below, where nothing arrived) and no latency under load: its probes never saw a loaded line, so those cells stay blank.
 ```
     Test         Done      Speed  Latency  Jitter    Failed
 ✓   Pinging      100%               24 ms    3 ms

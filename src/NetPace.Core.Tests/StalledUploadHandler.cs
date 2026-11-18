@@ -31,6 +31,13 @@ internal sealed class StalledUploadHandler : HttpMessageHandler
     private readonly long acceptedInFullLength;
     private readonly int bytesBeforeStall;
     private readonly TaskCompletionSource stalled = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    private long bytesAcceptedBeforeStall;
+
+    /// <summary>
+    /// How much of the stalled upload the server had accepted when it stopped reading: whole
+    /// writes, so at least the threshold given and as much more as the last write carried.
+    /// </summary>
+    public long BytesAcceptedBeforeStall => Interlocked.Read(ref bytesAcceptedBeforeStall);
 
     /// <summary>
     /// Constructs a server that stalls every upload but the one of <paramref name="acceptedInFullLength"/> bytes.
@@ -52,12 +59,13 @@ internal sealed class StalledUploadHandler : HttpMessageHandler
         {
             if (length == acceptedInFullLength)
             {
-                await stalled.Task.ConfigureAwait(false);
+                await stalled.Task.WaitAsync(StallLimit, cancellationToken).ConfigureAwait(false);
                 await request.Content.CopyToAsync(Stream.Null, cancellationToken).ConfigureAwait(false);
             }
             else
             {
-                await request.Content.CopyToAsync(new StallingSink(bytesBeforeStall, stalled), cancellationToken).ConfigureAwait(false);
+                var sink = new StallingSink(bytesBeforeStall, stalled, accepted => Interlocked.Exchange(ref bytesAcceptedBeforeStall, accepted));
+                await request.Content.CopyToAsync(sink, cancellationToken).ConfigureAwait(false);
             }
         }
 
@@ -68,7 +76,7 @@ internal sealed class StalledUploadHandler : HttpMessageHandler
     /// Accepts a fixed number of bytes, then holds the next write until the writer's cancellation
     /// token fires, or until <see cref="StallLimit"/> passes and it accepts that write and the rest.
     /// </summary>
-    private sealed class StallingSink(int bytesBeforeStall, TaskCompletionSource stalled) : Stream
+    private sealed class StallingSink(int bytesBeforeStall, TaskCompletionSource stalled, Action<long> onStall) : Stream
     {
         private int bytesAccepted;
         private bool stallRanOut;
@@ -83,6 +91,7 @@ internal sealed class StalledUploadHandler : HttpMessageHandler
         {
             if (bytesAccepted >= bytesBeforeStall && !stallRanOut)
             {
+                onStall(bytesAccepted);
                 stalled.TrySetResult();
                 await Task.Delay(StallLimit, cancellationToken).ConfigureAwait(false);
                 stallRanOut = true;

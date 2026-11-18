@@ -1594,7 +1594,8 @@ public sealed partial class OoklaSpeedtestTests
 
         // Then
         result.ShouldNotBeNull();
-        // A non-success status is a rejected upload, not throughput: zero bytes, all requests failed.
+        // A non-success status is a failed request. The mock rejects without reading the body, so
+        // nothing was sent and the figure is zero.
         result.BytesProcessed.ShouldBe(0);
         result.RequestsSucceeded.ShouldBe(0);
         result.RequestsFailed.ShouldBeGreaterThan(0);

@@ -18,7 +18,7 @@
 #
 # The script takes a long time. Nothing here bounds how long a run may take - a slow run
 # on a slow link is the point, and a time limit here would decide what NetPace's own
-# limits are for. Ctrl-C is safe: the lab container is removed however the script ends.
+# limits are for. Ctrl-C is safe: the lab is removed however the script ends.
 #
 # It checks OoklaServer alone: the lab's LibreSpeed server is not started.
 #
@@ -107,8 +107,8 @@ format_speed() {
 # not that it measured anything like what the link carries, which is the failure this whole
 # check exists to make visible.
 json_number() {
-  # A run that left no result behind - the `radio` row does exactly that - has no figure to read,
-  # and that is not worth a word: the FAIL beside it already says what happened. The run's output
+  # A run that died before writing a result has no figure to read, and that is not worth a word:
+  # the FAIL beside it already says what happened. The run's output
   # was redirected into the file, so the file always exists; an empty one is what no result means.
   [ -s "$1" ] || return 0
 

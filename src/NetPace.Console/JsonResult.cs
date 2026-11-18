@@ -49,7 +49,7 @@ public sealed record JsonResult
     /// Gets the measured download speed in bits per second, or <see langword="null"/> when the
     /// download test was not run. A number in a fixed unit, so a script reads the same value
     /// whatever the unit options say. An all-failed test is still a number, not
-    /// <see langword="null"/>: what its requests moved before they failed, which is <c>0</c> only
+    /// <see langword="null"/>: the speed of what its requests moved before they failed, which is <c>0</c> only
     /// where nothing arrived. The counts say whether any request succeeded.
     /// </summary>
     public long? DownloadSpeedBitsPerSecond { get; init; }
@@ -95,8 +95,8 @@ public sealed record JsonResult
     /// <summary>
     /// Gets the measured upload speed in bits per second, or <see langword="null"/> when the upload
     /// test was not run. A number in a fixed unit, so a script reads the same value whatever the
-    /// unit options say. An all-failed test is still a number, not <see langword="null"/>: what its
-    /// requests moved before they failed, which is <c>0</c> only where nothing arrived. The counts
+    /// unit options say. An all-failed test is still a number, not <see langword="null"/>: the speed
+    /// of what its requests moved before they failed, which is <c>0</c> only where nothing arrived. The counts
     /// say whether any request succeeded.
     /// </summary>
     public long? UploadSpeedBitsPerSecond { get; init; }

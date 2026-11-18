@@ -27,6 +27,12 @@ public sealed partial class OoklaSpeedtestTests
         private const int BudgetBytes = 1024 * 1024;
         private const int BytesDeliveredInFlight = 8192;
 
+        /// <summary>
+        /// How long a test waits for another request to reach the point it is ordered behind, so a
+        /// regression that never gets there fails the test rather than hanging the suite.
+        /// </summary>
+        private static readonly TimeSpan GateLimit = TimeSpan.FromSeconds(5);
+
         private static readonly IServer TestServer = new Server { Url = ServerUrl, Sponsor = "Test", Location = "Test" };
 
         /// <summary>
@@ -62,7 +68,7 @@ public sealed partial class OoklaSpeedtestTests
 
             mockHttp.When($"{ServerUrl}random100x100.jpg").Respond(async _ =>
             {
-                await inFlightDelivered.Task;
+                await inFlightDelivered.Task.WaitAsync(GateLimit);
                 return new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent(new byte[BudgetBytes]) };
             });
 
@@ -154,6 +160,40 @@ public sealed partial class OoklaSpeedtestTests
             result.BytesProcessed.ShouldBe(bytesBeforeCutOff);
             result.RequestsSucceeded.ShouldBe(0);
             result.RequestsFailed.ShouldBe(1);
+        }
+
+        [Fact]
+        public async Task GetUploadSpeedAsync_WhenTheServerAcceptsPartOfTheBodyAndAnswersSuccess_CountsOnlyWhatWasSent()
+        {
+            // Given a server that reads 32 KiB of a 100 KiB upload, stops reading, and answers
+            // success anyway.
+            const int bytesBeforeCutOff = 32768;
+
+            using var handler = new CutOffUploadHandler(bytesBeforeCutOff, answerSuccessAfterCutOff: true);
+
+            var settings = new OoklaSpeedtestSettings
+            {
+                UploadTest = new()
+                {
+                    UploadSizeIncrementKb = 100,
+                    UploadIncrements = 1,
+                    UploadSizeIterations = 1,
+                    UploadParallelTasks = 1
+                },
+                LatencyTest = new() { LoadedLatencyEnabled = false }
+            };
+
+            var speedtest = new OoklaSpeedtest(settings, new HttpClient(handler, disposeHandler: false));
+
+            // When
+            var result = await speedtest.GetUploadSpeedAsync(TestServer);
+
+            // Then the figure is built from what was sent, not from the length the upload asked
+            // for: crediting the unsent rest would be the over-count the measurement exists to
+            // remove. The request itself succeeded.
+            result.BytesProcessed.ShouldBe(bytesBeforeCutOff);
+            result.RequestsSucceeded.ShouldBe(1);
+            result.RequestsFailed.ShouldBe(0);
         }
 
         [Fact]
@@ -270,7 +310,7 @@ public sealed partial class OoklaSpeedtestTests
             });
             mockHttp.When($"{ServerUrl}random100x100.jpg").Respond(async _ =>
             {
-                await inFlightReading.Task;
+                await inFlightReading.Task.WaitAsync(GateLimit);
                 return new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent(new byte[BudgetBytes]) };
             });
 
@@ -331,12 +371,15 @@ public sealed partial class OoklaSpeedtestTests
             // nothing more: it stopped when the budget was reached rather than writing on. The
             // counts are untouched - the upload that filled the budget succeeded, and the one
             // dropped behind it is neither a success nor a failure.
-            result.BytesProcessed.ShouldBe(BudgetBytes + BytesDeliveredInFlight);
+            var sentBeforeStall = handler.BytesAcceptedBeforeStall;
+            sentBeforeStall.ShouldBeGreaterThan(0);
+
+            result.BytesProcessed.ShouldBe(BudgetBytes + sentBeforeStall);
             result.RequestsSucceeded.ShouldBe(1);
             result.RequestsFailed.ShouldBe(0);
 
             var dropped = diagnostics.Single(d => d.Kind == RequestKind.Transfer && d.Outcome == RequestOutcome.Cancelled);
-            dropped.BytesProcessed.ShouldBe(BytesDeliveredInFlight);
+            dropped.BytesProcessed.ShouldBe(sentBeforeStall);
         }
     }
 }
