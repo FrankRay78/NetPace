@@ -27,9 +27,10 @@ namespace NetPace.Console.ConsoleWriters;
 /// next run.
 /// </para>
 /// <para>
-/// Every column is drawn at every width. A window too narrow for the table wraps it rather than
-/// dropping a figure the user asked to see, which is the one thing a narrow window must not do:
-/// a missing column reads as a measurement that was never taken.
+/// Every column is drawn at the widths a terminal offers. A window too narrow for the table wraps
+/// it rather than dropping a figure the user asked to see, which is the one thing a narrow window
+/// must not do: a missing column reads as a measurement that was never taken. Narrower than about
+/// twenty-five characters the console library reduces the table itself, and a column can go.
 /// </para>
 /// </remarks>
 /// <param name="theme">The colours and emphasis to draw in.</param>
@@ -74,9 +75,9 @@ internal sealed class SpeedTestTable(
 
     /// <summary>
     /// The blank between one column and the next, so a column's figures do not run into the
-    /// column beside it. Three rather than two: at two, neighbouring figures read as one
-    /// (<c>100%  8.00 Mbps</c>, <c>4 ms  1 of 150</c>), and the third blank separates the columns
-    /// while still leaving the full table inside 80 characters.
+    /// column beside it. Three rather than two: at two, <c>100%</c> and <c>8.00 Mbps</c> stood
+    /// close enough to read as one figure, as did <c>4 ms</c> and <c>1 of 150</c>, and the third
+    /// blank separates them while still leaving an auto-scaled table inside 80 characters.
     /// </summary>
     private const int ColumnGap = 3;
 
