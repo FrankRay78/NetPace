@@ -98,11 +98,28 @@ public sealed partial class NetPaceConsoleTests
             await Verify(AnsiSnapshot.Readable(Opening(result.Output))).UseTextForParameters($"{theme}_{Slug(screen)}");
         }
 
-        [InlineData("plain", null)]
-        [InlineData("halloween", "1")]
-        [InlineData(null, "1")]
+        /// <summary>
+        /// Every way a user asks for no colour, against both help screens: the plain theme, and
+        /// NO_COLOR both over a coloured theme and on its own.
+        /// </summary>
+        public static TheoryData<string?, string?, string> NoColourAndHelpScreens()
+        {
+            (string? Theme, string? NoColour)[] asked = [("plain", null), ("halloween", "1"), (null, "1")];
+
+            var rows = new TheoryData<string?, string?, string>();
+            foreach (var (theme, noColour) in asked)
+            {
+                foreach (string screen in HelpScreens)
+                {
+                    rows.Add(theme, noColour, screen);
+                }
+            }
+            return rows;
+        }
+
+        [MemberData(nameof(NoColourAndHelpScreens))]
         [Theory]
-        public async Task EachHelpScreen_WhereNoColourIsDrawn_OpensWithTheSameLogoUncoloured(string? theme, string? noColour)
+        public async Task EachHelpScreen_WhereNoColourIsDrawn_OpensWithTheSameLogoUncoloured(string? theme, string? noColour, string screen)
         {
             // SCENARIO: The help logo reads without colour
 
@@ -111,17 +128,18 @@ public sealed partial class NetPaceConsoleTests
             if (theme is not null) variables.Add(("NETPACE_THEME", theme));
             if (noColour is not null) variables.Add(("NO_COLOR", noColour));
 
-            foreach (string screen in HelpScreens)
-            {
-                // When
-                var host = new CommandLineTestHost(Services(FromEnvironment([.. variables])), CommandLineTestHost.RedirectedWidth, recordColour: true);
-                var result = await host.RunAsync(screen.Split(' '));
+            var host = new CommandLineTestHost(
+                Services(FromEnvironment([.. variables])),
+                CommandLineTestHost.RedirectedWidth,
+                recordColour: true);
 
-                // Then the same lettering is drawn, and nothing anywhere on the screen is coloured.
-                Assert.Equal(0, result.ExitCode);
-                Assert.All(PixelRows, row => Assert.Contains(row, result.Output, StringComparison.Ordinal));
-                Assert.False(AnsiSnapshot.CarriesStyling(result.Output));
-            }
+            // When
+            var result = await host.RunAsync(screen.Split(' '));
+
+            // Then the same lettering is drawn, and nothing anywhere on the screen is coloured.
+            Assert.Equal(0, result.ExitCode);
+            Assert.All(PixelRows, row => Assert.Contains(row, result.Output, StringComparison.Ordinal));
+            Assert.False(AnsiSnapshot.CarriesStyling(result.Output));
         }
 
         [InlineData("--help")]
