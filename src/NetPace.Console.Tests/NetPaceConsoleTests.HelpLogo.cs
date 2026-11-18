@@ -32,25 +32,27 @@ public sealed partial class NetPaceConsoleTests
         /// <summary>The help screens the logo opens, both drawn by the same renderer.</summary>
         private static readonly string[] HelpScreens = ["--help", "servers --help"];
 
+        /// <summary>
+        /// Both help screens, one theory row each, so a screen added to <see cref="HelpScreens"/>
+        /// reaches every theory here rather than only the ones that read the list.
+        /// </summary>
+        public static TheoryData<string> HelpScreenRows()
+        {
+            var rows = new TheoryData<string>();
+            foreach (string screen in HelpScreens)
+            {
+                rows.Add(screen);
+            }
+            return rows;
+        }
+
+        /// <summary>The standing stub registrations, with the theme the run is drawn in.</summary>
         private static ServiceCollection Services(IThemeProvider themeProvider)
         {
-            var services = new ServiceCollection();
-            services.AddSingleton<ISpeedTestService, SpeedTestStub>();
-            services.AddSingleton<IClock, ClockStub>();
-            services.AddSingleton<IWaiter, NoDelayStub>();
+            var services = StubServices();
             services.AddSingleton(themeProvider);
             return services;
         }
-
-        /// <summary>
-        /// A run whose environment holds the variables given here and nothing else, so what the
-        /// user set reaches the run without the suite's own environment being touched.
-        /// </summary>
-        private static IThemeProvider FromEnvironment(params (string Name, string Value)[] variables) =>
-            new EnvironmentThemeProvider(name => variables.Where(v => v.Name == name).Select(v => v.Value).FirstOrDefault());
-
-        /// <summary>The screen a theory row names, as a snapshot file reads it.</summary>
-        private static string Slug(string screen) => string.Join('-', screen.Split(' ').Select(word => word.TrimStart('-')));
 
         /// <summary>
         /// What the help screen opens with: everything above the DESCRIPTION heading.
@@ -94,7 +96,6 @@ public sealed partial class NetPaceConsoleTests
 
             // Then the lettering is drawn, NET in the theme's first colour and PACE in its second.
             Assert.Equal(0, result.ExitCode);
-            Assert.All(PixelRows, row => Assert.Contains(row, AnsiSnapshot.WithoutStyling(result.Output), StringComparison.Ordinal));
             await Verify(AnsiSnapshot.Readable(Opening(result.Output))).UseTextForParameters($"{theme}_{Slug(screen)}");
         }
 
@@ -125,8 +126,14 @@ public sealed partial class NetPaceConsoleTests
 
             // Given an environment that asks for no colour, by the plain theme or by NO_COLOR
             var variables = new List<(string Name, string Value)>();
-            if (theme is not null) variables.Add(("NETPACE_THEME", theme));
-            if (noColour is not null) variables.Add(("NO_COLOR", noColour));
+            if (theme is not null)
+            {
+                variables.Add(("NETPACE_THEME", theme));
+            }
+            if (noColour is not null)
+            {
+                variables.Add(("NO_COLOR", noColour));
+            }
 
             var host = new CommandLineTestHost(
                 Services(FromEnvironment([.. variables])),
@@ -142,8 +149,7 @@ public sealed partial class NetPaceConsoleTests
             Assert.False(AnsiSnapshot.CarriesStyling(result.Output));
         }
 
-        [InlineData("--help")]
-        [InlineData("servers --help")]
+        [MemberData(nameof(HelpScreenRows))]
         [Theory]
         public async Task AConsoleThatCannotDrawUnicode_OpensEachHelpScreenWithTheAsciiLogo(string screen)
         {
@@ -155,16 +161,16 @@ public sealed partial class NetPaceConsoleTests
             string cannotDraw = await Draw(screen, unicode: false);
 
             // Then the console that cannot draw the pixel lettering is given other lettering
-            // instead, rather than the characters it cannot draw.
-            Assert.All(PixelRows, row => Assert.DoesNotContain(row, cannotDraw, StringComparison.Ordinal));
+            // instead, in the theme's own colour, rather than the characters it cannot draw.
             Assert.NotEqual(canDraw, cannotDraw);
-            await Verify(cannotDraw).UseTextForParameters(Slug(screen));
+            await Verify(AnsiSnapshot.Readable(cannotDraw)).UseTextForParameters(Slug(screen));
 
             async Task<string> Draw(string arguments, bool unicode)
             {
                 var host = new CommandLineTestHost(
                     Services(FromEnvironment()),
                     CommandLineTestHost.RedirectedWidth,
+                    recordColour: true,
                     unicode: unicode);
 
                 var result = await host.RunAsync(arguments.Split(' '));

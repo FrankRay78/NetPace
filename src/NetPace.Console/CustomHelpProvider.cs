@@ -10,6 +10,23 @@ namespace NetPace.Console;
 internal static class CustomHelpProvider
 {
     /// <summary>
+    /// The NetPace wordmark, three rows of block-element characters, split at the column where NET
+    /// ends and PACE begins so each half can be drawn in its own colour.
+    /// </summary>
+    /// <remarks>
+    /// A five-by-five pixel font with a one-pixel gap between letters, drawn in block-element
+    /// characters that each carry a two-by-two grid of pixels. A letter therefore occupies three
+    /// whole character cells, which is what gives every letter the same apparent spacing; spacing
+    /// that is not a whole cell renders unevenly, so the halves are split on a cell boundary too.
+    /// </remarks>
+    private static readonly (string Net, string Pace)[] WordmarkRows =
+    [
+        ("▙ ▌▛▀▘▀▛▘", "▛▀▖▞▀▖▞▀▘▛▀▘"),
+        ("▌▚▌▛▀  ▌ ", "▛▀ ▛▀▌▌  ▛▀"),
+        ("▘ ▘▀▀▘ ▘ ", "▘  ▘ ▘▝▀▘▀▀▘")
+    ];
+
+    /// <summary>
     /// An empty grid cell. A <see cref="Text"/> rather than <c>""</c> because the rest of a row is
     /// built from renderables, and a grid row takes one kind or the other, never a mix.
     /// </summary>
@@ -42,22 +59,6 @@ internal static class CustomHelpProvider
     }
 
     /// <summary>
-    /// The NetPace wordmark, three rows of quarter-block characters, split at the column where NET
-    /// ends and PACE begins so each half can be drawn in its own colour.
-    /// </summary>
-    /// <remarks>
-    /// A five-pixel-high pixel font, three pixels to a letter with a one-pixel gap. Each letter
-    /// falls on whole character cells, which is what makes it render crisply; spacing that is not
-    /// a whole cell renders unevenly, so the halves are split on a cell boundary too.
-    /// </remarks>
-    private static readonly (string Net, string Pace)[] WordmarkRows =
-    [
-        ("▙ ▌▛▀▘▀▛▘", "▛▀▖▞▀▖▞▀▘▛▀▘"),
-        ("▌▚▌▛▀  ▌ ", "▛▀ ▛▀▌▌  ▛▀"),
-        ("▘ ▘▀▀▘ ▘ ", "▘  ▘ ▘▝▀▘▀▀▘")
-    ];
-
-    /// <summary>
     /// The lettering both help screens open with, one blank line above it and one below.
     /// </summary>
     /// <remarks>
@@ -72,12 +73,12 @@ internal static class CustomHelpProvider
 
         if (console.Profile.Capabilities.Unicode)
         {
-            var net = new Style(theme.BannerNet);
-            var pace = new Style(theme.BannerPace);
+            var netStyle = new Style(theme.BannerNet);
+            var paceStyle = new Style(theme.BannerPace);
 
-            foreach (var (netHalf, paceHalf) in WordmarkRows)
+            foreach (var (net, pace) in WordmarkRows)
             {
-                console.WriteStyledLine((netHalf, net), (paceHalf, pace));
+                console.WriteStyledLine((net, netStyle), (pace, paceStyle));
             }
         }
         else

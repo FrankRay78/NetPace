@@ -94,7 +94,7 @@ For common scenarios and advanced usage (such as scripting, restricting payload 
 `netpace --help` will display detailed usage instructions.
 
 ```txt
-C:\>netpace.exe --help
+$ netpace --help
 
 ▙ ▌▛▀▘▀▛▘▛▀▖▞▀▖▞▀▘▛▀▘
 ▌▚▌▛▀  ▌ ▛▀ ▛▀▌▌  ▛▀

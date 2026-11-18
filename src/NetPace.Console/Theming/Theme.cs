@@ -43,9 +43,9 @@ public sealed record Theme
     /// a console that cannot draw Unicode is given instead, which is one colour.
     /// </summary>
     /// <remarks>
-    /// A colour rather than a style, because that is all large lettering can be given. Writing the
-    /// name in capitals loses the break between Net and Pace; drawing the two halves in a pair of
-    /// colours restores it, which is why there are two slots and not one.
+    /// A colour rather than a style, because that is all the ASCII lettering can be given.
+    /// Writing the name in capitals loses the break between Net and Pace; drawing the two halves
+    /// in a pair of colours restores it, which is why there are two slots and not one.
     /// </remarks>
     public required Color BannerNet { get; init; }
 
@@ -130,11 +130,10 @@ public sealed record Theme
     /// <remarks>
     /// Every <see cref="Style"/> slot added above belongs here too; <see cref="BannerNet"/> and
     /// <see cref="BannerPace"/> are a <see cref="Color"/> each and so cannot be, and are asserted
-    /// on separately by the same sweeps. A
-    /// test pins this list against the <see cref="Style"/> properties the type declares, so a slot
-    /// left out of it fails rather than quietly going uncovered. The whole-theme sweeps read the
-    /// list: the plain theme leaves every slot unstyled, and each coloured theme moves every slot
-    /// off the default theme's value.
+    /// on separately by the same sweeps. A test pins this list against the <see cref="Style"/>
+    /// properties the type declares, so a slot left out of it fails rather than quietly going
+    /// uncovered. The whole-theme sweeps read the list: the plain theme leaves every slot unstyled,
+    /// and each coloured theme moves every slot off the default theme's value.
     /// </remarks>
     public IReadOnlyList<Style> Styles =>
     [
@@ -225,11 +224,11 @@ public sealed record Theme
     /// A green-led look.
     /// </summary>
     /// <remarks>
-    /// Every colour here is a mid-tone green: light enough to read against a black terminal and
-    /// dark enough to read against a white one, which a bright green manages only on the first and
-    /// a deep green only on the second. Four tones carry the whole screen — a leading green for
-    /// what the eye should land on, a teal green and an olive green for the things beside it, and a
-    /// grey-green for what is deliberately quiet.
+    /// Every colour here but one is a mid-tone green: light enough to read against a black
+    /// terminal and dark enough to read against a white one, which a bright green manages only on
+    /// the first and a deep green only on the second. Four tones carry the screen itself — a
+    /// leading green for what the eye should land on, a teal green and an olive green for the
+    /// things beside it, and a grey-green for what is deliberately quiet.
     /// <para>
     /// <see cref="BannerPace"/> is the one exception: a bright green, kept because the help
     /// lettering needs a pair of greens far enough apart to read as two words, and a second

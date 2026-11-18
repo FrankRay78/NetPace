@@ -160,7 +160,6 @@ public sealed class CommandLineTestHost
     private TestConsole CreateConsole()
     {
         var console = new TestConsole().Width(consoleWidth);
-
         console.Profile.Capabilities.Unicode = _unicode;
 
         if (_recordColour)
