@@ -929,8 +929,8 @@ public abstract class SpeedTestProviderBase : ISpeedTestService
 
         // The percentage last reported, so a report sent from inside a request - which knows what
         // has arrived but not how far through the request list the transfer is - can repeat it
-        // rather than invent one. An int read and written without a lock, which is atomic, and it
-        // is telemetry rather than measurement either way.
+        // rather than invent one. Read and written only under lockObject, inside
+        // ReportTransferProgress, so a repeat can never carry a value a later report has replaced.
         var lastPercentageComplete = 0;
 
         // The clock reading of the last report sent from inside a request, which paces them.
@@ -940,8 +940,8 @@ public abstract class SpeedTestProviderBase : ISpeedTestService
         // running latency figures are always read together. The figure is always the running
         // delivered total, so what a consumer is shown while the test runs cannot be contradicted
         // by what the result reports at the end of it. Nothing is computed where no consumer asked
-        // for progress.
-        void ReportTransferProgress(int percentageComplete)
+        // for progress. A null percentage repeats the last one reported.
+        void ReportTransferProgress(int? percentageComplete = null)
         {
             if (progress is null)
             {
@@ -955,16 +955,18 @@ public abstract class SpeedTestProviderBase : ISpeedTestService
             // the figure go backwards and would hand a live display two frames to draw together.
             // The lock is re-entrant, so the callers that already hold it are unaffected. A slow
             // consumer callback therefore holds up the request that is reporting, as an inline
-            // report already did before this.
+            // report already did before this. The percentage to repeat is read under the same lock,
+            // so a repeat composed while a finishing request reports a new one cannot write the
+            // older value back and send the percentage backwards.
             lock (lockObject)
             {
-                lastPercentageComplete = percentageComplete;
+                lastPercentageComplete = percentageComplete ?? lastPercentageComplete;
 
                 (long? latencyMilliseconds, long? jitterMilliseconds) = probing?.Running ?? (null, null);
 
                 ReportProgress(progress, new SpeedTestProgress
                 {
-                    PercentageComplete = percentageComplete,
+                    PercentageComplete = lastPercentageComplete,
                     BytesProcessed = Interlocked.Read(ref totalBytesDelivered),
                     ElapsedMilliseconds = ElapsedMillisecondsSince(testStartTimestamp),
                     LatencyMilliseconds = latencyMilliseconds,
@@ -1002,7 +1004,7 @@ public abstract class SpeedTestProviderBase : ISpeedTestService
                 return;
             }
 
-            ReportTransferProgress(lastPercentageComplete);
+            ReportTransferProgress();
         }
 
         // Create and execute tasks to process the test data in parallel.
@@ -1172,7 +1174,7 @@ public abstract class SpeedTestProviderBase : ISpeedTestService
                             // shown it. Without this the result could report more than the last
                             // figure the user saw. Nothing is reported for a request the budget
                             // caught before it carried anything, which is most of them.
-                            ReportTransferProgress(lastPercentageComplete);
+                            ReportTransferProgress();
                         }
 
                         if (requestStarted && diagnostics is not null)
