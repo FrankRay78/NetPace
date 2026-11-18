@@ -98,7 +98,8 @@ public sealed class ThemeTests
 
         // Then
         Assert.Equal("plain", theme.Name);
-        Assert.Equal(Color.Default, theme.Banner);
+        Assert.Equal(Color.Default, theme.BannerNet);
+        Assert.Equal(Color.Default, theme.BannerPace);
         foreach (var style in theme.Styles)
         {
             Assert.Equal(Color.Default, style.Foreground);
@@ -116,24 +117,49 @@ public sealed class ThemeTests
 
         // Then no element is left at the default theme's colour, so every line is drawn in the
         // chosen theme rather than only the elements that happened to be easy to change.
-        Assert.NotEqual(Theme.Default.Banner, theme.Banner);
+        Assert.NotEqual(Theme.Default.BannerNet, theme.BannerNet);
+        Assert.NotEqual(Theme.Default.BannerPace, theme.BannerPace);
         for (var slot = 0; slot < theme.Styles.Count; slot++)
         {
             Assert.NotEqual(Theme.Default.Styles[slot], theme.Styles[slot]);
         }
     }
 
+    /// <summary>
+    /// The colours a theme is allowed to draw that read on a black terminal and wash out on a
+    /// white one, with what each is and why it is let off.
+    /// </summary>
+    /// <remarks>
+    /// The green theme's help lettering needs a pair of greens far enough apart to read as two
+    /// words, which two mid-tones are not; the brighter of the pair costs the reader nothing they
+    /// cannot get elsewhere, since the lettering says the product name and no more. Documented for
+    /// users under "Choosing a colour theme" in USER_GUIDE.md.
+    /// </remarks>
+    public static TheoryData<string, string> LightBackgroundExemptions() => new()
+    {
+        { "green", "BannerPace" }
+    };
+
     [MemberData(nameof(ThemeRows.ColouredNames), MemberType = typeof(ThemeRows))]
     [Theory]
     public void AColouredTheme_ReadsOnABlackTerminalAndAWhiteOneAlike(string name)
     {
-        // Given every colour the theme draws in, the banner among them
+        // Given every colour the theme draws in, the help lettering among them
         var theme = ThemeRows.Named(name);
         var colours = theme.Styles
             .SelectMany(style => new[] { style.Foreground, style.Background })
-            .Append(theme.Banner)
+            .Append(theme.BannerNet)
+            .Append(theme.BannerPace)
             .Where(colour => colour != Color.Default)
             .Distinct()
+            .ToArray();
+
+        // and the colours this theme is let off the white-background half of the test, read from
+        // the slots they are named against so a slot moved to another colour carries its exemption
+        var exempt = LightBackgroundExemptions()
+            .Select(row => (Theme: (string)row[0], Slot: (string)row[1]))
+            .Where(row => row.Theme == name)
+            .Select(row => (Color)typeof(Theme).GetProperty(row.Slot)!.GetValue(theme)!)
             .ToArray();
 
         // Then each clears the contrast floor against pure black and pure white alike, so the
@@ -142,11 +168,26 @@ public sealed class ThemeTests
         foreach (var colour in colours)
         {
             double againstBlack = ContrastRatio(colour, Color.Black);
-            double againstWhite = ContrastRatio(colour, Color.White);
-
             Assert.True(againstBlack >= ContrastFloor, $"#{colour.ToHex()} against black is {againstBlack:F2}:1");
+
+            if (exempt.Contains(colour)) continue;
+
+            double againstWhite = ContrastRatio(colour, Color.White);
             Assert.True(againstWhite >= ContrastFloor, $"#{colour.ToHex()} against white is {againstWhite:F2}:1");
         }
+    }
+
+    [MemberData(nameof(LightBackgroundExemptions))]
+    [Theory]
+    public void AnExemptedColour_IsOneThatWouldOtherwiseFailTheWhiteBackgroundTest(string name, string slot)
+    {
+        // Given a colour let off reading on a white terminal
+        var theme = ThemeRows.Named(name);
+        var colour = (Color)typeof(Theme).GetProperty(slot)!.GetValue(theme)!;
+
+        // Then the exemption is one the palette still needs, so it goes away by itself once the
+        // colour it names is changed to one that reads on both backgrounds.
+        Assert.True(ContrastRatio(colour, Color.White) < ContrastFloor, $"#{colour.ToHex()} no longer needs its exemption");
     }
 
     [Fact]

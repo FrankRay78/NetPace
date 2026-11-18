@@ -41,15 +41,53 @@ internal static class CustomHelpProvider
         RenderFooter(console, theme);
     }
 
+    /// <summary>
+    /// The NetPace wordmark, three rows of quarter-block characters, split at the column where NET
+    /// ends and PACE begins so each half can be drawn in its own colour.
+    /// </summary>
+    /// <remarks>
+    /// A five-pixel-high pixel font, three pixels to a letter with a one-pixel gap. Each letter
+    /// falls on whole character cells, which is what makes it render crisply; spacing that is not
+    /// a whole cell renders unevenly, so the halves are split on a cell boundary too.
+    /// </remarks>
+    private static readonly (string Net, string Pace)[] WordmarkRows =
+    [
+        ("▙ ▌▛▀▘▀▛▘", "▛▀▖▞▀▖▞▀▘▛▀▘"),
+        ("▌▚▌▛▀  ▌ ", "▛▀ ▛▀▌▌  ▛▀"),
+        ("▘ ▘▀▀▘ ▘ ", "▘  ▘ ▘▝▀▘▀▀▘")
+    ];
+
+    /// <summary>
+    /// The lettering both help screens open with, one blank line above it and one below.
+    /// </summary>
+    /// <remarks>
+    /// The wordmark is drawn wherever the console can draw Unicode, which is what the product
+    /// principles let default output assume of a modern terminal. A console that cannot gets the
+    /// ASCII lettering instead, in one colour, because the characters the wordmark is made of would
+    /// not appear at all.
+    /// </remarks>
     private static void RenderHeader(IAnsiConsole console, Theme theme)
     {
-        var font = LoadEmbeddedFont("slant.flf");
-        var figlet = new FigletText(font, "NetPace")
-            .LeftJustified()
-            .Color(theme.Banner);
-
         console.WriteLine();
-        console.Write(figlet);
+
+        if (console.Profile.Capabilities.Unicode)
+        {
+            var net = new Style(theme.BannerNet);
+            var pace = new Style(theme.BannerPace);
+
+            foreach (var (netHalf, paceHalf) in WordmarkRows)
+            {
+                console.WriteStyledLine((netHalf, net), (paceHalf, pace));
+            }
+        }
+        else
+        {
+            var font = LoadEmbeddedFont("slant.flf");
+            console.Write(new FigletText(font, "NetPace")
+                .LeftJustified()
+                .Color(theme.BannerNet));
+        }
+
         console.WriteLine();
     }
 
