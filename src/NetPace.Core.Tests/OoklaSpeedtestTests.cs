@@ -999,7 +999,7 @@ public sealed partial class OoklaSpeedtestTests
             }
         };
 
-        var speedtest = new OoklaSpeedtest(settings, httpClient);
+        var speedtest = new OoklaSpeedtest(settings, httpClient, timeProviderOverride: new ControlledTimeProvider(ClockStart));
         var server = new Server { Url = "http://example.com/", Sponsor = "Test", Location = "Test" };
         var progressReports = new List<int>();
 
@@ -1064,7 +1064,7 @@ public sealed partial class OoklaSpeedtestTests
             }
         };
 
-        var speedtest = new OoklaSpeedtest(settings, httpClient);
+        var speedtest = new OoklaSpeedtest(settings, httpClient, timeProviderOverride: new ControlledTimeProvider(ClockStart));
         var server = new Server { Url = "http://example.com/", Sponsor = "Test", Location = "Test" };
         var progressReports = new List<int>();
 
@@ -1100,7 +1100,7 @@ public sealed partial class OoklaSpeedtestTests
             }
         };
 
-        var speedtest = new OoklaSpeedtest(settings, httpClient);
+        var speedtest = new OoklaSpeedtest(settings, httpClient, timeProviderOverride: new ControlledTimeProvider(ClockStart));
         var server = new Server { Url = "http://example.com/", Sponsor = "Test", Location = "Test" };
         var progressReports = new List<int>();
 
@@ -1412,7 +1412,7 @@ public sealed partial class OoklaSpeedtestTests
             }
         };
 
-        var speedtest = new OoklaSpeedtest(settings, httpClient);
+        var speedtest = new OoklaSpeedtest(settings, httpClient, timeProviderOverride: new ControlledTimeProvider(ClockStart));
         var server = new Server { Url = "http://example.com/", Sponsor = "Test", Location = "Test" };
         var progressReports = new List<int>();
 
@@ -1474,7 +1474,7 @@ public sealed partial class OoklaSpeedtestTests
             }
         };
 
-        var speedtest = new OoklaSpeedtest(settings, httpClient);
+        var speedtest = new OoklaSpeedtest(settings, httpClient, timeProviderOverride: new ControlledTimeProvider(ClockStart));
         var server = new Server { Url = "http://example.com/", Sponsor = "Test", Location = "Test" };
         var progressReports = new List<int>();
 
@@ -1519,7 +1519,7 @@ public sealed partial class OoklaSpeedtestTests
             }
         };
 
-        var speedtest = new OoklaSpeedtest(settings, httpClient);
+        var speedtest = new OoklaSpeedtest(settings, httpClient, timeProviderOverride: new ControlledTimeProvider(ClockStart));
         var server = new Server { Url = "http://example.com/", Sponsor = "Test", Location = "Test" };
         var progressReports = new List<int>();
 
