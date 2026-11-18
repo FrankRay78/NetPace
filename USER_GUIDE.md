@@ -87,10 +87,10 @@ With no format switch, NetPace renders the rich terminal output: the server as s
 Hey! Broadband
 http://speedtest.heybroadband.example/speedtest/upload.php
 
-    Test         Done      Speed  Latency  Jitter
-✓   Pinging      100%                3 ms    1 ms
-✓   Downloading  100%  93.1 Mbps    60 ms    4 ms
-⠹   Uploading     30%  17.9 Mbps    38 ms    3 ms
+    Test          Done       Speed   Latency   Jitter
+✓   Pinging       100%                  3 ms     1 ms
+✓   Downloading   100%   93.1 Mbps     60 ms     4 ms
+⠹   Uploading      30%   17.9 Mbps     38 ms     3 ms
 ```
 
 Idle latency is the `Pinging` row; the latency and jitter beside a transfer are the line's latency *while that transfer was running*, so you can read one against the other straight down the column. That comparison is what shows bufferbloat — a link whose latency climbs under load. The figures are live: each one appears as soon as there is something to report and ends on the figure the measurement finally reports. A cell stays blank where nothing was measured, never zero.
@@ -513,10 +513,10 @@ Every output format carries the counts:
 
 **Default** — a `Failed` column appears as soon as a test finishes with failures, and the test's mark says which kind of failure it was. A test whose every request failed reports the speed of whatever those requests moved before they failed (zero in the example below, where nothing arrived) and no latency under load: its probes never saw a loaded line, so those cells stay blank.
 ```
-    Test         Done      Speed  Latency  Jitter    Failed
-✓   Pinging      100%               24 ms    3 ms
-!   Downloading  100%   513 Mbps    60 ms    4 ms  1 of 150
-✗   Uploading    100%      0 bps                   32 of 32
+    Test          Done       Speed   Latency   Jitter     Failed
+✓   Pinging       100%                 24 ms     3 ms
+!   Downloading   100%    513 Mbps     60 ms     4 ms   1 of 150
+✗   Uploading     100%       0 bps                      32 of 32
 ```
 
 **`--simple`** — the same annotation, on the line of the test it belongs to:
