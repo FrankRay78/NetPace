@@ -37,7 +37,7 @@ Defaults below are the values supplied by `new OoklaSpeedtestSettings()` (which 
 | `DownloadSizes`          | `[1500, 2000, 3000, 3500, 4000]` | Pixel sizes used to build URLs of the form `random{N}x{N}.jpg`. Bigger N → bigger file. The default is the larger half of the historic ten-element Ookla Flash-client array (see §2.1). On `OoklaSpeedtestSettings`. |
 | `DownloadSizeIterations` | `2`                              | How many times each size is requested (URL gets a `?r={i}` cache-buster). On `OoklaSpeedtestSettings`. |
 | `DownloadParallelTasks`  | `4`                              | Concurrent HTTP GETs. On `DownloadTest`.                                               |
-| `DownloadSizeMb`         | `100`                            | Total-byte budget cap in IEC MiB. The download loop terminates once cumulative bytes received reach this threshold. Default sentinel for a bare record is `int.MaxValue` (no cap). On `DownloadTest`. |
+| `DownloadSizeMb`         | `100`                            | Total-byte budget cap in IEC MiB. The download loop terminates once the bytes returned by successful requests reach this threshold (§2.3). Default sentinel for a bare record is `int.MaxValue` (no cap). On `DownloadTest`. |
 
 Total candidate requests = `DownloadSizes.Length × DownloadSizeIterations` (Medium default = 5 × 2 = **10**).
 
@@ -68,8 +68,8 @@ Total candidate requests = `UploadIncrements × UploadSizeIterations` (Medium de
    ...
    {base}/random4000x4000.jpg?r=1
    ```
-2. `GenericTestSpeedAsync` consumes that list with `DownloadParallelTasks` workers, streaming each response with an 80 KB pooled buffer and counting each chunk as it arrives, whatever becomes of the request carrying it (§3.1).
-3. The loop **terminates early** once `downloadSizeMb × 1024 × 1024` bytes have been received *by requests that completed successfully* (the budget cap from the `--downloadsize` overload). What the budget is spent on and what the figure counts are two different totals: see §3.1.
+2. `GenericTestSpeedAsync` consumes that list with `DownloadParallelTasks` workers, streaming each response with an 80 KB pooled buffer and counting each chunk as it arrives, whatever becomes of the request carrying it (§2.3).
+3. The loop **terminates early** once `downloadSizeMb × 1024 × 1024` bytes have been received *by requests that completed successfully* (the budget cap from the `--downloadsize` overload). What the budget is spent on and what the figure counts are two different totals: see §2.3.
 
 #### Per-request bytes are server-determined, not derivable from N
 
@@ -161,7 +161,7 @@ If a future OoklaServer release changes these values, re-run the same HEAD probe
    ```
    Note that the `Kb` suffix is **binary** (1024), not decimal. Each increment is then yielded `UploadSizeIterations` times.
 2. Each length is POSTed to the provider's upload address for the server (`server.Url` itself for Ookla, the install's `backend/empty.php` for LibreSpeed), after an empty probe POST has resolved any redirect in front of it, using `RandomStreamContent` to stream cryptographically-random bytes in 8 KB chunks (avoids LOH allocations). `UploadParallelTasks` workers run concurrently.
-3. The loop **terminates early** once `uploadSizeMb × 1024 × 1024` bytes have been sent *by requests that completed successfully* (the budget cap from the `--uploadsize` overload). `RandomStreamContent` reports each 8 KB chunk once written, so an upload the server cuts off partway still contributes what it sent (§3.1).
+3. The loop **terminates early** once `uploadSizeMb × 1024 × 1024` bytes have been sent *by requests that completed successfully* (the budget cap from the `--uploadsize` overload). `RandomStreamContent` reports each 8 KB chunk once written, so an upload the server cuts off partway still contributes what it sent (§2.3).
 
 #### Default total under defaults
 
@@ -186,6 +186,19 @@ That is under the Medium profile's 25 MiB `UploadSizeMb` cap, so every request r
 
 Unlike download, this total is fully deterministic — NetPace generates the payloads itself, the OoklaServer simply sinks them. While the cap is not reached, as here, `UploadParallelTasks` only affects throughput, not the total transferred; once it is reached, §3 describes how parallelism raises the overshoot.
 
+### 2.3 Two totals: what the budget is spent on, and what the figure counts
+
+A transfer keeps two running totals, because its bytes answer two different questions.
+
+| Total | Counts | Used for |
+| --- | --- | --- |
+| Budget total | Bytes returned by requests that **completed successfully** and were counted | Tripping the `DownloadSizeMb` / `UploadSizeMb` cap, and the completion percentage |
+| Delivered total | **Every** byte any request moved, whatever became of it | `SpeedTestResult.BytesProcessed`, the live figure on `SpeedTestProgress`, and so every reported speed |
+
+The delivered total counts a request that did not finish, because it still moved data and the elapsed time it took is counted either way. The common case is a server that closes a connection it has decided is too old: OoklaServer does this, and on a slow link it cuts off much of a default profile's downloads. A request NetPace itself drops when the budget trips is the same. Each request's `--diagnostics` record reports what that request delivered, on the same terms.
+
+The budget stays on the first total: spending it on delivered bytes would trip the cap sooner and so change how many requests succeed or fail. `RequestsSucceeded` and `RequestsFailed` count requests, not bytes, and `--fail-on` reads them.
+
 ## 3. CLI surface
 
 [`Program.cs`](../../src/NetPace.Console/Program.cs) exposes one profile selector, two budget-cap overrides and one parallelism override, wired into [`SpeedTestCommandSettings`](../../src/NetPace.Console/Commands/SpeedTestCommandSettings.cs):
@@ -199,20 +212,7 @@ Unlike download, this total is fully deterministic — NetPace generates the pay
 
 `--connections` is a ceiling on concurrency, not a request count: the number of requests stays `DownloadSizes.Length × DownloadSizeIterations` (and `UploadIncrements × UploadSizeIterations`), so a profile with fewer requests than the requested count never reaches it — Tiny has one download request whatever `--connections` says. The ceiling of 32 is the largest count any profile uses (Mega).
 
-Because the cap check stops *scheduling* and cancels in-flight transfers rather than awaiting them (§2.1 step 3, §2.2 step 3), the bytes crossing the wire can exceed the cap by roughly what was in flight when it tripped — so raising `--connections` raises the possible overshoot. Those bytes are counted in the reported figure (§3.1), so a higher `--connections` can raise the reported total above the cap as well.
-
-#### 3.1 Two totals: what the budget is spent on, and what the figure counts
-
-A transfer keeps two running totals, because its bytes answer two different questions.
-
-| Total | Counts | Used for |
-| --- | --- | --- |
-| Budget total | Bytes returned by requests that **completed successfully** and were counted | Tripping the `DownloadSizeMb` / `UploadSizeMb` cap, and the completion percentage |
-| Delivered total | **Every** byte any request moved, whatever became of it | `SpeedTestResult.BytesProcessed`, the live figure on `SpeedTestProgress`, and so every reported speed |
-
-The split exists because a request that did not finish still moved data, and the elapsed time it took is counted either way. The common case is a server that closes a connection it has decided is too old — OoklaServer does this, and on a slow link it cuts off most of a default profile's downloads, which is where the figures were most wrong. A request NetPace itself drops when the budget trips is the same story. Each request's `--diagnostics` record reports what that request delivered, on the same terms.
-
-Leaving the budget on the first total is deliberate: spending it on delivered bytes would trip the cap sooner and so change how many requests succeed or fail, and the counts are not what this is about. `RequestsSucceeded` and `RequestsFailed` therefore mean exactly what they did, and `--fail-on` reads them unchanged.
+Because the cap check stops *scheduling* and cancels in-flight transfers rather than awaiting them (§2.1 step 3, §2.2 step 3), the bytes crossing the wire can exceed the cap by roughly what was in flight when it tripped — so raising `--connections` raises the possible overshoot. Those bytes are counted in the reported figure (§2.3), so a higher `--connections` can raise the reported total above the cap as well.
 
 > **Important distinction:** `--downloadsize` / `--uploadsize` are **total-byte budget caps**, not per-request size controls. The per-request sizes (`DownloadSizes`, `UploadSizeIncrementKb`, etc.) are set by the chosen profile and are otherwise reachable only via the `NetPace.Core` library API, not the CLI.
 >

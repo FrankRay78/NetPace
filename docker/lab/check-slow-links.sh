@@ -108,9 +108,9 @@ format_speed() {
 # check exists to make visible.
 json_number() {
   # A run that left no result behind - the `radio` row does exactly that - has no figure to read,
-  # and that is not worth a word: the FAIL beside it already says what happened. `set -o pipefail`
-  # is on, so this returns rather than letting the missing file abort the whole check.
-  [ -f "$1" ] || return 0
+  # and that is not worth a word: the FAIL beside it already says what happened. The run's output
+  # was redirected into the file, so the file always exists; an empty one is what no result means.
+  [ -s "$1" ] || return 0
 
   # A result file that exists but carries no such field is a different matter, and is said out
   # loud: it means the field was renamed or the figure is not a plain integer, and a silent `-`

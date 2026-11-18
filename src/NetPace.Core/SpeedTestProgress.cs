@@ -8,6 +8,13 @@ public sealed record SpeedTestProgress
     /// <summary>
     /// Gets the percentage complete.
     /// </summary>
+    /// <remarks>
+    /// During a download or an upload this never decreases, but it does repeat. A transfer reports
+    /// as each request finishes, and also, at most a few times a second, while data is still
+    /// arriving: those reports carry the latest <see cref="BytesProcessed"/> beside the percentage
+    /// already reported. A request still in flight when the transfer reaches 100 can add reports
+    /// after the first one at 100, carrying what it delivered.
+    /// </remarks>
     public int PercentageComplete { get; init; }
 
     /// <summary>

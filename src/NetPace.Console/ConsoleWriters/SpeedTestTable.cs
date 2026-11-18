@@ -355,8 +355,8 @@ internal sealed class SpeedTestTable(
     /// <summary>
     /// A figure in milliseconds as a cell carries it, or nothing at all where it was not measured.
     /// A blank cell says not measured; a zero would say measured as none. The Speed column is
-    /// deliberately the exception: a transfer whose every request failed shows <c>0 bps</c> rather
-    /// than a blank, because the mark and the Failed count beside it already say what happened,
+    /// deliberately the exception: a transfer whose every request failed shows what those requests
+    /// moved, <c>0 bps</c> where nothing arrived, rather than a blank, because the mark and the Failed count beside it already say what happened,
     /// and a blank speed on a finished row would read as a figure still to come.
     /// </summary>
     private static string Milliseconds(long? value) =>
