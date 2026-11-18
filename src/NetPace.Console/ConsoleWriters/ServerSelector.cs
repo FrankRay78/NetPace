@@ -39,7 +39,7 @@ internal static class ServerSelector
         ChosenServer chosen;
         try
         {
-            chosen = await ChooseAsync(speedTestClient, settings, recorder, choosing.Token);
+            chosen = await ChooseAsync(speedTestClient, settings, recorder, choosing.Token, timeLimitToken);
         }
         catch (OperationCanceledException) when (timeLimitToken.IsCancellationRequested && !cancellationToken.IsCancellationRequested)
         {
@@ -116,7 +116,7 @@ internal static class ServerSelector
         return (chosen, latency);
     }
 
-    private static async Task<ChosenServer> ChooseAsync(ISpeedTestService speedTestClient, SpeedTestCommandSettings settings, IDiagnosticRecorder recorder, CancellationToken cancellationToken)
+    private static async Task<ChosenServer> ChooseAsync(ISpeedTestService speedTestClient, SpeedTestCommandSettings settings, IDiagnosticRecorder recorder, CancellationToken cancellationToken, CancellationToken timeLimitToken)
     {
         if (!string.IsNullOrEmpty(settings.ServerUrl))
         {
@@ -150,7 +150,7 @@ internal static class ServerSelector
         // Screening chooses the server; the latency NetPace reports is then measured properly, on
         // the winner only.
         LatencyTestResult fastest;
-        using (var screening = DiagnosticTestScope.For(recorder, DiagnosticTests.Screening))
+        using (var screening = DiagnosticTestScope.For(recorder, DiagnosticTests.Screening, timeLimitToken))
         {
             fastest = await speedTestClient.GetFastestServerByLatencyAsync(servers, null, screening, cancellationToken);
         }

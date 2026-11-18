@@ -4,7 +4,7 @@
 
 **Behaviour:** See issue #555, whose confirmed decisions chose this mechanism.
 
-**Constraints:** `ISpeedTestService` ships to NuGet, so this breaks its implementers: the richest latency, download and upload overloads take a trailing `CancellationToken stopAndReportToken`. Callers are unaffected, the parameter being optional and last. No time limit is offered to library consumers, who bound their own calls.
+**Constraints:** `ISpeedTestService` ships to NuGet, so this breaks its implementers: the richest latency, download and upload overloads take a trailing `CancellationToken stopAndReportToken`. Callers recompile unchanged, the parameter being optional and last, but an assembly built against the old signatures must be rebuilt. No time limit is offered to library consumers, who bound their own calls.
 
 **Decisions:**
 

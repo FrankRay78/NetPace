@@ -94,7 +94,7 @@ public static class Program
             var value = result.GetValueOrDefault<string>();
             if (!TryParseTimeLimit(value, out _))
             {
-                result.AddError($"--time-limit must be a positive duration written as hours, minutes and seconds, such as {DefaultTimeLimitText}, but was '{value}'.");
+                result.AddError(TimeLimitError(value));
             }
         });
 
@@ -530,22 +530,13 @@ public static class Program
     /// culture independent, and a duration of more than nothing.
     /// </summary>
     /// <remarks>
-    /// The colon is what separates the accepted form from a bare number, which
-    /// <see cref="TimeSpan"/> reads as a count of days: a user asking for ten minutes with
-    /// <c>600</c> would otherwise get a limit of six hundred days, which is no limit at all.
-    /// <c>--delay</c> is left as it was, so only the option this method serves is strict.
+    /// Exactly <c>hh:mm:ss</c>, because <see cref="TimeSpan"/>'s own parsing reads shorter forms
+    /// as something else: <c>600</c> as six hundred days and <c>10:00</c> as ten hours, so a user
+    /// asking for ten minutes would get no limit worth the name. <c>--delay</c> accepts any
+    /// <see cref="TimeSpan"/> form; only this option is strict.
     /// </remarks>
-    private static bool TryParseTimeLimit(string? value, out TimeSpan limit)
-    {
-        limit = TimeSpan.Zero;
-
-        if (value is null || !value.Contains(':', StringComparison.Ordinal))
-        {
-            return false;
-        }
-
-        return TimeSpan.TryParse(value, CultureInfo.InvariantCulture, out limit) && limit > TimeSpan.Zero;
-    }
+    private static bool TryParseTimeLimit(string? value, out TimeSpan limit) =>
+        TimeSpan.TryParseExact(value, @"hh\:mm\:ss", CultureInfo.InvariantCulture, out limit) && limit > TimeSpan.Zero;
 
     /// <summary>
     /// The requested run time limit. A value that is present but will not parse means the
@@ -554,7 +545,14 @@ public static class Program
     private static TimeSpan ParseTimeLimit(string? value) =>
         TryParseTimeLimit(value, out var limit)
             ? limit
-            : throw new ArgumentException($"--time-limit must be a positive duration written as hours, minutes and seconds, such as {DefaultTimeLimitText}, but was '{value}'.");
+            : throw new ArgumentException(TimeLimitError(value));
+
+    /// <summary>
+    /// What a <c>--time-limit</c> value that will not parse is reported as, by the validator and by
+    /// <see cref="ParseTimeLimit"/> alike.
+    /// </summary>
+    private static string TimeLimitError(string? value) =>
+        $"--time-limit must be a positive duration written as hours, minutes and seconds, such as {DefaultTimeLimitText}, but was '{value}'.";
 
     /// <summary>
     /// Parse a <c>--connections</c> value the way its validator does: digits only, culture

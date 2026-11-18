@@ -472,11 +472,13 @@ Every run is bounded. Left alone it ends after ten minutes, and `--time-limit` s
 netpace --time-limit 00:02:00
 ```
 
-The value is hours, minutes and seconds, the same form `--delay` takes. A bare number is refused, because `5` would mean five days rather than five seconds.
+The value is exactly hours, minutes and seconds (`HH:MM:SS`), up to `23:59:59`. Anything shorter is refused: `5` would otherwise mean five days, and `10:00` ten hours.
 
-A run that reaches the limit has not failed. NetPace ends it and reports what it measured up to then, in the same output and with the same exit code as a run that finished on its own:
+A run that reaches the limit has not failed. NetPace ends it and reports what it measured up to then, in the same output and with the same exit code as a run that finished on its own. The one exception is a limit reached before a server was chosen: there is nothing to measure against, so the run ends as one with no server available does, with that error and, under `--fail-on`, exit code 1.
 
-- The test in progress reports a figure for the data it delivered before it stopped, measured over the time it ran.
+Otherwise:
+
+- The test in progress reports a figure for the data it delivered before it stopped, measured over the time it ran. If it had delivered nothing yet, it is reported as a test the run never reached.
 - A test the run never reached is reported the way a test you switched off is: no line under `--simple` or `--minimal`, an empty cell in CSV, an absent field in JSON, no row in the table on screen.
 - Requests stopped at the limit count as neither successes nor failures, so `--fail-on` is tripped by real failures only.
 - Nothing is printed about the limit, in any output format.
@@ -489,9 +491,6 @@ Reach for it when:
 - You want a quick reading and would rather have a rough figure soon than an exact one eventually.
 
 To see where a run was cut short, pass `--diagnostics`: every request stopped at the limit is recorded as cancelled, with a reason naming the time limit, and counted among its test's cancelled requests.
-
-> [!NOTE]\
-> A cut-short run reports only the data its finished requests delivered. Whatever was still in flight when the limit arrived is not counted, so on a slow link the figure reads lower than the link can really do. If a run on your link does not finish inside the limit, either raise the limit or ask for less data with `--profile small`.
 
 ---
 

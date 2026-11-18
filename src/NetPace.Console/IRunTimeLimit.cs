@@ -24,7 +24,7 @@ public interface IRunTimeLimit
 public sealed class RunTimeLimit : IRunTimeLimit
 {
     /// <summary>
-    /// The longest limit a timer accepts. A limit beyond it is kept at it, which no real run comes
+    /// A bound under the longest limit a timer accepts. A limit beyond it is kept at it, which no real run comes
     /// near: this exists so that an absurd duration on the command line is a run nobody waits out
     /// rather than an exception out of the timer.
     /// </summary>

@@ -10,6 +10,12 @@ public enum CutShortStage
     /// <summary>While a server is still being looked for, so the run never settles on one.</summary>
     ChoosingServer,
 
+    /// <summary>
+    /// While the candidates are being screened, with one probe still out, so the run never
+    /// settles on one.
+    /// </summary>
+    Screening,
+
     /// <summary>During the latency test, before any probe has answered.</summary>
     Latency,
 
@@ -55,6 +61,12 @@ public sealed class CutShortSpeedTester(RecordingRunTimeLimit limit) : ISpeedTes
     /// <summary>Where in a cut-short run the limit is reached.</summary>
     public CutShortStage Stage { get; set; } = CutShortStage.Download;
 
+    /// <summary>What the download had delivered when the limit was reached.</summary>
+    public long CutShortBytes { get; set; } = 1_000_000;
+
+    /// <summary>How many of the download's requests had failed when the limit was reached.</summary>
+    public int CutShortFailures { get; set; }
+
     /// <summary>How many times the upload test was asked for, so a test can assert it was not.</summary>
     public int UploadCalls { get; private set; }
 
@@ -82,11 +94,12 @@ public sealed class CutShortSpeedTester(RecordingRunTimeLimit limit) : ISpeedTes
     /// The latency measurement, reached by every overload: it answers with a figure unless the
     /// limit is reached here, where no probe has answered and so there is nothing to report.
     /// </summary>
-    private LatencyTestResult MeasureLatency(IServer server)
+    private LatencyTestResult MeasureLatency(IServer server, CancellationToken stopAndReportToken)
     {
         if (ReachLimitAt(CutShortStage.Latency))
         {
-            throw new OperationCanceledException();
+            RequireStop(stopAndReportToken);
+            throw new OperationCanceledException(stopAndReportToken);
         }
 
         return Latency(server);
@@ -96,7 +109,7 @@ public sealed class CutShortSpeedTester(RecordingRunTimeLimit limit) : ISpeedTes
         GetServerLatencyAsync(server, cancellationToken);
 
     public Task<LatencyTestResult> GetServerLatencyAsync(IServer server, IProgress<LatencyTestProgress>? progress, IProgress<RequestDiagnostic>? diagnostics, CancellationToken cancellationToken = default, CancellationToken stopAndReportToken = default) =>
-        Task.FromResult(MeasureLatency(server));
+        Task.FromResult(MeasureLatency(server, stopAndReportToken));
 
     public Task<LatencyTestResult> GetServerLatencyAsync(string serverUrl, CancellationToken cancellationToken = default) =>
         Task.FromResult(Latency(new Server { Location = "Frankfurt", Sponsor = "Deutsche Telekom", Url = serverUrl }));
@@ -105,7 +118,7 @@ public sealed class CutShortSpeedTester(RecordingRunTimeLimit limit) : ISpeedTes
         GetServerLatencyAsync(serverUrl, cancellationToken);
 
     public Task<LatencyTestResult> GetServerLatencyAsync(string serverUrl, IProgress<LatencyTestProgress>? progress, IProgress<RequestDiagnostic>? diagnostics, CancellationToken cancellationToken = default, CancellationToken stopAndReportToken = default) =>
-        Task.FromResult(MeasureLatency(new Server { Location = "Frankfurt", Sponsor = "Deutsche Telekom", Url = serverUrl }));
+        Task.FromResult(MeasureLatency(new Server { Location = "Frankfurt", Sponsor = "Deutsche Telekom", Url = serverUrl }, stopAndReportToken));
 
     public Task<LatencyTestResult> GetFastestServerByLatencyAsync(IServer[] servers, CancellationToken cancellationToken = default) =>
         Task.FromResult(Latency(servers[0]));
@@ -113,8 +126,20 @@ public sealed class CutShortSpeedTester(RecordingRunTimeLimit limit) : ISpeedTes
     public Task<LatencyTestResult> GetFastestServerByLatencyAsync(IServer[] servers, IProgress<SpeedTestProgress> progress, CancellationToken cancellationToken = default) =>
         GetFastestServerByLatencyAsync(servers, cancellationToken);
 
-    public Task<LatencyTestResult> GetFastestServerByLatencyAsync(IServer[] servers, IProgress<SpeedTestProgress>? progress, IProgress<RequestDiagnostic>? diagnostics, CancellationToken cancellationToken = default) =>
-        GetFastestServerByLatencyAsync(servers, cancellationToken);
+    /// <summary>
+    /// Screening, which takes no stop of its own: the run's limit is linked into its token, so a
+    /// probe the limit cuts off is recorded as the library records one its caller cancelled.
+    /// </summary>
+    public Task<LatencyTestResult> GetFastestServerByLatencyAsync(IServer[] servers, IProgress<SpeedTestProgress>? progress, IProgress<RequestDiagnostic>? diagnostics, CancellationToken cancellationToken = default)
+    {
+        if (ReachLimitAt(CutShortStage.Screening))
+        {
+            Report(diagnostics, sequence: 1, RequestOutcome.Cancelled, "cancelled by caller", RequestKind.LatencyProbe);
+            cancellationToken.ThrowIfCancellationRequested();
+        }
+
+        return GetFastestServerByLatencyAsync(servers, cancellationToken);
+    }
 
     public Task<SpeedTestResult> GetDownloadSpeedAsync(IServer server, CancellationToken cancellationToken = default) =>
         GetDownloadSpeedAsync(server, null, null, cancellationToken);
@@ -133,10 +158,12 @@ public sealed class CutShortSpeedTester(RecordingRunTimeLimit limit) : ISpeedTes
             return Task.FromResult(Clean(bytes: 4_000_000));
         }
 
+        RequireStop(stopAndReportToken);
+
         Report(diagnostics, sequence: 1, RequestOutcome.Succeeded, failureReason: null);
         Report(diagnostics, sequence: 2, RequestOutcome.Cancelled, RequestDiagnostic.StoppedByCaller);
 
-        return Task.FromResult(Clean(bytes: 1_000_000));
+        return Task.FromResult(Clean(CutShortBytes) with { RequestsFailed = CutShortFailures });
     }
 
     public Task<SpeedTestResult> GetUploadSpeedAsync(IServer server, CancellationToken cancellationToken = default) =>
@@ -168,6 +195,19 @@ public sealed class CutShortSpeedTester(RecordingRunTimeLimit limit) : ISpeedTes
         return true;
     }
 
+    /// <summary>
+    /// Fails the test unless the measurement was handed the run's limit as its stop: the stop is
+    /// what makes the library hand back a figure, so a run that never passed it on would, against
+    /// a real server, run past the limit.
+    /// </summary>
+    private static void RequireStop(CancellationToken stopAndReportToken)
+    {
+        if (!stopAndReportToken.IsCancellationRequested)
+        {
+            throw new InvalidOperationException("The run's time limit was reached, but the measurement was not given it as its stop.");
+        }
+    }
+
     /// <summary>A measurement whose every counted request succeeded, over one second.</summary>
     private static SpeedTestResult Clean(long bytes) =>
         new() { BytesProcessed = bytes, ElapsedMilliseconds = 1000, RequestsSucceeded = 1, RequestsFailed = 0, Latency = null };
@@ -176,11 +216,11 @@ public sealed class CutShortSpeedTester(RecordingRunTimeLimit limit) : ISpeedTes
     private static LatencyTestResult Latency(IServer server) =>
         new() { Server = server, LatencyMilliseconds = 24, MinimumLatencyMilliseconds = null, MaximumLatencyMilliseconds = null, JitterMilliseconds = 3 };
 
-    private static void Report(IProgress<RequestDiagnostic>? diagnostics, int sequence, RequestOutcome outcome, string? failureReason) =>
+    private static void Report(IProgress<RequestDiagnostic>? diagnostics, int sequence, RequestOutcome outcome, string? failureReason, RequestKind kind = RequestKind.Transfer) =>
         diagnostics?.Report(new RequestDiagnostic
         {
             StartedAt = new DateTime(1980, 1, 1, 10, 5, 0, DateTimeKind.Unspecified),
-            Kind = RequestKind.Transfer,
+            Kind = kind,
             Sequence = sequence,
             Url = Url,
             Outcome = outcome,

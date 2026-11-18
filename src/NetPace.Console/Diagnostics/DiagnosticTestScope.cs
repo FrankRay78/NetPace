@@ -34,6 +34,7 @@ internal sealed class DiagnosticTestScope : IProgress<RequestDiagnostic>, IDispo
 
     private readonly IDiagnosticRecorder recorder;
     private readonly string test;
+    private readonly CancellationToken timeLimitToken;
     private readonly object countLock = new();
 
     private int requests;
@@ -47,13 +48,14 @@ internal sealed class DiagnosticTestScope : IProgress<RequestDiagnostic>, IDispo
     /// Opens the scope, recording that the named test started. Private so <see cref="For"/> is the
     /// only way in, which is what makes "a scope exists" mean "something is being recorded".
     /// </summary>
-    private DiagnosticTestScope(IDiagnosticRecorder recorder, string test)
+    private DiagnosticTestScope(IDiagnosticRecorder recorder, string test, CancellationToken timeLimitToken)
     {
         ArgumentNullException.ThrowIfNull(recorder);
         ArgumentException.ThrowIfNullOrWhiteSpace(test);
 
         this.recorder = recorder;
         this.test = test;
+        this.timeLimitToken = timeLimitToken;
 
         recorder.Record("test.start", ("test", test));
     }
@@ -71,7 +73,15 @@ internal sealed class DiagnosticTestScope : IProgress<RequestDiagnostic>, IDispo
     /// a disabled recorder would also still take this type's lock and format every record before
     /// discarding it.
     /// </remarks>
-    public static DiagnosticTestScope? For(IDiagnosticRecorder recorder, string test)
+    /// <param name="recorder">Where the records go.</param>
+    /// <param name="test">The test the records belong to.</param>
+    /// <param name="timeLimitToken">
+    /// The run's time limit, for a test that reaches the library through a token linked to it
+    /// rather than as a stop: a request that test reports cancelled once the limit is reached is
+    /// recorded as stopped by the limit, because the library can only call it cancelled by its
+    /// caller.
+    /// </param>
+    public static DiagnosticTestScope? For(IDiagnosticRecorder recorder, string test, CancellationToken timeLimitToken = default)
     {
         ArgumentNullException.ThrowIfNull(recorder);
 
@@ -79,7 +89,7 @@ internal sealed class DiagnosticTestScope : IProgress<RequestDiagnostic>, IDispo
         // rather than one that only surfaces once --diagnostics is passed.
         ArgumentException.ThrowIfNullOrWhiteSpace(test);
 
-        return recorder.IsEnabled ? new DiagnosticTestScope(recorder, test) : null;
+        return recorder.IsEnabled ? new DiagnosticTestScope(recorder, test, timeLimitToken) : null;
     }
 
     /// <inheritdoc />
@@ -177,10 +187,12 @@ internal sealed class DiagnosticTestScope : IProgress<RequestDiagnostic>, IDispo
 
     /// <summary>
     /// Why a request did not succeed, as the record words it: the provider's own reason, unless it
-    /// is the generic stop the library records, which only the run's time limit asks for here.
+    /// is the generic stop the library records, which only the run's time limit asks for here, or
+    /// a cancellation in a test whose time limit has been reached.
     /// </summary>
-    private static string? ReasonOf(RequestDiagnostic value) =>
+    private string? ReasonOf(RequestDiagnostic value) =>
         string.Equals(value.FailureReason, RequestDiagnostic.StoppedByCaller, StringComparison.Ordinal)
+        || (value.Outcome == RequestOutcome.Cancelled && timeLimitToken.IsCancellationRequested)
             ? TimeLimitReached
             : value.FailureReason;
 

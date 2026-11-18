@@ -12,6 +12,9 @@ public sealed partial class NetPaceConsoleTests
         [InlineData("soon", "words")]
         [InlineData("00:00:00", "zero")]
         [InlineData("-00:01:00", "negative")]
+        [InlineData("10:00", "minutes-and-seconds")]
+        [InlineData("25:00:00", "past-a-day")]
+        [InlineData("1.00:00:00", "days")]
         public async Task TimeLimit_NotAPositiveDuration_IsRejectedBeforeAnyTestRuns(string value, string valueName)
         {
             // SCENARIO: An unusable limit is rejected
@@ -23,8 +26,8 @@ public sealed partial class NetPaceConsoleTests
             var result = await host.RunAsync(["--time-limit", value]);
 
             // Then the run is refused up front and nothing is measured. A plain number is refused
-            // along with the rest: .NET reads a bare 5 as five days, so accepting it would set a
-            // limit nobody asked for.
+            // along with the rest: .NET reads a bare 5 as five days, and 10:00 as ten hours, so
+            // accepting either would set a limit nobody asked for.
             Assert.NotEqual(0, result.ExitCode);
             Assert.Empty(serviceCalls);
 
@@ -142,6 +145,92 @@ public sealed partial class NetPaceConsoleTests
             Assert.Equal(limit.Started[0], limit.Started[1]);
 
             await Verify(result.Output);
+        }
+
+        [Fact]
+        public async Task TheDelayBetweenRuns_IsNotCountedTowardsEitherRunsLimit()
+        {
+            // SCENARIO: The limit applies to each run of a repeated test
+
+            // Given three runs with a delay between each.
+            var (services, limit, tester) = CutShortServices();
+            tester.CutsShortRun = _ => false;
+            var waiter = new LimitWatchingWaiter(limit);
+            services.AddSingleton<IWaiter>(waiter);
+            var host = GetCommandLineTestHost(services);
+
+            // When
+            await host.RunAsync(["--count", "3", "--delay", "00:05:00", "--simple"]);
+
+            // Then every wait happened with no run's limit running, so none of it was billed to a
+            // run.
+            Assert.Equal(2, waiter.LimitRunningAtEachWait.Count);
+            Assert.All(waiter.LimitRunningAtEachWait, Assert.False);
+        }
+
+        [Fact]
+        public async Task ARunCutShortAtTheLimit_WithAFailedRequest_StillTripsFailOn()
+        {
+            // Given a run cut short at the limit after one of its requests had genuinely failed.
+            var (services, _, tester) = CutShortServices();
+            tester.CutShortFailures = 1;
+            var host = GetCommandLineTestHost(services);
+
+            // When
+            var result = await host.RunAsync(["--simple", "--fail-on", "partial"]);
+
+            // Then the limit hides nothing: the exit code is the one the failure earns.
+            Assert.Equal(1, result.ExitCode);
+        }
+
+        [Fact]
+        public async Task ATransferCutShortBeforeAnyDataArrived_IsReportedAsATestThatDidNotRun()
+        {
+            // Given a run that reaches the limit during a download that has delivered nothing.
+            var (services, _, tester) = CutShortServices();
+            tester.CutShortBytes = 0;
+            var host = GetCommandLineTestHost(services);
+
+            // When
+            var result = await host.RunAsync(["--simple"]);
+
+            // Then no download figure is invented from no data: zero would read as a dead link.
+            Assert.Equal(0, result.ExitCode);
+            Assert.DoesNotContain("Download:", result.Output, StringComparison.Ordinal);
+            Assert.Contains("Ping:", result.Output, StringComparison.Ordinal);
+        }
+
+        [Fact]
+        public async Task ATransferCutShortBeforeAnyDataArrived_AtATerminal_LeavesNoRowForIt()
+        {
+            // Given
+            var (services, _, tester) = CutShortServices();
+            tester.CutShortBytes = 0;
+            var host = GetInteractiveCommandLineTestHost(services);
+
+            // When
+            var result = await host.RunAsync([]);
+
+            // Then the download row goes, as the row of a test that never ran does.
+            Assert.Equal(0, result.ExitCode);
+
+            await Verify(result.Output);
+        }
+
+        [Fact]
+        public async Task AScreeningProbeStoppedAtTheLimit_IsRecordedNamingTheTimeLimit()
+        {
+            // Given a run whose limit is reached while candidates are still being screened.
+            var (services, _, tester) = CutShortServices();
+            tester.Stage = CutShortStage.Screening;
+            var host = GetCommandLineTestHost(services);
+
+            // When
+            var result = await host.RunAsync(["--simple", "--diagnostics"]);
+
+            // Then the probe the limit cut off names the limit, not a cancellation by the user.
+            Assert.Contains("reason=\"run time limit reached\"", result.DiagnosticOutput, StringComparison.Ordinal);
+            Assert.DoesNotContain("cancelled by caller", result.DiagnosticOutput, StringComparison.Ordinal);
         }
 
         [Fact]
@@ -291,6 +380,21 @@ public sealed partial class NetPaceConsoleTests
             services.AddSingleton<IWaiter, NoDelayStub>();
 
             return (services, limit, tester);
+        }
+
+        /// <summary>
+        /// A wait between runs that takes no time, and notes whether a run's limit was running
+        /// when it happened.
+        /// </summary>
+        private sealed class LimitWatchingWaiter(RecordingRunTimeLimit limit) : IWaiter
+        {
+            public List<bool> LimitRunningAtEachWait { get; } = [];
+
+            public Task Delay(TimeSpan delay, CancellationToken cancellationToken)
+            {
+                LimitRunningAtEachWait.Add(limit.IsRunning);
+                return Task.CompletedTask;
+            }
         }
     }
 }

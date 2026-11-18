@@ -31,19 +31,21 @@ public sealed partial class OoklaSpeedtestTests
             using var mockHttp = new MockHttpMessageHandler();
             AnswerOnceThenHang(mockHttp, payloadBytes: 4096);
 
-            var speedtest = new OoklaSpeedtest(DownloadSettings(), mockHttp.ToHttpClient());
+            // The clock moves on 1.5 seconds before the stop, so the figure's duration is known.
+            var clock = new ManualTimeProvider();
+            var speedtest = new OoklaSpeedtest(DownloadSettings(), mockHttp.ToHttpClient(), timeProviderOverride: clock);
             var server = new Server { Url = "http://example.com/", Sponsor = "Test", Location = "Test" };
 
             // When
-            var result = await speedtest.GetDownloadSpeedAsync(server, StopAfterFirstReport(stop), null, CancellationToken.None, stop.Token);
+            var result = await speedtest.GetDownloadSpeedAsync(server, StopAfterFirstReport(stop, () => clock.Advance(1500)), null, CancellationToken.None, stop.Token);
 
             // Then the call returns rather than throwing, and reports what the answered request
-            // delivered. The request still in flight is neither a success nor a failure, so a
-            // caller watching for failed requests sees none.
+            // delivered over the time the test ran. The request still in flight is neither a
+            // success nor a failure, so a caller watching for failed requests sees none.
             result.BytesProcessed.ShouldBe(4096);
+            result.ElapsedMilliseconds.ShouldBe(1500);
             result.RequestsSucceeded.ShouldBe(1);
             result.RequestsFailed.ShouldBe(0);
-            result.ElapsedMilliseconds.ShouldBeGreaterThanOrEqualTo(0);
         }
 
         [Fact]
@@ -191,6 +193,101 @@ public sealed partial class OoklaSpeedtestTests
                 await speedtest.GetServerLatencyAsync(server, null, null, CancellationToken.None, stop.Token));
         }
 
+        [Fact]
+        public async Task GetServerLatencyAsync_StoppedInThePauseBetweenProbes_ReportsTheProbesAlreadyAnswered()
+        {
+            // Given probes paced apart, with the stop landing in the first pause, after one probe
+            // has answered.
+            using var stop = new CancellationTokenSource();
+            using var mockHttp = new MockHttpMessageHandler();
+            mockHttp.When("*").Respond("text/plain", LatencyResponseBody);
+
+            var settings = new OoklaSpeedtestSettings
+            {
+                LatencyTest = new() { LatencyTestIterations = 4, LatencyTestIntervalMilliseconds = 50 }
+            };
+            var speedtest = new OoklaSpeedtest(settings, mockHttp.ToHttpClient(), new StopWhenPaused(stop));
+            var server = new Server { Url = "http://example.com/", Sponsor = "Test", Location = "Test" };
+
+            // When
+            var result = await speedtest.GetServerLatencyAsync(server, null, null, CancellationToken.None, stop.Token);
+
+            // Then the answered probe is the measurement, rather than the pause turning the stop
+            // into a cancellation that throws it away.
+            result.Server.Url.ShouldBe(server.Url);
+            result.MinimumLatencyMilliseconds.ShouldNotBeNull();
+        }
+
+        [Fact]
+        public async Task GetServerLatencyAsync_StoppedWhileAProbeIsOut_RecordsItAsStoppedAndReportsTheOthers()
+        {
+            // Given a first probe that answers and a second that is still out when the stop lands.
+            var diagnostics = new List<RequestDiagnostic>();
+            using var stop = new CancellationTokenSource();
+            using var mockHttp = new MockHttpMessageHandler();
+            var arrived = 0;
+            mockHttp.When("*").Respond(async _ =>
+            {
+                if (Interlocked.Increment(ref arrived) == 1)
+                {
+                    return new HttpResponseMessage { Content = new StringContent(LatencyResponseBody) };
+                }
+
+                await stop.CancelAsync();
+                return await new TaskCompletionSource<HttpResponseMessage>().Task;
+            });
+
+            var speedtest = new OoklaSpeedtest(LatencySettings(), mockHttp.ToHttpClient());
+            var server = new Server { Url = "http://example.com/", Sponsor = "Test", Location = "Test" };
+
+            // When
+            var result = await speedtest.GetServerLatencyAsync(server, null, Collect(diagnostics), CancellationToken.None, stop.Token);
+
+            // Then the answered probe is the figure, and the one that was out reads as stopped
+            // rather than as a failed probe.
+            result.MinimumLatencyMilliseconds.ShouldNotBeNull();
+
+            RequestDiagnostic stopped = diagnostics.Single(diagnostic => diagnostic.Outcome == RequestOutcome.Cancelled);
+            stopped.FailureReason.ShouldBe(RequestDiagnostic.StoppedByCaller);
+            diagnostics.ShouldNotContain(diagnostic => diagnostic.Outcome == RequestOutcome.Failed);
+        }
+
+        [Fact]
+        public async Task GetUploadSpeedAsync_StoppedWhileFindingWhereUploadsGo_ReportsNothingMeasuredAndSendsNoUpload()
+        {
+            // Given a server that never answers the request finding where uploads go, with the stop
+            // landing while it is out.
+            var diagnostics = new List<RequestDiagnostic>();
+            using var stop = new CancellationTokenSource();
+            using var mockHttp = new MockHttpMessageHandler();
+            var arrived = 0;
+            mockHttp.When("*").Respond(async _ =>
+            {
+                Interlocked.Increment(ref arrived);
+                await stop.CancelAsync();
+                return await new TaskCompletionSource<HttpResponseMessage>().Task;
+            });
+
+            var settings = new OoklaSpeedtestSettings
+            {
+                LatencyTest = new() { LoadedLatencyEnabled = false },
+                UploadTest = new() { UploadIncrements = 1, UploadSizeIncrementKb = 4, UploadSizeIterations = 4, UploadParallelTasks = 2 }
+            };
+            var speedtest = new OoklaSpeedtest(settings, mockHttp.ToHttpClient());
+            var server = new Server { Url = "http://example.com/", Sponsor = "Test", Location = "Test" };
+
+            // When
+            var result = await speedtest.GetUploadSpeedAsync(server, null, Collect(diagnostics), CancellationToken.None, stop.Token);
+
+            // Then the stop ends the test where it was, rather than being waited out, and no
+            // upload is sent after it.
+            arrived.ShouldBe(1);
+            result.BytesProcessed.ShouldBe(0);
+            result.RequestsSucceeded.ShouldBe(0);
+            result.RequestsFailed.ShouldBe(0);
+            diagnostics.Single().FailureReason.ShouldBe(RequestDiagnostic.StoppedByCaller);
+        }
+
         #region --- Helpers ---
 
         /// <summary>Four download requests, two at a time, with no under-load probing beside them.</summary>
@@ -213,7 +310,7 @@ public sealed partial class OoklaSpeedtestTests
         /// raised once the answered request has been counted, so the stop lands with exactly one
         /// request counted and one still in flight.
         /// </summary>
-        private static IProgress<SpeedTestProgress> StopAfterFirstReport(CancellationTokenSource stop)
+        private static IProgress<SpeedTestProgress> StopAfterFirstReport(CancellationTokenSource stop, Action? beforeStopping = null)
         {
             var stopped = false;
 
@@ -225,6 +322,7 @@ public sealed partial class OoklaSpeedtestTests
                 }
 
                 stopped = true;
+                beforeStopping?.Invoke();
                 stop.Cancel();
             });
         }
@@ -289,6 +387,34 @@ public sealed partial class OoklaSpeedtestTests
                     sink.Add(diagnostic);
                 }
             });
+
+        /// <summary>
+        /// A clock that moves only when a test moves it, so a measured duration is known exactly.
+        /// </summary>
+        private sealed class ManualTimeProvider : TimeProvider
+        {
+            private long now;
+
+            public override long TimestampFrequency => 1000;
+
+            public override long GetTimestamp() => Interlocked.Read(ref now);
+
+            public void Advance(long milliseconds) => Interlocked.Add(ref now, milliseconds);
+        }
+
+        /// <summary>
+        /// A pause between latency probes that asks for the stop and then ends as a pause on a
+        /// cancelled token does.
+        /// </summary>
+        private sealed class StopWhenPaused(CancellationTokenSource stop) : IDelayProvider
+        {
+            public Task DelayAsync(int milliseconds, CancellationToken cancellationToken = default)
+            {
+                stop.Cancel();
+                cancellationToken.ThrowIfCancellationRequested();
+                return Task.CompletedTask;
+            }
+        }
 
         #endregion
     }

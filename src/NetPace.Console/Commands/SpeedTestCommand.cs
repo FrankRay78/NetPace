@@ -133,8 +133,9 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ErrorOutput errorOutp
                 // Started here rather than once for the whole invocation, and disposed before the
                 // next pause: every test gets the limit afresh, and the wait between tests is not
                 // billed to either of the tests it sits between. A run cut short at the limit is
-                // not a failure, so nothing below treats it as one - the writer reports what was
-                // measured and the run carries on to the next test.
+                // not a failure: the writer reports what was measured and the run carries on to the
+                // next test. A limit reached before a server was chosen is the exception, ending
+                // the run as one with no server available.
                 using var limit = runTimeLimit.Start(settings.TimeLimit);
 
                 try

@@ -85,11 +85,6 @@ public sealed class DefaultConsoleWriter(ILiveDisplayRefresh liveDisplayRefresh,
 
                 try
                 {
-                    // Each test asks whether the run still has time before it starts, because
-                    // the test before it may be what used the last of it. A test that never ran
-                    // loses its row rather than keeping a spinner or gaining a cross: it did not
-                    // fail, and the table says so by reading as it does for a test nobody asked
-                    // for.
                     latency = await ServerSelector.MeasureLatencyAsync(speedTestClient, chosen, settings, recorder, LatencyReports(pinging, Redraw), cancellationToken, timeLimitToken);
 
                     if (pinging is not null)
@@ -98,6 +93,11 @@ public sealed class DefaultConsoleWriter(ILiveDisplayRefresh liveDisplayRefresh,
                         Redraw();
                     }
 
+                    // Each test asks whether the run still has time before it starts, because
+                    // the test before it may be what used the last of it. A test that never ran
+                    // loses its row rather than keeping a spinner or gaining a cross: it did not
+                    // fail, and the table says so by reading as it does for a test nobody asked
+                    // for.
                     if (downloading is not null)
                     {
                         if (timeLimitToken.IsCancellationRequested)
@@ -107,8 +107,16 @@ public sealed class DefaultConsoleWriter(ILiveDisplayRefresh liveDisplayRefresh,
                         else
                         {
                             using var download = DiagnosticTestScope.For(recorder, DiagnosticTests.Download);
-                            downloadResult = await speedTestClient.GetDownloadSpeedAsync(chosen.Server, TransferReports(downloading, Redraw), download, cancellationToken, timeLimitToken);
-                            downloading.Settle(downloadResult);
+                            downloadResult = Measurements.Measured(await speedTestClient.GetDownloadSpeedAsync(chosen.Server, TransferReports(downloading, Redraw), download, cancellationToken, timeLimitToken), timeLimitToken);
+
+                            if (downloadResult is null)
+                            {
+                                table.Remove(downloading);
+                            }
+                            else
+                            {
+                                downloading.Settle(downloadResult);
+                            }
                         }
 
                         Redraw();
@@ -123,8 +131,16 @@ public sealed class DefaultConsoleWriter(ILiveDisplayRefresh liveDisplayRefresh,
                         else
                         {
                             using var upload = DiagnosticTestScope.For(recorder, DiagnosticTests.Upload);
-                            uploadResult = await speedTestClient.GetUploadSpeedAsync(chosen.Server, TransferReports(uploading, Redraw), upload, cancellationToken, timeLimitToken);
-                            uploading.Settle(uploadResult);
+                            uploadResult = Measurements.Measured(await speedTestClient.GetUploadSpeedAsync(chosen.Server, TransferReports(uploading, Redraw), upload, cancellationToken, timeLimitToken), timeLimitToken);
+
+                            if (uploadResult is null)
+                            {
+                                table.Remove(uploading);
+                            }
+                            else
+                            {
+                                uploading.Settle(uploadResult);
+                            }
                         }
 
                         Redraw();

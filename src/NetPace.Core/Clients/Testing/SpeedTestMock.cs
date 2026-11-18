@@ -10,6 +10,9 @@ namespace NetPace.Core.Clients.Testing;
 /// nothing per-request for the mock to describe. A test that needs request records wants a double
 /// that reports records adding up to the totals it returns, because records invented here would
 /// contradict whatever the delegate was configured to produce.
+/// The stop-and-report token the latency, download and upload overloads take is accepted and not
+/// acted on: this double answers at once, so it never has a request in flight for a stop to cut
+/// short.
 /// </remarks>
 public sealed class SpeedTestMock : ISpeedTestService
 {
@@ -138,10 +141,6 @@ public sealed class SpeedTestMock : ISpeedTestService
     }
 
     /// <inheritdoc/>
-    /// <remarks>
-    /// The stop-and-report token is accepted and not acted on: this double answers at once, so it
-    /// never has a request in flight for a stop to cut short.
-    /// </remarks>
     public Task<LatencyTestResult> GetServerLatencyAsync(IServer server, IProgress<LatencyTestProgress>? progress, IProgress<RequestDiagnostic>? diagnostics, CancellationToken cancellationToken = default, CancellationToken stopAndReportToken = default)
     {
         if (GetServerLatencyAsyncFunc != null)
@@ -150,10 +149,6 @@ public sealed class SpeedTestMock : ISpeedTestService
     }
 
     /// <inheritdoc/>
-    /// <remarks>
-    /// The stop-and-report token is accepted and not acted on: this double answers at once, so it
-    /// never has a request in flight for a stop to cut short.
-    /// </remarks>
     public Task<LatencyTestResult> GetServerLatencyAsync(string serverUrl, IProgress<LatencyTestProgress>? progress, IProgress<RequestDiagnostic>? diagnostics, CancellationToken cancellationToken = default, CancellationToken stopAndReportToken = default)
     {
         if (GetServerLatencyByServerUrlAsyncFunc != null)
@@ -170,10 +165,6 @@ public sealed class SpeedTestMock : ISpeedTestService
     }
 
     /// <inheritdoc/>
-    /// <remarks>
-    /// The stop-and-report token is accepted and not acted on: this double answers at once, so it
-    /// never has a request in flight for a stop to cut short.
-    /// </remarks>
     public Task<SpeedTestResult> GetDownloadSpeedAsync(IServer server, IProgress<SpeedTestProgress>? progress, IProgress<RequestDiagnostic>? diagnostics, CancellationToken cancellationToken = default, CancellationToken stopAndReportToken = default)
     {
         if (GetDownloadSpeedAsyncFunc != null)
@@ -182,10 +173,6 @@ public sealed class SpeedTestMock : ISpeedTestService
     }
 
     /// <inheritdoc/>
-    /// <remarks>
-    /// The stop-and-report token is accepted and not acted on: this double answers at once, so it
-    /// never has a request in flight for a stop to cut short.
-    /// </remarks>
     public Task<SpeedTestResult> GetUploadSpeedAsync(IServer server, IProgress<SpeedTestProgress>? progress, IProgress<RequestDiagnostic>? diagnostics, CancellationToken cancellationToken = default, CancellationToken stopAndReportToken = default)
     {
         if (GetUploadSpeedAsyncFunc != null)

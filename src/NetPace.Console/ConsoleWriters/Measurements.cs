@@ -34,15 +34,23 @@ internal static class Measurements
         if (!settings.NoDownload && !timeLimitToken.IsCancellationRequested)
         {
             using var download = DiagnosticTestScope.For(recorder, DiagnosticTests.Download);
-            downloadResult = await speedTestClient.GetDownloadSpeedAsync(server, null, download, cancellationToken, timeLimitToken);
+            downloadResult = Measured(await speedTestClient.GetDownloadSpeedAsync(server, null, download, cancellationToken, timeLimitToken), timeLimitToken);
         }
 
         if (!settings.NoUpload && !timeLimitToken.IsCancellationRequested)
         {
             using var upload = DiagnosticTestScope.For(recorder, DiagnosticTests.Upload);
-            uploadResult = await speedTestClient.GetUploadSpeedAsync(server, null, upload, cancellationToken, timeLimitToken);
+            uploadResult = Measured(await speedTestClient.GetUploadSpeedAsync(server, null, upload, cancellationToken, timeLimitToken), timeLimitToken);
         }
 
         return SpeedTestOutcome.Create(downloadResult, uploadResult);
     }
+
+    /// <summary>
+    /// The transfer's result, or <see langword="null"/> where the run's time limit stopped it
+    /// before any data arrived. A figure from no data is a measurement about nothing, and zero
+    /// would read as a dead link, so the test is reported as one that did not run.
+    /// </summary>
+    public static SpeedTestResult? Measured(SpeedTestResult result, CancellationToken timeLimitToken) =>
+        timeLimitToken.IsCancellationRequested && result.BytesProcessed == 0 ? null : result;
 }

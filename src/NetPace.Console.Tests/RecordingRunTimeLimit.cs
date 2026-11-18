@@ -25,11 +25,18 @@ public sealed class RecordingRunTimeLimit : IRunTimeLimit
     /// </summary>
     public CancellationTokenSource? Current { get; private set; }
 
+    /// <summary>
+    /// Whether a run's limit has been started and not yet disposed, so a test can tell whether
+    /// something happened while a limit was running.
+    /// </summary>
+    public bool IsRunning { get; private set; }
+
     /// <inheritdoc/>
     public CancellationTokenSource Start(TimeSpan limit)
     {
         started.Add(limit);
-        Current = new CancellationTokenSource();
+        IsRunning = true;
+        Current = new Source(() => IsRunning = false);
         return Current;
     }
 
@@ -38,4 +45,14 @@ public sealed class RecordingRunTimeLimit : IRunTimeLimit
     /// </summary>
     public void Reach() =>
         (Current ?? throw new InvalidOperationException("No run has started, so there is no limit to reach.")).Cancel();
+
+    /// <summary>A limit that says when the run that owns it has disposed it.</summary>
+    private sealed class Source(Action disposed) : CancellationTokenSource
+    {
+        protected override void Dispose(bool disposing)
+        {
+            disposed();
+            base.Dispose(disposing);
+        }
+    }
 }
