@@ -197,16 +197,15 @@ public sealed partial class OoklaSpeedtestTests
         }
 
         [Fact]
-        public async Task GetDownloadSpeedAsync_WhileOneRequestIsStillArriving_ReportsThePacedFigureAsItClimbs()
+        public async Task GetDownloadSpeedAsync_WhileOneRequestIsStillArriving_ReportsTheFigureAsItClimbs()
         {
-            // Given one download delivered in four chunks, with the clock moved past the pacing
-            // interval before the first and third of them and left standing before the second and
-            // fourth. Two chunks therefore fall inside one interval, and two open a new one.
+            // Given one download delivered in four chunks, with a long pause on the clock before
+            // each of the middle two - far longer than any reasonable refresh of a live figure.
             const int chunkSize = 1024;
-            var pacingInterval = TimeSpan.FromMilliseconds(300);
+            var longPause = TimeSpan.FromSeconds(10);
 
             var clock = new ControlledTimeProvider(ClockStart);
-            var body = new ClockAdvancingResponseStream(chunkSize, clock, pacingInterval, TimeSpan.Zero, pacingInterval, TimeSpan.Zero);
+            var body = new ClockAdvancingResponseStream(chunkSize, clock, TimeSpan.Zero, longPause, longPause, TimeSpan.Zero);
 
             using var mockHttp = new MockHttpMessageHandler();
             mockHttp.When("*").Respond(_ => new HttpResponseMessage(HttpStatusCode.OK) { Content = new StreamContent(body) });
@@ -218,34 +217,126 @@ public sealed partial class OoklaSpeedtestTests
             var result = await speedtest.GetDownloadSpeedAsync(TestServer, new SynchronousProgress<SpeedTestProgress>(progressReports.Add));
 
             // Then the figure was reported while the one request was still arriving, rather than
-            // standing still until it finished - which on a slow link is the whole transfer. The
-            // two chunks that shared an interval were reported once between them, not twice.
-            var whileArriving = progressReports.Where(report => report.BytesProcessed < body.TotalBytes).ToList();
-            whileArriving.Select(report => report.BytesProcessed).ShouldBe([chunkSize, 3 * chunkSize]);
+            // standing still until it finished - which on a slow link is the whole transfer.
+            var figures = progressReports.Select(report => report.BytesProcessed).ToList();
+            figures.ShouldContain(bytes => bytes > 0 && bytes < body.TotalBytes);
 
-            // And the figure the transfer ends on is still everything the request delivered.
+            // And it only ever climbed, ending on everything the request delivered.
+            figures.ShouldBe(figures.Order().ToList());
             result.BytesProcessed.ShouldBe(body.TotalBytes);
-            progressReports[^1].BytesProcessed.ShouldBe(body.TotalBytes);
+            figures[^1].ShouldBe(body.TotalBytes);
         }
 
         [Fact]
-        public async Task GetDownloadSpeedAsync_WhenTheByteBudgetEndsARequestStillInFlight_ReportsNoLiveFigureBelowTheFinalOne()
+        public async Task GetDownloadSpeedAsync_WhenManyChunksArriveAtOnce_ReportsFarFewerFiguresThanChunks()
         {
-            // Given the same two parallel downloads against a 1 MiB budget.
-            using var mockHttp = new MockHttpMessageHandler();
-            var speedtest = TwoDownloadsAgainstTheBudget(mockHttp);
+            // Given one download delivered in many chunks while the clock stands still - a fast link,
+            // where a report per chunk would redraw a consumer thousands of times a second.
+            const int chunkSize = 1024;
+            const int chunks = 200;
 
+            var clock = new ControlledTimeProvider(ClockStart);
+            var body = new ClockAdvancingResponseStream(chunkSize, clock, Enumerable.Repeat(TimeSpan.Zero, chunks).ToArray());
+
+            using var mockHttp = new MockHttpMessageHandler();
+            mockHttp.When("*").Respond(_ => new HttpResponseMessage(HttpStatusCode.OK) { Content = new StreamContent(body) });
+
+            var speedtest = new OoklaSpeedtest(DownloadOf([100]), mockHttp.ToHttpClient(), timeProviderOverride: clock);
             var progressReports = new List<SpeedTestProgress>();
 
             // When
             var result = await speedtest.GetDownloadSpeedAsync(TestServer, new SynchronousProgress<SpeedTestProgress>(progressReports.Add));
 
-            // Then the last figure a consumer was shown already counted the in-flight request's
-            // bytes, and is the one the result reports: a live figure that stopped short of it
-            // would be contradicted the moment the test ended.
-            progressReports.ShouldNotBeEmpty();
-            progressReports[^1].BytesProcessed.ShouldBe(BudgetBytes + BytesDeliveredInFlight);
+            // Then the consumer was not reported to once per chunk.
+            progressReports.Count.ShouldBeLessThan(chunks / 10);
             progressReports[^1].BytesProcessed.ShouldBe(result.BytesProcessed);
+        }
+
+        [Fact]
+        public async Task GetDownloadSpeedAsync_WhenARequestDroppedAtTheBudgetDeliversAfterTheLastReport_ReportsItsBytesToo()
+        {
+            // Given two parallel downloads against a 1 MiB budget: one that fills the budget at
+            // once, and one whose 8 KiB arrive only after the transfer has reported itself complete.
+            // The clock stands still, so nothing but the finishing requests sends a report.
+            // The budget is filled only once the other request is reading, so it is always in
+            // flight when the budget ends it.
+            var completeReported = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            var inFlightReading = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+
+            using var mockHttp = new MockHttpMessageHandler();
+            mockHttp.When($"{ServerUrl}random200x200.jpg").Respond(_ => new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StreamContent(new CutOffResponseStream(BytesDeliveredInFlight, waitForCancellationInsteadOfFaulting: true, handOverAfter: completeReported.Task, readStarted: inFlightReading))
+            });
+            mockHttp.When($"{ServerUrl}random100x100.jpg").Respond(async _ =>
+            {
+                await inFlightReading.Task;
+                return new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent(new byte[BudgetBytes]) };
+            });
+
+            var clock = new ControlledTimeProvider(ClockStart);
+            var speedtest = new OoklaSpeedtest(
+                DownloadOf([100, 200], parallelTasks: 2, downloadSizeMb: 1),
+                mockHttp.ToHttpClient(),
+                timeProviderOverride: clock);
+
+            var progressReports = new List<SpeedTestProgress>();
+            var progress = new SynchronousProgress<SpeedTestProgress>(report =>
+            {
+                progressReports.Add(report);
+
+                if (report.PercentageComplete == 100)
+                {
+                    completeReported.TrySetResult();
+                }
+            });
+
+            // When
+            var result = await speedtest.GetDownloadSpeedAsync(TestServer, progress);
+
+            // Then the last figure a consumer was shown counts the late bytes too, and is the one
+            // the result reports: a figure that stopped short of them would be contradicted the
+            // moment the test ended.
+            result.BytesProcessed.ShouldBe(BudgetBytes + BytesDeliveredInFlight);
+            progressReports[^1].BytesProcessed.ShouldBe(result.BytesProcessed);
+        }
+
+        [Fact]
+        public async Task GetUploadSpeedAsync_WhenTheByteBudgetEndsARequestStillInFlight_CountsWhatThatRequestSent()
+        {
+            // Given two parallel uploads against a 1 MiB budget: a 2 MiB one whose server accepts
+            // 8 KiB and then stops reading, and a 1 MiB one that fills the budget once it has.
+            using var handler = new StalledUploadHandler(BudgetBytes, BytesDeliveredInFlight);
+
+            var settings = new OoklaSpeedtestSettings
+            {
+                UploadTest = new()
+                {
+                    UploadSizeIncrementKb = 1024,
+                    UploadIncrements = 2,
+                    UploadSizeIterations = 1,
+                    UploadParallelTasks = 2,
+                    UploadSizeMb = 1
+                },
+                LatencyTest = new() { LoadedLatencyEnabled = false }
+            };
+
+            var speedtest = new OoklaSpeedtest(settings, new HttpClient(handler, disposeHandler: false));
+            var diagnostics = new List<RequestDiagnostic>();
+
+            // When
+            var result = await speedtest.GetUploadSpeedAsync(TestServer, null, new SynchronousProgress<RequestDiagnostic>(diagnostics.Add));
+
+            // Then what the in-flight upload had sent is in the figure and on its own record, and
+            // nothing more: it stopped when the budget was reached rather than writing on. The
+            // counts are untouched - the upload that filled the budget succeeded, and the one
+            // dropped behind it is neither a success nor a failure.
+            result.BytesProcessed.ShouldBe(BudgetBytes + BytesDeliveredInFlight);
+            result.RequestsSucceeded.ShouldBe(1);
+            result.RequestsFailed.ShouldBe(0);
+
+            var dropped = diagnostics.Single(d => d.Kind == RequestKind.Transfer && d.Outcome == RequestOutcome.Cancelled);
+            dropped.BytesProcessed.ShouldBe(BytesDeliveredInFlight);
         }
     }
 }

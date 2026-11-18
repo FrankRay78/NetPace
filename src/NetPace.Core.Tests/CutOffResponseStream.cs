@@ -19,6 +19,8 @@ internal sealed class CutOffResponseStream : Stream
     private readonly int bytesBeforeCutOff;
     private readonly TaskCompletionSource? cutOffReached;
     private readonly bool waitForCancellationInsteadOfFaulting;
+    private readonly Task? handOverAfter;
+    private readonly TaskCompletionSource? readStarted;
 
     private int bytesDelivered;
 
@@ -31,8 +33,16 @@ internal sealed class CutOffResponseStream : Stream
     /// When set, the stream blocks until its reader is cancelled instead of faulting, which is how
     /// a transfer still in flight behaves when the test it belongs to ends around it.
     /// </param>
-    public CutOffResponseStream(int bytesBeforeCutOff, TaskCompletionSource? cutOffReached = null, bool waitForCancellationInsteadOfFaulting = false)
+    /// <param name="handOverAfter">
+    /// When given, the bytes are held back until it completes, and are then handed over whether or
+    /// not the reader has been cancelled meanwhile, so a test can have data arrive at a moment of
+    /// its choosing.
+    /// </param>
+    /// <param name="readStarted">Signalled when the reader first asks for data, so a test knows the request is under way.</param>
+    public CutOffResponseStream(int bytesBeforeCutOff, TaskCompletionSource? cutOffReached = null, bool waitForCancellationInsteadOfFaulting = false, Task? handOverAfter = null, TaskCompletionSource? readStarted = null)
     {
+        this.handOverAfter = handOverAfter;
+        this.readStarted = readStarted;
         this.bytesBeforeCutOff = bytesBeforeCutOff;
         this.cutOffReached = cutOffReached;
         this.waitForCancellationInsteadOfFaulting = waitForCancellationInsteadOfFaulting;
@@ -46,10 +56,17 @@ internal sealed class CutOffResponseStream : Stream
 
     public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
     {
+        readStarted?.TrySetResult();
+
         var remaining = bytesBeforeCutOff - bytesDelivered;
 
         if (remaining > 0)
         {
+            if (handOverAfter is not null)
+            {
+                await handOverAfter.ConfigureAwait(false);
+            }
+
             var count = Math.Min(remaining, buffer.Length);
             buffer.Span[..count].Clear();
             bytesDelivered += count;
