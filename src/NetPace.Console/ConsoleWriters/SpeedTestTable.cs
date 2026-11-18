@@ -74,9 +74,11 @@ internal sealed class SpeedTestTable(
 
     /// <summary>
     /// The blank between one column and the next, so a column's figures do not run into the
-    /// column beside it.
+    /// column beside it. Three rather than two: at two, neighbouring figures read as one
+    /// (<c>100%  8.00 Mbps</c>, <c>4 ms  1 of 150</c>), and the third blank separates the columns
+    /// while still leaving the full table inside 80 characters.
     /// </summary>
-    private const int ColumnGap = 2;
+    private const int ColumnGap = 3;
 
     /// <summary>The headings of the columns whose width is held between draws.</summary>
     private const string DoneHeading = "Done";

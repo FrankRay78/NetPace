@@ -4,7 +4,7 @@
 Deutsche Telekom
 http://ffm.wsqm.telekom-dienste.de:8080/speedtest/upload.php
 
-    Test         Done      Speed  Latency  Jitter
-✗   Pinging        0%                            
-✗   Downloading    0%                            
-✗   Uploading      0%                            
+    Test          Done       Speed   Latency   Jitter
+✗   Pinging         0%                               
+✗   Downloading     0%                               
+✗   Uploading       0%                               

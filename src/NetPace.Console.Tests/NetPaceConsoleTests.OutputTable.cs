@@ -169,6 +169,10 @@ public sealed partial class NetPaceConsoleTests
         [Fact]
         public async Task A_Partial_Failure_Keeps_Its_Figures_Beside_The_Count()
         {
+            // SCENARIO: Table columns are separated by three spaces
+            // The run this sets up is the only one that draws every column, so its snapshot is
+            // where the gap between one column and the next can be read off a whole table.
+
             // Given a terminal and a download in which some requests failed.
             var service = new ScriptedSpeedTester
             {
