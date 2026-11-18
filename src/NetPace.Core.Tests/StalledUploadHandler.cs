@@ -32,6 +32,9 @@ internal sealed class StalledUploadHandler : HttpMessageHandler
     private readonly int bytesBeforeStall;
     private readonly TaskCompletionSource stalled = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
+    /// <summary>
+    /// Constructs a server that stalls every upload but the one of <paramref name="acceptedInFullLength"/> bytes.
+    /// </summary>
     /// <param name="acceptedInFullLength">The length of the upload accepted in full.</param>
     /// <param name="bytesBeforeStall">How much of any other upload is accepted before reading stops.</param>
     public StalledUploadHandler(long acceptedInFullLength, int bytesBeforeStall)
