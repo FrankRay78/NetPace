@@ -116,7 +116,7 @@ OPTIONS:
         --loop                         Performs the speed test on continuous loop.
         --count                        Stop speed testing after this many times.
         --delay                        Time between multiple speed tests (HH:MM:SS).
-        --time-limit       00:10:00    Stop a speed test run after this long (HH:MM:SS).
+        --time-limit       00:10:00    Stop a speed test run after this long (HH:MM:SS, up to 23:59:59).
                                        A run that reaches the limit reports what it measured up to then.
                                        Each run of --count or --loop gets the limit afresh, and --delay is not counted.
         --csv                          Display output as a single CSV row (always includes timestamp).

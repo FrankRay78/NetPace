@@ -40,10 +40,16 @@ public static class Program
     internal static readonly TimeSpan DefaultTimeLimit = TimeSpan.FromMinutes(10);
 
     /// <summary>
-    /// <see cref="DefaultTimeLimit"/> written the way the option accepts it, so <c>--help</c> and
-    /// the parser cannot come to disagree about what the default is.
+    /// The one form <c>--time-limit</c> accepts, exactly hours, minutes and seconds. Shared by the
+    /// parser and <see cref="DefaultTimeLimitText"/>, so <c>--help</c> and the parser cannot come
+    /// to disagree about what the default is.
     /// </summary>
-    internal static string DefaultTimeLimitText => DefaultTimeLimit.ToString("hh\\:mm\\:ss", CultureInfo.InvariantCulture);
+    private const string TimeLimitFormat = @"hh\:mm\:ss";
+
+    /// <summary>
+    /// <see cref="DefaultTimeLimit"/> written the way the option accepts it.
+    /// </summary>
+    internal static string DefaultTimeLimitText => DefaultTimeLimit.ToString(TimeLimitFormat, CultureInfo.InvariantCulture);
 
     /// <summary>
     /// Create the RootCommand with System.CommandLine.
@@ -86,7 +92,7 @@ public static class Program
         // run has no way of noticing.
         var timeLimitOption = new Option<string>("--time-limit")
         {
-            Description = "Stop a speed test run after this long (HH:MM:SS).\nA run that reaches the limit reports what it measured up to then.\nEach run of --count or --loop gets the limit afresh, and --delay is not counted.",
+            Description = "Stop a speed test run after this long (HH:MM:SS, up to 23:59:59).\nA run that reaches the limit reports what it measured up to then.\nEach run of --count or --loop gets the limit afresh, and --delay is not counted.",
             DefaultValueFactory = _ => DefaultTimeLimitText
         };
         timeLimitOption.Validators.Add(result =>
@@ -536,7 +542,7 @@ public static class Program
     /// <see cref="TimeSpan"/> form; only this option is strict.
     /// </remarks>
     private static bool TryParseTimeLimit(string? value, out TimeSpan limit) =>
-        TimeSpan.TryParseExact(value, @"hh\:mm\:ss", CultureInfo.InvariantCulture, out limit) && limit > TimeSpan.Zero;
+        TimeSpan.TryParseExact(value, TimeLimitFormat, CultureInfo.InvariantCulture, out limit) && limit > TimeSpan.Zero;
 
     /// <summary>
     /// The requested run time limit. A value that is present but will not parse means the
@@ -552,7 +558,7 @@ public static class Program
     /// <see cref="ParseTimeLimit"/> alike.
     /// </summary>
     private static string TimeLimitError(string? value) =>
-        $"--time-limit must be a positive duration written as hours, minutes and seconds, such as {DefaultTimeLimitText}, but was '{value}'.";
+        $"--time-limit must be written as HH:MM:SS, from 00:00:01 to 23:59:59, such as {DefaultTimeLimitText}, but was '{value}'.";
 
     /// <summary>
     /// Parse a <c>--connections</c> value the way its validator does: digits only, culture

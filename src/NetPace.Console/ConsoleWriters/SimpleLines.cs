@@ -23,7 +23,7 @@ internal static class SimpleLines
     /// </param>
     /// <param name="outcome">What the transfers measured.</param>
     /// <param name="settings">What the run was asked for.</param>
-    /// <exception cref="ArgumentNullException">Any argument is <c>null</c>.</exception>
+    /// <exception cref="ArgumentNullException"><paramref name="console"/>, <paramref name="outcome"/> or <paramref name="settings"/> is <c>null</c>.</exception>
     public static void Write(IAnsiConsole console, LatencyTestResult? latency, SpeedTestOutcome outcome, SpeedTestCommandSettings settings)
     {
         ArgumentNullException.ThrowIfNull(console);

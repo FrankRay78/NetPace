@@ -23,14 +23,6 @@ public interface IRunTimeLimit
 /// </summary>
 public sealed class RunTimeLimit : IRunTimeLimit
 {
-    /// <summary>
-    /// A bound under the longest limit a timer accepts. A limit beyond it is kept at it, which no real run comes
-    /// near: this exists so that an absurd duration on the command line is a run nobody waits out
-    /// rather than an exception out of the timer.
-    /// </summary>
-    private static readonly TimeSpan LongestLimit = TimeSpan.FromMilliseconds(int.MaxValue);
-
     /// <inheritdoc/>
-    public CancellationTokenSource Start(TimeSpan limit) =>
-        new(limit < LongestLimit ? limit : LongestLimit);
+    public CancellationTokenSource Start(TimeSpan limit) => new(limit);
 }

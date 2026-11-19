@@ -23,7 +23,7 @@ and upload speed testing.
     \e[38;5;7m    --delay\e[0m                        Time between multiple speed tests        
                                        (HH:MM:SS).                              
     \e[38;5;7m    --time-limit\e[0m       \e[1m00:10:00\e[0m    Stop a speed test run after this long    
-                                       (HH:MM:SS).                              
+                                       (HH:MM:SS, up to 23:59:59).              
                                        A run that reaches the limit reports what
                                        it measured up to then.                  
                                        Each run of --count or --loop gets the   
