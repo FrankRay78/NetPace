@@ -48,9 +48,11 @@ internal static class Measurements
 
     /// <summary>
     /// The transfer's result, or <see langword="null"/> where the run's time limit stopped it
-    /// before any data arrived. A figure from no data is a measurement about nothing, and zero
-    /// would read as a dead link, so the test is reported as one that did not run.
+    /// before any data arrived and before any request failed. A figure from no data is a
+    /// measurement about nothing, and zero would read as a dead link, so the test is reported as
+    /// one that did not run. A failed request is something the test did find out, so a result
+    /// holding one is kept, to be reported and to trip <c>--fail-on</c> as it would with no limit.
     /// </summary>
     public static SpeedTestResult? Measured(SpeedTestResult result, CancellationToken timeLimitToken) =>
-        timeLimitToken.IsCancellationRequested && result.BytesProcessed == 0 ? null : result;
+        timeLimitToken.IsCancellationRequested && result.BytesProcessed == 0 && result.RequestsFailed == 0 ? null : result;
 }

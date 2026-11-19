@@ -152,19 +152,27 @@ internal sealed class SpeedTestTable(
     internal string SpeedOf(SpeedTestProgress progress) => progress.GetSpeedString(unit, unitSystem, scale);
 
     /// <inheritdoc/>
+    /// <remarks>
+    /// A table with no rows left takes no room, for the reason <see cref="Render"/> draws nothing.
+    /// </remarks>
     protected override Measurement Measure(RenderOptions options, int maxWidth)
     {
         ArgumentNullException.ThrowIfNull(options);
 
-        return ((IRenderable)Build(options.Unicode)).Measure(options, maxWidth);
+        return rows.Count == 0 ? new Measurement(0, 0) : ((IRenderable)Build(options.Unicode)).Measure(options, maxWidth);
     }
 
     /// <inheritdoc/>
+    /// <remarks>
+    /// Once every row has been removed, because the run's time limit came before any test had
+    /// anything to show, nothing is drawn: headings over no figures would read as a result with
+    /// its figures missing, where the line-based formats write nothing for the same run.
+    /// </remarks>
     protected override IEnumerable<Segment> Render(RenderOptions options, int maxWidth)
     {
         ArgumentNullException.ThrowIfNull(options);
 
-        return ((IRenderable)Build(options.Unicode)).Render(options, maxWidth);
+        return rows.Count == 0 ? [] : ((IRenderable)Build(options.Unicode)).Render(options, maxWidth);
     }
 
     /// <summary>

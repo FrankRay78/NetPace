@@ -183,6 +183,107 @@ public sealed partial class NetPaceConsoleTests
             Assert.Equal(1, result.ExitCode);
         }
 
+        [Theory]
+        [InlineData("--simple", "simple")]
+        [InlineData("--csv", "csv")]
+        public async Task ATransferCutShortWithNoDataButAFailedRequest_StillTripsFailOn(string formatSwitch, string formatName)
+        {
+            // Given a download cut short at the limit having delivered nothing, after one of its
+            // requests had genuinely failed: a server that passed screening and then stopped
+            // answering.
+            var (services, _, tester) = CutShortServices();
+            tester.CutShortBytes = 0;
+            tester.CutShortFailures = 1;
+            var host = GetCommandLineTestHost(services);
+
+            // When
+            var result = await host.RunAsync([formatSwitch, "--fail-on", "total"]);
+
+            // Then the failure is reported and earns its exit code, as it would with no limit: a
+            // test with a failed request in it ran, so it is not reported as one that did not.
+            Assert.Equal(1, result.ExitCode);
+
+            await Verify(result.Output).UseTextForParameters(formatName);
+        }
+
+        [Fact]
+        public async Task ATransferCutShortWithNoDataButAFailedRequest_AtATerminal_KeepsItsRowAsFailed()
+        {
+            // Given
+            var (services, _, tester) = CutShortServices();
+            tester.CutShortBytes = 0;
+            tester.CutShortFailures = 1;
+            var host = GetInteractiveCommandLineTestHost(services);
+
+            // When
+            var result = await host.RunAsync(["--fail-on", "total"]);
+
+            // Then the download row stays and shows the failure rather than vanishing.
+            Assert.Equal(1, result.ExitCode);
+
+            await Verify(result.Output);
+        }
+
+        [Theory]
+        [InlineData("--simple", "simple")]
+        [InlineData("--json", "json")]
+        public async Task ARunCutShortDuringTheUpload_ReportsWhatTheUploadMeasured(string formatSwitch, string formatName)
+        {
+            // Given an upload slow enough that the run reaches its limit part way through it. The
+            // double fails the run unless the upload was handed the limit as its stop, which is
+            // what keeps a real slow upload from running past it.
+            var (services, _, tester) = CutShortServices();
+            tester.Stage = CutShortStage.Upload;
+            var host = GetCommandLineTestHost(services);
+
+            // When
+            var result = await host.RunAsync([formatSwitch]);
+
+            // Then
+            Assert.Equal(0, result.ExitCode);
+            Assert.Equal(1, tester.UploadCalls);
+
+            await Verify(result.Output).UseTextForParameters(formatName);
+        }
+
+        [Fact]
+        public async Task ARunCutShortDuringTheUpload_AtATerminal_ReportsWhatTheUploadMeasured()
+        {
+            // Given
+            var (services, _, tester) = CutShortServices();
+            tester.Stage = CutShortStage.Upload;
+            var host = GetInteractiveCommandLineTestHost(services);
+
+            // When
+            var result = await host.RunAsync([]);
+
+            // Then
+            Assert.Equal(0, result.ExitCode);
+            Assert.Equal(1, tester.UploadCalls);
+
+            await Verify(result.Output);
+        }
+
+        [Fact]
+        public async Task TheLimitReachedBeforeAnyProbeAnswered_AtATerminal_DrawsNoTable()
+        {
+            // Given a run watched at a terminal whose limit is reached during the latency test,
+            // with nothing answered, so no test the table was drawn for has anything to show.
+            var (services, _, tester) = CutShortServices();
+            tester.Stage = CutShortStage.Latency;
+            var host = GetInteractiveCommandLineTestHost(services);
+
+            // When
+            var result = await host.RunAsync([]);
+
+            // Then every row goes, and with them the table: a heading over nothing would read as
+            // a result with its figures missing, where --simple writes nothing at all.
+            Assert.Equal(0, result.ExitCode);
+            Assert.Equal(0, tester.UploadCalls);
+
+            await Verify(result.Output);
+        }
+
         [Fact]
         public async Task ATransferCutShortBeforeAnyDataArrived_IsReportedAsATestThatDidNotRun()
         {

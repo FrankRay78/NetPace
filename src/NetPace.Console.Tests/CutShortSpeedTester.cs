@@ -21,12 +21,15 @@ public enum CutShortStage
 
     /// <summary>During the download test, once it has delivered something.</summary>
     Download,
+
+    /// <summary>During the upload test, once it has delivered something.</summary>
+    Upload,
 }
 
 /// <summary>
 /// A speed tester standing in for a server slow enough to outlast the run's time limit: the
-/// download test reaches the limit as it runs, and answers as a measurement cut short at one
-/// does - the figure of what it delivered before it stopped, no failed request, and one request
+/// transfer test the limit falls in reaches it as it runs, and answers as a measurement cut short
+/// at one does - the figure of what it delivered before it stopped, no failed request, and one request
 /// recorded as stopped by the caller.
 /// </summary>
 /// <remarks>
@@ -37,8 +40,8 @@ public enum CutShortStage
 /// record of a stopped request.
 /// </para>
 /// <para>
-/// An upload test answers cleanly, so a test can tell an upload that was never run from one that
-/// was. Which runs are cut short is <see cref="CutsShortRun"/>'s to say, so a repeated run can
+/// A transfer the limit does not fall in answers cleanly, so a test can tell an upload that was
+/// never run from one that was. Which runs are cut short is <see cref="CutsShortRun"/>'s to say, so a repeated run can
 /// have its first run cut short and its second complete.
 /// </para>
 /// </remarks>
@@ -61,10 +64,10 @@ public sealed class CutShortSpeedTester(RecordingRunTimeLimit limit) : ISpeedTes
     /// <summary>Where in a cut-short run the limit is reached.</summary>
     public CutShortStage Stage { get; set; } = CutShortStage.Download;
 
-    /// <summary>What the download had delivered when the limit was reached.</summary>
+    /// <summary>What the transfer cut short had delivered when the limit was reached.</summary>
     public long CutShortBytes { get; set; } = 1_000_000;
 
-    /// <summary>How many of the download's requests had failed when the limit was reached.</summary>
+    /// <summary>How many of the cut-short transfer's requests had failed when the limit was reached.</summary>
     public int CutShortFailures { get; set; }
 
     /// <summary>How many times the upload test was asked for, so a test can assert it was not.</summary>
@@ -149,21 +152,7 @@ public sealed class CutShortSpeedTester(RecordingRunTimeLimit limit) : ISpeedTes
 
     public Task<SpeedTestResult> GetDownloadSpeedAsync(IServer server, IProgress<SpeedTestProgress>? progress, IProgress<RequestDiagnostic>? diagnostics, CancellationToken cancellationToken = default, CancellationToken stopAndReportToken = default)
     {
-        // The limit is reached while the download is still running, which is what a slow server
-        // does to a run. The request that was in flight is recorded the way the library records
-        // one: cancelled, carrying its own generic reason for a stop.
-        if (!ReachLimitAt(CutShortStage.Download))
-        {
-            Report(diagnostics, sequence: 1, RequestOutcome.Succeeded, failureReason: null);
-            return Task.FromResult(Clean(bytes: 4_000_000));
-        }
-
-        RequireStop(stopAndReportToken);
-
-        Report(diagnostics, sequence: 1, RequestOutcome.Succeeded, failureReason: null);
-        Report(diagnostics, sequence: 2, RequestOutcome.Cancelled, RequestDiagnostic.StoppedByCaller);
-
-        return Task.FromResult(Clean(CutShortBytes) with { RequestsFailed = CutShortFailures });
+        return Task.FromResult(Transfer(CutShortStage.Download, diagnostics, stopAndReportToken, wholeBytes: 4_000_000));
     }
 
     public Task<SpeedTestResult> GetUploadSpeedAsync(IServer server, CancellationToken cancellationToken = default) =>
@@ -176,8 +165,37 @@ public sealed class CutShortSpeedTester(RecordingRunTimeLimit limit) : ISpeedTes
     {
         UploadCalls++;
 
-        Report(diagnostics, sequence: 1, RequestOutcome.Succeeded, failureReason: null);
-        return Task.FromResult(Clean(bytes: 500_000));
+        return Task.FromResult(Transfer(CutShortStage.Upload, diagnostics, stopAndReportToken, wholeBytes: 500_000));
+    }
+
+    /// <summary>
+    /// A transfer that answers cleanly unless <paramref name="stage"/> is where the run reaches its
+    /// limit. There the limit is reached while the transfer is still running, which is what a slow
+    /// server does to a run, and the request that was in flight is recorded the way the library
+    /// records one: cancelled, carrying its own generic reason for a stop.
+    /// </summary>
+    private SpeedTestResult Transfer(CutShortStage stage, IProgress<RequestDiagnostic>? diagnostics, CancellationToken stopAndReportToken, long wholeBytes)
+    {
+        if (!ReachLimitAt(stage))
+        {
+            Report(diagnostics, sequence: 1, RequestOutcome.Succeeded, failureReason: null);
+            return Clean(wholeBytes);
+        }
+
+        RequireStop(stopAndReportToken);
+
+        // A transfer that delivered nothing had no request succeed, so one whose only requests
+        // failed reads as the all-failed transfer it is.
+        var succeeded = CutShortBytes > 0 ? 1 : 0;
+
+        if (succeeded > 0)
+        {
+            Report(diagnostics, sequence: 1, RequestOutcome.Succeeded, failureReason: null);
+        }
+
+        Report(diagnostics, sequence: 2, RequestOutcome.Cancelled, RequestDiagnostic.StoppedByCaller);
+
+        return Clean(CutShortBytes) with { RequestsSucceeded = succeeded, RequestsFailed = CutShortFailures };
     }
 
     /// <summary>
