@@ -478,16 +478,17 @@ A run that reaches the limit has not failed. NetPace ends it and reports what it
 
 Otherwise:
 
-- The test in progress reports a figure for the data it delivered before it stopped, measured over the time it ran. If it had delivered nothing yet, it is reported as a test the run never reached.
-- A test the run never reached is reported the way a test you switched off is: no line under `--simple` or `--minimal`, an empty cell in CSV, an absent field in JSON, no row in the table on screen.
+- The test in progress reports a figure for the data it delivered before it stopped, measured over the time it ran. If it had delivered nothing yet and none of its requests had failed, it is reported as a test the run never reached.
+- A test the run never reached is reported the way a test you switched off is: no line under `--simple`, no field in the `--minimal` line, an empty cell in CSV, an absent field in JSON, no row in the table on screen. If no test has anything to show, no table is drawn.
 - Requests stopped at the limit count as neither successes nor failures, so `--fail-on` is tripped by real failures only.
 - Nothing is printed about the limit, in any output format.
 
-Under `--count` and `--loop` each run gets the limit afresh, and the `--delay` between runs does not count towards it. That is what keeps `netpace --loop --delay 00:05:00` from ever having one run overlap the next, whatever the server does.
+Under `--count` and `--loop` each run gets the limit afresh, and the `--delay` between runs does not count towards it.
 
 Reach for it when:
 
-- You run NetPace on a schedule (cron, a systemd timer, or `--loop`) and need every run to finish before the next one starts. The ten minute default already does this for you.
+- You run NetPace from cron or a systemd timer and need every run to finish before the next one starts, whatever the server does. The ten minute default already does this for you, as long as runs start more than ten minutes apart.
+- You run NetPace with `--loop` and want a stuck server to cost one run rather than stall the loop.
 - You want a quick reading and would rather have a rough figure soon than an exact one eventually.
 
 To see where a run was cut short, pass `--diagnostics`: every request stopped at the limit is recorded as cancelled, with a reason naming the time limit, and counted among its test's cancelled requests.
