@@ -134,9 +134,17 @@ public sealed class SpeedTestCommandSettings
     public required FailOn FailOn { get; init; }
 
     /// <summary>
-    /// Write per-request diagnostic detail about the run to the error stream.
+    /// Write per-request diagnostic detail about the run to the error stream, unless
+    /// <see cref="DiagnosticsFile"/> names a file, which takes every record instead.
     /// </summary>
     public required bool Diagnostics { get; init; }
+
+    /// <summary>
+    /// The file the diagnostic records are written to instead of the error stream, or an empty
+    /// string when none was named. A path here switches diagnostics on by itself, so
+    /// <see cref="Diagnostics"/> adds nothing alongside it.
+    /// </summary>
+    public required string DiagnosticsFile { get; init; }
 
     /// <summary>
     /// The label for this machine recorded in CSV and JSON output, or <see langword="null"/> when
