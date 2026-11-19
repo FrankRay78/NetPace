@@ -87,15 +87,15 @@ With no format switch, NetPace renders the rich terminal output: the server as s
 Hey! Broadband
 http://speedtest.heybroadband.example/speedtest/upload.php
 
-    Test         Done      Speed  Latency  Jitter
-✓   Pinging      100%                3 ms    1 ms
-✓   Downloading  100%  93.1 Mbps    60 ms    4 ms
-⠹   Uploading     30%  17.9 Mbps    38 ms    3 ms
+    Test          Done       Speed   Latency   Jitter
+✓   Pinging       100%                  3 ms     1 ms
+✓   Downloading   100%   93.1 Mbps     60 ms     4 ms
+⠹   Uploading      30%   17.9 Mbps     38 ms     3 ms
 ```
 
 Idle latency is the `Pinging` row; the latency and jitter beside a transfer are the line's latency *while that transfer was running*, so you can read one against the other straight down the column. That comparison is what shows bufferbloat — a link whose latency climbs under load. The figures are live: each one appears as soon as there is something to report and ends on the figure the measurement finally reports. A cell stays blank where nothing was measured, never zero.
 
-Speeds follow `--unit`, `--unit-system` and `--unit-scale`, and auto-scaled speeds read to three significant figures: `8.00 Kbps`, `18.7 Kbps`, `245 Mbps`, `1.23 Gbps`. That is as much precision as a speed test supports, and it keeps every auto-scaled reading within four characters, so the table holds its layout while you watch it. Each column opens wide enough for the figures it expects and never narrows during a run: a value too wide for it (a latency of thousands of milliseconds, or a speed pinned to a small unit with `--unit-scale`) widens its column, which then stays at its widest for the rest of the run. A window too narrow for the whole table wraps it rather than dropping a column.
+Speeds follow `--unit`, `--unit-system` and `--unit-scale`, and auto-scaled speeds read to three significant figures: `8.00 Kbps`, `18.7 Kbps`, `245 Mbps`, `1.23 Gbps`. That is as much precision as a speed test supports, and it keeps every auto-scaled reading within four characters, so the table holds its layout while you watch it. Each column opens wide enough for the figures it expects and never narrows during a run: a value too wide for it (a latency of thousands of milliseconds, or a speed pinned to a small unit with `--unit-scale`) widens its column, which then stays at its widest for the rest of the run. A window too narrow for the whole table wraps it rather than dropping a column, down to a width of about 25 characters.
 
 The default layout is for a person watching a terminal. It is not a format to scrape, and it may change in any release. A script reads `--minimal`, `--simple`, `--csv` or `--json`, all four of which are stable. Wherever default output cannot redraw (a pipe, a redirect, a `--file` target, or a terminal that cannot animate), it writes the `--simple` lines instead, and nothing else: no table, no server, and no control codes. Each destination is judged on its own, so `netpace --file results.txt` at a terminal shows the table on screen and writes the simple lines to the file.
 
@@ -513,10 +513,10 @@ Every output format carries the counts:
 
 **Default** — a `Failed` column appears as soon as a test finishes with failures, and the test's mark says which kind of failure it was. A test whose every request failed reports the speed of whatever those requests moved before they failed (zero in the example below, where nothing arrived) and no latency under load: its probes never saw a loaded line, so those cells stay blank.
 ```
-    Test         Done      Speed  Latency  Jitter    Failed
-✓   Pinging      100%               24 ms    3 ms
-!   Downloading  100%   513 Mbps    60 ms    4 ms  1 of 150
-✗   Uploading    100%      0 bps                   32 of 32
+    Test          Done       Speed   Latency   Jitter     Failed
+✓   Pinging       100%                 24 ms     3 ms
+!   Downloading   100%    513 Mbps     60 ms     4 ms   1 of 150
+✗   Uploading     100%       0 bps                      32 of 32
 ```
 
 **`--simple`** — the same annotation, on the line of the test it belongs to:
