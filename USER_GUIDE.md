@@ -558,18 +558,6 @@ The result is byte-for-byte what the same invocation produces without the switch
 
 `--diagnostics` works alongside whichever output format you chose, and is unaffected by `--quiet`. It never writes to the `--file` target.
 
-#### Writing the records to a file
-
-`--diagnostics-file` takes a path and writes the records there instead of to the error stream:
-
-```bash
-netpace --json --diagnostics-file diagnostics.log > result.json
-```
-
-This is the one to reach for when you have been asked to attach the records to a bug report. It turns diagnostics on by itself, so `--diagnostics` alongside it adds nothing, and it needs no `2>` redirection, whose syntax differs between shells. The file holds the same records `--diagnostics` writes to the error stream, with the `run.invocation` record naturally naming the options you actually passed, and no record reaches the error stream at all, so a failing run still shows you its `Error:` line on screen while the records go quietly to the file.
-
-The file is replaced on every run, so each one describes a single run, and `--file-mode` does not apply to it. It is opened before the first test, so a path that cannot be written stops the run there and then with a message naming the file and what to do, and exits non-zero. Giving the option no path, and naming the same file as `--file`, are both refused the same way: the second would leave you with records where you asked for the result. If writing fails later, once the run is under way, NetPace says so once on the error stream and leaves the result and the exit code alone.
-
 Each line is one record, as `key=value` pairs (an excerpt — a real run also carries the `screening` and `latency` test blocks, with `server.selected` between them: the choice is recorded as soon as it is made, which is before the chosen server's latency is measured). If `NETPACE_THEME` names no theme, its one-line notice comes first on the same stream, ahead of the records:
 
 ```
@@ -601,6 +589,18 @@ The download and upload tests also each send a small latency probe at most about
 Record volume is driven by how many servers the feed offers — roughly three records per candidate screened — on top of the request counts your `--profile` sets and up to about four probe lines per second of transfer, so expect a few hundred lines from a default run.
 
 Under `--count` or `--loop`, `run.start`, `run.invocation` and `run.end` appear once, and the test and request records repeat per iteration.
+
+#### Writing the records to a file
+
+`--diagnostics-file` takes a path and writes the records there instead of to the error stream:
+
+```bash
+netpace --json --diagnostics-file diagnostics.log > result.json
+```
+
+This is the one to reach for when you have been asked to attach the records to a bug report. It turns diagnostics on by itself, so `--diagnostics` alongside it adds nothing, and it needs no `2>` redirection, whose syntax differs between shells. The file holds the same records `--diagnostics` writes to the error stream, with the `run.invocation` record naturally naming the options you actually passed, and no record reaches the error stream at all, so a failing run still shows you its `Error:` line on screen while the records go quietly to the file.
+
+The file is replaced on every run, so each one describes a single run, and `--file-mode` does not apply to it. It is opened before the first test, so a path that cannot be written stops the run there and then with a message naming the file and what to do, and exits non-zero. Giving the option no path is refused the same way. If writing fails later, once the run is under way, NetPace says so once on the error stream and leaves the result and the exit code alone.
 
 ### Exit codes
 

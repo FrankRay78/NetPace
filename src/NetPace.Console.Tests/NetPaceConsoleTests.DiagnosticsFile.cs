@@ -125,8 +125,8 @@ public sealed partial class NetPaceConsoleTests
                 ["--server-url", "http://unreachable.example/upload.php", "--diagnostics-file", file.FilePath]);
 
             // Then the error is still on the error stream, where the user sees it, and the records
-            // are in the file - the tail as well as the head, because the file is the one
-            // destination whose last records reach disk only when the writer is closed.
+            // are in the file - the tail as well as the head, so the records written after the
+            // failed test, up to run.end, reached it too.
             Assert.Contains("No such host is known.", result.ErrorOutput, StringComparison.Ordinal);
 
             var written = await System.IO.File.ReadAllTextAsync(file.FilePath);
@@ -139,34 +139,22 @@ public sealed partial class NetPaceConsoleTests
         {
             // SCENARIO: Diagnostics file cannot be written
 
-            // Given a diagnostics path under a directory that does not exist.
+            // Given a diagnostics path under a directory that does not exist, and the reason the
+            // platform gives for not being able to create a file there.
             var path = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName(), "diagnostics.log");
+            var reason = Assert.ThrowsAny<IOException>(() => System.IO.File.Create(path)).Message;
 
             // When the run is asked for.
             var result = await HostWith().RunAsync(["--diagnostics-file", path]);
 
             // Then it fails before measuring anything, saying that the diagnostics file is what it
-            // could not write and which path that was - a run may name two files, so the message
-            // has to say which of them stopped it.
+            // could not write, which path that was and why - a run may name two files, so the
+            // message has to say which of them stopped it.
             Assert.Equal(1, result.ExitCode);
             Assert.Empty(result.Output);
-            Assert.Contains($"The diagnostics file {path} could not be opened", result.ErrorOutput, StringComparison.Ordinal);
-        }
-
-        [Fact]
-        public async Task A_DiagnosticsFile_NamingTheResultFile_IsRefused()
-        {
-            // Given --file and --diagnostics-file naming one path, which both open truncating.
-            using var file = new TempDiagnosticsFile();
-
-            // When the run is asked for.
-            var result = await HostWith().RunAsync(["--simple", "--file", file.FilePath, "--diagnostics-file", file.FilePath]);
-
-            // Then it is refused naming both options, rather than the records silently replacing
-            // the result the user asked --file for.
-            Assert.Equal(1, result.ExitCode);
-            Assert.Contains("--file", result.ErrorOutput, StringComparison.Ordinal);
-            Assert.Contains("--diagnostics-file", result.ErrorOutput, StringComparison.Ordinal);
+            Assert.Contains("diagnostics", result.ErrorOutput, StringComparison.OrdinalIgnoreCase);
+            Assert.Contains(path, result.ErrorOutput, StringComparison.Ordinal);
+            Assert.Contains(reason, result.ErrorOutput, StringComparison.Ordinal);
         }
 
         [Theory]

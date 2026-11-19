@@ -154,9 +154,9 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ErrorOutput errorOutp
                 {
                     // The records this test produced are flushed before the error is written, so a
                     // reader of the error stream meets them in the order they explain the failure:
-                    // what was attempted first, what went wrong last. Diagnostics and errors share
-                    // the error stream in every run, so their order on it is the order they are
-                    // read in.
+                    // what was attempted first, what went wrong last. Unless --diagnostics-file
+                    // takes the records elsewhere, diagnostics and errors share the error stream,
+                    // so their order on it is the order they are read in.
                     //
                     // From a finally, because the flush must not be able to cost the user the
                     // message. FlushDiagnostics absorbs the failure it is written for, but a

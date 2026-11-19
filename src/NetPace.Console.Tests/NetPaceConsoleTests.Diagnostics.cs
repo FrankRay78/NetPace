@@ -301,9 +301,12 @@ public sealed partial class NetPaceConsoleTests
 
             // Then the measurement still reports its result and exits 0: diagnostics are a second
             // stream, so one that cannot be written does not decide the run's exit code. Before
-            // this was guarded, the write failure escaped and the run exited 1.
+            // this was guarded, the write failure escaped and the run exited 1. Nor is the failure
+            // reported: the records were bound for the error stream, so there is nowhere left to
+            // say so, and a report there would only add a line the user did not ask for.
             Assert.Equal(0, result.ExitCode);
             Assert.Contains("Ping:", result.Output, StringComparison.Ordinal);
+            Assert.Empty(result.ErrorOutput);
         }
 
         /// <summary>

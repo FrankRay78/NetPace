@@ -198,32 +198,5 @@ public static class SpeedTestCommandSettingsExtensions
         {
             throw new ArgumentException("A LibreSpeed server URL is needed: pass --server-url with the address LibreSpeed is installed at, such as --server-url http://pi.local:8080/.");
         }
-
-        ValidateDiagnosticsFile(settings);
-    }
-
-    /// <summary>
-    /// Rejects a <c>--diagnostics-file</c> that names the same path as <c>--file</c>, which would
-    /// leave the user with the result they asked for overwritten by records. A value that names no
-    /// path at all is rejected by the option's own validator, where the user's having passed it is
-    /// still distinguishable from their having left it out.
-    /// </summary>
-    private static void ValidateDiagnosticsFile(SpeedTestCommandSettings settings)
-    {
-        if (string.IsNullOrWhiteSpace(settings.DiagnosticsFile) || string.IsNullOrWhiteSpace(settings.OutputFile))
-        {
-            return;
-        }
-
-        // Both destinations open their path replacing what it held, and neither knows about the
-        // other, so one path named twice means whichever opens second writes from the start of a
-        // file the first is already using: on Linux and macOS the result rows the user asked for
-        // are silently replaced by records, and on Windows the second open fails over a file share
-        // with a message naming neither option. Compared as full paths so the two spellings of one
-        // file are caught.
-        if (string.Equals(Path.GetFullPath(settings.DiagnosticsFile), Path.GetFullPath(settings.OutputFile), StringComparison.Ordinal))
-        {
-            throw new ArgumentException("--diagnostics-file and --file name the same path. Give the records a file of their own, so the result is not overwritten by them.");
-        }
     }
 }
