@@ -27,10 +27,10 @@ namespace NetPace.Console.ConsoleWriters;
 /// next run.
 /// </para>
 /// <para>
-/// Every column is drawn at the widths a terminal offers. A window too narrow for the table wraps
-/// it rather than dropping a figure the user asked to see, which is the one thing a narrow window
-/// must not do: a missing column reads as a measurement that was never taken. Narrower than about
-/// twenty-five characters the console library reduces the table itself, and a column can go.
+/// Down to about twenty-five characters, every column is drawn. A window too narrow for the
+/// table wraps it rather than dropping a figure the user asked to see, because a missing column
+/// reads as a measurement that was never taken. Narrower than that, the console library reduces
+/// the table itself and a column can go.
 /// </para>
 /// </remarks>
 /// <param name="theme">The colours and emphasis to draw in.</param>

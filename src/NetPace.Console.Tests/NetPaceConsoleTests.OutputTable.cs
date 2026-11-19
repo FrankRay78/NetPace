@@ -229,6 +229,9 @@ public sealed partial class NetPaceConsoleTests
         public async Task Every_Column_Is_Drawn_On_A_Terminal_Too_Narrow_For_The_Table()
         {
             // SCENARIO: Jitter gives way on a narrow terminal
+            // The marker repeats the original acceptance criterion's label exactly, so it must not be
+            // renamed. That label predates the decision it records: its Given-When-Then says every
+            // column, Jitter included, is still drawn and the table wraps, which is what this verifies.
 
             // Given a terminal too narrow for the full table.
             var host = TerminalHost(Services(new SpeedTestStub()), CommandLineTestHost.NarrowTerminalWidth);
