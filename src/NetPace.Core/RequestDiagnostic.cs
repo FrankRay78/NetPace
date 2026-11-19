@@ -48,8 +48,9 @@ public sealed record RequestDiagnostic
     public required RequestOutcome Outcome { get; init; }
 
     /// <summary>
-    /// Gets the number of bytes this request moved. Zero for a request whose transfer did not
-    /// complete, even where some bytes had already arrived.
+    /// Gets the number of bytes this request moved, whatever its outcome: a request the server
+    /// cut off partway, and one dropped because the byte budget was reached, each report what they
+    /// had moved by then. Zero means nothing arrived, not that the request did not finish.
     /// </summary>
     public required long BytesProcessed { get; init; }
 

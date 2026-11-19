@@ -8,13 +8,24 @@ namespace NetPace.Core;
 /// each must be stated at construction. That is the whole of the guarantee: a stated value is not
 /// thereby a measured one, and it is the counts that distinguish a genuine measurement from a run
 /// that failed (see <see cref="RequestsSucceeded"/>). Where a test did not run at all, represent
-/// that as the absence of a result; an all-failed test reports a zero speed, not an absent result.
+/// that as the absence of a result; an all-failed test reports what its requests delivered, not an
+/// absent result.
 /// </remarks>
 public sealed record SpeedTestResult
 {
     /// <summary>
-    /// Gets the total number of bytes processed.
+    /// Gets the total number of bytes the transfer moved across the link.
     /// </summary>
+    /// <remarks>
+    /// Every byte any request delivered, whatever became of that request: one the server cut off
+    /// partway through, and one dropped because the byte budget was reached, both moved data and
+    /// both took time this figure's <see cref="ElapsedMilliseconds"/> counts. The figure is about
+    /// the link rather than about the requests, which <see cref="RequestsSucceeded"/> and
+    /// <see cref="RequestsFailed"/> are. An upload counts what was written to the transport, which
+    /// is a ceiling: whatever the send buffer still held when a connection closed is counted as
+    /// sent, so on a link slow enough that the buffer holds a whole request a cut-off upload can
+    /// be credited with most of its body.
+    /// </remarks>
     public required long BytesProcessed { get; init; }
 
     /// <summary>
@@ -23,18 +34,20 @@ public sealed record SpeedTestResult
     public required long ElapsedMilliseconds { get; init; }
 
     /// <summary>
-    /// Gets the number of requests that completed successfully and contributed to <see cref="BytesProcessed"/>.
+    /// Gets the number of requests that completed successfully.
     /// </summary>
     /// <remarks>
-    /// Zero, with <see cref="RequestsFailed"/> greater than zero, means every request failed and the
-    /// reported speed is not a valid measurement. Requests skipped because the configured byte
-    /// budget was reached are counted as neither succeeded nor failed.
+    /// Zero, with <see cref="RequestsFailed"/> greater than zero, means every request failed. The
+    /// speed is still what the link delivered while they were failing, but it is a measurement of
+    /// a link that is not working. Requests skipped because the configured byte budget was reached
+    /// are counted as neither succeeded nor failed.
     /// </remarks>
     public required int RequestsSucceeded { get; init; }
 
     /// <summary>
     /// Gets the number of requests that failed (a transport error, timeout, or non-success HTTP status).
-    /// Failed requests contribute no bytes to <see cref="BytesProcessed"/>.
+    /// Whatever a failed request delivered before it failed is still part of
+    /// <see cref="BytesProcessed"/>.
     /// </summary>
     public required int RequestsFailed { get; init; }
 

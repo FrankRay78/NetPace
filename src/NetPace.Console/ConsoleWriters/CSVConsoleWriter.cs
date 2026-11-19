@@ -65,7 +65,8 @@ public sealed class CSVConsoleWriter : IConsoleWriter
         // --unit-scale and --unit-system leave CSV untouched and every row carries the same units,
         // within a run and across runs.
         // A test that did not run leaves its cells empty; one that ran and failed entirely reports
-        // a speed of 0 beside the request counts that say so. A latency figure that was not
+        // whatever its requests delivered, beside the request counts that say so, and a speed of 0
+        // only where nothing arrived at all. A latency figure that was not
         // measured — under-load latency the transfer never saw, or the idle latency and jitter
         // under --no-latency — leaves its cell empty too, so nothing charting the column reads an
         // unmeasured line as a perfect one.

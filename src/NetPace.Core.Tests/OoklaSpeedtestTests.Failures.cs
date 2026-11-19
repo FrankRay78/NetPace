@@ -82,7 +82,7 @@ public sealed partial class OoklaSpeedtestTests
         }
 
         [Fact]
-        public async Task GetUploadSpeedAsync_ShouldCountOnlySuccessfulBytes_WhenSomeRequestsFail()
+        public async Task GetUploadSpeedAsync_ShouldCountWhatEveryRequestDelivered_WhenSomeRequestsFail()
         {
             // SCENARIO: Partial failure is measured, not hidden
 
@@ -112,11 +112,15 @@ public sealed partial class OoklaSpeedtestTests
             // When
             var result = await speedtest.GetUploadSpeedAsync(server);
 
-            // Then only the successful requests contribute bytes; the failure is counted.
+            // Then every request contributes what it delivered, and the failure is counted. The
+            // two accepted uploads each sent a whole 200 KiB body; the rejected one sent nothing,
+            // because this mock answers without ever reading the request content, so there is no
+            // partial body here to count. A cut-off upload that did send part of one is covered by
+            // GetUploadSpeedAsync_WhenTheServerClosesTheRequestPartway_CountsWhatWasSent.
             result.ShouldNotBeNull();
             result.RequestsFailed.ShouldBe(1);
-            result.RequestsSucceeded.ShouldBeGreaterThan(0);
-            result.BytesProcessed.ShouldBeGreaterThan(0);
+            result.RequestsSucceeded.ShouldBe(2);
+            result.BytesProcessed.ShouldBe(2L * 200 * 1024);
         }
 
         [Fact]

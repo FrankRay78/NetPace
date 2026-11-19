@@ -130,7 +130,7 @@ public sealed partial class SpeedTestExtensionsTests
         [Theory]
         public void GetSpeedString_ZeroSpeed_IsShownAsABareZero(SpeedScale scale, string expected)
         {
-            // Given a transfer that moved no bytes, which is how an all-failed transfer reports.
+            // Given a transfer that moved no bytes.
             var result = Transferred(0, 1000);
 
             // When it is formatted.

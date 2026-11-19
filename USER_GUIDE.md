@@ -87,15 +87,15 @@ With no format switch, NetPace renders the rich terminal output: the server as s
 Hey! Broadband
 http://speedtest.heybroadband.example/speedtest/upload.php
 
-    Test         Done      Speed  Latency  Jitter
-✓   Pinging      100%                3 ms    1 ms
-✓   Downloading  100%  93.1 Mbps    60 ms    4 ms
-⠹   Uploading     30%  17.9 Mbps    38 ms    3 ms
+    Test          Done       Speed   Latency   Jitter
+✓   Pinging       100%                  3 ms     1 ms
+✓   Downloading   100%   93.1 Mbps     60 ms     4 ms
+⠹   Uploading      30%   17.9 Mbps     38 ms     3 ms
 ```
 
 Idle latency is the `Pinging` row; the latency and jitter beside a transfer are the line's latency *while that transfer was running*, so you can read one against the other straight down the column. That comparison is what shows bufferbloat — a link whose latency climbs under load. The figures are live: each one appears as soon as there is something to report and ends on the figure the measurement finally reports. A cell stays blank where nothing was measured, never zero.
 
-Speeds follow `--unit`, `--unit-system` and `--unit-scale`, and auto-scaled speeds read to three significant figures: `8.00 Kbps`, `18.7 Kbps`, `245 Mbps`, `1.23 Gbps`. That is as much precision as a speed test supports, and it keeps every auto-scaled reading within four characters, so the table holds its layout while you watch it. Each column opens wide enough for the figures it expects and never narrows during a run: a value too wide for it (a latency of thousands of milliseconds, or a speed pinned to a small unit with `--unit-scale`) widens its column, which then stays at its widest for the rest of the run. A window too narrow for the whole table wraps it rather than dropping a column.
+Speeds follow `--unit`, `--unit-system` and `--unit-scale`, and auto-scaled speeds read to three significant figures: `8.00 Kbps`, `18.7 Kbps`, `245 Mbps`, `1.23 Gbps`. That is as much precision as a speed test supports, and it keeps every auto-scaled reading within four characters, so the table holds its layout while you watch it. Each column opens wide enough for the figures it expects and never narrows during a run: a value too wide for it (a latency of thousands of milliseconds, or a speed pinned to a small unit with `--unit-scale`) widens its column, which then stays at its widest for the rest of the run. A window too narrow for the whole table wraps it rather than dropping a column, down to a width of about 25 characters.
 
 The default layout is for a person watching a terminal. It is not a format to scrape, and it may change in any release. A script reads `--minimal`, `--simple`, `--csv` or `--json`, all four of which are stable. Wherever default output cannot redraw (a pipe, a redirect, a `--file` target, or a terminal that cannot animate), it writes the `--simple` lines instead, and nothing else: no table, no server, and no control codes. Each destination is judged on its own, so `netpace --file results.txt` at a terminal shows the table on screen and writes the simple lines to the file.
 
@@ -238,7 +238,7 @@ Timestamp,LatencyMilliseconds,JitterMilliseconds,DownloadSpeedBitsPerSecond,Down
 1980-01-01T10:05:00+01:00,12,3,512600000,150,0,48,31,96,9,,,,,,,,192.168.1.1,test-host,London,Foo Telecom,http://speedtest.foo.example:8080/speedtest/upload.php,
 ```
 
-A download or upload test that ran but failed entirely reports `0`, with its request counts beside it — see [Detecting failed measurements](#detecting-failed-measurements).
+A download or upload test that ran but failed entirely reports the speed of whatever its requests moved before they failed, which is `0` only where nothing arrived, with its request counts beside it. See [Detecting failed measurements](#detecting-failed-measurements).
 
 CSV output is always comma-separated — there is no option to choose another separator, so every log NetPace writes has one shape. A value that would otherwise disturb the row is written as CSV requires: any field containing a comma or a double quote — most often a server's sponsor or location name, a `--device-id` label or a `--custom-field` value — is wrapped in double quotes, with any double quote of its own written twice, so a standard CSV reader hands back the original text and the row still has one field per column. A line break inside any field is written as a space, so every record stays on one line.
 
@@ -325,7 +325,7 @@ The same nine figures CSV carries, under the same names and as the same numbers 
 
 Need a speed formatted for a person to read — for a notification, say? `--simple` writes exactly that figure on its own line, and `--minimal` writes the whole run as one line; both follow the unit options.
 
-A test you skipped with `--no-latency`, `--no-download` or `--no-upload` omits every field it would have filled. A download or upload test that ran but failed entirely reports `0`, with its request counts beside it — see [Detecting failed measurements](#detecting-failed-measurements). A latency measurement that fails ends the run instead, so it reports nothing.
+A test you skipped with `--no-latency`, `--no-download` or `--no-upload` omits every field it would have filled. A download or upload test that ran but failed entirely reports the speed of whatever its requests moved before they failed, which is `0` only where nothing arrived, with its request counts beside it. See [Detecting failed measurements](#detecting-failed-measurements). A latency measurement that fails ends the run instead, so it reports nothing.
 
 ### Timestamps and regional settings
 
@@ -505,16 +505,18 @@ Exit codes are unaffected. A network condition is still data and still exits `0`
 
 ## Detecting failed measurements
 
-A speed test runs many small requests in parallel and reports the aggregate throughput. If some of those requests fail (a dropped connection, a TLS error, a timeout, or a server that rejects the transfer), NetPace does **not** silently treat them as zero-speed data — it counts them, so you can tell a genuinely slow link from a server that isn't transferring at all. When *every* request in a test fails, the speed reads zero, and the counts tell you it was a total failure rather than a 0 bps link.
+A speed test runs many small requests in parallel and reports the aggregate throughput. If some of those requests fail (a dropped connection, a TLS error, a timeout, or a server that rejects the transfer), NetPace does **not** silently treat them as zero-speed data — it counts them, so you can tell a genuinely slow link from a server that isn't transferring at all.
+
+The speed is about the link, so it counts every byte that arrived, including the bytes of a request that then failed. A slow link whose transfers the server keeps cutting off still reports close to what it carries, rather than a fraction of it. The speed reads zero only where nothing moved at all, such as a connection refused or a TLS handshake that failed. An upload the server rejects still counts what it sent, because the body goes out before the rejection comes back. The counts, not the figure, are what tell you a test failed.
 
 Every output format carries the counts:
 
-**Default** — a `Failed` column appears as soon as a test finishes with failures, and the test's mark says which kind of failure it was. A test whose every request failed reports a zero speed, and no latency under load: its probes never saw a loaded line, so those cells stay blank.
+**Default** — a `Failed` column appears as soon as a test finishes with failures, and the test's mark says which kind of failure it was. A test whose every request failed reports the speed of whatever those requests moved before they failed (zero in the example below, where nothing arrived) and no latency under load: its probes never saw a loaded line, so those cells stay blank.
 ```
-    Test         Done      Speed  Latency  Jitter    Failed
-✓   Pinging      100%               24 ms    3 ms
-!   Downloading  100%   513 Mbps    60 ms    4 ms  1 of 150
-✗   Uploading    100%      0 bps                   32 of 32
+    Test          Done       Speed   Latency   Jitter     Failed
+✓   Pinging       100%                 24 ms     3 ms
+!   Downloading   100%    513 Mbps     60 ms     4 ms   1 of 150
+✗   Uploading     100%       0 bps                      32 of 32
 ```
 
 **`--simple`** — the same annotation, on the line of the test it belongs to:
@@ -529,13 +531,13 @@ Upload: 0 bps (32 of 32 requests failed)
 2026-10-16 08:21:17, Latency: 24 ms, Download: 513 Mbps, Upload: 0 bps (32 of 32 requests failed)
 ```
 
-**CSV** — a `Succeeded` and `Failed` column sits next to each speed column, and a total failure reports a speed of `0` beside the counts that say so. Its latency-under-load cells are empty rather than `0`: a transfer whose every request failed never loaded the line, so there was nothing to measure.
+**CSV** — a `Succeeded` and `Failed` column sits next to each speed column, and a test where nothing arrived reports a speed of `0` beside the counts that say so. Its latency-under-load cells are empty rather than `0`: a transfer whose every request failed never loaded the line, so there was nothing to measure.
 ```
 Timestamp,LatencyMilliseconds,JitterMilliseconds,DownloadSpeedBitsPerSecond,DownloadSucceeded,DownloadFailed,DownloadLatencyMilliseconds,DownloadLowestLatencyMilliseconds,DownloadHighestLatencyMilliseconds,DownloadJitterMilliseconds,UploadSpeedBitsPerSecond,UploadSucceeded,UploadFailed,UploadLatencyMilliseconds,UploadLowestLatencyMilliseconds,UploadHighestLatencyMilliseconds,UploadJitterMilliseconds,IPAddress,Hostname,ServerLocation,ServerSponsor,ServerUrl,DeviceId
 1980-01-01T10:05:00+01:00,24,5,512600000,150,0,61,34,148,14,0,0,32,,,,,192.168.1.1,test-host,London,Foo Telecom,http://speedtest.foo.example:8080/speedtest/upload.php,
 ```
 
-**JSON** — each test that ran gains integer `…Succeeded` / `…Failed` fields alongside its speed. A total failure reports `0` with the counts beside it, exactly as the other formats do, and leaves out its latency-under-load fields, since nothing was measured. Only a test you skipped (`--no-download`, `--no-upload`) omits its fields entirely:
+**JSON** — each test that ran gains integer `…Succeeded` / `…Failed` fields alongside its speed. A test where nothing arrived reports `0` with the counts beside it, exactly as the other formats do, and leaves out its latency-under-load fields, since nothing was measured. Only a test you skipped (`--no-download`, `--no-upload`) omits its fields entirely:
 ```json
 { "UploadSpeedBitsPerSecond": 0, "UploadSucceeded": 0, "UploadFailed": 32, … }
 ```
@@ -576,8 +578,8 @@ What the records cover:
 | `run.start` | The NetPace version, the .NET runtime, the operating system and the architecture. |
 | `run.invocation` | How NetPace was invoked. |
 | `server.selected` | The server used, and `selection=` — `auto-latency`, `specified` or `first-in-list`. `latency_ms` is the screening figure that chose it, and is absent when latency played no part in choosing. |
-| `test.start` / `test.end` | Which tests ran — `screening`, `latency`, `download`, `upload` — and, on `test.end`, the total `requests`, how many `succeeded`, `failed` or were `cancelled`, and the `bytes` the successful ones moved. Those totals cover exactly the `request` lines above them, so the two always reconcile. `probe` lines are not among them. |
-| `request` | One per request, with its sequence number, address, outcome, bytes, duration and — where it did not succeed — the `reason` and, if an exception was involved, its `exception` type. `status=` is `ok`, `failed` or `cancelled`. |
+| `test.start` / `test.end` | Which tests ran — `screening`, `latency`, `download`, `upload` — and, on `test.end`, the total `requests`, how many `succeeded`, `failed` or were `cancelled`, and the `bytes` they moved between them, whatever their outcome. Those totals cover exactly the `request` lines above them, so the two always reconcile, and the `bytes` figure is the one the reported speed is built from. `probe` lines are not among them. |
+| `request` | One per request, with its sequence number, address, outcome, bytes, duration and — where it did not succeed — the `reason` and, if an exception was involved, its `exception` type. `status=` is `ok`, `failed` or `cancelled`. `bytes=` is what that request moved before it ended, so a request the server cut off partway reports what had arrived rather than nothing. |
 | `probe` | One per latency probe sent *during* a download or upload, to measure the latency of the line while it is loaded. It carries a `request` line's fields, `status=` included, and is numbered in its own run of `seq` numbers, so it never displaces one of the transfer's requests — `event=` and `seq=` together identify a record within a test, since a probe and a transfer request can share a number. `--minimal`, `--simple` and `--no-latency` all send no under-load probes, so a run with any of them carries no `probe` line at all. |
 
 Every line repeats enough to stand alone, so `grep status=failed diagnostics.log` is a complete triage pass. Nothing is summarised away: every measured request gets its own record, including the latency probes made while choosing a server. Two kinds of request are not recorded individually: the initial server-list fetch, whose failure surfaces as the run's error instead; and a screening request that finishes after the selection ceiling has already passed, which arrives too late for the `test.end` it would belong to and is dropped so that summary stays exact — so a candidate you expected to see may be absent rather than untried. One request appears that you did not ask for: the upload test resolves its endpoint with an empty probe POST first, which takes the opening `seq` numbers of that test and reads `bytes=0`, so `test.end requests=` counts one more than the uploads measured (more, if the server redirects several times).

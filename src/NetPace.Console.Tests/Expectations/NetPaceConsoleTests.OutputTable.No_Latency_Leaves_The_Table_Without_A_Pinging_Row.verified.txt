@@ -4,6 +4,6 @@
 Test Sponsor 1
 http://test1.com
 
-    Test         Done      Speed
-✓   Downloading  100%  8.00 Kbps
-✓   Uploading    100%  18.7 Kbps
+    Test          Done       Speed
+✓   Downloading   100%   8.00 Kbps
+✓   Uploading     100%   18.7 Kbps
