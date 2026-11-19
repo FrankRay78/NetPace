@@ -44,8 +44,9 @@ public sealed record Theme
     /// </summary>
     /// <remarks>
     /// A colour rather than a style, because that is all the ASCII lettering can be given.
-    /// The two halves are drawn in a pair of colours purely as decoration, which is why there are
-    /// two slots and not one. The split carries no meaning: the lettering spells the product name
+    /// A theme may draw the two halves in a pair of colours, purely as decoration, which is why there
+    /// are two slots and not one; <see cref="Default"/> gives both the same colour as its headings.
+    /// The split carries no meaning: the lettering spells the product name
     /// whether or not the halves are told apart, as they are not under <see cref="Plain"/> or
     /// <c>NO_COLOR</c>.
     /// </remarks>
@@ -169,8 +170,8 @@ public sealed record Theme
     public static Theme Default { get; } = new()
     {
         Name = "default",
-        BannerNet = Color.Gold1,
-        BannerPace = Color.DarkOrange,
+        BannerNet = Color.Yellow,
+        BannerPace = Color.Yellow,
         Heading = new Style(foreground: Color.Yellow, decoration: Decoration.Bold),
         Placeholder = new Style(foreground: Color.Grey),
         CommandName = new Style(foreground: Color.Aqua),

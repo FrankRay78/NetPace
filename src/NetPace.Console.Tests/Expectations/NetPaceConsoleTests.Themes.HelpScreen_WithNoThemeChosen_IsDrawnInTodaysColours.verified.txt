@@ -1,7 +1,7 @@
 ﻿
-\e[38;5;220m▙ ▌▛▀▘▀▛▘\e[0m\e[38;5;208m▛▀▖▞▀▖▞▀▘▛▀▘\e[0m
-\e[38;5;220m▌▚▌▛▀  ▌ \e[0m\e[38;5;208m▛▀ ▛▀▌▌  ▛▀\e[0m
-\e[38;5;220m▘ ▘▀▀▘ ▘ \e[0m\e[38;5;208m▘  ▘ ▘▝▀▘▀▀▘\e[0m
+\e[38;5;11m▙ ▌▛▀▘▀▛▘▛▀▖▞▀▖▞▀▘▛▀▘\e[0m
+\e[38;5;11m▌▚▌▛▀  ▌ ▛▀ ▛▀▌▌  ▛▀\e[0m
+\e[38;5;11m▘ ▘▀▀▘ ▘ ▘  ▘ ▘▝▀▘▀▀▘\e[0m
 
 \e[1;38;5;11mDESCRIPTION:\e[0m
 Network speed tester including server discovery, latency measurement, download 
