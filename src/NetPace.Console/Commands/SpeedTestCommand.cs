@@ -7,7 +7,7 @@ using NetPace.Core;
 
 namespace NetPace.Console.Commands;
 
-public sealed class SpeedTestCommand(IAnsiConsole console, ErrorOutput errorOutput, ISpeedTestService speedTestClient, IClock clock, IClientInfoProvider clientInfoProvider, IDiagnosticRecorder recorder, IWaiter waiter, ILiveDisplayRefresh liveDisplayRefresh, Theme theme)
+public sealed class SpeedTestCommand(IAnsiConsole console, ErrorOutput errorOutput, NoticeOutput noticeOutput, ISpeedTestService speedTestClient, IClock clock, IClientInfoProvider clientInfoProvider, IDiagnosticRecorder recorder, IWaiter waiter, ILiveDisplayRefresh liveDisplayRefresh, Theme theme)
 {
     /// <summary>
     /// What the user is told about a request abandoned at its own timeout: one composed line for
@@ -257,7 +257,9 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ErrorOutput errorOutp
     /// <para>
     /// Where <c>--diagnostics-file</c> named the destination, the error stream is a different place
     /// and says once which path failed, because a user who asked for a file and got none would
-    /// otherwise learn that only when they went looking for it. Under <c>--diagnostics</c> alone
+    /// otherwise learn that only when they went looking for it. It says so as a notice, not an
+    /// error: the run succeeded, and a script scanning the error stream for errors must not read it
+    /// as failed. Nor does <c>--quiet</c> silence it, since <c>--quiet</c> leaves diagnostics alone. Under <c>--diagnostics</c> alone
     /// there is nowhere to say it: the stream that would carry the message is the one that just
     /// failed, and <see cref="RunAsync"/> has already torn the console down by the time the last
     /// flush runs. At most once per run, so a <c>--loop</c> over a destination that is gone for
@@ -276,7 +278,7 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ErrorOutput errorOutp
             if (!_diagnosticWriteReported && !string.IsNullOrWhiteSpace(settings.DiagnosticsFile))
             {
                 _diagnosticWriteReported = true;
-                errorOutput.WriteLine(theme, $"The diagnostics could not be written to {settings.DiagnosticsFile}: {e.Message}");
+                noticeOutput.Writer.WriteLine($"The diagnostics could not be written to {settings.DiagnosticsFile}: {e.Message}");
             }
         }
     }

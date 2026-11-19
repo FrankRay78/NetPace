@@ -172,8 +172,10 @@ public sealed partial class NetPaceConsoleTests
             Assert.Contains("--diagnostics-file", result.ErrorOutput, StringComparison.Ordinal);
         }
 
-        [Fact]
-        public async Task A_WriteFailurePartWayThrough_IsReportedOnceAndLeavesTheRunAlone()
+        [Theory]
+        [InlineData]
+        [InlineData("--quiet")]
+        public async Task A_WriteFailurePartWayThrough_IsReportedOnceAndLeavesTheRunAlone(params string[] extra)
         {
             // Given a diagnostics destination that takes the open and then refuses every record,
             // and three iterations, so the run flushes to it more than once. The stub never touches
@@ -183,12 +185,15 @@ public sealed partial class NetPaceConsoleTests
             services.AddSingleton<IDiagnosticFileOpener>(new UnwritableFileOpener());
 
             // When the run goes ahead.
-            var result = await HostWith(services).RunAsync(["--simple", "--count", "3", "--diagnostics-file", file.FilePath]);
+            var result = await HostWith(services).RunAsync(["--simple", "--count", "3", "--diagnostics-file", file.FilePath, .. extra]);
 
-            // Then the user is told once which path failed, and the result and the exit code are
-            // what a run with no diagnostics at all would have produced.
-            var without = await HostWith().RunAsync(["--simple", "--count", "3"]);
-            Assert.Equal(1, Occurrences(result.ErrorOutput, file.FilePath));
+            // Then the user is warned once which path failed, even under --quiet, which leaves
+            // diagnostics alone; as a notice rather than an error, because the run succeeded and a
+            // script scanning the error stream for errors must not read it as failed. The result
+            // and the exit code are what a run with no diagnostics at all would have produced.
+            var without = await HostWith().RunAsync(["--simple", "--count", "3", .. extra]);
+            Assert.Equal(1, Occurrences(result.NoticeOutput, file.FilePath));
+            Assert.Equal(string.Empty, result.ErrorOutput);
             Assert.Equal(without.Output, result.Output);
             Assert.Equal(without.ExitCode, result.ExitCode);
         }

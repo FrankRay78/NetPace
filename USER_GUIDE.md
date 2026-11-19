@@ -600,7 +600,7 @@ netpace --json --diagnostics-file diagnostics.log > result.json
 
 This is the one to reach for when you have been asked to attach the records to a bug report. It turns diagnostics on by itself, so `--diagnostics` alongside it adds nothing, and it needs no `2>` redirection, whose syntax differs between shells. The file holds the same records `--diagnostics` writes to the error stream, with the `run.invocation` record naturally naming the options you actually passed, and no record reaches the error stream at all, so a failing run still shows you its `Error:` line on screen while the records go quietly to the file.
 
-The file is replaced on every run, so each one describes a single run, and `--file-mode` does not apply to it. It is opened before the first test, so a path that cannot be written stops the run there and then with a message naming the file and what to do, and exits non-zero. Giving the option no path is refused the same way. If writing fails later, once the run is under way, NetPace says so once on the error stream and leaves the result and the exit code alone.
+The file is replaced on every run, so each one describes a single run, and `--file-mode` does not apply to it. It is opened before the first test, so a path that cannot be written stops the run there and then with a message naming the file and what to do, and exits non-zero. Giving the option no path is refused the same way. If writing fails later, once the run is under way, NetPace says so once on the error stream and leaves the result and the exit code alone. That message is a warning, not an `Error:` line, so a script watching for errors does not mistake the run for a failed one, and `--quiet` does not hide it.
 
 ### Exit codes
 

@@ -454,7 +454,7 @@ public static class Program
                 recorder.Record("run.invocation", ("args", string.Join(' ', args)));
 
                 // Create and execute command
-                var command = new SpeedTestCommand(ansiConsole, errorOutput, speedTestService, clock, clientInfoProvider, recorder, waiter, liveDisplayRefresh, theme);
+                var command = new SpeedTestCommand(ansiConsole, errorOutput, serviceProvider.GetRequiredService<NoticeOutput>(), speedTestService, clock, clientInfoProvider, recorder, waiter, liveDisplayRefresh, theme);
                 return await command.ExecuteAsync(settings, cancellationToken);
             }
             catch (Exception ex)
@@ -653,8 +653,8 @@ public static class Program
     /// <param name="services">The collection to register the outputs in.</param>
     internal static void AddStreamOutputs(IServiceCollection services)
     {
-        // A word to the user about how the run was asked for goes to the error stream, so it never
-        // lands in the middle of a result another program is reading.
+        // A word to the user that is neither the result nor an error goes to the error stream, so
+        // it never lands in the middle of a result another program is reading.
         services.AddSingleton(new NoticeOutput(System.Console.Error));
 
         // Every error goes to the error stream, for the same reason and one more: a run whose
