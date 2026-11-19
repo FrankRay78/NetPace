@@ -10,6 +10,23 @@ namespace NetPace.Console;
 internal static class CustomHelpProvider
 {
     /// <summary>
+    /// The NetPace wordmark, three rows of block-element characters, split at the column where NET
+    /// ends and PACE begins so each half can be drawn in its own colour.
+    /// </summary>
+    /// <remarks>
+    /// A five-by-five pixel font with a one-pixel gap between letters, drawn in block-element
+    /// characters that each carry a two-by-two grid of pixels. A letter therefore occupies three
+    /// whole character cells, which is what gives every letter the same apparent spacing; spacing
+    /// that is not a whole cell renders unevenly, so the halves are split on a cell boundary too.
+    /// </remarks>
+    private static readonly (string Net, string Pace)[] WordmarkRows =
+    [
+        ("▙ ▌▛▀▘▀▛▘", "▛▀▖▞▀▖▞▀▘▛▀▘"),
+        ("▌▚▌▛▀  ▌ ", "▛▀ ▛▀▌▌  ▛▀"),
+        ("▘ ▘▀▀▘ ▘ ", "▘  ▘ ▘▝▀▘▀▀▘")
+    ];
+
+    /// <summary>
     /// An empty grid cell. A <see cref="Text"/> rather than <c>""</c> because the rest of a row is
     /// built from renderables, and a grid row takes one kind or the other, never a mix.
     /// </summary>
@@ -41,15 +58,39 @@ internal static class CustomHelpProvider
         RenderFooter(console, theme);
     }
 
+    /// <summary>
+    /// The lettering both help screens open with, one blank line above it and one below.
+    /// </summary>
+    /// <remarks>
+    /// The wordmark is drawn wherever the console reports that it can carry Unicode, which is what
+    /// the product principles let default output assume of a modern terminal. That report follows
+    /// the console's output encoding, not the fonts the terminal has: a console whose encoding
+    /// cannot carry the characters the wordmark is made of gets the ASCII lettering instead, in one
+    /// colour, even where the terminal itself could have drawn them. On Windows that is a console
+    /// left on a non-UTF-8 code page.
+    /// </remarks>
     private static void RenderHeader(IAnsiConsole console, Theme theme)
     {
-        var font = LoadEmbeddedFont("slant.flf");
-        var figlet = new FigletText(font, "NetPace")
-            .LeftJustified()
-            .Color(theme.Banner);
-
         console.WriteLine();
-        console.Write(figlet);
+
+        if (console.Profile.Capabilities.Unicode)
+        {
+            var netStyle = new Style(theme.BannerNet);
+            var paceStyle = new Style(theme.BannerPace);
+
+            foreach (var (net, pace) in WordmarkRows)
+            {
+                console.WriteStyledLine((net, netStyle), (pace, paceStyle));
+            }
+        }
+        else
+        {
+            var font = LoadEmbeddedFont("slant.flf");
+            console.Write(new FigletText(font, "NetPace")
+                .LeftJustified()
+                .Color(theme.BannerNet));
+        }
+
         console.WriteLine();
     }
 

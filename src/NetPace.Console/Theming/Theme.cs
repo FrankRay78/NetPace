@@ -35,13 +35,31 @@ public sealed record Theme
     /// be coloured — the failure <see cref="ApplyTo"/> exists to prevent.
     /// </remarks>
     public bool SuppressesColour =>
-        Banner == Color.Default && Styles.All(style => style.Foreground == Color.Default && style.Background == Color.Default);
+        BannerNet == Color.Default && BannerPace == Color.Default
+        && Styles.All(style => style.Foreground == Color.Default && style.Background == Color.Default);
 
     /// <summary>
-    /// The NetPace lettering at the top of the help screen. A colour rather than a style, because
-    /// that is all large lettering can be given.
+    /// The NET half of the lettering at the top of the help screen, and the whole of the lettering
+    /// a console that cannot draw Unicode is given instead, which is one colour.
     /// </summary>
-    public required Color Banner { get; init; }
+    /// <remarks>
+    /// A colour rather than a style, because that is all the ASCII lettering can be given.
+    /// A theme may draw the two halves in a pair of colours, purely as decoration, which is why there
+    /// are two slots and not one; <see cref="Default"/> gives both the same colour as its headings.
+    /// The split carries no meaning: the lettering spells the product name
+    /// whether or not the halves are told apart, as they are not under <see cref="Plain"/> or
+    /// <c>NO_COLOR</c>.
+    /// </remarks>
+    public required Color BannerNet { get; init; }
+
+    /// <summary>
+    /// The PACE half of the lettering at the top of the help screen.
+    /// </summary>
+    /// <remarks>
+    /// Reached only where the console can draw the pixel lettering: the ASCII lettering that
+    /// stands in for it is drawn whole in <see cref="BannerNet"/>.
+    /// </remarks>
+    public required Color BannerPace { get; init; }
 
     /// <summary>The help screen's section headings — DESCRIPTION, USAGE, OPTIONS and the rest.</summary>
     public required Style Heading { get; init; }
@@ -113,12 +131,12 @@ public sealed record Theme
     /// rather than one named property at a time.
     /// </summary>
     /// <remarks>
-    /// Every <see cref="Style"/> slot added above belongs here too; <see cref="Banner"/> is a
-    /// <see cref="Color"/> and so cannot be, and is asserted on separately by the same sweeps. A
-    /// test pins this list against the <see cref="Style"/> properties the type declares, so a slot
-    /// left out of it fails rather than quietly going uncovered. The whole-theme sweeps read the
-    /// list: the plain theme leaves every slot unstyled, and each coloured theme moves every slot
-    /// off the default theme's value.
+    /// Every <see cref="Style"/> slot added above belongs here too; <see cref="BannerNet"/> and
+    /// <see cref="BannerPace"/> are a <see cref="Color"/> each and so cannot be, and are asserted
+    /// on separately by the same sweeps. A test pins this list against the <see cref="Style"/>
+    /// properties the type declares, so a slot left out of it fails rather than quietly going
+    /// uncovered. The whole-theme sweeps read the list: the plain theme leaves every slot unstyled,
+    /// and each coloured theme moves every slot off the default theme's value.
     /// </remarks>
     public IReadOnlyList<Style> Styles =>
     [
@@ -152,7 +170,8 @@ public sealed record Theme
     public static Theme Default { get; } = new()
     {
         Name = "default",
-        Banner = Color.Gold1,
+        BannerNet = Color.Yellow,
+        BannerPace = Color.Yellow,
         Heading = new Style(foreground: Color.Yellow, decoration: Decoration.Bold),
         Placeholder = new Style(foreground: Color.Grey),
         CommandName = new Style(foreground: Color.Aqua),
@@ -182,7 +201,8 @@ public sealed record Theme
     public static Theme Plain { get; } = new()
     {
         Name = "plain",
-        Banner = Color.Default,
+        BannerNet = Color.Default,
+        BannerPace = Color.Default,
         Heading = Style.Plain,
         Placeholder = Style.Plain,
         CommandName = Style.Plain,
@@ -207,16 +227,24 @@ public sealed record Theme
     /// A green-led look.
     /// </summary>
     /// <remarks>
-    /// Every colour here is a mid-tone green: light enough to read against a black terminal and
-    /// dark enough to read against a white one, which a bright green manages only on the first and
-    /// a deep green only on the second. Four tones carry the whole screen — a leading green for
-    /// what the eye should land on, a teal green and an olive green for the things beside it, and a
-    /// grey-green for what is deliberately quiet.
+    /// Every colour here but one is a mid-tone green: light enough to read against a black
+    /// terminal and dark enough to read against a white one, which a bright green manages only on
+    /// the first and a deep green only on the second. Four tones carry the screen itself — a
+    /// leading green for what the eye should land on, a teal green and an olive green for the
+    /// things beside it, and a grey-green for what is deliberately quiet.
+    /// <para>
+    /// <see cref="BannerPace"/> is the one exception: a bright green, kept because the help
+    /// lettering needs a pair of greens far enough apart to read as two words, and a second
+    /// mid-tone would not. It reads on a black terminal and washes out on a white one, which costs
+    /// the reader nothing they cannot get elsewhere, since the lettering says the product name and
+    /// no more.
+    /// </para>
     /// </remarks>
     public static Theme Green { get; } = new()
     {
         Name = "green",
-        Banner = Color.Green4,
+        BannerNet = Color.Green4,
+        BannerPace = Color.Green1,
         Heading = new Style(foreground: Color.Green4, decoration: Decoration.Bold),
         Placeholder = new Style(foreground: Color.DarkSeaGreen4),
         CommandName = new Style(foreground: Color.SpringGreen4),
@@ -256,7 +284,8 @@ public sealed record Theme
     public static Theme Halloween { get; } = new()
     {
         Name = "halloween",
-        Banner = Color.DarkOrange3_1,
+        BannerNet = Color.DarkOrange3_1,
+        BannerPace = Color.Purple_2,
         Heading = new Style(foreground: Color.DarkOrange3_1, decoration: Decoration.Bold),
         Placeholder = new Style(foreground: Color.Grey53),
         CommandName = new Style(foreground: Color.DarkOrange3_1),
