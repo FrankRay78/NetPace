@@ -649,9 +649,9 @@ public static class Program
     /// properties to standard OUTPUT wherever that is a terminal, stamping the error console's
     /// colours onto the live result. The trigger is not an incapable terminal: a terminal that
     /// cannot take escape sequences writes nothing at all, while a capable one Spectre.Console's
-    /// list has not caught up with is exactly the case that spills. A redirected stream is read as
-    /// unable to take escape sequences at all, reaching the fallback on every platform. Both keep
-    /// the forced answer.
+    /// list has not caught up with is exactly the case that spills. A redirected standard stream
+    /// is read as unable to take escape sequences before <c>TERM</c> or the console mode is
+    /// consulted at all, reaching the fallback on every platform. Both keep the forced answer.
     /// </para>
     /// </remarks>
     /// <param name="isWindows">Whether the run is on Windows.</param>
