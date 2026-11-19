@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Threading;
@@ -73,6 +74,30 @@ public sealed partial class OoklaSpeedtestTests
 
             diagnostics.Count(diagnostic => diagnostic.Outcome == RequestOutcome.Succeeded).ShouldBe(1);
             diagnostics.ShouldNotContain(diagnostic => diagnostic.Outcome == RequestOutcome.Failed);
+        }
+
+        [Fact]
+        public async Task GetDownloadSpeedAsync_StoppedPartWayThroughARequest_ReportsWhatThatRequestHadDelivered()
+        {
+            // Given one request at a time, where the server sends part of the body and then goes
+            // quiet: a slow link, where one request outlasts the stop. The stop is asked for the
+            // moment the transfer is left waiting on more of that body.
+            using var stop = new CancellationTokenSource();
+            using var mockHttp = new MockHttpMessageHandler();
+            mockHttp.When("*").Respond(_ => new HttpResponseMessage { Content = new StreamContent(new TrickleThenHangStream(2048, stop.Cancel)) });
+
+            var settings = DownloadSettings() with { DownloadTest = new() { DownloadParallelTasks = 1 } };
+            var speedtest = new OoklaSpeedtest(settings, mockHttp.ToHttpClient());
+            var server = new Server { Url = "http://example.com/", Sponsor = "Test", Location = "Test" };
+
+            // When
+            var result = await speedtest.GetDownloadSpeedAsync(server, null, null, CancellationToken.None, stop.Token);
+
+            // Then the bytes the unfinished request carried are in the figure, and the request
+            // itself counts as neither a success nor a failure.
+            result.BytesProcessed.ShouldBe(2048);
+            result.RequestsSucceeded.ShouldBe(0);
+            result.RequestsFailed.ShouldBe(0);
         }
 
         [Fact]
@@ -400,6 +425,46 @@ public sealed partial class OoklaSpeedtestTests
             public override long GetTimestamp() => Interlocked.Read(ref now);
 
             public void Advance(long milliseconds) => Interlocked.Add(ref now, milliseconds);
+        }
+
+        /// <summary>
+        /// A response body that yields <paramref name="bytes"/> on its first read and then never
+        /// yields again, calling <paramref name="onHang"/> once it is waiting, so a test can stop
+        /// the transfer while a request is part way through its body.
+        /// </summary>
+        private sealed class TrickleThenHangStream(int bytes, Action onHang) : Stream
+        {
+            private bool delivered;
+
+            public override bool CanRead => true;
+            public override bool CanSeek => false;
+            public override bool CanWrite => false;
+            public override long Length => throw new NotSupportedException();
+            public override long Position { get => throw new NotSupportedException(); set => throw new NotSupportedException(); }
+
+            public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
+            {
+                if (!delivered)
+                {
+                    delivered = true;
+                    var count = Math.Min(bytes, buffer.Length);
+                    buffer.Span[..count].Clear();
+                    return count;
+                }
+
+                onHang();
+                await Task.Delay(Timeout.Infinite, cancellationToken);
+                return 0;
+            }
+
+            public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken) =>
+                ReadAsync(buffer.AsMemory(offset, count), cancellationToken).AsTask();
+
+            public override int Read(byte[] buffer, int offset, int count) => throw new NotSupportedException();
+            public override void Flush() { }
+            public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
+            public override void SetLength(long value) => throw new NotSupportedException();
+            public override void Write(byte[] buffer, int offset, int count) => throw new NotSupportedException();
         }
 
         /// <summary>

@@ -11,8 +11,9 @@ namespace NetPace.Core.Clients.Testing;
 /// that reports records adding up to the totals it returns, because records invented here would
 /// contradict whatever the delegate was configured to produce.
 /// The stop-and-report token the latency, download and upload overloads take is accepted and not
-/// acted on: this double answers at once, so it never has a request in flight for a stop to cut
-/// short.
+/// acted on, nor handed to the configured delegate: the delegate stands in for the whole
+/// measurement, so a test that needs a stop to cut a measurement short wants a double that reads
+/// the token itself.
 /// </remarks>
 public sealed class SpeedTestMock : ISpeedTestService
 {
