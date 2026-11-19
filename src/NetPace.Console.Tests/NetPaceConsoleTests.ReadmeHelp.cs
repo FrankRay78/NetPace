@@ -32,7 +32,7 @@ public sealed partial class NetPaceConsoleTests
             var help = Normalise(result.Output).TrimEnd();
             var readme = Normalise(System.IO.File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "README.md")));
 
-            Assert.Contains($"```txt\nC:\\>netpace.exe --help\n{help}\n```", readme);
+            Assert.Contains($"```txt\n$ netpace --help\n{help}\n```", readme);
             Assert.Equal(0, result.ExitCode);
         }
     }

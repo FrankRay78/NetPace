@@ -1,3 +1,4 @@
+using NetPace.Console.Theming;
 using NetPace.Core.Clients.Ookla;
 
 namespace NetPace.Console.Tests;
@@ -57,6 +58,20 @@ public sealed partial class NetPaceConsoleTests
     /// nested classes that count how often a run reported something, on whichever stream.
     /// </summary>
     private static int Occurrences(string text, string value) => text.Split(value).Length - 1;
+
+    /// <summary>
+    /// A run whose environment holds the variables given here and nothing else, so what the user
+    /// set reaches the run without the suite's own environment being touched. Shared by the nested
+    /// classes that draw a screen under a chosen theme.
+    /// </summary>
+    private static IThemeProvider FromEnvironment(params (string Name, string Value)[] variables) =>
+        new EnvironmentThemeProvider(name => variables.Where(v => v.Name == name).Select(v => v.Value).FirstOrDefault());
+
+    /// <summary>
+    /// The screen a theory row names, as a snapshot file reads it: <c>servers --latency</c> becomes
+    /// <c>servers-latency</c>. Shared by the nested classes that snapshot one screen per row.
+    /// </summary>
+    private static string Slug(string screen) => string.Join('-', screen.Split(' ').Select(word => word.TrimStart('-')));
 
     /// <summary>
     /// Create the CommandLineTestHost with System.CommandLine.
