@@ -17,18 +17,6 @@ public sealed partial class NetPaceConsoleTests
     /// </remarks>
     public sealed class HelpLogo
     {
-        /// <summary>
-        /// The pixel logo, written out here rather than read from the production code, so changing
-        /// the lettering has to be accepted here as well as there. The first nine columns of each
-        /// row spell NET and the rest spell PACE.
-        /// </summary>
-        private static readonly string[] PixelRows =
-        [
-            "▙ ▌▛▀▘▀▛▘▛▀▖▞▀▖▞▀▘▛▀▘",
-            "▌▚▌▛▀  ▌ ▛▀ ▛▀▌▌  ▛▀",
-            "▘ ▘▀▀▘ ▘ ▘  ▘ ▘▝▀▘▀▀▘"
-        ];
-
         /// <summary>The help screens the logo opens, both drawn by the same renderer.</summary>
         private static readonly string[] HelpScreens = ["--help", "servers --help"];
 
@@ -143,10 +131,11 @@ public sealed partial class NetPaceConsoleTests
             // When
             var result = await host.RunAsync(screen.Split(' '));
 
-            // Then the same lettering is drawn, and nothing anywhere on the screen is coloured.
+            // Then the screen opens with the same lettering, and nothing anywhere on it is coloured.
             Assert.Equal(0, result.ExitCode);
-            Assert.All(PixelRows, row => Assert.Contains(row, result.Output, StringComparison.Ordinal));
             Assert.False(AnsiSnapshot.CarriesStyling(result.Output));
+            await Verify(Opening(result.Output))
+                .UseTextForParameters(string.Join('_', variables.Select(variable => variable.Name == "NETPACE_THEME" ? variable.Value : variable.Name).Append(Slug(screen))));
         }
 
         [MemberData(nameof(HelpScreenRows))]

@@ -44,8 +44,10 @@ public sealed record Theme
     /// </summary>
     /// <remarks>
     /// A colour rather than a style, because that is all the ASCII lettering can be given.
-    /// Writing the name in capitals loses the break between Net and Pace; drawing the two halves
-    /// in a pair of colours restores it, which is why there are two slots and not one.
+    /// The two halves are drawn in a pair of colours purely as decoration, which is why there are
+    /// two slots and not one. The split carries no meaning: the lettering spells the product name
+    /// whether or not the halves are told apart, as they are not under <see cref="Plain"/> or
+    /// <c>NO_COLOR</c>.
     /// </remarks>
     public required Color BannerNet { get; init; }
 

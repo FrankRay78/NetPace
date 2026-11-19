@@ -62,10 +62,12 @@ internal static class CustomHelpProvider
     /// The lettering both help screens open with, one blank line above it and one below.
     /// </summary>
     /// <remarks>
-    /// The wordmark is drawn wherever the console can draw Unicode, which is what the product
-    /// principles let default output assume of a modern terminal. A console that cannot gets the
-    /// ASCII lettering instead, in one colour, because the characters the wordmark is made of would
-    /// not appear at all.
+    /// The wordmark is drawn wherever the console reports that it can carry Unicode, which is what
+    /// the product principles let default output assume of a modern terminal. That report follows
+    /// the console's output encoding, not the fonts the terminal has: a console whose encoding
+    /// cannot carry the characters the wordmark is made of gets the ASCII lettering instead, in one
+    /// colour, even where the terminal itself could have drawn them. On Windows that is a console
+    /// left on a non-UTF-8 code page.
     /// </remarks>
     private static void RenderHeader(IAnsiConsole console, Theme theme)
     {
