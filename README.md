@@ -96,9 +96,10 @@ For common scenarios and advanced usage (such as scripting, restricting payload 
 ```txt
 $ netpace --help
 
-▙ ▌▛▀▘▀▛▘▛▀▖▞▀▖▞▀▘▛▀▘
-▌▚▌▛▀  ▌ ▛▀ ▛▀▌▌  ▛▀
-▘ ▘▀▀▘ ▘ ▘  ▘ ▘▝▀▘▀▀▘
+ _  _       _    ___
+| \| | ___ | |_ | _ \ __ _  __  ___
+| .` |/ -_)|  _||  _// _` |/ _|/ -_)
+|_|\_|\___| \__||_|  \__,_|\__|\___|
 
 DESCRIPTION:
 Network speed tester including server discovery, latency measurement, download and upload speed testing.

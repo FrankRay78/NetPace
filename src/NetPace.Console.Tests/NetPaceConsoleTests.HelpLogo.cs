@@ -6,8 +6,8 @@ namespace NetPace.Console.Tests;
 public sealed partial class NetPaceConsoleTests
 {
     /// <summary>
-    /// The logo both help screens open with: pixel lettering drawn in the theme's two colours
-    /// wherever the console can draw it, and today's ASCII lettering wherever it cannot.
+    /// The logo both help screens open with: ASCII lettering drawn in the theme's two colours,
+    /// the same on every console.
     /// </summary>
     /// <remarks>
     /// The snapshots here hold the help screen down to the line above DESCRIPTION, which is the
@@ -71,7 +71,7 @@ public sealed partial class NetPaceConsoleTests
         [Theory]
         public async Task EachHelpScreen_UnderAThemeThatDrawsInColour_OpensWithTheLogoInThatThemesTwoColours(string theme, string screen)
         {
-            // SCENARIO: The help logo is drawn in the theme's two colours
+            // SCENARIO: Logo halves keep the theme's two colours
 
             // Given
             var host = new CommandLineTestHost(
@@ -140,19 +140,42 @@ public sealed partial class NetPaceConsoleTests
 
         [MemberData(nameof(HelpScreenRows))]
         [Theory]
-        public async Task AConsoleThatCannotDrawUnicode_OpensEachHelpScreenWithTheAsciiLogo(string screen)
+        public async Task EachHelpScreen_OpensWithTheLetteringDrawnInAsciiAlone(string screen)
         {
-            // SCENARIO: A console without Unicode keeps the ASCII logo
+            // SCENARIO: Help opens with the ASCII logo
 
-            // Given, When the same screen is drawn on a console that can draw Unicode and on one
+            // Given
+            var host = new CommandLineTestHost(
+                Services(FromEnvironment()),
+                CommandLineTestHost.RedirectedWidth);
+
+            // When
+            var result = await host.RunAsync(screen.Split(' '));
+
+            // Then the screen opens with the lettering, and every character it is made of is one
+            // any monospace font draws at the same width: nothing above the ASCII range.
+            Assert.Equal(0, result.ExitCode);
+            string opening = Opening(result.Output);
+            char[] outsideAscii = [.. opening.Where(character => character > '\u007f')];
+            Assert.Empty(outsideAscii);
+            await Verify(opening).UseTextForParameters(Slug(screen));
+        }
+
+        [MemberData(nameof(HelpScreenRows))]
+        [Theory]
+        public async Task AConsoleThatCannotCarryUnicode_OpensEachHelpScreenWithTheSameLogo(string screen)
+        {
+            // SCENARIO: Every console gets the same logo
+
+            // Given, When the same screen is drawn on a console that can carry Unicode and on one
             // that cannot
-            string canDraw = await Draw(screen, unicode: true);
-            string cannotDraw = await Draw(screen, unicode: false);
+            string canCarry = await Draw(screen, unicode: true);
+            string cannotCarry = await Draw(screen, unicode: false);
 
-            // Then the console that cannot draw the pixel lettering is given other lettering
-            // instead, in the theme's own colour, rather than the characters it cannot draw.
-            Assert.NotEqual(canDraw, cannotDraw);
-            await Verify(AnsiSnapshot.Readable(cannotDraw)).UseTextForParameters(Slug(screen));
+            // Then both are given the same lettering: there is nothing in it an output encoding
+            // can fail to carry, so there is no second logo to fall back to.
+            Assert.Equal(canCarry, cannotCarry);
+            await Verify(AnsiSnapshot.Readable(cannotCarry)).UseTextForParameters(Slug(screen));
 
             async Task<string> Draw(string arguments, bool unicode)
             {
