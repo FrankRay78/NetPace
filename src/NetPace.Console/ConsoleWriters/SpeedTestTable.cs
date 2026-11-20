@@ -169,7 +169,7 @@ internal sealed class SpeedTestTable(
     /// <remarks>
     /// Once every row has been removed, because the run's time limit came before any test had
     /// anything to show, nothing is drawn: headings over no figures would read as a result with
-    /// its figures missing, where the line-based formats write nothing for the same run.
+    /// its figures missing, where <c>--simple</c> writes nothing for the same run.
     /// </remarks>
     protected override IEnumerable<Segment> Render(RenderOptions options, int maxWidth)
     {

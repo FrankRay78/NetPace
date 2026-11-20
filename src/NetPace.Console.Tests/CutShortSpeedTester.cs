@@ -29,8 +29,11 @@ public enum CutShortStage
 /// <summary>
 /// A speed tester standing in for a server slow enough to outlast the run's time limit: the
 /// transfer test the limit falls in reaches it as it runs, and answers as a measurement cut short
-/// at one does - the figure of what it delivered before it stopped, no failed request, and one request
-/// recorded as stopped by the caller.
+/// at one does - the figure of what it delivered before it stopped, as many failed requests as
+/// <see cref="CutShortFailures"/> says (none by default), and one request recorded as stopped by
+/// the caller. The failed requests are counted only: no diagnostic record is written for them, so
+/// a <c>--diagnostics</c> test that sets <see cref="CutShortFailures"/> would see records that do
+/// not add up to the counts.
 /// </summary>
 /// <remarks>
 /// <para>

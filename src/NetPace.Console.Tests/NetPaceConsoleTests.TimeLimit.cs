@@ -97,6 +97,7 @@ public sealed partial class NetPaceConsoleTests
             // in the output mentions the limit. The whole output is the snapshot, so a message
             // about the limit appearing in any format would fail here.
             Assert.Equal(0, result.ExitCode);
+            Assert.Empty(result.ErrorOutput);
             Assert.Equal(0, tester.UploadCalls);
             Assert.Single(limit.Started);
 
@@ -230,8 +231,9 @@ public sealed partial class NetPaceConsoleTests
         public async Task ARunCutShortDuringTheUpload_ReportsWhatTheUploadMeasured(string formatSwitch, string formatName)
         {
             // Given an upload slow enough that the run reaches its limit part way through it. The
-            // double fails the run unless the upload was handed the limit as its stop, which is
-            // what keeps a real slow upload from running past it.
+            // double throws unless the upload was handed the limit as its stop, which is what keeps
+            // a real slow upload from running past it. The run reports that throw on the error
+            // stream and still exits 0, so the empty error stream is what catches it.
             var (services, _, tester) = CutShortServices();
             tester.Stage = CutShortStage.Upload;
             var host = GetCommandLineTestHost(services);
@@ -241,6 +243,7 @@ public sealed partial class NetPaceConsoleTests
 
             // Then
             Assert.Equal(0, result.ExitCode);
+            Assert.Empty(result.ErrorOutput);
             Assert.Equal(1, tester.UploadCalls);
 
             await Verify(result.Output).UseTextForParameters(formatName);
@@ -259,6 +262,7 @@ public sealed partial class NetPaceConsoleTests
 
             // Then
             Assert.Equal(0, result.ExitCode);
+            Assert.Empty(result.ErrorOutput);
             Assert.Equal(1, tester.UploadCalls);
 
             await Verify(result.Output);
@@ -279,6 +283,7 @@ public sealed partial class NetPaceConsoleTests
             // Then every row goes, and with them the table: a heading over nothing would read as
             // a result with its figures missing, where --simple writes nothing at all.
             Assert.Equal(0, result.ExitCode);
+            Assert.Empty(result.ErrorOutput);
             Assert.Equal(0, tester.UploadCalls);
 
             await Verify(result.Output);
@@ -314,6 +319,7 @@ public sealed partial class NetPaceConsoleTests
 
             // Then the download row goes, as the row of a test that never ran does.
             Assert.Equal(0, result.ExitCode);
+            Assert.Empty(result.ErrorOutput);
 
             await Verify(result.Output);
         }
@@ -421,6 +427,7 @@ public sealed partial class NetPaceConsoleTests
             // Then the upload row is gone rather than left spinning or crossed out: the test did
             // not fail, it never ran, and the table reads as it does for a test nobody asked for.
             Assert.Equal(0, result.ExitCode);
+            Assert.Empty(result.ErrorOutput);
 
             await Verify(result.Output);
         }

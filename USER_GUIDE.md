@@ -478,7 +478,8 @@ A run that reaches the limit has not failed. NetPace ends it and reports what it
 
 Otherwise:
 
-- The test in progress reports a figure for the data it delivered before it stopped, measured over the time it ran. If it had delivered nothing yet and none of its requests had failed, it is reported as a test the run never reached.
+- A download or upload in progress reports a figure for the data it delivered before it stopped, measured over the time it ran. If it had delivered nothing yet and none of its requests had failed, it is reported as a test the run never reached.
+- A latency test in progress reports a figure from the probes answered so far. If none had answered, it is reported as a test the run never reached.
 - A test the run never reached is reported the way a test you switched off is: no line under `--simple`, no field in the `--minimal` line, an empty cell in CSV, an absent field in JSON, no row in the table on screen. If no test has anything to show, no table is drawn.
 - Requests stopped at the limit count as neither successes nor failures, so `--fail-on` is tripped by real failures only.
 - Nothing is printed about the limit, in any output format.

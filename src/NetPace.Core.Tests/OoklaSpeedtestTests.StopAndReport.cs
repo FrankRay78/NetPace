@@ -90,8 +90,9 @@ public sealed partial class OoklaSpeedtestTests
             var speedtest = new OoklaSpeedtest(settings, mockHttp.ToHttpClient());
             var server = new Server { Url = "http://example.com/", Sponsor = "Test", Location = "Test" };
 
-            // When
-            var result = await speedtest.GetDownloadSpeedAsync(server, null, null, CancellationToken.None, stop.Token);
+            // When, bounded, so a stop that never reaches the request mid-body fails the test
+            // rather than hanging it.
+            var result = await speedtest.GetDownloadSpeedAsync(server, null, null, CancellationToken.None, stop.Token).WaitAsync(HangGuard);
 
             // Then the bytes the unfinished request carried are in the figure, and the request
             // itself counts as neither a success nor a failure.
