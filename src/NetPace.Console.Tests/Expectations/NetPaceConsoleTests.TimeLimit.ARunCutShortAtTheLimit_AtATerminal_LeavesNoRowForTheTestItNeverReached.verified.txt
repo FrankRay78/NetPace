@@ -4,6 +4,6 @@
 Deutsche Telekom
 http://cutshort.example.com/speedtest/upload.php
 
-    Test         Done      Speed  Latency  Jitter
-✓   Pinging      100%               24 ms    3 ms
-✓   Downloading  100%  8.00 Mbps                 
+    Test          Done       Speed   Latency   Jitter
+✓   Pinging       100%                 24 ms     3 ms
+✓   Downloading   100%   8.00 Mbps                   
