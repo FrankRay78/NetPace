@@ -42,7 +42,6 @@ public sealed record Theme
     /// The Net half of the lettering at the top of the help screen.
     /// </summary>
     /// <remarks>
-    /// A colour rather than a style, because colour is all the lettering is given.
     /// A theme may draw the two halves in a pair of colours, purely as decoration, which is why there
     /// are two slots and not one; <see cref="Default"/> gives both the same colour as its headings.
     /// The split carries no meaning: the lettering spells the product name
@@ -54,10 +53,6 @@ public sealed record Theme
     /// <summary>
     /// The Pace half of the lettering at the top of the help screen.
     /// </summary>
-    /// <remarks>
-    /// Every console reaches this slot: the lettering is drawn in ASCII alone, so there is one
-    /// wordmark rather than a second for a console whose encoding cannot carry it.
-    /// </remarks>
     public required Color BannerPace { get; init; }
 
     /// <summary>The help screen's section headings — DESCRIPTION, USAGE, OPTIONS and the rest.</summary>

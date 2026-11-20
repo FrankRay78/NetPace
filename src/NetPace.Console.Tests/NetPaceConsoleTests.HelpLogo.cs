@@ -82,7 +82,7 @@ public sealed partial class NetPaceConsoleTests
             // When
             var result = await host.RunAsync(screen.Split(' '));
 
-            // Then the lettering is drawn, NET in the theme's first colour and PACE in its second.
+            // Then the lettering is drawn, Net in the theme's first colour and Pace in its second.
             Assert.Equal(0, result.ExitCode);
             await Verify(AnsiSnapshot.Readable(Opening(result.Output))).UseTextForParameters($"{theme}_{Slug(screen)}");
         }
@@ -152,11 +152,13 @@ public sealed partial class NetPaceConsoleTests
             // When
             var result = await host.RunAsync(screen.Split(' '));
 
-            // Then the screen opens with the lettering, and every character it is made of is one
-            // any monospace font draws at the same width: nothing above the ASCII range.
+            // Then the screen opens with the lettering, and nothing in it is above the ASCII range,
+            // so there is no character an output encoding can fail to carry. Asserted beside the
+            // snapshot deliberately: the snapshot holds these characters, but accepting a changed
+            // snapshot would absorb a new one silently, where this fails.
             Assert.Equal(0, result.ExitCode);
             string opening = Opening(result.Output);
-            char[] outsideAscii = [.. opening.Where(character => character > '\u007f')];
+            char[] outsideAscii = [.. opening.Where(character => !char.IsAscii(character))];
             Assert.Empty(outsideAscii);
             await Verify(opening).UseTextForParameters(Slug(screen));
         }
@@ -173,7 +175,9 @@ public sealed partial class NetPaceConsoleTests
             string cannotCarry = await Draw(screen, unicode: false);
 
             // Then both are given the same lettering: there is nothing in it an output encoding
-            // can fail to carry, so there is no second logo to fall back to.
+            // can fail to carry, so there is no second logo to fall back to. A no-difference
+            // assertion cannot prove its own premise, so a green run here is not evidence that the
+            // unicode seam still reaches help rendering; it catches a capability branch returning.
             Assert.Equal(canCarry, cannotCarry);
             await Verify(AnsiSnapshot.Readable(cannotCarry)).UseTextForParameters(Slug(screen));
 

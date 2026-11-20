@@ -61,11 +61,6 @@ internal static class CustomHelpProvider
     /// <summary>
     /// The lettering both help screens open with, one blank line above it and one below.
     /// </summary>
-    /// <remarks>
-    /// Every console is given the same wordmark. It is made of ASCII characters alone, so there is
-    /// nothing in it a console's output encoding can fail to carry and no second lettering to fall
-    /// back to.
-    /// </remarks>
     private static void RenderHeader(IAnsiConsole console, Theme theme)
     {
         console.WriteLine();
