@@ -160,12 +160,12 @@ public abstract class SpeedTestProviderBase : ISpeedTestService
     }
 
     /// <inheritdoc/>
-    public async Task<LatencyTestResult> GetServerLatencyAsync(string serverUrl, IProgress<LatencyTestProgress>? progress, IProgress<RequestDiagnostic>? diagnostics, CancellationToken cancellationToken = default)
+    public async Task<LatencyTestResult> GetServerLatencyAsync(string serverUrl, IProgress<LatencyTestProgress>? progress, IProgress<RequestDiagnostic>? diagnostics, CancellationToken cancellationToken = default, CancellationToken stopAndReportToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(serverUrl);
 
         var server = new Server { Sponsor = Server.UnknownSponsor, Url = serverUrl };
-        return await GetServerLatencyAsync(server, progress, diagnostics, cancellationToken);
+        return await GetServerLatencyAsync(server, progress, diagnostics, cancellationToken, stopAndReportToken);
     }
 
     /// <inheritdoc/>
@@ -181,7 +181,7 @@ public abstract class SpeedTestProviderBase : ISpeedTestService
     }
 
     /// <inheritdoc/>
-    public async Task<LatencyTestResult> GetServerLatencyAsync(IServer server, IProgress<LatencyTestProgress>? progress, IProgress<RequestDiagnostic>? diagnostics, CancellationToken cancellationToken = default)
+    public async Task<LatencyTestResult> GetServerLatencyAsync(IServer server, IProgress<LatencyTestProgress>? progress, IProgress<RequestDiagnostic>? diagnostics, CancellationToken cancellationToken = default, CancellationToken stopAndReportToken = default)
     {
         ArgumentNullException.ThrowIfNull(server);
         ArgumentException.ThrowIfNullOrWhiteSpace(server.Url);
@@ -199,14 +199,35 @@ public abstract class SpeedTestProviderBase : ISpeedTestService
         var intervalMilliseconds = settings.LatencyTest.LatencyTestIntervalMilliseconds;
         var httpTimeoutMilliseconds = settings.LatencyTest.HttpTimeoutMilliseconds;
 
+        // Linked once for the whole measurement, so the probe that is out when the caller asks to
+        // stop is abandoned promptly rather than waited out at its own timeout. Which of the two
+        // tokens fired is read from the tokens themselves below, not from the exception.
+        using var probingCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, stopAndReportToken);
+        var probingToken = probingCts.Token;
+
         for (var iteration = 0; iteration < maxIterations; iteration++)
         {
             cancellationToken.ThrowIfCancellationRequested();
 
+            // Asked to stop between probes: what has answered so far is the measurement, so the
+            // remaining probes are simply not sent.
+            if (stopAndReportToken.IsCancellationRequested)
+            {
+                break;
+            }
+
             // Add delay between iterations (not before first iteration)
             if (iteration > 0 && intervalMilliseconds > 0)
             {
-                await delayProvider.DelayAsync(intervalMilliseconds, cancellationToken).ConfigureAwait(false);
+                try
+                {
+                    await delayProvider.DelayAsync(intervalMilliseconds, probingToken).ConfigureAwait(false);
+                }
+                catch (OperationCanceledException) when (stopAndReportToken.IsCancellationRequested && !cancellationToken.IsCancellationRequested)
+                {
+                    // Asked to stop during the pause: the same stop as the one between probes above.
+                    break;
+                }
             }
 
             // Stamped before the request leaves, so a record describes when the request started
@@ -219,7 +240,7 @@ public abstract class SpeedTestProviderBase : ISpeedTestService
             long elapsedMilliseconds;
             try
             {
-                testString = await httpClient.GetStringWithTimeoutAsync(latencyUrl, TimeSpan.FromMilliseconds(httpTimeoutMilliseconds), cancellationToken).ConfigureAwait(false);
+                testString = await httpClient.GetStringWithTimeoutAsync(latencyUrl, TimeSpan.FromMilliseconds(httpTimeoutMilliseconds), probingToken).ConfigureAwait(false);
                 elapsedMilliseconds = ElapsedMillisecondsSince(startTimestamp);
             }
             catch (Exception e)
@@ -229,6 +250,17 @@ public abstract class SpeedTestProviderBase : ISpeedTestService
                 // cause of a run that ended here, and the duration is frozen before that recording.
                 // The record keeps the HTTP failure itself, status and all, for whoever triages it.
                 var failedElapsedMilliseconds = ElapsedMillisecondsSince(startTimestamp);
+
+                // A probe cut short because the caller asked to stop is not a failure: it is
+                // recorded as cancelled, and the probes already answered are the measurement.
+                // Checked before the caller's own token, which the next branch claims, so a
+                // cancellation during a stop is still the stop.
+                if (e is OperationCanceledException && stopAndReportToken.IsCancellationRequested && !cancellationToken.IsCancellationRequested)
+                {
+                    ReportStoppedRequest(diagnostics, RequestKind.LatencyProbe, startedAt, sequence, latencyUrl, failedElapsedMilliseconds);
+                    break;
+                }
+
                 ReportRequestFailure(diagnostics, RequestKind.LatencyProbe, startedAt, sequence, latencyUrl, failedElapsedMilliseconds, e, cancellationToken);
 
                 if (e is HttpRequestException { StatusCode: { } status } && LatencyStatusFailureMessage(latencyUrl, status) is { } message)
@@ -262,6 +294,14 @@ public abstract class SpeedTestProviderBase : ISpeedTestService
                 LatencyMilliseconds = (long)pings.Average(),
                 JitterMilliseconds = RunningJitterMilliseconds(pings),
             });
+        }
+
+        // Asked to stop before anything answered, so there is nothing to report. A figure derived
+        // from no probes would be a measurement about nothing, and zero would read as a perfect
+        // line - so the stop surfaces as the cancellation it is.
+        if (pings.Count == 0)
+        {
+            stopAndReportToken.ThrowIfCancellationRequested();
         }
 
         // The average server latency, the extremes behind it, and how uneven the probes behind it
@@ -637,7 +677,7 @@ public abstract class SpeedTestProviderBase : ISpeedTestService
     /// reported figure, because it crossed the link inside the time the figure is measured over,
     /// so the bytes processed may exceed the cap.
     /// </remarks>
-    public async Task<SpeedTestResult> GetDownloadSpeedAsync(IServer server, IProgress<SpeedTestProgress>? progress, IProgress<RequestDiagnostic>? diagnostics, CancellationToken cancellationToken = default)
+    public async Task<SpeedTestResult> GetDownloadSpeedAsync(IServer server, IProgress<SpeedTestProgress>? progress, IProgress<RequestDiagnostic>? diagnostics, CancellationToken cancellationToken = default, CancellationToken stopAndReportToken = default)
     {
         ArgumentNullException.ThrowIfNull(server);
         ArgumentException.ThrowIfNullOrWhiteSpace(server.Url);
@@ -677,7 +717,7 @@ public abstract class SpeedTestProviderBase : ISpeedTestService
         var maxBytes = settings.DownloadTest.DownloadSizeMb == int.MaxValue
             ? long.MaxValue
             : (long)settings.DownloadTest.DownloadSizeMb * 1024L * 1024L;
-        var downloadResult = await GenericTestSpeedAsync(server, server.Url, downloadUrls, DownloadAndMeasureAsync, url => url, progress, diagnostics, settings.DownloadTest.DownloadParallelTasks, maxBytes, sequenceOffset: 0, cancellationToken);
+        var downloadResult = await GenericTestSpeedAsync(server, server.Url, downloadUrls, DownloadAndMeasureAsync, url => url, progress, diagnostics, settings.DownloadTest.DownloadParallelTasks, maxBytes, sequenceOffset: 0, cancellationToken, stopAndReportToken);
 
         return downloadResult;
     }
@@ -704,7 +744,7 @@ public abstract class SpeedTestProviderBase : ISpeedTestService
     /// cancelled rather than awaited. What they had already sent still counts towards the reported
     /// figure, so the bytes processed may exceed the cap.
     /// </remarks>
-    public async Task<SpeedTestResult> GetUploadSpeedAsync(IServer server, IProgress<SpeedTestProgress>? progress, IProgress<RequestDiagnostic>? diagnostics, CancellationToken cancellationToken = default)
+    public async Task<SpeedTestResult> GetUploadSpeedAsync(IServer server, IProgress<SpeedTestProgress>? progress, IProgress<RequestDiagnostic>? diagnostics, CancellationToken cancellationToken = default, CancellationToken stopAndReportToken = default)
     {
         ArgumentNullException.ThrowIfNull(server);
         ArgumentException.ThrowIfNullOrWhiteSpace(server.Url);
@@ -717,7 +757,18 @@ public abstract class SpeedTestProviderBase : ISpeedTestService
         // Where uploads go is the provider's business, but any redirect in front of it is resolved
         // first, because a streaming body cannot survive one. Whatever requests that takes are
         // numbered before the measured uploads.
-        var (uploadUrl, probeRequests) = await ResolveUploadUrlAsync(UploadUrl(server.Url), diagnostics, cancellationToken).ConfigureAwait(false);
+        // A stop that lands while the redirect is still being resolved ends the test there, before
+        // any upload is sent, so it reports what a test stopped before it began reports.
+        string uploadUrl;
+        int probeRequests;
+        try
+        {
+            (uploadUrl, probeRequests) = await ResolveUploadUrlAsync(UploadUrl(server.Url), diagnostics, cancellationToken, stopAndReportToken).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) when (stopAndReportToken.IsCancellationRequested && !cancellationToken.IsCancellationRequested)
+        {
+            return new SpeedTestResult { BytesProcessed = 0, ElapsedMilliseconds = 0, RequestsSucceeded = 0, RequestsFailed = 0, Latency = null };
+        }
 
         // Upload content to a specified URL, reporting what is sent as it is sent.
         Func<HttpClient, int, Action<int>, CancellationToken, Task> UploadAndMeasureAsync = async (client, length, recordBytesDelivered, cancellationToken) =>
@@ -751,7 +802,7 @@ public abstract class SpeedTestProviderBase : ISpeedTestService
         var maxBytes = settings.UploadTest.UploadSizeMb == int.MaxValue
             ? long.MaxValue
             : (long)settings.UploadTest.UploadSizeMb * 1024L * 1024L;
-        var uploadResult = await GenericTestSpeedAsync(server, uploadUrl, testDataLengths, UploadAndMeasureAsync, _ => uploadUrl, progress, diagnostics, settings.UploadTest.UploadParallelTasks, maxBytes, sequenceOffset: probeRequests, cancellationToken);
+        var uploadResult = await GenericTestSpeedAsync(server, uploadUrl, testDataLengths, UploadAndMeasureAsync, _ => uploadUrl, progress, diagnostics, settings.UploadTest.UploadParallelTasks, maxBytes, sequenceOffset: probeRequests, cancellationToken, stopAndReportToken);
 
         return uploadResult;
     }
@@ -784,9 +835,11 @@ public abstract class SpeedTestProviderBase : ISpeedTestService
     /// separately, so a sequence number is distinct only within one kind; see
     /// <see cref="RequestDiagnostic.Sequence"/>.
     /// </returns>
-    private async Task<(string Url, int RequestsIssued)> ResolveUploadUrlAsync(string serverUrl, IProgress<RequestDiagnostic>? diagnostics, CancellationToken cancellationToken)
+    private async Task<(string Url, int RequestsIssued)> ResolveUploadUrlAsync(string serverUrl, IProgress<RequestDiagnostic>? diagnostics, CancellationToken cancellationToken, CancellationToken stopAndReportToken)
     {
         const int maximumHops = 5;
+
+        using var probingCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, stopAndReportToken);
 
         var currentUrl = serverUrl;
         var requestsIssued = 0;
@@ -800,7 +853,7 @@ public abstract class SpeedTestProviderBase : ISpeedTestService
             try
             {
                 using var probeContent = new RandomStreamContent(0);
-                using var response = await Client.PostAsync(currentUrl, probeContent, cancellationToken).ConfigureAwait(false);
+                using var response = await Client.PostAsync(currentUrl, probeContent, probingCts.Token).ConfigureAwait(false);
 
                 // PostAsync does not throw on a non-success status and the probe never calls
                 // EnsureSuccessStatusCode, so without this the one request that can quietly
@@ -843,6 +896,12 @@ public abstract class SpeedTestProviderBase : ISpeedTestService
             }
             catch (Exception e) when (e is HttpRequestException or IOException or OperationCanceledException)
             {
+                if (e is OperationCanceledException && stopAndReportToken.IsCancellationRequested && !cancellationToken.IsCancellationRequested)
+                {
+                    ReportStoppedRequest(diagnostics, RequestKind.EndpointProbe, startedAt, requestsIssued, probeUrl, ElapsedMillisecondsSince(startTimestamp));
+                    throw;
+                }
+
                 ReportRequestFailure(diagnostics, RequestKind.EndpointProbe, startedAt, requestsIssued, probeUrl, ElapsedMillisecondsSince(startTimestamp), e, cancellationToken);
 
                 if (cancellationToken.IsCancellationRequested)
@@ -891,7 +950,8 @@ public abstract class SpeedTestProviderBase : ISpeedTestService
         int parallelTasks,
         long maxBytes,
         int sequenceOffset,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        CancellationToken stopAndReportToken)
     {
         object lockObject = new();
         bool wasCancelledLocally = false;
@@ -918,7 +978,12 @@ public abstract class SpeedTestProviderBase : ISpeedTestService
         var totalCount = testData.Count();
 
         var throttler = new SemaphoreSlim(parallelTasks);
-        using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+
+        // The stop-and-report token is linked in alongside the caller's own, so one source ends the
+        // transfer however it was ended: by the caller, by the caller asking for what was measured,
+        // or by the byte budget below. What separates the three is read from the tokens where a
+        // request is classified, not from the exception each of them raises.
+        using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, stopAndReportToken);
 
         var testStartTimestamp = timeProvider.GetTimestamp();
 
@@ -1045,6 +1110,12 @@ public abstract class SpeedTestProviderBase : ISpeedTestService
                 // Limit concurrent executions by waiting for a permit from the semaphore.
                 await throttler.WaitAsync(cts.Token).ConfigureAwait(false);
 
+                // SemaphoreSlim.WaitAsync can return a permit after its token was cancelled, when a
+                // Release lands before the cancelled waiter is dequeued. Checked again here, before
+                // the request counts as started, so a request the test ended while it waited its
+                // turn is never sent and leaves no record.
+                cts.Token.ThrowIfCancellationRequested();
+
                 sequence = Interlocked.Increment(ref sequenceIssued);
                 startedAt = timeProvider.GetLocalNow().DateTime;
                 startTimestamp = timeProvider.GetTimestamp();
@@ -1096,7 +1167,7 @@ public abstract class SpeedTestProviderBase : ISpeedTestService
                 // Genuine user cancellation (the caller's token) is not a per-request failure
                 // either; it is named here rather than left to the rethrow below, so that the
                 // classification is complete before the clock is read.
-                if (!(e is OperationCanceledException && (wasCancelledLocally || cancellationToken.IsCancellationRequested)))
+                if (!(e is OperationCanceledException && (wasCancelledLocally || cancellationToken.IsCancellationRequested || stopAndReportToken.IsCancellationRequested)))
                 {
                     requestFailed = true;
                 }
@@ -1201,6 +1272,13 @@ public abstract class SpeedTestProviderBase : ISpeedTestService
                                 else if (cancellationToken.IsCancellationRequested)
                                 {
                                     failureReason = CancelledByCaller;
+                                }
+                                else if (!wasCancelledLocally && stopAndReportToken.IsCancellationRequested)
+                                {
+                                    // The caller asked for what had been measured. Read after the
+                                    // byte budget, so a request the budget excluded keeps the
+                                    // reason that actually excluded it when both happen at once.
+                                    failureReason = RequestDiagnostic.StoppedByCaller;
                                 }
                                 else
                                 {
@@ -1318,6 +1396,36 @@ public abstract class SpeedTestProviderBase : ISpeedTestService
             Outcome = RequestOutcome.Succeeded,
             BytesProcessed = Encoding.UTF8.GetByteCount(response),
             ElapsedMilliseconds = elapsedMilliseconds
+        });
+    }
+
+    /// <summary>
+    /// Reports a request that was in flight when the caller asked the measurement to stop and
+    /// report what it had: cancelled rather than failed, and excluded from the counts.
+    /// </summary>
+    /// <remarks>
+    /// The reason is deliberately the library's own generic wording rather than anything about why
+    /// the caller stopped - see <see cref="RequestDiagnostic.StoppedByCaller"/>. No exception type
+    /// is recorded: the cancellation came from the caller's token, so naming
+    /// <c>TaskCanceledException</c> would dress a caller's decision up as a fault.
+    /// </remarks>
+    private static void ReportStoppedRequest(IProgress<RequestDiagnostic>? diagnostics, RequestKind kind, DateTime startedAt, int sequence, string url, long elapsedMilliseconds)
+    {
+        if (diagnostics is null)
+        {
+            return;
+        }
+
+        ReportProgress(diagnostics, new RequestDiagnostic
+        {
+            StartedAt = startedAt,
+            Kind = kind,
+            Sequence = sequence,
+            Url = url,
+            Outcome = RequestOutcome.Cancelled,
+            BytesProcessed = 0,
+            ElapsedMilliseconds = elapsedMilliseconds,
+            FailureReason = RequestDiagnostic.StoppedByCaller
         });
     }
 
