@@ -40,6 +40,11 @@ Run 3 tests in a row, with 30 seconds delay between each:
 netpace --count 3 --delay 00:00:30
 ```
 
+Bound a run to two minutes instead of the default ten:
+```bash
+netpace --time-limit 00:02:00
+```
+
 List the nearest speed test servers:  
 ```bash
 netpace servers
@@ -456,6 +461,38 @@ Reach for it when:
 
 > [!NOTE]\
 > More connections means more data in flight when a cap is reached. NetPace stops scheduling transfers and cancels those still running once the total-byte cap is hit, so the bytes actually transferred can overshoot the profile's cap (or `--downloadsize` / `--uploadsize`) by roughly what was in flight at that moment — and that overshoot grows with the connection count. On a metered connection, choose the profile and the connection count together.
+
+---
+
+## How long a run may take
+
+Every run is bounded. Left alone it ends after ten minutes, and `--time-limit` sets a bound of your own:
+
+```bash
+netpace --time-limit 00:02:00
+```
+
+The value is exactly hours, minutes and seconds (`HH:MM:SS`), up to `23:59:59`. Anything shorter is refused: `5` would otherwise mean five days, and `10:00` ten hours.
+
+A run that reaches the limit has not failed. NetPace ends it and reports what it measured up to then, in the same output and with the same exit code as a run that finished on its own. The one exception is a limit reached before a server was chosen: there is nothing to measure against, so the run ends as one with no server available does, with that error and, under `--fail-on`, exit code 1.
+
+Otherwise:
+
+- A download or upload in progress reports a figure for the data it delivered before it stopped, measured over the time it ran. If it had delivered nothing yet and none of its requests had failed, it is reported as a test the run never reached.
+- A latency test in progress reports a figure from the probes answered so far. If none had answered, it is reported as a test the run never reached.
+- A test the run never reached is reported the way a test you switched off is: no line under `--simple`, no field in the `--minimal` line, an empty cell in CSV, an absent field in JSON, no row in the table on screen. If no test has anything to show, no table is drawn.
+- Requests stopped at the limit count as neither successes nor failures, so `--fail-on` is tripped by real failures only.
+- Nothing is printed about the limit, in any output format.
+
+Under `--count` and `--loop` each run gets the limit afresh, and the `--delay` between runs does not count towards it.
+
+Reach for it when:
+
+- You run NetPace from cron or a systemd timer and need every run to finish before the next one starts, whatever the server does. The ten minute default already does this for you, as long as runs start more than ten minutes apart.
+- You run NetPace with `--loop` and want a stuck server to cost one run rather than stall the loop.
+- You want a quick reading and would rather have a rough figure soon than an exact one eventually.
+
+To see where a run was cut short, pass `--diagnostics`: every request stopped at the limit is recorded as cancelled, with a reason naming the time limit, and counted among its test's cancelled requests.
 
 ---
 

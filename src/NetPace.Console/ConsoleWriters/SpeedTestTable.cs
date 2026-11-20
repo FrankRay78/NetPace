@@ -123,6 +123,23 @@ internal sealed class SpeedTestTable(
         return row;
     }
 
+    /// <summary>
+    /// Drops <paramref name="row"/> from the table, for a measurement that turned out not to run
+    /// at all.
+    /// </summary>
+    /// <remarks>
+    /// A row is added for every test the run was asked for, before any of them has started, so
+    /// that the screen shows what is coming rather than filling in from blank. A test the run then
+    /// never reached - because its turn came after the run's time limit - is not a measurement that
+    /// failed, and leaving its row behind with a spinner or a cross would say it was. Dropping it
+    /// leaves the table reading exactly as it does for a test nobody asked for.
+    /// </remarks>
+    public void Remove(SpeedTestTableRow row)
+    {
+        rows.Remove(row);
+        Changed();
+    }
+
     /// <summary>Called by a row when something it shows has changed.</summary>
     /// <remarks>
     /// Also what turns the spinner, so the screen moves whenever the measurement has something new
@@ -138,19 +155,27 @@ internal sealed class SpeedTestTable(
     internal string SpeedOf(SpeedTestProgress progress) => progress.GetSpeedString(unit, unitSystem, scale);
 
     /// <inheritdoc/>
+    /// <remarks>
+    /// A table with no rows left takes no room, for the reason <see cref="Render"/> draws nothing.
+    /// </remarks>
     protected override Measurement Measure(RenderOptions options, int maxWidth)
     {
         ArgumentNullException.ThrowIfNull(options);
 
-        return ((IRenderable)Build(options.Unicode)).Measure(options, maxWidth);
+        return rows.Count == 0 ? new Measurement(0, 0) : ((IRenderable)Build(options.Unicode)).Measure(options, maxWidth);
     }
 
     /// <inheritdoc/>
+    /// <remarks>
+    /// Once every row has been removed, because the run's time limit came before any test had
+    /// anything to show, nothing is drawn: headings over no figures would read as a result with
+    /// its figures missing, where <c>--simple</c> writes nothing for the same run.
+    /// </remarks>
     protected override IEnumerable<Segment> Render(RenderOptions options, int maxWidth)
     {
         ArgumentNullException.ThrowIfNull(options);
 
-        return ((IRenderable)Build(options.Unicode)).Render(options, maxWidth);
+        return rows.Count == 0 ? [] : ((IRenderable)Build(options.Unicode)).Render(options, maxWidth);
     }
 
     /// <summary>

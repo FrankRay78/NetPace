@@ -9,22 +9,22 @@ public sealed class JsonConsoleWriter : IConsoleWriter
     /// <inheritdoc/>
     public bool MachineReadable => true;
 
-    public async Task<SpeedTestOutcome> PerformSpeedTestAsync(bool initialSpeedTest, IAnsiConsole console, IClock clock, IClientInfoProvider clientInfoProvider, IDiagnosticRecorder recorder, ISpeedTestService speedTestClient, SpeedTestCommandSettings settings, CancellationToken cancellationToken)
+    public async Task<SpeedTestOutcome> PerformSpeedTestAsync(bool initialSpeedTest, IAnsiConsole console, IClock clock, IClientInfoProvider clientInfoProvider, IDiagnosticRecorder recorder, ISpeedTestService speedTestClient, SpeedTestCommandSettings settings, CancellationToken cancellationToken, CancellationToken timeLimitToken = default)
     {
         // Get the server to use for speed testing, then measure.
-        var fastest = await ServerSelector.GetServerAsync(speedTestClient, settings, recorder, cancellationToken);
-        var outcome = await Measurements.PerformAsync(speedTestClient, fastest.Server, settings, recorder, cancellationToken);
+        (ChosenServer chosen, LatencyTestResult? latency) = await ServerSelector.GetServerAsync(speedTestClient, settings, recorder, cancellationToken, timeLimitToken);
+        var outcome = await Measurements.PerformAsync(speedTestClient, chosen.Server, settings, recorder, cancellationToken, timeLimitToken);
 
         // Display speed test result. JSON holds data, not presentation, so every speed and
         // latency is a plain number in a fixed unit and the unit options do not reach here.
         var jsonResult = new JsonResult
         {
-            ServerLocation = fastest.Server.Location,
-            ServerSponsor = fastest.Server.Sponsor,
-            ServerUrl = fastest.Server.Url,
+            ServerLocation = chosen.Server.Location,
+            ServerSponsor = chosen.Server.Sponsor,
+            ServerUrl = chosen.Server.Url,
             Timestamp = clock.Now.ToWholeSecond(),
-            LatencyMilliseconds = !settings.NoLatency ? fastest.LatencyMilliseconds : null,
-            JitterMilliseconds = !settings.NoLatency ? fastest.JitterMilliseconds : null,
+            LatencyMilliseconds = latency?.LatencyMilliseconds,
+            JitterMilliseconds = latency?.JitterMilliseconds,
             DownloadSpeedBitsPerSecond = outcome.Download?.GetBitsPerSecond(),
             DownloadSucceeded = outcome.Download?.RequestsSucceeded,
             DownloadFailed = outcome.Download?.RequestsFailed,

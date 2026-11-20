@@ -16,6 +16,13 @@ namespace NetPace.Core;
 /// timeout from its own cancellation without knowing which timeout applied, and a caller that does not inspect the
 /// exception is no worse off than before.
 /// </para>
+/// <para>
+/// The latency, download and upload measurements take a second token alongside that one: a
+/// <c>stopAndReportToken</c> that asks for the measurement taken so far rather than abandoning it.
+/// Two tokens because the two answers differ - a cancellation gives the caller nothing, while a
+/// stop gives it a figure measured over the time the test was allowed. A caller that wants only
+/// the first passes nothing for the second, and nothing changes for it.
+/// </para>
 /// </remarks>
 public interface ISpeedTestService
 {
@@ -56,9 +63,16 @@ public interface ISpeedTestService
     /// <param name="progress">A progress reporter that receives latency test progress updates, or <see langword="null"/> for none.</param>
     /// <param name="diagnostics">A reporter that receives one <see cref="RequestDiagnostic"/> per request, or <see langword="null"/> for none.</param>
     /// <param name="cancellationToken">The token to allow the operation to be cancelled.</param>
+    /// <param name="stopAndReportToken">
+    /// A token that asks the measurement to stop and report the probes that have already answered,
+    /// rather than to abandon it. With no probe answered there is no figure to report, so the stop
+    /// surfaces as an <see cref="OperationCanceledException"/>. Distinct from
+    /// <paramref name="cancellationToken"/>, which abandons the measurement whatever it has.
+    /// </param>
     /// <returns>The server, and its latency and jitter in milliseconds.</returns>
     /// <exception cref="ArgumentOutOfRangeException">Thrown when the provider is configured with a non-positive latency probe timeout.</exception>
-    public Task<LatencyTestResult> GetServerLatencyAsync(IServer server, IProgress<LatencyTestProgress>? progress, IProgress<RequestDiagnostic>? diagnostics, CancellationToken cancellationToken = default);
+    /// <exception cref="OperationCanceledException">Thrown when <paramref name="stopAndReportToken"/> fires before any probe has answered.</exception>
+    public Task<LatencyTestResult> GetServerLatencyAsync(IServer server, IProgress<LatencyTestProgress>? progress, IProgress<RequestDiagnostic>? diagnostics, CancellationToken cancellationToken = default, CancellationToken stopAndReportToken = default);
 
     /// <summary>
     /// Measures the network latency (ping) to the specified server.
@@ -98,9 +112,16 @@ public interface ISpeedTestService
     /// <param name="progress">A progress reporter that receives latency test progress updates, or <see langword="null"/> for none.</param>
     /// <param name="diagnostics">A reporter that receives one <see cref="RequestDiagnostic"/> per request, or <see langword="null"/> for none.</param>
     /// <param name="cancellationToken">The token to allow the operation to be cancelled.</param>
+    /// <param name="stopAndReportToken">
+    /// A token that asks the measurement to stop and report the probes that have already answered,
+    /// rather than to abandon it. With no probe answered there is no figure to report, so the stop
+    /// surfaces as an <see cref="OperationCanceledException"/>. Distinct from
+    /// <paramref name="cancellationToken"/>, which abandons the measurement whatever it has.
+    /// </param>
     /// <returns>The server, and its latency and jitter in milliseconds.</returns>
     /// <exception cref="ArgumentOutOfRangeException">Thrown when the provider is configured with a non-positive latency probe timeout.</exception>
-    public Task<LatencyTestResult> GetServerLatencyAsync(string serverUrl, IProgress<LatencyTestProgress>? progress, IProgress<RequestDiagnostic>? diagnostics, CancellationToken cancellationToken = default);
+    /// <exception cref="OperationCanceledException">Thrown when <paramref name="stopAndReportToken"/> fires before any probe has answered.</exception>
+    public Task<LatencyTestResult> GetServerLatencyAsync(string serverUrl, IProgress<LatencyTestProgress>? progress, IProgress<RequestDiagnostic>? diagnostics, CancellationToken cancellationToken = default, CancellationToken stopAndReportToken = default);
 
     /// <summary>
     /// Screens every given server and returns the fastest one that could be reached.
@@ -184,8 +205,16 @@ public interface ISpeedTestService
     /// <param name="progress">A progress reporter that receives download progress updates, or <see langword="null"/> for none.</param>
     /// <param name="diagnostics">A reporter that receives one <see cref="RequestDiagnostic"/> per request, or <see langword="null"/> for none.</param>
     /// <param name="cancellationToken">The token to allow the operation to be cancelled.</param>
+    /// <param name="stopAndReportToken">
+    /// A token that asks the measurement to stop and hand back what it has measured so far, rather
+    /// than to abandon it. A request still in flight when it fires counts as neither succeeded nor
+    /// failed and is recorded with the reason
+    /// <see cref="RequestDiagnostic.StoppedByCaller"/>; requests not yet sent are not sent. The
+    /// call returns a result rather than throwing, even where nothing was measured. Distinct from
+    /// <paramref name="cancellationToken"/>, which abandons the measurement and produces no result.
+    /// </param>
     /// <returns>The result including bytes processed and elapsed time in milliseconds.</returns>
-    public Task<SpeedTestResult> GetDownloadSpeedAsync(IServer server, IProgress<SpeedTestProgress>? progress, IProgress<RequestDiagnostic>? diagnostics, CancellationToken cancellationToken = default);
+    public Task<SpeedTestResult> GetDownloadSpeedAsync(IServer server, IProgress<SpeedTestProgress>? progress, IProgress<RequestDiagnostic>? diagnostics, CancellationToken cancellationToken = default, CancellationToken stopAndReportToken = default);
 
     /// <summary>
     /// Measures the upload speed of the specified server.
@@ -211,6 +240,14 @@ public interface ISpeedTestService
     /// <param name="progress">A progress reporter that receives upload progress updates, or <see langword="null"/> for none.</param>
     /// <param name="diagnostics">A reporter that receives one <see cref="RequestDiagnostic"/> per request, or <see langword="null"/> for none.</param>
     /// <param name="cancellationToken">The token to allow the operation to be cancelled.</param>
+    /// <param name="stopAndReportToken">
+    /// A token that asks the measurement to stop and hand back what it has measured so far, rather
+    /// than to abandon it. A request still in flight when it fires counts as neither succeeded nor
+    /// failed and is recorded with the reason
+    /// <see cref="RequestDiagnostic.StoppedByCaller"/>; requests not yet sent are not sent. The
+    /// call returns a result rather than throwing, even where nothing was measured. Distinct from
+    /// <paramref name="cancellationToken"/>, which abandons the measurement and produces no result.
+    /// </param>
     /// <returns>The result including bytes processed and elapsed time in milliseconds.</returns>
-    public Task<SpeedTestResult> GetUploadSpeedAsync(IServer server, IProgress<SpeedTestProgress>? progress, IProgress<RequestDiagnostic>? diagnostics, CancellationToken cancellationToken = default);
+    public Task<SpeedTestResult> GetUploadSpeedAsync(IServer server, IProgress<SpeedTestProgress>? progress, IProgress<RequestDiagnostic>? diagnostics, CancellationToken cancellationToken = default, CancellationToken stopAndReportToken = default);
 }

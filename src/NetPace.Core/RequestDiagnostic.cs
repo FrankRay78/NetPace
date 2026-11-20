@@ -13,6 +13,19 @@ namespace NetPace.Core;
 public sealed record RequestDiagnostic
 {
     /// <summary>
+    /// The <see cref="FailureReason"/> recorded for a request that was still in flight when the
+    /// caller asked the measurement to stop and report what it had.
+    /// </summary>
+    /// <remarks>
+    /// Deliberately generic: the library knows a caller asked it to stop, not what that caller's
+    /// own stop was for. A consumer that bounds a run by a clock, a data allowance or a user's
+    /// keystroke replaces this with wording that names its own reason before showing the record to
+    /// anyone. It is a reason rather than a failure - the request counts as neither succeeded nor
+    /// failed, and its <see cref="Outcome"/> is <see cref="RequestOutcome.Cancelled"/>.
+    /// </remarks>
+    public const string StoppedByCaller = "stopped by caller";
+
+    /// <summary>
     /// Gets the time the request started, taken from the provider's clock at the moment the
     /// request was issued rather than when the consumer received this record.
     /// </summary>
