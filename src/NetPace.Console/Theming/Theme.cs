@@ -39,11 +39,9 @@ public sealed record Theme
         && Styles.All(style => style.Foreground == Color.Default && style.Background == Color.Default);
 
     /// <summary>
-    /// The NET half of the lettering at the top of the help screen, and the whole of the lettering
-    /// a console that cannot draw Unicode is given instead, which is one colour.
+    /// The Net half of the lettering at the top of the help screen.
     /// </summary>
     /// <remarks>
-    /// A colour rather than a style, because that is all the ASCII lettering can be given.
     /// A theme may draw the two halves in a pair of colours, purely as decoration, which is why there
     /// are two slots and not one; <see cref="Default"/> gives both the same colour as its headings.
     /// The split carries no meaning: the lettering spells the product name
@@ -53,12 +51,8 @@ public sealed record Theme
     public required Color BannerNet { get; init; }
 
     /// <summary>
-    /// The PACE half of the lettering at the top of the help screen.
+    /// The Pace half of the lettering at the top of the help screen.
     /// </summary>
-    /// <remarks>
-    /// Reached only where the console can draw the pixel lettering: the ASCII lettering that
-    /// stands in for it is drawn whole in <see cref="BannerNet"/>.
-    /// </remarks>
     public required Color BannerPace { get; init; }
 
     /// <summary>The help screen's section headings — DESCRIPTION, USAGE, OPTIONS and the rest.</summary>
