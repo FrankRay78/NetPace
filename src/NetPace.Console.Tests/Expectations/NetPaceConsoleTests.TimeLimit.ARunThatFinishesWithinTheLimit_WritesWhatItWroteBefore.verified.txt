@@ -1,0 +1,3 @@
+﻿Ping: 24 ms
+Download: 32.0 Mbps
+Upload: 4.00 Mbps

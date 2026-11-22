@@ -23,15 +23,15 @@ public sealed class SimpleConsoleWriter : IConsoleWriter
     /// <inheritdoc/>
     public bool MachineReadable => true;
 
-    public async Task<SpeedTestOutcome> PerformSpeedTestAsync(bool initialSpeedTest, IAnsiConsole console, IClock clock, IClientInfoProvider clientInfoProvider, IDiagnosticRecorder recorder, ISpeedTestService speedTestClient, SpeedTestCommandSettings settings, CancellationToken cancellationToken)
+    public async Task<SpeedTestOutcome> PerformSpeedTestAsync(IAnsiConsole console, IClock clock, IClientInfoProvider clientInfoProvider, IDiagnosticRecorder recorder, ISpeedTestService speedTestClient, SpeedTestCommandSettings settings, CancellationToken cancellationToken, CancellationToken timeLimitToken = default)
     {
         ArgumentNullException.ThrowIfNull(settings);
 
         // Get the server to use for speed testing, then measure.
-        var fastest = await ServerSelector.GetServerAsync(speedTestClient, settings, recorder, cancellationToken);
-        var outcome = await Measurements.PerformAsync(speedTestClient, fastest.Server, settings, recorder, cancellationToken);
+        (ChosenServer chosen, LatencyTestResult? latency) = await ServerSelector.GetServerAsync(speedTestClient, settings, recorder, cancellationToken, timeLimitToken);
+        var outcome = await Measurements.PerformAsync(speedTestClient, chosen.Server, settings, recorder, cancellationToken, timeLimitToken);
 
-        SimpleLines.Write(console, fastest, outcome, settings);
+        SimpleLines.Write(console, latency, outcome, settings);
 
         return outcome;
     }

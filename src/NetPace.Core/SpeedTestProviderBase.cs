@@ -43,6 +43,14 @@ public abstract class SpeedTestProviderBase : ISpeedTestService
     /// </summary>
     private protected const string EndpointProbeAnswered = "endpoint probe answered";
 
+    /// <summary>
+    /// The shortest gap between two progress reports sent from inside a running request. It paces
+    /// the live figure only; a request that finishes and is counted reports at once, because that
+    /// is where the percentage changes. Not a setting: it is the refresh rate of something a person is watching,
+    /// which no caller has a reason to tune, and it bounds no measurement.
+    /// </summary>
+    private const int LiveFigureIntervalMilliseconds = 250;
+
     private readonly HttpClient httpClient;
     private readonly SpeedTestSettings settings;
     private readonly IDelayProvider delayProvider;
@@ -152,12 +160,12 @@ public abstract class SpeedTestProviderBase : ISpeedTestService
     }
 
     /// <inheritdoc/>
-    public async Task<LatencyTestResult> GetServerLatencyAsync(string serverUrl, IProgress<LatencyTestProgress>? progress, IProgress<RequestDiagnostic>? diagnostics, CancellationToken cancellationToken = default)
+    public async Task<LatencyTestResult> GetServerLatencyAsync(string serverUrl, IProgress<LatencyTestProgress>? progress, IProgress<RequestDiagnostic>? diagnostics, CancellationToken cancellationToken = default, CancellationToken stopAndReportToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(serverUrl);
 
         var server = new Server { Sponsor = Server.UnknownSponsor, Url = serverUrl };
-        return await GetServerLatencyAsync(server, progress, diagnostics, cancellationToken);
+        return await GetServerLatencyAsync(server, progress, diagnostics, cancellationToken, stopAndReportToken);
     }
 
     /// <inheritdoc/>
@@ -173,7 +181,7 @@ public abstract class SpeedTestProviderBase : ISpeedTestService
     }
 
     /// <inheritdoc/>
-    public async Task<LatencyTestResult> GetServerLatencyAsync(IServer server, IProgress<LatencyTestProgress>? progress, IProgress<RequestDiagnostic>? diagnostics, CancellationToken cancellationToken = default)
+    public async Task<LatencyTestResult> GetServerLatencyAsync(IServer server, IProgress<LatencyTestProgress>? progress, IProgress<RequestDiagnostic>? diagnostics, CancellationToken cancellationToken = default, CancellationToken stopAndReportToken = default)
     {
         ArgumentNullException.ThrowIfNull(server);
         ArgumentException.ThrowIfNullOrWhiteSpace(server.Url);
@@ -191,14 +199,35 @@ public abstract class SpeedTestProviderBase : ISpeedTestService
         var intervalMilliseconds = settings.LatencyTest.LatencyTestIntervalMilliseconds;
         var httpTimeoutMilliseconds = settings.LatencyTest.HttpTimeoutMilliseconds;
 
+        // Linked once for the whole measurement, so the probe that is out when the caller asks to
+        // stop is abandoned promptly rather than waited out at its own timeout. Which of the two
+        // tokens fired is read from the tokens themselves below, not from the exception.
+        using var probingCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, stopAndReportToken);
+        var probingToken = probingCts.Token;
+
         for (var iteration = 0; iteration < maxIterations; iteration++)
         {
             cancellationToken.ThrowIfCancellationRequested();
 
+            // Asked to stop between probes: what has answered so far is the measurement, so the
+            // remaining probes are simply not sent.
+            if (stopAndReportToken.IsCancellationRequested)
+            {
+                break;
+            }
+
             // Add delay between iterations (not before first iteration)
             if (iteration > 0 && intervalMilliseconds > 0)
             {
-                await delayProvider.DelayAsync(intervalMilliseconds, cancellationToken).ConfigureAwait(false);
+                try
+                {
+                    await delayProvider.DelayAsync(intervalMilliseconds, probingToken).ConfigureAwait(false);
+                }
+                catch (OperationCanceledException) when (stopAndReportToken.IsCancellationRequested && !cancellationToken.IsCancellationRequested)
+                {
+                    // Asked to stop during the pause: the same stop as the one between probes above.
+                    break;
+                }
             }
 
             // Stamped before the request leaves, so a record describes when the request started
@@ -211,7 +240,7 @@ public abstract class SpeedTestProviderBase : ISpeedTestService
             long elapsedMilliseconds;
             try
             {
-                testString = await httpClient.GetStringWithTimeoutAsync(latencyUrl, TimeSpan.FromMilliseconds(httpTimeoutMilliseconds), cancellationToken).ConfigureAwait(false);
+                testString = await httpClient.GetStringWithTimeoutAsync(latencyUrl, TimeSpan.FromMilliseconds(httpTimeoutMilliseconds), probingToken).ConfigureAwait(false);
                 elapsedMilliseconds = ElapsedMillisecondsSince(startTimestamp);
             }
             catch (Exception e)
@@ -221,6 +250,17 @@ public abstract class SpeedTestProviderBase : ISpeedTestService
                 // cause of a run that ended here, and the duration is frozen before that recording.
                 // The record keeps the HTTP failure itself, status and all, for whoever triages it.
                 var failedElapsedMilliseconds = ElapsedMillisecondsSince(startTimestamp);
+
+                // A probe cut short because the caller asked to stop is not a failure: it is
+                // recorded as cancelled, and the probes already answered are the measurement.
+                // Checked before the caller's own token, which the next branch claims, so a
+                // cancellation during a stop is still the stop.
+                if (e is OperationCanceledException && stopAndReportToken.IsCancellationRequested && !cancellationToken.IsCancellationRequested)
+                {
+                    ReportStoppedRequest(diagnostics, RequestKind.LatencyProbe, startedAt, sequence, latencyUrl, failedElapsedMilliseconds);
+                    break;
+                }
+
                 ReportRequestFailure(diagnostics, RequestKind.LatencyProbe, startedAt, sequence, latencyUrl, failedElapsedMilliseconds, e, cancellationToken);
 
                 if (e is HttpRequestException { StatusCode: { } status } && LatencyStatusFailureMessage(latencyUrl, status) is { } message)
@@ -254,6 +294,14 @@ public abstract class SpeedTestProviderBase : ISpeedTestService
                 LatencyMilliseconds = (long)pings.Average(),
                 JitterMilliseconds = RunningJitterMilliseconds(pings),
             });
+        }
+
+        // Asked to stop before anything answered, so there is nothing to report. A figure derived
+        // from no probes would be a measurement about nothing, and zero would read as a perfect
+        // line - so the stop surfaces as the cancellation it is.
+        if (pings.Count == 0)
+        {
+            stopAndReportToken.ThrowIfCancellationRequested();
         }
 
         // The average server latency, the extremes behind it, and how uneven the probes behind it
@@ -622,12 +670,14 @@ public abstract class SpeedTestProviderBase : ISpeedTestService
     /// <remarks>
     /// Downloads are processed in parallel batches, as many at once as
     /// <see cref="DownloadTestSettings.DownloadParallelTasks"/> allows. The total-byte budget cap is
-    /// read from <see cref="DownloadTestSettings.DownloadSizeMb"/>; once the running total crosses
-    /// that threshold the internal <see cref="CancellationTokenSource"/> is cancelled, so in-flight
-    /// parallel downloads are cancelled rather than awaited and their bytes excluded. The actual
-    /// bytes processed may still exceed the cap depending on parallelism and per-request size.
+    /// read from <see cref="DownloadTestSettings.DownloadSizeMb"/>; once the bytes returned by the
+    /// downloads that completed successfully cross that threshold the internal
+    /// <see cref="CancellationTokenSource"/> is cancelled, so in-flight parallel downloads are
+    /// cancelled rather than awaited. What they had already received still counts towards the
+    /// reported figure, because it crossed the link inside the time the figure is measured over,
+    /// so the bytes processed may exceed the cap.
     /// </remarks>
-    public async Task<SpeedTestResult> GetDownloadSpeedAsync(IServer server, IProgress<SpeedTestProgress>? progress, IProgress<RequestDiagnostic>? diagnostics, CancellationToken cancellationToken = default)
+    public async Task<SpeedTestResult> GetDownloadSpeedAsync(IServer server, IProgress<SpeedTestProgress>? progress, IProgress<RequestDiagnostic>? diagnostics, CancellationToken cancellationToken = default, CancellationToken stopAndReportToken = default)
     {
         ArgumentNullException.ThrowIfNull(server);
         ArgumentException.ThrowIfNullOrWhiteSpace(server.Url);
@@ -636,8 +686,8 @@ public abstract class SpeedTestProviderBase : ISpeedTestService
 
         var downloadUrls = DownloadRequestUrls(server.Url);
 
-        // Download content from a specified URL and return the size of the data in bytes.
-        Func<HttpClient, string, CancellationToken, Task<int>> DownloadAndMeasureAsync = async (client, downloadUrl, cancellationToken) =>
+        // Download content from a specified URL, reporting what arrives as it arrives.
+        Func<HttpClient, string, Action<int>, CancellationToken, Task> DownloadAndMeasureAsync = async (client, downloadUrl, recordBytesDelivered, cancellationToken) =>
         {
             // Stream the response to avoid allocating large strings for each download.
             using var response = await client.GetAsync(downloadUrl, HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
@@ -648,14 +698,15 @@ public abstract class SpeedTestProviderBase : ISpeedTestService
             var buffer = ArrayPool<byte>.Shared.Rent(81920); // 80KB buffer
             try
             {
-                long total = 0;
                 int bytesRead;
                 while ((bytesRead = await stream.ReadAsync(buffer.AsMemory(0, buffer.Length), cancellationToken).ConfigureAwait(false)) > 0)
                 {
-                    total += bytesRead;
+                    // Reported here rather than totalled and returned at the end: a server that
+                    // closes the connection partway, and a budget that ends the request, both
+                    // leave this method by its exception path, where a running total would be
+                    // lost along with everything the link had already carried.
+                    recordBytesDelivered(bytesRead);
                 }
-
-                return (int)total;
             }
             finally
             {
@@ -666,7 +717,7 @@ public abstract class SpeedTestProviderBase : ISpeedTestService
         var maxBytes = settings.DownloadTest.DownloadSizeMb == int.MaxValue
             ? long.MaxValue
             : (long)settings.DownloadTest.DownloadSizeMb * 1024L * 1024L;
-        var downloadResult = await GenericTestSpeedAsync(server, server.Url, downloadUrls, DownloadAndMeasureAsync, url => url, progress, diagnostics, settings.DownloadTest.DownloadParallelTasks, maxBytes, sequenceOffset: 0, cancellationToken);
+        var downloadResult = await GenericTestSpeedAsync(server, server.Url, downloadUrls, DownloadAndMeasureAsync, url => url, progress, diagnostics, settings.DownloadTest.DownloadParallelTasks, maxBytes, sequenceOffset: 0, cancellationToken, stopAndReportToken);
 
         return downloadResult;
     }
@@ -687,12 +738,13 @@ public abstract class SpeedTestProviderBase : ISpeedTestService
     /// <remarks>
     /// Uploads are processed in parallel batches, as many at once as
     /// <see cref="UploadTestSettings.UploadParallelTasks"/> allows. The total-byte budget cap is
-    /// read from <see cref="UploadTestSettings.UploadSizeMb"/>; once the running total crosses that
-    /// threshold the internal <see cref="CancellationTokenSource"/> is cancelled, so in-flight
-    /// parallel uploads are cancelled rather than awaited and their bytes excluded. The actual
-    /// bytes processed may still exceed the cap depending on parallelism and per-request size.
+    /// read from <see cref="UploadTestSettings.UploadSizeMb"/>; once the bytes sent by the uploads
+    /// that completed successfully cross that threshold the internal
+    /// <see cref="CancellationTokenSource"/> is cancelled, so in-flight parallel uploads are
+    /// cancelled rather than awaited. What they had already sent still counts towards the reported
+    /// figure, so the bytes processed may exceed the cap.
     /// </remarks>
-    public async Task<SpeedTestResult> GetUploadSpeedAsync(IServer server, IProgress<SpeedTestProgress>? progress, IProgress<RequestDiagnostic>? diagnostics, CancellationToken cancellationToken = default)
+    public async Task<SpeedTestResult> GetUploadSpeedAsync(IServer server, IProgress<SpeedTestProgress>? progress, IProgress<RequestDiagnostic>? diagnostics, CancellationToken cancellationToken = default, CancellationToken stopAndReportToken = default)
     {
         ArgumentNullException.ThrowIfNull(server);
         ArgumentException.ThrowIfNullOrWhiteSpace(server.Url);
@@ -705,25 +757,52 @@ public abstract class SpeedTestProviderBase : ISpeedTestService
         // Where uploads go is the provider's business, but any redirect in front of it is resolved
         // first, because a streaming body cannot survive one. Whatever requests that takes are
         // numbered before the measured uploads.
-        var (uploadUrl, probeRequests) = await ResolveUploadUrlAsync(UploadUrl(server.Url), diagnostics, cancellationToken).ConfigureAwait(false);
-
-        // Upload content to a specified URL and return the size of the data in bytes.
-        Func<HttpClient, int, CancellationToken, Task<int>> UploadAndMeasureAsync = async (client, length, cancellationToken) =>
+        // A stop that lands while the redirect is still being resolved ends the test there, before
+        // any upload is sent, so it reports what a test stopped before it began reports.
+        string uploadUrl;
+        int probeRequests;
+        try
         {
-            // Use RandomStreamContent to stream generated random bytes in small chunks to avoid LOH allocations.
-            using var content = new RandomStreamContent(length);
+            (uploadUrl, probeRequests) = await ResolveUploadUrlAsync(UploadUrl(server.Url), diagnostics, cancellationToken, stopAndReportToken).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) when (stopAndReportToken.IsCancellationRequested && !cancellationToken.IsCancellationRequested)
+        {
+            return new SpeedTestResult { BytesProcessed = 0, ElapsedMilliseconds = 0, RequestsSucceeded = 0, RequestsFailed = 0, Latency = null };
+        }
+
+        // Upload content to a specified URL, reporting what is sent as it is sent.
+        Func<HttpClient, int, Action<int>, CancellationToken, Task> UploadAndMeasureAsync = async (client, length, recordBytesDelivered, cancellationToken) =>
+        {
+            // Use RandomStreamContent to stream generated random bytes in small chunks to avoid LOH
+            // allocations. It reports each chunk once written, so an upload the server cuts off
+            // partway still counts what it had sent. What was written is the closest thing to what
+            // was delivered that a client can see, and it is a ceiling rather than a measurement:
+            // a write returns once the transport has taken the data, so whatever the send buffer
+            // still held when the connection closed is counted as sent. On a link slow enough that
+            // the buffer holds a whole request - which the narrow profiles under
+            // docker/lab are - a cut-off upload can be credited with most of its body.
+            using var content = new RandomStreamContent(length, recordBytesDelivered);
             using var response = await client.PostAsync(uploadUrl, content, cancellationToken).ConfigureAwait(false);
 
             // A rejected upload (non-success status) is a failed request, not throughput -
             // mirror the download path so error statuses are aggregated into the failure count.
             response.EnsureSuccessStatusCode();
-            return length;
+
+            // A handler that never serialised the body at all reported no chunks, and an upload the
+            // server accepted is then counted at the length asked for. A body that was partway
+            // through when it stopped keeps what it actually wrote: topping that up to the full
+            // length would credit the request with bytes the transport never took, which is the
+            // over-count this measurement exists to remove.
+            if (content.BytesWritten == 0 && length > 0)
+            {
+                recordBytesDelivered(length);
+            }
         };
 
         var maxBytes = settings.UploadTest.UploadSizeMb == int.MaxValue
             ? long.MaxValue
             : (long)settings.UploadTest.UploadSizeMb * 1024L * 1024L;
-        var uploadResult = await GenericTestSpeedAsync(server, uploadUrl, testDataLengths, UploadAndMeasureAsync, _ => uploadUrl, progress, diagnostics, settings.UploadTest.UploadParallelTasks, maxBytes, sequenceOffset: probeRequests, cancellationToken);
+        var uploadResult = await GenericTestSpeedAsync(server, uploadUrl, testDataLengths, UploadAndMeasureAsync, _ => uploadUrl, progress, diagnostics, settings.UploadTest.UploadParallelTasks, maxBytes, sequenceOffset: probeRequests, cancellationToken, stopAndReportToken);
 
         return uploadResult;
     }
@@ -756,9 +835,11 @@ public abstract class SpeedTestProviderBase : ISpeedTestService
     /// separately, so a sequence number is distinct only within one kind; see
     /// <see cref="RequestDiagnostic.Sequence"/>.
     /// </returns>
-    private async Task<(string Url, int RequestsIssued)> ResolveUploadUrlAsync(string serverUrl, IProgress<RequestDiagnostic>? diagnostics, CancellationToken cancellationToken)
+    private async Task<(string Url, int RequestsIssued)> ResolveUploadUrlAsync(string serverUrl, IProgress<RequestDiagnostic>? diagnostics, CancellationToken cancellationToken, CancellationToken stopAndReportToken)
     {
         const int maximumHops = 5;
+
+        using var probingCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, stopAndReportToken);
 
         var currentUrl = serverUrl;
         var requestsIssued = 0;
@@ -772,7 +853,7 @@ public abstract class SpeedTestProviderBase : ISpeedTestService
             try
             {
                 using var probeContent = new RandomStreamContent(0);
-                using var response = await Client.PostAsync(currentUrl, probeContent, cancellationToken).ConfigureAwait(false);
+                using var response = await Client.PostAsync(currentUrl, probeContent, probingCts.Token).ConfigureAwait(false);
 
                 // PostAsync does not throw on a non-success status and the probe never calls
                 // EnsureSuccessStatusCode, so without this the one request that can quietly
@@ -815,6 +896,12 @@ public abstract class SpeedTestProviderBase : ISpeedTestService
             }
             catch (Exception e) when (e is HttpRequestException or IOException or OperationCanceledException)
             {
+                if (e is OperationCanceledException && stopAndReportToken.IsCancellationRequested && !cancellationToken.IsCancellationRequested)
+                {
+                    ReportStoppedRequest(diagnostics, RequestKind.EndpointProbe, startedAt, requestsIssued, probeUrl, ElapsedMillisecondsSince(startTimestamp));
+                    throw;
+                }
+
                 ReportRequestFailure(diagnostics, RequestKind.EndpointProbe, startedAt, requestsIssued, probeUrl, ElapsedMillisecondsSince(startTimestamp), e, cancellationToken);
 
                 if (cancellationToken.IsCancellationRequested)
@@ -856,18 +943,34 @@ public abstract class SpeedTestProviderBase : ISpeedTestService
         IServer server,
         string transferUrl,
         IEnumerable<T> testData,
-        Func<HttpClient, T, CancellationToken, Task<int>> doWork,
+        Func<HttpClient, T, Action<int>, CancellationToken, Task> doWork,
         Func<T, string> urlOf,
         IProgress<SpeedTestProgress>? progress,
         IProgress<RequestDiagnostic>? diagnostics,
         int parallelTasks,
         long maxBytes,
         int sequenceOffset,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        CancellationToken stopAndReportToken)
     {
         object lockObject = new();
         bool wasCancelledLocally = false;
-        long totalBytesReturned = 0;
+
+        // Two totals, because a transfer's bytes answer two different questions.
+        //
+        // totalBytesDelivered is the measurement: every byte that crossed the link, whatever became
+        // of the request carrying it. A server that closes a connection it has decided is too old
+        // still delivered what it had written by then, and a request dropped because the byte
+        // budget was reached still received what it received. Those bytes took time the elapsed
+        // figure counts either way, so leaving them out of the numerator reports a link as slower
+        // than it is - on a slow link, where the cut-offs are, by a factor.
+        //
+        // budgetBytesReturned is what the byte budget is spent against, and counts only the
+        // requests that completed successfully and were counted. It governs how much a run asks
+        // for, and is deliberately left as it was: spending the budget on delivered bytes would
+        // trip it sooner and so change the succeeded and failed counts, which this is not about.
+        long totalBytesDelivered = 0;
+        long budgetBytesReturned = 0;
 
         var completedCount = 0;
         var succeededCount = 0;
@@ -875,7 +978,12 @@ public abstract class SpeedTestProviderBase : ISpeedTestService
         var totalCount = testData.Count();
 
         var throttler = new SemaphoreSlim(parallelTasks);
-        using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+
+        // The stop-and-report token is linked in alongside the caller's own, so one source ends the
+        // transfer however it was ended: by the caller, by the caller asking for what was measured,
+        // or by the byte budget below. What separates the three is read from the tokens where a
+        // request is classified, not from the exception each of them raises.
+        using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, stopAndReportToken);
 
         var testStartTimestamp = timeProvider.GetTimestamp();
 
@@ -884,26 +992,84 @@ public abstract class SpeedTestProviderBase : ISpeedTestService
         // endpoint first, and a probe sent before any data moved would time an idle line.
         using var probing = LoadedLatencyProbing.Start(this, server, LoadedLatencyProbeUrl(server, transferUrl), diagnostics, cancellationToken);
 
+        // The percentage last reported, so a report sent from inside a request - which knows what
+        // has arrived but not how far through the request list the transfer is - can repeat it
+        // rather than invent one. Read and written only under lockObject, inside
+        // ReportTransferProgress, so a repeat can never carry a value a later report has replaced.
+        var lastPercentageComplete = 0;
+
+        // The clock reading of the last report sent from inside a request, which paces them.
+        var lastLiveReportTimestamp = testStartTimestamp;
+
         // One place that composes a transfer's progress report, so the bytes, the clock and the
-        // running latency figures are always read together. Nothing is computed where no consumer
-        // asked for progress.
-        void ReportTransferProgress(int percentageComplete, long bytesProcessed)
+        // running latency figures are always read together. The figure is always the running
+        // delivered total, so what a consumer is shown while the test runs cannot be contradicted
+        // by what the result reports at the end of it. Nothing is computed where no consumer asked
+        // for progress. A null percentage repeats the last one reported.
+        void ReportTransferProgress(int? percentageComplete = null)
         {
             if (progress is null)
             {
                 return;
             }
 
-            (long? latencyMilliseconds, long? jitterMilliseconds) = probing?.Running ?? (null, null);
-
-            ReportProgress(progress, new SpeedTestProgress
+            // Composed and handed over under lockObject, so a consumer's IProgress is called one
+            // report at a time. Reports used to come only from the finally block below, which
+            // already holds this lock, so serialisation was free; a report from inside a running
+            // request holds nothing, and two threads reporting at once would let a consumer see
+            // the figure go backwards and would hand a live display two frames to draw together.
+            // The lock is re-entrant, so the callers that already hold it are unaffected. A slow
+            // consumer callback therefore holds up the request that is reporting, as an inline
+            // report already did before this. The percentage to repeat is read under the same lock,
+            // so a repeat composed while a finishing request reports a new one cannot write the
+            // older value back and send the percentage backwards.
+            lock (lockObject)
             {
-                PercentageComplete = percentageComplete,
-                BytesProcessed = bytesProcessed,
-                ElapsedMilliseconds = ElapsedMillisecondsSince(testStartTimestamp),
-                LatencyMilliseconds = latencyMilliseconds,
-                JitterMilliseconds = jitterMilliseconds
-            });
+                lastPercentageComplete = percentageComplete ?? lastPercentageComplete;
+
+                (long? latencyMilliseconds, long? jitterMilliseconds) = probing?.Running ?? (null, null);
+
+                ReportProgress(progress, new SpeedTestProgress
+                {
+                    PercentageComplete = lastPercentageComplete,
+                    BytesProcessed = Interlocked.Read(ref totalBytesDelivered),
+                    ElapsedMilliseconds = ElapsedMillisecondsSince(testStartTimestamp),
+                    LatencyMilliseconds = latencyMilliseconds,
+                    JitterMilliseconds = jitterMilliseconds
+                });
+            }
+        }
+
+        // A report from inside a request, so the live figure climbs while data is arriving rather
+        // than standing still until something finishes - which on a slow link, where one request
+        // can occupy a minute or more and then be cut off, is the whole of the transfer.
+        //
+        // Paced rather than sent per chunk: a consumer redraws on every report, and a fast link
+        // delivers thousands of chunks a second. The pacing is on the measurement's own clock, so
+        // a test holding that clock still sees exactly the reports the finishing requests send and
+        // no others.
+        void ReportLiveFigure()
+        {
+            if (progress is null)
+            {
+                return;
+            }
+
+            var last = Interlocked.Read(ref lastLiveReportTimestamp);
+
+            if (ElapsedMillisecondsSince(last) < LiveFigureIntervalMilliseconds)
+            {
+                return;
+            }
+
+            // Whichever request wins the exchange sends the report; the ones that lose it have
+            // nothing to add, because the figure is the shared running total rather than theirs.
+            if (Interlocked.CompareExchange(ref lastLiveReportTimestamp, timeProvider.GetTimestamp(), last) != last)
+            {
+                return;
+            }
+
+            ReportTransferProgress();
         }
 
         // Create and execute tasks to process the test data in parallel.
@@ -911,8 +1077,18 @@ public abstract class SpeedTestProviderBase : ISpeedTestService
 
         var tasks = testData.Select(async data =>
         {
-            var bytesReturned = 0;
+            var bytesDelivered = 0L;
             var requestFailed = false;
+
+            // Called by the work itself as each chunk crosses the link, rather than totalled and
+            // returned when the request ends: a request that ends badly never returns, and
+            // everything it carried would be thrown away with it.
+            void RecordBytesDelivered(int count)
+            {
+                bytesDelivered += count;
+                Interlocked.Add(ref totalBytesDelivered, count);
+                ReportLiveFigure();
+            }
 
             // A request still waiting its turn when the test ends was never sent, so it has nothing
             // to report; everything below is only meaningful once it has started.
@@ -934,6 +1110,12 @@ public abstract class SpeedTestProviderBase : ISpeedTestService
                 // Limit concurrent executions by waiting for a permit from the semaphore.
                 await throttler.WaitAsync(cts.Token).ConfigureAwait(false);
 
+                // SemaphoreSlim.WaitAsync can return a permit after its token was cancelled, when a
+                // Release lands before the cancelled waiter is dequeued. Checked again here, before
+                // the request counts as started, so a request the test ended while it waited its
+                // turn is never sent and leaves no record.
+                cts.Token.ThrowIfCancellationRequested();
+
                 sequence = Interlocked.Increment(ref sequenceIssued);
                 startedAt = timeProvider.GetLocalNow().DateTime;
                 startTimestamp = timeProvider.GetTimestamp();
@@ -944,8 +1126,9 @@ public abstract class SpeedTestProviderBase : ISpeedTestService
                 // request's duration.
                 requestStarted = true;
 
-                // Perform the work and retrieve the processed byte count.
-                bytesReturned = await doWork(httpClient, data, cts.Token).ConfigureAwait(false);
+                // Perform the work, which reports its bytes through RecordBytesDelivered as they
+                // move rather than returning a total at the end.
+                await doWork(httpClient, data, RecordBytesDelivered, cts.Token).ConfigureAwait(false);
                 elapsedMilliseconds = ElapsedMillisecondsSince(startTimestamp);
             }
             catch (Exception e)
@@ -959,15 +1142,17 @@ public abstract class SpeedTestProviderBase : ISpeedTestService
                 // A cancellation raised locally because the byte budget was reached is not a
                 // failure - the request is simply excluded. Any other exception (transport error,
                 // TLS, timeout, or a non-success HTTP status surfaced by EnsureSuccessStatusCode)
-                // is a per-request failure, aggregated into the counts rather than swallowed. Its
-                // bytes remain zero.
+                // is a per-request failure, aggregated into the counts rather than swallowed.
+                // Whatever it delivered before it failed is already in the measurement, because
+                // the link carried it; what the classification decides is only how the request
+                // itself is counted.
                 //
                 // wasCancelledLocally is read here without holding lockObject, deliberately. This is
                 // a benign race, not a correctness bug: bool loads are atomic in .NET, so the read
                 // cannot tear and staleness is the only failure mode to account for. It is also not
                 // what classifies the request - the authoritative exclusion is the
                 // `if (!cts.IsCancellationRequested)` gate in the finally block below, which guards
-                // completedCount, failedCount, succeededCount and totalBytesReturned alike.
+                // completedCount, failedCount, succeededCount and budgetBytesReturned alike.
                 //
                 // The flag is set and cts.Cancel() called on the next line inside the same lock the
                 // gate acquires, so no thread can pass the gate between those two statements. Any
@@ -982,7 +1167,7 @@ public abstract class SpeedTestProviderBase : ISpeedTestService
                 // Genuine user cancellation (the caller's token) is not a per-request failure
                 // either; it is named here rather than left to the rethrow below, so that the
                 // classification is complete before the clock is read.
-                if (!(e is OperationCanceledException && (wasCancelledLocally || cancellationToken.IsCancellationRequested)))
+                if (!(e is OperationCanceledException && (wasCancelledLocally || cancellationToken.IsCancellationRequested || stopAndReportToken.IsCancellationRequested)))
                 {
                     requestFailed = true;
                 }
@@ -1022,15 +1207,15 @@ public abstract class SpeedTestProviderBase : ISpeedTestService
                             else
                             {
                                 succeededCount++;
-                                totalBytesReturned += bytesReturned;
+                                budgetBytesReturned += bytesDelivered;
                             }
 
-                            if (totalBytesReturned >= maxBytes)
+                            if (budgetBytesReturned >= maxBytes)
                             {
                                 // Configured byte cap is hit.
                                 wasCancelledLocally = true;
                                 cts.Cancel();
-                                ReportTransferProgress(100, totalBytesReturned);
+                                ReportTransferProgress(100);
                             }
                             else
                             {
@@ -1042,7 +1227,7 @@ public abstract class SpeedTestProviderBase : ISpeedTestService
                                     // When a configured byte cap is in effect,
                                     // we should defer to the greater % complete value.
 
-                                    var percentageCompleteMaxBytes = (int)((double)totalBytesReturned / maxBytes * 100);
+                                    var percentageCompleteMaxBytes = (int)((double)budgetBytesReturned / maxBytes * 100);
 
                                     if (percentageCompleteMaxBytes > percentageComplete)
                                     {
@@ -1050,8 +1235,17 @@ public abstract class SpeedTestProviderBase : ISpeedTestService
                                     }
                                 }
 
-                                ReportTransferProgress(percentageComplete, totalBytesReturned);
+                                ReportTransferProgress(percentageComplete);
                             }
+                        }
+                        else if (bytesDelivered > 0)
+                        {
+                            // Excluded from the counts, but not from the figure: what it delivered
+                            // before the budget ended it is in the measurement, so a consumer is
+                            // shown it. Without this the result could report more than the last
+                            // figure the user saw. Nothing is reported for a request the budget
+                            // caught before it carried anything, which is most of them.
+                            ReportTransferProgress();
                         }
 
                         if (requestStarted && diagnostics is not null)
@@ -1079,6 +1273,13 @@ public abstract class SpeedTestProviderBase : ISpeedTestService
                                 {
                                     failureReason = CancelledByCaller;
                                 }
+                                else if (!wasCancelledLocally && stopAndReportToken.IsCancellationRequested)
+                                {
+                                    // The caller asked for what had been measured. Read after the
+                                    // byte budget, so a request the budget excluded keeps the
+                                    // reason that actually excluded it when both happen at once.
+                                    failureReason = RequestDiagnostic.StoppedByCaller;
+                                }
                                 else
                                 {
                                     failureReason = ByteBudgetReached;
@@ -1102,7 +1303,7 @@ public abstract class SpeedTestProviderBase : ISpeedTestService
                                 Sequence = sequence,
                                 Url = urlOf(data),
                                 Outcome = outcome,
-                                BytesProcessed = bytesReturned,
+                                BytesProcessed = bytesDelivered,
                                 ElapsedMilliseconds = elapsedMilliseconds,
                                 FailureReason = failureReason,
                                 FailureType = failureType
@@ -1117,8 +1318,6 @@ public abstract class SpeedTestProviderBase : ISpeedTestService
                     throttler.Release();
                 }
             }
-
-            return bytesReturned;
         }).ToArray();
 
         // Wait for all tasks to complete.
@@ -1133,7 +1332,7 @@ public abstract class SpeedTestProviderBase : ISpeedTestService
 
         return new SpeedTestResult
         {
-            BytesProcessed = totalBytesReturned,
+            BytesProcessed = Interlocked.Read(ref totalBytesDelivered),
             ElapsedMilliseconds = testElapsedMilliseconds,
             RequestsSucceeded = succeededCount,
             RequestsFailed = failedCount,
@@ -1197,6 +1396,36 @@ public abstract class SpeedTestProviderBase : ISpeedTestService
             Outcome = RequestOutcome.Succeeded,
             BytesProcessed = Encoding.UTF8.GetByteCount(response),
             ElapsedMilliseconds = elapsedMilliseconds
+        });
+    }
+
+    /// <summary>
+    /// Reports a request that was in flight when the caller asked the measurement to stop and
+    /// report what it had: cancelled rather than failed, and excluded from the counts.
+    /// </summary>
+    /// <remarks>
+    /// The reason is deliberately the library's own generic wording rather than anything about why
+    /// the caller stopped - see <see cref="RequestDiagnostic.StoppedByCaller"/>. No exception type
+    /// is recorded: the cancellation came from the caller's token, so naming
+    /// <c>TaskCanceledException</c> would dress a caller's decision up as a fault.
+    /// </remarks>
+    private static void ReportStoppedRequest(IProgress<RequestDiagnostic>? diagnostics, RequestKind kind, DateTime startedAt, int sequence, string url, long elapsedMilliseconds)
+    {
+        if (diagnostics is null)
+        {
+            return;
+        }
+
+        ReportProgress(diagnostics, new RequestDiagnostic
+        {
+            StartedAt = startedAt,
+            Kind = kind,
+            Sequence = sequence,
+            Url = url,
+            Outcome = RequestOutcome.Cancelled,
+            BytesProcessed = 0,
+            ElapsedMilliseconds = elapsedMilliseconds,
+            FailureReason = RequestDiagnostic.StoppedByCaller
         });
     }
 

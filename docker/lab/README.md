@@ -29,6 +29,7 @@ Both ports are the ones each server has always had, so existing commands and doc
 | `lab-properties.sh`       | Run when the OoklaServer image is built: turns off the settings that would make the server reach out to the internet on its own. |
 | `lab-properties.tests.sh` | Test matrix for `lab-properties.sh`.                                  |
 | `start.tests.sh`          | Test matrix for `start.sh` and the lab's wiring.                      |
+| `check-slow-links.sh`     | Runs NetPace against OoklaServer on every profile in turn, and reports what each run measured and whether it completed. |
 
 LibreSpeed needs no `Dockerfile`: it publishes an official image, which the lab uses unchanged.
 
@@ -152,6 +153,60 @@ The first latency probe straight after start is still a few seconds slower than 
 The profiles were confirmed on **Linux Docker Engine** (Ubuntu 24.04, kernel 6.8, Docker 29.9). That is the supported configuration.
 
 Docker Desktop for Windows and macOS run containers inside a virtual machine, and the upload direction needs the host kernel's `ifb` module, which is not guaranteed there. They are **unconfirmed**. If shaping cannot be applied in full on your host you are told so and nothing starts, so an unconfirmed platform costs you a clear error, never a wrong measurement.
+
+---
+
+## Checking every profile
+
+```bash
+./check-slow-links.sh
+```
+
+One command for the whole check. For each row of the table below it starts the lab on that profile with OoklaServer alone, runs the NetPace built from the working tree against it with the paired NetPace profile and `--fail-on total`, and records the outcome. It then runs once against the full-speed server. A run **completes** when `--fail-on total` exits 0: every test that ran had at least one request succeed.
+
+| Lab profile  | NetPace profile | Why |
+| ------------ | --------------- | --- |
+| `satellite`  | default         | A default run has to work on a link this ordinary. |
+| `flaky`      | default         | The same. |
+| `3g-bloated` | `small`         | At 1 Mbit the default's download alone takes well over ten minutes. |
+| `gprs`       | `tiny`          | At 40 kbit only `tiny`'s byte caps finish in minutes. |
+| `radio`      | `tiny`          | At 9.6 kbit only `tiny`'s byte caps finish in minutes. |
+
+The pairing is what the check means. If a row stops finishing in a reasonable time, raise it rather than quietly moving that row to a smaller NetPace profile.
+
+The summary names each profile, the NetPace profile used, pass or fail, the download and upload figures and the run time, and exits non-zero if any run did not complete. The figures are there because `--fail-on total` is a weak test on its own: a run can complete and still report a figure nothing like what the link carries, and only a figure beside the result shows it.
+
+```text
+LINK          NETPACE PROFILE   RESULT  DOWNLOAD         UPLOAD           RUN TIME
+satellite     default           PASS    8.52 Mbit/s      1.81 Mbit/s      4m 11s
+```
+
+Each run's result and its per-request diagnostics are kept in a new timestamped folder under `runs/`, which is git-ignored; the summary names the folder. The NetPace under test is built once into `.build/`, also git-ignored, so every run in a check measures the same binary.
+
+Nothing in the script bounds how long a run may take: a slow run on a slow link is the point, and a limit here would decide what NetPace's own limits are for. Expect tens of minutes for the whole check. Ctrl-C is safe at any point, and the lab is removed however the script ends.
+
+It is run by hand, not in CI: it needs Docker with `NET_ADMIN`, and it takes far too long for a pull request.
+
+### OoklaServer closes a connection that has lived too long
+
+Reading a run on a slow link means knowing this first, because it shapes nearly every result on this page.
+
+OoklaServer gives up on a connection once it has been open longer than `OoklaServer.maxConnectionSeconds` and closes it, whatever it was in the middle of writing. The setting is undocumented, and the stock build's value is not published; measuring it on these profiles puts it somewhere around 75 to 110 seconds. It is the server's doing rather than the client's: a plain `curl` of the same URL across the same link fails the same way, in the same place.
+
+```text
+random1500x1500.jpg -> 200 4468241 rc=0  in 26s     # 4.26 MiB, completed
+random2000x2000.jpg -> 200 7907738 rc=18 in 65s     # two bytes short, connection closed
+random2500x2500.jpg -> 200 10485737 rc=18 in 76s    # 10 MiB of 11.8, connection closed
+```
+
+So on a narrow link the ceiling on a single request is not how patient the client is, it is how long the server will keep the connection. Any link below roughly 13 Mbit has some of the default profile's downloads cut off this way.
+
+Where it shows:
+
+- **In the server log** (`docker logs netpace-lab-ooklaserver`): `connection is expired; forcibly closing`.
+- **In `netpace --diagnostics`**: the request's line reads `status=failed` with `reason="The response ended prematurely..."` and `exception=HttpIOException`, whose `HttpRequestError` is `ResponseEnded`. Its `bytes=` is what had arrived before the close, which is the point: those bytes count towards the reported figure, so a cut-off request lowers the figure only by the time it spent, not by everything it carried.
+
+**The lab keeps the stock value on purpose.** Raising it would make these profiles easier and the results prettier, and would measure something nobody has: public Ookla servers run the stock setting, so a NetPace that only works against a raised limit does not work. The limit is a condition to measure honestly under, not a lab artefact to remove.
 
 ---
 

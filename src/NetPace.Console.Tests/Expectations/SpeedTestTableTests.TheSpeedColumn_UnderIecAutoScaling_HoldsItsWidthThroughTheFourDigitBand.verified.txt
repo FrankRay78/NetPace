@@ -1,23 +1,23 @@
-﻿    Test         Done       Speed  Latency  Jitter
-✓   Pinging      100%                 3 ms    1 ms
-⠋   Downloading    0%                             
+﻿    Test          Done        Speed   Latency   Jitter
+✓   Pinging       100%                   3 ms     1 ms
+⠋   Downloading     0%                                
 
-    Test         Done       Speed  Latency  Jitter
-✓   Pinging      100%                 3 ms    1 ms
-⠋   Downloading   10%  8.00 Kibps    38 ms    3 ms
+    Test          Done        Speed   Latency   Jitter
+✓   Pinging       100%                   3 ms     1 ms
+⠋   Downloading    10%   8.00 Kibps     38 ms     3 ms
 
-    Test         Done       Speed  Latency  Jitter
-✓   Pinging      100%                 3 ms    1 ms
-⠋   Downloading   30%   500 Kibps    38 ms    3 ms
+    Test          Done        Speed   Latency   Jitter
+✓   Pinging       100%                   3 ms     1 ms
+⠋   Downloading    30%    500 Kibps     38 ms     3 ms
 
-    Test         Done       Speed  Latency  Jitter
-✓   Pinging      100%                 3 ms    1 ms
-⠋   Downloading   55%  1010 Kibps    38 ms    3 ms
+    Test          Done        Speed   Latency   Jitter
+✓   Pinging       100%                   3 ms     1 ms
+⠋   Downloading    55%   1010 Kibps     38 ms     3 ms
 
-    Test         Done       Speed  Latency  Jitter
-✓   Pinging      100%                 3 ms    1 ms
-⠋   Downloading   80%  2.00 Mibps    38 ms    3 ms
+    Test          Done        Speed   Latency   Jitter
+✓   Pinging       100%                   3 ms     1 ms
+⠋   Downloading    80%   2.00 Mibps     38 ms     3 ms
 
-    Test         Done       Speed  Latency  Jitter
-✓   Pinging      100%                 3 ms    1 ms
-⠋   Downloading   95%   500 Kibps    38 ms    3 ms
+    Test          Done        Speed   Latency   Jitter
+✓   Pinging       100%                   3 ms     1 ms
+⠋   Downloading    95%    500 Kibps     38 ms     3 ms

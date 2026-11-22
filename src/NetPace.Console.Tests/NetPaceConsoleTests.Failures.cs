@@ -39,6 +39,60 @@ public sealed partial class NetPaceConsoleTests
             await Verify(result.Output);
         }
 
+        [Fact]
+        public async Task All_Upload_Requests_Failed_Still_Reports_What_They_Delivered()
+        {
+            // Given a server is found and latency measures, but every upload request fails after
+            // delivering some data - the shape a link produces when a server keeps cutting its
+            // transfers off, and the one a reported figure counting delivered bytes makes possible.
+            var service = new ScriptedSpeedTester { UploadFactory = _ => ScriptedSpeedTester.AllFailedWithBytes(32) };
+            var host = HostWith(service);
+
+            // When (default settings)
+            var result = await host.RunAsync([]);
+
+            // Then a real speed is shown beside the failure count rather than a zero: the counts
+            // are what say the test failed, not the figure.
+            Assert.Equal(0, result.ExitCode);
+            await Verify(result.Output);
+        }
+
+        [Theory]
+        [InlineData("--csv")]
+        [InlineData("--json")]
+        [InlineData("--simple")]
+        [InlineData("--minimal")]
+        public async Task All_Requests_Failed_With_Bytes_Reports_The_Same_Figure_In_Every_Format(string format)
+        {
+            // Given the same all-failed-but-delivering upload.
+            var service = new ScriptedSpeedTester { UploadFactory = _ => ScriptedSpeedTester.AllFailedWithBytes(32) };
+            var host = HostWith(service);
+
+            // When
+            var result = await host.RunAsync([format]);
+
+            // Then every format carries the delivered figure beside the counts that say the test
+            // failed, so the formats do not disagree about what the link did.
+            Assert.Equal(0, result.ExitCode);
+            await Verify(result.Output).UseParameters(format);
+        }
+
+        [Fact]
+        public async Task FailOn_Total_Exits_One_When_Every_Request_Failed_Despite_Delivering_Bytes()
+        {
+            // Given every upload request fails after delivering some data, so the figure is real
+            // while the test is not.
+            var service = new ScriptedSpeedTester { UploadFactory = _ => ScriptedSpeedTester.AllFailedWithBytes(32) };
+            var host = HostWith(service);
+
+            // When
+            var result = await host.RunAsync(["--fail-on", "Total"]);
+
+            // Then --fail-on still fails the run: it reads the request counts, not the figure, so a
+            // speed beside zero successes does not mask a total failure.
+            Assert.Equal(1, result.ExitCode);
+        }
+
         [Theory]
         [InlineData("Total")]
         [InlineData("Partial")]

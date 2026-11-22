@@ -4,11 +4,12 @@
 Test Sponsor 1
 http://test1.com
 
-    Test    Done   Speed  Latenc  Jitter
-                               y        
-✓   Pingin  100%          100 ms   10 ms
+    Test    Done   Speed   Laten   Jitte
+                              cy       r
+✓   Pingi   100%            100      10 
+    ng                        ms      ms
+✓   Downl   100%   8.00     150      20 
+    oadin           Kbps      ms      ms
     g                                   
-✓   Downlo  100%   8.00   150 ms   20 ms
-    ading           Kbps                
-✓   Upload  100%   18.7   150 ms   20 ms
-    ing             Kbps                
+✓   Uploa   100%   18.7     150      20 
+    ding            Kbps      ms      ms
