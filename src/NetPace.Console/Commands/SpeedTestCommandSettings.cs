@@ -23,6 +23,14 @@ public sealed class SpeedTestCommandSettings
     public required TimeSpan Delay { get; init; }
 
     /// <summary>
+    /// How long one speed test run may take, from choosing a server to the end of the upload test.
+    /// Always a positive duration: a run always has a limit, and a user who wants a longer run sets
+    /// a longer one. Each run of <c>--count</c> or <c>--loop</c> gets it afresh, and
+    /// <see cref="Delay"/> does not count towards it.
+    /// </summary>
+    public required TimeSpan TimeLimit { get; init; }
+
+    /// <summary>
     /// Display output as a single CSV row.
     /// </summary>
     public required bool CSV { get; init; }

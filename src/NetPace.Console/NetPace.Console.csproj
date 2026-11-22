@@ -69,7 +69,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <EmbeddedResource Include="slant.flf" />
 	<InternalsVisibleTo Include="NetPace.Console.Tests" />
   </ItemGroup>
 

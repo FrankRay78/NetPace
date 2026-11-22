@@ -42,8 +42,8 @@ public sealed class SpeedTestTableTests
         };
 
     /// <summary>
-    /// A transfer result. A transfer whose every request failed moved no bytes, which is what makes
-    /// its speed a zero rather than a figure.
+    /// A transfer result. One whose every request failed is given no bytes here, so its speed reads
+    /// as a zero; a real one can carry what its requests moved before they failed.
     /// </summary>
     private static SpeedTestResult Transfer(int succeeded, int failed, LatencyTestResult? latency) =>
         new()

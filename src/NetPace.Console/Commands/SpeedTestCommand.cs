@@ -7,7 +7,7 @@ using NetPace.Core;
 
 namespace NetPace.Console.Commands;
 
-public sealed class SpeedTestCommand(IAnsiConsole console, ErrorOutput errorOutput, NoticeOutput noticeOutput, ISpeedTestService speedTestClient, IClock clock, IClientInfoProvider clientInfoProvider, IDiagnosticRecorder recorder, IWaiter waiter, ILiveDisplayRefresh liveDisplayRefresh, Theme theme)
+public sealed class SpeedTestCommand(IAnsiConsole console, ErrorOutput errorOutput, NoticeOutput noticeOutput, ISpeedTestService speedTestClient, IClock clock, IClientInfoProvider clientInfoProvider, IDiagnosticRecorder recorder, IWaiter waiter, IRunTimeLimit runTimeLimit, ILiveDisplayRefresh liveDisplayRefresh, Theme theme)
 {
     /// <summary>
     /// What the user is told about a request abandoned at its own timeout: one composed line for
@@ -136,9 +136,17 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ErrorOutput errorOutp
                     }
                 }
 
+                // Started here rather than once for the whole invocation, and disposed before the
+                // next pause: every test gets the limit afresh, and the wait between tests is not
+                // billed to either of the tests it sits between. A run cut short at the limit is
+                // not a failure: the writer reports what was measured and the run carries on to the
+                // next test. A limit reached before a server was chosen is the exception, ending
+                // the run as one with no server available.
+                using var limit = runTimeLimit.Start(settings.TimeLimit);
+
                 try
                 {
-                    var outcome = await writer.PerformSpeedTestAsync(initialSpeedTest: test == 0, console, clock, clientInfoProvider, recorder, speedTestClient, settings, cancellationToken);
+                    var outcome = await writer.PerformSpeedTestAsync(initialSpeedTest: test == 0, console, clock, clientInfoProvider, recorder, speedTestClient, settings, cancellationToken, limit.Token);
                     if (FailOnTriggered(outcome, settings)) return 1;
                 }
                 catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)

@@ -5,8 +5,8 @@
 \e[1;38;5;11mTest Sponsor 1\e[0m
 http://test1.com
 
-\e[?25l    Test         Done      Speed  Latency  Jitter   Failed
-\e[38;5;2m✓\e[0m   Pinging      \e[38;5;2m100%\e[0m              100 ms    0 ms         
-\e[38;5;11m!\e[0m   Downloading  \e[38;5;2m100%\e[0m  8.00 Kbps                   \e[38;5;11m1 of 10\e[0m
-\e[38;5;11m⠋\e[0m   Uploading      0%                              \e[38;5;11m       \e[0m
+\e[?25l    Test          Done       Speed   Latency   Jitter    Failed
+\e[38;5;2m✓\e[0m   Pinging       \e[38;5;2m100%\e[0m                100 ms     0 ms          
+\e[38;5;11m!\e[0m   Downloading   \e[38;5;2m100%\e[0m   8.00 Kbps                      \e[38;5;11m1 of 10\e[0m
+\e[38;5;11m⠋\e[0m   Uploading       0%                                  \e[38;5;11m       \e[0m
 \e[?25h

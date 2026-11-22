@@ -284,6 +284,38 @@ public sealed class LibreSpeedtestTests
     }
 
     [Fact]
+    public async Task GetDownloadSpeedAsync_WhenTheServerClosesTheResponsePartway_CountsWhatArrived()
+    {
+        // Given a LibreSpeed server that hands over 4 KiB of a download and then closes the
+        // connection, which is a server's doing and so reaches every provider alike.
+        const int bytesBeforeCutOff = 4096;
+
+        using var mockHttp = new MockHttpMessageHandler();
+        mockHttp.When($"{InstallUrl}backend/empty.php")
+                .Respond(_ => EmptyAnswer());
+        mockHttp.When($"{InstallUrl}backend/garbage.php")
+                .Respond(_ => new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = new StreamContent(new CutOffResponseStream(bytesBeforeCutOff))
+                });
+
+        var settings = new LibreSpeedtestSettings(Profile.Tiny) with
+        {
+            LatencyTest = new() { LoadedLatencyEnabled = false },
+            DownloadRequestCount = 1,
+        };
+        var speedtest = new LibreSpeedtest(settings, mockHttp.ToHttpClient(), new DelayProviderStub());
+
+        // When
+        var result = await speedtest.GetDownloadSpeedAsync(ServerAt(InstallUrl));
+
+        // Then a LibreSpeed run reports what arrived, as an Ookla run does.
+        result.BytesProcessed.ShouldBe(bytesBeforeCutOff);
+        result.RequestsSucceeded.ShouldBe(0);
+        result.RequestsFailed.ShouldBe(1);
+    }
+
+    [Fact]
     public async Task GetUploadSpeedAsync_AgainstALibreSpeedServer_PostsToThePingEndpointAndReportsBytes()
     {
         // SCENARIO: LibreSpeed run reports every measurement

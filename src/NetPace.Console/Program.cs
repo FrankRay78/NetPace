@@ -34,6 +34,24 @@ public static class Program
     internal const int MaximumConnections = 32;
 
     /// <summary>
+    /// How long one speed test run may take when <c>--time-limit</c> is not given. On by default,
+    /// so a scheduled run is bounded without the user having to configure anything.
+    /// </summary>
+    internal static readonly TimeSpan DefaultTimeLimit = TimeSpan.FromMinutes(10);
+
+    /// <summary>
+    /// The one form <c>--time-limit</c> accepts, exactly hours, minutes and seconds. Shared by the
+    /// parser and <see cref="DefaultTimeLimitText"/>, so <c>--help</c> and the parser cannot come
+    /// to disagree about what the default is.
+    /// </summary>
+    private const string TimeLimitFormat = @"hh\:mm\:ss";
+
+    /// <summary>
+    /// <see cref="DefaultTimeLimit"/> written the way the option accepts it.
+    /// </summary>
+    internal static string DefaultTimeLimitText => DefaultTimeLimit.ToString(TimeLimitFormat, CultureInfo.InvariantCulture);
+
+    /// <summary>
     /// Create the RootCommand with System.CommandLine.
     /// </summary>
     /// <remarks>
@@ -67,6 +85,24 @@ public static class Program
             Description = "Time between multiple speed tests (HH:MM:SS).",
             DefaultValueFactory = _ => TimeSpan.Zero
         };
+
+        // Taken as a string rather than an Option<TimeSpan> so that every rejected value lands on
+        // one message naming the form that works. An Option<TimeSpan> reads a bare 600 as six
+        // hundred days and binds it without complaint, which is the one wrong answer a scheduled
+        // run has no way of noticing.
+        var timeLimitOption = new Option<string>("--time-limit")
+        {
+            Description = "Stop a speed test run after this long (HH:MM:SS, up to 23:59:59).\nA run that reaches the limit reports what it measured up to then.\nEach run of --count or --loop gets the limit afresh, and --delay is not counted.",
+            DefaultValueFactory = _ => DefaultTimeLimitText
+        };
+        timeLimitOption.Validators.Add(result =>
+        {
+            var value = result.GetValueOrDefault<string>();
+            if (!TryParseTimeLimit(value, out _))
+            {
+                result.AddError(TimeLimitError(value));
+            }
+        });
 
         var csvOption = new Option<bool>("--csv")
         {
@@ -316,6 +352,7 @@ public static class Program
         command.Options.Add(loopOption);
         command.Options.Add(countOption);
         command.Options.Add(delayOption);
+        command.Options.Add(timeLimitOption);
         command.Options.Add(csvOption);
         command.Options.Add(noCSVHeaderOption);
         command.Options.Add(jsonOption);
@@ -360,6 +397,7 @@ public static class Program
                     Loop = parseResult.GetValue(loopOption),
                     Count = parseResult.GetValue(countOption),
                     Delay = parseResult.GetValue(delayOption),
+                    TimeLimit = ParseTimeLimit(parseResult.GetValue(timeLimitOption)),
                     CSV = parseResult.GetValue(csvOption),
                     NoCSVHeader = parseResult.GetValue(noCSVHeaderOption),
                     Json = parseResult.GetValue(jsonOption),
@@ -405,6 +443,7 @@ public static class Program
                 var clock = serviceProvider.GetRequiredService<IClock>();
                 var clientInfoProvider = serviceProvider.GetRequiredService<IClientInfoProvider>();
                 var waiter = serviceProvider.GetRequiredService<IWaiter>();
+                var runTimeLimit = serviceProvider.GetRequiredService<IRunTimeLimit>();
                 var liveDisplayRefresh = serviceProvider.GetRequiredService<ILiveDisplayRefresh>();
 
                 // Switched off, nothing is recorded and nothing is written - so no call site
@@ -454,7 +493,7 @@ public static class Program
                 recorder.Record("run.invocation", ("args", string.Join(' ', args)));
 
                 // Create and execute command
-                var command = new SpeedTestCommand(ansiConsole, errorOutput, serviceProvider.GetRequiredService<NoticeOutput>(), speedTestService, clock, clientInfoProvider, recorder, waiter, liveDisplayRefresh, theme);
+                var command = new SpeedTestCommand(ansiConsole, errorOutput, serviceProvider.GetRequiredService<NoticeOutput>(), speedTestService, clock, clientInfoProvider, recorder, waiter, runTimeLimit, liveDisplayRefresh, theme);
                 return await command.ExecuteAsync(settings, cancellationToken);
             }
             catch (Exception ex)
@@ -567,6 +606,35 @@ public static class Program
         LibreSpeedtestSettings libreSpeed => new LibreSpeedtest(libreSpeed),
         _ => throw new ArgumentOutOfRangeException(nameof(settings), settings.GetType().Name, "No speed test provider is registered for these settings."),
     };
+
+    /// <summary>
+    /// Parse a <c>--time-limit</c> value the way its validator does: hours, minutes and seconds,
+    /// culture independent, and a duration of more than nothing.
+    /// </summary>
+    /// <remarks>
+    /// Exactly <c>hh:mm:ss</c>, because <see cref="TimeSpan"/>'s own parsing reads shorter forms
+    /// as something else: <c>600</c> as six hundred days and <c>10:00</c> as ten hours, so a user
+    /// asking for ten minutes would get no limit worth the name. <c>--delay</c> accepts any
+    /// <see cref="TimeSpan"/> form; only this option is strict.
+    /// </remarks>
+    private static bool TryParseTimeLimit(string? value, out TimeSpan limit) =>
+        TimeSpan.TryParseExact(value, TimeLimitFormat, CultureInfo.InvariantCulture, out limit) && limit > TimeSpan.Zero;
+
+    /// <summary>
+    /// The requested run time limit. A value that is present but will not parse means the
+    /// validator never ran, and throwing beats bounding a run by a duration nobody asked for.
+    /// </summary>
+    private static TimeSpan ParseTimeLimit(string? value) =>
+        TryParseTimeLimit(value, out var limit)
+            ? limit
+            : throw new ArgumentException(TimeLimitError(value));
+
+    /// <summary>
+    /// What a <c>--time-limit</c> value that will not parse is reported as, by the validator and by
+    /// <see cref="ParseTimeLimit"/> alike.
+    /// </summary>
+    private static string TimeLimitError(string? value) =>
+        $"--time-limit must be written as HH:MM:SS, from 00:00:01 to 23:59:59, such as {DefaultTimeLimitText}, but was '{value}'.";
 
     /// <summary>
     /// Parse a <c>--connections</c> value the way its validator does: digits only, culture
@@ -719,6 +787,11 @@ public static class Program
         // Needed by both stacks: a person running either one wants the live displays to redraw as
         // the measurement goes. Only the test host turns that off, so a capture holds one frame.
         services.AddSingleton<ILiveDisplayRefresh, LiveDisplayRefresh>();
+
+        // Needed by both stacks: a run is bounded by a real clock whichever speed tester is behind
+        // it, --test included. Only the test host replaces it, so a suite does not wait the limit
+        // out to watch it fire.
+        services.AddSingleton<IRunTimeLimit, RunTimeLimit>();
 
         if (args != null && args.Contains("--test"))
         {

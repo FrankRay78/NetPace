@@ -18,14 +18,15 @@ internal static class SimpleLines
     /// Writes the figures of one completed run to <paramref name="console"/>.
     /// </summary>
     /// <param name="console">Where the lines go.</param>
-    /// <param name="latency">The chosen server's measured latency.</param>
+    /// <param name="latency">
+    /// The chosen server's measured latency, or <c>null</c> where none was measured.
+    /// </param>
     /// <param name="outcome">What the transfers measured.</param>
     /// <param name="settings">What the run was asked for.</param>
-    /// <exception cref="ArgumentNullException">Any argument is <c>null</c>.</exception>
-    public static void Write(IAnsiConsole console, LatencyTestResult latency, SpeedTestOutcome outcome, SpeedTestCommandSettings settings)
+    /// <exception cref="ArgumentNullException"><paramref name="console"/>, <paramref name="outcome"/> or <paramref name="settings"/> is <c>null</c>.</exception>
+    public static void Write(IAnsiConsole console, LatencyTestResult? latency, SpeedTestOutcome outcome, SpeedTestCommandSettings settings)
     {
         ArgumentNullException.ThrowIfNull(console);
-        ArgumentNullException.ThrowIfNull(latency);
         ArgumentNullException.ThrowIfNull(outcome);
         ArgumentNullException.ThrowIfNull(settings);
 
@@ -33,9 +34,9 @@ internal static class SimpleLines
         // every line the same way whichever run wrote it. None of them carries the time: this
         // format keeps the shape speedtest-cli --simple writes, and --minimal is where
         // a timestamped line per run comes from.
-        if (!settings.NoLatency)
+        if (latency is LatencyTestResult measured)
         {
-            console.WriteLine($"Ping: {latency.LatencyMilliseconds.ToString(CultureInfo.InvariantCulture)} ms");
+            console.WriteLine($"Ping: {measured.LatencyMilliseconds.ToString(CultureInfo.InvariantCulture)} ms");
         }
         if (outcome.Download is SpeedTestResult download)
         {

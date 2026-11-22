@@ -41,6 +41,7 @@ public sealed class CommandLineTestHost
     private readonly int consoleWidth;
     private readonly bool _interactive;
     private readonly bool _recordColour;
+    private readonly bool _unicode;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="CommandLineTestHost"/> class.
@@ -65,12 +66,18 @@ public sealed class CommandLineTestHost
     /// colour an element is drawn in. Turn it on only to assert something about colour itself, and
     /// pass the captured output through <see cref="AnsiSnapshot.Readable"/> before snapshotting it.
     /// </param>
-    public CommandLineTestHost(IServiceCollection? services, int consoleWidth = UnlimitedWidth, bool interactive = false, bool recordColour = false)
+    /// <param name="unicode">
+    /// Whether the run sees a console that can draw Unicode. Defaults to <c>true</c>, what a modern
+    /// terminal reports. Pass <c>false</c> for the legacy console that can draw only ASCII, so a
+    /// test can read what NetPace writes in place of the characters it cannot draw.
+    /// </param>
+    public CommandLineTestHost(IServiceCollection? services, int consoleWidth = UnlimitedWidth, bool interactive = false, bool recordColour = false, bool unicode = true)
     {
         serviceCollection = services ?? new ServiceCollection();
         this.consoleWidth = consoleWidth;
         _interactive = interactive;
         _recordColour = recordColour;
+        _unicode = unicode;
     }
 
     /// <summary>
@@ -131,6 +138,11 @@ public sealed class CommandLineTestHost
         // the same way.
         serviceCollection.TryAddSingleton<ILiveDisplayRefresh, NoRefreshStub>();
 
+        // And a run time limit no test ever reaches, so a run that does not care about the limit
+        // behaves as it did before there was one. A test about the limit registers a
+        // RecordingRunTimeLimit of its own and reaches it when it chooses.
+        serviceCollection.TryAddSingleton<IRunTimeLimit>(new RecordingRunTimeLimit());
+
         // Default SpeedTestSettingsAccessor (matches production DI). Tests that want to
         // inspect the bound settings register their own instance before calling RunAsync.
         serviceCollection.TryAddSingleton<SpeedTestSettingsAccessor>();
@@ -157,6 +169,7 @@ public sealed class CommandLineTestHost
     private TestConsole CreateConsole()
     {
         var console = new TestConsole().Width(consoleWidth);
+        console.Profile.Capabilities.Unicode = _unicode;
 
         if (_recordColour)
         {

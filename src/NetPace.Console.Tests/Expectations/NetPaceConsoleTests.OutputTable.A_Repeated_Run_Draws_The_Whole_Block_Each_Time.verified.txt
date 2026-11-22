@@ -4,17 +4,17 @@
 Test Sponsor 1
 http://test1.com
 
-    Test         Done      Speed  Latency  Jitter
-✓   Pinging      100%              100 ms   10 ms
-✓   Downloading  100%  8.00 Kbps   150 ms   20 ms
-✓   Uploading    100%  18.7 Kbps   150 ms   20 ms
+    Test          Done       Speed   Latency   Jitter
+✓   Pinging       100%                100 ms    10 ms
+✓   Downloading   100%   8.00 Kbps    150 ms    20 ms
+✓   Uploading     100%   18.7 Kbps    150 ms    20 ms
                  
   Choosing server
                  
 Test Sponsor 1
 http://test1.com
 
-    Test         Done      Speed  Latency  Jitter
-✓   Pinging      100%              100 ms   10 ms
-✓   Downloading  100%  8.00 Kbps   150 ms   20 ms
-✓   Uploading    100%  18.7 Kbps   150 ms   20 ms
+    Test          Done       Speed   Latency   Jitter
+✓   Pinging       100%                100 ms    10 ms
+✓   Downloading   100%   8.00 Kbps    150 ms    20 ms
+✓   Uploading     100%   18.7 Kbps    150 ms    20 ms

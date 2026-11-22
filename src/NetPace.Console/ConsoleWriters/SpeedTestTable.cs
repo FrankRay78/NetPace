@@ -27,9 +27,10 @@ namespace NetPace.Console.ConsoleWriters;
 /// next run.
 /// </para>
 /// <para>
-/// Every column is drawn at every width. A window too narrow for the table wraps it rather than
-/// dropping a figure the user asked to see, which is the one thing a narrow window must not do:
-/// a missing column reads as a measurement that was never taken.
+/// Down to about twenty-five characters, every column is drawn. A window too narrow for the
+/// table wraps it rather than dropping a figure the user asked to see, because a missing column
+/// reads as a measurement that was never taken. Narrower than that, the console library reduces
+/// the table itself and a column can go.
 /// </para>
 /// </remarks>
 /// <param name="theme">The colours and emphasis to draw in.</param>
@@ -74,9 +75,11 @@ internal sealed class SpeedTestTable(
 
     /// <summary>
     /// The blank between one column and the next, so a column's figures do not run into the
-    /// column beside it.
+    /// column beside it. Three rather than two: at two, <c>100%</c> and <c>8.00 Mbps</c> stood
+    /// close enough to read as one figure, as did <c>4 ms</c> and <c>1 of 150</c>, and the third
+    /// blank separates them while still leaving an auto-scaled table inside 80 characters.
     /// </summary>
-    private const int ColumnGap = 2;
+    private const int ColumnGap = 3;
 
     /// <summary>The headings of the columns whose width is held between draws.</summary>
     private const string DoneHeading = "Done";
@@ -120,6 +123,23 @@ internal sealed class SpeedTestTable(
         return row;
     }
 
+    /// <summary>
+    /// Drops <paramref name="row"/> from the table, for a measurement that turned out not to run
+    /// at all.
+    /// </summary>
+    /// <remarks>
+    /// A row is added for every test the run was asked for, before any of them has started, so
+    /// that the screen shows what is coming rather than filling in from blank. A test the run then
+    /// never reached - because its turn came after the run's time limit - is not a measurement that
+    /// failed, and leaving its row behind with a spinner or a cross would say it was. Dropping it
+    /// leaves the table reading exactly as it does for a test nobody asked for.
+    /// </remarks>
+    public void Remove(SpeedTestTableRow row)
+    {
+        rows.Remove(row);
+        Changed();
+    }
+
     /// <summary>Called by a row when something it shows has changed.</summary>
     /// <remarks>
     /// Also what turns the spinner, so the screen moves whenever the measurement has something new
@@ -135,19 +155,27 @@ internal sealed class SpeedTestTable(
     internal string SpeedOf(SpeedTestProgress progress) => progress.GetSpeedString(unit, unitSystem, scale);
 
     /// <inheritdoc/>
+    /// <remarks>
+    /// A table with no rows left takes no room, for the reason <see cref="Render"/> draws nothing.
+    /// </remarks>
     protected override Measurement Measure(RenderOptions options, int maxWidth)
     {
         ArgumentNullException.ThrowIfNull(options);
 
-        return ((IRenderable)Build(options.Unicode)).Measure(options, maxWidth);
+        return rows.Count == 0 ? new Measurement(0, 0) : ((IRenderable)Build(options.Unicode)).Measure(options, maxWidth);
     }
 
     /// <inheritdoc/>
+    /// <remarks>
+    /// Once every row has been removed, because the run's time limit came before any test had
+    /// anything to show, nothing is drawn: headings over no figures would read as a result with
+    /// its figures missing, where <c>--simple</c> writes nothing for the same run.
+    /// </remarks>
     protected override IEnumerable<Segment> Render(RenderOptions options, int maxWidth)
     {
         ArgumentNullException.ThrowIfNull(options);
 
-        return ((IRenderable)Build(options.Unicode)).Render(options, maxWidth);
+        return rows.Count == 0 ? [] : ((IRenderable)Build(options.Unicode)).Render(options, maxWidth);
     }
 
     /// <summary>
@@ -355,8 +383,8 @@ internal sealed class SpeedTestTable(
     /// <summary>
     /// A figure in milliseconds as a cell carries it, or nothing at all where it was not measured.
     /// A blank cell says not measured; a zero would say measured as none. The Speed column is
-    /// deliberately the exception: a transfer whose every request failed shows <c>0 bps</c> rather
-    /// than a blank, because the mark and the Failed count beside it already say what happened,
+    /// deliberately the exception: a transfer whose every request failed shows what those requests
+    /// moved, <c>0 bps</c> where nothing arrived, rather than a blank, because the mark and the Failed count beside it already say what happened,
     /// and a blank speed on a finished row would read as a figure still to come.
     /// </summary>
     private static string Milliseconds(long? value) =>

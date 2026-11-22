@@ -296,8 +296,7 @@ public static class SpeedTestExtensions
     /// </summary>
     private static string FigureText(double speed)
     {
-        // A measurement of nothing, which is what an all-failed transfer reports: a bare zero
-        // rather than 0.00, because there is no measurement to show three figures of.
+        // A measurement of nothing, as when no byte arrived: a bare zero rather than 0.00, because there is no measurement to show three figures of.
         if (speed == 0)
         {
             return "0";
