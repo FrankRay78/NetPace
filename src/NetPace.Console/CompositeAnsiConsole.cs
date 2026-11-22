@@ -6,7 +6,13 @@ namespace NetPace.Console;
 /// An IAnsiConsole implementation that delegates to multiple inner consoles.
 /// Useful for writing output to multiple destinations (e.g., terminal + file).
 /// </summary>
-public sealed class CompositeAnsiConsole : IAnsiConsole, IDisposable
+/// <remarks>
+/// A composite borrows its destinations and owns none of them, so it is not disposable: whoever
+/// opened a destination closes it. A composite that closed its destinations would close the
+/// terminal console it was given as well as the file, and that console is one the caller was
+/// handed and goes on using.
+/// </remarks>
+public sealed class CompositeAnsiConsole : IAnsiConsole
 {
     private readonly IReadOnlyList<IAnsiConsole> _consoles;
     private readonly IAnsiConsole _primary;
@@ -29,20 +35,6 @@ public sealed class CompositeAnsiConsole : IAnsiConsole, IDisposable
     /// destination by what it is and never by its position here.
     /// </summary>
     internal IReadOnlyList<IAnsiConsole> Destinations => _consoles;
-
-    /// <summary>
-    /// Disposes all inner consoles that implement IDisposable.
-    /// </summary>
-    public void Dispose()
-    {
-        foreach (var console in _consoles)
-        {
-            if (console is IDisposable disposable)
-            {
-                disposable.Dispose();
-            }
-        }
-    }
 
     // Delegate properties to primary console
     public Spectre.Console.Profile Profile => _primary.Profile;
