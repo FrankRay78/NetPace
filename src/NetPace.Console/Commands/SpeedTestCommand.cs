@@ -7,7 +7,7 @@ using NetPace.Core;
 
 namespace NetPace.Console.Commands;
 
-public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService speedTestClient, IClock clock, IClientInfoProvider clientInfoProvider, IDiagnosticRecorder recorder, IWaiter waiter, ILiveDisplayRefresh liveDisplayRefresh, NoticeOutput notices, Theme theme)
+public sealed class SpeedTestCommand(IAnsiConsole console, ErrorOutput errorOutput, NoticeOutput noticeOutput, ISpeedTestService speedTestClient, IClock clock, IClientInfoProvider clientInfoProvider, IDiagnosticRecorder recorder, IWaiter waiter, IRunTimeLimit runTimeLimit, ILiveDisplayRefresh liveDisplayRefresh, Theme theme)
 {
     /// <summary>
     /// What the user is told about a request abandoned at its own timeout: one composed line for
@@ -22,6 +22,12 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
     /// where only a cancellation, <c>--fail-on</c> or an operational fault stops the run.
     /// </summary>
     private const int Unbounded = -1;
+
+    /// <summary>
+    /// Whether the user has already been told that the diagnostics file could not be written, so a
+    /// run that keeps failing to write says it once.
+    /// </summary>
+    private bool _diagnosticWriteReported;
 
     /// <summary>
     /// Executes the speed test command using the provided settings.
@@ -47,7 +53,7 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
             // threw an operational fault is exactly when its diagnostics matter most. exitCode is
             // 1 here when RunAsync threw, which matches what the top-level handler returns.
             recorder.Record("run.end", ("exit", exitCode.ToString(CultureInfo.InvariantCulture)));
-            FlushDiagnostics();
+            FlushDiagnostics(settings);
         }
     }
 
@@ -71,15 +77,29 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
             // these writers while the default human-readable output goes on wrapping to fit the
             // screen. CompositeAnsiConsole delegates Profile to its primary, so the terminal leg
             // shares this profile object and the lift reaches it wherever the composite is built.
-            // It covers the error lines this command writes once it is running; a parse or
-            // validation error reported before the command exists is written at the unlifted width.
+            // An error needs no part of this: it goes to the error stream, whose console is given
+            // no width limit at all.
             // --file output has never wrapped: FileConsole reports no width limit of its own.
             // Default output goes the same way wherever it cannot redraw, because there it writes
             // the --simple lines and those are the same contract whichever switch asked for them.
             console.Profile.Width = int.MaxValue;
         }
 
-        if (settings.Quiet || !string.IsNullOrWhiteSpace(settings.OutputFile))
+        // The one destination this run opens, and so the only one it closes. The terminal console
+        // was handed to this command by its host and outlives it: the host writes an operational
+        // fault to the console it registered once this method has thrown. Closing what it was
+        // handed would break that line for any host whose console is disposable, which is what
+        // the test host demonstrates; Spectre's own facade is not, so the shipped CLI never lost
+        // it. Null wherever the run writes to no file.
+        //
+        // Whether the target already holds content is read here, as the file is opened, once per
+        // run and before this run has written anything to it: a run that appends is itself about
+        // to add content, so asking any later would answer about this run's own output.
+        using FileConsole? openedFile = string.IsNullOrWhiteSpace(settings.OutputFile)
+            ? null
+            : new FileConsole(settings.OutputFile, settings.FileModeValue, StartsEmpty(settings));
+
+        if (settings.Quiet || openedFile is not null)
         {
             var consoles = new List<IAnsiConsole>();
 
@@ -89,100 +109,113 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
                 consoles.Add(console);
             }
 
-            if (!string.IsNullOrWhiteSpace(settings.OutputFile))
+            if (openedFile is not null)
             {
-                // Add file output. Whether the target already holds content is read here, once per
-                // run and before the file is opened: a run that appends is itself about to add
-                // content, so asking any later would answer about this run's own output.
-                consoles.Add(new FileConsole(settings.OutputFile, settings.FileModeValue, StartsEmpty(settings)));
+                // Add file output.
+                consoles.Add(openedFile);
             }
 
             // Composite console based on output targets.
             console = new CompositeAnsiConsole(console, consoles.ToArray());
         }
 
-        try
+        // How many tests this run performs. The three ways to ask for a run - once, --count
+        // times, or --loop until something stops it - differ in nothing below but this, so
+        // every rule a run obeys is written once: what a failed test does, what --fail-on does,
+        // what a cancellation does, which faults end the run, and when the pause happens.
+        // --count carries no validator, so a count below one arrives here and is floored at one
+        // test, which is also what keeps a user's -1 off the Unbounded sentinel.
+        int tests = settings.Loop ? Unbounded : Math.Max(settings.Count, 1);
+
+        // Whether any target the run was given went unmet. A target is refused alongside
+        // --loop and a count above one, so this only ever answers for one test; it is carried
+        // out of the loop all the same, rather than returned from inside it, so that the run
+        // ends where every other run ends.
+        var missedThreshold = false;
+
+        for (var test = 0; tests == Unbounded || test < tests; test++)
         {
-            // How many tests this run performs. The three ways to ask for a run - once, --count
-            // times, or --loop until something stops it - differ in nothing below but this, so
-            // every rule a run obeys is written once: what a failed test does, what --fail-on does,
-            // what a cancellation does, which faults end the run, and when the pause happens.
-            // --count carries no validator, so a count below one arrives here and is floored at one
-            // test, which is also what keeps a user's -1 off the Unbounded sentinel.
-            int tests = settings.Loop ? Unbounded : Math.Max(settings.Count, 1);
-
-            // Whether any target the run was given went unmet. A target is refused alongside
-            // --loop and a count above one, so this only ever answers for one test; it is carried
-            // out of the loop all the same, rather than returned from inside it, so that the run
-            // ends where every other run ends.
-            var missedThreshold = false;
-
-            for (var test = 0; tests == Unbounded || test < tests; test++)
+            // Pause between tests - before each one but the first, rather than after each one
+            // but the last, so where the run ends is stated only in the loop condition above:
+            // a pause waiting on the next test would have to ask whether there is one,
+            // repeating that bound and testing the sentinel the other way round.
+            if (test > 0)
             {
-                // Pause between tests - before each one but the first, rather than after each one
-                // but the last, so where the run ends is stated only in the loop condition above:
-                // a pause waiting on the next test would have to ask whether there is one,
-                // repeating that bound and testing the sentinel the other way round.
-                if (test > 0)
-                {
-                    try
-                    {
-                        await waiter.Delay(settings.Delay, cancellationToken);
-                    }
-                    catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-                    {
-                        // User requested cancellation.
-                        return 0;
-                    }
-                }
-
                 try
                 {
-                    var outcome = await writer.PerformSpeedTestAsync(initialSpeedTest: test == 0, console, clock, clientInfoProvider, recorder, speedTestClient, settings, cancellationToken);
-
-                    // Reported before --fail-on decides anything, so a run that trips both still
-                    // tells the user what the line fell short of, even though the exit code goes
-                    // to --fail-on.
-                    missedThreshold |= ReportMisses(outcome, settings);
-
-                    if (FailOnTriggered(outcome, settings)) return 1;
+                    await waiter.Delay(settings.Delay, cancellationToken);
                 }
                 catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
                 {
-                    // User requested cancellation. Nothing is reported about the targets: a run
-                    // stopped part-way measured nothing to hold to them.
+                    // User requested cancellation.
                     return 0;
                 }
-                catch (Exception e) when (OperationalFault.Matches(e))
-                {
-                    throw;
-                }
-                catch (Exception e)
-                {
-                    console.WriteErrorLine(theme, Describe(e));
-
-                    // No outcome survived the failure, so there is no figure to hold to any
-                    // target the run was given, and all of them are missed: a check that cannot
-                    // see the line is not a check that passed.
-                    missedThreshold |= ReportMisses(outcome: null, settings);
-
-                    if (FailOnRequested(settings)) return 1;
-                }
-
-                // Flushed per iteration so a long run reports as it goes and the buffer does
-                // not grow without bound.
-                FlushDiagnostics();
             }
 
-            return missedThreshold ? ThresholdCheck.MissedExitCode : 0;
-        }
-        finally
-        {
-            if (console is IDisposable disposable)
+            // Started here rather than once for the whole invocation, and disposed before the
+            // next pause: every test gets the limit afresh, and the wait between tests is not
+            // billed to either of the tests it sits between. A run cut short at the limit is
+            // not a failure: the writer reports what was measured and the run carries on to the
+            // next test. A limit reached before a server was chosen is the exception, ending
+            // the run as one with no server available.
+            using var limit = runTimeLimit.Start(settings.TimeLimit);
+
+            try
             {
-                disposable.Dispose();
+                var outcome = await writer.PerformSpeedTestAsync(console, clock, clientInfoProvider, recorder, speedTestClient, settings, cancellationToken, limit.Token);
+
+                // Reported before --fail-on decides anything, so a run that trips both still
+                // tells the user what the line fell short of, even though the exit code goes
+                // to --fail-on.
+                missedThreshold |= ReportMisses(outcome, settings);
+
+                if (FailOnTriggered(outcome, settings)) return 1;
             }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                // User requested cancellation. Nothing is reported about the targets: a run
+                // stopped part-way measured nothing to hold to them.
+                return 0;
+            }
+            catch (Exception e) when (OperationalFault.Matches(e))
+            {
+                throw;
+            }
+            catch (Exception e)
+            {
+                // The records this test produced are flushed before the error is written, so a
+                // reader of the error stream meets them in the order they explain the failure:
+                // what was attempted first, what went wrong last. Unless --diagnostics-file
+                // takes the records elsewhere, diagnostics and errors share the error stream,
+                // so their order on it is the order they are read in.
+                //
+                // From a finally, because the flush must not be able to cost the user the
+                // message. FlushDiagnostics absorbs the failure it is written for, but a
+                // writer that throws anything else would otherwise leave the test's own
+                // error unreported and replace it with a complaint about diagnostics.
+                try
+                {
+                    FlushDiagnostics(settings);
+                }
+                finally
+                {
+                    errorOutput.WriteLine(theme, Describe(e));
+                }
+
+                // No outcome survived the failure, so there is no figure to hold to any
+                // target the run was given, and all of them are missed: a check that cannot
+                // see the line is not a check that passed.
+                missedThreshold |= ReportMisses(outcome: null, settings);
+
+                if (FailOnRequested(settings)) return 1;
+            }
+
+            // Flushed per iteration so a long run reports as it goes and the buffer does
+            // not grow without bound.
+            FlushDiagnostics(settings);
         }
+
+        return missedThreshold ? ThresholdCheck.MissedExitCode : 0;
     }
 
     /// <summary>
@@ -240,26 +273,40 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
     }
 
     /// <summary>
-    /// Writes the buffered diagnostic records out. A stream that cannot be written is left
-    /// unreported rather than raised.
+    /// Writes the buffered diagnostic records out. A destination that cannot be written is never
+    /// raised, and is reported to the user only where there is somewhere to report it.
     /// </summary>
     /// <remarks>
     /// Diagnostics are a second stream alongside the result, so one that cannot be written must not
     /// decide the run's fate: raising here would turn a completed measurement into a non-zero exit,
     /// and from the <c>finally</c> in <see cref="ExecuteAsync"/> it would replace the very exception
-    /// the records were written to explain. Nothing is written about the failure either, because
-    /// there is nowhere to write it: the stream that would carry the message is the one that just
-    /// failed, and <see cref="RunAsync"/> has already torn the console down by the time the last
-    /// flush runs. The unwritten records stay buffered, so a later flush still carries them.
+    /// the records were written to explain. The unwritten records stay buffered, so a later flush
+    /// still carries them.
+    /// <para>
+    /// Where <c>--diagnostics-file</c> named the destination, the error stream is a different place
+    /// and says once which path failed, because a user who asked for a file and got none would
+    /// otherwise learn that only when they went looking for it. It says so as a notice, not an
+    /// error: the run succeeded, and a script scanning the error stream for errors must not read it
+    /// as failed. Nor does <c>--quiet</c> silence it, since <c>--quiet</c> leaves diagnostics alone. Under <c>--diagnostics</c> alone
+    /// there is nowhere to say it: the stream that would carry the message is the one that just
+    /// failed. At most once per run, so a <c>--loop</c> over a destination that is gone for
+    /// good does not fill the error stream with the same line.
+    /// </para>
     /// </remarks>
-    private void FlushDiagnostics()
+    /// <param name="settings">The settings the run was asked for, which name the destination.</param>
+    private void FlushDiagnostics(SpeedTestCommandSettings settings)
     {
         try
         {
             recorder.Flush();
         }
-        catch (IOException)
+        catch (IOException e)
         {
+            if (!_diagnosticWriteReported && !string.IsNullOrWhiteSpace(settings.DiagnosticsFile))
+            {
+                _diagnosticWriteReported = true;
+                noticeOutput.Writer.WriteLine($"The diagnostics could not be written to {settings.DiagnosticsFile}: {e.Message}");
+            }
         }
     }
 
@@ -296,7 +343,7 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ISpeedTestService spe
 
         foreach (string miss in misses)
         {
-            notices.Writer.WriteLine(miss);
+            noticeOutput.Writer.WriteLine(miss);
         }
 
         return misses.Count > 0;

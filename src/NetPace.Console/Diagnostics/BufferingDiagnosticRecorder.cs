@@ -1,8 +1,9 @@
 namespace NetPace.Console.Diagnostics;
 
 /// <summary>
-/// The recorder in play under <c>--diagnostics</c>: buffers formatted records and writes them to
-/// the diagnostic stream on <see cref="Flush"/>.
+/// The recorder in play whenever diagnostics are on: buffers formatted records and writes them on
+/// <see cref="Flush"/> to the writer it was given, which is the diagnostic stream under
+/// <c>--diagnostics</c> and the named file under <c>--diagnostics-file</c>.
 /// </summary>
 /// <remarks>
 /// Requests run many-way parallel, and <see cref="RecordAt"/> is the method they reach, so this

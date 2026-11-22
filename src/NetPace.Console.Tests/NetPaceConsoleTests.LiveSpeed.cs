@@ -143,7 +143,7 @@ public sealed partial class NetPaceConsoleTests
             Assert.Equal(0, instant.ExitCode);
             Assert.Equal(0, slow.ExitCode);
             Assert.Equal(instant.Output, slow.Output);
-            Assert.Contains("1 Mbps", RowFor("Downloading", slow.Output));
+            Assert.Contains("1.00 Mbps", RowFor("Downloading", slow.Output));
             Assert.Contains("500 Kbps", RowFor("Uploading", slow.Output));
         }
 

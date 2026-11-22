@@ -1,0 +1,7 @@
+﻿     Test          Done       Speed   Latency   Jitter
+-    Pinging         0%                               
+-    Downloading     0%                               
+
+     Test          Done       Speed   Latency   Jitter
+OK   Pinging       100%                  3 ms     1 ms
+-    Downloading     0%                               

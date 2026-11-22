@@ -14,9 +14,9 @@ namespace NetPace.Console.ConsoleWriters;
 /// exists for, which is a column of lines compared by eye.
 /// <para>
 /// The timestamp is always there rather than behind a switch, because a line in a running log is of
-/// little use without the time it was taken. A run that faults writes an unlabelled <c>Error:</c>
-/// line to the same stream instead, with no timestamp in front of it: this format is a quick
-/// shorthand, not a detailed log.
+/// little use without the time it was taken. A run that faults writes no line here at all: its
+/// unlabelled <c>Error:</c> line goes to the error stream, with no timestamp in front of it, this
+/// format being a quick shorthand rather than a detailed log.
 /// </para>
 /// </remarks>
 public sealed class MinimalConsoleWriter : IConsoleWriter
@@ -24,15 +24,15 @@ public sealed class MinimalConsoleWriter : IConsoleWriter
     /// <inheritdoc/>
     public bool MachineReadable => true;
 
-    public async Task<SpeedTestOutcome> PerformSpeedTestAsync(bool initialSpeedTest, IAnsiConsole console, IClock clock, IClientInfoProvider clientInfoProvider, IDiagnosticRecorder recorder, ISpeedTestService speedTestClient, SpeedTestCommandSettings settings, CancellationToken cancellationToken)
+    public async Task<SpeedTestOutcome> PerformSpeedTestAsync(IAnsiConsole console, IClock clock, IClientInfoProvider clientInfoProvider, IDiagnosticRecorder recorder, ISpeedTestService speedTestClient, SpeedTestCommandSettings settings, CancellationToken cancellationToken, CancellationToken timeLimitToken = default)
     {
         ArgumentNullException.ThrowIfNull(console);
         ArgumentNullException.ThrowIfNull(clock);
         ArgumentNullException.ThrowIfNull(settings);
 
         // Get the server to use for speed testing, then measure.
-        var fastest = await ServerSelector.GetServerAsync(speedTestClient, settings, recorder, cancellationToken);
-        var outcome = await Measurements.PerformAsync(speedTestClient, fastest, settings, recorder, cancellationToken);
+        (ChosenServer chosen, LatencyTestResult? latency) = await ServerSelector.GetServerAsync(speedTestClient, settings, recorder, cancellationToken, timeLimitToken);
+        var outcome = await Measurements.PerformAsync(speedTestClient, chosen.Server, latency, settings, recorder, cancellationToken, timeLimitToken);
 
         // The timestamp first, then a named field per figure in the order the tests ran. A test that
         // did not run contributes null rather than a field, so nothing here ever reports a zero for
@@ -40,7 +40,7 @@ public sealed class MinimalConsoleWriter : IConsoleWriter
         string?[] fields =
         [
             clock.Now.ToHumanReadable(),
-            settings.NoLatency ? null : $"Latency: {fastest.LatencyMilliseconds.ToString(CultureInfo.InvariantCulture)} ms",
+            latency is LatencyTestResult measured ? $"Latency: {measured.LatencyMilliseconds.ToString(CultureInfo.InvariantCulture)} ms" : null,
             outcome.Download is SpeedTestResult download ? $"Download: {download.GetFigure(settings)}" : null,
             outcome.Upload is SpeedTestResult upload ? $"Upload: {upload.GetFigure(settings)}" : null,
         ];

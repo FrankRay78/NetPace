@@ -25,6 +25,8 @@ public sealed class EnvironmentThemeProviderTests
     [InlineData("green", "green")]
     [InlineData("GREEN", "green")]
     [InlineData("plain", "plain")]
+    [InlineData("halloween", "halloween")]
+    [InlineData("HALLOWEEN", "halloween")]
     [InlineData("", "default")]
     [Theory]
     public void Resolve_ThemeVariableNamesATheme_SelectsIt(string requested, string expected)
@@ -41,14 +43,15 @@ public sealed class EnvironmentThemeProviderTests
     public void Resolve_ThemeVariableNamesNoTheme_SelectsTheDefaultThemeAndReportsTheValue()
     {
         // Given, When
-        var selection = Reading(("NETPACE_THEME", "halloween")).Resolve();
+        var selection = Reading(("NETPACE_THEME", "grene")).Resolve();
 
         // Then the value is handed back so the run can tell the user, rather than silently ignored.
         Assert.Same(Theme.Default, selection.Theme);
-        Assert.Equal("halloween", selection.UnrecognisedValue);
+        Assert.Equal("grene", selection.UnrecognisedValue);
     }
 
     [InlineData("green")]
+    [InlineData("halloween")]
     [InlineData("default")]
     [InlineData("")]
     [Theory]
@@ -79,10 +82,10 @@ public sealed class EnvironmentThemeProviderTests
     public void Resolve_NoColourAskedAndTheThemeNameIsWrong_StillReportsTheValue()
     {
         // Given, When
-        var selection = Reading(("NETPACE_THEME", "halloween"), ("NO_COLOR", "1")).Resolve();
+        var selection = Reading(("NETPACE_THEME", "grene"), ("NO_COLOR", "1")).Resolve();
 
         // Then the user hears about the typo even though the theme they named would not have shown.
         Assert.Same(Theme.Plain, selection.Theme);
-        Assert.Equal("halloween", selection.UnrecognisedValue);
+        Assert.Equal("grene", selection.UnrecognisedValue);
     }
 }

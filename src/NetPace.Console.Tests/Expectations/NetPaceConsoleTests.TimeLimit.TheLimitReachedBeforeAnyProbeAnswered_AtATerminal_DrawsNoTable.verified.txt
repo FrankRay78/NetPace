@@ -1,0 +1,7 @@
+﻿                 
+  Choosing server
+                 
+Deutsche Telekom
+http://cutshort.example.com/speedtest/upload.php
+
+

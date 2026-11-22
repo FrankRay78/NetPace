@@ -1,0 +1,2 @@
+﻿Ping: 24 ms
+Download: 0 bps (1 of 1 requests failed)

@@ -10,6 +10,10 @@ namespace NetPace.Core.Clients.Testing;
 /// nothing per-request for the mock to describe. A test that needs request records wants a double
 /// that reports records adding up to the totals it returns, because records invented here would
 /// contradict whatever the delegate was configured to produce.
+/// The stop-and-report token the latency, download and upload overloads take is accepted and not
+/// acted on, nor handed to the configured delegate: the delegate stands in for the whole
+/// measurement, so a test that needs a stop to cut a measurement short wants a double that reads
+/// the token itself.
 /// </remarks>
 public sealed class SpeedTestMock : ISpeedTestService
 {
@@ -138,7 +142,7 @@ public sealed class SpeedTestMock : ISpeedTestService
     }
 
     /// <inheritdoc/>
-    public Task<LatencyTestResult> GetServerLatencyAsync(IServer server, IProgress<LatencyTestProgress>? progress, IProgress<RequestDiagnostic>? diagnostics, CancellationToken cancellationToken = default)
+    public Task<LatencyTestResult> GetServerLatencyAsync(IServer server, IProgress<LatencyTestProgress>? progress, IProgress<RequestDiagnostic>? diagnostics, CancellationToken cancellationToken = default, CancellationToken stopAndReportToken = default)
     {
         if (GetServerLatencyAsyncFunc != null)
             return GetServerLatencyAsyncFunc(server, progress, cancellationToken);
@@ -146,7 +150,7 @@ public sealed class SpeedTestMock : ISpeedTestService
     }
 
     /// <inheritdoc/>
-    public Task<LatencyTestResult> GetServerLatencyAsync(string serverUrl, IProgress<LatencyTestProgress>? progress, IProgress<RequestDiagnostic>? diagnostics, CancellationToken cancellationToken = default)
+    public Task<LatencyTestResult> GetServerLatencyAsync(string serverUrl, IProgress<LatencyTestProgress>? progress, IProgress<RequestDiagnostic>? diagnostics, CancellationToken cancellationToken = default, CancellationToken stopAndReportToken = default)
     {
         if (GetServerLatencyByServerUrlAsyncFunc != null)
             return GetServerLatencyByServerUrlAsyncFunc(serverUrl, progress, cancellationToken);
@@ -162,7 +166,7 @@ public sealed class SpeedTestMock : ISpeedTestService
     }
 
     /// <inheritdoc/>
-    public Task<SpeedTestResult> GetDownloadSpeedAsync(IServer server, IProgress<SpeedTestProgress>? progress, IProgress<RequestDiagnostic>? diagnostics, CancellationToken cancellationToken = default)
+    public Task<SpeedTestResult> GetDownloadSpeedAsync(IServer server, IProgress<SpeedTestProgress>? progress, IProgress<RequestDiagnostic>? diagnostics, CancellationToken cancellationToken = default, CancellationToken stopAndReportToken = default)
     {
         if (GetDownloadSpeedAsyncFunc != null)
             return GetDownloadSpeedAsyncFunc(server, progress, cancellationToken);
@@ -170,7 +174,7 @@ public sealed class SpeedTestMock : ISpeedTestService
     }
 
     /// <inheritdoc/>
-    public Task<SpeedTestResult> GetUploadSpeedAsync(IServer server, IProgress<SpeedTestProgress>? progress, IProgress<RequestDiagnostic>? diagnostics, CancellationToken cancellationToken = default)
+    public Task<SpeedTestResult> GetUploadSpeedAsync(IServer server, IProgress<SpeedTestProgress>? progress, IProgress<RequestDiagnostic>? diagnostics, CancellationToken cancellationToken = default, CancellationToken stopAndReportToken = default)
     {
         if (GetUploadSpeedAsyncFunc != null)
             return GetUploadSpeedAsyncFunc(server, progress, cancellationToken);

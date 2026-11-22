@@ -127,7 +127,7 @@ public sealed partial class NetPaceConsoleTests
             // Then it is refused as a usage error before anything is measured.
             Assert.Equal(1, result.ExitCode);
             Assert.Empty(serviceCalls);
-            await Verify(result.Output).UseParameters(option, value);
+            await Verify(result.ErrorOutput).UseParameters(option, value);
         }
 
         [Theory]
@@ -150,7 +150,7 @@ public sealed partial class NetPaceConsoleTests
             // checks belong.
             Assert.Equal(1, result.ExitCode);
             Assert.Empty(serviceCalls);
-            await Verify(result.Output).UseParameters(repeat);
+            await Verify(result.ErrorOutput).UseParameters(repeat);
         }
 
         [Fact]
@@ -182,7 +182,7 @@ public sealed partial class NetPaceConsoleTests
             // Then it is refused before anything is measured.
             Assert.Equal(1, result.ExitCode);
             Assert.Empty(serviceCalls);
-            await Verify(result.Output).UseParameters(option, value, switchedOff);
+            await Verify(result.ErrorOutput).UseParameters(option, value, switchedOff);
         }
 
         [Fact]

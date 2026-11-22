@@ -53,18 +53,6 @@ public sealed partial class NetPaceConsoleTests
         /// </summary>
         private const string ResultLine = "Ping: 24 ms";
 
-        private static int Occurrences(string text, string value) => text.Split(value).Length - 1;
-
-        private static LatencyTestResult Latency(string serverUrl) =>
-            new()
-            {
-                Server = new Server { Sponsor = "Deutsche Telekom", Location = "Frankfurt", Url = serverUrl },
-                LatencyMilliseconds = 24,
-                MinimumLatencyMilliseconds = null,
-                MaximumLatencyMilliseconds = null,
-                JitterMilliseconds = 3
-            };
-
         /// <summary>
         /// What ends one test when the failure shape is <paramref name="shape"/>. A factory rather
         /// than an instance, so each test of a repeated run throws its own.
@@ -84,26 +72,6 @@ public sealed partial class NetPaceConsoleTests
         private static string ReportedBy(string shape) =>
             shape == Timeout ? "did not respond in time" : "Could not open socket";
 
-        /// <summary>
-        /// A service whose latency probe throws on the probes <paramref name="throwsOn"/> selects,
-        /// counted from one, and measures normally on the rest.
-        /// </summary>
-        /// <remarks>
-        /// The probe is where a test is abandoned whole. A failure raised later in the test would
-        /// leave a part-written result behind, and the result lines would no longer be countable.
-        /// </remarks>
-        private static ISpeedTestService ServiceWhoseProbeThrows(Func<int, bool> throwsOn, Func<Exception> fault)
-        {
-            var probes = 0;
-            return new SpeedTestMock
-            {
-                GetServerLatencyByServerUrlAsyncFunc = (url, _, _) => throwsOn(Interlocked.Increment(ref probes))
-                    ? throw fault()
-                    : Task.FromResult(Latency(url)),
-                GetDownloadSpeedAsyncFunc = (_, _, _) => Task.FromResult(ScriptedSpeedTester.Clean(150)),
-                GetUploadSpeedAsyncFunc = (_, _, _) => Task.FromResult(ScriptedSpeedTester.Clean(32))
-            };
-        }
 
         /// <summary>
         /// A run the user cancels while a test is in flight: the probe cancels the given source and
@@ -190,10 +158,12 @@ public sealed partial class NetPaceConsoleTests
             // When the run is asked for in this mode, without --fail-on.
             var result = await RunAsync(mode, service, TestsPerRun);
 
-            // Then the failure is reported once, the run succeeded, and every test after the first
-            // still reported a result - a single run, having no later test, reports none.
+            // Then the failure is reported once on the error stream, the run succeeded, and every
+            // test after the first still reported a result on standard output - a single run, having
+            // no later test, reports none.
             Assert.Equal(0, result.ExitCode);
-            Assert.Equal(1, Occurrences(result.Output, ReportedBy(shape)));
+            Assert.Equal(1, Occurrences(result.ErrorOutput, ReportedBy(shape)));
+            Assert.Equal(0, Occurrences(result.Output, ReportedBy(shape)));
             Assert.Equal(mode == Single ? 0 : TestsPerRun - 1, Occurrences(result.Output, ResultLine));
         }
 
@@ -216,7 +186,7 @@ public sealed partial class NetPaceConsoleTests
 
             // Then it stopped at that failure and exited 1: no later test reported a result.
             Assert.Equal(1, result.ExitCode);
-            Assert.Equal(1, Occurrences(result.Output, ReportedBy(shape)));
+            Assert.Equal(1, Occurrences(result.ErrorOutput, ReportedBy(shape)));
             Assert.Equal(0, Occurrences(result.Output, ResultLine));
         }
 
@@ -262,7 +232,7 @@ public sealed partial class NetPaceConsoleTests
             var result = await RunAsync(mode, ServiceCancelledMidTest, TestsPerRun, FailOnArgs(failOn));
 
             // Then nothing is reported as an error and the run exits 0.
-            Assert.DoesNotContain("Error:", result.Output);
+            Assert.DoesNotContain("Error:", result.ErrorOutput);
             Assert.Equal(0, result.ExitCode);
         }
 
@@ -285,7 +255,7 @@ public sealed partial class NetPaceConsoleTests
             // Then the test that did run reported its result, nothing is reported as an error, and
             // the run exits 0.
             Assert.Equal(1, Occurrences(result.Output, ResultLine));
-            Assert.DoesNotContain("Error:", result.Output);
+            Assert.DoesNotContain("Error:", result.ErrorOutput);
             Assert.Equal(0, result.ExitCode);
         }
 
@@ -307,7 +277,7 @@ public sealed partial class NetPaceConsoleTests
             var result = await RunAsync(mode, service, TestsPerRun, "--fail-on", "Total");
 
             // Then the failure is reported and the run exits 1.
-            Assert.Contains("Error:", result.Output);
+            Assert.Contains("Error:", result.ErrorOutput);
             Assert.Equal(1, result.ExitCode);
         }
 
@@ -318,6 +288,7 @@ public sealed partial class NetPaceConsoleTests
         public async Task Operational_Fault_Ends_The_Run(string mode)
         {
             // SCENARIO: An operational fault ends a looping run
+            // SCENARIO: An operational fault is reported to the user
 
             // Given a test that meets an operational fault rather than a network condition.
             var service = ServiceWhoseProbeThrows(_ => true, () => new IOException("There is not enough space on the disk."));
@@ -325,8 +296,9 @@ public sealed partial class NetPaceConsoleTests
             // When the run is asked for in this mode.
             var result = await RunAsync(mode, service, TestsPerRun);
 
-            // Then the run ends with a non-zero exit code rather than reporting the fault as data and
-            // carrying on.
+            // Then the fault was reported, and the run ends with a non-zero exit code rather than
+            // reporting the fault as data and carrying on.
+            Assert.Contains("Error:", result.ErrorOutput);
             Assert.NotEqual(0, result.ExitCode);
             Assert.Equal(0, Occurrences(result.Output, ResultLine));
         }
@@ -337,6 +309,7 @@ public sealed partial class NetPaceConsoleTests
         public async Task Operational_Fault_After_The_First_Result_Ends_The_Run(string mode)
         {
             // SCENARIO: An operational fault ends a looping run
+            // SCENARIO: An operational fault is reported to the user
 
             // A fault that arrives once a run is under way is the one a repeating mode could swallow:
             // it has a result behind it, so carrying on would look like a healthy run.
@@ -347,10 +320,88 @@ public sealed partial class NetPaceConsoleTests
             // When the run is asked for in this mode.
             var result = await RunAsync(mode, service, TestsPerRun);
 
-            // Then the run stopped there, with a non-zero exit code and only the first result behind
-            // it.
+            // Then the fault was reported and the run stopped there, with a non-zero exit code and
+            // only the first result behind it.
+            Assert.Contains("Error:", result.ErrorOutput);
             Assert.NotEqual(0, result.ExitCode);
             Assert.Equal(1, Occurrences(result.Output, ResultLine));
+        }
+
+        [Theory]
+        [InlineData(Single)]
+        [InlineData(Counted)]
+        [InlineData(Looping)]
+        public async Task Operational_Fault_Is_Reported_When_The_Run_Also_Saves_To_A_File(string mode)
+        {
+            // SCENARIO: An operational fault is reported to the user
+
+            // A run saving to a file still shows its results on screen, so it writes to two
+            // destinations: the file it opened, and the screen it was handed. Closing the screen
+            // along with the file would take the error line down with it.
+
+            // Given a run that saves to a file, and a test that meets an operational fault.
+            var testFile = Path.Join(Path.GetTempPath(), $"netpace-test-{Guid.NewGuid()}.txt");
+            var service = ServiceWhoseProbeThrows(_ => true, () => new IOException("There is not enough space on the disk."));
+
+            try
+            {
+                // When the run is asked for in this mode.
+                var result = await RunAsync(mode, service, TestsPerRun, "--file", testFile);
+
+                // Then the fault was reported on screen and the run exits non-zero.
+                Assert.Contains("Error:", result.ErrorOutput);
+                Assert.NotEqual(0, result.ExitCode);
+            }
+            finally
+            {
+                if (System.IO.File.Exists(testFile))
+                {
+                    System.IO.File.Delete(testFile);
+                }
+            }
+        }
+
+        [Theory]
+        [InlineData(Counted)]
+        [InlineData(Looping)]
+        public async Task Operational_Fault_Leaves_The_File_The_Run_Opened_Closed(string mode)
+        {
+            // SCENARIO: An operational fault is reported to the user
+
+            // The run owns the file it opened and nothing else closes it, so a run ending on a
+            // fault has to leave that file closed with the results written before the fault in it.
+            // A run that stopped closing it would strand the handle for the rest of the process,
+            // which no assertion about the screen would notice.
+
+            // Given a run that saves to a file, whose first test measures and whose second meets an
+            // operational fault.
+            var testFile = Path.Join(Path.GetTempPath(), $"netpace-test-{Guid.NewGuid()}.txt");
+            var service = ServiceWhoseProbeThrows(probe => probe == 2, () => new IOException("There is not enough space on the disk."));
+
+            try
+            {
+                // When the run is asked for in this mode.
+                var result = await RunAsync(mode, service, TestsPerRun, "--file", testFile);
+
+                // Then the fault ended the run.
+                Assert.Contains("There is not enough space on the disk.", result.ErrorOutput);
+                Assert.NotEqual(0, result.ExitCode);
+
+                // And reading the file back under an exclusive share settles both halves at once:
+                // opening it throws while anything still holds the file, so this succeeds only
+                // because the run closed what it opened, and what it reads is the one result the
+                // run wrote before the fault.
+                using var reopened = new FileStream(testFile, System.IO.FileMode.Open, FileAccess.Read, FileShare.None);
+                using var reader = new StreamReader(reopened);
+                Assert.Equal(1, Occurrences(await reader.ReadToEndAsync(), ResultLine));
+            }
+            finally
+            {
+                if (System.IO.File.Exists(testFile))
+                {
+                    System.IO.File.Delete(testFile);
+                }
+            }
         }
 
         [Theory]

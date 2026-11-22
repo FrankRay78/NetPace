@@ -23,6 +23,14 @@ public sealed class SpeedTestCommandSettings
     public required TimeSpan Delay { get; init; }
 
     /// <summary>
+    /// How long one speed test run may take, from choosing a server to the end of the upload test.
+    /// Always a positive duration: a run always has a limit, and a user who wants a longer run sets
+    /// a longer one. Each run of <c>--count</c> or <c>--loop</c> gets it afresh, and
+    /// <see cref="Delay"/> does not count towards it.
+    /// </summary>
+    public required TimeSpan TimeLimit { get; init; }
+
+    /// <summary>
     /// Display output as a single CSV row.
     /// </summary>
     public required bool CSV { get; init; }
@@ -150,7 +158,8 @@ public sealed class SpeedTestCommandSettings
     public required MeasurementThreshold? MaximumLatency { get; init; }
 
     /// <summary>
-    /// Write per-request diagnostic detail about the run to the error stream.
+    /// Write per-request diagnostic detail about the run to the error stream, unless
+    /// <see cref="DiagnosticsFile"/> names a file, which takes every record instead.
     /// </summary>
     public required bool Diagnostics { get; init; }
 
@@ -158,6 +167,13 @@ public sealed class SpeedTestCommandSettings
     /// Whether the run was given any target to hold itself to.
     /// </summary>
     public bool HasThreshold => MinimumDownload is not null || MinimumUpload is not null || MaximumLatency is not null;
+
+    /// <summary>
+    /// The file the diagnostic records are written to instead of the error stream, or an empty
+    /// string when none was named. A path here switches diagnostics on by itself, so
+    /// <see cref="Diagnostics"/> adds nothing alongside it.
+    /// </summary>
+    public required string DiagnosticsFile { get; init; }
 
     /// <summary>
     /// The label for this machine recorded in CSV and JSON output, or <see langword="null"/> when

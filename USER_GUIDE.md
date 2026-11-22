@@ -40,6 +40,11 @@ Run 3 tests in a row, with 30 seconds delay between each:
 netpace --count 3 --delay 00:00:30
 ```
 
+Bound a run to two minutes instead of the default ten:
+```bash
+netpace --time-limit 00:02:00
+```
+
 List the nearest speed test servers:  
 ```bash
 netpace servers
@@ -87,15 +92,15 @@ With no format switch, NetPace renders the rich terminal output: the server as s
 Hey! Broadband
 http://speedtest.heybroadband.example/speedtest/upload.php
 
-    Test         Done       Speed  Latency  Jitter
-✓   Pinging      100%                 3 ms    1 ms
-✓   Downloading  100%  93.12 Mbps    60 ms    4 ms
-⠹   Uploading     30%   17.9 Mbps    38 ms    3 ms
+    Test          Done       Speed   Latency   Jitter
+✓   Pinging       100%                  3 ms     1 ms
+✓   Downloading   100%   93.1 Mbps     60 ms     4 ms
+⠹   Uploading      30%   17.9 Mbps     38 ms     3 ms
 ```
 
 Idle latency is the `Pinging` row; the latency and jitter beside a transfer are the line's latency *while that transfer was running*, so you can read one against the other straight down the column. That comparison is what shows bufferbloat — a link whose latency climbs under load. The figures are live: each one appears as soon as there is something to report and ends on the figure the measurement finally reports. A cell stays blank where nothing was measured, never zero.
 
-Speeds follow `--unit`, `--unit-system` and `--unit-scale`. Every column sizes itself to the widest value it has been given, and a window too narrow for the table wraps it rather than dropping a column.
+Speeds follow `--unit`, `--unit-system` and `--unit-scale`, and auto-scaled speeds read to three significant figures: `8.00 Kbps`, `18.7 Kbps`, `245 Mbps`, `1.23 Gbps`. That is as much precision as a speed test supports, and it keeps every auto-scaled reading within four characters, so the table holds its layout while you watch it. Each column opens wide enough for the figures it expects and never narrows during a run: a value too wide for it (a latency of thousands of milliseconds, or a speed pinned to a small unit with `--unit-scale`) widens its column, which then stays at its widest for the rest of the run. A window too narrow for the whole table wraps it rather than dropping a column, down to a width of about 25 characters.
 
 The default layout is for a person watching a terminal. It is not a format to scrape, and it may change in any release. A script reads `--minimal`, `--simple`, `--csv` or `--json`, all four of which are stable. Wherever default output cannot redraw (a pipe, a redirect, a `--file` target, or a terminal that cannot animate), it writes the `--simple` lines instead, and nothing else: no table, no server, and no control codes. Each destination is judged on its own, so `netpace --file results.txt` at a terminal shows the table on screen and writes the simple lines to the file.
 
@@ -123,12 +128,12 @@ Two further options decide whether and where the result appears, and both work w
 `--minimal` writes one line per run, opening with the time the run was taken:
 
 ```txt
-2026-10-16 08:21:17, Latency: 12 ms, Download: 93.12 Mbps, Upload: 18.4 Mbps
+2026-10-16 08:21:17, Latency: 12 ms, Download: 93.1 Mbps, Upload: 18.4 Mbps
 ```
 
 That is the format to leave running: `netpace --minimal --loop` scrolls one dated line past per run, and a column of them is read down the page for a slow period, the way `ping` is. The time is always there, in local time as `yyyy-MM-dd HH:mm:ss`, because a line in a running log says little without it; there is no switch to add or remove it. Speeds follow `--unit`, `--unit-scale` and `--unit-system` and read exactly as `--simple` and the default output show them for the same run. A test skipped with `--no-latency` / `--no-download` / `--no-upload` contributes no field at all, failed requests are noted on their own figure, and `--count`, `--loop` and `--file` each write one line per run.
 
-A run that faults writes a bare `Error: <message>` line instead, with no time in front of it: this format is a quick shorthand for someone watching a terminal, not a detailed log. Reach for `--csv` or `--json` where a run has to be recorded in full, and for `--simple` where a script reads one figure at a time.
+A run that faults writes no minimal line at all. It writes a bare `Error: <message>` line to standard error instead, with no time in front of it: this format is a quick shorthand for someone watching a terminal, not a detailed log. See [Where errors are written](#where-errors-are-written). Reach for `--csv` or `--json` where a run has to be recorded in full, and for `--simple` where a script reads one figure at a time.
 
 ### Simple output
 
@@ -136,11 +141,11 @@ A run that faults writes a bare `Error: <message>` line instead, with no time in
 
 ```txt
 Ping: 12 ms
-Download: 93.12 Mbps
+Download: 93.1 Mbps
 Upload: 18.4 Mbps
 ```
 
-A script reads any of them the same way — `netpace --simple | grep '^Download:' | awk '{print $2}'` gives the download speed's number. Anchor the match to the start of the line: a run that faults writes an `Error:` message to the same stream, and an unanchored `grep Download` can pick a word out of that message instead of a figure. Speeds are auto-scaled and follow `--unit`, `--unit-scale` and `--unit-system`, so a figure can read `1.2 Gbps` on a fast line; pin the unit with `--unit-scale Mega` where a script compares numbers across runs. These three lines are the whole output and carry no time, matching what `speedtest-cli --simple` writes; `--minimal` is the format with a timestamp on every line. A test skipped with `--no-latency` / `--no-download` / `--no-upload` contributes no line at all, and runs under `--count` and `--loop` follow one another with no separator. Failed requests are noted on their own test's line. The format shows no jitter, server or under-load figure, and sends no under-load latency probes; scripts wanting more use CSV or JSON.
+A script reads any of them the same way — `netpace --simple | grep '^Download:' | awk '{print $2}'` gives the download speed's number. A run that faults writes its `Error:` message to standard error, so the stream the script reads carries these lines and nothing else ([Where errors are written](#where-errors-are-written)). Speeds are auto-scaled and follow `--unit`, `--unit-scale` and `--unit-system`, so a figure can read `1.23 Gbps` on a fast line; pin the unit with `--unit-scale Mega` where a script compares numbers across runs. Every auto-scaled speed here is written to three significant figures, the same as the default output shows, so `513 Mbps` is as precise as auto-scaling gets. A pinned `--unit-scale` uses the same decimal places but never rounds away a digit before the point, so a speed can read `512600 Kbps` on a scale too small or `0.05 Gbps` on one too large. A script needing the full figure reads `--csv` or `--json`, which carry the measurement in bits per second and are untouched by this rounding. These three lines are the whole output and carry no time, matching what `speedtest-cli --simple` writes; `--minimal` is the format with a timestamp on every line. A test skipped with `--no-latency` / `--no-download` / `--no-upload` contributes no line at all, and runs under `--count` and `--loop` follow one another with no separator. Failed requests are noted on their own test's line. The format shows no jitter, server or under-load figure, and sends no under-load latency probes; scripts wanting more use CSV or JSON.
 
 These are also the lines default output writes wherever it cannot redraw, so `netpace > results.txt` and `netpace --simple > results.txt` leave the same file. The one difference is the probes: default output sends the under-load latency probes whichever destination it ends up writing to, so a redirected run carries traffic that only `--diagnostics` reports, while `--simple` sends none.
 
@@ -238,7 +243,7 @@ Timestamp,LatencyMilliseconds,JitterMilliseconds,DownloadSpeedBitsPerSecond,Down
 1980-01-01T10:05:00+01:00,12,3,512600000,150,0,48,31,96,9,,,,,,,,192.168.1.1,test-host,London,Foo Telecom,http://speedtest.foo.example:8080/speedtest/upload.php,
 ```
 
-A download or upload test that ran but failed entirely reports `0`, with its request counts beside it — see [Detecting failed measurements](#detecting-failed-measurements).
+A download or upload test that ran but failed entirely reports the speed of whatever its requests moved before they failed, which is `0` only where nothing arrived, with its request counts beside it. See [Detecting failed measurements](#detecting-failed-measurements).
 
 CSV output is always comma-separated — there is no option to choose another separator, so every log NetPace writes has one shape. A value that would otherwise disturb the row is written as CSV requires: any field containing a comma or a double quote — most often a server's sponsor or location name, a `--device-id` label or a `--custom-field` value — is wrapped in double quotes, with any double quote of its own written twice, so a standard CSV reader hands back the original text and the row still has one field per column. A line break inside any field is written as a space, so every record stays on one line.
 
@@ -269,7 +274,7 @@ netpace --csv --no-csv-header >> ~/netpace.csv
 
 `--no-csv-header` leaves the header out of everything: the terminal, redirected or piped standard output, and a `--file` target even when it is new or empty, on every iteration of `--loop` and `--count`. It is accepted alongside the other formats and changes nothing there.
 
-**Start a new log if a run failed before it wrote a row.** NetPace decides to write the header by whether the target is empty, never by reading what is in it, so any content keeps the header out — including an error message from a run whose network was down, which is written to the log alongside the terminal. A log whose first line is an error rather than the column names will collect data rows under no header for as long as you keep appending to it. Move it aside and let the next run start a fresh one.
+Errors go to standard error, never into the file ([Where errors are written](#where-errors-are-written)), so a new log whose first run failed is still empty, and the next run that writes a row gives it the header. Within one `--loop` or `--count` run the header sits directly above the first row the run writes, so an earlier test that failed costs the run no column names.
 
 **Start a new log after an upgrade that changes the columns.** While NetPace is below 1.0.0 the CSV columns may gain or move fields between releases, and nothing checks an existing log's header against the columns being written. Rows from a newer version appended to an older log sit under a header that no longer describes them. After an upgrade that changes the columns, move the old log aside and let NetPace start a fresh one.
 
@@ -325,7 +330,7 @@ The same nine figures CSV carries, under the same names and as the same numbers 
 
 Need a speed formatted for a person to read — for a notification, say? `--simple` writes exactly that figure on its own line, and `--minimal` writes the whole run as one line; both follow the unit options.
 
-A test you skipped with `--no-latency`, `--no-download` or `--no-upload` omits every field it would have filled. A download or upload test that ran but failed entirely reports `0`, with its request counts beside it — see [Detecting failed measurements](#detecting-failed-measurements). A latency measurement that fails ends the run instead, so it reports nothing.
+A test you skipped with `--no-latency`, `--no-download` or `--no-upload` omits every field it would have filled. A download or upload test that ran but failed entirely reports the speed of whatever its requests moved before they failed, which is `0` only where nothing arrived, with its request counts beside it. See [Detecting failed measurements](#detecting-failed-measurements). A latency measurement that fails ends the run instead, so it reports nothing.
 
 ### Timestamps and regional settings
 
@@ -373,7 +378,7 @@ There is nothing to discover: LibreSpeed publishes no server list, so `--provide
 
 If the address answers but not as a LibreSpeed server, the run says which URL answered wrongly and what to check. If it answers with a server error, the run names the URL and the status, since the address is likely right but the server is failing. If it cannot be reached at all, the run reports that the same way an Ookla run does. Either way nothing is reported as measured, and the exit code stays `0` unless you opt in with `--fail-on` (see [Exit codes](#exit-codes)).
 
-There is a local LibreSpeed server to try this against in [`docker/librespeed/`](https://github.com/FrankRay78/NetPace/tree/main/docker/librespeed): one script starts it and prints the command to run.
+There is a local LibreSpeed server to try this against in [`docker/lab/`](https://github.com/FrankRay78/NetPace/tree/main/docker/lab): one script starts it and prints the command to run, on a full-speed link or behind one of the lab's slow-link profiles.
 
 ---
 
@@ -387,7 +392,7 @@ With no `--server-url`, NetPace picks the server for you in two steps.
 
 **Measuring.** The fastest server that answered is then measured properly, with the full latency probe, and that is the figure NetPace reports. Everything after it — latency, download, upload — runs against that same server; NetPace does not switch servers part-way through a run.
 
-If nothing answered during screening, the run reports `Error: No servers available`. That is a network outcome rather than a fault in NetPace, so the exit code stays `0` (see [Exit codes](#exit-codes)).
+If nothing answered during screening, the run reports `Error: No servers available` on standard error. That is a network outcome rather than a fault in NetPace, so the exit code stays `0` (see [Exit codes](#exit-codes)).
 
 The cap on screening exists to stop a single pathological server stalling a run: before it was introduced, a server taking 20–60 seconds to answer each request could hold up a test for minutes. If you want a particular server regardless, `--server-url <url>` skips selection entirely.
 
@@ -459,6 +464,38 @@ Reach for it when:
 
 ---
 
+## How long a run may take
+
+Every run is bounded. Left alone it ends after ten minutes, and `--time-limit` sets a bound of your own:
+
+```bash
+netpace --time-limit 00:02:00
+```
+
+The value is exactly hours, minutes and seconds (`HH:MM:SS`), up to `23:59:59`. Anything shorter is refused: `5` would otherwise mean five days, and `10:00` ten hours.
+
+A run that reaches the limit has not failed. NetPace ends it and reports what it measured up to then, in the same output and with the same exit code as a run that finished on its own. The one exception is a limit reached before a server was chosen: there is nothing to measure against, so the run ends as one with no server available does, with that error and, under `--fail-on`, exit code 1.
+
+Otherwise:
+
+- A download or upload in progress reports a figure for the data it delivered before it stopped, measured over the time it ran. If it had delivered nothing yet and none of its requests had failed, it is reported as a test the run never reached.
+- A latency test in progress reports a figure from the probes answered so far. If none had answered, it is reported as a test the run never reached.
+- A test the run never reached is reported the way a test you switched off is: no line under `--simple`, no field in the `--minimal` line, an empty cell in CSV, an absent field in JSON, no row in the table on screen. If no test has anything to show, no table is drawn.
+- Requests stopped at the limit count as neither successes nor failures, so `--fail-on` is tripped by real failures only.
+- Nothing is printed about the limit, in any output format.
+
+Under `--count` and `--loop` each run gets the limit afresh, and the `--delay` between runs does not count towards it.
+
+Reach for it when:
+
+- You run NetPace from cron or a systemd timer and need every run to finish before the next one starts, whatever the server does. The ten minute default already does this for you, as long as runs start more than ten minutes apart.
+- You run NetPace with `--loop` and want a stuck server to cost one run rather than stall the loop.
+- You want a quick reading and would rather have a rough figure soon than an exact one eventually.
+
+To see where a run was cut short, pass `--diagnostics`: every request stopped at the limit is recorded as cancelled, with a reason naming the time limit, and counted among its test's cancelled requests.
+
+---
+
 ## Choosing a colour theme
 
 A theme is a standing preference rather than a per-run choice, so you set it once with the `NETPACE_THEME` environment variable — in your shell profile, say — and every command picks it up:
@@ -471,68 +508,92 @@ export NETPACE_THEME=green
 |---|---|
 | `default` | NetPace's own colours. What you get when `NETPACE_THEME` is unset or empty. |
 | `plain` | No colour and no bold anywhere. The live table still says how each test went, by its mark and its failed count. |
-| `green` | A green-led look, in mid-tone greens chosen to read on a light terminal as well as a dark one. |
+| `green` | A green-led look, in mid-tone greens chosen to read on a light terminal as well as a dark one. The brighter green of the pair the `--help` lettering is drawn in is the one exception: it reads on a dark terminal and washes out on a light one, which costs you nothing, because the lettering says the product name and no more. |
+| `halloween` | An orange-led look for Halloween, with purple beside it and green for what has finished. Chosen by name, never by the date. |
 
-Names are matched without regard to case, so `GREEN` and `green` are the same request. Set the variable to something that is not a theme and NetPace says so on the error stream, naming the theme it is drawing in instead — the run is never stopped by a typo. `--quiet` suppresses that notice along with everything else.
+Names are matched without regard to case, so `GREEN` and `green` are the same request. Set the variable to something that is not a theme and NetPace says so on the error stream, naming the theme it is drawing in instead — the run is never stopped by a typo. `--quiet` suppresses that notice along with the result. Errors are not suppressed (see [Where errors are written](#where-errors-are-written)).
 
-The theme reaches every screen a person reads: the speed test, `servers` in all its forms, and `--help`. It never reaches output another program parses — `--csv` and `--json` are byte-for-byte the same whatever the theme is. `--file` output is always written without colour, and `--minimal` and `--simple` have no colour to change.
+The theme reaches every screen a person reads: the speed test, `servers` in all its forms, and `--help`. Both `--help` screens open with the product name drawn large, in plain ASCII characters, so the lettering is the same characters on every console and in every monospace font. The `default` theme draws it in the same yellow as the help headings; the other themes draw it in two of their colours, one for `Net` and one for `Pace`. The colours are purely decorative, so the lettering says the same thing under `plain` or `NO_COLOR`, where it is drawn without colour. The theme never reaches output another program parses — `--csv` and `--json` are byte-for-byte the same whatever the theme is. `--file` output is always written without colour, and `--minimal` and `--simple` have no colour to change.
 
-Colour never carries meaning on its own in anything NetPace composes itself, and there is no exception. A failure is marked by the word `Error:`, and in the live table each test carries a mark of its own — `✓` for a clean run, `!` where some requests failed, `✗` where every one did or the measurement could not be taken at all. Where a test reports how many of its requests failed, a `Failed` column appears beside the marks with the count. So the table reads the same where you cannot tell the colours apart or have turned colour off entirely. Where the terminal cannot draw those marks either, `OK`, `!` and `X` stand in for them.
+Colour never carries meaning on its own in anything NetPace composes itself, and there is no exception. Where colour is only decoration, as in the `--help` lettering, losing it loses nothing. A failure is marked by the word `Error:`, and in the live table each test carries a mark of its own — `✓` for a clean run, `!` where some requests failed, `✗` where every one did or the measurement could not be taken at all. Where a test reports how many of its requests failed, a `Failed` column appears beside the marks with the count. So the table reads the same where you cannot tell the colours apart or have turned colour off entirely. Where the terminal cannot draw those marks either, `OK`, `!` and `X` stand in for them.
 
 If you have set `NO_COLOR` — the [convention](https://no-color.org/) for asking every program on the machine to stop colouring its output — that wins, and NetPace draws the `plain` theme whatever `NETPACE_THEME` says.
 
 ---
 
+## Where errors are written
+
+Every error NetPace reports goes to standard error, in every output format and from every command: a measurement that failed, an option the parser rejects, a combination of options it refuses, and an operational fault such as a `--file` target that cannot be written. Standard output and a `--file` target carry the result and nothing else, so a script reading `--csv`, `--json`, `--minimal` or `--simple` never meets a line that is not part of its format, and a log on a schedule collects results only.
+
+At a terminal both streams land on the screen, so an error still appears where you are reading. Redirect the result and the error still reaches you:
+
+```bash
+netpace --csv > result.csv           # the row goes to the file, the error to the screen
+netpace --csv > result.csv 2> err.log # or capture the error too
+```
+
+Each error is one unbroken line, however narrow the terminal, so a reader taking the stream a line at a time sees the whole message. Errors follow the same colour rules as everything else: `NO_COLOR`, the `plain` theme, and whether the stream itself is a terminal (see [Choosing a colour theme](#choosing-a-colour-theme)).
+
+`--quiet` does not suppress errors. It silences the result; an error still reaches standard error, with or without `--file`.
+
+Exit codes are unaffected. A network condition is still data and still exits `0`, and only an operational failure or a usage error exits non-zero (see [Exit codes](#exit-codes)).
+
+---
+
 ## Detecting failed measurements
 
-A speed test runs many small requests in parallel and reports the aggregate throughput. If some of those requests fail (a dropped connection, a TLS error, a timeout, or a server that rejects the transfer), NetPace does **not** silently treat them as zero-speed data — it counts them, so you can tell a genuinely slow link from a server that isn't transferring at all. When *every* request in a test fails, the speed reads zero, and the counts tell you it was a total failure rather than a 0 bps link.
+A speed test runs many small requests in parallel and reports the aggregate throughput. If some of those requests fail (a dropped connection, a TLS error, a timeout, or a server that rejects the transfer), NetPace does **not** silently treat them as zero-speed data — it counts them, so you can tell a genuinely slow link from a server that isn't transferring at all.
+
+The speed is about the link, so it counts every byte that arrived, including the bytes of a request that then failed. A slow link whose transfers the server keeps cutting off still reports close to what it carries, rather than a fraction of it. The speed reads zero only where nothing moved at all, such as a connection refused or a TLS handshake that failed. An upload the server rejects still counts what it sent, because the body goes out before the rejection comes back. The counts, not the figure, are what tell you a test failed.
 
 Every output format carries the counts:
 
-**Default** — a `Failed` column appears as soon as a test finishes with failures, and the test's mark says which kind of failure it was. A test whose every request failed reports a zero speed, and no latency under load: its probes never saw a loaded line, so those cells stay blank.
+**Default** — a `Failed` column appears as soon as a test finishes with failures, and the test's mark says which kind of failure it was. A test whose every request failed reports the speed of whatever those requests moved before they failed (zero in the example below, where nothing arrived) and no latency under load: its probes never saw a loaded line, so those cells stay blank.
 ```
-    Test         Done       Speed  Latency  Jitter    Failed
-✓   Pinging      100%                24 ms    3 ms
-!   Downloading  100%  512.6 Mbps    60 ms    4 ms  1 of 150
-✗   Uploading    100%       0 bps                   32 of 32
+    Test          Done       Speed   Latency   Jitter     Failed
+✓   Pinging       100%                 24 ms     3 ms
+!   Downloading   100%    513 Mbps     60 ms     4 ms   1 of 150
+✗   Uploading     100%       0 bps                      32 of 32
 ```
 
 **`--simple`** — the same annotation, on the line of the test it belongs to:
 ```
 Ping: 24 ms
-Download: 512.6 Mbps
+Download: 513 Mbps
 Upload: 0 bps (32 of 32 requests failed)
 ```
 
 **`--minimal`** — the same annotation, after the figure of the test it belongs to:
 ```
-2026-10-16 08:21:17, Latency: 24 ms, Download: 512.6 Mbps, Upload: 0 bps (32 of 32 requests failed)
+2026-10-16 08:21:17, Latency: 24 ms, Download: 513 Mbps, Upload: 0 bps (32 of 32 requests failed)
 ```
 
-**CSV** — a `Succeeded` and `Failed` column sits next to each speed column, and a total failure reports a speed of `0` beside the counts that say so. Its latency-under-load cells are empty rather than `0`: a transfer whose every request failed never loaded the line, so there was nothing to measure.
+**CSV** — a `Succeeded` and `Failed` column sits next to each speed column, and a test where nothing arrived reports a speed of `0` beside the counts that say so. Its latency-under-load cells are empty rather than `0`: a transfer whose every request failed never loaded the line, so there was nothing to measure.
 ```
 Timestamp,LatencyMilliseconds,JitterMilliseconds,DownloadSpeedBitsPerSecond,DownloadSucceeded,DownloadFailed,DownloadLatencyMilliseconds,DownloadLowestLatencyMilliseconds,DownloadHighestLatencyMilliseconds,DownloadJitterMilliseconds,UploadSpeedBitsPerSecond,UploadSucceeded,UploadFailed,UploadLatencyMilliseconds,UploadLowestLatencyMilliseconds,UploadHighestLatencyMilliseconds,UploadJitterMilliseconds,IPAddress,Hostname,ServerLocation,ServerSponsor,ServerUrl,DeviceId
 1980-01-01T10:05:00+01:00,24,5,512600000,150,0,61,34,148,14,0,0,32,,,,,192.168.1.1,test-host,London,Foo Telecom,http://speedtest.foo.example:8080/speedtest/upload.php,
 ```
 
-**JSON** — each test that ran gains integer `…Succeeded` / `…Failed` fields alongside its speed. A total failure reports `0` with the counts beside it, exactly as the other formats do, and leaves out its latency-under-load fields, since nothing was measured. Only a test you skipped (`--no-download`, `--no-upload`) omits its fields entirely:
+**JSON** — each test that ran gains integer `…Succeeded` / `…Failed` fields alongside its speed. A test where nothing arrived reports `0` with the counts beside it, exactly as the other formats do, and leaves out its latency-under-load fields, since nothing was measured. Only a test you skipped (`--no-download`, `--no-upload`) omits its fields entirely:
 ```json
 { "UploadSpeedBitsPerSecond": 0, "UploadSucceeded": 0, "UploadFailed": 32, … }
 ```
 
-The counts are the whole signal — no output format adds a prose warning on top of them. `--quiet` suppresses them along with the rest of the output; use `--fail-on` to detect an all-failed measurement in that mode.
+The counts are the whole signal — no output format adds a prose warning on top of them. `--quiet` suppresses them along with the rest of the output; use `--fail-on` to detect an all-failed measurement in that mode. A measurement that failed outright, and so reported no counts, still writes its `Error:` line to standard error under `--quiet` ([Where errors are written](#where-errors-are-written)).
 
 ### Diagnosing a failure with `--diagnostics`
 
 The counts tell you *that* requests failed. `--diagnostics` tells you *why*, and does it from one run — which is the whole point of the switch, because a bug report that needs a second run is a conversation rather than a report.
 
-Diagnostics go to the error stream, never to the result stream, so the two can be captured separately:
+By default the records go to the error stream, never to the result stream, so the two can be captured separately:
 
 ```bash
 netpace --json --diagnostics > result.json 2> diagnostics.log
 ```
 
-The result is byte-for-byte what the same invocation produces without the switch, in every output format — so adding `--diagnostics` to a script that parses `--csv` or `--json` cannot break the parsing. Without the switch, nothing is written to the error stream at all, except the notice about an unrecognised `NETPACE_THEME` (see [Choosing a colour theme](#choosing-a-colour-theme)). At a terminal with nothing redirected, the records appear after the result, leaving the live table intact.
+Or name a file and skip the redirection altogether (see [Writing the records to a file](#writing-the-records-to-a-file)).
+
+The result is byte-for-byte what the same invocation produces without the switch, in every output format — so adding `--diagnostics` to a script that parses `--csv` or `--json` cannot break the parsing. Without the switch, the error stream carries only what went wrong ([Where errors are written](#where-errors-are-written)) and the notice about an unrecognised `NETPACE_THEME` (see [Choosing a colour theme](#choosing-a-colour-theme)). At a terminal with nothing redirected, the records appear after the result, leaving the live table intact. A failed test's records are written before its error, so the stream reads what was attempted before what went wrong.
 
 `--diagnostics` works alongside whichever output format you chose, and is unaffected by `--quiet`. It never writes to the `--file` target.
 
@@ -556,8 +617,8 @@ What the records cover:
 | `run.start` | The NetPace version, the .NET runtime, the operating system and the architecture. |
 | `run.invocation` | How NetPace was invoked. |
 | `server.selected` | The server used, and `selection=` — `auto-latency`, `specified` or `first-in-list`. `latency_ms` is the screening figure that chose it, and is absent when latency played no part in choosing. |
-| `test.start` / `test.end` | Which tests ran — `screening`, `latency`, `download`, `upload` — and, on `test.end`, the total `requests`, how many `succeeded`, `failed` or were `cancelled`, and the `bytes` the successful ones moved. Those totals cover exactly the `request` lines above them, so the two always reconcile. `probe` lines are not among them. |
-| `request` | One per request, with its sequence number, address, outcome, bytes, duration and — where it did not succeed — the `reason` and, if an exception was involved, its `exception` type. `status=` is `ok`, `failed` or `cancelled`. |
+| `test.start` / `test.end` | Which tests ran — `screening`, `latency`, `download`, `upload` — and, on `test.end`, the total `requests`, how many `succeeded`, `failed` or were `cancelled`, and the `bytes` they moved between them, whatever their outcome. Those totals cover exactly the `request` lines above them, so the two always reconcile, and the `bytes` figure is the one the reported speed is built from. `probe` lines are not among them. |
+| `request` | One per request, with its sequence number, address, outcome, bytes, duration and — where it did not succeed — the `reason` and, if an exception was involved, its `exception` type. `status=` is `ok`, `failed` or `cancelled`. `bytes=` is what that request moved before it ended, so a request the server cut off partway reports what had arrived rather than nothing. |
 | `probe` | One per latency probe sent *during* a download or upload, to measure the latency of the line while it is loaded. It carries a `request` line's fields, `status=` included, and is numbered in its own run of `seq` numbers, so it never displaces one of the transfer's requests — `event=` and `seq=` together identify a record within a test, since a probe and a transfer request can share a number. `--minimal`, `--simple` and `--no-latency` all send no under-load probes, so a run with any of them carries no `probe` line at all. |
 
 Every line repeats enough to stand alone, so `grep status=failed diagnostics.log` is a complete triage pass. Nothing is summarised away: every measured request gets its own record, including the latency probes made while choosing a server. Two kinds of request are not recorded individually: the initial server-list fetch, whose failure surfaces as the run's error instead; and a screening request that finishes after the selection ceiling has already passed, which arrives too late for the `test.end` it would belong to and is dropped so that summary stays exact — so a candidate you expected to see may be absent rather than untried. One request appears that you did not ask for: the upload test resolves its endpoint with an empty probe POST first, which takes the opening `seq` numbers of that test and reads `bytes=0`, so `test.end requests=` counts one more than the uploads measured (more, if the server redirects several times).
@@ -568,13 +629,25 @@ Record volume is driven by how many servers the feed offers — roughly three re
 
 Under `--count` or `--loop`, `run.start`, `run.invocation` and `run.end` appear once, and the test and request records repeat per iteration.
 
+#### Writing the records to a file
+
+`--diagnostics-file` takes a path and writes the records there instead of to the error stream:
+
+```bash
+netpace --json --diagnostics-file diagnostics.log > result.json
+```
+
+This is the one to reach for when you have been asked to attach the records to a bug report. It turns diagnostics on by itself, so `--diagnostics` alongside it adds nothing, and it needs no `2>` redirection, whose syntax differs between shells. The file holds the same records `--diagnostics` writes to the error stream, with the `run.invocation` record naturally naming the options you actually passed, and no record reaches the error stream at all, so a failing run still shows you its `Error:` line on screen while the records go quietly to the file.
+
+The file is replaced on every run, so each one describes a single run, and `--file-mode` does not apply to it. It is opened before the first test, so a path that cannot be written stops the run there and then with a message naming the file and what to do, and exits non-zero. Giving the option no path is refused the same way. If writing fails later, once the run is under way, NetPace says so once on the error stream and leaves the result and the exit code alone. That message is a warning, not an `Error:` line, so a script watching for errors does not mistake the run for a failed one, and `--quiet` does not hide it.
+
 ### Exit codes
 
 The exit code reports only whether **NetPace itself** functioned. Network conditions like a total outage, 100% request failure, or no servers found are *data*, not errors, and NetPace will exit `0`. Only an operational failure (for example, being unable to write the `--file` output) or a usage error (an unusable option value, or two output formats at once) exits non-zero, with `1`. So a `0 bps` measurement still exits `0` by default: inspect the counts (or use `--fail-on`) to detect it.
 
 Two opt-ins change that, and only when you ask for them: `--fail-on` exits `1` on a failed measurement, and a missed `--min-download`, `--min-upload` or `--max-latency` target exits `3`. Those are the only codes NetPace returns.
 
-**The rule covers every command, not just a speed test.** `netpace servers`, `netpace servers --latency` and `netpace servers --fastest` each report an empty server list, and a failed or timed-out attempt to fetch it — and exit `0` for both. A list no server answered on only arises where screening runs: `--fastest` reports it, `--latency` shows `-` against each row, and both exit `0`. Pressing Ctrl+C exits `0` as well, wherever you press it, and reports no error — it leaves whatever had already been drawn on screen. A script that wants to know whether servers were found reads the output, not the exit code.
+**The rule covers every command, not just a speed test.** `netpace servers`, `netpace servers --latency` and `netpace servers --fastest` each report an empty server list, and a failed or timed-out attempt to fetch it — and exit `0` for both. A list no server answered on only arises where screening runs: `--fastest` reports it, `--latency` shows `-` against each row, and both exit `0`. Pressing Ctrl+C exits `0` as well, wherever you press it, and reports no error — it leaves whatever had already been drawn on screen. A script that wants to know whether servers were found reads standard error, where each of these conditions is reported, not the exit code.
 
 If you want a failed measurement to fail the process, opt in with `--fail-on`. It applies to a speed test; the `servers` command has no opt-in of its own:
 

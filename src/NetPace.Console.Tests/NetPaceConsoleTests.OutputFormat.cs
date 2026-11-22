@@ -96,8 +96,8 @@ public sealed partial class NetPaceConsoleTests
             // Then the error says the switch is gone and points at --help, and names no
             // replacement - --simple replaces only one of the three former values.
             Assert.Equal(1, result.ExitCode);
-            Assert.Contains("--verbosity has been removed, see --help.", result.Output);
-            Assert.DoesNotContain("--simple", result.Output);
+            Assert.Contains("--verbosity has been removed, see --help.", result.ErrorOutput);
+            Assert.DoesNotContain("--simple", result.ErrorOutput);
         }
 
         [Theory]
@@ -120,7 +120,7 @@ public sealed partial class NetPaceConsoleTests
 
             // Then the error identifies which switches conflicted rather than silently picking one.
             Assert.Equal(1, result.ExitCode);
-            Assert.Contains($"Only one output format may be specified: {conflict}.", result.Output);
+            Assert.Contains($"Only one output format may be specified: {conflict}.", result.ErrorOutput);
         }
 
         [Theory]
@@ -139,7 +139,7 @@ public sealed partial class NetPaceConsoleTests
 
             // Then
             Assert.Equal(1, result.ExitCode);
-            Assert.Contains("Only one output format may be specified: --csv, --simple.", result.Output);
+            Assert.Contains("Only one output format may be specified: --csv, --simple.", result.ErrorOutput);
         }
 
         [Fact]
@@ -158,7 +158,7 @@ public sealed partial class NetPaceConsoleTests
 
             // Then the option error is reported rather than masked by the conflict.
             Assert.Equal(1, result.ExitCode);
-            Assert.Contains("NotAUnit", result.Output);
+            Assert.Contains("NotAUnit", result.ErrorOutput);
         }
 
         [Fact]
@@ -175,7 +175,7 @@ public sealed partial class NetPaceConsoleTests
 
             // Then
             Assert.Equal(1, result.ExitCode);
-            Assert.Contains("--verbosity has been removed, see --help.", result.Output);
+            Assert.Contains("--verbosity has been removed, see --help.", result.ErrorOutput);
         }
 
         [Fact]
@@ -191,7 +191,7 @@ public sealed partial class NetPaceConsoleTests
 
             // Then
             Assert.Equal(0, result.ExitCode);
-            Assert.DoesNotContain("Only one output format", result.Output);
+            Assert.DoesNotContain("Only one output format", result.ErrorOutput);
         }
     }
 }

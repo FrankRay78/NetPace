@@ -1,0 +1,1 @@
+﻿Error: --time-limit must be written as HH:MM:SS, from 00:00:01 to 23:59:59, such as 00:10:00, but was '25:00:00'.

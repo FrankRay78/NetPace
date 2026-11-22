@@ -18,11 +18,11 @@ public sealed record DownloadTestSettings
     public int DownloadParallelTasks { get; init; } = 8;
 
     /// <summary>
-    /// Total-byte budget cap for the download phase, in IEC MiB. Once the running total of
-    /// bytes returned across all parallel downloads reaches this value, the phase is cancelled:
-    /// in-flight downloads are cancelled rather than awaited (their bytes are excluded) and no
-    /// further downloads are scheduled. Actual bytes processed may still exceed the cap
-    /// depending on parallelism and per-request size.
+    /// Total-byte budget cap for the download phase, in IEC MiB. Once the bytes returned by the
+    /// downloads that completed successfully reach this value, the phase is cancelled: in-flight
+    /// downloads are cancelled rather than awaited, and no further downloads are scheduled. What
+    /// those in-flight downloads had already received still counts towards the reported figure,
+    /// so actual bytes processed may exceed the cap, by more the more parallel the phase is.
     /// </summary>
     /// <remarks>
     /// Distinct from the per-request sizing on the provider's own settings record, which shapes

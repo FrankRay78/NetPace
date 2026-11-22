@@ -73,20 +73,22 @@ public sealed class DiagnosticTestScopeTests
     [Fact]
     public void Dispose_SummarisesExactlyTheRecordsItAccepted()
     {
-        // Given one request of each outcome.
+        // Given one request of each outcome, each of which moved some data: a request the server
+        // cut off, and one dropped at the byte budget, both delivered what they delivered.
         var recorder = new RecordingRecorder();
 
         using (var scope = DiagnosticTestScope.For(recorder, "download")!)
         {
             scope.Report(Diagnostic(1, RequestOutcome.Succeeded, bytes: 500));
-            scope.Report(Diagnostic(2, RequestOutcome.Failed));
-            scope.Report(Diagnostic(3, RequestOutcome.Cancelled));
+            scope.Report(Diagnostic(2, RequestOutcome.Failed, bytes: 120));
+            scope.Report(Diagnostic(3, RequestOutcome.Cancelled, bytes: 40));
         }
 
-        // Then the summary counts each one once, and bytes accrue for the successful one only -
-        // the counts are derived from the records, so they cannot disagree with them.
+        // Then the summary counts each one once, and totals the bytes of all three - the counts
+        // are derived from the records, so they cannot disagree with them, and the total is the
+        // one the measurement itself reports.
         Assert.Equal("requests=3 succeeded=1 failed=1 cancelled=1", recorder.Summary);
-        Assert.Equal(500, recorder.SummaryBytes);
+        Assert.Equal(660, recorder.SummaryBytes);
     }
 
     [Theory]

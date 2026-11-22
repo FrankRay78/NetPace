@@ -27,7 +27,7 @@ public sealed partial class NetPaceConsoleTests
             // to use instead. Its wording is not asserted: that is a message for a person to read.
             Assert.Empty(serviceCalls);
             Assert.Equal(1, result.ExitCode);
-            Assert.Contains("--server-url", result.Output);
+            Assert.Contains("--server-url", result.ErrorOutput);
         }
 
         [Fact]
@@ -43,7 +43,7 @@ public sealed partial class NetPaceConsoleTests
             // Then
             Assert.Empty(serviceCalls);
             Assert.Equal(1, result.ExitCode);
-            Assert.Contains("--server-url", result.Output);
+            Assert.Contains("--server-url", result.ErrorOutput);
         }
 
         [Fact]
