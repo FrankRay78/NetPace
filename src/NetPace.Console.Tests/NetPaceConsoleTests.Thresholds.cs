@@ -143,8 +143,12 @@ public sealed partial class NetPaceConsoleTests
                 ? ["--min-download", "50Mbps", "--count", "2"]
                 : ["--min-download", "50Mbps", "--loop"];
 
+            // A refusal that stopped working would leave --loop running forever, so the run is
+            // stopped after a while instead: it then exits 0, and the test fails rather than hangs.
+            using var giveUp = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+
             // When
-            var result = await host.RunAsync(args);
+            var result = await host.RunAsync(args, giveUp.Token);
 
             // Then it is refused before anything is measured, and the user is told where repeated
             // checks belong.
@@ -441,9 +445,11 @@ public sealed partial class NetPaceConsoleTests
         }
 
         [Fact]
-        public async Task An_Operational_Fault_Exits_One_Even_When_A_Threshold_Was_Missed()
+        public async Task An_Operational_Fault_Exits_One_Alongside_A_Threshold()
         {
-            // Given a --file target that cannot be opened for writing, alongside a missed target.
+            // Given a --file target that cannot be opened for writing, alongside a target. The
+            // file fails before anything is measured, so no target is checked: the fault reaches
+            // the top-level handler past the check whatever the targets would have said.
             var unwritable = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName(), "out.csv");
             var host = StubHost();
 
