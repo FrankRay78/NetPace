@@ -142,10 +142,31 @@ public sealed class SpeedTestCommandSettings
     public required FailOn FailOn { get; init; }
 
     /// <summary>
+    /// The download speed the run must reach, or <see langword="null"/> when no target was given.
+    /// </summary>
+    public required MeasurementThreshold? MinimumDownload { get; init; }
+
+    /// <summary>
+    /// The upload speed the run must reach, or <see langword="null"/> when no target was given.
+    /// </summary>
+    public required MeasurementThreshold? MinimumUpload { get; init; }
+
+    /// <summary>
+    /// The idle latency the run must stay under, or <see langword="null"/> when no target was
+    /// given.
+    /// </summary>
+    public required MeasurementThreshold? MaximumLatency { get; init; }
+
+    /// <summary>
     /// Write per-request diagnostic detail about the run to the error stream, unless
     /// <see cref="DiagnosticsFile"/> names a file, which takes every record instead.
     /// </summary>
     public required bool Diagnostics { get; init; }
+
+    /// <summary>
+    /// Whether the run was given any target to hold itself to.
+    /// </summary>
+    public bool HasThreshold => MinimumDownload is not null || MinimumUpload is not null || MaximumLatency is not null;
 
     /// <summary>
     /// The file the diagnostic records are written to instead of the error stream, or an empty
@@ -205,6 +226,33 @@ public static class SpeedTestCommandSettingsExtensions
         if (settings.Provider == Provider.LibreSpeed && string.IsNullOrWhiteSpace(settings.ServerUrl))
         {
             throw new ArgumentException("A LibreSpeed server URL is needed: pass --server-url with the address LibreSpeed is installed at, such as --server-url http://pi.local:8080/.");
+        }
+
+        // A target answers one question about one run, and a run that repeats has no single answer
+        // to give: whether the fifth test of fifty missed is not something an exit code can carry.
+        // A count of one is a single run however it was spelled, so only a count above one is
+        // refused. Checked before anything is measured, so the user is told at once rather than
+        // after a test they will not get an answer about.
+        if (settings.HasThreshold && (settings.Loop || settings.Count > 1))
+        {
+            throw new ArgumentException("A target checks a single run, so --min-download, --min-upload and --max-latency cannot be used with --loop or with --count above 1. Schedule repeated checks with cron, a systemd timer or Windows Task Scheduler.");
+        }
+
+        // A target for a test the same run turns off can never be answered either way, so it is
+        // refused rather than quietly passing or quietly failing.
+        if (settings.MaximumLatency is not null && settings.NoLatency)
+        {
+            throw new ArgumentException("--max-latency needs the latency test, so it cannot be used with --no-latency.");
+        }
+
+        if (settings.MinimumDownload is not null && settings.NoDownload)
+        {
+            throw new ArgumentException("--min-download needs the download test, so it cannot be used with --no-download.");
+        }
+
+        if (settings.MinimumUpload is not null && settings.NoUpload)
+        {
+            throw new ArgumentException("--min-upload needs the upload test, so it cannot be used with --no-upload.");
         }
     }
 }

@@ -1,0 +1,1 @@
+﻿Error: '2,5Mbps' is not a valid value for --min-download. Give a positive speed with its unit, such as 50Mbps, where b is bits and B is bytes.

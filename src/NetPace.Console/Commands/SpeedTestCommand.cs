@@ -34,9 +34,10 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ErrorOutput errorOutp
     /// </summary>
     /// <remarks>
     /// Network and discovery outcomes are data, not errors: they are reported through the output
-    /// counts and leave the exit code at <c>0</c> unless the consumer opts in via <c>--fail-on</c>.
-    /// Only operational failures (which propagate out of this method to the top-level handler)
-    /// produce a non-zero exit code.
+    /// counts and leave the exit code at <c>0</c> unless the consumer opts in, with <c>--fail-on</c>
+    /// for <c>1</c> or with a <c>--min-download</c>, <c>--min-upload</c> or <c>--max-latency</c>
+    /// target for <see cref="ThresholdCheck.MissedExitCode"/>. Otherwise only operational failures
+    /// (which propagate out of this method to the top-level handler) produce a non-zero exit code.
     /// </remarks>
     public async Task<int> ExecuteAsync(SpeedTestCommandSettings settings, CancellationToken cancellationToken)
     {
@@ -127,6 +128,12 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ErrorOutput errorOutp
         // test, which is also what keeps a user's -1 off the Unbounded sentinel.
         int tests = settings.Loop ? Unbounded : Math.Max(settings.Count, 1);
 
+        // Whether any target the run was given went unmet. A target is refused alongside
+        // --loop and a count above one, so this only ever answers for one test; it is carried
+        // out of the loop all the same, rather than returned from inside it, so that the run
+        // ends where every other run ends.
+        var missedThreshold = false;
+
         for (var test = 0; tests == Unbounded || test < tests; test++)
         {
             // Pause between tests - before each one but the first, rather than after each one
@@ -157,11 +164,21 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ErrorOutput errorOutp
             try
             {
                 var outcome = await writer.PerformSpeedTestAsync(console, clock, clientInfoProvider, recorder, speedTestClient, settings, cancellationToken, limit.Token);
+
+                // Reported before --fail-on decides anything, so a run that trips both still
+                // tells the user what the line fell short of, even though the exit code goes
+                // to --fail-on. The test's records are flushed first, for the reason a failed
+                // test's are flushed before its error: on a shared error stream, what was
+                // measured reads before what it fell short of.
+                FlushDiagnostics(settings);
+                missedThreshold |= ReportMisses(outcome, settings);
+
                 if (FailOnTriggered(outcome, settings)) return 1;
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
-                // User requested cancellation.
+                // User requested cancellation. Nothing is reported about the targets: a run
+                // stopped part-way measured nothing to hold to them.
                 return 0;
             }
             catch (Exception e) when (OperationalFault.Matches(e))
@@ -189,6 +206,11 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ErrorOutput errorOutp
                     errorOutput.WriteLine(theme, Describe(e));
                 }
 
+                // No outcome survived the failure, so there is no figure to hold to any
+                // target the run was given, and all of them are missed: a check that cannot
+                // see the line is not a check that passed.
+                missedThreshold |= ReportMisses(outcome: null, settings);
+
                 if (FailOnRequested(settings)) return 1;
             }
 
@@ -197,7 +219,7 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ErrorOutput errorOutp
             FlushDiagnostics(settings);
         }
 
-        return 0;
+        return missedThreshold ? ThresholdCheck.MissedExitCode : 0;
     }
 
     /// <summary>
@@ -309,6 +331,27 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ErrorOutput errorOutp
         e is OperationCanceledException && e.InnerException is TimeoutException
             ? TimedOutMessage
             : e.Message;
+
+    /// <summary>
+    /// Writes one line per target the run missed, and says whether there were any.
+    /// </summary>
+    /// <remarks>
+    /// The lines go to the error stream rather than through the console: the result another program
+    /// is reading must be the same text with the targets as without them, in every output format
+    /// and in a <c>--file</c> target, and a user who asked for <c>--quiet</c> still wants to hear
+    /// that the line fell short, which is the whole reason they set a target.
+    /// </remarks>
+    private bool ReportMisses(SpeedTestOutcome? outcome, SpeedTestCommandSettings settings)
+    {
+        IReadOnlyList<string> misses = ThresholdCheck.Misses(outcome, settings);
+
+        foreach (string miss in misses)
+        {
+            noticeOutput.Writer.WriteLine(miss);
+        }
+
+        return misses.Count > 0;
+    }
 
     /// <summary>
     /// Evaluates the <c>--fail-on</c> threshold against a single measurement (fail-fast).

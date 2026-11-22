@@ -1,0 +1,2 @@
+﻿Latency was not measured, so the 40 ms maximum is missed.
+Download was not measured, so the 50 Mbps minimum is missed.

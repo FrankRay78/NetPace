@@ -178,7 +178,7 @@ public sealed class DefaultConsoleWriter(ILiveDisplayRefresh liveDisplayRefresh,
                 }
             });
 
-        var outcome = SpeedTestOutcome.Create(downloadResult, uploadResult);
+        var outcome = SpeedTestOutcome.Create(latency, downloadResult, uploadResult);
 
         if (plain is not null)
         {

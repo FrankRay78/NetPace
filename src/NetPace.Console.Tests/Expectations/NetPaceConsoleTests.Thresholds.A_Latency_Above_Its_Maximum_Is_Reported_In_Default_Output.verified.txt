@@ -1,0 +1,1 @@
+﻿Latency 100 ms is above the 40 ms maximum.

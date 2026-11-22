@@ -310,6 +310,27 @@ public static class Program
         };
         quietOption.Aliases.Add("-q");
 
+        var minDownloadOption = new Option<MeasurementThreshold?>("--min-download")
+        {
+            Description = $"Exit {ThresholdCheck.MissedExitCode} when the download speed is below this, such as {ThresholdOption.SpeedExample}.\nTakes any unit NetPace writes a speed in, whatever --unit, --unit-system and --unit-scale say.\nChecks one run, so not with --loop, --count above 1, or --no-download.",
+            DefaultValueFactory = _ => null,
+            CustomParser = result => ThresholdOption.ParseSpeed(result, "--min-download")
+        };
+
+        var minUploadOption = new Option<MeasurementThreshold?>("--min-upload")
+        {
+            Description = $"Exit {ThresholdCheck.MissedExitCode} when the upload speed is below this, such as {ThresholdOption.SpeedExample}.\nRead the same way as --min-download; not with --loop, --count above 1, or --no-upload.",
+            DefaultValueFactory = _ => null,
+            CustomParser = result => ThresholdOption.ParseSpeed(result, "--min-upload")
+        };
+
+        var maxLatencyOption = new Option<MeasurementThreshold?>("--max-latency")
+        {
+            Description = $"Exit {ThresholdCheck.MissedExitCode} when the idle latency is above this, such as {ThresholdOption.LatencyExample}.\nMilliseconds only; not with --loop, --count above 1, or --no-latency.",
+            DefaultValueFactory = _ => null,
+            CustomParser = result => ThresholdOption.ParseLatency(result, "--max-latency")
+        };
+
         var diagnosticsOption = new Option<bool>("--diagnostics")
         {
             Description = "Write per-request diagnostic detail about the run to the error stream.\nThe result is unchanged, so 'netpace --json --diagnostics > result.json 2> diagnostics.log' keeps the two apart.",
@@ -379,6 +400,9 @@ public static class Program
         command.Options.Add(fileModeOption);
         command.Options.Add(quietOption);
         command.Options.Add(failOnOption);
+        command.Options.Add(minDownloadOption);
+        command.Options.Add(minUploadOption);
+        command.Options.Add(maxLatencyOption);
         command.Options.Add(diagnosticsOption);
         command.Options.Add(diagnosticsFileOption);
 
@@ -420,6 +444,9 @@ public static class Program
                     FileModeValue = parseResult.GetValue(fileModeOption),
                     Quiet = parseResult.GetValue(quietOption),
                     FailOn = parseResult.GetValue(failOnOption),
+                    MinimumDownload = parseResult.GetValue(minDownloadOption),
+                    MinimumUpload = parseResult.GetValue(minUploadOption),
+                    MaximumLatency = parseResult.GetValue(maxLatencyOption),
                     Diagnostics = parseResult.GetValue(diagnosticsOption),
                     DiagnosticsFile = parseResult.GetValue(diagnosticsFileOption) ?? string.Empty,
                     DeviceId = parseResult.GetValue(deviceIdOption),

@@ -1,0 +1,1 @@
+﻿Error: --min-download needs the download test, so it cannot be used with --no-download.

@@ -4,15 +4,17 @@ using NetPace.Core;
 namespace NetPace.Console.ConsoleWriters;
 
 /// <summary>
-/// Helper class for running the download and upload measurements of a single speed test.
+/// Helper class for running the download and upload measurements of a single speed test, and
+/// settling which of the three measurements the outcome carries.
 /// </summary>
 internal static class Measurements
 {
     /// <summary>
     /// Performs the download and upload tests the settings ask for, each inside its own diagnostic
-    /// test scope. A test switched off with <c>--no-download</c> or <c>--no-upload</c> is absent
-    /// from the outcome, never a zeroed result - and so is one whose turn came after the run's time
-    /// limit had been reached, which is a test that did not run and is reported as one.
+    /// test scope, and returns them with the latency already measured. A test switched off with
+    /// <c>--no-latency</c>, <c>--no-download</c> or <c>--no-upload</c> is absent from the outcome,
+    /// never a zeroed result - and so is one whose turn came after the run's time limit had been
+    /// reached, which is a test that did not run and is reported as one.
     /// </summary>
     /// <remarks>
     /// Run here rather than in each of the line-based writers: <c>--minimal</c>, <c>--simple</c>,
@@ -22,8 +24,14 @@ internal static class Measurements
     /// decided in <c>Program.BuildSpeedTestSettings</c>, not here. The default writer keeps its own copy, because it
     /// feeds a live display as each transfer runs.
     /// </remarks>
-    public static async Task<SpeedTestOutcome> PerformAsync(ISpeedTestService speedTestClient, IServer server, SpeedTestCommandSettings settings, IDiagnosticRecorder recorder, CancellationToken cancellationToken, CancellationToken timeLimitToken = default)
+    /// <param name="latency">The latency already measured against <paramref name="server"/>, or
+    /// <see langword="null"/> where none was: under <c>--no-latency</c>, or where the time limit
+    /// was reached before any probe answered.</param>
+    public static async Task<SpeedTestOutcome> PerformAsync(ISpeedTestService speedTestClient, IServer server, LatencyTestResult? latency, SpeedTestCommandSettings settings, IDiagnosticRecorder recorder, CancellationToken cancellationToken, CancellationToken timeLimitToken = default)
     {
+        ArgumentNullException.ThrowIfNull(server);
+        ArgumentNullException.ThrowIfNull(settings);
+
         SpeedTestResult? downloadResult = null;
         SpeedTestResult? uploadResult = null;
 
@@ -43,7 +51,7 @@ internal static class Measurements
             uploadResult = Measured(await speedTestClient.GetUploadSpeedAsync(server, null, upload, cancellationToken, timeLimitToken), timeLimitToken);
         }
 
-        return SpeedTestOutcome.Create(downloadResult, uploadResult);
+        return SpeedTestOutcome.Create(latency, downloadResult, uploadResult);
     }
 
     /// <summary>

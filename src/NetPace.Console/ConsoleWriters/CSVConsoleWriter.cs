@@ -21,7 +21,7 @@ public sealed class CSVConsoleWriter : IConsoleWriter
     {
         // Get the server to use for speed testing, then measure.
         (ChosenServer chosen, LatencyTestResult? latency) = await ServerSelector.GetServerAsync(speedTestClient, settings, recorder, cancellationToken, timeLimitToken);
-        var outcome = await Measurements.PerformAsync(speedTestClient, chosen.Server, settings, recorder, cancellationToken, timeLimitToken);
+        var outcome = await Measurements.PerformAsync(speedTestClient, chosen.Server, latency, settings, recorder, cancellationToken, timeLimitToken);
 
         // Header row, emitted directly above the run's first data row rather than on its first
         // attempt: a test abandoned by an exception reaches no row, and the one that follows it

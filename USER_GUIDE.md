@@ -376,7 +376,7 @@ A LibreSpeed run reports everything an Ookla run does, in every output format, a
 
 There is nothing to discover: LibreSpeed publishes no server list, so `--provider librespeed` without `--server-url` is rejected before any test runs. `netpace servers` lists Ookla's nearby servers and takes no `--provider`.
 
-If the address answers but not as a LibreSpeed server, the run says which URL answered wrongly and what to check. If it answers with a server error, the run names the URL and the status, since the address is likely right but the server is failing. If it cannot be reached at all, the run reports that the same way an Ookla run does. Either way nothing is reported as measured, and the exit code stays `0` unless you opt in with `--fail-on` (see [Exit codes](#exit-codes)).
+If the address answers but not as a LibreSpeed server, the run says which URL answered wrongly and what to check. If it answers with a server error, the run names the URL and the status, since the address is likely right but the server is failing. If it cannot be reached at all, the run reports that the same way an Ookla run does. Either way nothing is reported as measured, and the exit code stays `0` unless you opt in with `--fail-on` or set a target, which a run that measured nothing misses (see [Exit codes](#exit-codes)).
 
 There is a local LibreSpeed server to try this against in [`docker/lab/`](https://github.com/FrankRay78/NetPace/tree/main/docker/lab): one script starts it and prints the command to run, on a full-speed link or behind one of the lab's slow-link profiles.
 
@@ -392,7 +392,7 @@ With no `--server-url`, NetPace picks the server for you in two steps.
 
 **Measuring.** The fastest server that answered is then measured properly, with the full latency probe, and that is the figure NetPace reports. Everything after it — latency, download, upload — runs against that same server; NetPace does not switch servers part-way through a run.
 
-If nothing answered during screening, the run reports `Error: No servers available` on standard error. That is a network outcome rather than a fault in NetPace, so the exit code stays `0` (see [Exit codes](#exit-codes)).
+If nothing answered during screening, the run reports `Error: No servers available` on standard error. That is a network outcome rather than a fault in NetPace, so the exit code stays `0`, unless you set a target: a run that reached no server misses every target it was given, and exits `3` (see [Exit codes](#exit-codes)).
 
 The cap on screening exists to stop a single pathological server stalling a run: before it was introduced, a server taking 20–60 seconds to answer each request could hold up a test for minutes. If you want a particular server regardless, `--server-url <url>` skips selection entirely.
 
@@ -536,7 +536,7 @@ Each error is one unbroken line, however narrow the terminal, so a reader taking
 
 `--quiet` does not suppress errors. It silences the result; an error still reaches standard error, with or without `--file`.
 
-Exit codes are unaffected. A network condition is still data and still exits `0`, and only an operational failure or a usage error exits non-zero (see [Exit codes](#exit-codes)).
+Where an error is written does not change the exit code: a network condition is still data, and [Exit codes](#exit-codes) sets out what each outcome exits with.
 
 ---
 
@@ -593,7 +593,7 @@ netpace --json --diagnostics > result.json 2> diagnostics.log
 
 Or name a file and skip the redirection altogether (see [Writing the records to a file](#writing-the-records-to-a-file)).
 
-The result is byte-for-byte what the same invocation produces without the switch, in every output format — so adding `--diagnostics` to a script that parses `--csv` or `--json` cannot break the parsing. Without the switch, the error stream carries only what went wrong ([Where errors are written](#where-errors-are-written)) and the notice about an unrecognised `NETPACE_THEME` (see [Choosing a colour theme](#choosing-a-colour-theme)). At a terminal with nothing redirected, the records appear after the result, leaving the live table intact. A failed test's records are written before its error, so the stream reads what was attempted before what went wrong.
+The result is byte-for-byte what the same invocation produces without the switch, in every output format — so adding `--diagnostics` to a script that parses `--csv` or `--json` cannot break the parsing. Without the switch, the error stream carries only what went wrong ([Where errors are written](#where-errors-are-written)) the notice about an unrecognised `NETPACE_THEME` (see [Choosing a colour theme](#choosing-a-colour-theme)), and a line for each target the run missed (see [Checking the line against a target](#checking-the-line-against-a-target)). A test's records come before the lines about the targets it missed. At a terminal with nothing redirected, the records appear after the result, leaving the live table intact. A failed test's records are written before its error, so the stream reads what was attempted before what went wrong.
 
 `--diagnostics` works alongside whichever output format you chose, and is unaffected by `--quiet`. It never writes to the `--file` target.
 
@@ -643,7 +643,9 @@ The file is replaced on every run, so each one describes a single run, and `--fi
 
 ### Exit codes
 
-The exit code reports only whether **NetPace itself** functioned. Network conditions like a total outage, 100% request failure, or no servers found are *data*, not errors, and NetPace will exit `0`. Only an operational failure (for example, being unable to write the `--file` output) or a usage error (an unusable option value, or two output formats at once) exits non-zero. So a `0 bps` measurement still exits `0` by default: inspect the counts (or use `--fail-on`) to detect it.
+The exit code reports only whether **NetPace itself** functioned. Network conditions like a total outage, 100% request failure, or no servers found are *data*, not errors, and NetPace will exit `0`. Only an operational failure (for example, being unable to write the `--file` output) or a usage error (an unusable option value, or two output formats at once) exits non-zero, with `1`. So a `0 bps` measurement still exits `0` by default: inspect the counts (or use `--fail-on`) to detect it.
+
+Two opt-ins change that, and only when you ask for them: `--fail-on` exits `1` on a failed measurement, and a missed `--min-download`, `--min-upload` or `--max-latency` target exits `3`. Those are the only codes NetPace itself chooses. A process ended from outside, by a second Ctrl+C or by a service manager stopping it, exits with whatever code the operating system gives it.
 
 **The rule covers every command, not just a speed test.** `netpace servers`, `netpace servers --latency` and `netpace servers --fastest` each report an empty server list, and a failed or timed-out attempt to fetch it — and exit `0` for both. A list no server answered on only arises where screening runs: `--fastest` reports it, `--latency` shows `-` against each row, and both exit `0`. Pressing Ctrl+C exits `0` as well, wherever you press it, and reports no error — it leaves whatever had already been drawn on screen. A script that wants to know whether servers were found reads standard error, where each of these conditions is reported, not the exit code.
 
@@ -663,6 +665,29 @@ A measurement that never ran at all — the network was down, or no server could
 # Treat a totally-failed test as a failure
 netpace --fail-on total
 ```
+
+#### Checking the line against a target
+
+A scheduled run can say whether the line met the level you pay for. `--min-download` and `--min-upload` set a speed the run must reach, `--max-latency` a latency it must stay under, and any combination of the three may be given:
+
+```bash
+# Alert when the line falls short of a 100/20 plan
+netpace --quiet --min-download 50Mbps --min-upload 10Mbps --max-latency 40ms
+```
+
+A speed takes any unit NetPace displays a speed in: bits or bytes per second, SI or IEC, at any scale (`Kbps`, `Mbps`, `Gbps`, `MBps`, `Mibps` and so on). The scale prefix is read in any case, so `50mbps` and `50Mbps` are the same, but `b` and `B` are not: `50MBps` is 50 megabytes a second, eight times `50Mbps`. Decimals are accepted (`2.5Mbps`). `--max-latency` takes milliseconds, and is checked against the idle latency, the headline figure every output format reports. `--unit`, `--unit-system` and `--unit-scale` change how the result is displayed and have no effect on how a target is read.
+
+A target is missed when the figure is below a minimum or above a maximum. A figure exactly at its target meets it, a test whose every request failed measures zero and so misses any minimum, and a target with no figure at all to compare, because no server could be reached, is missed too. When a target is missed:
+
+- The result is written exactly as it would be without the targets, in every output format and in a `--file` target.
+- One line per missed target goes to standard error, naming the measurement, the figure measured where there is one, and the target. `--quiet` does not suppress it.
+- NetPace exits `3`.
+
+So a cron line or a systemd timer can act on the exit code with no wrapper script: `0` means the line met every target, `3` means it fell short, and `1` still means NetPace itself did not work. An operational fault, a usage error or a `--fail-on` trigger exits `1` whatever the targets say.
+
+A target answers one question about one run, so it is refused, before any test runs, alongside `--loop` or `--count` above 1, and alongside the `--no-` switch for its own test. Schedule repeated checks with cron, a systemd timer or Windows Task Scheduler. A value with no unit, an unrecognised unit, or a value that is not positive is refused the same way, with a workable example. Pressing Ctrl+C writes no target lines and exits `0`, as it does today.
+
+Targets are not marked in CSV or JSON output: both carry the plain figures, and a script reading them compares the numbers itself.
 
 ---
 

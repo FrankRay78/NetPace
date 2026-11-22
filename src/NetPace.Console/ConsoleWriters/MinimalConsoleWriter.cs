@@ -32,7 +32,7 @@ public sealed class MinimalConsoleWriter : IConsoleWriter
 
         // Get the server to use for speed testing, then measure.
         (ChosenServer chosen, LatencyTestResult? latency) = await ServerSelector.GetServerAsync(speedTestClient, settings, recorder, cancellationToken, timeLimitToken);
-        var outcome = await Measurements.PerformAsync(speedTestClient, chosen.Server, settings, recorder, cancellationToken, timeLimitToken);
+        var outcome = await Measurements.PerformAsync(speedTestClient, chosen.Server, latency, settings, recorder, cancellationToken, timeLimitToken);
 
         // The timestamp first, then a named field per figure in the order the tests ran. A test that
         // did not run contributes null rather than a field, so nothing here ever reports a zero for

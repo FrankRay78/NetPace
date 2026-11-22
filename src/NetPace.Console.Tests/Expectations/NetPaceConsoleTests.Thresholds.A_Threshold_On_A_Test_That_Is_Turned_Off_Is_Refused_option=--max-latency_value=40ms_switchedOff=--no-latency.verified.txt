@@ -1,0 +1,1 @@
+﻿Error: --max-latency needs the latency test, so it cannot be used with --no-latency.
