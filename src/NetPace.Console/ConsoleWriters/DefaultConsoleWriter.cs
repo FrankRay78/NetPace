@@ -292,9 +292,7 @@ public sealed class DefaultConsoleWriter(ILiveDisplayRefresh liveDisplayRefresh,
 
         // Two destinations of the same kind: the path --file takes away from a terminal (under
         // cron, through a pipe, or with a stream redirected), where the terminal and the file
-        // both cannot redraw and both get the simple lines. The File tests run this way. The
-        // wrapper is never disposed here: the composite the command built owns these
-        // destinations and closes them itself.
+        // both cannot redraw and both get the simple lines. The File tests run this way.
         _ => new CompositeAnsiConsole(destinations[0], destinations),
     };
 
