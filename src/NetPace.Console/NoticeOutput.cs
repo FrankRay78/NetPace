@@ -2,8 +2,8 @@ namespace NetPace.Console;
 
 /// <summary>
 /// Where a word to the user that is neither the result nor an error goes, such as a theme name
-/// that is not a theme or a diagnostics file that could not be written: the process error stream
-/// in production, a buffer in tests.
+/// that is not a theme, a diagnostics file that could not be written or a target the run missed:
+/// the process error stream in production, a buffer in tests.
 /// </summary>
 /// <remarks>
 /// A notice is not the result and is not a diagnostic. It goes to the error stream so a run whose

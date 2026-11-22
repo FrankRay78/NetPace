@@ -6,7 +6,8 @@ namespace NetPace.Console.Commands;
 /// </summary>
 /// <remarks>
 /// Network conditions — an outage, a server that never answered, nothing discovered at all — are
-/// data, so they are reported and leave the exit code at <c>0</c>. An operational fault is
+/// data, so they are reported and leave the exit code at <c>0</c> unless the user opted in to
+/// a non-zero one with <c>--fail-on</c> or a target. An operational fault is
 /// NetPace failing at its own job, and must exit non-zero. One definition, shared, because a
 /// command that recognised operational faults differently would make the documented exit-code
 /// rule depend on which command the user ran. It is one component of that rule rather than the

@@ -6,7 +6,7 @@
 
 **Constraints:**
 
-- `0`, `1` and `3` are now the only codes NetPace returns, and `3` is an interface contract a monitoring check reads: it joins the frozen surface at 1.0.
+- `0`, `1` and `3` are now the only codes NetPace itself chooses, and `3` is an interface contract a monitoring check reads: it joins the frozen surface at 1.0.
 - The suffixes a target accepts are `NetPace.Console`'s own list, so `NetPace.Core` gains no parser and no public member. A test reads every suffix the library writes back through the parser, so a unit the library gains or renames shows up as a threshold value the CLI refuses.
 
 **Decisions:**

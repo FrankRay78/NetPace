@@ -34,9 +34,10 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ErrorOutput errorOutp
     /// </summary>
     /// <remarks>
     /// Network and discovery outcomes are data, not errors: they are reported through the output
-    /// counts and leave the exit code at <c>0</c> unless the consumer opts in via <c>--fail-on</c>.
-    /// Only operational failures (which propagate out of this method to the top-level handler)
-    /// produce a non-zero exit code.
+    /// counts and leave the exit code at <c>0</c> unless the consumer opts in, with <c>--fail-on</c>
+    /// for <c>1</c> or with a <c>--min-download</c>, <c>--min-upload</c> or <c>--max-latency</c>
+    /// target for <see cref="ThresholdCheck.MissedExitCode"/>. Otherwise only operational failures
+    /// (which propagate out of this method to the top-level handler) produce a non-zero exit code.
     /// </remarks>
     public async Task<int> ExecuteAsync(SpeedTestCommandSettings settings, CancellationToken cancellationToken)
     {
