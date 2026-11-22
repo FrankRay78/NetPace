@@ -274,7 +274,7 @@ netpace --csv --no-csv-header >> ~/netpace.csv
 
 `--no-csv-header` leaves the header out of everything: the terminal, redirected or piped standard output, and a `--file` target even when it is new or empty, on every iteration of `--loop` and `--count`. It is accepted alongside the other formats and changes nothing there.
 
-Errors go to standard error, never into the file ([Where errors are written](#where-errors-are-written)), so a new log whose first run failed is still empty, and the next run that writes a row gives it the header. Within one `--loop` or `--count` run, though, the header is written only by the first iteration: if that iteration fails before it writes anything, the rows that follow arrive without a header. Stop the run and start it again to get one.
+Errors go to standard error, never into the file ([Where errors are written](#where-errors-are-written)), so a new log whose first run failed is still empty, and the next run that writes a row gives it the header. Within one `--loop` or `--count` run the header sits directly above the first row the run writes, so an earlier test that failed costs the run no column names.
 
 **Start a new log after an upgrade that changes the columns.** While NetPace is below 1.0.0 the CSV columns may gain or move fields between releases, and nothing checks an existing log's header against the columns being written. Rows from a newer version appended to an older log sit under a header that no longer describes them. After an upgrade that changes the columns, move the old log aside and let NetPace start a fresh one.
 

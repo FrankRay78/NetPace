@@ -33,7 +33,7 @@ public sealed class DefaultConsoleWriter(ILiveDisplayRefresh liveDisplayRefresh,
     /// <inheritdoc/>
     public bool MachineReadable => false;
 
-    public async Task<SpeedTestOutcome> PerformSpeedTestAsync(bool initialSpeedTest, IAnsiConsole console, IClock clock, IClientInfoProvider clientInfoProvider, IDiagnosticRecorder recorder, ISpeedTestService speedTestClient, SpeedTestCommandSettings settings, CancellationToken cancellationToken, CancellationToken timeLimitToken = default)
+    public async Task<SpeedTestOutcome> PerformSpeedTestAsync(IAnsiConsole console, IClock clock, IClientInfoProvider clientInfoProvider, IDiagnosticRecorder recorder, ISpeedTestService speedTestClient, SpeedTestCommandSettings settings, CancellationToken cancellationToken, CancellationToken timeLimitToken = default)
     {
         ArgumentNullException.ThrowIfNull(console);
         ArgumentNullException.ThrowIfNull(settings);
@@ -44,7 +44,7 @@ public sealed class DefaultConsoleWriter(ILiveDisplayRefresh liveDisplayRefresh,
         {
             // Nothing this run writes to can redraw, so default output is the simple lines - which
             // is exactly what that writer already produces, rather than a second rendering of it.
-            return await new SimpleConsoleWriter().PerformSpeedTestAsync(initialSpeedTest, plain ?? console, clock, clientInfoProvider, recorder, speedTestClient, settings, cancellationToken, timeLimitToken);
+            return await new SimpleConsoleWriter().PerformSpeedTestAsync(plain ?? console, clock, clientInfoProvider, recorder, speedTestClient, settings, cancellationToken, timeLimitToken);
         }
 
         // Choose the server first, so the screen can name it before the first probe answers. The

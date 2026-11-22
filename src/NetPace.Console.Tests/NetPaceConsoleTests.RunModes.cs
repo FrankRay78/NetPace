@@ -53,16 +53,6 @@ public sealed partial class NetPaceConsoleTests
         /// </summary>
         private const string ResultLine = "Ping: 24 ms";
 
-        private static LatencyTestResult Latency(string serverUrl) =>
-            new()
-            {
-                Server = new Server { Sponsor = "Deutsche Telekom", Location = "Frankfurt", Url = serverUrl },
-                LatencyMilliseconds = 24,
-                MinimumLatencyMilliseconds = null,
-                MaximumLatencyMilliseconds = null,
-                JitterMilliseconds = 3
-            };
-
         /// <summary>
         /// What ends one test when the failure shape is <paramref name="shape"/>. A factory rather
         /// than an instance, so each test of a repeated run throws its own.
@@ -82,26 +72,6 @@ public sealed partial class NetPaceConsoleTests
         private static string ReportedBy(string shape) =>
             shape == Timeout ? "did not respond in time" : "Could not open socket";
 
-        /// <summary>
-        /// A service whose latency probe throws on the probes <paramref name="throwsOn"/> selects,
-        /// counted from one, and measures normally on the rest.
-        /// </summary>
-        /// <remarks>
-        /// The probe is where a test is abandoned whole. A failure raised later in the test would
-        /// leave a part-written result behind, and the result lines would no longer be countable.
-        /// </remarks>
-        private static ISpeedTestService ServiceWhoseProbeThrows(Func<int, bool> throwsOn, Func<Exception> fault)
-        {
-            var probes = 0;
-            return new SpeedTestMock
-            {
-                GetServerLatencyByServerUrlAsyncFunc = (url, _, _) => throwsOn(Interlocked.Increment(ref probes))
-                    ? throw fault()
-                    : Task.FromResult(Latency(url)),
-                GetDownloadSpeedAsyncFunc = (_, _, _) => Task.FromResult(ScriptedSpeedTester.Clean(150)),
-                GetUploadSpeedAsyncFunc = (_, _, _) => Task.FromResult(ScriptedSpeedTester.Clean(32))
-            };
-        }
 
         /// <summary>
         /// A run the user cancels while a test is in flight: the probe cancels the given source and

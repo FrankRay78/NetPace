@@ -1,0 +1,3 @@
+﻿Timestamp,LatencyMilliseconds,JitterMilliseconds,DownloadSpeedBitsPerSecond,DownloadSucceeded,DownloadFailed,DownloadLatencyMilliseconds,DownloadLowestLatencyMilliseconds,DownloadHighestLatencyMilliseconds,DownloadJitterMilliseconds,UploadSpeedBitsPerSecond,UploadSucceeded,UploadFailed,UploadLatencyMilliseconds,UploadLowestLatencyMilliseconds,UploadHighestLatencyMilliseconds,UploadJitterMilliseconds,IPAddress,Hostname,ServerLocation,ServerSponsor,ServerUrl,DeviceId
+1980-01-01T10:05:00+01:00,24,3,8000,150,0,,,,,8000,32,0,,,,,192.168.1.1,test-host,,[Unknown],http://slow.example/upload.php,
+1980-01-01T10:05:05+01:00,24,3,8000,150,0,,,,,8000,32,0,,,,,192.168.1.1,test-host,,[Unknown],http://slow.example/upload.php,

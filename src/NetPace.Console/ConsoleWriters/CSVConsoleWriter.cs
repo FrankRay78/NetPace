@@ -6,16 +6,28 @@ namespace NetPace.Console.ConsoleWriters;
 
 public sealed class CSVConsoleWriter : IConsoleWriter
 {
+    /// <summary>
+    /// Whether this run has settled its header line, which is not the same as having written one:
+    /// a destination that already holds content is sent no header, and the run is still done
+    /// deciding. One writer serves a whole run, so the run's first row is the one the header sits
+    /// above, whatever happened before that row.
+    /// </summary>
+    private bool headerWritten;
+
     /// <inheritdoc/>
     public bool MachineReadable => true;
 
-    public async Task<SpeedTestOutcome> PerformSpeedTestAsync(bool initialSpeedTest, IAnsiConsole console, IClock clock, IClientInfoProvider clientInfoProvider, IDiagnosticRecorder recorder, ISpeedTestService speedTestClient, SpeedTestCommandSettings settings, CancellationToken cancellationToken, CancellationToken timeLimitToken = default)
+    public async Task<SpeedTestOutcome> PerformSpeedTestAsync(IAnsiConsole console, IClock clock, IClientInfoProvider clientInfoProvider, IDiagnosticRecorder recorder, ISpeedTestService speedTestClient, SpeedTestCommandSettings settings, CancellationToken cancellationToken, CancellationToken timeLimitToken = default)
     {
         // Get the server to use for speed testing, then measure.
         (ChosenServer chosen, LatencyTestResult? latency) = await ServerSelector.GetServerAsync(speedTestClient, settings, recorder, cancellationToken, timeLimitToken);
         var outcome = await Measurements.PerformAsync(speedTestClient, chosen.Server, settings, recorder, cancellationToken, timeLimitToken);
 
-        // Header row, emitted on the first iteration of a run, and not at all where
+        // Header row, emitted directly above the run's first data row rather than on its first
+        // attempt: a test abandoned by an exception reaches no row, and the one that follows it
+        // must still find its column names above it. The first test of a run is the likeliest to be
+        // lost that way (a loop started before the network is up), so keying the header off the
+        // attempt left the longest-running logs headerless. Not emitted at all where
         // --no-csv-header asks for rows only. Which destinations receive it is settled below: one
         // that already holds content is not sent the header, so a log appended to across runs does
         // not gain a header line between every pair of rows. Every built-in column is present
@@ -27,7 +39,7 @@ public sealed class CSVConsoleWriter : IConsoleWriter
         // by header name, and a user starts a new log after an upgrade that changes them. The
         // identity and server columns follow, then any custom columns, which are per invocation, so
         // only the built-in prefix keeps one shape across runs.
-        if (initialSpeedTest && !settings.NoCSVHeader)
+        if (!headerWritten && !settings.NoCSVHeader)
         {
             string header = Record([
                 "Timestamp",
@@ -59,6 +71,8 @@ public sealed class CSVConsoleWriter : IConsoleWriter
             {
                 destination.WriteLine(header);
             }
+
+            headerWritten = true;
         }
 
         // Data row. Each measurement is a plain number in the unit its column names, so --unit,

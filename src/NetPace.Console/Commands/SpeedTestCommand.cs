@@ -146,7 +146,7 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ErrorOutput errorOutp
 
                 try
                 {
-                    var outcome = await writer.PerformSpeedTestAsync(initialSpeedTest: test == 0, console, clock, clientInfoProvider, recorder, speedTestClient, settings, cancellationToken, limit.Token);
+                    var outcome = await writer.PerformSpeedTestAsync(console, clock, clientInfoProvider, recorder, speedTestClient, settings, cancellationToken, limit.Token);
                     if (FailOnTriggered(outcome, settings)) return 1;
                 }
                 catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)

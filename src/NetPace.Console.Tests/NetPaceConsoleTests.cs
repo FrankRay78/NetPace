@@ -60,6 +60,45 @@ public sealed partial class NetPaceConsoleTests
     private static int Occurrences(string text, string value) => text.Split(value).Length - 1;
 
     /// <summary>
+    /// A measured latency result for <paramref name="serverUrl"/>, the answer a probe gives when
+    /// nothing is wrong with the line.
+    /// </summary>
+    private static LatencyTestResult Latency(string serverUrl) =>
+        new()
+        {
+            Server = new Server { Sponsor = "Deutsche Telekom", Location = "Frankfurt", Url = serverUrl },
+            LatencyMilliseconds = 24,
+            MinimumLatencyMilliseconds = null,
+            MaximumLatencyMilliseconds = null,
+            JitterMilliseconds = 3
+        };
+
+    /// <summary>
+    /// A service whose latency probe throws on the probes <paramref name="throwsOn"/> selects,
+    /// counted from one, and measures normally on the rest. <paramref name="fault"/> is what ends
+    /// one test, a factory rather than an instance so each test of a repeated run throws its own;
+    /// it defaults to the plain network failure.
+    /// </summary>
+    /// <remarks>
+    /// The probe is where a test is abandoned whole. A failure raised later in the test would leave
+    /// a part-written result behind, and the result lines would no longer be countable.
+    /// </remarks>
+    private static ISpeedTestService ServiceWhoseProbeThrows(Func<int, bool> throwsOn, Func<Exception>? fault = null)
+    {
+        Func<Exception> faultOf = fault ?? (() => new HttpRequestException("Could not open socket"));
+        var probes = 0;
+
+        return new SpeedTestMock
+        {
+            GetServerLatencyByServerUrlAsyncFunc = (url, _, _) => throwsOn(Interlocked.Increment(ref probes))
+                ? throw faultOf()
+                : Task.FromResult(Latency(url)),
+            GetDownloadSpeedAsyncFunc = (_, _, _) => Task.FromResult(ScriptedSpeedTester.Clean(150)),
+            GetUploadSpeedAsyncFunc = (_, _, _) => Task.FromResult(ScriptedSpeedTester.Clean(32))
+        };
+    }
+
+    /// <summary>
     /// A run's arguments: the switch that selects an output mode, followed by the rest of them. The
     /// default mode is selected by no switch at all, so an empty mode contributes nothing. Shared
     /// by the nested classes that run the same invocation in every output mode.
