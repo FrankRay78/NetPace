@@ -71,7 +71,7 @@ internal static class ThresholdCheck
 
         if (figure is not long measured)
         {
-            misses.Add($"{measurement} was not measured, so it is {side} the {threshold.TargetFigure} {bound}.");
+            misses.Add($"{measurement} was not measured, so the {threshold.TargetFigure} {bound} is missed.");
             return;
         }
 

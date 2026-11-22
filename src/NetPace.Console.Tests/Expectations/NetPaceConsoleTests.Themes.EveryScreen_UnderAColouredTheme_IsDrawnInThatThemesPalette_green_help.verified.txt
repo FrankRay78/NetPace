@@ -114,8 +114,8 @@ and upload speed testing.
     \e[38;5;65m    --min-download\e[0m                    Exit 3 when the download speed is     
                                           below this, such as 50Mbps.           
                                           Takes any unit NetPace writes a speed 
-                                          in, whatever --unit and --unit-system 
-                                          say.                                  
+                                          in, whatever --unit, --unit-system and
+                                          --unit-scale say.                     
                                           Checks one run, so not with --loop,   
                                           --count above 1, or --no-download.    
     \e[38;5;65m    --min-upload\e[0m                      Exit 3 when the upload speed is below 

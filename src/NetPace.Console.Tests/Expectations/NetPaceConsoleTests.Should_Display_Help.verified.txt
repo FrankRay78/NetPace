@@ -63,7 +63,7 @@ OPTIONS:
                                           With 'none' the exit code is never affected; 'total' triggers when a test is all-failed;                        
                                           'partial' triggers on any failed request. Fail-fast across --count and --loop.                                  
         --min-download                    Exit 3 when the download speed is below this, such as 50Mbps.                                                   
-                                          Takes any unit NetPace writes a speed in, whatever --unit and --unit-system say.                                
+                                          Takes any unit NetPace writes a speed in, whatever --unit, --unit-system and --unit-scale say.                  
                                           Checks one run, so not with --loop, --count above 1, or --no-download.                                          
         --min-upload                      Exit 3 when the upload speed is below this, such as 50Mbps.                                                     
                                           Read the same way as --min-download; not with --loop, --count above 1, or --no-upload.                          

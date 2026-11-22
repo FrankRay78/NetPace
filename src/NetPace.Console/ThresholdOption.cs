@@ -72,7 +72,7 @@ internal static class ThresholdOption
     /// against <paramref name="optionName"/> with a workable example.
     /// </summary>
     public static MeasurementThreshold? ParseSpeed(ArgumentResult result, string optionName) =>
-        Parse(result, optionName, ReadSpeed, $"Give a positive speed with its unit, such as {SpeedExample}.");
+        Parse(result, optionName, ReadSpeed, $"Give a positive speed with its unit, such as {SpeedExample}, where b is bits and B is bytes.");
 
     /// <summary>
     /// Reads a <c>--max-latency</c> value, reporting an unreadable one against

@@ -235,7 +235,7 @@ public static class SpeedTestCommandSettingsExtensions
         // after a test they will not get an answer about.
         if (settings.HasThreshold && (settings.Loop || settings.Count > 1))
         {
-            throw new ArgumentException("A threshold checks a single run, so --min-download, --min-upload and --max-latency cannot be used with --loop or with --count above 1. Schedule repeated checks with cron or a systemd timer.");
+            throw new ArgumentException("A target checks a single run, so --min-download, --min-upload and --max-latency cannot be used with --loop or with --count above 1. Schedule repeated checks with cron, a systemd timer or Windows Task Scheduler.");
         }
 
         // A target for a test the same run turns off can never be answered either way, so it is

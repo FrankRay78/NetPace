@@ -685,7 +685,7 @@ A target is missed when the figure is below a minimum or above a maximum. A figu
 
 So a cron line or a systemd timer can act on the exit code with no wrapper script: `0` means the line met every target, `3` means it fell short, and `1` still means NetPace itself did not work. An operational fault, a usage error or a `--fail-on` trigger exits `1` whatever the targets say.
 
-A target answers one question about one run, so it is refused, before any test runs, alongside `--loop` or `--count` above 1, and alongside the `--no-` switch for its own test. Schedule repeated checks with cron or a timer. A value with no unit, an unrecognised unit, or a value that is not positive is refused the same way, with a workable example. Pressing Ctrl+C writes no target lines and exits `0`, as it does today.
+A target answers one question about one run, so it is refused, before any test runs, alongside `--loop` or `--count` above 1, and alongside the `--no-` switch for its own test. Schedule repeated checks with cron, a systemd timer or Windows Task Scheduler. A value with no unit, an unrecognised unit, or a value that is not positive is refused the same way, with a workable example. Pressing Ctrl+C writes no target lines and exits `0`, as it does today.
 
 Targets are not marked in CSV or JSON output: both carry the plain figures, and a script reading them compares the numbers itself.
 

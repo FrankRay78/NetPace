@@ -1,1 +1,1 @@
-﻿Error: A threshold checks a single run, so --min-download, --min-upload and --max-latency cannot be used with --loop or with --count above 1. Schedule repeated checks with cron or a systemd timer.
+﻿Error: A target checks a single run, so --min-download, --min-upload and --max-latency cannot be used with --loop or with --count above 1. Schedule repeated checks with cron, a systemd timer or Windows Task Scheduler.

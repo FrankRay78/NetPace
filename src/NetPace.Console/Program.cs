@@ -312,7 +312,7 @@ public static class Program
 
         var minDownloadOption = new Option<MeasurementThreshold?>("--min-download")
         {
-            Description = $"Exit {ThresholdCheck.MissedExitCode} when the download speed is below this, such as {ThresholdOption.SpeedExample}.\nTakes any unit NetPace writes a speed in, whatever --unit and --unit-system say.\nChecks one run, so not with --loop, --count above 1, or --no-download.",
+            Description = $"Exit {ThresholdCheck.MissedExitCode} when the download speed is below this, such as {ThresholdOption.SpeedExample}.\nTakes any unit NetPace writes a speed in, whatever --unit, --unit-system and --unit-scale say.\nChecks one run, so not with --loop, --count above 1, or --no-download.",
             DefaultValueFactory = _ => null,
             CustomParser = result => ThresholdOption.ParseSpeed(result, "--min-download")
         };
