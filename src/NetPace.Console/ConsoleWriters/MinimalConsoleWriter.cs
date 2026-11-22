@@ -24,15 +24,15 @@ public sealed class MinimalConsoleWriter : IConsoleWriter
     /// <inheritdoc/>
     public bool MachineReadable => true;
 
-    public async Task<SpeedTestOutcome> PerformSpeedTestAsync(IAnsiConsole console, IClock clock, IClientInfoProvider clientInfoProvider, IDiagnosticRecorder recorder, ISpeedTestService speedTestClient, SpeedTestCommandSettings settings, CancellationToken cancellationToken)
+    public async Task<SpeedTestOutcome> PerformSpeedTestAsync(IAnsiConsole console, IClock clock, IClientInfoProvider clientInfoProvider, IDiagnosticRecorder recorder, ISpeedTestService speedTestClient, SpeedTestCommandSettings settings, CancellationToken cancellationToken, CancellationToken timeLimitToken = default)
     {
         ArgumentNullException.ThrowIfNull(console);
         ArgumentNullException.ThrowIfNull(clock);
         ArgumentNullException.ThrowIfNull(settings);
 
         // Get the server to use for speed testing, then measure.
-        var fastest = await ServerSelector.GetServerAsync(speedTestClient, settings, recorder, cancellationToken);
-        var outcome = await Measurements.PerformAsync(speedTestClient, fastest.Server, settings, recorder, cancellationToken);
+        (ChosenServer chosen, LatencyTestResult? latency) = await ServerSelector.GetServerAsync(speedTestClient, settings, recorder, cancellationToken, timeLimitToken);
+        var outcome = await Measurements.PerformAsync(speedTestClient, chosen.Server, settings, recorder, cancellationToken, timeLimitToken);
 
         // The timestamp first, then a named field per figure in the order the tests ran. A test that
         // did not run contributes null rather than a field, so nothing here ever reports a zero for
@@ -40,7 +40,7 @@ public sealed class MinimalConsoleWriter : IConsoleWriter
         string?[] fields =
         [
             clock.Now.ToHumanReadable(),
-            settings.NoLatency ? null : $"Latency: {fastest.LatencyMilliseconds.ToString(CultureInfo.InvariantCulture)} ms",
+            latency is LatencyTestResult measured ? $"Latency: {measured.LatencyMilliseconds.ToString(CultureInfo.InvariantCulture)} ms" : null,
             outcome.Download is SpeedTestResult download ? $"Download: {download.GetFigure(settings)}" : null,
             outcome.Upload is SpeedTestResult upload ? $"Upload: {upload.GetFigure(settings)}" : null,
         ];

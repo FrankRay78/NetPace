@@ -1,9 +1,9 @@
 ﻿Ping: 75 ms
 Download: 0.25 Mbps
-Upload: 0.5 Mbps
+Upload: 0.50 Mbps
 Ping: 100 ms
-Download: 1 Mbps
-Upload: 3 Mbps
+Download: 1.00 Mbps
+Upload: 3.00 Mbps
 Ping: 150 ms
 Download: 2.75 Mbps
 Upload: 1.33 Mbps

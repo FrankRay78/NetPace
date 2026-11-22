@@ -13,15 +13,28 @@ namespace NetPace.Console.Diagnostics;
 /// The scope is the <see cref="IProgress{T}"/> the provider reports requests to, so the test's name
 /// is attached here rather than being something <c>NetPace.Core</c> has to know. Its
 /// <c>test.end</c> counts are derived from the records it saw, so the summary cannot count a
-/// record that is not above it - its <c>bytes</c> total covers the successful ones, which is less
-/// than every record's bytes added up where a request moved data and was then excluded. It can also
-/// report a cancelled count, which the measured result does not carry. Under-load latency probes are
-/// the one thing it records without counting; see <see cref="Report"/> for why.
+/// record that is not above it: its <c>bytes</c> total is every record's bytes added up, whatever
+/// their outcome, which is what the measurement itself counts. It can also report a cancelled
+/// count, which the measured result does not carry. Under-load latency probes are the one thing it
+/// records without counting; see <see cref="Report"/> for why.
 /// </remarks>
 internal sealed class DiagnosticTestScope : IProgress<RequestDiagnostic>, IDisposable
 {
+    /// <summary>
+    /// What a request stopped because the run ran out of time is recorded as.
+    /// </summary>
+    /// <remarks>
+    /// <c>NetPace.Core</c> records such a request with its own generic wording
+    /// (<see cref="RequestDiagnostic.StoppedByCaller"/>), because the library knows only that its
+    /// caller asked it to stop. Here that caller is known, and the one thing that stops a NetPace
+    /// run while keeping its measurement is the run's time limit - so the record names it, and a
+    /// triager reading a cut-short run is told why it was cut short.
+    /// </remarks>
+    private const string TimeLimitReached = "run time limit reached";
+
     private readonly IDiagnosticRecorder recorder;
     private readonly string test;
+    private readonly CancellationToken timeLimitToken;
     private readonly object countLock = new();
 
     private int requests;
@@ -35,13 +48,14 @@ internal sealed class DiagnosticTestScope : IProgress<RequestDiagnostic>, IDispo
     /// Opens the scope, recording that the named test started. Private so <see cref="For"/> is the
     /// only way in, which is what makes "a scope exists" mean "something is being recorded".
     /// </summary>
-    private DiagnosticTestScope(IDiagnosticRecorder recorder, string test)
+    private DiagnosticTestScope(IDiagnosticRecorder recorder, string test, CancellationToken timeLimitToken)
     {
         ArgumentNullException.ThrowIfNull(recorder);
         ArgumentException.ThrowIfNullOrWhiteSpace(test);
 
         this.recorder = recorder;
         this.test = test;
+        this.timeLimitToken = timeLimitToken;
 
         recorder.Record("test.start", ("test", test));
     }
@@ -59,7 +73,15 @@ internal sealed class DiagnosticTestScope : IProgress<RequestDiagnostic>, IDispo
     /// a disabled recorder would also still take this type's lock and format every record before
     /// discarding it.
     /// </remarks>
-    public static DiagnosticTestScope? For(IDiagnosticRecorder recorder, string test)
+    /// <param name="recorder">Where the records go.</param>
+    /// <param name="test">The test the records belong to.</param>
+    /// <param name="timeLimitToken">
+    /// The run's time limit, for a test that reaches the library through a token linked to it
+    /// rather than as a stop: a request that test reports cancelled once the limit is reached is
+    /// recorded as stopped by the limit, because the library can only call it cancelled by its
+    /// caller.
+    /// </param>
+    public static DiagnosticTestScope? For(IDiagnosticRecorder recorder, string test, CancellationToken timeLimitToken = default)
     {
         ArgumentNullException.ThrowIfNull(recorder);
 
@@ -67,7 +89,7 @@ internal sealed class DiagnosticTestScope : IProgress<RequestDiagnostic>, IDispo
         // rather than one that only surfaces once --diagnostics is passed.
         ArgumentException.ThrowIfNullOrWhiteSpace(test);
 
-        return recorder.IsEnabled ? new DiagnosticTestScope(recorder, test) : null;
+        return recorder.IsEnabled ? new DiagnosticTestScope(recorder, test, timeLimitToken) : null;
     }
 
     /// <inheritdoc />
@@ -106,7 +128,7 @@ internal sealed class DiagnosticTestScope : IProgress<RequestDiagnostic>, IDispo
                 ("status", StatusOf(value.Outcome)),
                 ("bytes", value.BytesProcessed.ToString(CultureInfo.InvariantCulture)),
                 ("duration_ms", value.ElapsedMilliseconds.ToString(CultureInfo.InvariantCulture)),
-                ("reason", value.FailureReason),
+                ("reason", ReasonOf(value)),
                 ("exception", value.FailureType));
 
             if (isLoadedLatencyProbe)
@@ -116,11 +138,16 @@ internal sealed class DiagnosticTestScope : IProgress<RequestDiagnostic>, IDispo
 
             requests++;
 
+            // Totalled whatever the outcome, because the measurement counts the bytes the same
+            // way: a request the server cut off, and one dropped at the byte budget, each moved
+            // what their record says they moved. Summing only the successful ones would put a
+            // figure in the summary that no reported speed agrees with.
+            bytes += value.BytesProcessed;
+
             switch (value.Outcome)
             {
                 case RequestOutcome.Succeeded:
                     succeeded++;
-                    bytes += value.BytesProcessed;
                     break;
                 case RequestOutcome.Failed:
                     failed++;
@@ -157,6 +184,17 @@ internal sealed class DiagnosticTestScope : IProgress<RequestDiagnostic>, IDispo
                 ("bytes", bytes.ToString(CultureInfo.InvariantCulture)));
         }
     }
+
+    /// <summary>
+    /// Why a request did not succeed, as the record words it: the provider's own reason, unless it
+    /// is the generic stop the library records, which only the run's time limit asks for here, or
+    /// a cancellation in a test whose time limit has been reached.
+    /// </summary>
+    private string? ReasonOf(RequestDiagnostic value) =>
+        string.Equals(value.FailureReason, RequestDiagnostic.StoppedByCaller, StringComparison.Ordinal)
+        || (value.Outcome == RequestOutcome.Cancelled && timeLimitToken.IsCancellationRequested)
+            ? TimeLimitReached
+            : value.FailureReason;
 
     /// <summary>
     /// The wire value for an outcome. <c>ok</c> rather than <c>succeeded</c>, because

@@ -32,9 +32,15 @@ public interface IConsoleWriter
     /// <param name="speedTestClient">Speed test service that performs latency, download and upload measurements.</param>
     /// <param name="settings">Parsed command-line settings controlling which measurements to run and how to format output.</param>
     /// <param name="cancellationToken">Token that can be used to cancel the operation.</param>
+    /// <param name="timeLimitToken">
+    /// Fires when the run reaches its time limit. A measurement already running is asked to stop
+    /// and report what it has; a test whose turn has not come is not run, and is reported as a
+    /// test nobody asked for is. Nothing is written about the limit: a run that measured for as
+    /// long as it was allowed has not failed.
+    /// </param>
     /// <returns>
     /// The download and upload measurements this run produced, each <see langword="null"/> when
     /// that test was not requested; used by the command to apply exit-code policy.
     /// </returns>
-    Task<SpeedTestOutcome> PerformSpeedTestAsync(IAnsiConsole console, IClock clock, IClientInfoProvider clientInfoProvider, IDiagnosticRecorder recorder, ISpeedTestService speedTestClient, SpeedTestCommandSettings settings, CancellationToken cancellationToken);
+    Task<SpeedTestOutcome> PerformSpeedTestAsync(IAnsiConsole console, IClock clock, IClientInfoProvider clientInfoProvider, IDiagnosticRecorder recorder, ISpeedTestService speedTestClient, SpeedTestCommandSettings settings, CancellationToken cancellationToken, CancellationToken timeLimitToken = default);
 }

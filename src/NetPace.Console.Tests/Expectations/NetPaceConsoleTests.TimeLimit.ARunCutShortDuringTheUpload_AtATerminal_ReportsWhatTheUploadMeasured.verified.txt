@@ -1,0 +1,10 @@
+﻿                 
+  Choosing server
+                 
+Deutsche Telekom
+http://cutshort.example.com/speedtest/upload.php
+
+    Test          Done       Speed   Latency   Jitter
+✓   Pinging       100%                 24 ms     3 ms
+✓   Downloading   100%   32.0 Mbps                   
+✓   Uploading     100%   8.00 Mbps                   

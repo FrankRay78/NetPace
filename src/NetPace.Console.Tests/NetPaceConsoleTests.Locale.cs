@@ -133,8 +133,8 @@ public sealed partial class NetPaceConsoleTests
 
             // Then the two runs wrote the same text.
             Assert.Equal(english, german);
-            Assert.DoesNotContain("18,67", german);
-            Assert.Contains("18.67", german);
+            Assert.DoesNotContain("18,7", german);
+            Assert.Contains("18.7", german);
         }
 
         [Fact]

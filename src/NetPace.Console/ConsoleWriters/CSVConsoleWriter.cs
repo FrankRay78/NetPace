@@ -17,11 +17,11 @@ public sealed class CSVConsoleWriter : IConsoleWriter
     /// <inheritdoc/>
     public bool MachineReadable => true;
 
-    public async Task<SpeedTestOutcome> PerformSpeedTestAsync(IAnsiConsole console, IClock clock, IClientInfoProvider clientInfoProvider, IDiagnosticRecorder recorder, ISpeedTestService speedTestClient, SpeedTestCommandSettings settings, CancellationToken cancellationToken)
+    public async Task<SpeedTestOutcome> PerformSpeedTestAsync(IAnsiConsole console, IClock clock, IClientInfoProvider clientInfoProvider, IDiagnosticRecorder recorder, ISpeedTestService speedTestClient, SpeedTestCommandSettings settings, CancellationToken cancellationToken, CancellationToken timeLimitToken = default)
     {
         // Get the server to use for speed testing, then measure.
-        var fastest = await ServerSelector.GetServerAsync(speedTestClient, settings, recorder, cancellationToken);
-        var outcome = await Measurements.PerformAsync(speedTestClient, fastest.Server, settings, recorder, cancellationToken);
+        (ChosenServer chosen, LatencyTestResult? latency) = await ServerSelector.GetServerAsync(speedTestClient, settings, recorder, cancellationToken, timeLimitToken);
+        var outcome = await Measurements.PerformAsync(speedTestClient, chosen.Server, settings, recorder, cancellationToken, timeLimitToken);
 
         // Header row, emitted directly above the run's first data row rather than on its first
         // attempt: a test abandoned by an exception reaches no row, and the one that follows it
@@ -79,16 +79,18 @@ public sealed class CSVConsoleWriter : IConsoleWriter
         // --unit-scale and --unit-system leave CSV untouched and every row carries the same units,
         // within a run and across runs.
         // A test that did not run leaves its cells empty; one that ran and failed entirely reports
-        // a speed of 0 beside the request counts that say so. A latency figure that was not
+        // whatever its requests delivered, beside the request counts that say so, and a speed of 0
+        // only where nothing arrived at all. A latency figure that was not
         // measured — under-load latency the transfer never saw, or the idle latency and jitter
-        // under --no-latency — leaves its cell empty too, so nothing charting the column reads an
+        // under --no-latency, or the idle figures of a run whose time limit was reached before a
+        // probe answered — leaves its cell empty too, so nothing charting the column reads an
         // unmeasured line as a perfect one.
         // The device label is empty when none was given, because every built-in column is present
         // whatever the run was asked for.
         console.WriteLine(Record([
             clock.Now.ToMachineReadable(),
-            !settings.NoLatency ? fastest.LatencyMilliseconds.ToString(CultureInfo.InvariantCulture) : string.Empty,
-            !settings.NoLatency ? fastest.JitterMilliseconds.ToString(CultureInfo.InvariantCulture) : string.Empty,
+            latency?.LatencyMilliseconds.ToString(CultureInfo.InvariantCulture) ?? string.Empty,
+            latency?.JitterMilliseconds.ToString(CultureInfo.InvariantCulture) ?? string.Empty,
             outcome.Download?.GetBitsPerSecond().ToString(CultureInfo.InvariantCulture) ?? string.Empty,
             outcome.Download?.RequestsSucceeded.ToString(CultureInfo.InvariantCulture) ?? string.Empty,
             outcome.Download?.RequestsFailed.ToString(CultureInfo.InvariantCulture) ?? string.Empty,
@@ -105,9 +107,9 @@ public sealed class CSVConsoleWriter : IConsoleWriter
             outcome.Upload?.Latency?.JitterMilliseconds.ToString(CultureInfo.InvariantCulture) ?? string.Empty,
             clientInfoProvider.GetIPAddress(),
             clientInfoProvider.GetHostname(),
-            fastest.Server.Location,
-            fastest.Server.Sponsor,
-            fastest.Server.Url,
+            chosen.Server.Location,
+            chosen.Server.Sponsor,
+            chosen.Server.Url,
             settings.DeviceId ?? string.Empty,
             .. settings.CustomFields.Select(field => field.Value)]));
 

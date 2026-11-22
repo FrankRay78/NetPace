@@ -6,15 +6,34 @@ namespace NetPace.Core;
 /// Extension methods for <see cref="SpeedTestResult"/> and <see cref="SpeedTestProgress"/>.
 /// </summary>
 /// <remarks>
+/// <para>
 /// Every speed string these methods return is formatted through the invariant culture: <c>.</c> as
-/// the decimal separator, at most two decimal places, and no digit grouping. A consumer therefore
-/// reads the same text whatever culture the calling thread carries, so a formatted speed is safe to
-/// log, compare and parse across machines.
+/// the decimal separator and no digit grouping. A consumer therefore reads the same text whatever
+/// culture the calling thread carries, so a formatted speed is safe to log, compare and parse
+/// across machines.
+/// </para>
+/// <para>
+/// A speed is written to three significant figures, which is as much precision as a speed test
+/// supports: run-to-run variance is several percent, so a fourth figure would be noise. The
+/// decimal places follow the figure's own size - below 10 two places (<c>8.00</c>), from 10 to
+/// below 100 one place (<c>18.7</c>), and from 100 up a whole number (<c>245</c>) - so no
+/// auto-scaled reading is ever wider than four characters. Rounding never leaves a figure in the wrong band
+/// or unit: <c>9.996</c> reads <c>10.0</c>, <c>99.96</c> reads <c>100</c>, and under auto-scaling a
+/// speed that rounds up to its unit system's divisor is written as <c>1.00</c> of the next unit
+/// rather than as <c>1000 Kbps</c>. The three figures are only guaranteed under auto-scaling. Digits before
+/// the decimal point are never rounded away, so a speed pinned to a small unit with
+/// <see cref="SpeedScale"/> keeps every one of them (<c>125000 Kbps</c>), while one pinned to a
+/// large unit keeps two decimal places and so can read <c>0.00 Gbps</c> without being zero. A zero
+/// speed reads as a bare <c>0</c>. For the measurement without this rounding, read
+/// <see cref="GetBitsPerSecond"/>.
+/// </para>
 /// </remarks>
 public static class SpeedTestExtensions
 {
     /// <summary>
-    /// Calculates and formats the speed string.
+    /// Calculates and formats the speed string, to the three significant figures
+    /// <see cref="SpeedTestExtensions"/> describes: below 10 two decimal places (<c>8.00</c>), from
+    /// 10 to below 100 one place (<c>18.7</c>), and from 100 up a whole number (<c>245</c>).
     /// </summary>
     public static string GetSpeedString(this SpeedTestResult result, SpeedUnit unit, SpeedUnitSystem unitSystem)
     {
@@ -24,7 +43,9 @@ public static class SpeedTestExtensions
     }
 
     /// <summary>
-    /// Calculates and formats the speed string.
+    /// Calculates and formats the speed string, to the three significant figures
+    /// <see cref="SpeedTestExtensions"/> describes: below 10 two decimal places (<c>8.00</c>), from
+    /// 10 to below 100 one place (<c>18.7</c>), and from 100 up a whole number (<c>245</c>).
     /// </summary>
     public static string GetSpeedString(this SpeedTestResult result, SpeedUnit unit, SpeedUnitSystem unitSystem, SpeedScale scale = SpeedScale.Auto)
     {
@@ -53,7 +74,9 @@ public static class SpeedTestExtensions
     }
 
     /// <summary>
-    /// Calculates and formats the speed string.
+    /// Calculates and formats the speed string, to the three significant figures
+    /// <see cref="SpeedTestExtensions"/> describes: below 10 two decimal places (<c>8.00</c>), from
+    /// 10 to below 100 one place (<c>18.7</c>), and from 100 up a whole number (<c>245</c>).
     /// </summary>
     public static (string speed, string unit) GetSpeedStringParts(this SpeedTestResult result, SpeedUnit unit, SpeedUnitSystem unitSystem)
     {
@@ -63,7 +86,9 @@ public static class SpeedTestExtensions
     }
 
     /// <summary>
-    /// Calculates and formats the speed string.
+    /// Calculates and formats the speed string, to the three significant figures
+    /// <see cref="SpeedTestExtensions"/> describes: below 10 two decimal places (<c>8.00</c>), from
+    /// 10 to below 100 one place (<c>18.7</c>), and from 100 up a whole number (<c>245</c>).
     /// </summary>
     public static (string speed, string unit) GetSpeedStringParts(this SpeedTestResult result, SpeedUnit unit, SpeedUnitSystem unitSystem, SpeedScale scale = SpeedScale.Auto)
     {
@@ -73,7 +98,9 @@ public static class SpeedTestExtensions
     }
 
     /// <summary>
-    /// Calculates and formats the speed string.
+    /// Calculates and formats the speed string, to the three significant figures
+    /// <see cref="SpeedTestExtensions"/> describes: below 10 two decimal places (<c>8.00</c>), from
+    /// 10 to below 100 one place (<c>18.7</c>), and from 100 up a whole number (<c>245</c>).
     /// </summary>
     public static string GetSpeedString(this SpeedTestProgress progress, SpeedUnit unit, SpeedUnitSystem unitSystem)
     {
@@ -83,7 +110,9 @@ public static class SpeedTestExtensions
     }
 
     /// <summary>
-    /// Calculates and formats the speed string.
+    /// Calculates and formats the speed string, to the three significant figures
+    /// <see cref="SpeedTestExtensions"/> describes: below 10 two decimal places (<c>8.00</c>), from
+    /// 10 to below 100 one place (<c>18.7</c>), and from 100 up a whole number (<c>245</c>).
     /// </summary>
     public static string GetSpeedString(this SpeedTestProgress progress, SpeedUnit unit, SpeedUnitSystem unitSystem, SpeedScale scale = SpeedScale.Auto)
     {
@@ -93,7 +122,9 @@ public static class SpeedTestExtensions
     }
 
     /// <summary>
-    /// Calculates and formats the speed string.
+    /// Calculates and formats the speed string, to the three significant figures
+    /// <see cref="SpeedTestExtensions"/> describes: below 10 two decimal places (<c>8.00</c>), from
+    /// 10 to below 100 one place (<c>18.7</c>), and from 100 up a whole number (<c>245</c>).
     /// </summary>
     public static (string speed, string unit) GetSpeedStringParts(this SpeedTestProgress progress, SpeedUnit unit, SpeedUnitSystem unitSystem)
     {
@@ -103,7 +134,9 @@ public static class SpeedTestExtensions
     }
 
     /// <summary>
-    /// Calculates and formats the speed string.
+    /// Calculates and formats the speed string, to the three significant figures
+    /// <see cref="SpeedTestExtensions"/> describes: below 10 two decimal places (<c>8.00</c>), from
+    /// 10 to below 100 one place (<c>18.7</c>), and from 100 up a whole number (<c>245</c>).
     /// </summary>
     public static (string speed, string unit) GetSpeedStringParts(this SpeedTestProgress progress, SpeedUnit unit, SpeedUnitSystem unitSystem, SpeedScale scale = SpeedScale.Auto)
     {
@@ -114,11 +147,12 @@ public static class SpeedTestExtensions
 
     #region Private Methods
 
-    // Speeds are written the same way on every machine: "." as the decimal separator, at
-    // most two decimal places, and no digit grouping. Formatted through the invariant
-    // culture rather than the caller's, so a consumer on a comma-decimal thread reads the
-    // same text as everyone else, and a CSV row cannot gain a field from a stray comma.
-    private const string SpeedFormat = "0.##";
+    // One format per band, indexed by the decimal places the band allows. Speeds are written the
+    // same way on every machine: "." as the decimal separator and no digit grouping. Formatted
+    // through the invariant culture rather than the caller's, so a consumer on a comma-decimal
+    // thread reads the same text as everyone else, and a CSV row cannot gain a field from a stray
+    // comma.
+    private static readonly string[] FigureFormats = ["0", "0.0", "0.00"];
 
     private const double BitsPerByte = 8.0;
     private const double MillisecondsPerSecond = 1000.0;
@@ -191,14 +225,17 @@ public static class SpeedTestExtensions
             ? unitSystem == SpeedUnitSystem.IEC ? IEC_BitUnits : SI_BitUnits
             : unitSystem == SpeedUnitSystem.IEC ? IEC_ByteUnits : SI_ByteUnits;
 
+        // Measured against the figure as it will be written, not against the speed itself, so a
+        // speed that rounds up to the divisor steps into the next unit instead of being drawn as
+        // 1000 of this one - which would be four significant figures and the wrong unit at once.
         var index = 0;
-        while (Math.Round(speed, 2) >= divisor && index < units.Length - 1)
+        while (Figure(speed).Value >= divisor && index < units.Length - 1)
         {
             speed /= divisor;
             index++;
         }
 
-        return (speed.ToString(SpeedFormat, CultureInfo.InvariantCulture), units[index]);
+        return (FigureText(speed), units[index]);
     }
 
     private static (string speed, string unit) FormatSpeed_FixedScale(double speed, bool isBits, SpeedUnitSystem unitSystem, double divisor, int fixedScale)
@@ -216,7 +253,58 @@ public static class SpeedTestExtensions
             speed /= divisor;
         }
 
-        return (speed.ToString(SpeedFormat, CultureInfo.InvariantCulture), units[index]);
+        return (FigureText(speed), units[index]);
+    }
+
+    /// <summary>
+    /// How many decimal places a figure of this size is written to, so that it carries three
+    /// significant figures where the figure is below 1000.
+    /// </summary>
+    private static int DecimalPlacesFor(double figure) => figure switch
+    {
+        < 10 => 2,
+        < 100 => 1,
+        _ => 0,
+    };
+
+    /// <summary>
+    /// The figure <paramref name="speed"/> will be written as, and the decimal places it takes.
+    /// </summary>
+    /// <remarks>
+    /// Rounding can carry a figure into the band above, which allows one fewer decimal place:
+    /// 9.996 is a two-place figure that rounds to 10, and writing that as <c>10.00</c> would show
+    /// four significant figures. Where that happens the band is read again off the rounded figure
+    /// and the original speed rounded afresh, so the text and the band always agree. A second pass
+    /// is enough, because a figure can only ever cross one band boundary by rounding.
+    /// </remarks>
+    private static (double Value, int DecimalPlaces) Figure(double speed)
+    {
+        var places = DecimalPlacesFor(speed);
+        var rounded = Math.Round(speed, places, MidpointRounding.AwayFromZero);
+        var placesAfterRounding = DecimalPlacesFor(rounded);
+
+        if (placesAfterRounding == places)
+        {
+            return (rounded, places);
+        }
+
+        return (Math.Round(speed, placesAfterRounding, MidpointRounding.AwayFromZero), placesAfterRounding);
+    }
+
+    /// <summary>
+    /// <paramref name="speed"/> written to three significant figures, with no unit beside it.
+    /// </summary>
+    private static string FigureText(double speed)
+    {
+        // A measurement of nothing, as when no byte arrived: a bare zero rather than 0.00, because there is no measurement to show three figures of.
+        if (speed == 0)
+        {
+            return "0";
+        }
+
+        (double value, int places) = Figure(speed);
+
+        return value.ToString(FigureFormats[places], CultureInfo.InvariantCulture);
     }
 
     #endregion

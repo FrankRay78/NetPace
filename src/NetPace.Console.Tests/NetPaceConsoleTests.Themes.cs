@@ -65,13 +65,6 @@ public sealed partial class NetPaceConsoleTests
             return services;
         }
 
-        /// <summary>
-        /// A run whose environment holds the variables given here and nothing else, so what the
-        /// user set reaches the run without the suite's own environment being touched.
-        /// </summary>
-        private static IThemeProvider FromEnvironment(params (string Name, string Value)[] variables) =>
-            new EnvironmentThemeProvider(name => variables.Where(v => v.Name == name).Select(v => v.Value).FirstOrDefault());
-
         private static IThemeProvider Chosen(Theme theme) => new FixedThemeProvider(theme);
 
         [Fact]
@@ -158,12 +151,6 @@ public sealed partial class NetPaceConsoleTests
             }
             return rows;
         }
-
-        /// <summary>
-        /// The screen a theory row names, as a snapshot file reads it: <c>servers --latency</c>
-        /// becomes <c>servers-latency</c>.
-        /// </summary>
-        private static string Slug(string screen) => string.Join('-', screen.Split(' ').Select(word => word.TrimStart('-')));
 
         [MemberData(nameof(ColouredThemeScreens))]
         [Theory]

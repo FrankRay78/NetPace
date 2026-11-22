@@ -1,4 +1,4 @@
 ﻿EXISTING CONTENT
 Ping: 100 ms
-Download: 8 Kbps
-Upload: 18.67 Kbps
+Download: 8.00 Kbps
+Upload: 18.7 Kbps

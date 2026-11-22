@@ -1,7 +1,8 @@
 namespace NetPace.Console;
 
 /// <summary>
-/// Where a word to the user about the way NetPace was asked to run goes: the process error stream
+/// Where a word to the user that is neither the result nor an error goes, such as a theme name
+/// that is not a theme or a diagnostics file that could not be written: the process error stream
 /// in production, a buffer in tests.
 /// </summary>
 /// <remarks>
