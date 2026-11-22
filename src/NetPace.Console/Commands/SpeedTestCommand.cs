@@ -166,7 +166,10 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ErrorOutput errorOutp
 
                 // Reported before --fail-on decides anything, so a run that trips both still
                 // tells the user what the line fell short of, even though the exit code goes
-                // to --fail-on.
+                // to --fail-on. The test's records are flushed first, for the reason a failed
+                // test's are flushed before its error: on a shared error stream, what was
+                // measured reads before what it fell short of.
+                FlushDiagnostics(settings);
                 missedThreshold |= ReportMisses(outcome, settings);
 
                 if (FailOnTriggered(outcome, settings)) return 1;

@@ -410,6 +410,29 @@ public sealed partial class NetPaceConsoleTests
             await Verify(result.NoticeOutput);
         }
 
+        [Fact]
+        public async Task A_Missed_Threshold_Follows_The_Records_Of_The_Test_That_Missed_It()
+        {
+            // Given a missed target under --diagnostics, with the records and the miss lines
+            // sharing one stream, as they do on standard error.
+            var shared = new StringWriter();
+            var services = StubServices();
+            services.AddSingleton(new NetPace.Console.Diagnostics.DiagnosticOutput(shared));
+            services.AddSingleton(new NoticeOutput(shared));
+            var host = GetCommandLineTestHost(services);
+
+            // When
+            var result = await host.RunAsync(["--simple", "--diagnostics", "--min-download", "50Mbps"]);
+
+            // Then the stream reads what the test measured before what it fell short of: only the
+            // record of how the run ended, which carries the exit code the miss decided, follows it.
+            Assert.Equal(MissedExitCode, result.ExitCode);
+            string[] lines = shared.ToString().Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries);
+            int miss = Array.FindIndex(lines, line => line.StartsWith("Download ", StringComparison.Ordinal));
+            Assert.True(miss > 0, "The miss line was not written after any record.");
+            Assert.All(lines[(miss + 1)..], line => Assert.Contains("event=run.end", line, StringComparison.Ordinal));
+        }
+
         [Theory]
         [InlineData("--max-latency", "99.5ms")]
         [InlineData("--min-download", "8.0004Kbps")]
