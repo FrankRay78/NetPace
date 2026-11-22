@@ -297,11 +297,12 @@ public sealed partial class NetPaceConsoleTests
             // When
             var result = await host.RunAsync(["--file", invalidPath]);
 
-            // Then
+            // Then the fault is on the error stream, with nothing on standard output.
             Assert.Equal(1, result.ExitCode);
+            Assert.Empty(result.Output);
 
             // Normalize directory separators to Windows-style backslashes so the Windows snapshots match across platforms.
-            var normalizedOutput = (result.Output ?? string.Empty).Replace('/', '\\');
+            var normalizedOutput = result.ErrorOutput.Replace('/', '\\');
             await Verify(normalizedOutput);
         }
 
@@ -327,7 +328,8 @@ public sealed partial class NetPaceConsoleTests
 
                 // Then
                 Assert.Equal(1, result.ExitCode);
-                await Verify(result.Output).DisableRequireUniquePrefix();
+                Assert.Empty(result.Output);
+                await Verify(result.ErrorOutput).DisableRequireUniquePrefix();
 
                 // NetPace terminates when trying to parse the commandline arguments,
                 // hence it never gets far enough to initialise the FileConsole.
@@ -367,12 +369,14 @@ public sealed partial class NetPaceConsoleTests
                 // When
                 var result = await host.RunAsync([quiet, "--file", testFile]);
 
-                // Then
+                // Then the error is on the error stream alone: neither standard output, which
+                // --quiet silenced, nor the log, which holds results only.
                 Assert.Equal(0, result.ExitCode);
                 Assert.Empty(result.Output);
 
                 var fileContent = await System.IO.File.ReadAllTextAsync(testFile);
-                await Verify(fileContent).DisableRequireUniquePrefix();
+                Assert.Empty(fileContent);
+                await Verify(result.ErrorOutput).DisableRequireUniquePrefix();
             }
             finally
             {

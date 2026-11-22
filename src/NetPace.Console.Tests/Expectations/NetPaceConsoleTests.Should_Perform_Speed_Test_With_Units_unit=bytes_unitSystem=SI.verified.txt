@@ -1,3 +1,3 @@
 ﻿Ping: 100 ms
-Download: 1 KBps
+Download: 1.00 KBps
 Upload: 2.33 KBps

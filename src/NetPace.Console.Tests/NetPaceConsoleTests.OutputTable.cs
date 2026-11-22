@@ -32,10 +32,16 @@ public sealed partial class NetPaceConsoleTests
             new(services, CommandLineTestHost.RedirectedWidth);
 
         /// <summary>A transfer result carrying latency measured under its own load.</summary>
-        private static SpeedTestResult Transfer(int succeeded, int failed, long? latencyMilliseconds, long jitterMilliseconds = 4) =>
+        /// <remarks>
+        /// By default a transfer with no successes carries no bytes, which is what a link that
+        /// never answered looks like. Pass <paramref name="bytesProcessed"/> to say otherwise: a
+        /// transfer whose every request failed after delivering something reports a real figure
+        /// beside the count, and that shape needs drawing too.
+        /// </remarks>
+        private static SpeedTestResult Transfer(int succeeded, int failed, long? latencyMilliseconds, long jitterMilliseconds = 4, long? bytesProcessed = null) =>
             new()
             {
-                BytesProcessed = succeeded == 0 ? 0 : 1_000_000,
+                BytesProcessed = bytesProcessed ?? (succeeded == 0 ? 0 : 1_000_000),
                 ElapsedMilliseconds = 1000,
                 RequestsSucceeded = succeeded,
                 RequestsFailed = failed,
@@ -163,6 +169,8 @@ public sealed partial class NetPaceConsoleTests
         [Fact]
         public async Task A_Partial_Failure_Keeps_Its_Figures_Beside_The_Count()
         {
+            // SCENARIO: Table columns are separated by three spaces
+
             // Given a terminal and a download in which some requests failed.
             var service = new ScriptedSpeedTester
             {
@@ -197,9 +205,33 @@ public sealed partial class NetPaceConsoleTests
         }
 
         [Fact]
+        public async Task A_Total_Failure_That_Delivered_Data_Shows_Its_Figure_Beside_The_Count()
+        {
+            // Given a terminal and an upload whose every request failed after delivering data,
+            // which is what a link looks like when a server keeps cutting its transfers off.
+            var service = new ScriptedSpeedTester
+            {
+                DownloadFactory = _ => Transfer(150, 0, 60),
+                UploadFactory = _ => Transfer(0, 30, null, bytesProcessed: 1_000_000),
+            };
+
+            // When
+            var result = await TerminalHost(Services(service)).RunAsync([]);
+
+            // Then the row carries the speed those requests delivered rather than a zero, with the
+            // failure count beside it saying the test did not succeed. Compare
+            // A_Total_Failure_Shows_A_Zero_Speed_And_No_Latency, where nothing arrived at all.
+            Assert.Equal(0, result.ExitCode);
+            await Verify(result.Output);
+        }
+
+        [Fact]
         public async Task Every_Column_Is_Drawn_On_A_Terminal_Too_Narrow_For_The_Table()
         {
             // SCENARIO: Jitter gives way on a narrow terminal
+            // The marker repeats the original acceptance criterion's label exactly, so it must not be
+            // renamed. That label predates the decision it records: its Given-When-Then says every
+            // column, Jitter included, is still drawn and the table wraps, which is what this verifies.
 
             // Given a terminal too narrow for the full table.
             var host = TerminalHost(Services(new SpeedTestStub()), CommandLineTestHost.NarrowTerminalWidth);
@@ -360,10 +392,12 @@ public sealed partial class NetPaceConsoleTests
             // When
             var result = await TerminalHost(Services(service)).RunAsync([]);
 
-            // Then the server and URL are still on screen, the Pinging row shows the failure, and
-            // the run reports the error.
+            // Then the server and URL are still on screen and the Pinging row shows the failure.
+            // The error itself is on the error stream, so the table is the whole of what a person
+            // reading standard output sees.
             Assert.Equal(0, result.ExitCode);
-            await Verify(result.Output);
+            await Verify(result.Output).UseTextForParameters("stdout");
+            await Verify(result.ErrorOutput).UseTextForParameters("stderr");
         }
 
         [Fact]
@@ -390,7 +424,8 @@ public sealed partial class NetPaceConsoleTests
 
             // Then every row is marked as failed rather than left spinning, as for any other
             // failure: a timeout is the server not answering, not the user stopping the run.
-            await Verify(result.Output);
+            await Verify(result.Output).UseTextForParameters("stdout");
+            await Verify(result.ErrorOutput).UseTextForParameters("stderr");
         }
 
         [Fact]
@@ -409,7 +444,8 @@ public sealed partial class NetPaceConsoleTests
             // run has ended, so a row still marked as measuring would say a measurement is in
             // flight after the process has exited. The snapshot carries what each row says.
             Assert.Equal(0, result.ExitCode);
-            await Verify(result.Output);
+            await Verify(result.Output).UseTextForParameters("stdout");
+            await Verify(result.ErrorOutput).UseTextForParameters("stderr");
         }
 
         [Fact]

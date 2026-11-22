@@ -41,6 +41,7 @@ public sealed class CommandLineTestHost
     private readonly int consoleWidth;
     private readonly bool _interactive;
     private readonly bool _recordColour;
+    private readonly bool _unicode;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="CommandLineTestHost"/> class.
@@ -65,12 +66,18 @@ public sealed class CommandLineTestHost
     /// colour an element is drawn in. Turn it on only to assert something about colour itself, and
     /// pass the captured output through <see cref="AnsiSnapshot.Readable"/> before snapshotting it.
     /// </param>
-    public CommandLineTestHost(IServiceCollection? services, int consoleWidth = UnlimitedWidth, bool interactive = false, bool recordColour = false)
+    /// <param name="unicode">
+    /// Whether the run sees a console that can draw Unicode. Defaults to <c>true</c>, what a modern
+    /// terminal reports. Pass <c>false</c> for the legacy console that can draw only ASCII, so a
+    /// test can read what NetPace writes in place of the characters it cannot draw.
+    /// </param>
+    public CommandLineTestHost(IServiceCollection? services, int consoleWidth = UnlimitedWidth, bool interactive = false, bool recordColour = false, bool unicode = true)
     {
         serviceCollection = services ?? new ServiceCollection();
         this.consoleWidth = consoleWidth;
         _interactive = interactive;
         _recordColour = recordColour;
+        _unicode = unicode;
     }
 
     /// <summary>
@@ -81,17 +88,11 @@ public sealed class CommandLineTestHost
     /// <returns>A test result containing the exit code and output.</returns>
     public async Task<TestResult> RunAsync(string[] args, CancellationToken cancellationToken = default)
     {
-        using var testConsole = new TestConsole().Width(consoleWidth);
+        using var testConsole = CreateConsole();
 
         if (_interactive)
         {
             testConsole.Interactive();
-        }
-
-        if (_recordColour)
-        {
-            testConsole.Colors(ColorSystem.TrueColor);
-            testConsole.EmitAnsiSequences();
         }
 
         serviceCollection.TryAddSingleton<IAnsiConsole>(testConsole);
@@ -101,10 +102,23 @@ public sealed class CommandLineTestHost
         using var diagnosticWriter = new StringWriter();
         serviceCollection.TryAddSingleton(new DiagnosticOutput(diagnosticWriter));
 
+        // The real opener, so a run asked for a diagnostics file writes one the test can read back.
+        // A test about a destination that fails once the run is under way registers its own.
+        serviceCollection.TryAddSingleton<IDiagnosticFileOpener, DiagnosticFileOpener>();
+
         // Where a notice to the user goes — the process error stream in production. Captured apart
         // from both the result and the diagnostics, so a test can assert which stream carried what.
         using var noticeWriter = new StringWriter();
         serviceCollection.TryAddSingleton(new NoticeOutput(noticeWriter));
+
+        // Where every error goes — the process error stream in production, captured apart from the
+        // result for the same reason. Built the same way as the result console: at the width the
+        // run was given rather than at an unlimited one, so the lift that keeps an error on one
+        // line is the production code's and not this host's, and with the same colour, so a test
+        // about an error's colour asks for it the same way.
+        using var errorConsole = CreateConsole();
+
+        serviceCollection.TryAddSingleton(new ErrorOutput(errorConsole));
 
         // A fixed theme unless a test chooses otherwise, so no snapshot depends on what the person
         // running the tests has NETPACE_THEME set to.
@@ -124,6 +138,11 @@ public sealed class CommandLineTestHost
         // the same way.
         serviceCollection.TryAddSingleton<ILiveDisplayRefresh, NoRefreshStub>();
 
+        // And a run time limit no test ever reaches, so a run that does not care about the limit
+        // behaves as it did before there was one. A test about the limit registers a
+        // RecordingRunTimeLimit of its own and reaches it when it chooses.
+        serviceCollection.TryAddSingleton<IRunTimeLimit>(new RecordingRunTimeLimit());
+
         // Default SpeedTestSettingsAccessor (matches production DI). Tests that want to
         // inspect the bound settings register their own instance before calling RunAsync.
         serviceCollection.TryAddSingleton<SpeedTestSettingsAccessor>();
@@ -137,7 +156,28 @@ public sealed class CommandLineTestHost
             Output = testConsole.Output,
             DiagnosticOutput = diagnosticWriter.ToString(),
             NoticeOutput = noticeWriter.ToString(),
+            ErrorOutput = errorConsole.Output,
         };
+    }
+
+    /// <summary>
+    /// A console capturing what is written to it, at the width this host was given and emitting
+    /// ANSI sequences only where the host was asked to record colour. Every console the run writes
+    /// through is built here, so neither the result nor the error stream sees a width or a colour
+    /// capability the other does not.
+    /// </summary>
+    private TestConsole CreateConsole()
+    {
+        var console = new TestConsole().Width(consoleWidth);
+        console.Profile.Capabilities.Unicode = _unicode;
+
+        if (_recordColour)
+        {
+            console.Colors(ColorSystem.TrueColor);
+            console.EmitAnsiSequences();
+        }
+
+        return console;
     }
 }
 
@@ -166,4 +206,9 @@ public sealed record TestResult
     /// way NetPace was asked to run needed remarking on.
     /// </summary>
     public required string NoticeOutput { get; init; }
+
+    /// <summary>
+    /// Gets what was written to the error stream — empty unless something went wrong.
+    /// </summary>
+    public required string ErrorOutput { get; init; }
 }

@@ -1,5 +1,4 @@
 using System.CommandLine;
-using System.Reflection;
 using NetPace.Console.Theming;
 
 namespace NetPace.Console;
@@ -9,6 +8,24 @@ namespace NetPace.Console;
 /// </summary>
 internal static class CustomHelpProvider
 {
+    /// <summary>
+    /// The NetPace wordmark, four rows of ASCII characters, split at the column where Net ends and
+    /// Pace begins so each half can be drawn in its own colour.
+    /// </summary>
+    /// <remarks>
+    /// ASCII alone, so every monospace font has the characters and draws them all at one width.
+    /// The quadrant-block lettering this replaced lined up only where the font in use carried
+    /// those characters; where it did not, the browser or terminal took them from a fallback font
+    /// of different metrics and the rows came apart, as they did in the README's help block.
+    /// </remarks>
+    private static readonly (string Net, string Pace)[] WordmarkRows =
+    [
+        (@" _  _       _   ", @" ___"),
+        (@"| \| | ___ | |_ ", @"| _ \ __ _  __  ___"),
+        (@"| .` |/ -_)|  _|", @"|  _// _` |/ _|/ -_)"),
+        (@"|_|\_|\___| \__|", @"|_|  \__,_|\__|\___|")
+    ];
+
     /// <summary>
     /// An empty grid cell. A <see cref="Text"/> rather than <c>""</c> because the rest of a row is
     /// built from renderables, and a grid row takes one kind or the other, never a mix.
@@ -41,15 +58,21 @@ internal static class CustomHelpProvider
         RenderFooter(console, theme);
     }
 
+    /// <summary>
+    /// The lettering both help screens open with, one blank line above it and one below.
+    /// </summary>
     private static void RenderHeader(IAnsiConsole console, Theme theme)
     {
-        var font = LoadEmbeddedFont("slant.flf");
-        var figlet = new FigletText(font, "NetPace")
-            .LeftJustified()
-            .Color(theme.Banner);
-
         console.WriteLine();
-        console.Write(figlet);
+
+        var netStyle = new Style(theme.BannerNet);
+        var paceStyle = new Style(theme.BannerPace);
+
+        foreach (var (net, pace) in WordmarkRows)
+        {
+            console.WriteStyledLine((net, netStyle), (pace, paceStyle));
+        }
+
         console.WriteLine();
     }
 
@@ -280,19 +303,5 @@ internal static class CustomHelpProvider
 
         console.WriteLine("SEE ALSO:", theme.Heading);
         console.MarkupLine($"    [link={userGuideUrl}]{userGuideUrl}[/]");
-    }
-
-    private static FigletFont LoadEmbeddedFont(string fileName)
-    {
-        var assembly = Assembly.GetExecutingAssembly();
-        var resourceName = $"NetPace.Console.{fileName}";
-
-        using var stream = assembly.GetManifestResourceStream(resourceName);
-        if (stream == null)
-        {
-            throw new FileNotFoundException($"Embedded resource '{resourceName}' not found.");
-        }
-
-        return FigletFont.Load(stream);
     }
 }

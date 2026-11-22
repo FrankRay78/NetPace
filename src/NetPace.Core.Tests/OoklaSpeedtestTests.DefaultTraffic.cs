@@ -1,3 +1,5 @@
+using System.Collections.Generic;
+using System.Linq;
 using System.Net;
 using System.Text.RegularExpressions;
 using NetPace.Core.Clients.Ookla;
@@ -14,6 +16,15 @@ public sealed partial class OoklaSpeedtestTests
     /// within the reduced Medium budget. Complements the settings-level cap assertions in
     /// <c>OoklaSpeedtestSettingsTests.Profiles.cs</c> by proving the caps actually bound wire traffic.
     /// </summary>
+    /// <remarks>
+    /// Each test reads the cap off a quantity the cap actually governs. The upload test weighs the
+    /// bodies the mock received, which is what crossed the wire. The download test cannot do the
+    /// same, because its mock builds each response up front and so records bytes the client never
+    /// read; it weighs the bytes of the requests the budget counted instead, and bounds the run as
+    /// a whole by the profile's own request list. The reported figure is deliberately not the
+    /// subject of either: it now also counts what requests still in flight had received when the
+    /// budget tripped, which runs past the cap by design.
+    /// </remarks>
     public sealed class DefaultTraffic
     {
         // The realized total can overshoot the cap by up to one in-flight parallel batch before the
@@ -21,6 +32,15 @@ public sealed partial class OoklaSpeedtestTests
         // OoklaSpeedtestTests.cs. Even this loose bound stays well under the pre-profile ~370 MiB run.
         private const long MediumDownloadCapBytes = 100L * 1024 * 1024;
         private const long MediumUploadCapBytes = 25L * 1024 * 1024;
+
+        // Every byte the Medium download pass can ask for: its five sizes, twice each, at the three
+        // bytes per pixel the mock below serves. The ceiling on a default download end to end,
+        // and the figure the profiles were introduced to bring down from the pre-profile ~370 MiB.
+        private const long MediumDownloadPassBytes = 2L * 3 * (1500L * 1500 + 2000L * 2000 + 3000L * 3000 + 3500L * 3500 + 4000L * 4000);
+
+        // How many requests the Medium download pass issues, so a run that the budget did not end
+        // is told apart from one it did.
+        private const int MediumDownloadRequests = 10;
 
         [Fact]
         public async Task GetDownloadSpeedAsync_DefaultSettings_CapsDownloadTrafficAtMediumBudget()
@@ -48,13 +68,27 @@ public sealed partial class OoklaSpeedtestTests
             var settings = new OoklaSpeedtestSettings();
             var speedtest = new OoklaSpeedtest(settings, httpClient);
             var server = new Server { Url = "http://example.com/", Sponsor = "Test", Location = "Test" };
+            var diagnostics = new List<RequestDiagnostic>();
 
             // When
-            var result = await speedtest.GetDownloadSpeedAsync(server);
+            var result = await speedtest.GetDownloadSpeedAsync(server, null, new SynchronousProgress<RequestDiagnostic>(diagnostics.Add));
 
-            // Then
+            // Then the budget ended the phase short of its full request list, and the bytes it
+            // spent on the requests it counted stayed inside the cap and its one-batch allowance.
+            //
+            // The budget is read off the counted requests rather than off the reported figure,
+            // because the figure now also counts what requests still in flight had received when
+            // the budget tripped, and that legitimately runs past the cap. The overall bound is
+            // the profile's own request list, which is what the whole-pass assertion below holds.
             result.ShouldNotBeNull();
-            result.BytesProcessed.ShouldBeLessThanOrEqualTo(2 * MediumDownloadCapBytes);
+            result.RequestsSucceeded.ShouldBeLessThan(MediumDownloadRequests);
+
+            var bytesSpentOnCountedRequests = diagnostics
+                .Where(record => record.Kind == RequestKind.Transfer && record.Outcome == RequestOutcome.Succeeded)
+                .Sum(record => record.BytesProcessed);
+
+            bytesSpentOnCountedRequests.ShouldBeLessThanOrEqualTo(2 * MediumDownloadCapBytes);
+            result.BytesProcessed.ShouldBeLessThanOrEqualTo(MediumDownloadPassBytes);
         }
 
         [Fact]

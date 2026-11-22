@@ -142,10 +142,11 @@ public sealed partial class NetPaceConsoleTests
 
             // Then
             Assert.Equal(1, result.ExitCode);
-            await Verify(result.Output).DisableRequireUniquePrefix();
+            Assert.Empty(result.Output);
+            await Verify(result.ErrorOutput).DisableRequireUniquePrefix();
 
             // Configuration errors that prevent the programme from commencing
-            // are shown on the console, despite the `-q|--quiet` switch.
+            // are shown on the error stream, despite the `-q|--quiet` switch.
             // This is inline with at least grep:
             // ```bash
             // C:\Users\frank>grep -q -f NONEXISTANT

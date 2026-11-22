@@ -35,7 +35,7 @@ public sealed partial class NetPaceConsoleTests
 
             // Then
             Assert.NotEqual(0, result.ExitCode);
-            await Verify(result.Output).UseParameters(option, value);
+            await Verify(result.ErrorOutput).UseParameters(option, value);
         }
 
         [InlineData("BitsPerSecond")]

@@ -47,9 +47,21 @@ public sealed class ScriptedSpeedTester : ISpeedTestService
     public static SpeedTestResult Clean(int attempts) =>
         new() { BytesProcessed = 1000, ElapsedMilliseconds = 1000, RequestsSucceeded = attempts, RequestsFailed = 0, Latency = null };
 
-    /// <summary>An all-failed result: zero bytes, every request failed.</summary>
+    /// <summary>An all-failed result where nothing arrived: zero bytes, every request failed.</summary>
     public static SpeedTestResult AllFailed(int attempts) =>
         new() { BytesProcessed = 0, ElapsedMilliseconds = 1000, RequestsSucceeded = 0, RequestsFailed = attempts, Latency = null };
+
+    /// <summary>
+    /// An all-failed result that still moved data: every request failed, but each delivered
+    /// something before it did, so the figure beside the counts is a real speed.
+    /// </summary>
+    /// <remarks>
+    /// The shape a link produces when a server keeps cutting its transfers off, which is what
+    /// <see cref="SpeedTestResult.BytesProcessed"/> counting delivered bytes makes possible. Kept
+    /// apart from <see cref="AllFailed"/> because the two render differently and both need pinning.
+    /// </remarks>
+    public static SpeedTestResult AllFailedWithBytes(int attempts) =>
+        new() { BytesProcessed = 1000, ElapsedMilliseconds = 1000, RequestsSucceeded = 0, RequestsFailed = attempts, Latency = null };
 
     /// <summary>A partial result: some requests failed, the rest contributed bytes.</summary>
     public static SpeedTestResult Partial(int attempts, int failed) =>
@@ -99,19 +111,19 @@ public sealed class ScriptedSpeedTester : ISpeedTestService
     public Task<SpeedTestResult> GetUploadSpeedAsync(IServer server, IProgress<SpeedTestProgress> progress, CancellationToken cancellationToken = default) =>
         Task.FromResult(ReportClimbTo(UploadFactory(uploadCall++), progress));
 
-    public Task<LatencyTestResult> GetServerLatencyAsync(IServer server, IProgress<LatencyTestProgress>? progress, IProgress<RequestDiagnostic>? diagnostics, CancellationToken cancellationToken = default) =>
+    public Task<LatencyTestResult> GetServerLatencyAsync(IServer server, IProgress<LatencyTestProgress>? progress, IProgress<RequestDiagnostic>? diagnostics, CancellationToken cancellationToken = default, CancellationToken stopAndReportToken = default) =>
         GetServerLatencyAsync(server, cancellationToken);
 
-    public Task<LatencyTestResult> GetServerLatencyAsync(string serverUrl, IProgress<LatencyTestProgress>? progress, IProgress<RequestDiagnostic>? diagnostics, CancellationToken cancellationToken = default) =>
+    public Task<LatencyTestResult> GetServerLatencyAsync(string serverUrl, IProgress<LatencyTestProgress>? progress, IProgress<RequestDiagnostic>? diagnostics, CancellationToken cancellationToken = default, CancellationToken stopAndReportToken = default) =>
         GetServerLatencyAsync(serverUrl, cancellationToken);
 
     public Task<LatencyTestResult> GetFastestServerByLatencyAsync(IServer[] servers, IProgress<SpeedTestProgress>? progress, IProgress<RequestDiagnostic>? diagnostics, CancellationToken cancellationToken = default) =>
         GetFastestServerByLatencyAsync(servers, cancellationToken);
 
-    public Task<SpeedTestResult> GetDownloadSpeedAsync(IServer server, IProgress<SpeedTestProgress>? progress, IProgress<RequestDiagnostic>? diagnostics, CancellationToken cancellationToken = default) =>
+    public Task<SpeedTestResult> GetDownloadSpeedAsync(IServer server, IProgress<SpeedTestProgress>? progress, IProgress<RequestDiagnostic>? diagnostics, CancellationToken cancellationToken = default, CancellationToken stopAndReportToken = default) =>
         Task.FromResult(ReportClimbTo(DownloadFactory(downloadCall++), progress));
 
-    public Task<SpeedTestResult> GetUploadSpeedAsync(IServer server, IProgress<SpeedTestProgress>? progress, IProgress<RequestDiagnostic>? diagnostics, CancellationToken cancellationToken = default) =>
+    public Task<SpeedTestResult> GetUploadSpeedAsync(IServer server, IProgress<SpeedTestProgress>? progress, IProgress<RequestDiagnostic>? diagnostics, CancellationToken cancellationToken = default, CancellationToken stopAndReportToken = default) =>
         Task.FromResult(ReportClimbTo(UploadFactory(uploadCall++), progress));
 
     /// <summary>

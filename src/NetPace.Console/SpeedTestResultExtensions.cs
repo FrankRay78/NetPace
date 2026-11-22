@@ -13,7 +13,8 @@ namespace NetPace.Console;
 internal static class SpeedTestResultExtensions
 {
     /// <summary>
-    /// Whether every request in the test failed (zero valid measurement).
+    /// Whether every request in the test failed, so the figure beside it measures a link that is
+    /// not working rather than nothing at all: those requests may still have delivered bytes.
     /// </summary>
     public static bool IsAllFailed(this SpeedTestResult result) =>
         result.RequestsFailed > 0 && result.RequestsSucceeded == 0;

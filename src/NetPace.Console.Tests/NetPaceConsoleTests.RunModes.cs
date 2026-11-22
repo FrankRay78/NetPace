@@ -53,18 +53,6 @@ public sealed partial class NetPaceConsoleTests
         /// </summary>
         private const string ResultLine = "Ping: 24 ms";
 
-        private static int Occurrences(string text, string value) => text.Split(value).Length - 1;
-
-        private static LatencyTestResult Latency(string serverUrl) =>
-            new()
-            {
-                Server = new Server { Sponsor = "Deutsche Telekom", Location = "Frankfurt", Url = serverUrl },
-                LatencyMilliseconds = 24,
-                MinimumLatencyMilliseconds = null,
-                MaximumLatencyMilliseconds = null,
-                JitterMilliseconds = 3
-            };
-
         /// <summary>
         /// What ends one test when the failure shape is <paramref name="shape"/>. A factory rather
         /// than an instance, so each test of a repeated run throws its own.
@@ -84,26 +72,6 @@ public sealed partial class NetPaceConsoleTests
         private static string ReportedBy(string shape) =>
             shape == Timeout ? "did not respond in time" : "Could not open socket";
 
-        /// <summary>
-        /// A service whose latency probe throws on the probes <paramref name="throwsOn"/> selects,
-        /// counted from one, and measures normally on the rest.
-        /// </summary>
-        /// <remarks>
-        /// The probe is where a test is abandoned whole. A failure raised later in the test would
-        /// leave a part-written result behind, and the result lines would no longer be countable.
-        /// </remarks>
-        private static ISpeedTestService ServiceWhoseProbeThrows(Func<int, bool> throwsOn, Func<Exception> fault)
-        {
-            var probes = 0;
-            return new SpeedTestMock
-            {
-                GetServerLatencyByServerUrlAsyncFunc = (url, _, _) => throwsOn(Interlocked.Increment(ref probes))
-                    ? throw fault()
-                    : Task.FromResult(Latency(url)),
-                GetDownloadSpeedAsyncFunc = (_, _, _) => Task.FromResult(ScriptedSpeedTester.Clean(150)),
-                GetUploadSpeedAsyncFunc = (_, _, _) => Task.FromResult(ScriptedSpeedTester.Clean(32))
-            };
-        }
 
         /// <summary>
         /// A run the user cancels while a test is in flight: the probe cancels the given source and
@@ -190,10 +158,12 @@ public sealed partial class NetPaceConsoleTests
             // When the run is asked for in this mode, without --fail-on.
             var result = await RunAsync(mode, service, TestsPerRun);
 
-            // Then the failure is reported once, the run succeeded, and every test after the first
-            // still reported a result - a single run, having no later test, reports none.
+            // Then the failure is reported once on the error stream, the run succeeded, and every
+            // test after the first still reported a result on standard output - a single run, having
+            // no later test, reports none.
             Assert.Equal(0, result.ExitCode);
-            Assert.Equal(1, Occurrences(result.Output, ReportedBy(shape)));
+            Assert.Equal(1, Occurrences(result.ErrorOutput, ReportedBy(shape)));
+            Assert.Equal(0, Occurrences(result.Output, ReportedBy(shape)));
             Assert.Equal(mode == Single ? 0 : TestsPerRun - 1, Occurrences(result.Output, ResultLine));
         }
 
@@ -216,7 +186,7 @@ public sealed partial class NetPaceConsoleTests
 
             // Then it stopped at that failure and exited 1: no later test reported a result.
             Assert.Equal(1, result.ExitCode);
-            Assert.Equal(1, Occurrences(result.Output, ReportedBy(shape)));
+            Assert.Equal(1, Occurrences(result.ErrorOutput, ReportedBy(shape)));
             Assert.Equal(0, Occurrences(result.Output, ResultLine));
         }
 
@@ -262,7 +232,7 @@ public sealed partial class NetPaceConsoleTests
             var result = await RunAsync(mode, ServiceCancelledMidTest, TestsPerRun, FailOnArgs(failOn));
 
             // Then nothing is reported as an error and the run exits 0.
-            Assert.DoesNotContain("Error:", result.Output);
+            Assert.DoesNotContain("Error:", result.ErrorOutput);
             Assert.Equal(0, result.ExitCode);
         }
 
@@ -285,7 +255,7 @@ public sealed partial class NetPaceConsoleTests
             // Then the test that did run reported its result, nothing is reported as an error, and
             // the run exits 0.
             Assert.Equal(1, Occurrences(result.Output, ResultLine));
-            Assert.DoesNotContain("Error:", result.Output);
+            Assert.DoesNotContain("Error:", result.ErrorOutput);
             Assert.Equal(0, result.ExitCode);
         }
 
@@ -307,7 +277,7 @@ public sealed partial class NetPaceConsoleTests
             var result = await RunAsync(mode, service, TestsPerRun, "--fail-on", "Total");
 
             // Then the failure is reported and the run exits 1.
-            Assert.Contains("Error:", result.Output);
+            Assert.Contains("Error:", result.ErrorOutput);
             Assert.Equal(1, result.ExitCode);
         }
 
@@ -328,7 +298,7 @@ public sealed partial class NetPaceConsoleTests
 
             // Then the fault was reported, and the run ends with a non-zero exit code rather than
             // reporting the fault as data and carrying on.
-            Assert.Contains("Error:", result.Output);
+            Assert.Contains("Error:", result.ErrorOutput);
             Assert.NotEqual(0, result.ExitCode);
             Assert.Equal(0, Occurrences(result.Output, ResultLine));
         }
@@ -352,7 +322,7 @@ public sealed partial class NetPaceConsoleTests
 
             // Then the fault was reported and the run stopped there, with a non-zero exit code and
             // only the first result behind it.
-            Assert.Contains("Error:", result.Output);
+            Assert.Contains("Error:", result.ErrorOutput);
             Assert.NotEqual(0, result.ExitCode);
             Assert.Equal(1, Occurrences(result.Output, ResultLine));
         }
@@ -379,7 +349,7 @@ public sealed partial class NetPaceConsoleTests
                 var result = await RunAsync(mode, service, TestsPerRun, "--file", testFile);
 
                 // Then the fault was reported on screen and the run exits non-zero.
-                Assert.Contains("Error:", result.Output);
+                Assert.Contains("Error:", result.ErrorOutput);
                 Assert.NotEqual(0, result.ExitCode);
             }
             finally
@@ -414,7 +384,7 @@ public sealed partial class NetPaceConsoleTests
                 var result = await RunAsync(mode, service, TestsPerRun, "--file", testFile);
 
                 // Then the fault ended the run.
-                Assert.Contains("There is not enough space on the disk.", result.Output);
+                Assert.Contains("There is not enough space on the disk.", result.ErrorOutput);
                 Assert.NotEqual(0, result.ExitCode);
 
                 // And reading the file back under an exclusive share settles both halves at once:

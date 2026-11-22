@@ -45,7 +45,8 @@ public sealed partial class NetPaceConsoleTests
             // Then nothing is measured, the user is told a server URL is needed, and the exit code
             // is non-zero: a missing option is a usage error, not a network outcome.
             Assert.NotEqual(0, result.ExitCode);
-            await Verify(result.Output);
+            Assert.Empty(result.Output);
+            await Verify(result.ErrorOutput);
         }
 
         [Theory]
@@ -242,7 +243,7 @@ public sealed partial class NetPaceConsoleTests
             // Then the failure is reported naming the URL, with no measurement, and the exit code
             // stays 0: a server that will not answer is a network outcome.
             Assert.Equal(0, result.ExitCode);
-            Assert.Contains(rejected, result.Output);
+            Assert.Contains(rejected, result.ErrorOutput);
         }
 
         [Theory]

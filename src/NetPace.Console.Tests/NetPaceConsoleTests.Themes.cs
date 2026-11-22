@@ -44,11 +44,14 @@ public sealed partial class NetPaceConsoleTests
         private static CommandLineTestHost HostFor(string screen, IServiceCollection services) =>
             screen == "speed test" ? SpeedTestHost(services) : StaticScreenHost(services);
 
-        private static ServiceCollection SpeedTestServices(IThemeProvider themeProvider)
+        /// <summary>
+        /// The services a speed-test run needs, on the clock given or on the standing stub.
+        /// </summary>
+        private static ServiceCollection SpeedTestServices(IThemeProvider themeProvider, IClock? clock = null)
         {
             var services = new ServiceCollection();
             services.AddSingleton<ISpeedTestService, SpeedTestStub>();
-            services.AddSingleton<IClock, ClockStub>();
+            services.AddSingleton(clock ?? new ClockStub());
             services.AddSingleton<IWaiter, NoDelayStub>();
             services.AddSingleton(themeProvider);
             return services;
@@ -61,13 +64,6 @@ public sealed partial class NetPaceConsoleTests
             services.AddSingleton(themeProvider);
             return services;
         }
-
-        /// <summary>
-        /// A run whose environment holds the variables given here and nothing else, so what the
-        /// user set reaches the run without the suite's own environment being touched.
-        /// </summary>
-        private static IThemeProvider FromEnvironment(params (string Name, string Value)[] variables) =>
-            new EnvironmentThemeProvider(name => variables.Where(v => v.Name == name).Select(v => v.Value).FirstOrDefault());
 
         private static IThemeProvider Chosen(Theme theme) => new FixedThemeProvider(theme);
 
@@ -137,84 +133,41 @@ public sealed partial class NetPaceConsoleTests
             await Verify(AnsiSnapshot.Readable(result.Output));
         }
 
-        [Fact]
-        public async Task SpeedTest_UnderTheGreenTheme_IsDrawnInGreen()
+        /// <summary>
+        /// Every coloured theme against every screen it draws, one snapshot each, so a theme added
+        /// to <see cref="Theme.All"/> fails here until its screens have been read and accepted.
+        /// </summary>
+        public static TheoryData<string, string> ColouredThemeScreens()
         {
-            // SCENARIO: Chosen theme applies to every command
+            string[] screens = ["speed test", "servers --fastest", "servers --latency", "--help", "servers --help"];
 
-            // Given
-            var host = SpeedTestHost(SpeedTestServices(FromEnvironment(("NETPACE_THEME", "green"))));
-
-            // When
-            var result = await host.RunAsync([]);
-
-            // Then
-            Assert.Equal(0, result.ExitCode);
-            await Verify(AnsiSnapshot.Readable(result.Output));
+            var rows = new TheoryData<string, string>();
+            foreach (var theme in ThemeRows.Coloured)
+            {
+                foreach (string screen in screens)
+                {
+                    rows.Add(theme.Name, screen);
+                }
+            }
+            return rows;
         }
 
-        [Fact]
-        public async Task ServerList_UnderTheGreenTheme_IsDrawnInGreen()
+        [MemberData(nameof(ColouredThemeScreens))]
+        [Theory]
+        public async Task EveryScreen_UnderAColouredTheme_IsDrawnInThatThemesPalette(string theme, string screen)
         {
             // SCENARIO: Chosen theme applies to every command
+            // SCENARIO: Halloween theme applies to every command
 
             // Given
-            var host = StaticScreenHost(ServerListServices(FromEnvironment(("NETPACE_THEME", "green"))));
+            var host = HostFor(screen, SpeedTestServices(FromEnvironment(("NETPACE_THEME", theme))));
 
             // When
-            var result = await host.RunAsync(["servers", "--fastest"]);
+            var result = await host.RunAsync(ArgumentsFor(screen));
 
             // Then
             Assert.Equal(0, result.ExitCode);
-            await Verify(AnsiSnapshot.Readable(result.Output));
-        }
-
-        [Fact]
-        public async Task ServerListWithLatency_UnderTheGreenTheme_IsDrawnInGreen()
-        {
-            // SCENARIO: Chosen theme applies to every command
-
-            // Given
-            var host = StaticScreenHost(ServerListServices(FromEnvironment(("NETPACE_THEME", "green"))));
-
-            // When
-            var result = await host.RunAsync(["servers", "--latency"]);
-
-            // Then
-            Assert.Equal(0, result.ExitCode);
-            await Verify(AnsiSnapshot.Readable(result.Output));
-        }
-
-        [Fact]
-        public async Task ServersHelpScreen_UnderTheGreenTheme_IsDrawnInGreen()
-        {
-            // SCENARIO: Chosen theme applies to every command
-
-            // Given
-            var host = StaticScreenHost(ServerListServices(FromEnvironment(("NETPACE_THEME", "green"))));
-
-            // When
-            var result = await host.RunAsync(["servers", "--help"]);
-
-            // Then
-            Assert.Equal(0, result.ExitCode);
-            await Verify(AnsiSnapshot.Readable(result.Output));
-        }
-
-        [Fact]
-        public async Task HelpScreen_UnderTheGreenTheme_IsDrawnInGreen()
-        {
-            // SCENARIO: Chosen theme applies to every command
-
-            // Given
-            var host = StaticScreenHost(SpeedTestServices(FromEnvironment(("NETPACE_THEME", "green"))));
-
-            // When
-            var result = await host.RunAsync(["--help"]);
-
-            // Then
-            Assert.Equal(0, result.ExitCode);
-            await Verify(AnsiSnapshot.Readable(result.Output));
+            await Verify(AnsiSnapshot.Readable(result.Output)).UseTextForParameters($"{theme}_{Slug(screen)}");
         }
 
         [InlineData("speed test")]
@@ -224,22 +177,27 @@ public sealed partial class NetPaceConsoleTests
         [InlineData("--help")]
         [InlineData("servers --help")]
         [Theory]
-        public async Task EveryScreen_UnderTheGreenTheme_ChangesColourAndNothingElse(string screen)
+        public async Task EveryScreen_UnderEachColouredTheme_ChangesColourAndNothingElse(string screen)
         {
             // SCENARIO: Chosen theme applies to every command
+            // SCENARIO: Halloween theme applies to every command
 
             // Given
             string[] args = ArgumentsFor(screen);
 
-            // When the same screen is drawn in each theme
-            var asDefault = await Draw(args, Theme.Default);
-            var asGreen = await Draw(args, Theme.Green);
+            // When the same screen is drawn in each theme that draws in colour
+            var drawings = new List<string>();
+            foreach (var theme in ThemeRows.InColour)
+            {
+                drawings.Add(await Draw(args, theme));
+            }
 
-            // Then the theme reaches this screen,
-            Assert.NotEqual(asDefault, asGreen);
+            // Then every theme reaches this screen, and each draws it unlike every other,
+            Assert.Equal(drawings.Count, drawings.Distinct().Count());
 
             // and changes only how it is drawn, never what it says.
-            Assert.Equal(AnsiSnapshot.WithoutStyling(asDefault), AnsiSnapshot.WithoutStyling(asGreen));
+            string saysTheSame = AnsiSnapshot.WithoutStyling(drawings[0]);
+            Assert.All(drawings, drawing => Assert.Equal(saysTheSame, AnsiSnapshot.WithoutStyling(drawing)));
 
             async Task<string> Draw(string[] arguments, Theme theme)
             {
@@ -293,24 +251,59 @@ public sealed partial class NetPaceConsoleTests
             await Verify(AnsiSnapshot.Readable(result.Output));
         }
 
-        [Fact]
-        public async Task PartlyFinishedTable_UnderTheGreenTheme_IsDrawnInGreen()
+        [MemberData(nameof(ThemeRows.ColouredNames), MemberType = typeof(ThemeRows))]
+        [Theory]
+        public async Task PartlyFinishedTable_UnderAColouredTheme_IsDrawnInThatThemesPalette(string theme)
         {
             // SCENARIO: Chosen theme applies to every command
+            // SCENARIO: Halloween theme applies to every command
 
             // Given a run that ends with one row still measuring, and a partial failure above it
             using var cancellation = new CancellationTokenSource();
-            var host = SpeedTestHost(PartWayTableServices(Chosen(Theme.Green), cancellation));
+            var host = SpeedTestHost(PartWayTableServices(Chosen(ThemeRows.Named(theme)), cancellation));
 
             // When
             var result = await host.RunAsync([], cancellation.Token);
 
             // Then the slots only a part-finished table reaches — the spinner beside a row still
             // measuring, its running percentage, and the mark and count of a partial failure — are
-            // drawn in the theme. The completed tables in the other green snapshots reach none of
-            // these.
+            // drawn in the theme. The completed tables in the other snapshots reach none of these.
             Assert.Equal(0, result.ExitCode);
-            await Verify(AnsiSnapshot.Readable(result.Output));
+            await Verify(AnsiSnapshot.Readable(result.Output)).UseTextForParameters(theme);
+        }
+
+        [Fact]
+        public async Task HalloweenTheme_IsNamedWhereverTheValidThemesAreListed()
+        {
+            // SCENARIO: Halloween theme is listed among the valid themes
+
+            // Given, When the help screen is drawn, and a run names no theme NetPace carries
+            var help = await StaticScreenHost(SpeedTestServices(FromEnvironment())).RunAsync(["--help"]);
+            var typo = await StaticScreenHost(SpeedTestServices(FromEnvironment(("NETPACE_THEME", "grene")))).RunAsync([]);
+
+            // Then both places a user reads the theme names from offer this one.
+            Assert.Equal(0, help.ExitCode);
+            Assert.Contains("halloween", AnsiSnapshot.WithoutStyling(help.Output), StringComparison.Ordinal);
+            Assert.Equal(0, typo.ExitCode);
+            Assert.Contains("halloween", typo.NoticeOutput, StringComparison.Ordinal);
+        }
+
+        [Fact]
+        public async Task NoThemeChosen_OnTheNightOfHalloween_IsStillDrawnInTodaysColours()
+        {
+            // Given the same run on an ordinary date and on Halloween, with no theme asked for
+            var ordinary = await Draw(new ClockStub());
+            var halloweenNight = await Draw(new FixedClock(new DateTimeOffset(2026, 10, 31, 23, 0, 0, TimeSpan.Zero)));
+
+            // Then the date on the clock the run is given changes nothing about what is drawn.
+            Assert.Equal(ordinary, halloweenNight);
+
+            async Task<string> Draw(IClock clock)
+            {
+                var result = await SpeedTestHost(SpeedTestServices(FromEnvironment(), clock)).RunAsync([]);
+                Assert.Equal(0, result.ExitCode);
+                return AnsiSnapshot.Readable(result.Output);
+            }
         }
 
         [Fact]
@@ -319,7 +312,7 @@ public sealed partial class NetPaceConsoleTests
             // SCENARIO: Unknown theme name
 
             // Given
-            var host = SpeedTestHost(SpeedTestServices(FromEnvironment(("NETPACE_THEME", "halloween"))));
+            var host = SpeedTestHost(SpeedTestServices(FromEnvironment(("NETPACE_THEME", "grene"))));
 
             // When
             var result = await host.RunAsync([]);
@@ -329,7 +322,7 @@ public sealed partial class NetPaceConsoleTests
 
             // The notice is a word to the user, never part of the result,
             // and tells them what was not understood and what they could have typed.
-            Assert.DoesNotContain("halloween", result.Output, StringComparison.Ordinal);
+            Assert.DoesNotContain("grene", result.Output, StringComparison.Ordinal);
             await Verify(result.NoticeOutput);
         }
 
@@ -341,14 +334,14 @@ public sealed partial class NetPaceConsoleTests
             // SCENARIO: Unknown theme name
 
             // Given
-            var host = StaticScreenHost(SpeedTestServices(FromEnvironment(("NETPACE_THEME", "halloween"))));
+            var host = StaticScreenHost(SpeedTestServices(FromEnvironment(("NETPACE_THEME", "grene"))));
 
             // When
             var result = await host.RunAsync([format]);
 
             // Then
             Assert.Equal(0, result.ExitCode);
-            Assert.DoesNotContain("halloween", result.Output, StringComparison.Ordinal);
+            Assert.DoesNotContain("grene", result.Output, StringComparison.Ordinal);
         }
 
         [InlineData("--help")]
@@ -361,14 +354,14 @@ public sealed partial class NetPaceConsoleTests
             // SCENARIO: Unknown theme name
 
             // Given a command that returns before any option is parsed
-            var host = StaticScreenHost(SpeedTestServices(FromEnvironment(("NETPACE_THEME", "halloween"))));
+            var host = StaticScreenHost(SpeedTestServices(FromEnvironment(("NETPACE_THEME", "grene"))));
 
             // When
             var result = await host.RunAsync([screen]);
 
             // Then the typo is still reported, so it is heard whichever command the user ran.
             Assert.Equal(0, result.ExitCode);
-            Assert.Contains("halloween", result.NoticeOutput, StringComparison.Ordinal);
+            Assert.Contains("grene", result.NoticeOutput, StringComparison.Ordinal);
         }
 
         [InlineData("--quiet")]
@@ -382,7 +375,7 @@ public sealed partial class NetPaceConsoleTests
             // SCENARIO: Unknown theme name
 
             // Given
-            var host = StaticScreenHost(SpeedTestServices(FromEnvironment(("NETPACE_THEME", "halloween"))));
+            var host = StaticScreenHost(SpeedTestServices(FromEnvironment(("NETPACE_THEME", "grene"))));
 
             // When
             var result = await host.RunAsync([quiet]);
@@ -401,14 +394,14 @@ public sealed partial class NetPaceConsoleTests
             // SCENARIO: Unknown theme name
 
             // Given
-            var host = StaticScreenHost(SpeedTestServices(FromEnvironment(("NETPACE_THEME", "halloween"))));
+            var host = StaticScreenHost(SpeedTestServices(FromEnvironment(("NETPACE_THEME", "grene"))));
 
             // When
             var result = await host.RunAsync(args);
 
             // Then
             Assert.Equal(0, result.ExitCode);
-            Assert.Contains("halloween", result.NoticeOutput, StringComparison.Ordinal);
+            Assert.Contains("grene", result.NoticeOutput, StringComparison.Ordinal);
         }
 
         [Fact]
@@ -417,7 +410,7 @@ public sealed partial class NetPaceConsoleTests
             // SCENARIO: Unknown theme name
 
             // Given a typo'd theme name and NO_COLOR, which outranks it
-            var host = SpeedTestHost(SpeedTestServices(FromEnvironment(("NETPACE_THEME", "halloween"), ("NO_COLOR", "1"))));
+            var host = SpeedTestHost(SpeedTestServices(FromEnvironment(("NETPACE_THEME", "grene"), ("NO_COLOR", "1"))));
 
             // When
             var result = await host.RunAsync([]);
@@ -428,13 +421,14 @@ public sealed partial class NetPaceConsoleTests
             await Verify(result.NoticeOutput);
         }
 
-        [Fact]
-        public async Task GreenTheme_WhenTheUserAsksForNoColour_AddsNoColour()
+        [MemberData(nameof(ThemeRows.ColouredNames), MemberType = typeof(ThemeRows))]
+        [Theory]
+        public async Task AColouredTheme_WhenTheUserAsksForNoColour_AddsNoColour(string name)
         {
             // SCENARIO: NO_COLOR outranks the theme
 
             // Given
-            var themeProvider = FromEnvironment(("NETPACE_THEME", "green"), ("NO_COLOR", "1"));
+            var themeProvider = FromEnvironment(("NETPACE_THEME", name), ("NO_COLOR", "1"));
             var host = SpeedTestHost(SpeedTestServices(themeProvider));
 
             // When
@@ -474,36 +468,37 @@ public sealed partial class NetPaceConsoleTests
         [InlineData("--csv --json")]
         [InlineData("--definitely-not-an-option")]
         [Theory]
-        public async Task AnError_UnderTheGreenTheme_IsDrawnInTheThemesColours(string screen)
+        public async Task AnError_UnderEachColouredTheme_IsDrawnInTheThemesColours(string screen)
         {
-            // Given a run that fails, drawn in each theme
+            // Given a run that fails, drawn in today's look and in each coloured theme
             var asDefault = await Draw(ArgumentsFor(screen), Theme.Default);
-            var asGreen = await Draw(ArgumentsFor(screen), Theme.Green);
 
-            // Then the theme reaches the error line — a colour hard-coded at the point of writing
-            // would leave these two identical,
-            Assert.NotEqual(asDefault, asGreen);
+            foreach (var theme in ThemeRows.Coloured)
+            {
+                var asTheme = await Draw(ArgumentsFor(screen), theme);
 
-            // and changes only how it is drawn, never what it says.
-            Assert.Equal(AnsiSnapshot.WithoutStyling(asDefault), AnsiSnapshot.WithoutStyling(asGreen));
+                // Then the theme reaches the error line — a colour hard-coded at the point of
+                // writing would leave the two identical,
+                Assert.NotEqual(asDefault, asTheme);
+
+                // and changes only how it is drawn, never what it says.
+                Assert.Equal(AnsiSnapshot.WithoutStyling(asDefault), AnsiSnapshot.WithoutStyling(asTheme));
+            }
 
             async Task<string> Draw(string[] arguments, Theme theme)
             {
                 var result = await StaticScreenHost(SpeedTestServices(Chosen(theme))).RunAsync(arguments);
                 Assert.Equal(1, result.ExitCode);
-                return AnsiSnapshot.Readable(result.Output);
+                return AnsiSnapshot.Readable(result.ErrorOutput);
             }
         }
 
-        [InlineData("default")]
-        [InlineData("plain")]
-        [InlineData("green")]
+        [MemberData(nameof(ThemeRows.EveryName), MemberType = typeof(ThemeRows))]
         [Theory]
         public async Task AnError_InEveryTheme_ReadsAsAnErrorWithoutTellingColoursApart(string name)
         {
             // Given a theme, and a run asked for two output formats at once
-            Theme.TryParse(name, out var theme);
-            var host = StaticScreenHost(SpeedTestServices(Chosen(theme)));
+            var host = StaticScreenHost(SpeedTestServices(Chosen(ThemeRows.Named(name))));
 
             // When
             var result = await host.RunAsync(["--csv", "--json"]);
@@ -511,7 +506,7 @@ public sealed partial class NetPaceConsoleTests
             // Then the failure is marked by a word, so it survives being read with the colours
             // stripped out — which is what a reader who cannot tell them apart is doing.
             Assert.Equal(1, result.ExitCode);
-            Assert.Contains("Error:", AnsiSnapshot.WithoutStyling(result.Output), StringComparison.Ordinal);
+            Assert.Contains("Error:", AnsiSnapshot.WithoutStyling(result.ErrorOutput), StringComparison.Ordinal);
         }
 
         /// <summary>
@@ -559,6 +554,15 @@ public sealed partial class NetPaceConsoleTests
             services.AddSingleton<IWaiter, NoDelayStub>();
             services.AddSingleton(themeProvider);
             return services;
+        }
+
+        /// <summary>
+        /// A clock standing at whatever date and time a test puts it at, so a run can be drawn on
+        /// a given day of the year.
+        /// </summary>
+        private sealed class FixedClock(DateTimeOffset now) : IClock
+        {
+            public DateTimeOffset Now { get; } = now;
         }
     }
 }
