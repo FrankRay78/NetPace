@@ -357,10 +357,10 @@ public sealed partial class NetPaceConsoleTests
         [Fact]
         public async Task A_Latency_Above_Its_Maximum_Is_Reported_In_Default_Output()
         {
-            // Given a maximum below the idle latency the run measures, with no format flag, so
-            // the figure comes from the writer that feeds the live display rather than from the
-            // one the line-based formats share.
-            var host = StubHost();
+            // Given a maximum below the idle latency the run measures, with no format flag at a
+            // terminal that animates, so the figure comes from the writer that feeds the live
+            // display rather than from the one the line-based formats share.
+            var host = GetInteractiveCommandLineTestHost(StubServices());
 
             // When
             var result = await host.RunAsync(["--max-latency", "40ms"]);
@@ -368,6 +368,22 @@ public sealed partial class NetPaceConsoleTests
             // Then the miss names the latency the run measured, not an absent one.
             Assert.Equal(MissedExitCode, result.ExitCode);
             await Verify(result.NoticeOutput);
+        }
+
+        [Fact]
+        public async Task A_Latency_Within_Its_Maximum_Exits_Zero_In_Default_Output()
+        {
+            // Given a maximum above the idle latency the run measures, with no format flag at a
+            // terminal that animates, where the live display's writer supplies the figure.
+            var host = GetInteractiveCommandLineTestHost(StubServices());
+
+            // When
+            var result = await host.RunAsync(["--max-latency", "200ms"]);
+
+            // Then the target is met: the measured latency reached the check, so nothing is
+            // reported as missed.
+            Assert.Equal(0, result.ExitCode);
+            Assert.Equal(string.Empty, result.NoticeOutput);
         }
 
         [Fact]
