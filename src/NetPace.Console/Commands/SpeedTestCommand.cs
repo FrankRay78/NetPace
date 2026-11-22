@@ -7,7 +7,7 @@ using NetPace.Core;
 
 namespace NetPace.Console.Commands;
 
-public sealed class SpeedTestCommand(IAnsiConsole console, ErrorOutput errorOutput, ISpeedTestService speedTestClient, IClock clock, IClientInfoProvider clientInfoProvider, IDiagnosticRecorder recorder, IWaiter waiter, IRunTimeLimit runTimeLimit, ILiveDisplayRefresh liveDisplayRefresh, Theme theme)
+public sealed class SpeedTestCommand(IAnsiConsole console, ErrorOutput errorOutput, NoticeOutput noticeOutput, ISpeedTestService speedTestClient, IClock clock, IClientInfoProvider clientInfoProvider, IDiagnosticRecorder recorder, IWaiter waiter, IRunTimeLimit runTimeLimit, ILiveDisplayRefresh liveDisplayRefresh, Theme theme)
 {
     /// <summary>
     /// What the user is told about a request abandoned at its own timeout: one composed line for
@@ -22,6 +22,12 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ErrorOutput errorOutp
     /// where only a cancellation, <c>--fail-on</c> or an operational fault stops the run.
     /// </summary>
     private const int Unbounded = -1;
+
+    /// <summary>
+    /// Whether the user has already been told that the diagnostics file could not be written, so a
+    /// run that keeps failing to write says it once.
+    /// </summary>
+    private bool _diagnosticWriteReported;
 
     /// <summary>
     /// Executes the speed test command using the provided settings.
@@ -47,7 +53,7 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ErrorOutput errorOutp
             // threw an operational fault is exactly when its diagnostics matter most. exitCode is
             // 1 here when RunAsync threw, which matches what the top-level handler returns.
             recorder.Record("run.end", ("exit", exitCode.ToString(CultureInfo.InvariantCulture)));
-            FlushDiagnostics();
+            FlushDiagnostics(settings);
         }
     }
 
@@ -156,9 +162,9 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ErrorOutput errorOutp
                 {
                     // The records this test produced are flushed before the error is written, so a
                     // reader of the error stream meets them in the order they explain the failure:
-                    // what was attempted first, what went wrong last. Diagnostics and errors share
-                    // the error stream in every run, so their order on it is the order they are
-                    // read in.
+                    // what was attempted first, what went wrong last. Unless --diagnostics-file
+                    // takes the records elsewhere, diagnostics and errors share the error stream,
+                    // so their order on it is the order they are read in.
                     //
                     // From a finally, because the flush must not be able to cost the user the
                     // message. FlushDiagnostics absorbs the failure it is written for, but a
@@ -166,7 +172,7 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ErrorOutput errorOutp
                     // error unreported and replace it with a complaint about diagnostics.
                     try
                     {
-                        FlushDiagnostics();
+                        FlushDiagnostics(settings);
                     }
                     finally
                     {
@@ -178,7 +184,7 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ErrorOutput errorOutp
 
                 // Flushed per iteration so a long run reports as it goes and the buffer does
                 // not grow without bound.
-                FlushDiagnostics();
+                FlushDiagnostics(settings);
             }
 
             return 0;
@@ -247,26 +253,41 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ErrorOutput errorOutp
     }
 
     /// <summary>
-    /// Writes the buffered diagnostic records out. A stream that cannot be written is left
-    /// unreported rather than raised.
+    /// Writes the buffered diagnostic records out. A destination that cannot be written is never
+    /// raised, and is reported to the user only where there is somewhere to report it.
     /// </summary>
     /// <remarks>
     /// Diagnostics are a second stream alongside the result, so one that cannot be written must not
     /// decide the run's fate: raising here would turn a completed measurement into a non-zero exit,
     /// and from the <c>finally</c> in <see cref="ExecuteAsync"/> it would replace the very exception
-    /// the records were written to explain. Nothing is written about the failure either, because
-    /// there is nowhere to write it: the stream that would carry the message is the one that just
+    /// the records were written to explain. The unwritten records stay buffered, so a later flush
+    /// still carries them.
+    /// <para>
+    /// Where <c>--diagnostics-file</c> named the destination, the error stream is a different place
+    /// and says once which path failed, because a user who asked for a file and got none would
+    /// otherwise learn that only when they went looking for it. It says so as a notice, not an
+    /// error: the run succeeded, and a script scanning the error stream for errors must not read it
+    /// as failed. Nor does <c>--quiet</c> silence it, since <c>--quiet</c> leaves diagnostics alone. Under <c>--diagnostics</c> alone
+    /// there is nowhere to say it: the stream that would carry the message is the one that just
     /// failed, and <see cref="RunAsync"/> has already torn the console down by the time the last
-    /// flush runs. The unwritten records stay buffered, so a later flush still carries them.
+    /// flush runs. At most once per run, so a <c>--loop</c> over a destination that is gone for
+    /// good does not fill the error stream with the same line.
+    /// </para>
     /// </remarks>
-    private void FlushDiagnostics()
+    /// <param name="settings">The settings the run was asked for, which name the destination.</param>
+    private void FlushDiagnostics(SpeedTestCommandSettings settings)
     {
         try
         {
             recorder.Flush();
         }
-        catch (IOException)
+        catch (IOException e)
         {
+            if (!_diagnosticWriteReported && !string.IsNullOrWhiteSpace(settings.DiagnosticsFile))
+            {
+                _diagnosticWriteReported = true;
+                noticeOutput.Writer.WriteLine($"The diagnostics could not be written to {settings.DiagnosticsFile}: {e.Message}");
+            }
         }
     }
 

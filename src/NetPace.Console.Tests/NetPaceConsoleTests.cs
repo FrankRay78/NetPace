@@ -60,6 +60,23 @@ public sealed partial class NetPaceConsoleTests
     private static int Occurrences(string text, string value) => text.Split(value).Length - 1;
 
     /// <summary>
+    /// A run's arguments: the switch that selects an output mode, followed by the rest of them. The
+    /// default mode is selected by no switch at all, so an empty mode contributes nothing. Shared
+    /// by the nested classes that run the same invocation in every output mode.
+    /// </summary>
+    private static string[] Invocation(string outputFormat, params string[] rest) =>
+        string.IsNullOrEmpty(outputFormat) ? [.. rest] : [outputFormat, .. rest];
+
+    /// <summary>
+    /// Diagnostic records with the one that reports the invocation dropped, so two runs asked for
+    /// in different ways can be compared on everything else they recorded. Shared by the nested
+    /// classes that compare one run's records against another's.
+    /// </summary>
+    private static string[] WithoutInvocation(string records) =>
+        [.. records.Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries)
+            .Where(line => !line.Contains(" event=run.invocation ", StringComparison.Ordinal))];
+
+    /// <summary>
     /// A run whose environment holds the variables given here and nothing else, so what the user
     /// set reaches the run without the suite's own environment being touched. Shared by the nested
     /// classes that draw a screen under a chosen theme.

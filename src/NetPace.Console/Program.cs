@@ -316,6 +316,30 @@ public static class Program
             DefaultValueFactory = _ => false
         };
 
+        var diagnosticsFileOption = new Option<string>("--diagnostics-file")
+        {
+            Description = "Write the diagnostic detail to this file instead of the error stream.\nTurns diagnostics on by itself, and replaces the file on every run.",
+            DefaultValueFactory = _ => string.Empty
+        };
+        diagnosticsFileOption.Validators.Add(result =>
+        {
+            // The implicit result the default value produces stands for "no file named" and is not
+            // a value the user asked to be checked. A value the user did pass has to name a path:
+            // every consumer downstream reads a blank one as "no file named", so letting it
+            // through would exit zero having written no records and said nothing, and the user
+            // would find out only on going to look for the file. --diagnostics-file "$LOG" with
+            // LOG unset is the ordinary way to arrive here.
+            if (result.Implicit)
+            {
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(result.GetValueOrDefault<string>()))
+            {
+                result.AddError("--diagnostics-file needs a path: the value given names no file.");
+            }
+        });
+
         var failOnOption = new Option<FailOn>("--fail-on")
         {
             Description = $"Exit with a non-zero code on a failed measurement. {OptionValues.FailOnModes.HelpList}\nWith 'none' the exit code is never affected; 'total' triggers when a test is all-failed;\n'partial' triggers on any failed request. Fail-fast across --count and --loop.",
@@ -356,10 +380,15 @@ public static class Program
         command.Options.Add(quietOption);
         command.Options.Add(failOnOption);
         command.Options.Add(diagnosticsOption);
+        command.Options.Add(diagnosticsFileOption);
 
         // Set command action
         command.SetAction((Func<ParseResult, CancellationToken, Task<int>>)(async (parseResult, cancellationToken) =>
         {
+            // Declared out here so the diagnostics file is closed however the run ends, including
+            // the throws the catch below turns into exit code 1.
+            TextWriter? diagnosticsFile = null;
+
             try
             {
                 // Get option values and populate settings
@@ -392,6 +421,7 @@ public static class Program
                     Quiet = parseResult.GetValue(quietOption),
                     FailOn = parseResult.GetValue(failOnOption),
                     Diagnostics = parseResult.GetValue(diagnosticsOption),
+                    DiagnosticsFile = parseResult.GetValue(diagnosticsFileOption) ?? string.Empty,
                     DeviceId = parseResult.GetValue(deviceIdOption),
                     CustomFields = CustomField.ParseAll(parseResult.GetValue(customFieldOption))
                 };
@@ -417,12 +447,39 @@ public static class Program
                 var liveDisplayRefresh = serviceProvider.GetRequiredService<ILiveDisplayRefresh>();
 
                 // Switched off, nothing is recorded and nothing is written - so no call site
-                // downstream has to ask whether diagnostics are on.
-                IDiagnosticRecorder recorder = settings.Diagnostics
-                    ? new BufferingDiagnosticRecorder(
+                // downstream has to ask whether diagnostics are on. A named file switches them on
+                // by itself, so --diagnostics alongside it asks for nothing more; the file wins
+                // either way, and the error stream carries no record at all.
+                //
+                // The file is opened here, before the first test and inside this action's own error
+                // handling, so a path that cannot be written ends the run with the path named
+                // rather than surfacing part way through a measurement.
+                IDiagnosticRecorder recorder = NullDiagnosticRecorder.Instance;
+
+                if (!string.IsNullOrWhiteSpace(settings.DiagnosticsFile))
+                {
+                    // The reason is wrapped rather than reported raw: the framework's own message
+                    // says what went wrong but not which file it was about, and a run may name two.
+                    // Wrapping also makes the path named whatever the failure was, which the
+                    // message for a path too long to open does not do on its own.
+                    try
+                    {
+                        diagnosticsFile = serviceProvider.GetRequiredService<IDiagnosticFileOpener>().Open(settings.DiagnosticsFile);
+                    }
+                    catch (Exception e) when (e is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
+                    {
+                        throw new InvalidOperationException(
+                            $"The diagnostics file {settings.DiagnosticsFile} could not be opened: {e.Message} Name a path in an existing directory you can write to.", e);
+                    }
+
+                    recorder = new BufferingDiagnosticRecorder(serviceProvider.GetRequiredService<IDiagnosticClock>(), diagnosticsFile);
+                }
+                else if (settings.Diagnostics)
+                {
+                    recorder = new BufferingDiagnosticRecorder(
                         serviceProvider.GetRequiredService<IDiagnosticClock>(),
-                        serviceProvider.GetRequiredService<DiagnosticOutput>().Writer)
-                    : NullDiagnosticRecorder.Instance;
+                        serviceProvider.GetRequiredService<DiagnosticOutput>().Writer);
+                }
 
                 // Recorded once per process, before the first test: what NetPace is, what it is
                 // running on, and how it was asked to run.
@@ -436,7 +493,7 @@ public static class Program
                 recorder.Record("run.invocation", ("args", string.Join(' ', args)));
 
                 // Create and execute command
-                var command = new SpeedTestCommand(ansiConsole, errorOutput, speedTestService, clock, clientInfoProvider, recorder, waiter, runTimeLimit, liveDisplayRefresh, theme);
+                var command = new SpeedTestCommand(ansiConsole, errorOutput, serviceProvider.GetRequiredService<NoticeOutput>(), speedTestService, clock, clientInfoProvider, recorder, waiter, runTimeLimit, liveDisplayRefresh, theme);
                 return await command.ExecuteAsync(settings, cancellationToken);
             }
             catch (Exception ex)
@@ -447,6 +504,25 @@ public static class Program
                 // from above, because the throw may have come before that line ran.
                 serviceProvider.GetRequiredService<ErrorOutput>().WriteLine(theme, ex.Message);
                 return 1;
+            }
+            finally
+            {
+                // Closed after the command has returned, so the last flush it makes is on disk.
+                //
+                // Guarded because closing a StreamWriter flushes what it still holds, and this
+                // finally sits outside the catch above: a raise here escapes the action altogether,
+                // which turned a completed measurement into a stack trace and a non-zero exit. A
+                // diagnostics write must not decide the run's fate, which is the same rule
+                // SpeedTestCommand.FlushDiagnostics keeps. Nothing is written about it because the
+                // records are flushed explicitly after every batch, so a close that fails follows a
+                // flush that failed, and the user has already been told which path and why.
+                try
+                {
+                    diagnosticsFile?.Dispose();
+                }
+                catch (IOException)
+                {
+                }
             }
         }));
 
@@ -645,8 +721,8 @@ public static class Program
     /// <param name="services">The collection to register the outputs in.</param>
     internal static void AddStreamOutputs(IServiceCollection services)
     {
-        // A word to the user about how the run was asked for goes to the error stream, so it never
-        // lands in the middle of a result another program is reading.
+        // A word to the user that is neither the result nor an error goes to the error stream, so
+        // it never lands in the middle of a result another program is reading.
         services.AddSingleton(new NoticeOutput(System.Console.Error));
 
         // Every error goes to the error stream, for the same reason and one more: a run whose
@@ -699,6 +775,10 @@ public static class Program
         services.AddSingleton<IThemeProvider, EnvironmentThemeProvider>();
 
         AddStreamOutputs(services);
+
+        // Needed by both stacks: --diagnostics-file writes a real file whether the measurement
+        // behind it was stubbed or not.
+        services.AddSingleton<IDiagnosticFileOpener, DiagnosticFileOpener>();
 
         // Needed by both stacks: the root command populates the accessor after option binding,
         // before it knows which ISpeedTestService is in play.
