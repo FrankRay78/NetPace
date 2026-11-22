@@ -124,7 +124,7 @@ internal static class ThresholdOption
         {
             if (SuffixMatches(suffix, candidate))
             {
-                return Build(figure, bitsPerUnit, candidate);
+                return Build(figure, bitsPerUnit, candidate, Math.Ceiling);
             }
         }
 
@@ -147,7 +147,7 @@ internal static class ThresholdOption
             return null;
         }
 
-        return Build(figure, 1m, LatencyUnit);
+        return Build(figure, 1m, LatencyUnit, Math.Floor);
     }
 
     /// <summary>
@@ -232,14 +232,20 @@ internal static class ThresholdOption
     /// Builds the threshold, refusing a figure that does not come to at least one whole fixed unit
     /// or that no measurement could ever reach.
     /// </summary>
-    private static MeasurementThreshold? Build(decimal figure, decimal fixedUnitsPerUnit, string unit)
+    /// <param name="towards">
+    /// Which way a fraction of a fixed unit is rounded: up for a minimum and down for a maximum.
+    /// Every measured figure is a whole number of fixed units, so rounding the target away from
+    /// the side it guards keeps the check exact: a 99.5 ms maximum misses a 100 ms latency, where
+    /// rounding to the nearest unit would have met it.
+    /// </param>
+    private static MeasurementThreshold? Build(decimal figure, decimal fixedUnitsPerUnit, string unit, Func<decimal, decimal> towards)
     {
         if (figure > long.MaxValue / fixedUnitsPerUnit)
         {
             return null;
         }
 
-        decimal target = Math.Round(figure * fixedUnitsPerUnit, MidpointRounding.AwayFromZero);
+        decimal target = towards(figure * fixedUnitsPerUnit);
         if (target < 1)
         {
             return null;

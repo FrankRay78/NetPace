@@ -406,6 +406,23 @@ public sealed partial class NetPaceConsoleTests
             await Verify(result.NoticeOutput);
         }
 
+        [Theory]
+        [InlineData("--max-latency", "99.5ms")]
+        [InlineData("--min-download", "8.0004Kbps")]
+        public async Task A_Fractional_Target_Just_Past_The_Measured_Figure_Is_Missed(string option, string value)
+        {
+            // Given a target a fraction of a whole millisecond under the 100 ms latency, or a
+            // fraction of a whole bit per second over the 8,000 bps download, so rounding the
+            // target to the nearest whole unit would land it on the measured figure.
+            var host = StubHost();
+
+            // When
+            var result = await host.RunAsync(["--simple", option, value]);
+
+            // Then the figure is on the wrong side of the target the user typed, so it is missed.
+            Assert.Equal(MissedExitCode, result.ExitCode);
+        }
+
         [Fact]
         public async Task A_FailOn_Trigger_Exits_One_Even_When_A_Threshold_Was_Missed()
         {
