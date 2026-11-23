@@ -10,7 +10,7 @@
 
 Change Intent Records capture the **why** behind non-obvious decisions made during development: the reasoning, the alternatives considered, and the constraints that led to a particular implementation choice.
 
-They are where that reasoning goes at length, because a code comment may not reach it. A comment states one non-obvious why in a line or two and links the record for the rest; `CONVENTIONS.md` → *Code quality* is the rule that bounds it, and the decision table below, not the length of the comment, decides whether a record is warranted.
+They are where that reasoning goes at length, because a code comment may not reach it. A comment states one non-obvious why and links the record for the rest; `CONVENTIONS.md` → *Code quality* is the rule that bounds it, and the decision table below, not the length of the comment, decides whether a record is warranted.
 
 A record is also where a GitHub issue number belongs in the codebase; the rule and its exceptions are in `CONVENTIONS.md` → *Change-intent records*. An issue thread cited for its reasoning is standing in for a record that was never written — write the record and link that instead.
 
