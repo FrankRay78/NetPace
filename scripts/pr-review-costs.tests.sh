@@ -4,7 +4,7 @@
 #
 # The script's job is deciding which closed pull requests the page lacks, and what each one's row
 # says: the lines it changed split into code, tests and docs, its first review's risk tier and
-# verdict, and its review rounds' cost. All of that is provable from outside with a stub `gh` first
+# verdict or level, and its review rounds' cost. All of that is provable from outside with a stub `gh` first
 # on PATH and the script's `--page` mode, so nothing reaches GitHub and the committed page is never
 # touched. Exits
 # non-zero on any failure.
@@ -174,7 +174,7 @@ files 30 '[{"filename":"README.md","additions":1,"deletions":1}]'
 reviews 30 '[]'; files 31 '[]'; reviews 31 "$VERDICT"
 run
 ok "a kind of file not touched is an empty cell" '[ -z "$(col 30 4)" ] && [ -z "$(col 30 5)" ] && [ "$(col 30 6)" = 2 ]'
-ok "no marked review leaves risk and verdict empty" '[ -z "$(col 30 7)" ] && [ -z "$(col 30 8)" ]'
+ok "no marked review leaves risk, verdict and level empty" '[ -z "$(col 30 7)" ] && [ -z "$(col 30 8)" ] && [ -z "$(col 30 9)" ]'
 ok "a figure the footer could not report is an empty cell" '[ -z "$(col 30 10)" ] && [ -z "$(col 30 13)" ] && [ -z "$(col 30 14)" ]'
 ok "and an empty cell keeps every later cell in its column" '[ "$(row 30 | grep -o "|" | wc -l)" = 15 ]'
 ok "a description with CRLF line endings still has its footer read" '[ "$(col 31 10)" = "\$5.34" ] && [ "$(col 31 13)" = "\$5.34" ] && [ "$(col 31 14)" = 6.4M ]'
@@ -213,6 +213,7 @@ csvline() { grep -E "^$1," "$CSV"; }
 csv() { csvline "$1" | cut -d, -f"$2"; }
 ok "is linked from the page, above the table" '[ "$(grep -n "(page.csv)" "$PAGE" | cut -d: -f1)" -lt "$(grep -n "^| PR |" "$PAGE" | cut -d: -f1)" ]'
 ok "holds a header and one line per row, newest first, with no totals" '[ "$(cut -d, -f1 "$CSV" | paste -sd,)" = "PR,50,51,52" ]'
+ok "names HumanReview directly after NoHumanMerge in the header" '[ "$(head -1 "$CSV")" = "PR,Url,Title,Merged,Closed,CodeLines,TestLines,DocsLines,Risk,NoHumanMerge,HumanReview,ReviewCost,FollowUp1Cost,FollowUp2Cost,TotalCost,TotalTokensMillions" ]'
 ok "writes every field of a row in its column" '[ "$(csvline 50)" = "50,https://example.test/pull/50,\"Change 50\",true,\"2026-11-04\",1002,5,,\"High\",\"no\",\"\",5.34,1.10,,6.44,3.0" ]'
 ok "quotes a title, doubling its quotes, with its pipe unescaped" '[ "$(csvline 51 | cut -d, -f1-5)" = "51,https://example.test/pull/51,\"Say \"\"hi\"\", a | b\",true" ]'
 ok "reads a hand correction made on the page" '[ "$(csv 52 15)" = 2.00 ]'
@@ -247,14 +248,13 @@ ok "the key under the table describes both columns" 'grep -E "\*\*No-human merge
 
 echo "Rows written before the human-review level:"
 fresh
-# A page as the one-off migration leaves it: older rows carrying an empty Human review cell.
-{ cat <<'OLD'
+# Rows recorded before the level existed, with that cell empty.
+cat > "$PAGE" <<'OLD'
 | PR | Title | Closed | Code | Tests | Docs | Risk | No-human merge | Human review | Review | Follow-up 1 | Follow-up 2 | Total cost | Total tokens |
 | --- | --- | --- | ---: | ---: | ---: | --- | --- | --- | ---: | ---: | ---: | ---: | ---: |
 | [#90](https://example.test/pull/90) | Older change | 2026-11-01 | 12 | 34 | 5 | Medium | yes |  | $5.00 | $1.00 |  | $6.00 | 7.0M |
 | [#91](https://example.test/pull/91) | Older unmerged *(not merged)* | 2026-11-02 |  |  | 3 | Low | no |  | $2.00 |  |  | $2.00 | 1.5M |
 OLD
-} > "$PAGE"
 OLDROWS=$(grep -E '^\| \[#9[01]\]' "$PAGE")
 { pr 90 2026-11-01T09:00:00Z '"2026-11-01T09:00:00Z"' "$ONE_ROUND"
   pr 91 2026-11-02T09:00:00Z null "$ONE_ROUND"

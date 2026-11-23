@@ -8,7 +8,7 @@
 # description (scripts/pr-cost-footer.sh), but one pull request at a time cannot show whether a
 # review rule change paid for itself, or how cost tracks with size and risk. This gathers the
 # footers into one table, newest first, with the lines each pull request changed and the risk tier
-# and human-review level, or the older no-human verdict, its first review gave.
+# and review verdict its first review gave.
 #
 # WHY IT ONLY ADDS. A row already on the page is kept exactly as it is: the script never fetches
 # that pull request again, so a row corrected by hand stays corrected, and a run costs one API
@@ -24,13 +24,11 @@
 #
 # WHY THE FIRST REVIEW'S RISK. The tier is judged on the whole pull request against main and
 # rarely moves between rounds; the first review's tier is the one the change arrived with, before
-# any follow-up commits answered it. The verdict or level is taken from the same review so the cells
+# any follow-up commits answered it. The verdict is taken from the same review so the cells
 # describe one moment.
 #
-# WHY TWO REVIEW COLUMNS. Reviews used to end their risk line with a yes/no `Merge with no human
-# review` verdict, and now end it with a `Human review` level (Optional, Light or Detailed). Each row
-# fills the column its first review states and leaves the other empty, so a row written before the
-# change keeps its verdict and nothing is re-derived for it.
+# WHY TWO REVIEW COLUMNS. Older reviews state a yes/no no-human verdict, newer ones a human-review
+# level; a row fills only the one its first review states, so older rows keep their verdict.
 #
 # HOW LINES ARE SPLIT. A changed file is a test when it sits under a `*.Tests` project directory
 # (snapshots included) or is a `*.tests.sh` matrix; documentation when it is any other `*.md`;
@@ -145,10 +143,8 @@ footer_costs() {
   '
 }
 
-# first_verdict <first review's body> — <risk>, <no-human> and <level> from its risk line, which is
-# `Risk tier: X · Human review: L` or, in reviews written before the level, `Risk tier: X · Merge
-# with no human review: Y`; whichever the line does not state is empty, and all three are when there
-# is no line. Earlier reviews wrapped the line in backticks, so a leading one is allowed.
+# first_verdict <first review's body> — <risk>, <no-human> and <level> from its risk line, in either
+# wording; earlier reviews wrapped the line in backticks, so a leading one is allowed.
 first_verdict() {
   local line risk human level
   line=$(grep -m1 -E '^`?Risk tier: ' <<<"$1" | tr -d '`' || true)
