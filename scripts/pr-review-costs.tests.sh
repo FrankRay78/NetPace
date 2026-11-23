@@ -3,8 +3,7 @@
 # pr-review-costs.tests.sh — standalone test matrix for pr-review-costs.sh.
 #
 # The script's job is deciding which closed pull requests the page lacks, and what each one's row
-# says: the lines it changed split into code, tests and docs, its first review's risk tier and
-# verdict or level, and its review rounds' cost. All of that is provable from outside with a stub `gh` first
+# says. All of that is provable from outside with a stub `gh` first
 # on PATH and the script's `--page` mode, so nothing reaches GitHub and the committed page is never
 # touched. Exits
 # non-zero on any failure.
@@ -248,7 +247,6 @@ ok "the key under the table describes both columns" 'grep -E "\*\*No-human merge
 
 echo "Rows written before the human-review level:"
 fresh
-# Rows recorded before the level existed, with that cell empty.
 cat > "$PAGE" <<'OLD'
 | PR | Title | Closed | Code | Tests | Docs | Risk | No-human merge | Human review | Review | Follow-up 1 | Follow-up 2 | Total cost | Total tokens |
 | --- | --- | --- | ---: | ---: | ---: | --- | --- | --- | ---: | ---: | ---: | ---: | ---: |
