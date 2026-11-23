@@ -95,7 +95,7 @@ ok "succeeds and names the rows it added" '[ "$RC" = 0 ] && grep -qF "added 3 ro
 ok "lists them newest first" '[ "$(grep -oE "^\| \[#[0-9]+" "$PAGE" | tr -d "|[# " | paste -sd,)" = "12,11,10" ]'
 ok "leaves out a pull request with no cost footer" '! row 9 >/dev/null && ! grep -q "pulls/9/" "$STUB_DIR/gh-log"'
 ok "opens with a note telling agents it is not guidance" '[ "$(head -c 13 "$PAGE")" = "<!-- Agents: " ]'
-ok "carries a header row" 'grep -qF "| PR | Title | Closed | Code | Tests | Docs | Risk | No-human merge | Review |" "$PAGE"'
+ok "carries a header row" 'grep -qF "| PR | Title | Closed | Code | Tests | Docs | Risk | No-human merge | Human review | Review |" "$PAGE"'
 
 echo "A second run:"
 sed -i 's/| High |/| Low (hand-corrected) |/' "$PAGE"
@@ -137,8 +137,8 @@ ok "code size is lines added plus deleted for everything not a test or docs" '[ 
 ok "tests count test projects, their snapshots and shell matrices, grouped in thousands" '[ "$(col 20 5)" = "1,055" ]'
 ok "docs count Markdown" '[ "$(col 20 6)" = "35" ]'
 ok "risk and verdict come from the first marked review, backticks or not" '[ "$(col 20 7)" = Medium ] && [ "$(col 20 8)" = yes ]'
-ok "each round lands in its own column" '[ "$(col 20 9)" = "\$10.24" ] && [ "$(col 20 10)" = "\$2.96" ] && [ "$(col 20 11)" = "\$2.67" ]'
-ok "the total is the footer's, tokens in millions" '[ "$(col 20 12)" = "\$15.87" ] && [ "$(col 20 13)" = "16.4M" ]'
+ok "each round lands in its own column" '[ "$(col 20 10)" = "\$10.24" ] && [ "$(col 20 11)" = "\$2.96" ] && [ "$(col 20 12)" = "\$2.67" ]'
+ok "the total is the footer's, tokens in millions" '[ "$(col 20 13)" = "\$15.87" ] && [ "$(col 20 14)" = "16.4M" ]'
 ok "the closed date is the day it closed" '[ "$(col 20 3)" = 2026-11-04 ]'
 
 echo "Whose reviews count:"
@@ -164,7 +164,7 @@ run
 ok "leaves out a pull request someone else opened" '[ "$RC" = 0 ] && ! row 60 >/dev/null && ! grep -q "pulls/60/" "$STUB_DIR/gh-log"'
 ok "leaves out a pull request from a fork" '! row 61 >/dev/null && ! grep -q "pulls/61/" "$STUB_DIR/gh-log"'
 ok "leaves out a description that only quotes the marker" '! row 62 >/dev/null && ! grep -q "pulls/62/" "$STUB_DIR/gh-log"'
-ok "reads the real footer, not an example of one above it" '[ -z "$(col 63 10)" ] && [ "$(col 63 9)" = "\$5.34" ]'
+ok "reads the real footer, not an example of one above it" '[ -z "$(col 63 11)" ] && [ "$(col 63 10)" = "\$5.34" ]'
 
 echo "Gaps:"
 fresh
@@ -175,9 +175,9 @@ reviews 30 '[]'; files 31 '[]'; reviews 31 "$VERDICT"
 run
 ok "a kind of file not touched is an empty cell" '[ -z "$(col 30 4)" ] && [ -z "$(col 30 5)" ] && [ "$(col 30 6)" = 2 ]'
 ok "no marked review leaves risk and verdict empty" '[ -z "$(col 30 7)" ] && [ -z "$(col 30 8)" ]'
-ok "a figure the footer could not report is an empty cell" '[ -z "$(col 30 9)" ] && [ -z "$(col 30 12)" ] && [ -z "$(col 30 13)" ]'
-ok "and an empty cell keeps every later cell in its column" '[ "$(row 30 | grep -o "|" | wc -l)" = 14 ]'
-ok "a description with CRLF line endings still has its footer read" '[ "$(col 31 9)" = "\$5.34" ] && [ "$(col 31 12)" = "\$5.34" ] && [ "$(col 31 13)" = 6.4M ]'
+ok "a figure the footer could not report is an empty cell" '[ -z "$(col 30 10)" ] && [ -z "$(col 30 13)" ] && [ -z "$(col 30 14)" ]'
+ok "and an empty cell keeps every later cell in its column" '[ "$(row 30 | grep -o "|" | wc -l)" = 15 ]'
+ok "a description with CRLF line endings still has its footer read" '[ "$(col 31 10)" = "\$5.34" ] && [ "$(col 31 13)" = "\$5.34" ] && [ "$(col 31 14)" = 6.4M ]'
 
 echo "The totals row:"
 fresh
@@ -196,13 +196,13 @@ TOTAL() { grep -F "| **Total" "$PAGE" | cells_of "$1"; }
 ok "sorts newest first, a piped title included, on the page and in the CSV" '[ "$(cut -d, -f1 "${PAGE%.md}.csv" | paste -sd,)" = "PR,50,51,52" ] && [ "$(grep -oE "^\| \[#[0-9]+" "$PAGE" | tr -d "|[# " | paste -sd,)" = "50,51,52" ]'
 ok "sits last" '[ "$(tail -1 "$PAGE" | cut -c1-13)" = "| **Total** |" ]'
 ok "sums each size column" '[ "$(TOTAL 4)" = "**1,009**" ] && [ "$(TOTAL 5)" = "**5**" ] && [ "$(TOTAL 6)" = "**2**" ]'
-ok "leaves title, date, risk and verdict empty" '[ "$(TOTAL 1)" = "**Total**" ] && [ -z "$(TOTAL 2)$(TOTAL 3)$(TOTAL 7)$(TOTAL 8)" ]'
-ok "a partial footer total keeps its known part, and an unreported round is empty" '[ "$(col 52 9)" = "\$1.00" ] && [ -z "$(col 52 10)" ] && [ "$(col 52 12)" = "\$1.00" ] && [ "$(col 52 13)" = 2.0M ]'
-ok "sums each round, reading a cost of \$1,000 or more whole" '[ "$(TOTAL 9)" = "**\$1,032.34**" ] && [ "$(TOTAL 10)" = "**\$1.10**" ] && [ -z "$(TOTAL 11)" ]'
-ok "sums total cost and tokens" '[ "$(TOTAL 12)" = "**\$1,033.44**" ] && [ "$(TOTAL 13)" = "**6.5M**" ]'
+ok "leaves title, date, risk, verdict and human-review level empty" '[ "$(TOTAL 1)" = "**Total**" ] && [ -z "$(TOTAL 2)$(TOTAL 3)$(TOTAL 7)$(TOTAL 8)$(TOTAL 9)" ]'
+ok "a partial footer total keeps its known part, and an unreported round is empty" '[ "$(col 52 10)" = "\$1.00" ] && [ -z "$(col 52 11)" ] && [ "$(col 52 13)" = "\$1.00" ] && [ "$(col 52 14)" = 2.0M ]'
+ok "sums each round, reading a cost of \$1,000 or more whole" '[ "$(TOTAL 10)" = "**\$1,032.34**" ] && [ "$(TOTAL 11)" = "**\$1.10**" ] && [ -z "$(TOTAL 12)" ]'
+ok "sums total cost and tokens" '[ "$(TOTAL 13)" = "**\$1,033.44**" ] && [ "$(TOTAL 14)" = "**6.5M**" ]'
 sed -i 's/| \$1.00 |  |  | \$1.00 | 2.0M |/| $1.00 |  |  | $2.00 | 2.0M |/' "$PAGE"
 run
-ok "is recomputed from the rows as they stand, once" '[ "$(TOTAL 12)" = "**\$1,034.44**" ] && [ "$(grep -c "| \*\*Total" "$PAGE")" = 1 ]'
+ok "is recomputed from the rows as they stand, once" '[ "$(TOTAL 13)" = "**\$1,034.44**" ] && [ "$(grep -c "| \*\*Total" "$PAGE")" = 1 ]'
 
 echo "The CSV beside the page:"
 CSV="${PAGE%.md}.csv"
@@ -213,10 +213,10 @@ csvline() { grep -E "^$1," "$CSV"; }
 csv() { csvline "$1" | cut -d, -f"$2"; }
 ok "is linked from the page, above the table" '[ "$(grep -n "(page.csv)" "$PAGE" | cut -d: -f1)" -lt "$(grep -n "^| PR |" "$PAGE" | cut -d: -f1)" ]'
 ok "holds a header and one line per row, newest first, with no totals" '[ "$(cut -d, -f1 "$CSV" | paste -sd,)" = "PR,50,51,52" ]'
-ok "writes every field of a row in its column" '[ "$(csvline 50)" = "50,https://example.test/pull/50,\"Change 50\",true,\"2026-11-04\",1002,5,,\"High\",\"no\",5.34,1.10,,6.44,3.0" ]'
+ok "writes every field of a row in its column" '[ "$(csvline 50)" = "50,https://example.test/pull/50,\"Change 50\",true,\"2026-11-04\",1002,5,,\"High\",\"no\",\"\",5.34,1.10,,6.44,3.0" ]'
 ok "quotes a title, doubling its quotes, with its pipe unescaped" '[ "$(csvline 51 | cut -d, -f1-5)" = "51,https://example.test/pull/51,\"Say \"\"hi\"\", a | b\",true" ]'
-ok "reads a hand correction made on the page" '[ "$(csv 52 14)" = 2.00 ]'
-ok "keeps the known part of a partial figure, and an unreported round empty" '[ "$(csv 52 11)" = 1.00 ] && [ -z "$(csv 52 12)" ] && [ "$(csv 52 15)" = 2.0 ]'
+ok "reads a hand correction made on the page" '[ "$(csv 52 15)" = 2.00 ]'
+ok "keeps the known part of a partial figure, and an unreported round empty" '[ "$(csv 52 12)" = 1.00 ] && [ -z "$(csv 52 13)" ] && [ "$(csv 52 16)" = 2.0 ]'
 ok "reads a cost of \$1,000 or more whole" '[ "$(csvline 51 | awk -F, "{ print \$(NF - 4) }")" = 1026.00 ]'
 ok "states merged as true or false, with the title bare" '[ "$(csv 50 4)" = true ] && [ "$(csv 52 4)" = false ] && [ "$(csv 52 3)" = "\"Change 52\"" ]'
 
@@ -226,8 +226,46 @@ SQ="'"
 pr 70 2026-11-04T09:00:00Z '"2026-11-04T09:00:00Z"' "$ONE_ROUND" '=HYPERLINK("x")' | prs
 files 70 '[]'; reviews 70 "[$(review 'Risk tier: High, see notes · Merge with no human review: no\n<!-- review-pr -->')]"
 run
-ok "quotes every text field, so a comma in one moves nothing" '[ "$(csvline 70)" = "70,https://example.test/pull/70,\"$SQ=HYPERLINK(\"\"x\"\")\",true,\"2026-11-04\",,,,\"High, see notes\",\"no\",5.34,,,5.34,6.4" ]'
+ok "quotes every text field, so a comma in one moves nothing" '[ "$(csvline 70)" = "70,https://example.test/pull/70,\"$SQ=HYPERLINK(\"\"x\"\")\",true,\"2026-11-04\",,,,\"High, see notes\",\"no\",\"\",5.34,,,5.34,6.4" ]'
 ok "and a field a spreadsheet would read as a formula is opened with a quote mark" '[ "$(csvline 70 | cut -d, -f3 | cut -c1-3)" = "\"$SQ=" ]'
+
+echo "The human-review level:"
+fresh
+{ pr 80 2026-11-04T09:00:00Z '"2026-11-04T09:00:00Z"' "$ONE_ROUND"
+  pr 81 2026-11-03T09:00:00Z '"2026-11-03T09:00:00Z"' "$ONE_ROUND"; } | prs
+files 80 '[]'; files 81 '[]'
+reviews 80 "[$(review 'Summary\nRisk tier: Medium · Human review: Light\n<!-- review-pr -->')]"
+reviews 81 "$VERDICT"
+run
+# SCENARIO: A new row records the human-review level
+ok "a review stating a level fills Human review, and leaves No-human merge empty" '[ "$(col 80 7)" = Medium ] && [ -z "$(col 80 8)" ] && [ "$(col 80 9)" = Light ] && [ "$(col 80 10)" = "\$5.34" ]'
+ok "and the CSV carries the same values" '[ "$(csvline 80)" = "80,https://example.test/pull/80,\"Change 80\",true,\"2026-11-04\",,,,\"Medium\",\"\",\"Light\",5.34,,,5.34,6.4" ]'
+# SCENARIO: An older review is still read
+ok "a review stating the old verdict fills No-human merge, and leaves Human review empty" '[ "$(col 81 7)" = High ] && [ "$(col 81 8)" = no ] && [ -z "$(col 81 9)" ]'
+ok "and the CSV carries the same values" '[ "$(csvline 81 | cut -d, -f9-11)" = "\"High\",\"no\",\"\"" ]'
+ok "the key under the table describes both columns" 'grep -E "\*\*No-human merge\*\*" "$PAGE" | grep -qF "**Human review**"'
+
+echo "Rows written before the human-review level:"
+fresh
+# A page as the one-off migration leaves it: older rows carrying an empty Human review cell.
+{ cat <<'OLD'
+| PR | Title | Closed | Code | Tests | Docs | Risk | No-human merge | Human review | Review | Follow-up 1 | Follow-up 2 | Total cost | Total tokens |
+| --- | --- | --- | ---: | ---: | ---: | --- | --- | --- | ---: | ---: | ---: | ---: | ---: |
+| [#90](https://example.test/pull/90) | Older change | 2026-11-01 | 12 | 34 | 5 | Medium | yes |  | $5.00 | $1.00 |  | $6.00 | 7.0M |
+| [#91](https://example.test/pull/91) | Older unmerged *(not merged)* | 2026-11-02 |  |  | 3 | Low | no |  | $2.00 |  |  | $2.00 | 1.5M |
+OLD
+} > "$PAGE"
+OLDROWS=$(grep -E '^\| \[#9[01]\]' "$PAGE")
+{ pr 90 2026-11-01T09:00:00Z '"2026-11-01T09:00:00Z"' "$ONE_ROUND"
+  pr 91 2026-11-02T09:00:00Z null "$ONE_ROUND"
+  pr 92 2026-11-03T09:00:00Z '"2026-11-03T09:00:00Z"' "$ONE_ROUND"; } | prs
+files 92 '[]'; reviews 92 "[$(review 'Risk tier: High · Human review: Detailed\n<!-- review-pr -->')]"
+run
+# SCENARIO: An older row keeps its recorded verdict
+ok "older rows keep every value they recorded, and their empty Human review cell" '[ "$RC" = 0 ] && [ "$(grep -E "^\| \[#9[01]\]" "$PAGE" | sort)" = "$(sort <<<"$OLDROWS")" ] && [ "$(col 90 8)" = yes ] && [ -z "$(col 90 9)" ]'
+ok "and the new row sits beside them" '[ "$(col 92 9)" = Detailed ] && [ "$(grep -oE "^\| \[#[0-9]+" "$PAGE" | tr -d "|[# " | paste -sd,)" = "92,91,90" ]'
+ok "the CSV carries the older rows the same values" '[ "$(csvline 90)" = "90,https://example.test/pull/90,\"Older change\",true,\"2026-11-01\",12,34,5,\"Medium\",\"yes\",\"\",5.00,1.00,,6.00,7.0" ] && [ "$(csvline 91 | cut -d, -f4,9-12)" = "false,\"Low\",\"no\",\"\",2.00" ]'
+ok "and the totals count them" '[ "$(TOTAL 13)" = "**\$13.34**" ]'
 
 echo "A failing call:"
 fresh

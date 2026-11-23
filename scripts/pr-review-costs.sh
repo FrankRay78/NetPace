@@ -8,7 +8,7 @@
 # description (scripts/pr-cost-footer.sh), but one pull request at a time cannot show whether a
 # review rule change paid for itself, or how cost tracks with size and risk. This gathers the
 # footers into one table, newest first, with the lines each pull request changed and the risk tier
-# and no-human verdict its first review gave.
+# and human-review level, or the older no-human verdict, its first review gave.
 #
 # WHY IT ONLY ADDS. A row already on the page is kept exactly as it is: the script never fetches
 # that pull request again, so a row corrected by hand stays corrected, and a run costs one API
@@ -24,8 +24,13 @@
 #
 # WHY THE FIRST REVIEW'S RISK. The tier is judged on the whole pull request against main and
 # rarely moves between rounds; the first review's tier is the one the change arrived with, before
-# any follow-up commits answered it. The verdict is taken from the same review so the two cells
+# any follow-up commits answered it. The verdict or level is taken from the same review so the cells
 # describe one moment.
+#
+# WHY TWO REVIEW COLUMNS. Reviews used to end their risk line with a yes/no `Merge with no human
+# review` verdict, and now end it with a `Human review` level (Optional, Light or Detailed). Each row
+# fills the column its first review states and leaves the other empty, so a row written before the
+# change keeps its verdict and nothing is re-derived for it.
 #
 # HOW LINES ARE SPLIT. A changed file is a test when it sits under a `*.Tests` project directory
 # (snapshots included) or is a `*.tests.sh` matrix; documentation when it is any other `*.md`;
@@ -60,8 +65,8 @@ REVIEW_MARKER='<!-- review-pr -->'
 # Who the review workflows run for, and who posts their reviews (.github/workflows/review-pr.yml).
 MAINTAINER='FrankRay78'
 REVIEW_BOT='github-actions[bot]'
-HEADER='| PR | Title | Closed | Code | Tests | Docs | Risk | No-human merge | Review | Follow-up 1 | Follow-up 2 | Total cost | Total tokens |'
-SEPARATOR='| --- | --- | --- | ---: | ---: | ---: | --- | --- | ---: | ---: | ---: | ---: | ---: |'
+HEADER='| PR | Title | Closed | Code | Tests | Docs | Risk | No-human merge | Human review | Review | Follow-up 1 | Follow-up 2 | Total cost | Total tokens |'
+SEPARATOR='| --- | --- | --- | ---: | ---: | ---: | --- | --- | --- | ---: | ---: | ---: | ---: | ---: |'
 
 # The awk helpers every reader of a row shares. A row is split on its pipes once escaped pipes in a
 # title are set aside, so an empty cell is still a cell; cells(row, c) fills c[1..] with the trimmed
@@ -140,20 +145,22 @@ footer_costs() {
   '
 }
 
-# first_verdict <first review's body> — "<risk>\t<no-human>" from its
-# `Risk tier: X · Merge with no human review: Y` line, or empty for each when there is none. Earlier
-# reviews wrapped the line in backticks, so a leading one is allowed.
+# first_verdict <first review's body> — <risk>, <no-human> and <level> from its risk line, which is
+# `Risk tier: X · Human review: L` or, in reviews written before the level, `Risk tier: X · Merge
+# with no human review: Y`; whichever the line does not state is empty, and all three are when there
+# is no line. Earlier reviews wrapped the line in backticks, so a leading one is allowed.
 first_verdict() {
-  local line risk human
+  local line risk human level
   line=$(grep -m1 -E '^`?Risk tier: ' <<<"$1" | tr -d '`' || true)
   risk=$(sed -nE 's/^Risk tier: ([^·]+).*/\1/p' <<<"$line" | sed 's/[[:space:]]*$//')
   human=$(sed -nE 's/.*Merge with no human review: *([A-Za-z]+).*/\1/p' <<<"$line")
-  printf '%s\037%s\n' "$risk" "$human"
+  level=$(sed -nE 's/.*· *Human review: *([A-Za-z]+).*/\1/p' <<<"$line")
+  printf '%s\037%s\037%s\n' "$risk" "$human" "$level"
 }
 
 # build_row <pr-json> — the table row for one closed pull request.
 build_row() {
-  local pr=$1 n url title closed merged files review code tests docs risk human
+  local pr=$1 n url title closed merged files review code tests docs risk human level
   n=$(jq -r .number <<<"$pr")
   url=$(jq -r .url <<<"$pr")
   title=$(jq -r .title <<<"$pr")
@@ -171,15 +178,15 @@ build_row() {
   review=$(head -n1 <<<"$review" | jq -r '.')
 
   IFS=$'\037' read -r code tests docs < <(printf '%s' "$files" | lines_changed)
-  IFS=$'\037' read -r risk human < <(first_verdict "$review")
+  IFS=$'\037' read -r risk human level < <(first_verdict "$review")
   local r0 r1 r2 total tokens
   IFS=$'\037' read -r r0 r1 r2 total tokens < <(footer_costs "$(jq -r .body <<<"$pr")")
 
   local title_cell; title_cell=$(cell "$title")
   [ -n "$merged" ] || title_cell+=" *(not merged)*"
 
-  printf '| %s | %s | %s | %s | %s | %s | %s | %s | %s | %s | %s | %s | %s |\n' \
-    "[#$n]($url)" "$title_cell" "$closed" "$code" "$tests" "$docs" "$risk" "$human" \
+  printf '| %s | %s | %s | %s | %s | %s | %s | %s | %s | %s | %s | %s | %s | %s |\n' \
+    "[#$n]($url)" "$title_cell" "$closed" "$code" "$tests" "$docs" "$risk" "$human" "$level" \
     "$r0" "$r1" "$r2" "$total" "$tokens"
 }
 
@@ -202,14 +209,14 @@ totals_row() {
     {
       cells($0, c)
       for (k = 4; k <= 6; k++) if (c[k] != "") { seen[k] = 1; v = c[k]; gsub(/,/, "", v); size[k] += v }
-      for (k = 9; k <= 12; k++) money(c[k], k)
-      if (c[13] ~ /^[0-9]+(\.[0-9]+)?M$/) { mtok += substr(c[13], 1, length(c[13]) - 1); seen[13] = 1 }
+      for (k = 10; k <= 13; k++) money(c[k], k)
+      if (c[14] ~ /^[0-9]+(\.[0-9]+)?M$/) { mtok += substr(c[14], 1, length(c[14]) - 1); seen[14] = 1 }
     }
     END {
-      printf "| **Total** | | | %s | %s | %s | | | %s | %s | %s | %s | %s |\n",
+      printf "| **Total** | | | %s | %s | %s | | | | %s | %s | %s | %s | %s |\n",
         fmtsize(4), fmtsize(5), fmtsize(6),
-        fmtmoney(9), fmtmoney(10), fmtmoney(11), fmtmoney(12),
-        seen[13] ? bold(sprintf("%.1fM", mtok)) : ""
+        fmtmoney(10), fmtmoney(11), fmtmoney(12), fmtmoney(13),
+        seen[14] ? bold(sprintf("%.1fM", mtok)) : ""
     }
   '
 }
@@ -224,7 +231,7 @@ totals_row() {
 # Derived from the page's rows,
 # so a correction made to a row by hand reaches the CSV too.
 write_csv() {
-  printf '%s\n' 'PR,Url,Title,Merged,Closed,CodeLines,TestLines,DocsLines,Risk,NoHumanMerge,ReviewCost,FollowUp1Cost,FollowUp2Cost,TotalCost,TotalTokensMillions'
+  printf '%s\n' 'PR,Url,Title,Merged,Closed,CodeLines,TestLines,DocsLines,Risk,NoHumanMerge,HumanReview,ReviewCost,FollowUp1Cost,FollowUp2Cost,TotalCost,TotalTokensMillions'
   [ -z "$1" ] || printf '%s\n' "$1" | awk "$AWK_LIB"'
     function q(s) { if (s ~ /^[=+@-]/) s = "\047" s; gsub(/"/, "\"\"", s); return "\"" s "\"" }
     function num(s) { gsub(/,/, "", s); return s ~ /^[0-9]+$/ ? s : "" }
@@ -236,10 +243,10 @@ write_csv() {
       title = c[2]; merged = "true"
       if (sub(/ \*\(not merged\)\*$/, "", title)) merged = "false"
       gsub(/\\\|/, "|", title)
-      tok = (c[13] ~ /^[0-9]+(\.[0-9]+)?M$/) ? substr(c[13], 1, length(c[13]) - 1) : ""
-      printf "%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s\n", n, url, q(title), merged, q(c[3]),
-        num(c[4]), num(c[5]), num(c[6]), q(c[7]), q(c[8]),
-        money(c[9]), money(c[10]), money(c[11]), money(c[12]), tok
+      tok = (c[14] ~ /^[0-9]+(\.[0-9]+)?M$/) ? substr(c[14], 1, length(c[14]) - 1) : ""
+      printf "%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s\n", n, url, q(title), merged, q(c[3]),
+        num(c[4]), num(c[5]), num(c[6]), q(c[7]), q(c[8]), q(c[9]),
+        money(c[10]), money(c[11]), money(c[12]), money(c[13]), tok
     }
   '
 }
@@ -265,10 +272,10 @@ What each closed pull request's automated review cycle cost, newest first, besid
 Generated by [`scripts/pr-review-costs.sh`](../../scripts/pr-review-costs.sh). Each run adds a row for every closed pull request that carries a review cost footer and is not yet listed; a row already here is never rewritten, so a correction made to a row by hand survives. Text outside the table is regenerated on every run.
 
 - **Code / Tests / Docs** — size, as lines added plus lines deleted. Tests are files under a `*.Tests` project and `*.tests.sh` matrices; docs are any other Markdown; code is everything else.
-- **Risk** and **No-human merge** — the risk tier and the merge-with-no-human-review verdict from the first `/gaffer:review-pr` round.
+- **Risk**, **No-human merge** and **Human review** — the risk tier from the first `/gaffer:review-pr` round, with the yes/no merge-with-no-human-review verdict that round gave in reviews written before the human-review level, or the level (Optional, Light or Detailed) it gives in reviews written since. A row fills whichever of the two its first review states.
 - **Review** — the first review's API cost; **Follow-up 1–2** — the next two rounds'. A third follow-up is exceptional and has no column. **Total cost** and **Total tokens** cover every round.
 - **Total (bottom row)** — size and cost summed from the rows above as they stand, recomputed on every run; pull requests closed unmerged are included, since their reviews were paid for.
-- An empty cell means there was nothing to record: a kind of file not touched, a round not run, a figure the cost footer could not report, or a review that gave no risk tier. Where the footer could report only some rounds, the total is the part it did report.
+- An empty cell means there was nothing to record: a kind of file not touched, a round not run, a figure the cost footer could not report, a review that gave no risk tier, or the one of No-human merge and Human review that its review did not state. Where the footer could report only some rounds, the total is the part it did report.
 
 PROSE
     printf 'The same rows as CSV, for a spreadsheet: [%s](%s)\n\n' "$(basename "$csv")" "$(basename "$csv")"
