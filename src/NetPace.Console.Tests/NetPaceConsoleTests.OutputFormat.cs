@@ -60,12 +60,8 @@ public sealed partial class NetPaceConsoleTests
         [InlineData("--no-download")]
         public async Task No_Invocation_Emits_Bytes_And_Duration_Prose(string commandLine)
         {
-            // The bytes-and-duration lines the retired --verbosity Debug added (Refs #267) are
-            // gone, and no format brings them back. Every row here is an invocation that runs to
-            // completion and reaches a writer: the exit-code assertion is what keeps that true,
-            // because an invocation rejected at parse time would satisfy the prose assertions
-            // without ever producing output. --verbosity itself is covered by the rejection
-            // theory below, not here.
+            // The exit-code assertion keeps every row an invocation that reaches a writer: one
+            // rejected at parse time would satisfy the prose assertions without any output.
 
             // Given
             var host = HostWith();
@@ -145,10 +141,8 @@ public sealed partial class NetPaceConsoleTests
         [Fact]
         public async Task Output_Format_Conflict_Does_Not_Hide_An_Unrelated_Option_Error()
         {
-            // Regression (Refs #267): reporting the conflict as a command-level parse error made
-            // System.CommandLine discard every option-level error, so a run with two mistakes
-            // reported only the format one - and the --verbosity removal notice, the message most
-            // likely to accompany a stale format flag, was the one hidden.
+            // Regression (Refs #267): a command-level parse error made System.CommandLine discard
+            // every option-level error, hiding the --verbosity removal notice behind it.
 
             // Given
             var host = HostWith();

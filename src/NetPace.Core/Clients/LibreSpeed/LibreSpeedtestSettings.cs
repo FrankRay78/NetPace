@@ -55,11 +55,8 @@ public sealed record LibreSpeedtestSettings : SpeedTestSettings
     /// <exception cref="ArgumentOutOfRangeException">Thrown when <paramref name="profile"/> is not a defined <see cref="Profile"/> value.</exception>
     public LibreSpeedtestSettings(Profile profile) : base(profile)
     {
-        // Each row schedules at least the profile's download ceiling, in requests of a size the
-        // link can keep busy: a small profile asks for little per request so its ceiling is not
-        // overshot by a single response, and a large one asks for more so a fast link is not
-        // spending its time on request overhead. The ceilings themselves, and the connection
-        // counts, come from the shared table on SpeedTestSettings.
+        // Each row schedules at least its profile's ceiling, in requests of a size that link can
+        // keep busy. The ceilings and connection counts come from SpeedTestSettings' own table.
         (DownloadRequestSizeMib, DownloadRequestCount) = profile switch
         {
             Profile.Tiny => (1, 1),

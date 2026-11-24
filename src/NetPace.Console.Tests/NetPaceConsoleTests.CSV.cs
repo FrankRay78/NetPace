@@ -312,9 +312,7 @@ public sealed partial class NetPaceConsoleTests
             // SCENARIO: CSV reports speed and latency as numbers in fixed units
             // SCENARIO: CSV output without special characters is unchanged
             //
-            // The second scenario is a preservation criterion: this snapshot is the comma-separated
-            // header and row NetPace already wrote for ordinary values, so escaping must leave it
-            // byte for byte alone.
+            // The second is a preservation criterion: escaping must leave this snapshot alone.
 
             // Given a stub that measures 100 ms of latency, 1000 bytes downloaded in 1000 ms
             // (8,000 bits per second) and 7000 bytes uploaded in 3000 ms (18,666.67, rounded).

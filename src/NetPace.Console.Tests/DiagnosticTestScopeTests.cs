@@ -27,8 +27,8 @@ public sealed class DiagnosticTestScopeTests
     {
         // Given a blank test name - a programmer error either way.
         // When a scope is asked for, with recording off and then on.
-        // Then it is rejected both times: a guard that only fires under --diagnostics turns a
-        // mistake into a crash that only one code path ever sees.
+        // Then both are rejected: a guard firing only under --diagnostics would turn a mistake
+        // into a crash one code path alone ever sees.
         Assert.Throws<ArgumentException>(() => DiagnosticTestScope.For(NullDiagnosticRecorder.Instance, " "));
         Assert.Throws<ArgumentException>(() => DiagnosticTestScope.For(new RecordingRecorder(), " "));
     }

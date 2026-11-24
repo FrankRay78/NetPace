@@ -34,9 +34,8 @@ public sealed class LibreSpeedtestSettingsTests
     [MemberData(nameof(EveryProfile))]
     public void Profile_ScheduledDownload_ReachesTheCeilingWithoutNeedingToExceedIt(Profile profile)
     {
-        // A profile's ceiling is what bounds the traffic, so the scheduled requests must be able
-        // to reach it - otherwise the run moves less data than the profile asks for and a fast
-        // link is under-measured.
+        // The scheduled requests must be able to reach the profile's ceiling, or a fast link is
+        // under-measured.
 
         // Given / When
         var settings = new LibreSpeedtestSettings(profile);
@@ -57,9 +56,8 @@ public sealed class LibreSpeedtestSettingsTests
     [MemberData(nameof(EveryProfile))]
     public void Profile_RequestSize_IsAWholeNumberOfMebibytesGarbageAccepts(Profile profile)
     {
-        // garbage.php takes ckSize as a whole number of MiB, answers zero or less with its own
-        // default and caps it at 1024, so a request size outside that range would be silently
-        // answered with something else.
+        // garbage.php answers a ckSize of zero or less with its own default and caps it at 1024,
+        // so a size outside that range is silently answered with another.
 
         // Given / When
         var settings = new LibreSpeedtestSettings(profile);

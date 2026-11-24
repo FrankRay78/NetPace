@@ -39,12 +39,7 @@ public sealed class ProfileXmlDocTests
     {
         // SCENARIO: XML doc loads while a concurrent writer holds the file
         //
-        // Regression: NetPace.Core.xml is a build-copied artefact in this test project's own output
-        // directory, so a build overlapping the test run can hold it open for writing.
-        // XDocument.Load(string) opens with FileShare.Read, a share mode that refuses to coexist
-        // with an existing writer, so the read failed intermittently with "The process cannot
-        // access the file because it is being used by another process". Only Windows enforces share
-        // modes, so this test is a genuine regression guard there and vacuous elsewhere.
+        // Regression: an overlapping build held NetPace.Core.xml open, which FileShare.Read refuses.
 
         // Given
         // A private temp file, so the test never contends for the real build artefact.

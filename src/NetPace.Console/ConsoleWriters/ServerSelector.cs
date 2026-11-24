@@ -31,9 +31,8 @@ internal static class ServerSelector
         ArgumentNullException.ThrowIfNull(settings);
         ArgumentNullException.ThrowIfNull(recorder);
 
-        // Choosing is bounded by the run's time limit as well as by the caller: a candidate that
-        // never answers must not be able to hold a scheduled run past it. Discovery and screening
-        // take one token, so the two are linked.
+        // Bounded by the run's time limit too, so a candidate that never answers cannot hold a
+        // scheduled run past it.
         using var choosing = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, timeLimitToken);
 
         ChosenServer chosen;
@@ -43,16 +42,13 @@ internal static class ServerSelector
         }
         catch (OperationCanceledException) when (timeLimitToken.IsCancellationRequested && !cancellationToken.IsCancellationRequested)
         {
-            // The limit was reached with no server settled on, so the run has nothing to measure
-            // against - which is the condition NetPace already reports when no server can be
-            // chosen, message and all. There is nothing about the limit to add: a run with no
-            // server reads the same whatever stopped the search.
+            // Nothing to measure against, which is the condition NetPace already reports when no
+            // server can be chosen: a run with no server reads the same whatever stopped it.
             throw new NoServersAvailableException();
         }
 
-        // latency_ms is the screening figure, because that is what the choice was based on, and is
-        // absent where latency played no part in choosing - under --no-latency, or when the user
-        // named the server. The measured figure appears in the latency test's own records.
+        // The screening figure, because that is what the choice was based on; absent where latency
+        // played no part in it.
         recorder.Record(
             "server.selected",
             ("sponsor", chosen.Server.Sponsor),
@@ -89,9 +85,8 @@ internal static class ServerSelector
 
         try
         {
-            // A server the user named is measured by URL, which is all the run was ever given: the
-            // server object the choice carries is the stand-in a provider builds from that same URL,
-            // there so the screen can name what is being tested before the first probe answers.
+            // Measured by URL, which is all the run was given; the server object is a stand-in so
+            // the screen can name what is being tested.
             return chosen.Route == ChosenServer.SpecifiedRoute
                 ? await speedTestClient.GetServerLatencyAsync(chosen.Server.Url, progress, measurement, cancellationToken, timeLimitToken)
                 : await speedTestClient.GetServerLatencyAsync(chosen.Server, progress, measurement, cancellationToken, timeLimitToken);
@@ -120,9 +115,8 @@ internal static class ServerSelector
     {
         if (!string.IsNullOrEmpty(settings.ServerUrl))
         {
-            // The user named the server, so there is nothing to choose. The placeholder sponsor and
-            // absent location are what the provider itself reports for a server named by URL, so
-            // building it here rather than inside the measurement leaves nothing to reconcile.
+            // The placeholder sponsor and absent location are what the provider itself reports for
+            // a server named by URL, so building it here leaves nothing to reconcile.
             return new ChosenServer
             {
                 Server = new Server { Sponsor = Server.UnknownSponsor, Url = settings.ServerUrl },

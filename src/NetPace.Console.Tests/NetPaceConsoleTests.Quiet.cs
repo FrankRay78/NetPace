@@ -145,14 +145,8 @@ public sealed partial class NetPaceConsoleTests
             Assert.Empty(result.Output);
             await Verify(result.ErrorOutput).DisableRequireUniquePrefix();
 
-            // Configuration errors that prevent the programme from commencing
-            // are shown on the error stream, despite the `-q|--quiet` switch.
-            // This is inline with at least grep:
-            // ```bash
-            // C:\Users\frank>grep -q -f NONEXISTANT
-            // grep: NONEXISTANT: No such file or directory
-            // ```
-            // This behaviour can remain under review.
+            // A configuration error that stops the run starting still reaches the error stream
+            // under --quiet, as grep -q reports a missing pattern file.
         }
 
         [InlineData("-q")]

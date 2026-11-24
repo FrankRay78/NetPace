@@ -73,9 +73,7 @@ public sealed class ProfileTests
         // SCENARIO: Profile enum is provider-agnostic and at the root of NetPace.Core
 
         // Given
-        // Resolve the repo root by walking up from the test bin directory.
-        // Path.Join is used instead of Path.Combine so a rooted segment cannot silently
-        // discard earlier arguments.
+        // Path.Join, not Path.Combine, so a rooted segment cannot discard earlier arguments.
         var dir = new DirectoryInfo(AppContext.BaseDirectory);
         while (dir is not null && !File.Exists(Path.Join(dir.FullName, "src", "NetPace.sln")))
         {

@@ -112,11 +112,8 @@ public sealed partial class OoklaSpeedtestTests
             // When
             var result = await speedtest.GetUploadSpeedAsync(server);
 
-            // Then every request contributes what it delivered, and the failure is counted. The
-            // two accepted uploads each sent a whole 200 KiB body; the rejected one sent nothing,
-            // because this mock answers without ever reading the request content, so there is no
-            // partial body here to count. A cut-off upload that did send part of one is covered by
-            // GetUploadSpeedAsync_WhenTheServerClosesTheRequestPartway_CountsWhatWasSent.
+            // Then every request contributes what it delivered and the failure is counted. The
+            // rejected upload sent nothing: this mock answers without reading the request content.
             result.ShouldNotBeNull();
             result.RequestsFailed.ShouldBe(1);
             result.RequestsSucceeded.ShouldBe(2);
@@ -156,10 +153,8 @@ public sealed partial class OoklaSpeedtestTests
         [Fact]
         public async Task GetServerLatencyAsync_ShouldRaiseACancellationCarryingATimeout_WhenAProbeTimesOut()
         {
-            // A caller cannot act on a timeout it cannot recognise, and a bare cancellation reads
-            // as "the caller asked to stop". The probe timeout is therefore raised in the shape
-            // .NET's own HTTP client uses for its Timeout: a cancellation with a TimeoutException
-            // inside.
+            // A bare cancellation reads as "the caller asked to stop", so the probe timeout is
+            // raised in .NET's own shape: a cancellation carrying a TimeoutException.
 
             // Given a server that never answers, and a probe timeout short enough to fire first.
             using var handler = new NeverAnsweringHandler();
@@ -171,10 +166,8 @@ public sealed partial class OoklaSpeedtestTests
             var speedtest = new OoklaSpeedtest(settings, httpClient);
             var server = new Server { Url = "http://slow.example/", Sponsor = "Test", Location = "Test" };
 
-            // When. Recorded rather than caught through Should.ThrowAsync: a probe timeout
-            // completes its task as cancelled, and Should.ThrowAsync replaces such a task's
-            // exception with a bare one of its own, hiding the very thing this test reads. The
-            // 20 ms probe timeout is the guard against a hang.
+            // When. Recorded rather than caught through Should.ThrowAsync, which replaces a
+            // cancelled task's exception with a bare one and hides what this test reads.
             var failure = await Record.ExceptionAsync(() => speedtest.GetServerLatencyAsync(server));
 
             // Then the timeout is recognisable, and is not reported as the caller's cancellation.
@@ -211,9 +204,8 @@ public sealed partial class OoklaSpeedtestTests
         [Fact]
         public async Task GetServerLatencyAsync_ShouldRaiseAPlainCancellation_WhenTheCallerCancelsAsTheProbeTimesOut()
         {
-            // Both deadlines have fired by the time the probe timeout is caught, so this is the
-            // only case in which the second half of the filter decides the outcome. Without it a
-            // user who pressed Ctrl-C would be told the server timed out.
+            // The only case where the second half of the filter decides: without it a user who
+            // pressed Ctrl-C would be told the server timed out.
 
             // Given a caller whose token is cancelled by the probe timeout itself, so both are
             // cancelled when the catch filter runs.
@@ -238,10 +230,8 @@ public sealed partial class OoklaSpeedtestTests
         [Fact]
         public async Task GetServersAsync_ShouldRaiseACancellationCarryingATimeout_WhenTheFetchTimesOut()
         {
-            // The server-list fetch applies no timeout of its own - it relies on HttpClient.Timeout
-            // - which is why it needed no change. That makes .NET's own shape load-bearing here, so
-            // it is pinned rather than assumed: if it ever stopped holding, a timed-out fetch would
-            // quietly stop being recognisable and no other test would notice.
+            // The server-list fetch relies on HttpClient.Timeout alone, so .NET's own shape is
+            // load-bearing here and pinned rather than assumed.
 
             // Given a server that never answers, and a client whose own timeout ends the fetch.
             using var handler = new NeverAnsweringHandler();

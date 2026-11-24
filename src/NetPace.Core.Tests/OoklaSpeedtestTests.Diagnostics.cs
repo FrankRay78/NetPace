@@ -132,9 +132,8 @@ public sealed partial class OoklaSpeedtestTests
             diagnostics.ShouldAllBe(d => d.Outcome == RequestOutcome.Succeeded);
             diagnostics.Single(d => d.Sequence == 1).BytesProcessed.ShouldBe(0);
 
-            // And it is reported as the endpoint probe rather than as a transfer or a latency probe:
-            // a diagnostic log counts a test's own requests by kind, so mislabelling this one would
-            // put the upload summary out by one.
+            // Reported as the endpoint probe: a log counts requests by kind, so mislabelling this
+            // one would put the upload summary out by one.
             diagnostics.Single(d => d.Sequence == 1).Kind.ShouldBe(RequestKind.EndpointProbe);
             diagnostics.Where(d => d.Sequence != 1).ShouldAllBe(d => d.Kind == RequestKind.Transfer);
         }
@@ -276,11 +275,9 @@ public sealed partial class OoklaSpeedtestTests
         [Fact]
         public async Task GetDownloadSpeedAsync_WhenTheByteBudgetCutsRequestsOff_RecordsThemAsCancelled()
         {
-            // Given a byte budget one request's payload is enough to exhaust, and more requests queued
-            // behind it than the budget allows. Only the first request answers; the rest never do, so
-            // they are still in flight when it trips the cap and only the cap's cancellation ends them.
-            // Every request gets its own permit so none is queued: with a queue, a freed permit lets a
-            // waiter start before the cancellation reaches it, and the cancelled count moves.
+            // Given a budget one payload exhausts and more requests behind it than it allows, only
+            // the first answering. Every request gets its own permit, so a freed permit cannot let
+            // a waiter start ahead of the cancellation and move the cancelled count.
             var settings = new OoklaSpeedtestSettings
             {
                 LatencyTest = new() { LoadedLatencyEnabled = false },
@@ -293,29 +290,20 @@ public sealed partial class OoklaSpeedtestTests
                 }
             };
 
-            // Derived from the settings rather than restated, so raising the iteration count moves the
-            // barrier below with it. It still assumes one request per size per iteration, which is what
-            // the download path issues today.
+            // Derived from the settings, so raising the iteration count moves the barrier with it;
+            // still assumes one request per size per iteration.
             var expectedRequests = settings.DownloadSizes.Length * settings.DownloadSizeIterations;
 
-            // The barrier's other premise, stated in the Given above: it waits for every request at
-            // once, so a parallelism ceiling that queued any of them would leave it waiting for an
-            // arrival that cannot happen. Asserted rather than assumed, so lowering the ceiling fails
-            // here by name instead of deadlocking into the HangGuard timeout below.
+            // Asserted rather than assumed, so lowering the parallelism ceiling fails here by name
+            // instead of deadlocking the barrier into the HangGuard timeout below.
             settings.DownloadTest.DownloadParallelTasks.ShouldBeGreaterThanOrEqualTo(expectedRequests);
 
-            // The answering request is held at a barrier until every request has reached the handler, so
-            // the answer that trips the cap cannot land while the remaining requests are still being
-            // started. One cut off before it starts is correctly reported as nothing at all, so without
-            // the barrier the totals below see fewer records than requests.
-            // GH#379 - `await Task.Yield()` here did not hold that order: it guarantees exactly one
-            // reschedule, which orders nothing against the other requests, so under load the first
-            // request answered mid-enumeration.
+            // Barriered so the answer that trips the cap cannot land while the rest are still
+            // starting. Regression: `await Task.Yield()` orders nothing against the other requests.
             var arrived = 0;
 
-            // RunContinuationsAsynchronously so releasing the barrier does not run the first request's
-            // completion - and with it the cap's cancellation - inline on the last request's stack,
-            // while that request is still inside the handler.
+            // RunContinuationsAsynchronously, so releasing the barrier does not run the cap's
+            // cancellation inline on a stack still inside the handler.
             var allArrived = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
             using var mockHttp = new MockHttpMessageHandler();
             mockHttp.When("*").Respond(async () =>
@@ -348,10 +336,8 @@ public sealed partial class OoklaSpeedtestTests
             // When the download test runs under the budget.
             var result = await speedtest.GetDownloadSpeedAsync(server, null, Collect(diagnostics)).WaitAsync(HangGuard);
 
-            // Then the records still agree with the counts the result reports, and a request excluded by
-            // the budget is accounted for as cancelled rather than silently dropped or counted a failure.
-            // The counts below stay literal deliberately: expressed against expectedRequests they would
-            // move with a wrong derivation and pass against it.
+            // Then the records agree with the counts, and a budget-excluded request reads as
+            // cancelled. Literal counts: derived ones would move with a wrong derivation and pass.
             diagnostics.Count(d => d.Outcome == RequestOutcome.Succeeded).ShouldBe(result.RequestsSucceeded);
             diagnostics.Count(d => d.Outcome == RequestOutcome.Failed).ShouldBe(result.RequestsFailed);
             diagnostics.Count.ShouldBe(8);

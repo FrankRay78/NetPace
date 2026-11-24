@@ -51,10 +51,8 @@ internal sealed class CutOffUploadHandler : HttpMessageHandler
             }
             catch (Exception e) when (e is not OperationCanceledException)
             {
-                // What a client is handed when a connection goes while it is still writing.
                 // Cancellation is let through as itself: the provider tells a cancelled request
-                // from a failed one by catching OperationCanceledException, so relabelling it here
-                // would have an upload stopped by the byte budget counted as a failure.
+                // from a failed one by its type, so relabelling would miscount a budget stop.
                 throw new HttpRequestException("Error while copying content to a stream.", e);
             }
         }

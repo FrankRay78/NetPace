@@ -133,9 +133,8 @@ public sealed partial class OoklaSpeedtestTests
             // Given a server that accepts 32 KiB of a 100 KiB upload and then closes the connection.
             const int bytesBeforeCutOff = 32768;
 
-            // A handler of its own rather than a mocked response: the body has to be really
-            // serialised for there to be anything to cut off partway, and the cut-off has to
-            // surface as the transport failure a closed connection is.
+            // A real handler, not a mocked response: the body must actually be serialised for there
+            // to be anything to cut off, and the cut-off must surface as a transport failure.
             using var handler = new CutOffUploadHandler(bytesBeforeCutOff);
 
             var settings = new OoklaSpeedtestSettings
@@ -295,11 +294,9 @@ public sealed partial class OoklaSpeedtestTests
         [Fact]
         public async Task GetDownloadSpeedAsync_WhenARequestDroppedAtTheBudgetDeliversAfterTheLastReport_ReportsItsBytesToo()
         {
-            // Given two parallel downloads against a 1 MiB budget: one that fills the budget at
-            // once, and one whose 8 KiB arrive only after the transfer has reported itself complete.
-            // The clock stands still, so nothing but the finishing requests sends a report.
-            // The budget is filled only once the other request is reading, so it is always in
-            // flight when the budget ends it.
+            // Given two parallel downloads against a 1 MiB budget: one filling it at once, and one
+            // whose 8 KiB arrive after the transfer reported itself complete. The budget fills only
+            // once the other is reading, so that one is always in flight when the budget ends it.
             var completeReported = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
             var inFlightReading = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
 
@@ -367,10 +364,8 @@ public sealed partial class OoklaSpeedtestTests
             // When
             var result = await speedtest.GetUploadSpeedAsync(TestServer, null, new SynchronousProgress<RequestDiagnostic>(diagnostics.Add));
 
-            // Then what the in-flight upload had sent is in the figure and on its own record, and
-            // nothing more: it stopped when the budget was reached rather than writing on. The
-            // counts are untouched - the upload that filled the budget succeeded, and the one
-            // dropped behind it is neither a success nor a failure.
+            // Then what the in-flight upload had sent is in the figure and on its record, and no
+            // more. The counts are untouched: a request dropped behind the budget is neither.
             var sentBeforeStall = handler.BytesAcceptedBeforeStall;
             sentBeforeStall.ShouldBeGreaterThan(0);
 

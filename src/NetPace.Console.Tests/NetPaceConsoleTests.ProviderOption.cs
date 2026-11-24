@@ -275,9 +275,8 @@ public sealed partial class NetPaceConsoleTests
         {
             // Given the settings records a run can be configured with.
             // When each is resolved to the service that will do the measuring.
-            // Then the provider matches the record, so a LibreSpeed run speaks to LibreSpeed: this
-            // is the only step that turns --provider into a provider, and a run that took the wrong
-            // one would ask a LibreSpeed server for latency.txt.
+            // Then the provider matches the record: this is the only step that turns --provider
+            // into a provider, and a wrong one would ask LibreSpeed for latency.txt.
             Assert.IsType<OoklaSpeedtest>(Program.CreateSpeedTestService(new OoklaSpeedtestSettings()));
             Assert.IsType<LibreSpeedtest>(Program.CreateSpeedTestService(new LibreSpeedtestSettings()));
         }

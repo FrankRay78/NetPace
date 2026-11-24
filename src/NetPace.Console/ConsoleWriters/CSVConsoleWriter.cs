@@ -23,22 +23,8 @@ public sealed class CSVConsoleWriter : IConsoleWriter
         (ChosenServer chosen, LatencyTestResult? latency) = await ServerSelector.GetServerAsync(speedTestClient, settings, recorder, cancellationToken, timeLimitToken);
         var outcome = await Measurements.PerformAsync(speedTestClient, chosen.Server, latency, settings, recorder, cancellationToken, timeLimitToken);
 
-        // Header row, emitted directly above the run's first data row rather than on its first
-        // attempt: a test abandoned by an exception reaches no row, and the one that follows it
-        // must still find its column names above it. The first test of a run is the likeliest to be
-        // lost that way (a loop started before the network is up), so keying the header off the
-        // attempt left the longest-running logs headerless. Not emitted at all where
-        // --no-csv-header asks for rows only. Which destinations receive it is settled below: one
-        // that already holds content is not sent the header, so a log appended to across runs does
-        // not gain a header line between every pair of rows. Every built-in column is present
-        // whichever tests ran, so a script can read by name or by position within one run. Each
-        // figure sits beside the measurement it belongs to: idle jitter after the idle latency, and
-        // each direction's four under-load figures after that direction's speed and request counts.
-        // That placement moves every column from DownloadSpeedBitsPerSecond on, so while NetPace is
-        // below 1.0.0 no column keeps a fixed position across releases — a script reading CSV reads
-        // by header name, and a user starts a new log after an upgrade that changes them. The
-        // identity and server columns follow, then any custom columns, which are per invocation, so
-        // only the built-in prefix keeps one shape across runs.
+        // Keyed off the first data row, not the first attempt: a test abandoned by an exception
+        // reaches no row, and the one after it must still find its column names above it.
         if (!headerWritten && !settings.NoCSVHeader)
         {
             string header = Record([
@@ -75,18 +61,8 @@ public sealed class CSVConsoleWriter : IConsoleWriter
             headerWritten = true;
         }
 
-        // Data row. Each measurement is a plain number in the unit its column names, so --unit,
-        // --unit-scale and --unit-system leave CSV untouched and every row carries the same units,
-        // within a run and across runs.
-        // A test that did not run leaves its cells empty; one that ran and failed entirely reports
-        // whatever its requests delivered, beside the request counts that say so, and a speed of 0
-        // only where nothing arrived at all. A latency figure that was not
-        // measured — under-load latency the transfer never saw, or the idle latency and jitter
-        // under --no-latency, or the idle figures of a run whose time limit was reached before a
-        // probe answered — leaves its cell empty too, so nothing charting the column reads an
-        // unmeasured line as a perfect one.
-        // The device label is empty when none was given, because every built-in column is present
-        // whatever the run was asked for.
+        // An unmeasured figure leaves its cell empty rather than reporting zero, so nothing
+        // charting the column reads an unmeasured line as a perfect one.
         console.WriteLine(Record([
             clock.Now.ToMachineReadable(),
             latency?.LatencyMilliseconds.ToString(CultureInfo.InvariantCulture) ?? string.Empty,

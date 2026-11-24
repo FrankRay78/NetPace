@@ -59,10 +59,8 @@ public sealed partial class NetPaceConsoleTests
         [InlineData("--minimal")]
         public async Task Every_OutputFormat_ProducesTheSameDiagnostics(string outputFormat)
         {
-            // Given the minimal, simple, CSV and JSON formats pass no progress reporter at all,
-            // diagnostics must not ride on one. --minimal and --simple turn the under-load probes
-            // off in a real run, but this stub reports its probe records whatever the settings say,
-            // so here they match too.
+            // Given the machine-readable formats pass no progress reporter, diagnostics must not
+            // ride on one. The stub reports probe records whatever the settings say.
             // When each runs with --diagnostics, alongside the default format.
             var expected = await HostWith().RunAsync(["--diagnostics"]);
             var actual = await HostWith().RunAsync([outputFormat, "--diagnostics"]);
@@ -299,11 +297,8 @@ public sealed partial class NetPaceConsoleTests
             // When the run flushes its diagnostics.
             var result = await new CommandLineTestHost(services).RunAsync(["--simple", "--diagnostics"]);
 
-            // Then the measurement still reports its result and exits 0: diagnostics are a second
-            // stream, so one that cannot be written does not decide the run's exit code. Before
-            // this was guarded, the write failure escaped and the run exited 1. Nor is the failure
-            // reported: the records were bound for the error stream, so there is nowhere left to
-            // say so, and a report there would only add a line the user did not ask for.
+            // Then the result is still reported and the run exits 0: a diagnostics stream that
+            // cannot be written does not decide the exit code, and there is nowhere left to say so.
             Assert.Equal(0, result.ExitCode);
             Assert.Contains("Ping:", result.Output, StringComparison.Ordinal);
             Assert.Empty(result.ErrorOutput);

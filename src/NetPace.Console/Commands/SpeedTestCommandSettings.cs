@@ -197,11 +197,8 @@ public static class SpeedTestCommandSettingsExtensions
     /// <returns>Throws an exception if validation fails.</returns>
     public static void Validate(this SpeedTestCommandSettings settings)
     {
-        // Exactly one output format may be selected. --json-pretty shapes the JSON format rather
-        // than selecting a second one, so it counts as JSON and stays usable alongside --json.
-        // Checked here rather than as a parse validator: a command-level parse error discards every
-        // option-level error, which hid an unparseable --unit and the --verbosity removal notice
-        // whenever a format conflict was present too.
+        // Checked here, not as a parse validator: a command-level parse error discards every
+        // option-level error, hiding an unparseable --unit whenever a format conflict was present.
         var formatsSelected = (settings.CSV ? 1 : 0) + (settings.Json || settings.JsonPretty ? 1 : 0) + (settings.Minimal ? 1 : 0) + (settings.Simple ? 1 : 0);
         if (formatsSelected > 1)
         {
@@ -220,19 +217,15 @@ public static class SpeedTestCommandSettingsExtensions
             throw new ArgumentException("No tests selected. At least one of --no-latency, --no-download, or --no-upload must be omitted.");
         }
 
-        // A LibreSpeed server is always named, never discovered: LibreSpeed publishes no server
-        // list to pick one from. Rejected here, before any test runs, so the user is told what is
-        // missing rather than watching a run fail against nothing.
+        // LibreSpeed publishes no server list, so its server is always named. Rejected before any
+        // test runs, so the user is told what is missing rather than watching a run fail.
         if (settings.Provider == Provider.LibreSpeed && string.IsNullOrWhiteSpace(settings.ServerUrl))
         {
             throw new ArgumentException("A LibreSpeed server URL is needed: pass --server-url with the address LibreSpeed is installed at, such as --server-url http://pi.local:8080/.");
         }
 
-        // A target answers one question about one run, and a run that repeats has no single answer
-        // to give: whether the fifth test of fifty missed is not something an exit code can carry.
-        // A count of one is a single run however it was spelled, so only a count above one is
-        // refused. Checked before anything is measured, so the user is told at once rather than
-        // after a test they will not get an answer about.
+        // A target answers one question about one run, and an exit code cannot say whether the
+        // fifth test of fifty missed. Checked before anything is measured.
         if (settings.HasThreshold && (settings.Loop || settings.Count > 1))
         {
             throw new ArgumentException("A target checks a single run, so --min-download, --min-upload and --max-latency cannot be used with --loop or with --count above 1. Schedule repeated checks with cron, a systemd timer or Windows Task Scheduler.");

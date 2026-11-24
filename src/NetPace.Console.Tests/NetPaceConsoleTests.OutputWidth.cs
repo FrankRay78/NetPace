@@ -195,10 +195,8 @@ public sealed partial class NetPaceConsoleTests
         [Fact]
         public async Task Should_Leave_File_Output_Unwrapped_In_A_Narrow_Terminal()
         {
-            // Given a --file target and a terminal narrow enough to wrap what reaches the screen.
-            // The screen must be a terminal for there to be anything the width applies to at all:
-            // default output draws its table only where something can redraw, and a table is the
-            // one thing NetPace writes that a narrow window folds.
+            // Given a --file target and a terminal narrow enough to wrap the screen. A terminal is
+            // needed at all: the table is the one thing NetPace writes that a narrow window folds.
             var narrowFile = Path.Join(Path.GetTempPath(), $"netpace-test-{Guid.NewGuid()}.txt");
             var unlimitedFile = Path.Join(Path.GetTempPath(), $"netpace-test-{Guid.NewGuid()}.txt");
 

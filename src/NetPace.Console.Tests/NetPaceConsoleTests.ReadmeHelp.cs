@@ -22,10 +22,8 @@ public sealed partial class NetPaceConsoleTests
             // When
             var result = await host.RunAsync(["--help"]);
 
-            // Then the README holds the whole help output as one fenced block. Both sides are
-            // compared with LF endings and trailing whitespace trimmed: the help grid pads its last
-            // column, and neither difference is visible. On failure, the text to paste into the
-            // README is in Expectations/NetPaceConsoleTests.Should_Display_Help.verified.txt.
+            // Compared with LF endings and trailing whitespace trimmed, because the help grid pads
+            // its last column. On failure, paste from Expectations/…Should_Display_Help.verified.txt.
             static string Normalise(string text) =>
                 string.Join("\n", text.ReplaceLineEndings("\n").Split('\n').Select(line => line.TrimEnd()));
 

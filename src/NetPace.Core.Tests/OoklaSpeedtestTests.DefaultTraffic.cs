@@ -27,15 +27,13 @@ public sealed partial class OoklaSpeedtestTests
     /// </remarks>
     public sealed class DefaultTraffic
     {
-        // The realized total can overshoot the cap by up to one in-flight parallel batch before the
-        // cap trips, so bound at 2x the cap — the same allowance used by the explicit-cap tests in
-        // OoklaSpeedtestTests.cs. Even this loose bound stays well under the pre-profile ~370 MiB run.
+        // Bounded at twice the cap, the allowance the explicit-cap tests use: a transfer can
+        // overshoot by one in-flight parallel batch before the cap trips.
         private const long MediumDownloadCapBytes = 100L * 1024 * 1024;
         private const long MediumUploadCapBytes = 25L * 1024 * 1024;
 
-        // Every byte the Medium download pass can ask for: its five sizes, twice each, at the three
-        // bytes per pixel the mock below serves. The ceiling on a default download end to end,
-        // and the figure the profiles were introduced to bring down from the pre-profile ~370 MiB.
+        // Every byte the Medium download pass can ask for: five sizes, twice each, at the three
+        // bytes per pixel the mock serves.
         private const long MediumDownloadPassBytes = 2L * 3 * (1500L * 1500 + 2000L * 2000 + 3000L * 3000 + 3500L * 3500 + 4000L * 4000);
 
         // How many requests the Medium download pass issues, so a run that the budget did not end
@@ -73,13 +71,10 @@ public sealed partial class OoklaSpeedtestTests
             // When
             var result = await speedtest.GetDownloadSpeedAsync(server, null, new SynchronousProgress<RequestDiagnostic>(diagnostics.Add));
 
-            // Then the budget ended the phase short of its full request list, and the bytes it
-            // spent on the requests it counted stayed inside the cap and its one-batch allowance.
+            // Then the budget ended the phase short of its request list, and the bytes it spent on
+            // the requests it counted stayed inside the cap and its one-batch allowance.
             //
-            // The budget is read off the counted requests rather than off the reported figure,
-            // because the figure now also counts what requests still in flight had received when
-            // the budget tripped, and that legitimately runs past the cap. The overall bound is
-            // the profile's own request list, which is what the whole-pass assertion below holds.
+            // Read off the counted requests: the reported figure legitimately runs past the cap.
             result.ShouldNotBeNull();
             result.RequestsSucceeded.ShouldBeLessThan(MediumDownloadRequests);
 

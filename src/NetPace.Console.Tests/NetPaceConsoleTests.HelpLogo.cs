@@ -152,10 +152,8 @@ public sealed partial class NetPaceConsoleTests
             // When
             var result = await host.RunAsync(screen.Split(' '));
 
-            // Then the screen opens with the lettering, and nothing in it is above the ASCII range,
-            // so there is no character an output encoding can fail to carry. Asserted beside the
-            // snapshot deliberately: the snapshot holds these characters, but accepting a changed
-            // snapshot would absorb a new one silently, where this fails.
+            // Then nothing in the lettering is above the ASCII range. Asserted beside the snapshot
+            // deliberately: accepting a changed snapshot would absorb a new character silently.
             Assert.Equal(0, result.ExitCode);
             string opening = Opening(result.Output);
             char[] outsideAscii = [.. opening.Where(character => !char.IsAscii(character))];
@@ -174,10 +172,8 @@ public sealed partial class NetPaceConsoleTests
             string canCarry = await Draw(screen, unicode: true);
             string cannotCarry = await Draw(screen, unicode: false);
 
-            // Then both are given the same lettering: there is nothing in it an output encoding
-            // can fail to carry, so there is no second logo to fall back to. A no-difference
-            // assertion cannot prove its own premise, so a green run here is not evidence that the
-            // unicode seam still reaches help rendering; it catches a capability branch returning.
+            // Then both are given the same lettering, there being no second logo to fall back to.
+            // A no-difference assertion proves no premise; it catches a capability branch returning.
             Assert.Equal(canCarry, cannotCarry);
             await Verify(AnsiSnapshot.Readable(cannotCarry)).UseTextForParameters(Slug(screen));
 

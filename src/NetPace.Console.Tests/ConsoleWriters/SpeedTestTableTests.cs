@@ -174,10 +174,8 @@ public sealed class SpeedTestTableTests
             JitterMilliseconds = 3
         });
 
-        // Then the first frame already shows the running latency under Latency, with the Jitter
-        // cell blank until a second probe has answered, and the later frame shows the newer
-        // figures, each under its own heading, so what the user watches moves with the
-        // measurement. The snapshot ties every figure to its column.
+        // Then the first frame already shows the running latency, with Jitter blank until a second
+        // probe answers, and the later frame the newer figures. The snapshot ties each to its column.
         var later = Render(table);
         await Verify(Frames(running, later));
     }

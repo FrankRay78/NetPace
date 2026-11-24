@@ -97,28 +97,19 @@ internal sealed class DiagnosticTestScope : IProgress<RequestDiagnostic>, IDispo
     {
         lock (countLock)
         {
-            // A request abandoned at the screening ceiling can still finish after the pass has
-            // moved on and this scope has written its summary. Counting it would be too late to
-            // reach that summary, and recording it would put a request line below the test.end
-            // that was supposed to total it - so the scope stops accepting reports once it has
-            // written its summary, and that summary stays a true account of the records above it.
+            // Reports stop being accepted once the summary is written, so a candidate abandoned
+            // at the ceiling cannot land a request line below the test.end meant to total it.
             if (summaryWritten)
             {
                 return;
             }
 
-            // A latency probe sent during a download or an upload is something the test does
-            // alongside its own requests, not one of them: it gets a record of its own under
-            // event=probe, carrying a request line's fields so it reads the same way, and it is
-            // left out of the summary below - which is what keeps that summary reconciling with the
-            // transfer's request records. In the screening and latency tests the probes are the
-            // test, so there they stay ordinary request lines counted as today.
+            // An under-load probe is something the transfer does alongside its requests, not one
+            // of them, so it is left out of the summary that must reconcile with those records.
             var isLoadedLatencyProbe = value.Kind == RequestKind.LatencyProbe && DiagnosticTests.MeasuresATransfer(test);
 
-            // Recorded before it is counted, and under the same lock, so the summary can never
-            // total a record that is not above it: a throw here leaves the counters untouched, and
-            // holding the lock stops a report passing the closed check and then landing its line
-            // after Dispose has written the summary.
+            // Recorded before it is counted, under one lock, so the summary can never total a
+            // record that is not above it.
             recorder.RecordAt(
                 value.StartedAt,
                 isLoadedLatencyProbe ? "probe" : "request",
@@ -138,10 +129,8 @@ internal sealed class DiagnosticTestScope : IProgress<RequestDiagnostic>, IDispo
 
             requests++;
 
-            // Totalled whatever the outcome, because the measurement counts the bytes the same
-            // way: a request the server cut off, and one dropped at the byte budget, each moved
-            // what their record says they moved. Summing only the successful ones would put a
-            // figure in the summary that no reported speed agrees with.
+            // Totalled whatever the outcome, as the measurement counts them: summing only the
+            // successful ones would put a figure here that no reported speed agrees with.
             bytes += value.BytesProcessed;
 
             switch (value.Outcome)

@@ -115,9 +115,8 @@ public sealed class SpeedTestStub : ISpeedTestService
 
         var latencyResult = IdleLatencyFor(server, serverID);
 
-        // Four probes, each report carrying the figures of the probes answered so far: the latency
-        // from the first, and the jitter from the second, which is the first report with a
-        // consecutive pair behind it. Both land on the figures the result states.
+        // Each report carries the figures of the probes answered so far, landing on the ones the
+        // result states; the jitter waits for the second, the first consecutive pair.
         for (var probe = 0; probe < LatencyProbeProgress.Length; probe++)
         {
             Task.Delay(delayMilliseconds).Wait();
@@ -167,9 +166,8 @@ public sealed class SpeedTestStub : ISpeedTestService
         Task.Delay(delayMilliseconds).Wait();
         progress.Report(new SpeedTestProgress { PercentageComplete = 100 });
 
-        // Every candidate offered is screened and the lowest-numbered one wins. Callers screen a
-        // single candidate through this method as well as a list, so the winner is taken from the
-        // array given rather than from the stub's own server list.
+        // The winner comes from the array given, not the stub's own list: callers screen a single
+        // candidate through here as well as a list.
         var fastest = servers.OrderBy(candidate => GetServerID(candidate.Url)).First();
 
         var serverID = GetServerID(fastest.Url);

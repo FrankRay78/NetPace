@@ -15,10 +15,8 @@ public sealed class LatencyTestResultTests
     [Fact]
     public void LatencyTestResult_EveryReportedValue_MustBeStatedAtConstruction()
     {
-        // Mechanism-pinned under the regression exception (CONVENTIONS.md, Acceptance criteria):
-        // PR #222 shipped VariableSpeedTester reporting 0.25 Mbps against zero requests attempted, from a
-        // zero-defaulted placeholder result. `required` has no runtime enforcement, so the
-        // metadata the compiler emits is the only instrument available in-suite.
+        // Regression, PR #222: a zero-defaulted placeholder result reported a speed against zero
+        // requests. `required` has no runtime enforcement, so compiler metadata is the instrument.
 
         // Given
         var settable = typeof(LatencyTestResult)

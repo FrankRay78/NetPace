@@ -327,11 +327,9 @@ public sealed partial class NetPaceConsoleTests
         [InlineData("--minimal")]
         public async Task Should_Leave_The_Default_Minimal_And_Simple_Output_Untouched(string modeSwitch)
         {
-            // Given the same speed test run twice, once plainly and once with a device label and a
-            // custom field. Both describe the run for a log, not the measurement, so no output
-            // written for a person to read shows them. The empty row is the default output, read at
-            // a terminal: anywhere else default output writes the --simple lines, which would make
-            // two rows of this theory the same writer.
+            // Given the same run twice, once plainly and once with a device label and custom field:
+            // both describe the run for a log, so no output written for a person shows them. The
+            // empty row is default output at a terminal, the only place it draws its own table.
             Func<IServiceCollection?, CommandLineTestHost> host =
                 modeSwitch.Length == 0 ? GetInteractiveCommandLineTestHost : GetCommandLineTestHost;
 

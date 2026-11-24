@@ -62,11 +62,8 @@ public sealed partial class NetPaceConsoleTests
                 : ["--server-url", ServerUrl, formatFlag];
             var result = await host.RunAsync(args);
 
-            // Then the whole of what each mode emits is the reviewed contract: a substring match
-            // would pass wherever the line landed, and what this has to hold is that every mode
-            // carries the failure the same way, on the error stream, leaving standard output to the
-            // format alone. The exit code stays 0 - a network condition is data, not a NetPace
-            // fault.
+            // Then the whole of what each mode emits is the contract: a substring match would pass
+            // wherever the line landed, and every mode must keep the failure off standard output.
             Assert.Equal(0, result.ExitCode);
             Assert.Empty(result.Output);
             await Verify(result.ErrorOutput).UseParameters(mode);
@@ -75,9 +72,8 @@ public sealed partial class NetPaceConsoleTests
         [Fact]
         public async Task Timed_Out_Probe_Says_Nothing_About_The_Cancellation_Behind_It()
         {
-            // One composed line explains the failure: the exception's own wording names the
-            // configured timeout that elapsed, which describes NetPace's own plumbing and leaves
-            // the word "canceled" in front of a user who cancelled nothing.
+            // The exception's own wording names the configured timeout, and leaves the word
+            // "canceled" in front of a user who cancelled nothing.
 
             // Given
             var host = HostWhoseProbeTimesOut();
@@ -112,9 +108,8 @@ public sealed partial class NetPaceConsoleTests
         [Fact]
         public async Task Timed_Out_Server_List_Fetch_Is_Reported()
         {
-            // The server-list fetch times out the same way the probe does - .NET's HTTP client
-            // raises its own timeout as a cancellation carrying a TimeoutException - so it must
-            // reach the user by the same route.
+            // The server-list fetch times out in the same shape as a probe, a cancellation
+            // carrying a TimeoutException, so it must reach the user by the same route.
 
             // Given
             var host = HostWith(new SpeedTestMock { GetServersAsyncFunc = _ => throw TimedOut() });

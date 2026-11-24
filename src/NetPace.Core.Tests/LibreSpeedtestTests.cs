@@ -127,8 +127,7 @@ public sealed class LibreSpeedtestTests
         // SCENARIO: Unreachable LibreSpeed server is reported
         //
         // Naming the web root when the install sits under a path is the likeliest way to get this
-        // wrong, and the ping endpoint is then not found. That is as much a server that is not
-        // LibreSpeed as one answering with a page, so it is reported the same way.
+        // wrong: the missing ping endpoint is as much "not LibreSpeed" as a page would be.
 
         // Given an address where the ping endpoint is not served.
         using var mockHttp = new MockHttpMessageHandler();
@@ -176,8 +175,7 @@ public sealed class LibreSpeedtestTests
     {
         // SCENARIO: Unreachable LibreSpeed server is reported
         //
-        // A refused connection or a failed name lookup carries no HTTP status: nothing answered,
-        // so it is not a wrong server, and is reported exactly as an Ookla run reports it.
+        // Nothing answered, so this is not a wrong server, and reads as an Ookla run reports it.
 
         // Given nothing answering at the address, for either provider.
         using var mockHttp = new MockHttpMessageHandler();
@@ -201,9 +199,8 @@ public sealed class LibreSpeedtestTests
     {
         // SCENARIO: Unreachable LibreSpeed server is reported
         //
-        // The ping endpoint sends no body, so a body is the evidence that whatever answered is not
-        // a LibreSpeed server. A plain web server is the case that matters: it answers 200 with a
-        // page, which no status check would catch.
+        // The ping endpoint sends no body, so a body is the evidence: a plain web server answers
+        // 200 with a page, which no status check would catch.
 
         // Given something at the address answers, but with a page.
         using var mockHttp = new MockHttpMessageHandler();
@@ -403,9 +400,8 @@ public sealed class LibreSpeedtestTests
     [Fact]
     public async Task GetUploadSpeedAsync_WhenTheInstallRedirectsToHttps_MeasuresTheUploadsWhereTheyLand()
     {
-        // A self-hosted install behind a reverse proxy that redirects plain HTTP to HTTPS: the
-        // ping and the downloads follow the redirect unnoticed, but a streamed upload body cannot
-        // survive it, so the uploads must go straight to where the install really is.
+        // A reverse proxy redirecting plain HTTP to HTTPS: the ping and downloads follow it
+        // unnoticed, but a streamed upload body cannot, so uploads must go straight there.
 
         const string redirectedInstall = "https://pi.local/";
 
@@ -511,8 +507,7 @@ public sealed class LibreSpeedtestTests
     public async Task GetDownloadSpeedAsync_WithARequestShapeGarbageWouldNotHonour_IsRejected(int requestSizeMib, int requestCount)
     {
         // garbage.php answers a ckSize of zero or less with its own default and caps one above
-        // 1024, so either would be measured as a size nobody asked for; and no requests at all
-        // would report a download that never ran.
+        // 1024, so either would measure a size nobody asked for.
 
         // Given
         using var mockHttp = LibreSpeedServer(InstallUrl);

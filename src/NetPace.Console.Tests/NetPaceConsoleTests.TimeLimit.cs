@@ -92,10 +92,8 @@ public sealed partial class NetPaceConsoleTests
             // When
             var result = await host.RunAsync(formatSwitch.Length == 0 ? [] : [formatSwitch]);
 
-            // Then the run ends on its own terms: the download figure it did measure is reported,
-            // the upload it never reached is reported as a skipped test is, and nothing anywhere
-            // in the output mentions the limit. The whole output is the snapshot, so a message
-            // about the limit appearing in any format would fail here.
+            // Then the run ends on its own terms, the unreached upload reading as a skipped test
+            // and nothing mentioning the limit. The whole output is the snapshot.
             Assert.Equal(0, result.ExitCode);
             Assert.Empty(result.ErrorOutput);
             Assert.Equal(0, tester.UploadCalls);
@@ -230,10 +228,8 @@ public sealed partial class NetPaceConsoleTests
         [InlineData("--json", "json")]
         public async Task ARunCutShortDuringTheUpload_ReportsWhatTheUploadMeasured(string formatSwitch, string formatName)
         {
-            // Given an upload slow enough that the run reaches its limit part way through it. The
-            // double throws unless the upload was handed the limit as its stop, which is what keeps
-            // a real slow upload from running past it. The run reports that throw on the error
-            // stream and still exits 0, so the empty error stream is what catches it.
+            // Given an upload slow enough to reach the limit part way through. The double throws
+            // unless the upload was handed the limit, so the empty error stream is what catches it.
             var (services, _, tester) = CutShortServices();
             tester.Stage = CutShortStage.Upload;
             var host = GetCommandLineTestHost(services);
@@ -381,10 +377,8 @@ public sealed partial class NetPaceConsoleTests
             // When
             var result = await host.RunAsync(["--simple", "--diagnostics"]);
 
-            // Then the stopped request reads as cancelled with a reason naming the limit rather
-            // than the library's own generic wording, and it is counted among the download test's
-            // cancelled requests, so the full account of a cut-short run is there for whoever
-            // captures it.
+            // Then the stopped request reads as cancelled with a reason naming the limit, not the
+            // library's generic wording, and is counted among the test's cancelled requests.
             Assert.Equal(0, result.ExitCode);
             Assert.Contains("status=cancelled", result.DiagnosticOutput, StringComparison.Ordinal);
             Assert.Contains("reason=\"run time limit reached\"", result.DiagnosticOutput, StringComparison.Ordinal);
@@ -443,10 +437,8 @@ public sealed partial class NetPaceConsoleTests
             // When
             var result = await host.RunAsync(["--simple"]);
 
-            // Then the run ends as one with no server to measure against already does, message
-            // included: there is nothing about the limit to add, because a run with no server
-            // reads the same whatever stopped the search. A network outcome, so the exit code is
-            // untouched.
+            // Then the run ends as one with no server already does, message included: a run with
+            // no server reads the same whatever stopped the search.
             Assert.Equal(0, result.ExitCode);
             Assert.Empty(result.Output);
 

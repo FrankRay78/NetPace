@@ -35,10 +35,8 @@ internal static class Measurements
         SpeedTestResult? downloadResult = null;
         SpeedTestResult? uploadResult = null;
 
-        // The limit is read before each test rather than once up front, because the test before it
-        // may be what reached it. A test whose turn never came is left out of the outcome, so it is
-        // reported wherever a test nobody asked for is reported, and the measurement that was cut
-        // short still reports the figure it took.
+        // Read before each test, because the test before it may be what reached the limit. One
+        // whose turn never came is left out of the outcome entirely.
         if (!settings.NoDownload && !timeLimitToken.IsCancellationRequested)
         {
             using var download = DiagnosticTestScope.For(recorder, DiagnosticTests.Download);

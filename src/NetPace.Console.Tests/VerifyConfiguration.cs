@@ -10,9 +10,8 @@ public static class VerifyConfiguration
     {
         Verifier.UseProjectRelativeDirectory("Expectations");
 
-        // Suppress auto-launching the diff viewer when a Verify snapshot test fails.
-        // Without this, vim/code launches per-failure in CI/headless runs and can leave
-        // .swp files behind; we want clean failures instead.
+        // Without this, a failing snapshot launches a diff viewer per failure in a headless run
+        // and can leave .swp files behind.
         DiffRunner.Disabled = true;
     }
 }

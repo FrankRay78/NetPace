@@ -35,15 +35,10 @@ public sealed class FileConsole : IAnsiConsole, IPersistentConsole, IDisposable
 
         StartedEmpty = startedEmpty;
 
-        // UTF-8 with no byte-order mark, so nothing stands in front of the content a run writes:
-        // a strict JSON parser rejects a document behind a byte-order mark, and Unix text tools
-        // read one as part of the first field. Encoding.UTF8 emits one, so it is not what this
-        // writer is given. Why no option asks for one, and what that costs a
-        // spreadsheet user, is in
+        // UTF-8 with no byte-order mark, which Encoding.UTF8 would emit: CIR
         // docs/change-intent-records/2026-11-02-file-output-carries-no-byte-order-mark.md.
         _fileWriter = new StreamWriter(filePath, append: (fileMode == FileMode.Append && !startedEmpty), Utf8NoByteOrderMark) { AutoFlush = true };
 
-        // Create console settings for plain text output.
         var settings = new AnsiConsoleSettings
         {
             Out = new FileConsoleOutput(_fileWriter),
@@ -136,9 +131,8 @@ public sealed class FileConsole : IAnsiConsole, IPersistentConsole, IDisposable
 
         public void SetEncoding(Encoding encoding)
         {
-            // Encoding is set on StreamWriter creation, and the request is ignored deliberately:
-            // honouring one for Encoding.UTF8 would put a byte-order mark back in front of the
-            // content.
+            // Ignored deliberately: honouring a request for Encoding.UTF8 would put a byte-order
+            // mark back in front of the content.
         }
     }
 }

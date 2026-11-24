@@ -75,10 +75,8 @@ public sealed partial class NetPaceConsoleTests
             var result = await host.RunAsync(["--simple"]);
             var word = SecondWordOfLineHolding(result.Output, "Download");
 
-            // Then it is the download speed's number, not some other figure's. Pinned to the number
-            // itself rather than to any number: the one-line --minimal format puts the time of day
-            // second on the line holding Download, and a check that the word merely parses could
-            // pass on such a line - the misparse this format exists to prevent.
+            // Pinned to the number itself, not to any number: --minimal puts the time of day on the
+            // same line as Download, so "it parses" could pass on the very misparse this prevents.
             Assert.Equal(0, byDefault.ExitCode);
             Assert.Equal(0, result.ExitCode);
             Assert.NotEmpty(downloadNumber);
@@ -90,10 +88,8 @@ public sealed partial class NetPaceConsoleTests
         [InlineData("--unit bytes --unit-scale Kilo --unit-system IEC")]
         public async Task Simple_Figures_Are_The_Ones_Default_Output_Reports(string unitSwitches)
         {
-            // Given the same run written in each human-readable format, under the same unit
-            // switches - Kilo rather than Mega, so the stub's figures do not round to zero. Default
-            // output is read at a terminal, which is the only place it draws a table of its own:
-            // anywhere else it writes these very lines.
+            // Given the same run in each human-readable format, in Kilo so the stub's figures do
+            // not round to zero. Default output is read at a terminal, the only place it tables.
             string[] units = unitSwitches.Split(' ', StringSplitOptions.RemoveEmptyEntries);
             var simple = await GetCommandLineTestHost(StubServices()).RunAsync(["--simple", .. units]);
             var byDefault = await GetInteractiveCommandLineTestHost(StubServices()).RunAsync(units);

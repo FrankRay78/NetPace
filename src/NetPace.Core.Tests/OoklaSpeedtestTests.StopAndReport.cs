@@ -64,10 +64,8 @@ public sealed partial class OoklaSpeedtestTests
             // When
             await speedtest.GetDownloadSpeedAsync(server, StopAfterFirstReport(stop), Collect(diagnostics), CancellationToken.None, stop.Token);
 
-            // Then the request that was in flight reads as cancelled, carrying a reason that says
-            // the caller stopped it rather than one that reads as a transport fault - and the
-            // reason is the library's own generic wording, which a caller replaces with whatever
-            // its own stop was for.
+            // Then the in-flight request reads as cancelled by the caller rather than as a
+            // transport fault, in the library's own generic wording.
             RequestDiagnostic stopped = diagnostics.Single(diagnostic => diagnostic.Outcome == RequestOutcome.Cancelled);
             stopped.FailureReason.ShouldBe(RequestDiagnostic.StoppedByCaller);
             stopped.FailureType.ShouldBeNull();

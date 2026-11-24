@@ -111,11 +111,8 @@ public sealed class CommandLineTestHost
         using var noticeWriter = new StringWriter();
         serviceCollection.TryAddSingleton(new NoticeOutput(noticeWriter));
 
-        // Where every error goes — the process error stream in production, captured apart from the
-        // result for the same reason. Built the same way as the result console: at the width the
-        // run was given rather than at an unlimited one, so the lift that keeps an error on one
-        // line is the production code's and not this host's, and with the same colour, so a test
-        // about an error's colour asks for it the same way.
+        // Built at the width and colour the run was given, not an unlimited one, so the lift that
+        // keeps an error on one line is the production code's and not this host's.
         using var errorConsole = CreateConsole();
 
         serviceCollection.TryAddSingleton(new ErrorOutput(errorConsole));
@@ -127,9 +124,8 @@ public sealed class CommandLineTestHost
         // Default IClientInfoProvider stub unless a test already registered one
         serviceCollection.TryAddSingleton<IClientInfoProvider, ClientInfoProviderStub>();
 
-        // Fixed stand-in values for the version, runtime, OS and architecture, and a counting clock
-        // for record timestamps: all of them differ between machines, which would make a snapshot
-        // machine-specific.
+        // Fixed stand-ins and a counting clock: all of these differ between machines, which would
+        // make a snapshot machine-specific.
         serviceCollection.TryAddSingleton<IEnvironmentInfoProvider, EnvironmentInfoProviderStub>();
         serviceCollection.TryAddSingleton<IDiagnosticClock, IncrementingDiagnosticClockStub>();
 

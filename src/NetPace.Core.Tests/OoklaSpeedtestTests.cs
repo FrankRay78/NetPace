@@ -492,9 +492,8 @@ public sealed partial class OoklaSpeedtestTests
         // When
         var exception = await Record.ExceptionAsync(() => speedtest.GetServerLatencyAsync(server, new SynchronousProgress<LatencyTestProgress>(progress =>
         {
-            // A throwing progress callback is the consumer's bug; OoklaSpeedtest must isolate it
-            // so the measurement still completes. SynchronousProgress runs the throw inline, so
-            // this exercises production isolation (not System.Progress<T>'s async swallowing).
+            // SynchronousProgress runs the throw inline, so this exercises NetPace's own
+            // isolation rather than System.Progress<T>'s asynchronous swallowing.
             throw new InvalidOperationException();
         })));
 
@@ -817,9 +816,8 @@ public sealed partial class OoklaSpeedtestTests
         // When
         var exception = await Record.ExceptionAsync(() => speedtest.GetFastestServerByLatencyAsync(servers, new SynchronousProgress<SpeedTestProgress>(progress =>
         {
-            // A throwing progress callback is the consumer's bug; OoklaSpeedtest must isolate it
-            // so the measurement still completes. SynchronousProgress runs the throw inline, so
-            // this exercises production isolation (not System.Progress<T>'s async swallowing).
+            // SynchronousProgress runs the throw inline, so this exercises NetPace's own
+            // isolation rather than System.Progress<T>'s asynchronous swallowing.
             throw new InvalidOperationException();
         })));
 
@@ -1241,9 +1239,8 @@ public sealed partial class OoklaSpeedtestTests
         // When
         var exception = await Record.ExceptionAsync(() => speedtest.GetDownloadSpeedAsync(server, new SynchronousProgress<SpeedTestProgress>(progress =>
         {
-            // A throwing progress callback is the consumer's bug; OoklaSpeedtest must isolate it
-            // so the measurement still completes. SynchronousProgress runs the throw inline, so
-            // this exercises production isolation (not System.Progress<T>'s async swallowing).
+            // SynchronousProgress runs the throw inline, so this exercises NetPace's own
+            // isolation rather than System.Progress<T>'s asynchronous swallowing.
             throw new InvalidOperationException();
         })));
 
@@ -1254,10 +1251,8 @@ public sealed partial class OoklaSpeedtestTests
     [Fact]
     public async Task GetDownloadSpeedAsync_WithProgress_ShouldReportBytesAndElapsedTime()
     {
-        // Given a held clock, so the exact report count below is the four the finishing requests
-        // send. The paced mid-request report is timed on this clock, so a transfer measured on the
-        // wall clock would gain an extra report whenever a chunk happened to arrive a quarter of a
-        // second after the transfer began, and every index here would shift.
+        // Given a held clock, so the report count below is exactly the four the finishing requests
+        // send: on the wall clock a paced mid-request report would shift every index here.
         using var mockHttp = new MockHttpMessageHandler();
         mockHttp.When("*").Respond("text/plain", new string('X', 1024));
 
@@ -1627,9 +1622,8 @@ public sealed partial class OoklaSpeedtestTests
         // When
         var exception = await Record.ExceptionAsync(() => speedtest.GetUploadSpeedAsync(server, new SynchronousProgress<SpeedTestProgress>(progress =>
         {
-            // A throwing progress callback is the consumer's bug; OoklaSpeedtest must isolate it
-            // so the measurement still completes. SynchronousProgress runs the throw inline, so
-            // this exercises production isolation (not System.Progress<T>'s async swallowing).
+            // SynchronousProgress runs the throw inline, so this exercises NetPace's own
+            // isolation rather than System.Progress<T>'s asynchronous swallowing.
             throw new InvalidOperationException();
         })));
 

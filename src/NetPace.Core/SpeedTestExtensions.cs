@@ -147,11 +147,8 @@ public static class SpeedTestExtensions
 
     #region Private Methods
 
-    // One format per band, indexed by the decimal places the band allows. Speeds are written the
-    // same way on every machine: "." as the decimal separator and no digit grouping. Formatted
-    // through the invariant culture rather than the caller's, so a consumer on a comma-decimal
-    // thread reads the same text as everyone else, and a CSV row cannot gain a field from a stray
-    // comma.
+    // Indexed by the decimal places a band allows, and formatted through the invariant culture so
+    // a CSV row cannot gain a field from a comma-decimal thread.
     private static readonly string[] FigureFormats = ["0", "0.0", "0.00"];
 
     private const double BitsPerByte = 8.0;
@@ -225,9 +222,8 @@ public static class SpeedTestExtensions
             ? unitSystem == SpeedUnitSystem.IEC ? IEC_BitUnits : SI_BitUnits
             : unitSystem == SpeedUnitSystem.IEC ? IEC_ByteUnits : SI_ByteUnits;
 
-        // Measured against the figure as it will be written, not against the speed itself, so a
-        // speed that rounds up to the divisor steps into the next unit instead of being drawn as
-        // 1000 of this one - which would be four significant figures and the wrong unit at once.
+        // Measured against the figure as written, so a speed rounding up to the divisor steps into
+        // the next unit rather than being drawn as 1000 of this one.
         var index = 0;
         while (Figure(speed).Value >= divisor && index < units.Length - 1)
         {

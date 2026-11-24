@@ -130,9 +130,7 @@ public sealed partial class NetPaceConsoleTests
 
             // Given the same measurement run twice: once instantly, and once taking several times
             // Spectre.Console's own redraw interval to finish.
-            // Regression: issue #490 - the live displays redrew themselves while a slow measurement
-            // was in flight, stacking an extra frame into the capture, so the snapshots in this file
-            // failed intermittently.
+            // Regression: issue #490 - a self-redraw stacked an extra frame into the capture.
 
             // When
             var instant = await MeasureWithPause(TimeSpan.Zero);

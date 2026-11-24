@@ -132,10 +132,8 @@ public sealed partial class OoklaSpeedtestTests
             using var mockHttp = new MockHttpMessageHandler();
             RespondAfterASlowRoundTrip(mockHttp, "*/latency.txt");
 
-            // The ceiling and the per-probe limit are left at the defaults, since they are what has
-            // to carry a slow link; only the number of screening requests is lowered. One request is
-            // enough to leave the pass unranked when the first stage is up, which is the path under
-            // test, and the default three would spend three round trips per candidate to reach it.
+            // The ceiling and probe limit stay at their defaults, which are what has to carry a slow
+            // link; one screening request is enough to leave the pass unranked at the first stage.
             var settings = new OoklaSpeedtestSettings
             {
                 ServerScreening = new() { ScreeningRequestCount = 1 }
@@ -181,12 +179,9 @@ public sealed partial class OoklaSpeedtestTests
             var exception = await Record.ExceptionAsync(() => speedtest.GetServerLatencyAsync(server).WaitAsync(SlowLinkHangGuard));
             stopwatch.Stop();
 
-            // Then the measurement ends in a failure within the bound rather than waiting on a
-            // server that is never going to reply - the price of a probe limit long enough for a
-            // slow link is that it must still be a limit. The failure is the probe's own timeout,
-            // in the shape NetPace raises one: a bare "some exception was thrown" would be
-            // satisfied by the argument guard that fires instantly on a non-positive limit, and
-            // would report a bound this test never observed.
+            // Then the measurement fails within the bound rather than waiting on a server that
+            // never replies. The exact timeout shape is asserted, because a bare "something threw"
+            // would also be satisfied by the argument guard firing instantly.
             exception.ShouldBeAssignableTo<OperationCanceledException>();
             exception!.InnerException.ShouldBeOfType<TimeoutException>();
             stopwatch.Elapsed.ShouldBeLessThan(BoundedWait);
@@ -222,10 +217,8 @@ public sealed partial class OoklaSpeedtestTests
         [Fact]
         public async Task GetFastestServerByLatencyAsync_OneCandidateAnswersPromptly_DoesNotWaitOutTheSlowLinkAllowance()
         {
-            // A run on an unshaped link must choose a server as quickly as it does today. The
-            // allowance a slow link needs is therefore reached in stages: a pass that has ranked
-            // something takes it and moves on, and only a pass that has ranked nothing - the run
-            // that would otherwise end in "no servers available" - waits for the rest of it.
+            // A run on an unshaped link must still choose a server as quickly, so only a pass that
+            // has ranked nothing waits out the rest of the ceiling.
 
             // Given a candidate that answers at once beside one that never answers.
             using var mockHttp = new MockHttpMessageHandler();
@@ -256,10 +249,8 @@ public sealed partial class OoklaSpeedtestTests
         [Fact]
         public async Task GetFastestServerByLatencyAsync_NothingRanked_SpendsTheCeilingOnceAcrossBothStages()
         {
-            // The stages divide the ceiling, they do not add to it: a pass that has ranked nothing
-            // waits the first stage and then only what is left of the ceiling. A second stage that
-            // waited the whole ceiling again would report the same failure after half again as
-            // long, so only a bound on both sides of the figure notices it.
+            // The stages divide the ceiling rather than adding to it, so the figure is bounded on
+            // both sides: a second stage waiting the whole ceiling again would pass a one-sided bound.
 
             // Given candidates that never answer, and a ceiling longer than the first stage so that
             // both stages are spent.
@@ -292,12 +283,8 @@ public sealed partial class OoklaSpeedtestTests
         [Fact]
         public async Task GetFastestServerByLatencyAsync_EveryCandidateFailsOnItsOwnMerits_GivesUpBeforeTheFirstStageIsOut()
         {
-            // A longer ceiling costs a run only while something is still outstanding. A pass whose
-            // candidates have all answered - with something no speed test server would send - has
-            // nothing left to wait for, so it reports the failure at once instead of holding the
-            // user for a ceiling that cannot change the answer. Without this the raised ceiling
-            // would turn an instant error on a link where nothing is listening into a ten-second
-            // one.
+            // A ceiling costs a run only while something is outstanding: a pass whose candidates
+            // have all answered reports at once, so a raised ceiling cannot slow an instant error.
 
             // Given candidates that answer promptly, with a body no speed test server would send.
             const string wrongBody = "<html>hello</html>";
@@ -428,9 +415,7 @@ public sealed partial class OoklaSpeedtestTests
         public async Task GetFastestServerByLatencyAsync_FirstStageAsLongAsTheCeiling_GivesASlowerCandidateTheWholeCeiling()
         {
             // Given a first stage as long as the ceiling, a steady candidate ranked quickly, and a
-            // warming candidate with the lower round trip that is ranked only after the default first
-            // stage is out.
-            // When a server is chosen.
+            // faster warming candidate ranked only after the default first stage is out.
             var (result, _, warming) = await ChooseBetweenASteadyAndAWarmingCandidateAsync(StagedCeilingMilliseconds);
 
             // Then the ceiling was spent as one stage, as it was before it was spent in stages: the
@@ -441,10 +426,8 @@ public sealed partial class OoklaSpeedtestTests
         [Fact]
         public async Task GetFastestServerByLatencyAsync_NothingRankedByTheFirstStage_SecondStageWaitsForEveryCandidate()
         {
-            // Given a first stage that ends before either candidate is ranked, a steady candidate
-            // ranked soon after it, and a warming candidate with the lower round trip ranked later
-            // still, both inside the ceiling.
-            // When a server is chosen.
+            // Given a first stage ending before either candidate is ranked, then a steady candidate
+            // and a faster warming one ranked later, both inside the ceiling.
             var (result, _, warming) = await ChooseBetweenASteadyAndAWarmingCandidateAsync(FirstStageBeforeAnyCandidateMilliseconds);
 
             // Then the second stage waited for every candidate rather than ending on the first one

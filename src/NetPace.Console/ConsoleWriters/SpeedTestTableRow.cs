@@ -70,9 +70,8 @@ internal sealed class SpeedTestTableRow(SpeedTestTable table, string name)
         LatencyMilliseconds = progress.LatencyMilliseconds;
         JitterMilliseconds = progress.JitterMilliseconds;
 
-        // Nothing is shown until a report carries both bytes and elapsed time, so a cell holds no
-        // speed computed from nothing. A provider reporting only a percentage therefore shows no
-        // speed until its result arrives.
+        // Nothing is shown until a report carries both bytes and elapsed time, so no cell holds a
+        // speed computed from nothing.
         if (progress.BytesProcessed > 0 && progress.ElapsedMilliseconds > 0)
         {
             Speed = table.SpeedOf(progress);
@@ -106,9 +105,8 @@ internal sealed class SpeedTestTableRow(SpeedTestTable table, string name)
         PercentageComplete = 100;
         Speed = table.SpeedOf(result);
 
-        // Read off the result rather than carried over from the last progress report, so the
-        // figures the user watched end on the figures they are given - and a transfer that
-        // measured none leaves its cells blank however many probes answered along the way.
+        // Read off the result, not the last progress report, so the figures the user watched end
+        // on the figures they are given.
         LatencyMilliseconds = result.Latency?.LatencyMilliseconds;
         JitterMilliseconds = result.Latency?.JitterMilliseconds;
 

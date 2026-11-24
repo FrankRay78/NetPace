@@ -165,10 +165,8 @@ public sealed partial class OoklaSpeedtestTests
         [Fact]
         public async Task GetServerLatencyAsync_JitterOfHalfAMillisecond_ReportsOneMillisecond()
         {
-            // Given three probes taking 10, 11 and 11 ms of a clock the test moves itself, so the
-            // changes between consecutive probes are 1 and 0 ms and the mean change is half a
-            // millisecond. A whole-millisecond figure that truncated would report a line with real
-            // unevenness as perfectly steady.
+            // Given probes of 10, 11 and 11 ms, so the mean change is half a millisecond: a figure
+            // that truncated would report real unevenness as perfectly steady.
             var clock = new ControlledTimeProvider(ClockStart);
 
             using var mockHttp = new MockHttpMessageHandler();
@@ -234,10 +232,8 @@ public sealed partial class OoklaSpeedtestTests
         [Fact]
         public async Task GetServerLatencyAsync_JitterOfAQuarterOfAMillisecond_ReportsNoJitter()
         {
-            // Given five probes taking 10, 11, 11, 11 and 11 ms of a clock the test moves itself, so
-            // the changes between consecutive probes are 1, 0, 0 and 0 ms and the mean change is a
-            // quarter of a millisecond. Rounding to nearest is not rounding up: a single blip across a
-            // long run is not unevenness worth a whole millisecond.
+            // Given probes of 10, 11, 11, 11 and 11 ms, so the mean change is a quarter of a
+            // millisecond: one blip across a long run is not worth a whole millisecond.
             var clock = new ControlledTimeProvider(ClockStart);
 
             using var mockHttp = new MockHttpMessageHandler();

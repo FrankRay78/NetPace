@@ -213,10 +213,8 @@ internal sealed class SpeedTestTable(
             columns.Add(Heading(FailedHeading, Justify.Right));
         }
 
-        // The gap belongs between columns, so the last one carries none: a line ends at its last
-        // column rather than a column's worth of blank past it. An empty right-aligned cell is
-        // still padded out to the column width, so a row whose last cell is blank does end in
-        // blanks.
+        // The gap belongs between columns, so the last carries none and a line ends at its last
+        // column. An empty right-aligned cell is still padded to the column width.
         columns[^1].Padding = Gap(0);
 
         foreach (TableColumn column in columns)

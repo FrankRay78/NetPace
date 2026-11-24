@@ -5,9 +5,8 @@ namespace NetPace.Console.Tests.ConsoleWriters;
 
 public class TimeSpanFormatterTests
 {
-    // Replacement formatter mirrors the prior Humanizer(precision:1) contract: largest non-zero
-    // unit, truncated (never rounded). Zero/negative spans are coerced defensively to "0 seconds"
-    // (test-plan FR-011 contract).
+    // Pins the prior Humanizer(precision:1) contract - largest non-zero unit, never rounded - so a
+    // refactor cannot silently change user-visible duration text.
 
     [Fact]
     public void Humanize_OneSecond_ReturnsSingularForm()

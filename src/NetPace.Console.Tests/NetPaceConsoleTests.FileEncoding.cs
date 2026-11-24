@@ -33,10 +33,8 @@ public sealed partial class NetPaceConsoleTests
                 // When a run writes its result there as JSON
                 var (_, bytes) = await RunToFileAsync(file, ["--json"]);
 
-                // Then a parser handed the file's bytes exactly as they are reads it without error.
-                // Anything in front of the document — a byte-order mark above all — leaves text no
-                // strict parser accepts, so the parse is the whole assertion and the document is
-                // discarded unread: what the output says is covered by the JSON snapshots.
+                // Then a parser handed the file's bytes exactly as they are reads it without error:
+                // the parse is the whole assertion, and what the output says is in the snapshots.
                 JsonDocument.Parse(bytes).Dispose();
             }
             finally

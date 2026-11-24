@@ -86,10 +86,8 @@ public static class Program
             DefaultValueFactory = _ => TimeSpan.Zero
         };
 
-        // Taken as a string rather than an Option<TimeSpan> so that every rejected value lands on
-        // one message naming the form that works. An Option<TimeSpan> reads a bare 600 as six
-        // hundred days and binds it without complaint, which is the one wrong answer a scheduled
-        // run has no way of noticing.
+        // A string, not Option<TimeSpan>, which reads a bare 600 as six hundred days and binds it
+        // without complaint: the one wrong answer a scheduled run cannot notice.
         var timeLimitOption = new Option<string>("--time-limit")
         {
             Description = "Stop a speed test run after this long (HH:MM:SS, up to 23:59:59).\nA run that reaches the limit reports what it measured up to then.\nEach run of --count or --loop gets the limit afresh, and --delay is not counted.",
@@ -190,9 +188,8 @@ public static class Program
             DefaultValueFactory = _ => int.MaxValue
         };
 
-        // Taken as a string rather than an Option<int> so that every rejected value - zero, above
-        // the ceiling, or not a whole number at all - lands on one message naming the valid range.
-        // An Option<int> would answer "2.5" with a built-in parse failure that never mentions it.
+        // A string, not Option<int>, so every rejected value lands on one message naming the range;
+        // Option<int> answers "2.5" with a parse failure that never mentions it.
         var connectionsOption = new Option<string>("--connections")
         {
             Description = $"Maximum transfers the download and upload tests each run at once ({MinimumConnections}-{MaximumConnections}).\nOverrides the --profile connection count; the profile's data caps still apply.\nA maximum, so a profile with fewer transfers to run than this will not reach it.",
@@ -241,17 +238,15 @@ public static class Program
             Description = "Record a label for this machine in CSV and JSON output.\nThe CSV column is always present; the JSON field appears only when a label is given."
         };
 
-        // Pinned rather than left to the default so that each occurrence takes exactly one
-        // key=value argument: a stray second word is then an unrecognised argument the user is told
-        // about, not a silently swallowed pair.
+        // Pinned to one argument per occurrence, so a stray second word is reported rather than
+        // silently swallowed.
         var customFieldOption = new Option<string[]>("--custom-field")
         {
             Description = $"Record a {CustomField.ExpectedForm} pair in CSV and JSON output.\nMay be given more than once, and is recorded in the order given.",
             AllowMultipleArgumentsPerToken = false
         };
-        // A validator, not a check at binding time, so a malformed pair fails the parse: the run
-        // stops before any test is performed in every output mode, including the ones that ignore
-        // custom fields altogether. A missing argument is already the parser's own error.
+        // A validator, not a binding-time check, so a malformed pair fails the parse in every
+        // output mode, including the ones that ignore custom fields.
         customFieldOption.Validators.Add(result =>
         {
             foreach (Token token in result.Tokens)
@@ -263,11 +258,8 @@ public static class Program
             }
         });
 
-        // --server has been renamed --server-url, but the old name stays registered so that a
-        // script still passing it is told what to use rather than getting a generic
-        // unrecognised-option error. It takes an optional string so that a bare --server lands on
-        // the same message instead of a built-in missing-argument failure. Hidden, and
-        // CustomHelpProvider strips hidden options, so --help advertises only the new name.
+        // Registered so a script still passing the old name is told what to use. Optional, so a
+        // bare --server lands on the same message; hidden, so --help advertises only the new name.
         var serverOption = new Option<string>("--server")
         {
             Arity = ArgumentArity.ZeroOrOne,
@@ -275,11 +267,8 @@ public static class Program
         };
         serverOption.Validators.Add(result => result.AddError("--server has been renamed --server-url, see --help."));
 
-        // --verbosity is retired, but stays registered so that a script still passing it gets a
-        // message naming the removal rather than a generic unrecognised-option error. It takes an
-        // optional string so that every former value - and no value at all - lands on the same
-        // error instead of a built-in parse failure. Hidden, and CustomHelpProvider strips hidden
-        // options, so --help does not advertise it.
+        // Registered so a script still passing it is told it was removed. Optional, so every
+        // former value lands on the same error; hidden, so --help does not advertise it.
         var verbosityOption = new Option<string>("--verbosity")
         {
             Arity = ArgumentArity.ZeroOrOne,
@@ -344,12 +333,8 @@ public static class Program
         };
         diagnosticsFileOption.Validators.Add(result =>
         {
-            // The implicit result the default value produces stands for "no file named" and is not
-            // a value the user asked to be checked. A value the user did pass has to name a path:
-            // every consumer downstream reads a blank one as "no file named", so letting it
-            // through would exit zero having written no records and said nothing, and the user
-            // would find out only on going to look for the file. --diagnostics-file "$LOG" with
-            // LOG unset is the ordinary way to arrive here.
+            // A blank path reads as "no file named" downstream, so letting one through would exit
+            // zero having written nothing. --diagnostics-file "$LOG" with LOG unset arrives here.
             if (result.Implicit)
             {
                 return;
@@ -456,10 +441,8 @@ public static class Program
                 // Validate settings
                 settings.Validate();
 
-                // Build the provider's settings from --provider, --profile and the per-cap
-                // overrides. The settings accessor is the test seam: production resolves the
-                // provider from it; tests inspect Settings post-run to verify CLI → settings
-                // binding.
+                // The settings accessor is the test seam: production resolves the provider from
+                // it, and a test reads Settings afterwards to check the CLI binding.
                 var accessor = serviceProvider.GetRequiredService<SpeedTestSettingsAccessor>();
                 accessor.Settings = BuildSpeedTestSettings(settings);
 
@@ -473,22 +456,14 @@ public static class Program
                 var runTimeLimit = serviceProvider.GetRequiredService<IRunTimeLimit>();
                 var liveDisplayRefresh = serviceProvider.GetRequiredService<ILiveDisplayRefresh>();
 
-                // Switched off, nothing is recorded and nothing is written - so no call site
-                // downstream has to ask whether diagnostics are on. A named file switches them on
-                // by itself, so --diagnostics alongside it asks for nothing more; the file wins
-                // either way, and the error stream carries no record at all.
-                //
-                // The file is opened here, before the first test and inside this action's own error
-                // handling, so a path that cannot be written ends the run with the path named
-                // rather than surfacing part way through a measurement.
+                // A null recorder when switched off, so no call site downstream asks whether
+                // diagnostics are on. Opened early, so an unwritable path ends the run at once.
                 IDiagnosticRecorder recorder = NullDiagnosticRecorder.Instance;
 
                 if (!string.IsNullOrWhiteSpace(settings.DiagnosticsFile))
                 {
-                    // The reason is wrapped rather than reported raw: the framework's own message
-                    // says what went wrong but not which file it was about, and a run may name two.
-                    // Wrapping also makes the path named whatever the failure was, which the
-                    // message for a path too long to open does not do on its own.
+                    // Wrapped rather than raw: the framework's message names no file, and a run may
+                    // name two.
                     try
                     {
                         diagnosticsFile = serviceProvider.GetRequiredService<IDiagnosticFileOpener>().Open(settings.DiagnosticsFile);
@@ -525,24 +500,15 @@ public static class Program
             }
             catch (Exception ex)
             {
-                // Usage/configuration errors and operational failures go to the error stream, so a
-                // redirect of the result never swallows them and no reader of the result ever meets
-                // a line that is not part of its format. Resolved again here rather than reused
-                // from above, because the throw may have come before that line ran.
+                // Resolved again rather than reused from above, because the throw may have come
+                // before that line ran.
                 serviceProvider.GetRequiredService<ErrorOutput>().WriteLine(theme, ex.Message);
                 return 1;
             }
             finally
             {
-                // Closed after the command has returned, so the last flush it makes is on disk.
-                //
-                // Guarded because closing a StreamWriter flushes what it still holds, and this
-                // finally sits outside the catch above: a raise here escapes the action altogether,
-                // which turned a completed measurement into a stack trace and a non-zero exit. A
-                // diagnostics write must not decide the run's fate, which is the same rule
-                // SpeedTestCommand.FlushDiagnostics keeps. Nothing is written about it because the
-                // records are flushed explicitly after every batch, so a close that fails follows a
-                // flush that failed, and the user has already been told which path and why.
+                // Guarded because this finally sits outside the catch above and closing flushes:
+                // a diagnostics write must not turn a completed measurement into a stack trace.
                 try
                 {
                     diagnosticsFile?.Dispose();
@@ -596,12 +562,8 @@ public static class Program
 
         if (settings.Simple || settings.Minimal || settings.NoLatency)
         {
-            // --simple and --minimal report no under-load figure, so the probes that would measure
-            // one are traffic nobody reads. Switching them off keeps --simple's traffic as it was
-            // before the probes existed; the idle latency test still runs, being where the
-            // latency figure comes from. --no-latency switches them off for the opposite reason:
-            // asking for no latency asks for none anywhere, so no probe goes out under a transfer
-            // either, in whichever format the run reports.
+            // --simple and --minimal report no under-load figure, so its probes are traffic nobody
+            // reads; --no-latency asks for no latency anywhere. The idle test still runs.
             speedTestSettings = speedTestSettings with
             {
                 LatencyTest = speedTestSettings.LatencyTest with { LoadedLatencyEnabled = false }
@@ -726,9 +688,8 @@ public static class Program
             }
             catch (Exception ex)
             {
-                // Usage/configuration errors and operational failures go to the error stream.
-                // Network and discovery outcomes never reach here: ListServersCommand reports those
-                // itself and leaves the exit code at 0, as a speed test does.
+                // Network and discovery outcomes never reach here: ListServersCommand reports
+                // those itself and leaves the exit code at 0, as a speed test does.
                 serviceProvider.GetRequiredService<ErrorOutput>().WriteLine(theme, ex.Message);
                 return 1;
             }
@@ -752,9 +713,8 @@ public static class Program
         // it never lands in the middle of a result another program is reading.
         services.AddSingleton(new NoticeOutput(System.Console.Error));
 
-        // Every error goes to the error stream, for the same reason and one more: a run whose
-        // result is redirected still shows the user what went wrong. Its own console rather than
-        // the result's, so --quiet and --file never reach it.
+        // Its own console rather than the result's, so --quiet and --file never reach it and a
+        // redirected run still shows the user what went wrong.
         services.AddSingleton(CreateErrorOutput(
             System.Console.Error,
             isRedirected: System.Console.IsErrorRedirected,
@@ -860,9 +820,8 @@ public static class Program
         // the measurement goes. Only the test host turns that off, so a capture holds one frame.
         services.AddSingleton<ILiveDisplayRefresh, LiveDisplayRefresh>();
 
-        // Needed by both stacks: a run is bounded by a real clock whichever speed tester is behind
-        // it, --test included. Only the test host replaces it, so a suite does not wait the limit
-        // out to watch it fire.
+        // Needed by both stacks, --test included. Only the test host replaces it, so a suite does
+        // not wait the limit out to watch it fire.
         services.AddSingleton<IRunTimeLimit, RunTimeLimit>();
 
         if (args != null && args.Contains("--test"))
@@ -917,9 +876,8 @@ public static class Program
     {
         var ansiConsole = serviceProvider.GetRequiredService<IAnsiConsole>();
 
-        // Settled before anything is drawn, because --help is rendered below without the options
-        // ever being parsed, and a theme that arrived later would not reach it. The error stream is
-        // themed here too, so an error is drawn the way the rest of the run is.
+        // Settled before anything is drawn: --help is rendered below without the options ever
+        // being parsed, so a theme arriving later would not reach it.
         var selection = serviceProvider.GetRequiredService<IThemeProvider>().Resolve();
         selection.Theme.ApplyTo(ansiConsole);
 

@@ -9,10 +9,8 @@ public sealed class SpeedTestStubTests
 {
     private const int DelayMilliseconds = 20;
 
-    // Task.Delay fires on the runtime's coarse timer, so one pause can end a fraction of a millisecond
-    // short by the Stopwatch's clock, and ElapsedMilliseconds truncates it to a whole millisecond less.
-    // A millisecond per pause absorbs that and still fails a stub that pauses once instead of before
-    // every report.
+    // Task.Delay fires on a coarse timer, so a pause can read a millisecond short. One millisecond
+    // per pause absorbs that and still fails a stub that pauses once rather than per report.
     private const int TimerSlackMilliseconds = 1;
 
     /// <summary>

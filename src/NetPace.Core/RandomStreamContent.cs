@@ -69,9 +69,8 @@ internal sealed class RandomStreamContent : HttpContent
                 await stream.WriteAsync(buffer.AsMemory(0, toWrite), cancellationToken).ConfigureAwait(false);
                 remaining -= toWrite;
 
-                // Counted after the write rather than before it, so a chunk whose write throws is
-                // not reported as sent. A chunk the transport took and then never delivered still
-                // is, which is the over-count GetUploadSpeedAsync records.
+                // Counted after the write, so a chunk whose write throws is not reported as sent;
+                // one the transport took and never delivered still is.
                 BytesWritten += toWrite;
                 onBytesWritten?.Invoke(toWrite);
             }

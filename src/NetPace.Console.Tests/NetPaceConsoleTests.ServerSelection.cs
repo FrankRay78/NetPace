@@ -97,10 +97,8 @@ public sealed partial class NetPaceConsoleTests
                 GetServersAsyncFunc = _ => Task.FromResult(discoveredServers),
                 GetFastestServerByLatencyAsyncFunc = (servers, _, _) =>
                 {
-                    // Honour the whole array rather than assuming one candidate per call: rank the
-                    // candidates that can be screened and report "no servers" only when none can.
-                    // That is the documented contract, so this stands in for screening however the
-                    // command chooses to batch its candidates.
+                    // Honours the whole array rather than assuming one candidate per call, so this
+                    // stands in for screening however the command batches its candidates.
                     var ranked = servers
                         .Select(candidate => new { candidate, latency = ScreeningLatencyFor(candidate) })
                         .Where(entry => entry.latency is not null)

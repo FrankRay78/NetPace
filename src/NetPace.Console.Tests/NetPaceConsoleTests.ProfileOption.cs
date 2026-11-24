@@ -152,9 +152,8 @@ public sealed partial class NetPaceConsoleTests
         {
             // SCENARIO: Override cap larger than natural transfer is a no-op backstop
             //
-            // Tiny's natural transfer (≤ 1 MiB) stays well below the override cap (5000 MiB),
-            // so the cap-check never trips. Override is mechanically present on the settings record.
-            // Tiny's natural-budget assertion is in OoklaSpeedtestSettingsTests.Profiles.Tiny_FieldsMatchDataModel.
+            // Tiny's natural transfer stays well below the override cap, so the check never trips;
+            // its own budget assertion is in OoklaSpeedtestSettingsTests.Profiles.
 
             // Given
             var (services, accessor) = BuildServicesWithSettingsAccessor();

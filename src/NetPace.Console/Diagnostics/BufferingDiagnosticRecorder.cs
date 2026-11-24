@@ -48,15 +48,8 @@ public sealed class BufferingDiagnosticRecorder(IDiagnosticClock clock, TextWrit
     /// <inheritdoc />
     public void Flush()
     {
-        // Taken off the buffer before anything is written, not cleared after: clearing afterwards
-        // meant a writer that threw part-way left every record still buffered, including the ones
-        // already on disk, so the next flush wrote those again - a log with silently doubled lines
-        // whose test.end totals no longer add up.
-        //
-        // Draining alone would swap that for the opposite fault, losing the unwritten tail with
-        // nobody told, so whatever did not make it goes back on the front of the buffer and the
-        // failure is raised. A later flush retries it; it is not discarded here, and it is not
-        // this type's business whether the run survives a diagnostic write failing.
+        // Drained before writing, not cleared after: clearing after a part-way failure rewrote
+        // the records already on disk. The unwritten tail goes back on the front and raises.
         List<string> pending;
 
         lock (recordLock)

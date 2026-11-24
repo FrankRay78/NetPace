@@ -361,14 +361,8 @@ public sealed partial class NetPaceConsoleTests
                 using var provider = services.BuildServiceProvider();
 
                 // Then the error console writes its escape sequences to the writer it was given.
-                // Left to detect ANSI support, Spectre.Console reads a redirected error stream as
-                // unable to take them and falls back to setting colour through System.Console's
-                // colour properties. On Unix, .NET writes those to standard OUTPUT - escape bytes
-                // in a result that is meant to carry nothing but its format; on Windows they write
-                // no bytes, as Program.ErrorAnsiSupport's remarks explain. Under dotnet test the
-                // error stream is captured, so this is the forced answer here;
-                // An_Errors_Ansi_Support_Is_Detected_On_A_Windows_Terminal_So_The_Console_Mode_Is_Switched_On
-                // covers the one case that detects instead.
+                // Left to detect, Spectre falls back to System.Console's colour properties, which
+                // on Unix write escape bytes to standard OUTPUT. See Program.ErrorAnsiSupport.
                 Assert.True(provider.GetRequiredService<ErrorOutput>().Console.Profile.Capabilities.Ansi);
             }
 
@@ -378,22 +372,18 @@ public sealed partial class NetPaceConsoleTests
             [InlineData(true, true)]   // Windows, redirected
             public void An_Errors_Ansi_Support_Is_Forced_Unless_A_Windows_Terminal_Is_Writing_It(bool isWindows, bool isRedirected)
             {
-                // Then Spectre.Console is told ANSI is supported instead of detecting it, so the
-                // error console keeps writing to the one writer it was given. Detecting would be
-                // unsafe on a Unix terminal and pointless on a redirected stream, which is never
-                // styled anyway; Program.ErrorAnsiSupport's remarks carry why.
-                // Regression: #567 - pins the setting so the fix cannot widen detection to where it spills.
+                // Then Spectre is told ANSI is supported rather than detecting it, which would be
+                // unsafe on a Unix terminal; see Program.ErrorAnsiSupport.
+                // Regression: #567 - pins the setting so detection cannot widen to where it spills.
                 Assert.Equal(AnsiSupport.Yes, Program.ErrorAnsiSupport(isWindows, isRedirected));
             }
 
             [Fact]
             public void An_Errors_Ansi_Support_Is_Detected_On_A_Windows_Terminal_So_The_Console_Mode_Is_Switched_On()
             {
-                // Then Spectre.Console detects support for itself, because detecting it is what
-                // switches virtual terminal processing on for the error handle. Told outright that
-                // ANSI is supported, it never makes that call, and a classic console window whose
-                // mode nothing else switched on shows the escape sequences instead of the colour.
-                // Regression: #567 - error colour showed as literal escapes on a classic Windows console with the result redirected.
+                // Then Spectre detects support for itself, which is what switches virtual terminal
+                // processing on for the error handle; told outright, it never makes that call.
+                // Regression: #567 - error colour showed as literal escapes on a classic console.
                 Assert.Equal(AnsiSupport.Detect, Program.ErrorAnsiSupport(isWindows: true, isRedirected: false));
             }
 
@@ -414,10 +404,8 @@ public sealed partial class NetPaceConsoleTests
                 Assert.Equal($"Error: {NetworkFailure}", stream.ToString().TrimEnd());
                 Assert.DoesNotContain('\u001b', stream.ToString());
 
-                // And the console is the ANSI one, which writes only to the writer it was given.
-                // A fallback to System.Console's colour properties would leave this stream just as
-                // clean while colouring standard OUTPUT, so the absence of escape bytes above does
-                // not on its own rule out the failure this test exists for.
+                // And the console is the ANSI one: the System.Console fallback would leave this
+                // stream just as clean while colouring standard OUTPUT.
                 // Regression: #567 - detecting on a redirected stream would reach that fallback.
                 Assert.True(errorOutput.Console.Profile.Capabilities.Ansi);
             }

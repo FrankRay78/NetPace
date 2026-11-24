@@ -22,9 +22,8 @@ public sealed class ListServersCommand(IAnsiConsole console, ErrorOutput errorOu
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
-            // The user pressed Ctrl+C on a command that told them to, so there is nothing to
-            // report. Only this command's own token counts: an HttpClient timeout surfaces as a
-            // cancellation too, and reporting that one as the user's choice would hide it.
+            // Only this command's own token counts: an HttpClient timeout surfaces as a
+            // cancellation too, and reporting that as the user's choice would hide it.
         }
         catch (Exception e) when (ExitsNonZero(e))
         {
@@ -162,14 +161,8 @@ public sealed class ListServersCommand(IAnsiConsole console, ErrorOutput errorOu
             .AutoClear(false)
             .StartAsync(async ctx =>
             {
-                // Screen each server through the same path auto-selection uses, so the latency
-                // listed here is the figure a run ranks on. Each server is screened on its own,
-                // though, with no quicker sibling to end the pass early, so it is given the whole
-                // ceiling: a server listed with a latency may still be one a real run would stop
-                // waiting for once a quicker server had answered. The servers are screened
-                // together, as selection screens them, so the listing takes about one screening
-                // ceiling rather than one per unreachable server. Each row is filled in
-                // as its result comes back; the table is not safe to change from two rows at once.
+                // Screened through the path auto-selection uses, so a listed latency is the figure
+                // a run ranks on, but each gets the whole ceiling with no quicker sibling to end it.
                 var tableLock = new object();
 
                 async Task ScreenRowAsync(int row)
@@ -184,17 +177,14 @@ public sealed class ListServersCommand(IAnsiConsole console, ErrorOutput errorOu
                     }
                     catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
                     {
-                        // The user pressed Ctrl+C before this server answered, so the row is left
-                        // as it was drawn - blank. A dash here would say the server did not answer,
-                        // which is a verdict the listing never reached.
+                        // Left blank: a dash would say the server did not answer, a verdict the
+                        // listing never reached.
                         return;
                     }
                     catch (Exception e) when (e is not ArgumentException)
                     {
-                        // Screening reports an unreachable candidate by throwing, so this is the
-                        // ordinary path for a server that did not answer. A provider misconfigured
-                        // through its settings also throws, as ArgumentException - that must reach
-                        // the user rather than print a dash against every server in the list.
+                        // The ordinary path for a server that did not answer. ArgumentException is
+                        // excluded: a misconfigured provider must reach the user, not dash every row.
                         latency = "-";
                     }
 

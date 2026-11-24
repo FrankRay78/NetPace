@@ -47,9 +47,8 @@ public sealed class DefaultConsoleWriter(ILiveDisplayRefresh liveDisplayRefresh,
             return await new SimpleConsoleWriter().PerformSpeedTestAsync(plain ?? console, clock, clientInfoProvider, recorder, speedTestClient, settings, cancellationToken, timeLimitToken);
         }
 
-        // Choose the server first, so the screen can name it before the first probe answers. The
-        // spinner covers the wait, and is skipped where the user named the server and there was
-        // nothing to choose.
+        // Chosen first, so the screen can name the server before the first probe answers; the
+        // spinner is skipped where the user named it and there was nothing to choose.
         var chosen = string.IsNullOrEmpty(settings.ServerUrl)
             ? await ChooseWithSpinnerAsync(animating, speedTestClient, settings, recorder, cancellationToken, timeLimitToken)
             : await ServerSelector.ChooseServerAsync(speedTestClient, settings, recorder, cancellationToken, timeLimitToken);
@@ -78,9 +77,8 @@ public sealed class DefaultConsoleWriter(ILiveDisplayRefresh liveDisplayRefresh,
                     }
                 }
 
-                // Draw the rows before anything is measured: the display shows nothing until it is
-                // refreshed, and the first latency report arrives only once a probe has answered,
-                // so on a slow line the screen would otherwise name the server and then sit blank.
+                // Drawn before anything is measured: the first report arrives only once a probe
+                // has answered, so on a slow line the screen would otherwise sit blank.
                 Redraw();
 
                 try
@@ -93,11 +91,8 @@ public sealed class DefaultConsoleWriter(ILiveDisplayRefresh liveDisplayRefresh,
                         Redraw();
                     }
 
-                    // Each test asks whether the run still has time before it starts, because
-                    // the test before it may be what used the last of it. A test that never ran
-                    // loses its row rather than keeping a spinner or gaining a cross: it did not
-                    // fail, and the table says so by reading as it does for a test nobody asked
-                    // for.
+                    // A test that never ran loses its row rather than gaining a cross: it did not
+                    // fail, and the table reads as it does for a test nobody asked for.
                     if (downloading is not null)
                     {
                         if (timeLimitToken.IsCancellationRequested)
@@ -148,19 +143,15 @@ public sealed class DefaultConsoleWriter(ILiveDisplayRefresh liveDisplayRefresh,
                 }
                 catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
                 {
-                    // Cancellation stopped the measurements rather than failing them, so no row is
-                    // marked failed: the table keeps whatever it had measured. The final frame is
-                    // drawn below for the reason the next handler gives. Filtered on the run's own
-                    // token, because a probe that timed out also throws a cancellation exception,
-                    // and that is a failure the next handler must mark.
+                    // Filtered on the run's own token: a timed-out probe throws the same type, and
+                    // that is a failure the next handler must mark.
                     context.Refresh();
                     throw;
                 }
                 catch (Exception)
                 {
-                    // A measurement that ends by throwing never settles its row, so without this
-                    // the row keeps its spinner and the last frame on screen says it is still
-                    // measuring after the run has ended.
+                    // A measurement that throws never settles its row, which would leave the last
+                    // frame still spinning after the run ended.
                     foreach (SpeedTestTableRow? row in new[] { pinging, downloading, uploading })
                     {
                         if (row is { IsRunning: true })
@@ -169,10 +160,8 @@ public sealed class DefaultConsoleWriter(ILiveDisplayRefresh liveDisplayRefresh,
                         }
                     }
 
-                    // The display draws its last frame when the block finishes, and not when the
-                    // block ends by throwing, so a run whose measurement failed draws that frame
-                    // itself: whatever was measured before it ended stays on screen, beside the
-                    // row that says what happened.
+                    // The display draws no last frame when the block ends by throwing, so a failed
+                    // run draws it here and keeps what it measured on screen.
                     context.Refresh();
                     throw;
                 }
@@ -290,9 +279,8 @@ public sealed class DefaultConsoleWriter(ILiveDisplayRefresh liveDisplayRefresh,
         0 => null,
         1 => destinations[0],
 
-        // Two destinations of the same kind: the path --file takes away from a terminal (under
-        // cron, through a pipe, or with a stream redirected), where the terminal and the file
-        // both cannot redraw and both get the simple lines. The File tests run this way.
+        // The path --file takes away from a terminal, where neither destination can redraw and
+        // both get the simple lines.
         _ => new CompositeAnsiConsole(destinations[0], destinations),
     };
 

@@ -60,42 +60,31 @@ public class VariableSpeedTester : ISpeedTestService
             // one test and must report the figure that test stands for.
             GetServerLatencyAsyncFunc = (server, _, _) => Task.FromResult(LatencyForCurrentTest(server)),
 
-            // A caller may name its own server instead of letting the tester choose one. The
-            // server is built as the real provider builds it — the URL asked for and the sponsor
-            // placeholder, with no location the caller never supplied.
+            // Built as the real provider builds a server named by URL: the sponsor placeholder,
+            // and no location the caller never supplied.
             GetServerLatencyByServerUrlAsyncFunc = (serverUrl, _, _) =>
                 Task.FromResult(LatencyForCurrentTest(new Server { Sponsor = Server.UnknownSponsor, Url = serverUrl })),
 
             GetDownloadSpeedAsyncFunc = (server, _, _) =>
             {
-                // Call 1: 31,250 bytes in 1 second = 250,000 bits/second = 0.25 Mbps
-                // Call 2: 125,000 bytes in 1 second = 1,000,000 bits/second = 1.0 Mbps
-                // Call 3: 343,750 bytes in 1 second = 2,750,000 bits/second = 2.75 Mbps
-                // Call 4+: 125,000 bytes in 1 second = 1,000,000 bits/second = 1.0 Mbps
-
                 SpeedTestResult result = callCount switch
                 {
-                    1 => new SpeedTestResult { BytesProcessed = 31250, ElapsedMilliseconds = 1000, RequestsSucceeded = 40, RequestsFailed = 0, Latency = null },
-                    2 => new SpeedTestResult { BytesProcessed = 125000, ElapsedMilliseconds = 1000, RequestsSucceeded = 150, RequestsFailed = 0, Latency = null },
-                    3 => new SpeedTestResult { BytesProcessed = 343750, ElapsedMilliseconds = 1000, RequestsSucceeded = 400, RequestsFailed = 0, Latency = null },
-                    _ => new SpeedTestResult { BytesProcessed = 125000, ElapsedMilliseconds = 1000, RequestsSucceeded = 150, RequestsFailed = 0, Latency = null }
+                    1 => new SpeedTestResult { BytesProcessed = 31250, ElapsedMilliseconds = 1000, RequestsSucceeded = 40, RequestsFailed = 0, Latency = null },   // 0.25 Mbps
+                    2 => new SpeedTestResult { BytesProcessed = 125000, ElapsedMilliseconds = 1000, RequestsSucceeded = 150, RequestsFailed = 0, Latency = null }, // 1.0 Mbps
+                    3 => new SpeedTestResult { BytesProcessed = 343750, ElapsedMilliseconds = 1000, RequestsSucceeded = 400, RequestsFailed = 0, Latency = null }, // 2.75 Mbps
+                    _ => new SpeedTestResult { BytesProcessed = 125000, ElapsedMilliseconds = 1000, RequestsSucceeded = 150, RequestsFailed = 0, Latency = null }  // 1.0 Mbps
                 };
                 return Task.FromResult(result);
             },
 
             GetUploadSpeedAsyncFunc = (server, _, _) =>
             {
-                // Call 1: 62,500 bytes in 1 second = 500,000 bits/second = 0.5 Mbps
-                // Call 2: 375,000 bytes in 1 second = 3,000,000 bits/second = 3.0 Mbps
-                // Call 3: 166,250 bytes in 1 second = 1,330,000 bits/second = 1.33 Mbps
-                // Call 4+: 375,000 bytes in 1 second = 3,000,000 bits/second = 3.0 Mbps
-
                 SpeedTestResult result = callCount switch
                 {
-                    1 => new SpeedTestResult { BytesProcessed = 62500, ElapsedMilliseconds = 1000, RequestsSucceeded = 12, RequestsFailed = 0, Latency = null },
-                    2 => new SpeedTestResult { BytesProcessed = 375000, ElapsedMilliseconds = 1000, RequestsSucceeded = 64, RequestsFailed = 0, Latency = null },
-                    3 => new SpeedTestResult { BytesProcessed = 166250, ElapsedMilliseconds = 1000, RequestsSucceeded = 30, RequestsFailed = 0, Latency = null },
-                    _ => new SpeedTestResult { BytesProcessed = 375000, ElapsedMilliseconds = 1000, RequestsSucceeded = 64, RequestsFailed = 0, Latency = null }
+                    1 => new SpeedTestResult { BytesProcessed = 62500, ElapsedMilliseconds = 1000, RequestsSucceeded = 12, RequestsFailed = 0, Latency = null },  // 0.5 Mbps
+                    2 => new SpeedTestResult { BytesProcessed = 375000, ElapsedMilliseconds = 1000, RequestsSucceeded = 64, RequestsFailed = 0, Latency = null }, // 3.0 Mbps
+                    3 => new SpeedTestResult { BytesProcessed = 166250, ElapsedMilliseconds = 1000, RequestsSucceeded = 30, RequestsFailed = 0, Latency = null }, // 1.33 Mbps
+                    _ => new SpeedTestResult { BytesProcessed = 375000, ElapsedMilliseconds = 1000, RequestsSucceeded = 64, RequestsFailed = 0, Latency = null }  // 3.0 Mbps
                 };
                 return Task.FromResult(result);
             }
@@ -108,11 +97,6 @@ public class VariableSpeedTester : ISpeedTestService
     /// </summary>
     private LatencyTestResult LatencyForCurrentTest(IServer server)
     {
-        // Call 1: 75ms latency, 5ms jitter
-        // Call 2: 100ms latency, 10ms jitter
-        // Call 3: 150ms latency, 20ms jitter
-        // Call 4+: 100ms latency, 10ms jitter
-
         (long latencyMilliseconds, long jitterMilliseconds) = callCount switch
         {
             1 => (75L, 5L),

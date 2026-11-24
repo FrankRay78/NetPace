@@ -187,10 +187,8 @@ public sealed partial class NetPaceConsoleTests
             // When the run goes ahead.
             var result = await HostWith(services).RunAsync(["--simple", "--count", "3", "--diagnostics-file", file.FilePath, .. extra]);
 
-            // Then the user is warned once which path failed, even under --quiet, which leaves
-            // diagnostics alone; as a notice rather than an error, because the run succeeded and a
-            // script scanning the error stream for errors must not read it as failed. The result
-            // and the exit code are what a run with no diagnostics at all would have produced.
+            // Then the user is warned once which path failed, even under --quiet, as a notice
+            // rather than an error: the run succeeded, and a script scanning for errors must agree.
             var without = await HostWith().RunAsync(["--simple", "--count", "3", .. extra]);
             Assert.Equal(1, Occurrences(result.NoticeOutput, file.FilePath));
             Assert.Equal(string.Empty, result.ErrorOutput);

@@ -70,10 +70,8 @@ public sealed partial class OoklaSpeedtestTests
         [Fact]
         public async Task GetDownloadSpeedAsync_ACappedTransferTakingOneSecondOfTheSuppliedClock_ReportsThatSecondAsItReachesTheCap()
         {
-            // Given a download capped at one megabyte, whose single request fills the cap in exactly one
-            // second of a clock the test moves itself. Every built-in profile caps a transfer, so a
-            // default run sends its final progress report as the cap is reached - a different report
-            // from the one an uncapped transfer ends on, and the one a live display shows last.
+            // Given a download whose single request fills a one-megabyte cap. Every built-in profile
+            // caps a transfer, so the report a default run ends on is the cap's, not a list's end.
             const int payloadBytes = 1024 * 1024;
             var clock = new ControlledTimeProvider(ClockStart);
 
@@ -201,13 +199,9 @@ public sealed partial class OoklaSpeedtestTests
         [Fact]
         public async Task GetFastestServerByLatencyAsync_ASuppliedClockThatNeverMoves_StillGivesUpAtTheCeiling()
         {
-            // Given a candidate that never answers, screened against a clock that the test never moves.
-            // Waiting is not measurement: the screening ceiling is a bound on how long to wait and stays
-            // on the system clock, so a frozen clock must not suspend it. Were the ceiling ever moved
-            // onto the supplied clock, this call would never return and HangGuard would fail the test.
-            // The ceiling is named rather than left at its default, which would allow a pass that has
-            // ranked nothing the ten seconds a slow link needs - as long as HangGuard itself, so the two
-            // would race and the hang this guards against would stop being the only way to fail.
+            // Given a candidate that never answers, against a clock the test never moves. Waiting is
+            // not measurement, so the ceiling stays on the system clock and a frozen clock cannot
+            // suspend it. The ceiling is named, so it cannot race HangGuard at its default.
             var clock = new ControlledTimeProvider(ClockStart);
 
             using var mockHttp = new MockHttpMessageHandler();
@@ -469,11 +463,8 @@ public sealed partial class OoklaSpeedtestTests
         public async Task GetDownloadSpeedAsync_ASuppliedClockThatStepsBackwardsAsARequestFails_StillRecordsTheRequestsOwnFailure()
         {
             // Given a second request that fails in transport while the clock steps back behind its
-            // start, so reading that request's duration also fails. The first request moves the clock
-            // on far enough that the step stays ahead of the transfer's own start: only the request's
-            // reading is negative, so its record is still written. The clock's fault must not
-            // overwrite what the request did: the record still reads as a failure, with the transport
-            // fault as its cause.
+            // own start but not the transfer's, so only its duration reading is negative. The
+            // clock's fault must not overwrite the transport fault as the record's cause.
             var clock = new ControlledTimeProvider(ClockStart);
             var requests = 0;
 

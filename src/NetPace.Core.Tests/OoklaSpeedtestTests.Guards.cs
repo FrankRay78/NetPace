@@ -229,10 +229,8 @@ public sealed partial class OoklaSpeedtestTests
         [InlineData(-100)]
         public async Task GetFastestServerByLatencyAsync_ServerTimeoutMilliseconds_NotPositive_ThrowsArgumentOutOfRangeException(int serverTimeoutMilliseconds)
         {
-            // Given a screening ceiling that is not a positive span of time. Zero would abandon
-            // every candidate before it could answer and report that no servers were found, and a
-            // negative value would remove the bound on choosing a server altogether - so the
-            // ceiling is rejected up front rather than silently defeating itself.
+            // Given a screening ceiling that is not a positive span of time: zero reports no servers
+            // found, and a negative value removes the bound on choosing one altogether.
             var settings = new OoklaSpeedtestSettings
             {
                 ServerScreening = new() { ServerTimeoutMilliseconds = serverTimeoutMilliseconds }
@@ -254,11 +252,8 @@ public sealed partial class OoklaSpeedtestTests
         [InlineData(-100)]
         public async Task GetFastestServerByLatencyAsync_FirstScreeningStageMilliseconds_NotPositive_ThrowsArgumentOutOfRangeException(int firstScreeningStageMilliseconds)
         {
-            // Given a first screening stage that is not a positive span of time. Zero would end the
-            // first stage before any candidate could be ranked, -1 (Timeout.Infinite) would make the
-            // first stage endless and so remove the bound on choosing a server, and any other
-            // negative value would throw from inside the pass - so it is rejected up front, as the
-            // ceiling it divides is.
+            // Given a first screening stage that is not a positive span of time: zero ranks nothing,
+            // -1 (Timeout.Infinite) is endless, and anything else negative throws from inside.
             var settings = new OoklaSpeedtestSettings
             {
                 ServerScreening = new() { FirstScreeningStageMilliseconds = firstScreeningStageMilliseconds }
@@ -280,10 +275,8 @@ public sealed partial class OoklaSpeedtestTests
         [InlineData(-100)]
         public async Task GetServerLatencyAsync_HttpTimeoutMilliseconds_NotPositive_ThrowsArgumentOutOfRangeException(int httpTimeoutMilliseconds)
         {
-            // Given a probe timeout that is not a positive span of time. Zero would abandon every
-            // probe before it could answer and report a configuration error as a server that never
-            // answered, and -1 (Timeout.Infinite) would remove the bound on a probe altogether - so
-            // the timeout is rejected up front, as the screening ceiling is.
+            // Given a probe timeout that is not a positive span of time: zero reports a
+            // configuration error as a silent server, and -1 removes the bound altogether.
             using var handler = new CountingHandler();
             using var httpClient = new HttpClient(handler, disposeHandler: false);
             var settings = new OoklaSpeedtestSettings

@@ -22,10 +22,8 @@ public sealed partial class NetPaceConsoleTests
             // When the removed switch is passed
             var result = await host.RunAsync([option]);
 
-            // Then nothing was measured, the exit code reports the usage error, and the message is
-            // the parser's own unrecognised-option one: nothing names the switch as removed or says
-            // where the time went, because NetPace keeps no backward-compatibility notes while it is
-            // below 1.0.0.
+            // Then the message is the parser's own unrecognised-option one: nothing names the
+            // switch as removed, NetPace keeping no compatibility notes below 1.0.0.
             Assert.Empty(serviceCalls);
             Assert.NotEqual(0, result.ExitCode);
             await Verify(result.ErrorOutput).UseParameters(option);

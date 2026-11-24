@@ -61,13 +61,9 @@ public sealed partial class OoklaSpeedtestTests
         [Fact]
         public async Task GetFastestServerByLatencyAsync_CandidateAnswersThenFails_IsRankedOnWhatItDidAnswer()
         {
-            // Given a fast candidate that answers its first screening request and then fails, against a
-            // slower candidate that answers every request. Screening keeps what the first candidate did
-            // achieve, so it is ranked on that figure rather than discarded for the later failure - the
-            // all-or-nothing probe this replaced would have dropped it and chosen the slower server.
-            // Both are timed on a clock the test moves itself, and the slower candidate is answered
-            // only once the flaky one has been screened - see RespondAfterAdvancing in
-            // OoklaSpeedtestTests.cs for why an order is needed.
+            // Given a fast candidate that answers once and then fails, against a slower one that
+            // answers every request: the partial answer is kept and ranked, where the all-or-nothing
+            // probe this replaced would have dropped it. See RespondAfterAdvancing for the order.
             const int flakyMilliseconds = 10;
             var clock = new ControlledTimeProvider(ClockStart);
             var flakyScreened = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -117,10 +113,8 @@ public sealed partial class OoklaSpeedtestTests
         [InlineData(null)]
         public async Task GetFastestServerByLatencyAsync_CandidateUrlIsNotAWebAddress_IsRankedOutAndAGoodServerIsStillChosen(string? malformedUrl)
         {
-            // Given a server list - which comes from a remote feed NetPace does not control - carrying
-            // one entry that is not a web address, ahead of a server that answers normally. The
-            // handler refuses such an address with the exception the shipped transport raises, so
-            // the test fails the way a real run would rather than on a mock's own unmatched request.
+            // Given a remote feed carrying one entry that is not a web address, ahead of a server
+            // that answers. The handler refuses it as the shipped transport would, not as a mock.
             using var goodServerHandler = new MockHttpMessageHandler();
             goodServerHandler.When("http://good.com/latency.txt")
                              .Respond("text/plain", ScreeningResponseBody);
@@ -182,10 +176,8 @@ public sealed partial class OoklaSpeedtestTests
         [Fact]
         public async Task GetFastestServerByLatencyAsync_ManyUnresponsiveCandidates_ChoosesWithinTheCeiling()
         {
-            // Regression guard for the ceiling itself (refs #239): servers answering in 20s-60s per
-            // request could stall a run for minutes, so the time taken to choose a server must stay
-            // bounded and must not grow with the number of slow candidates. That is why this test
-            // asserts on wall-clock time, which tests here otherwise avoid.
+            // Regression guard for the ceiling itself (refs #239): slow candidates stalled runs for
+            // minutes, which is why this asserts on wall-clock time where other tests do not.
 
             // Given six candidates that never answer, and one that answers at once.
             const int unresponsiveCandidateCount = 6;

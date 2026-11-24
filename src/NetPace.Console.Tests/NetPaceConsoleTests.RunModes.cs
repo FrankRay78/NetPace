@@ -265,10 +265,8 @@ public sealed partial class NetPaceConsoleTests
         [InlineData(Looping)]
         public async Task Cancellation_The_User_Did_Not_Ask_For_Is_Reported(string mode)
         {
-            // Only the run's own token says a cancellation is the user's. One the user never asked
-            // for - here with no TimeoutException inside it to say what it was - is a test that ended
-            // without a result. Ending the run silently on it would repeat the bug of a timeout being
-            // taken for the user cancelling.
+            // Only the run's own token says a cancellation is the user's: ending silently on any
+            // other would repeat the bug of a timeout read as the user cancelling.
 
             // Given a probe that is cancelled while the user's token stays live.
             var service = ServiceWhoseProbeThrows(_ => true, () => new OperationCanceledException());
@@ -335,9 +333,8 @@ public sealed partial class NetPaceConsoleTests
         {
             // SCENARIO: An operational fault is reported to the user
 
-            // A run saving to a file still shows its results on screen, so it writes to two
-            // destinations: the file it opened, and the screen it was handed. Closing the screen
-            // along with the file would take the error line down with it.
+            // A run saving to a file writes to two destinations, and closing the screen along with
+            // the file would take the error line down with it.
 
             // Given a run that saves to a file, and a test that meets an operational fault.
             var testFile = Path.Join(Path.GetTempPath(), $"netpace-test-{Guid.NewGuid()}.txt");
@@ -368,10 +365,8 @@ public sealed partial class NetPaceConsoleTests
         {
             // SCENARIO: An operational fault is reported to the user
 
-            // The run owns the file it opened and nothing else closes it, so a run ending on a
-            // fault has to leave that file closed with the results written before the fault in it.
-            // A run that stopped closing it would strand the handle for the rest of the process,
-            // which no assertion about the screen would notice.
+            // The run owns the file it opened, so one ending on a fault must still close it; a
+            // stranded handle is something no assertion about the screen would notice.
 
             // Given a run that saves to a file, whose first test measures and whose second meets an
             // operational fault.
@@ -387,10 +382,8 @@ public sealed partial class NetPaceConsoleTests
                 Assert.Contains("There is not enough space on the disk.", result.ErrorOutput);
                 Assert.NotEqual(0, result.ExitCode);
 
-                // And reading the file back under an exclusive share settles both halves at once:
-                // opening it throws while anything still holds the file, so this succeeds only
-                // because the run closed what it opened, and what it reads is the one result the
-                // run wrote before the fault.
+                // An exclusive share settles both halves at once: the open throws while anything
+                // still holds the file, so success means the run closed what it opened.
                 using var reopened = new FileStream(testFile, System.IO.FileMode.Open, FileAccess.Read, FileShare.None);
                 using var reader = new StreamReader(reopened);
                 Assert.Equal(1, Occurrences(await reader.ReadToEndAsync(), ResultLine));
@@ -410,9 +403,8 @@ public sealed partial class NetPaceConsoleTests
         [InlineData("3", 3, 2)]
         public async Task A_Run_Pauses_Between_Its_Tests_And_Never_After_The_Last(string? count, int tests, int pauses)
         {
-            // A run that paused after its last test would hold the process open for the whole
-            // --delay with its result already written, so the rule is counted rather than inferred
-            // from the run finishing.
+            // A pause after the last test would hold the process open with its result already
+            // written, so the rule is counted rather than inferred from the run finishing.
 
             // Given a run of this many tests.
             // When it runs.
@@ -429,10 +421,8 @@ public sealed partial class NetPaceConsoleTests
         [InlineData("-1")]
         public async Task A_Count_Below_One_Performs_One_Test(string count)
         {
-            // A count below one is floored rather than rejected, because --count carries no
-            // validator. -1 is the value that matters: it is what the run block uses internally for
-            // a run with no end of its own, so a count reaching that far unfloored would loop for
-            // ever rather than running once.
+            // Floored rather than rejected, because --count carries no validator. -1 is the value
+            // that matters: unfloored it is the run block's own sentinel for no end.
 
             // Given a run asked for this many tests.
             // When it runs.
