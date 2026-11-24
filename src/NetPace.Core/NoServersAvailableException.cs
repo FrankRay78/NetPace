@@ -5,20 +5,17 @@ namespace NetPace.Core;
 /// against.
 /// </summary>
 /// <remarks>
-/// This is a network outcome rather than a fault: every server screening was given failed to
-/// answer. A consumer that wants to retry later, fall back to a server of its own or show a
-/// friendly message catches this type on its own, without a catch-all that would also swallow a
-/// genuine defect. Discovery finding nothing is the caller's own check, because
-/// <see cref="ISpeedTestService.GetServersAsync"/> reports it by returning an empty array rather
-/// than by throwing.
+/// A network outcome rather than a fault: every server screening was given failed to answer. Its
+/// own type, so a consumer can retry, fall back or show a friendly message without a catch-all that
+/// would also swallow a genuine defect. Discovery finding nothing is the caller's own check:
+/// <see cref="ISpeedTestService.GetServersAsync"/> returns an empty array rather than throwing.
 /// </remarks>
 public sealed class NoServersAvailableException : Exception
 {
     /// <summary>
-    /// Initializes a new instance of the <see cref="NoServersAvailableException"/> class carrying
-    /// the message NetPace reports this condition with — the one its own console prints after the
-    /// <c>Error:</c> prefix, so a consumer is free to show it as it stands. This is the form every
-    /// NetPace component throws.
+    /// Initializes a new instance carrying the message NetPace itself reports this condition with,
+    /// which a consumer is free to show as it stands. This is the form every NetPace component
+    /// throws.
     /// </summary>
     public NoServersAvailableException()
         : base("No servers available")

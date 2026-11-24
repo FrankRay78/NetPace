@@ -6,10 +6,8 @@ namespace NetPace.Core.Clients.Ookla;
 /// An Ookla Speedtest implementation of the <see cref="ISpeedTestService"/> interface.
 /// </summary>
 /// <remarks>
-/// The measurement itself lives in <see cref="SpeedTestProviderBase"/>, shared with every other
-/// provider. What is here is what an Ookla server needs that another kind does not: the
-/// <c>latency.txt</c> probe and the answer it must give, the <c>random{N}x{N}.jpg</c> download
-/// requests, the upload endpoint, and the server feed.
+/// The measurement itself lives in <see cref="SpeedTestProviderBase"/>; what is here is what an
+/// Ookla server needs that another kind does not.
 /// </remarks>
 public sealed class OoklaSpeedtest : SpeedTestProviderBase
 {
@@ -25,22 +23,17 @@ public sealed class OoklaSpeedtest : SpeedTestProviderBase
     /// <param name="httpClientOverride">An HTTP client to use in place of the one this class would construct.</param>
     /// <param name="delayProviderOverride">A delay provider to use in place of real waiting.</param>
     /// <param name="timeProviderOverride">
-    /// The clock every elapsed time is measured on - every <c>ElapsedMilliseconds</c> this class
-    /// reports, on a result, a progress report or a request diagnostic - as well as the
-    /// <see cref="RequestDiagnostic.StartedAt"/> stamp on each reported request. The system clock is
-    /// used when omitted. Waiting is not measurement and stays on the system clock regardless: the
-    /// screening ceiling, the per-request HTTP timeouts and the pause between latency probes, the
-    /// last of which <paramref name="delayProviderOverride"/> governs.
+    /// The clock every <c>ElapsedMilliseconds</c> and <see cref="RequestDiagnostic.StartedAt"/> is
+    /// read from; the system clock when omitted. Waiting is not measurement and stays on the system
+    /// clock regardless: the screening ceiling, the per-request HTTP timeouts, and the pause between
+    /// latency probes that <paramref name="delayProviderOverride"/> governs.
     /// <para>
     /// A clock supplied here must override <see cref="TimeProvider.GetTimestamp"/> and
     /// <see cref="TimeProvider.TimestampFrequency"/>, not <see cref="TimeProvider.GetUtcNow"/>
-    /// alone: the base implementations of those two read the system stopwatch, so a provider that
-    /// overrides only <see cref="TimeProvider.GetUtcNow"/> yields controlled stamps beside
-    /// wall-clock durations, with nothing reporting the mismatch. It must also be monotonic, as
-    /// <see cref="TimeProvider.GetTimestamp"/> requires; a reading that goes backwards is rejected
-    /// rather than reported as a negative speed. Requests that overlap share whatever clock is
-    /// supplied, so a caller reading a per-request figure off a clock it advances itself needs one
-    /// request outstanding at a time.
+    /// alone, whose base implementations read the system stopwatch, and must be monotonic: a
+    /// reading that goes backwards is rejected rather than reported as a negative speed. Overlapping
+    /// requests share the clock, so a caller reading a per-request figure off a clock it advances
+    /// itself needs one request outstanding at a time.
     /// </para>
     /// </param>
     public OoklaSpeedtest(OoklaSpeedtestSettings? speedtestSettings = null, HttpClient? httpClientOverride = null, IDelayProvider? delayProviderOverride = null, TimeProvider? timeProviderOverride = null)
@@ -95,14 +88,7 @@ public sealed class OoklaSpeedtest : SpeedTestProviderBase
     /// </remarks>
     private protected override string UploadUrl(string serverUrl) => serverUrl;
 
-    /// <summary>
-    /// Returns the base URL (ending with a trailing slash) by removing
-    /// the file name and query parameters from a full URL string.
-    /// </summary>
-    /// <example>
-    /// Input:  "http://example.com/path/speedtest/file.jpg?x=1"
-    /// Output: "http://example.com/path/speedtest/"
-    /// </example>
+    // "http://example.com/path/speedtest/file.jpg?x=1" -> "http://example.com/path/speedtest/"
     private static string GetBaseUrl(string url)
     {
         var uri = new Uri(url);

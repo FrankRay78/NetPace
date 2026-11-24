@@ -7,8 +7,8 @@ namespace NetPace.Core;
 /// <remarks>
 /// Reported on its own <see cref="IProgress{T}"/> channel, separate from the cumulative progress
 /// channel, so a consumer that renders no progress display can still receive per-request detail.
-/// The failure cause travels as text rather than as an <see cref="Exception"/>: a triager reads the
-/// reason, and keeping exception objects off this surface keeps the channel cheap to consume.
+/// The failure cause travels as text rather than as an <see cref="Exception"/>, for a triager to
+/// read.
 /// </remarks>
 public sealed record RequestDiagnostic
 {

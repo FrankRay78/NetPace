@@ -7,15 +7,13 @@ namespace NetPace.Core.Clients.LibreSpeed;
 /// test server anyone can host, named by the address it is installed at.
 /// </summary>
 /// <remarks>
-/// The measurement itself lives in <see cref="SpeedTestProviderBase"/>, shared with every other
-/// provider, so a LibreSpeed run reports every figure an Ookla run does. What is here is what a
-/// LibreSpeed server needs that an Ookla one does not: the two endpoints inside the install
+/// The measurement itself lives in <see cref="SpeedTestProviderBase"/>, so a LibreSpeed run reports
+/// every figure an Ookla run does. What is here is the two endpoints inside the install
 /// (<c>backend/empty.php</c> for the ping and for uploads, <c>backend/garbage.php</c> for
 /// downloads) and the empty body the ping endpoint answers with.
 /// <para>
-/// A LibreSpeed run always names its server: <see cref="GetServersAsync"/> is not supported,
-/// because LibreSpeed publishes no server list NetPace reads. Screening a caller-supplied list
-/// works as it does for Ookla.
+/// A LibreSpeed run always names its server: <see cref="GetServersAsync"/> is not supported.
+/// Screening a caller-supplied list works as it does for Ookla.
 /// </para>
 /// </remarks>
 public sealed class LibreSpeedtest : SpeedTestProviderBase
@@ -26,10 +24,7 @@ public sealed class LibreSpeedtest : SpeedTestProviderBase
     /// <summary>The largest <c>ckSize</c> <c>garbage.php</c> honours; it caps anything above.</summary>
     private const int MaximumDownloadRequestSizeMib = 1024;
 
-    /// <summary>
-    /// The extensions of a page a browser shows at an install's address, which a user may copy in
-    /// place of the install's directory.
-    /// </summary>
+    // What a user copies from the browser's address bar in place of the install's directory.
     private static readonly string[] PageExtensions = [".html", ".htm", ".php"];
 
     private readonly LibreSpeedtestSettings settings;
@@ -41,12 +36,10 @@ public sealed class LibreSpeedtest : SpeedTestProviderBase
     /// <param name="httpClientOverride">An HTTP client to use in place of the one this class would construct.</param>
     /// <param name="delayProviderOverride">A delay provider to use in place of real waiting.</param>
     /// <param name="timeProviderOverride">
-    /// The clock every elapsed time is measured on - every <c>ElapsedMilliseconds</c> this class
-    /// reports, on a result, a progress report or a request diagnostic - as well as the
-    /// <see cref="RequestDiagnostic.StartedAt"/> stamp on each reported request. The system clock is
-    /// used when omitted. Waiting is not measurement and stays on the system clock regardless: the
-    /// screening ceiling, the per-request HTTP timeouts and the pause between latency probes, the
-    /// last of which <paramref name="delayProviderOverride"/> governs.
+    /// The clock every <c>ElapsedMilliseconds</c> and <see cref="RequestDiagnostic.StartedAt"/> is
+    /// read from; the system clock when omitted. Waiting is not measurement and stays on the system
+    /// clock regardless: the screening ceiling, the per-request HTTP timeouts, and the pause between
+    /// latency probes that <paramref name="delayProviderOverride"/> governs.
     /// <para>
     /// A clock supplied here must override <see cref="TimeProvider.GetTimestamp"/> and
     /// <see cref="TimeProvider.TimestampFrequency"/>, not <see cref="TimeProvider.GetUtcNow"/>
@@ -74,46 +67,24 @@ public sealed class LibreSpeedtest : SpeedTestProviderBase
     /// <inheritdoc/>
     private protected override string LatencyProbeUrl(string serverUrl) => InstallDirectory(serverUrl) + PingPath;
 
-    /// <summary>
-    /// The under-load probes go to the install's ping endpoint, on the address the transfer is
-    /// actually using.
-    /// </summary>
-    /// <remarks>
-    /// An upload is sent to the ping endpoint itself, once any redirect in front of it has been
-    /// resolved, so that resolved address is probed as it stands: joining the ping path onto it as
-    /// onto an install address would probe a file that does not exist. A download's transfer
-    /// address is the install's own, which the ping path is joined onto as for the idle probe.
-    /// </remarks>
+    // An upload already goes to the ping endpoint, so its resolved address is probed as it stands:
+    // joining the ping path onto it again would probe a file that does not exist. A download's
+    // transfer address is the install's own, which the path is joined onto as for the idle probe.
     private protected override string LoadedLatencyProbeUrl(IServer server, string transferUrl) =>
         new Uri(transferUrl, UriKind.Absolute).AbsolutePath.EndsWith("/" + PingPath, StringComparison.Ordinal)
             ? transferUrl
             : LatencyProbeUrl(transferUrl);
 
-    /// <summary>
-    /// Whether the ping endpoint answered as LibreSpeed: with nothing at all.
-    /// </summary>
-    /// <remarks>
-    /// <c>backend/empty.php</c> returns a success status and an empty body. Its content type is
-    /// <c>text/html</c>, so that says nothing either way, and the body is the only part of the
-    /// answer that distinguishes a LibreSpeed install from a plain web server serving a page at the
-    /// same address. A non-success status, which is what an Ookla server gives this request, has
-    /// already failed the request before it reaches here; see
-    /// <see cref="LatencyStatusFailureMessage"/>.
-    /// </remarks>
+    // An empty body is the only part of empty.php's answer that distinguishes a LibreSpeed install
+    // from a plain web server serving a page at the same address: its content type is text/html
+    // either way. A non-success status, which is what an Ookla server gives, has already failed the
+    // request before it reaches here.
     private protected override bool IsLatencyResponseValid(string response) => response.Length == 0;
 
-    /// <summary>
-    /// A client error from the ping endpoint is reported as the wrong server, and any other
-    /// non-success status as a server that failed. Both name the address.
-    /// </summary>
-    /// <remarks>
-    /// The user names a LibreSpeed server, so a status such as 404 almost always means the address
-    /// is wrong: naming the web root of an install under a path, or an Ookla server, answers
-    /// exactly that. It is the same mistake as an address answering with a page, so it gets the
-    /// same guidance. A server error such as 503 says the opposite: something at the right address
-    /// is failing, often a proxy whose backend is down, so the user is told the status rather than
-    /// to recheck an address that is correct.
-    /// </remarks>
+    // The user names a LibreSpeed server, so a 4xx almost always means the address is wrong - the
+    // web root of an install under a path, or an Ookla server, answers exactly that - and gets the
+    // same guidance as an address answering with a page. A 5xx says the opposite: something at the
+    // right address is failing, often a proxy whose backend is down.
     private protected override string LatencyStatusFailureMessage(string probeUrl, HttpStatusCode status) =>
         (int)status is >= 400 and < 500
             ? LatencyResponseRejectedMessage(probeUrl)
@@ -161,36 +132,17 @@ public sealed class LibreSpeedtest : SpeedTestProviderBase
         }
     }
 
-    /// <summary>
-    /// The install's ping endpoint, which also accepts the upload POSTs.
-    /// </summary>
-    /// <remarks>
-    /// LibreSpeed accepts a streamed body at <c>backend/empty.php</c> on the same address it answers
-    /// the ping on. A redirect in front of the install, such as a reverse proxy sending plain HTTP
-    /// to HTTPS, is resolved before the uploads begin, as it is for every provider.
-    /// </remarks>
+    // LibreSpeed accepts a streamed body at the same address it answers the ping on.
     private protected override string UploadUrl(string serverUrl) => InstallDirectory(serverUrl) + PingPath;
 
-    /// <summary>
-    /// The directory a LibreSpeed install is served from, as a prefix the endpoint paths are joined
-    /// onto: the given address with its query and fragment dropped, a page name the browser showed
-    /// dropped, and a trailing slash assured.
-    /// </summary>
-    /// <remarks>
-    /// The rest of the given path is kept, which is what makes an install under a path work.
-    /// Resolving <c>"."</c> against the address instead - what the Ookla provider does, where the
-    /// address always names a file inside the install - would turn <c>http://nas.local/speedtest</c>
-    /// into <c>http://nas.local/</c> and test the web root. So only a last segment that is plainly
-    /// a page (<c>index.html</c>, copied from the browser's address bar) is dropped, and a trailing
-    /// slash is added where the user left it off, so every form of the address tests the same
-    /// server.
-    /// </remarks>
-    /// <example>
-    /// Input:  "http://nas.local/speedtest"
-    /// Output: "http://nas.local/speedtest/"
-    /// Input:  "http://pi.local:8080/index.html?lang=en"
-    /// Output: "http://pi.local:8080/"
-    /// </example>
+    // The prefix the endpoint paths are joined onto. The rest of the given path is kept, which is
+    // what makes an install under a path work: resolving "." against the address instead, as the
+    // Ookla provider does, would turn "http://nas.local/speedtest" into "http://nas.local/" and
+    // test the web root. So only a last segment that is plainly a page is dropped, and a trailing
+    // slash added where the user left it off, so every form of the address tests the same server.
+    //
+    // "http://nas.local/speedtest"            -> "http://nas.local/speedtest/"
+    // "http://pi.local:8080/index.html?lang=en" -> "http://pi.local:8080/"
     private static string InstallDirectory(string serverUrl)
     {
         var uri = new Uri(serverUrl, UriKind.Absolute);

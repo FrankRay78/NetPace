@@ -17,15 +17,10 @@ namespace NetPace.Console.ConsoleWriters;
 /// parses a half-drawn table. A run with <c>--file</c> at a terminal therefore has both at once:
 /// the table on screen and the simple lines in the file. Each destination is judged on its own.
 /// </para>
-/// <para>
-/// The only writer that takes a theme: the machine-readable writers produce records another
-/// program parses, and <c>--simple</c> is a plain line per figure that has never been coloured, so
-/// none of them has an appearance to choose.
-/// </para>
 /// </remarks>
 /// <param name="liveDisplayRefresh">
-/// Whether the live displays redraw as they go. Switching redrawing off — as the console test host
-/// does — leaves a slow run with the same screen as an instant one.
+/// Whether the live displays redraw as they go. Switching redrawing off, as the console test host
+/// does, leaves a slow run with the same screen as an instant one.
 /// </param>
 /// <param name="theme">The colours and emphasis to draw in.</param>
 public sealed class DefaultConsoleWriter(ILiveDisplayRefresh liveDisplayRefresh, Theme theme) : IConsoleWriter
@@ -47,9 +42,8 @@ public sealed class DefaultConsoleWriter(ILiveDisplayRefresh liveDisplayRefresh,
             return await new SimpleConsoleWriter().PerformSpeedTestAsync(plain ?? console, clock, clientInfoProvider, recorder, speedTestClient, settings, cancellationToken, timeLimitToken);
         }
 
-        // Choose the server first, so the screen can name it before the first probe answers. The
-        // spinner covers the wait, and is skipped where the user named the server and there was
-        // nothing to choose.
+        // Chosen first, so the screen can name the server before the first probe answers. The
+        // spinner is skipped where the user named the server and there was nothing to choose.
         var chosen = string.IsNullOrEmpty(settings.ServerUrl)
             ? await ChooseWithSpinnerAsync(animating, speedTestClient, settings, recorder, cancellationToken, timeLimitToken)
             : await ServerSelector.ChooseServerAsync(speedTestClient, settings, recorder, cancellationToken, timeLimitToken);
@@ -93,11 +87,9 @@ public sealed class DefaultConsoleWriter(ILiveDisplayRefresh liveDisplayRefresh,
                         Redraw();
                     }
 
-                    // Each test asks whether the run still has time before it starts, because
-                    // the test before it may be what used the last of it. A test that never ran
-                    // loses its row rather than keeping a spinner or gaining a cross: it did not
-                    // fail, and the table says so by reading as it does for a test nobody asked
-                    // for.
+                    // Each test asks whether the run still has time, because the test before it
+                    // may have used the last of it. A test that never ran loses its row rather
+                    // than keeping a spinner or gaining a cross: it did not fail.
                     if (downloading is not null)
                     {
                         if (timeLimitToken.IsCancellationRequested)
@@ -148,11 +140,9 @@ public sealed class DefaultConsoleWriter(ILiveDisplayRefresh liveDisplayRefresh,
                 }
                 catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
                 {
-                    // Cancellation stopped the measurements rather than failing them, so no row is
-                    // marked failed: the table keeps whatever it had measured. The final frame is
-                    // drawn below for the reason the next handler gives. Filtered on the run's own
-                    // token, because a probe that timed out also throws a cancellation exception,
-                    // and that is a failure the next handler must mark.
+                    // No row is marked failed: cancellation stopped the measurements rather than
+                    // failing them. Filtered on the run's own token, because a probe that timed out
+                    // throws a cancellation exception too, and that is a failure.
                     context.Refresh();
                     throw;
                 }
@@ -169,10 +159,8 @@ public sealed class DefaultConsoleWriter(ILiveDisplayRefresh liveDisplayRefresh,
                         }
                     }
 
-                    // The display draws its last frame when the block finishes, and not when the
-                    // block ends by throwing, so a run whose measurement failed draws that frame
-                    // itself: whatever was measured before it ended stays on screen, beside the
-                    // row that says what happened.
+                    // The display draws its last frame when the block finishes, but not when it
+                    // ends by throwing, so a failed run draws that frame itself.
                     context.Refresh();
                     throw;
                 }
@@ -188,10 +176,6 @@ public sealed class DefaultConsoleWriter(ILiveDisplayRefresh liveDisplayRefresh,
         return outcome;
     }
 
-    /// <summary>
-    /// Chooses the server behind a spinner, so a wait of seconds on a slow link shows that
-    /// something is happening.
-    /// </summary>
     private async Task<ChosenServer> ChooseWithSpinnerAsync(IAnsiConsole console, ISpeedTestService speedTestClient, SpeedTestCommandSettings settings, IDiagnosticRecorder recorder, CancellationToken cancellationToken, CancellationToken timeLimitToken) =>
         await console.Progress()
             .AutoClear(true)
@@ -215,9 +199,6 @@ public sealed class DefaultConsoleWriter(ILiveDisplayRefresh liveDisplayRefresh,
                 }
             });
 
-    /// <summary>
-    /// What stands above the table: the chosen server's sponsor and address.
-    /// </summary>
     private void WriteHeader(IAnsiConsole console, ChosenServer chosen)
     {
         console.WriteLine("");
@@ -227,10 +208,7 @@ public sealed class DefaultConsoleWriter(ILiveDisplayRefresh liveDisplayRefresh,
         console.WriteLine("");
     }
 
-    /// <summary>
-    /// Ends the latency row on what the measurement reported, or drops it where nothing was
-    /// measured: no latency test ran, so the row would be reporting on nothing.
-    /// </summary>
+    // Drops the row where nothing was measured, so it never reports on nothing.
     private static void Settle(SpeedTestTable table, SpeedTestTableRow row, LatencyTestResult? latency)
     {
         if (latency is LatencyTestResult measured)
@@ -242,30 +220,18 @@ public sealed class DefaultConsoleWriter(ILiveDisplayRefresh liveDisplayRefresh,
         table.Remove(row);
     }
 
-    /// <summary>
-    /// A receiver for a latency measurement's reports that moves <paramref name="row"/> and
-    /// redraws, or <c>null</c> where there is no row to move.
-    /// </summary>
-    /// <remarks>
-    /// Reports are applied inline. <see cref="Progress{T}"/> posts them through the
-    /// synchronization context or the thread pool, which races the renderer and drops updates.
-    /// </remarks>
+    // Applied inline: Progress<T> posts reports through the synchronization context or the thread
+    // pool, which races the renderer and drops updates.
     private static IProgress<LatencyTestProgress>? LatencyReports(SpeedTestTableRow? row, Action redraw) =>
         row is null ? null : new InlineProgress<LatencyTestProgress>(report => { row.Report(report); redraw(); });
 
-    /// <summary>A receiver for a transfer's reports, applied inline for the same reason.</summary>
+    // Applied inline for the same reason.
     private static IProgress<SpeedTestProgress> TransferReports(SpeedTestTableRow row, Action redraw) =>
         new InlineProgress<SpeedTestProgress>(report => { row.Report(report); redraw(); });
 
-    /// <summary>
-    /// The destinations that can redraw and those that cannot, each wrapped back up as one console,
-    /// or <c>null</c> where this run has none of that kind.
-    /// </summary>
-    /// <remarks>
-    /// A composite console is unpacked so each destination is judged on what it is: a terminal
-    /// redraws, a <c>--file</c> target never does. Both can be <c>null</c> under <c>--quiet</c>
-    /// with no file, where the run writes nowhere at all.
-    /// </remarks>
+    // A composite console is unpacked so each destination is judged on what it is: a terminal
+    // redraws, a --file target never does. Both are null under --quiet with no file, where the run
+    // writes nowhere at all.
     private static (IAnsiConsole? Animating, IAnsiConsole? Plain) Split(IAnsiConsole console)
     {
         if (console is not CompositeAnsiConsole composite)
@@ -279,10 +245,8 @@ public sealed class DefaultConsoleWriter(ILiveDisplayRefresh liveDisplayRefresh,
         return (Wrap(animating), Wrap(plain));
     }
 
-    /// <summary>
-    /// Whether a destination can redraw. Interactivity alone decides it: "a terminal that cannot
-    /// redraw" means one Spectre.Console reports as not interactive.
-    /// </summary>
+    // Interactivity alone decides it: "a terminal that cannot redraw" means one Spectre.Console
+    // reports as not interactive.
     internal static bool CanAnimate(IAnsiConsole console) => console.Profile.Capabilities.Interactive;
 
     private static IAnsiConsole? Wrap(IAnsiConsole[] destinations) => destinations.Length switch
@@ -290,9 +254,8 @@ public sealed class DefaultConsoleWriter(ILiveDisplayRefresh liveDisplayRefresh,
         0 => null,
         1 => destinations[0],
 
-        // Two destinations of the same kind: the path --file takes away from a terminal (under
-        // cron, through a pipe, or with a stream redirected), where the terminal and the file
-        // both cannot redraw and both get the simple lines. The File tests run this way.
+        // Two of the same kind: --file away from a terminal, under cron or through a pipe, where
+        // neither can redraw and both get the simple lines.
         _ => new CompositeAnsiConsole(destinations[0], destinations),
     };
 

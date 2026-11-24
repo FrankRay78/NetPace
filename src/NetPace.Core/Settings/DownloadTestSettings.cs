@@ -5,10 +5,9 @@ namespace NetPace.Core.Settings;
 /// move in total, and how many transfers it runs at once.
 /// </summary>
 /// <remarks>
-/// What each individual request asks for is the provider's own business and lives on its settings
-/// record - an image size for Ookla, a MiB count for LibreSpeed - because the two speak different
-/// protocols. The ceiling and the connection count are shared so that a profile means the same
-/// amount of traffic and the same load whichever server is being tested.
+/// What each individual request asks for lives on the provider's own settings record - an image
+/// size for Ookla, a MiB count for LibreSpeed. The ceiling and the connection count are shared, so
+/// a profile means the same traffic and the same load whichever server is being tested.
 /// </remarks>
 public sealed record DownloadTestSettings
 {

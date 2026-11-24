@@ -6,12 +6,8 @@ namespace NetPace.Console.ConsoleWriters;
 
 public sealed class CSVConsoleWriter : IConsoleWriter
 {
-    /// <summary>
-    /// Whether this run has settled its header line, which is not the same as having written one:
-    /// a destination that already holds content is sent no header, and the run is still done
-    /// deciding. One writer serves a whole run, so the run's first row is the one the header sits
-    /// above, whatever happened before that row.
-    /// </summary>
+    // Settled, which is not the same as written: a destination that already holds content is sent
+    // no header and the run is still done deciding.
     private bool headerWritten;
 
     /// <inheritdoc/>
@@ -19,26 +15,20 @@ public sealed class CSVConsoleWriter : IConsoleWriter
 
     public async Task<SpeedTestOutcome> PerformSpeedTestAsync(IAnsiConsole console, IClock clock, IClientInfoProvider clientInfoProvider, IDiagnosticRecorder recorder, ISpeedTestService speedTestClient, SpeedTestCommandSettings settings, CancellationToken cancellationToken, CancellationToken timeLimitToken = default)
     {
-        // Get the server to use for speed testing, then measure.
         (ChosenServer chosen, LatencyTestResult? latency) = await ServerSelector.GetServerAsync(speedTestClient, settings, recorder, cancellationToken, timeLimitToken);
         var outcome = await Measurements.PerformAsync(speedTestClient, chosen.Server, latency, settings, recorder, cancellationToken, timeLimitToken);
 
-        // Header row, emitted directly above the run's first data row rather than on its first
-        // attempt: a test abandoned by an exception reaches no row, and the one that follows it
-        // must still find its column names above it. The first test of a run is the likeliest to be
-        // lost that way (a loop started before the network is up), so keying the header off the
-        // attempt left the longest-running logs headerless. Not emitted at all where
-        // --no-csv-header asks for rows only. Which destinations receive it is settled below: one
-        // that already holds content is not sent the header, so a log appended to across runs does
-        // not gain a header line between every pair of rows. Every built-in column is present
-        // whichever tests ran, so a script can read by name or by position within one run. Each
-        // figure sits beside the measurement it belongs to: idle jitter after the idle latency, and
-        // each direction's four under-load figures after that direction's speed and request counts.
-        // That placement moves every column from DownloadSpeedBitsPerSecond on, so while NetPace is
-        // below 1.0.0 no column keeps a fixed position across releases — a script reading CSV reads
-        // by header name, and a user starts a new log after an upgrade that changes them. The
-        // identity and server columns follow, then any custom columns, which are per invocation, so
-        // only the built-in prefix keeps one shape across runs.
+        // Above the run's first data row rather than on its first attempt: a test abandoned by an
+        // exception reaches no row, and keying the header off the attempt left the logs likeliest
+        // to be lost that way - a loop started before the network is up - headerless. Which
+        // destinations receive it at all is settled in HeaderDestinations
+        // (docs/change-intent-records/2026-10-29-csv-header-is-decided-per-destination.md).
+        //
+        // Every built-in column is present whichever tests ran
+        // (docs/change-intent-records/2026-10-16-csv-keeps-every-column-always.md), each figure
+        // beside the measurement it belongs to
+        // (docs/change-intent-records/2026-11-09-latency-figures-sit-beside-the-measurement.md),
+        // and the custom columns last, so only the built-in prefix keeps one shape across runs.
         if (!headerWritten && !settings.NoCSVHeader)
         {
             string header = Record([
@@ -77,18 +67,10 @@ public sealed class CSVConsoleWriter : IConsoleWriter
             headerWritten = true;
         }
 
-        // Data row. Each measurement is a plain number in the unit its column names, so --unit,
-        // --unit-scale and --unit-system leave CSV untouched and every row carries the same units,
-        // within a run and across runs.
-        // A test that did not run leaves its cells empty; one that ran and failed entirely reports
-        // whatever its requests delivered, beside the request counts that say so, and a speed of 0
-        // only where nothing arrived at all. A latency figure that was not
-        // measured — under-load latency the transfer never saw, or the idle latency and jitter
-        // under --no-latency, or the idle figures of a run whose time limit was reached before a
-        // probe answered — leaves its cell empty too, so nothing charting the column reads an
-        // unmeasured line as a perfect one.
-        // The device label is empty when none was given, because every built-in column is present
-        // whatever the run was asked for.
+        // Each measurement is a plain number in the unit its column names, so --unit, --unit-scale
+        // and --unit-system leave CSV untouched. A cell is empty wherever a figure was not
+        // measured, so nothing charting the column reads an unmeasured line as a perfect one; a
+        // speed of 0 means nothing arrived at all.
         console.WriteLine(Record([
             clock.Now.ToMachineReadable(),
             latency?.LatencyMilliseconds.ToString(CultureInfo.InvariantCulture) ?? string.Empty,
@@ -120,11 +102,8 @@ public sealed class CSVConsoleWriter : IConsoleWriter
         return outcome;
     }
 
-    /// <summary>
-    /// The destinations that should receive the header line. A composite console is unpacked so
-    /// each of its destinations is judged on its own, and one that did not start empty is left out.
-    /// A console that is not a composite is its own only destination.
-    /// </summary>
+    // A composite console is unpacked so each destination is judged on its own: a log appended to
+    // across runs must not gain a header line between every pair of rows.
     private static IEnumerable<IAnsiConsole> HeaderDestinations(IAnsiConsole console)
     {
         IReadOnlyList<IAnsiConsole> destinations = console is CompositeAnsiConsole composite
@@ -134,21 +113,11 @@ public sealed class CSVConsoleWriter : IConsoleWriter
         return destinations.Where(destination => destination is not IPersistentConsole persistent || persistent.StartedEmpty);
     }
 
-    /// <summary>
-    /// Joins the fields of one CSV record with commas — the only separator CSV output uses — each
-    /// field escaped so a standard reader sees one field per column.
-    /// </summary>
     private static string Record(params string[] fields) => string.Join(',', fields.Select(ToField));
 
-    /// <summary>
-    /// Writes a single value as a CSV field. A value holding a comma or a double quote is wrapped in
-    /// double quotes with any of its own doubled, as RFC 4180 asks, so a reader returns the original
-    /// text and the row keeps one field per column. A line break is written as a space rather than
-    /// quoted, so every record stays on one line whatever the machine reports. Anything else — every
-    /// number, the timestamp, and an ordinary hostname — is written exactly as it arrives.
-    /// Why the separator is fixed and why a line break is not quoted instead:
-    /// docs/change-intent-records/2026-10-29-csv-is-always-comma-separated.md.
-    /// </summary>
+    // Quoting follows RFC 4180, but a line break is written as a space rather than quoted, so every
+    // record stays on one line
+    // (docs/change-intent-records/2026-10-29-csv-is-always-comma-separated.md).
     private static string ToField(string value)
     {
         string oneLine = value

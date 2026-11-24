@@ -6,32 +6,23 @@ namespace NetPace.Core.Clients.Ookla;
 /// Configuration settings for the Ookla speed test implementation.
 /// </summary>
 /// <remarks>
-/// What every provider shares - latency, screening, the upload shape, and the download byte
-/// ceiling and connection count - is on <see cref="SpeedTestSettings"/>. What is here is what only
-/// an Ookla server has: the image sizes its download requests ask for, and the address its server
-/// list is fetched from.
+/// What every provider shares - latency, screening, the upload shape, and the download byte ceiling
+/// and connection count - is on <see cref="SpeedTestSettings"/>.
 /// </remarks>
 public sealed record OoklaSpeedtestSettings : SpeedTestSettings
 {
     /// <summary>
-    /// Gets the URL to retrieve the list of available Speedtest servers.
+    /// The address the list of available Speedtest servers is fetched from.
     /// </summary>
-    /// <remarks>
-    /// Defaults to the official Speedtest.net server list endpoint.
-    /// </remarks>
     public string ServersUrl { get; init; } = "http://www.speedtest.net/speedtest-servers.php";
 
     /// <summary>
-    /// A list of download sizes (in pixels) used to generate URLs for test files.
+    /// The download sizes, in pixels, that the <c>random{size}x{size}.jpg</c> requests ask for.
     /// </summary>
-    /// <remarks>
-    /// These sizes are used to create URLs in the form of <c>random{size}x{size}.jpg</c>
-    /// to simulate different file sizes for measuring download throughput.
-    /// </remarks>
     public int[] DownloadSizes { get; init; }
 
     /// <summary>
-    /// The number of times to repeat the download for each size specified in <see cref="DownloadSizes"/>.
+    /// How many times each size in <see cref="DownloadSizes"/> is requested.
     /// </summary>
     public int DownloadSizeIterations { get; init; }
 

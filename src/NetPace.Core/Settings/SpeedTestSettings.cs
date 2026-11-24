@@ -16,11 +16,9 @@ namespace NetPace.Core.Settings;
 /// each provider's own.
 /// <para>
 /// Derived records are meant to live in <c>NetPace.Core</c>: the profile constructor is
-/// <c>private protected</c>, so a consumer can accept and inspect this type. A record outside it
-/// can still derive through the copy constructor C# gives every record, but gains nothing by it,
-/// because every provider takes its own concrete settings record and
-/// <see cref="SpeedTestProviderBase"/> cannot be extended from outside <c>NetPace.Core</c>. Such
-/// a record is not supported: a member added here later, abstract or otherwise, may break it.
+/// <c>private protected</c>, so a consumer can accept and inspect this type but not usefully
+/// extend it. A record derived outside it through the copy constructor C# gives every record is
+/// not supported, and a member added here later may break it.
 /// </para>
 /// </remarks>
 public abstract record SpeedTestSettings

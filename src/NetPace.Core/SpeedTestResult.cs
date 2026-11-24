@@ -4,12 +4,11 @@ namespace NetPace.Core;
 /// The speed test result.
 /// </summary>
 /// <remarks>
-/// Every property is <c>required</c>, so no value this record reports can be silently defaulted —
-/// each must be stated at construction. That is the whole of the guarantee: a stated value is not
-/// thereby a measured one, and it is the counts that distinguish a genuine measurement from a run
-/// that failed (see <see cref="RequestsSucceeded"/>). Where a test did not run at all, represent
-/// that as the absence of a result; an all-failed test reports what its requests delivered, not an
-/// absent result.
+/// Every property is <c>required</c>, so no value this record reports can be silently defaulted. A
+/// stated value is not thereby a measured one: it is the counts that distinguish a genuine
+/// measurement from a run that failed (see <see cref="RequestsSucceeded"/>). Where a test did not
+/// run at all, represent that as the absence of a result; an all-failed test reports what its
+/// requests delivered.
 /// </remarks>
 public sealed record SpeedTestResult
 {
@@ -18,13 +17,12 @@ public sealed record SpeedTestResult
     /// </summary>
     /// <remarks>
     /// Every byte any request delivered, whatever became of that request: one the server cut off
-    /// partway through, and one dropped because the byte budget was reached, both moved data and
-    /// both took time this figure's <see cref="ElapsedMilliseconds"/> counts. The figure is about
-    /// the link rather than about the requests, which <see cref="RequestsSucceeded"/> and
-    /// <see cref="RequestsFailed"/> are. An upload counts what was written to the transport, which
-    /// is a ceiling: whatever the send buffer still held when a connection closed is counted as
-    /// sent, so on a link slow enough that the buffer holds a whole request a cut-off upload can
-    /// be credited with most of its body.
+    /// partway, and one dropped because the byte budget was reached, both moved data and both took
+    /// time <see cref="ElapsedMilliseconds"/> counts. So this figure is about the link, where
+    /// <see cref="RequestsSucceeded"/> and <see cref="RequestsFailed"/> are about the requests. An
+    /// upload counts what was written to the transport, which is a ceiling: whatever the send buffer
+    /// still held when a connection closed is counted as sent, so on a slow enough link a cut-off
+    /// upload can be credited with most of its body.
     /// </remarks>
     public required long BytesProcessed { get; init; }
 

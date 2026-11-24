@@ -5,25 +5,16 @@ using System.Security.Cryptography;
 
 namespace NetPace.Core;
 
-/// <summary>
-/// HttpContent that streams cryptographically-random bytes on demand in small chunks.
-/// Avoids allocating a single large byte[] and prevents LOH allocations.
-/// </summary>
+// Streams cryptographically-random bytes on demand in small chunks, so a large upload body never
+// allocates a single large byte[] on the large object heap.
 internal sealed class RandomStreamContent : HttpContent
 {
     private readonly long totalSize;
     private readonly int chunkSize;
     private readonly Action<int>? onBytesWritten;
 
-    /// <summary>
-    /// Constructs content that carries <paramref name="totalSize"/> random bytes.
-    /// </summary>
-    /// <param name="totalSize">How many bytes the body carries.</param>
-    /// <param name="onBytesWritten">
-    /// Called with each chunk's length once that chunk has been written, so a caller can count
-    /// what an upload sent even when the server closes the connection partway through it.
-    /// </param>
-    /// <param name="chunkSize">How much is written at a time.</param>
+    // onBytesWritten is called with each chunk's length once that chunk has been written, so a
+    // caller can count what an upload sent even when the server closes the connection partway.
     public RandomStreamContent(long totalSize, Action<int>? onBytesWritten = null, int chunkSize = 8192)
     {
         this.totalSize = totalSize;
@@ -32,10 +23,8 @@ internal sealed class RandomStreamContent : HttpContent
         Headers.ContentType = new MediaTypeHeaderValue("application/octet-stream");
     }
 
-    /// <summary>
-    /// How much of the body the transport has taken so far. A write returns once the transport has
-    /// accepted the data, so this counts bytes handed over rather than bytes known to have arrived.
-    /// </summary>
+    // A write returns once the transport has accepted the data, so this counts bytes handed over
+    // rather than bytes known to have arrived.
     public long BytesWritten { get; private set; }
 
     protected override bool TryComputeLength(out long length)
@@ -47,15 +36,9 @@ internal sealed class RandomStreamContent : HttpContent
     protected override Task SerializeToStreamAsync(Stream stream, TransportContext? context) =>
         SerializeToStreamAsync(stream, context, CancellationToken.None);
 
-    /// <summary>
-    /// Writes the body, reporting each chunk once the transport has taken it.
-    /// </summary>
-    /// <remarks>
-    /// The cancellable overload is the one implemented, so a cancelled upload stops writing with
-    /// its request rather than running on afterwards: a chunk reported after the request's own
-    /// accounting has been read would count towards the transfer total without appearing on that
-    /// request's diagnostic record.
-    /// </remarks>
+    // The cancellable overload is the one implemented, so a cancelled upload stops writing with its
+    // request: a chunk reported after the request's accounting has been read would count towards
+    // the transfer total without appearing on that request's diagnostic record.
     protected override async Task SerializeToStreamAsync(Stream stream, TransportContext? context, CancellationToken cancellationToken)
     {
         var buffer = ArrayPool<byte>.Shared.Rent(chunkSize);
@@ -69,9 +52,8 @@ internal sealed class RandomStreamContent : HttpContent
                 await stream.WriteAsync(buffer.AsMemory(0, toWrite), cancellationToken).ConfigureAwait(false);
                 remaining -= toWrite;
 
-                // Counted after the write rather than before it, so a chunk whose write throws is
-                // not reported as sent. A chunk the transport took and then never delivered still
-                // is, which is the over-count GetUploadSpeedAsync records.
+                // After the write, so a chunk whose write throws is not reported as sent. One the
+                // transport took and never delivered still is, which GetUploadSpeedAsync records.
                 BytesWritten += toWrite;
                 onBytesWritten?.Invoke(toWrite);
             }

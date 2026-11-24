@@ -19,10 +19,10 @@ internal static class HttpClientExtensions
         }
         catch (OperationCanceledException e) when (timeoutCts.IsCancellationRequested && !cancellationToken.IsCancellationRequested)
         {
-            // A request abandoned at this timeout is a network outcome, not the caller asking to
-            // stop, and both arrive as the same exception type. It is re-raised in the shape
-            // HttpClient uses for its own Timeout - a cancellation carrying a TimeoutException -
-            // so a caller can tell the two apart without knowing how the timeout was applied.
+            // Re-raised in the shape HttpClient uses for its own Timeout, a cancellation carrying
+            // a TimeoutException, so a caller can tell a timeout from a stop it asked for without
+            // knowing how the timeout was applied
+            // (docs/change-intent-records/2026-11-08-a-timeout-is-a-cancellation-carrying-a-timeout.md).
             throw new TaskCanceledException(
                 string.Format(CultureInfo.InvariantCulture, "The request was canceled due to the configured timeout of {0} seconds elapsing.", timeout.TotalSeconds),
                 new TimeoutException(e.Message, e),
