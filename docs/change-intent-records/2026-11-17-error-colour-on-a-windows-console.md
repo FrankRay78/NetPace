@@ -2,11 +2,11 @@
 
 **Intent:** Let the error line render in colour on a classic Windows console when the result is redirected, without ever putting escape bytes in the result.
 
-**Behaviour:** See issue #567. The decision is `Program.ErrorAnsiSupport`, whose remarks carry how it works.
+**Behaviour:** See issue #567. The decision is `Program.ErrorAnsiSupport`.
 
 **Constraints:**
 
-- Spectre.Console 0.57.1's negative-ANSI fallback is what makes the condition safe, and `Program.ErrorAnsiSupport`'s remarks carry it. Revisit on any upgrade that changes that fallback.
+- Spectre.Console 0.57.1's negative-ANSI fallback is what makes the condition safe. Told its support outright, the library writes escape sequences to the writer it was given and never asks to switch the console mode on; only detection passes the flag that enables virtual terminal processing, without which a classic Windows console prints the sequences literally once the result is redirected and nothing else has switched the mode on. Where the detector's call fails, the library falls back to setting colour through `System.Console`'s own colour properties, which write no bytes but set the standard OUTPUT handle's attributes: harmless on Windows, where a redirected output file simply makes the call fail, but on Unix that same fallback is reached whenever `TERM` is not one the library recognises, and .NET then stamps the error console's colours onto a live result. A redirected standard stream reaches the fallback on every platform and keeps the forced answer. Revisit on any upgrade that changes that fallback.
 - Nobody has reproduced the fault on a real Windows machine, so the Windows half is checked by hand, as the issue's confirmed decisions record.
 
 **Decisions:**
