@@ -1,4 +1,30 @@
 PR,Url,Title,Merged,Closed,CodeLines,TestLines,DocsLines,Risk,NoHumanMerge,HumanReview,ReviewCost,FollowUp1Cost,FollowUp2Cost,TotalCost,TotalTokensMillions
+590,https://github.com/FrankRay78/NetPace/pull/590,"Comment Length And Purpose",true,"2026-11-24",,,35,"Medium","","Detailed",5.16,2.84,,8.00,8.1
+589,https://github.com/FrankRay78/NetPace/pull/589,"Human Review Level",true,"2026-11-23",125,74,81,"Medium","","Detailed",6.15,,,6.15,6.1
+572,https://github.com/FrankRay78/NetPace/pull/572,"Error Colour Windows Redirected",true,"2026-11-22",65,48,17,"Medium","no","",4.82,1.79,,6.61,5.5
+570,https://github.com/FrankRay78/NetPace/pull/570,"Diagnostics To A File",true,"2026-11-22",210,1008,124,"Medium","no","",8.28,3.76,,12.04,14.0
+569,https://github.com/FrankRay78/NetPace/pull/569,"CSV Header Follows First Row",true,"2026-11-22",44,175,20,"Medium","no","",4.49,,,4.49,4.9
+566,https://github.com/FrankRay78/NetPace/pull/566,"Dispose Only Created Consoles",true,"2026-11-22",185,89,,"Medium","no","",4.20,,,4.20,4.5
+565,https://github.com/FrankRay78/NetPace/pull/565,"Threshold Exit Codes",true,"2026-11-22",648,594,61,"Medium","no","",8.98,8.49,,17.47,25.9
+582,https://github.com/FrankRay78/NetPace/pull/582,"Ascii Help Logo",true,"2026-11-20",1366,228,11,"Medium","no","",4.84,,,4.84,5.2
+575,https://github.com/FrankRay78/NetPace/pull/575,"Run Time Limit",true,"2026-11-20",705,2067,165,"High","no","",14.01,9.00,,23.01,34.9
+577,https://github.com/FrankRay78/NetPace/pull/577,"Three Space Column Gap",true,"2026-11-19",13,392,18,"Medium","no","",3.96,1.15,,5.11,5.6
+573,https://github.com/FrankRay78/NetPace/pull/573,"Two Tone Pixel Help Logo",true,"2026-11-19",120,429,17,"Medium","no","",5.27,1.86,,7.13,7.7
+564,https://github.com/FrankRay78/NetPace/pull/564,"Slow Link Delivered Bytes",true,"2026-11-18",576,1025,114,"High","no","",11.62,,,11.62,16.3
+562,https://github.com/FrankRay78/NetPace/pull/562,"Steady Table Three Significant Figures",true,"2026-11-17",266,1346,46,"Medium","no","",7.87,1.81,,9.68,11.4
+561,https://github.com/FrankRay78/NetPace/pull/561,"One Slow Link Lab",true,"2026-11-17",1061,278,758,"Medium","no","",8.54,3.85,,12.39,13.6
+560,https://github.com/FrankRay78/NetPace/pull/560,"Errors To Standard Error",true,"2026-11-17",204,745,57,"Medium","no","",10.46,3.37,,13.83,19.3
+563,https://github.com/FrankRay78/NetPace/pull/563,"Halloween Theme",true,"2026-11-16",50,588,5,"Medium","no","",4.55,2.43,,6.98,7.4
+553,https://github.com/FrankRay78/NetPace/pull/553,"Slow Link Lab Quiet At Start",true,"2026-11-14",80,155,10,"Medium","no","",3.64,2.53,,6.17,4.9
+552,https://github.com/FrankRay78/NetPace/pull/552,"One Run Loop",true,"2026-11-14",107,744,,"Medium","no","",4.00,0.80,,4.80,5.5
+550,https://github.com/FrankRay78/NetPace/pull/550,"Arm32 Linux Native Binary",true,"2026-11-14",114,,71,"Medium","no","",5.80,1.39,,7.19,7.5
+546,https://github.com/FrankRay78/NetPace/pull/546,"LibreSpeed Provider",true,"2026-11-14",4121,1376,217,"High","no","",13.19,12.37,4.07,29.63,44.5
+542,https://github.com/FrankRay78/NetPace/pull/542,"Minimal Output Returns",true,"2026-11-10",226,930,92,"Medium","no","",8.24,,,8.24,12.3
+541,https://github.com/FrankRay78/NetPace/pull/541,"Default Output Table",true,"2026-11-10",1416,2390,83,"High","no","",19.50,8.08,,27.58,45.2
+539,https://github.com/FrankRay78/NetPace/pull/539,"Latency Stage Survives High Latency",true,"2026-11-10",106,492,37,"High","no","",11.64,7.03,,18.67,20.5
+538,https://github.com/FrankRay78/NetPace/pull/538,"Latency Under Load CSV JSON",true,"2026-11-10",103,971,74,"Medium","no","",7.00,4.31,,11.31,15.5
+536,https://github.com/FrankRay78/NetPace/pull/536,"Simple Output Format",true,"2026-11-09",285,1093,92,"Medium","no","",13.47,2.99,4.88,21.34,26.8
+535,https://github.com/FrankRay78/NetPace/pull/535,"Latency Under Load",true,"2026-11-09",596,1337,27,"High","no","",16.14,8.05,,24.19,31.5
 532,https://github.com/FrankRay78/NetPace/pull/532,"Server URL Option",true,"2026-11-08",23,112,33,"Medium","no","",5.36,,,5.36,5.9
 531,https://github.com/FrankRay78/NetPace/pull/531,"Timed Out Run Exits Silently",true,"2026-11-08",84,536,14,"High","no","",11.45,4.74,,16.19,19.6
 530,https://github.com/FrankRay78/NetPace/pull/530,"Slow Link Profiles",true,"2026-11-08",379,,98,"Medium","no","",6.77,6.22,,12.99,9.7

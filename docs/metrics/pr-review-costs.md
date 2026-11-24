@@ -16,6 +16,32 @@ The same rows as CSV, for a spreadsheet: [pr-review-costs.csv](pr-review-costs.c
 
 | PR | Title | Closed | Code | Tests | Docs | Risk | No-human merge | Human review | Review | Follow-up 1 | Follow-up 2 | Total cost | Total tokens |
 | --- | --- | --- | ---: | ---: | ---: | --- | --- | --- | ---: | ---: | ---: | ---: | ---: |
+| [#590](https://github.com/FrankRay78/NetPace/pull/590) | Comment Length And Purpose | 2026-11-24 |  |  | 35 | Medium |  | Detailed | $5.16 | $2.84 |  | $8.00 | 8.1M |
+| [#589](https://github.com/FrankRay78/NetPace/pull/589) | Human Review Level | 2026-11-23 | 125 | 74 | 81 | Medium |  | Detailed | $6.15 |  |  | $6.15 | 6.1M |
+| [#572](https://github.com/FrankRay78/NetPace/pull/572) | Error Colour Windows Redirected | 2026-11-22 | 65 | 48 | 17 | Medium | no |  | $4.82 | $1.79 |  | $6.61 | 5.5M |
+| [#570](https://github.com/FrankRay78/NetPace/pull/570) | Diagnostics To A File | 2026-11-22 | 210 | 1,008 | 124 | Medium | no |  | $8.28 | $3.76 |  | $12.04 | 14.0M |
+| [#569](https://github.com/FrankRay78/NetPace/pull/569) | CSV Header Follows First Row | 2026-11-22 | 44 | 175 | 20 | Medium | no |  | $4.49 |  |  | $4.49 | 4.9M |
+| [#566](https://github.com/FrankRay78/NetPace/pull/566) | Dispose Only Created Consoles | 2026-11-22 | 185 | 89 |  | Medium | no |  | $4.20 |  |  | $4.20 | 4.5M |
+| [#565](https://github.com/FrankRay78/NetPace/pull/565) | Threshold Exit Codes | 2026-11-22 | 648 | 594 | 61 | Medium | no |  | $8.98 | $8.49 |  | $17.47 | 25.9M |
+| [#582](https://github.com/FrankRay78/NetPace/pull/582) | Ascii Help Logo | 2026-11-20 | 1,366 | 228 | 11 | Medium | no |  | $4.84 |  |  | $4.84 | 5.2M |
+| [#575](https://github.com/FrankRay78/NetPace/pull/575) | Run Time Limit | 2026-11-20 | 705 | 2,067 | 165 | High | no |  | $14.01 | $9.00 |  | $23.01 | 34.9M |
+| [#577](https://github.com/FrankRay78/NetPace/pull/577) | Three Space Column Gap | 2026-11-19 | 13 | 392 | 18 | Medium | no |  | $3.96 | $1.15 |  | $5.11 | 5.6M |
+| [#573](https://github.com/FrankRay78/NetPace/pull/573) | Two Tone Pixel Help Logo | 2026-11-19 | 120 | 429 | 17 | Medium | no |  | $5.27 | $1.86 |  | $7.13 | 7.7M |
+| [#564](https://github.com/FrankRay78/NetPace/pull/564) | Slow Link Delivered Bytes | 2026-11-18 | 576 | 1,025 | 114 | High | no |  | $11.62 |  |  | $11.62 | 16.3M |
+| [#562](https://github.com/FrankRay78/NetPace/pull/562) | Steady Table Three Significant Figures | 2026-11-17 | 266 | 1,346 | 46 | Medium | no |  | $7.87 | $1.81 |  | $9.68 | 11.4M |
+| [#561](https://github.com/FrankRay78/NetPace/pull/561) | One Slow Link Lab | 2026-11-17 | 1,061 | 278 | 758 | Medium | no |  | $8.54 | $3.85 |  | $12.39 | 13.6M |
+| [#560](https://github.com/FrankRay78/NetPace/pull/560) | Errors To Standard Error | 2026-11-17 | 204 | 745 | 57 | Medium | no |  | $10.46 | $3.37 |  | $13.83 | 19.3M |
+| [#563](https://github.com/FrankRay78/NetPace/pull/563) | Halloween Theme | 2026-11-16 | 50 | 588 | 5 | Medium | no |  | $4.55 | $2.43 |  | $6.98 | 7.4M |
+| [#553](https://github.com/FrankRay78/NetPace/pull/553) | Slow Link Lab Quiet At Start | 2026-11-14 | 80 | 155 | 10 | Medium | no |  | $3.64 | $2.53 |  | $6.17 | 4.9M |
+| [#552](https://github.com/FrankRay78/NetPace/pull/552) | One Run Loop | 2026-11-14 | 107 | 744 |  | Medium | no |  | $4.00 | $0.80 |  | $4.80 | 5.5M |
+| [#550](https://github.com/FrankRay78/NetPace/pull/550) | Arm32 Linux Native Binary | 2026-11-14 | 114 |  | 71 | Medium | no |  | $5.80 | $1.39 |  | $7.19 | 7.5M |
+| [#546](https://github.com/FrankRay78/NetPace/pull/546) | LibreSpeed Provider | 2026-11-14 | 4,121 | 1,376 | 217 | High | no |  | $13.19 | $12.37 | $4.07 | $29.63 | 44.5M |
+| [#542](https://github.com/FrankRay78/NetPace/pull/542) | Minimal Output Returns | 2026-11-10 | 226 | 930 | 92 | Medium | no |  | $8.24 |  |  | $8.24 | 12.3M |
+| [#541](https://github.com/FrankRay78/NetPace/pull/541) | Default Output Table | 2026-11-10 | 1,416 | 2,390 | 83 | High | no |  | $19.50 | $8.08 |  | $27.58 | 45.2M |
+| [#539](https://github.com/FrankRay78/NetPace/pull/539) | Latency Stage Survives High Latency | 2026-11-10 | 106 | 492 | 37 | High | no |  | $11.64 | $7.03 |  | $18.67 | 20.5M |
+| [#538](https://github.com/FrankRay78/NetPace/pull/538) | Latency Under Load CSV JSON | 2026-11-10 | 103 | 971 | 74 | Medium | no |  | $7.00 | $4.31 |  | $11.31 | 15.5M |
+| [#536](https://github.com/FrankRay78/NetPace/pull/536) | Simple Output Format | 2026-11-09 | 285 | 1,093 | 92 | Medium | no |  | $13.47 | $2.99 | $4.88 | $21.34 | 26.8M |
+| [#535](https://github.com/FrankRay78/NetPace/pull/535) | Latency Under Load | 2026-11-09 | 596 | 1,337 | 27 | High | no |  | $16.14 | $8.05 |  | $24.19 | 31.5M |
 | [#532](https://github.com/FrankRay78/NetPace/pull/532) | Server URL Option | 2026-11-08 | 23 | 112 | 33 | Medium | no |  | $5.36 |  |  | $5.36 | 5.9M |
 | [#531](https://github.com/FrankRay78/NetPace/pull/531) | Timed Out Run Exits Silently | 2026-11-08 | 84 | 536 | 14 | High | no |  | $11.45 | $4.74 |  | $16.19 | 19.6M |
 | [#530](https://github.com/FrankRay78/NetPace/pull/530) | Slow Link Profiles | 2026-11-08 | 379 |  | 98 | Medium | no |  | $6.77 | $6.22 |  | $12.99 | 9.7M |
@@ -51,4 +77,4 @@ The same rows as CSV, for a spreadsheet: [pr-review-costs.csv](pr-review-costs.c
 | [#475](https://github.com/FrankRay78/NetPace/pull/475) | Remove Orphaned CSV Snapshots | 2026-10-29 |  | 4 |  | Low | yes |  | $2.11 | $1.57 |  | $3.68 | 3.6M |
 | [#472](https://github.com/FrankRay78/NetPace/pull/472) | Call Chain Specialist | 2026-10-29 |  |  | 56 | Medium | no |  | $6.18 | $5.01 | $2.58 | $13.77 | 11.6M |
 | [#455](https://github.com/FrankRay78/NetPace/pull/455) | PR Review Cost Footer | 2026-10-29 | 583 | 456 | 37 | High | no |  | $9.61 |  |  | $9.61 | 8.6M |
-| **Total** | | | **4,920** | **15,155** | **5,756** | | | | **$216.17** | **$59.02** | **$18.00** | **$293.19** | **312.4M** |
+| **Total** | | | **17,712** | **33,729** | **7,988** | | | | **$431.99** | **$146.92** | **$26.95** | **$605.86** | **717.0M** |
