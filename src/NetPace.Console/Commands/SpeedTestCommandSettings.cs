@@ -226,9 +226,9 @@ public static class SpeedTestCommandSettingsExtensions
             throw new ArgumentException("No tests selected. At least one of --no-latency, --no-download, or --no-upload must be omitted.");
         }
 
-        // Both say which server to test, and a run tests one server. Refused rather than given a
-        // precedence, which would leave the user guessing which of the two the figures came from.
-        if (settings.ListedServers.Count > 0 && !string.IsNullOrWhiteSpace(settings.ServerUrl))
+        // Refused rather than given a precedence, which would leave the user guessing which server the
+        // figures came from. IsNullOrEmpty as selection uses, since a blank --server-url still routes there.
+        if (settings.ListedServers.Count > 0 && !string.IsNullOrEmpty(settings.ServerUrl))
         {
             throw new ArgumentException("--server-file and --server-url both say which server to test, so only one of them can be given.");
         }

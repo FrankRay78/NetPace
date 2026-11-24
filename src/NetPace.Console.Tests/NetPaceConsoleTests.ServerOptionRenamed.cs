@@ -55,7 +55,7 @@ public sealed partial class NetPaceConsoleTests
             // When
             var result = await host.RunAsync(["--help"]);
 
-            // Then no --server survives that is not one of the two options that replaced it.
+            // Then no --server survives but the --server-url that replaced it and --server-file.
             Assert.Equal(0, result.ExitCode);
             Assert.DoesNotMatch("--server(?!-url|-file)", result.Output);
         }

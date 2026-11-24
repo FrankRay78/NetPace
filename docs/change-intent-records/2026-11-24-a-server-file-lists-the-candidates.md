@@ -6,7 +6,7 @@
 
 **Supersedes:** [2026-11-08-server-option-names-what-it-takes](2026-11-08-server-option-names-what-it-takes.md) — `--server-id` is dropped, so no Ookla ID option is coming and an entry carries no ID.
 
-**Constraints:** No URL shape separates an Ookla server from a LibreSpeed one, so an entry's values cannot be checked before the run.
+**Constraints:** No URL shape separates an Ookla server from a LibreSpeed one, so which provider an entry belongs to cannot be told before the run.
 
 **Decisions:**
 

@@ -9,29 +9,6 @@ public sealed partial class NetPaceConsoleTests
     public sealed class ServerFile
     {
         /// <summary>
-        /// A server file written as given rather than composed, so a test can hand the reader
-        /// whatever it wants to, and deleted when the test finishes.
-        /// </summary>
-        private sealed class TempServerFile : IDisposable
-        {
-            public TempServerFile(string json)
-            {
-                Path = UnusedTempPath();
-                System.IO.File.WriteAllText(Path, json);
-            }
-
-            public string Path { get; }
-
-            public void Dispose()
-            {
-                if (System.IO.File.Exists(Path))
-                {
-                    System.IO.File.Delete(Path);
-                }
-            }
-        }
-
-        /// <summary>
         /// A temporary path nothing has been written to, fresh on every call.
         /// </summary>
         private static string UnusedTempPath() =>
@@ -331,6 +308,9 @@ public sealed partial class NetPaceConsoleTests
         [InlineData("[\"http://listed1.example/\"]", "is not a server")]
         [InlineData("[{ \"url\": 8080 }]", "something other than text")]
         [InlineData("[{ \"url\": \"http://a.example/\", \"url\": \"http://b.example/\" }]", "more than once")]
+        [InlineData("[{ \"url\": \"http://a.example/\", \"name\": 5 }]", "something other than text")]
+        [InlineData("[{ \"url\": \"http://a.example/\", \"name\": null }]", "something other than text")]
+        [InlineData("[{ \"url\": \"http://a.example/\", \"name\": \"A\", \"name\": \"B\" }]", "more than once")]
         public async Task AMalformedServerFile_FailsTheRunBeforeAnythingIsContacted(string json, string cause)
         {
             // Given a file that is not a list of server entries: empty, not JSON, not a list, or a
@@ -527,10 +507,13 @@ public sealed partial class NetPaceConsoleTests
             Assert.Contains("http://listed1.example/", result.Output, StringComparison.Ordinal);
         }
 
-        [Fact]
-        public async Task AServerFileAndAServerUrlTogether_AreRefused()
+        [Theory]
+        [InlineData("http://named.example/")]
+        [InlineData("   ")]
+        public async Task AServerFileAndAServerUrlTogether_AreRefused(string serverUrl)
         {
-            // Given a valid file and a server named outright, two answers to the same question.
+            // Given a valid file and a server named outright, two answers to the same question,
+            // even where the one named is blank and so names no server the run could test.
             using var file = new TempServerFile(
                 """
                 [{ "url": "http://listed1.example/" }]
@@ -539,7 +522,7 @@ public sealed partial class NetPaceConsoleTests
             var (host, serviceCalls) = HostRecordingEverything();
 
             // When
-            var result = await host.RunAsync(["--csv", "--server-file", file.Path, "--server-url", "http://named.example/"]);
+            var result = await host.RunAsync(["--csv", "--server-file", file.Path, "--server-url", serverUrl]);
 
             // Then the run is refused before contacting anything, naming both options so the user
             // knows which pair is in conflict.
@@ -581,6 +564,29 @@ public sealed partial class NetPaceConsoleTests
             // Then the option a user has to discover from --help is in it.
             Assert.Equal(0, result.ExitCode);
             Assert.Contains("--server-file", result.Output, StringComparison.Ordinal);
+        }
+
+        /// <summary>
+        /// A server file written as given rather than composed, so a test can hand the reader
+        /// whatever it wants to, and deleted when the test finishes.
+        /// </summary>
+        private sealed class TempServerFile : IDisposable
+        {
+            public TempServerFile(string json)
+            {
+                Path = UnusedTempPath();
+                System.IO.File.WriteAllText(Path, json);
+            }
+
+            public string Path { get; }
+
+            public void Dispose()
+            {
+                if (System.IO.File.Exists(Path))
+                {
+                    System.IO.File.Delete(Path);
+                }
+            }
         }
     }
 }

@@ -389,9 +389,9 @@ The entries must be servers of the kind `--provider` selects, which defaults to 
 netpace --provider librespeed --server-file my-librespeed-servers.json
 ```
 
-NetPace reads and checks the whole file before it contacts anything. A file that is missing, unreadable, empty, or not a JSON array of entries fails the run, and so does an entry with no `url` or with any field besides `url` and `name`. The message names the file and, where there is one, the entry at fault.
+NetPace reads and checks the whole file before it contacts anything. A file that is missing, unreadable, empty, or not a JSON array of entries fails the run, and so does an entry with no `url`, with any field besides `url` and `name`, with a field given twice, or with a `url` or `name` that is not a quoted string (`"name": null` included). The message names the file and, where there is one, the entry at fault.
 
-What the values say is not checked. An entry whose URL is wrong, unreachable, or a server of the other kind is simply passed over when the run tries it, the way an unreachable discovered server is. If no entry can be reached, the run reports `Error: No servers available`, exactly as a run that discovered no reachable server does.
+What the values say is not checked. An entry whose URL is wrong, unreachable, or a server of the other kind is simply passed over when the run tries it, the way an unreachable discovered server is. If no entry can be reached, the run reports `Error: No servers available`, exactly as a run that discovered no reachable server does. The exception is `--no-latency`, which tries nothing first: the first entry is tested as it stands, so a bad first entry fails the run as that test fails.
 
 `--server-file` and `--server-url` both say which server to test, so a run that gives both is rejected. The file is read once, when the run starts, so an edit made part-way through a `--loop` run is not picked up. `netpace servers` lists Ookla's nearby servers and takes no `--server-file`: write the file yourself.
 
@@ -409,7 +409,7 @@ netpace --provider librespeed --server-url http://pi.local:8080/
 netpace --provider librespeed --server-url http://nas.local/speedtest/
 ```
 
-A LibreSpeed run reports everything an Ookla run does, in every output format, and the options that shape an Ookla run shape it the same way: `--profile`, `--connections`, `--downloadsize`, `--uploadsize`, `--no-latency`, `--no-download`, `--no-upload`, and the repetition, file, exit-code and diagnostics options all apply. The server fields in CSV and JSON show the LibreSpeed URL tested; the sponsor and location read as they do for any server named by URL, because nothing else is known about one.
+A LibreSpeed run reports everything an Ookla run does, in every output format, and the options that shape an Ookla run shape it the same way: `--profile`, `--connections`, `--downloadsize`, `--uploadsize`, `--no-latency`, `--no-download`, `--no-upload`, and the repetition, file, exit-code and diagnostics options all apply. The server fields in CSV and JSON show the LibreSpeed URL tested; the sponsor and location read as they do for any server named by URL, because nothing else is known about one, except that a `--server-file` entry's `name` is shown as the sponsor.
 
 There is nothing to discover: LibreSpeed publishes no server list, so `--provider librespeed` is rejected before any test runs unless `--server-url` or `--server-file` says which server to test. `netpace servers` lists Ookla's nearby servers and takes no `--provider`.
 
