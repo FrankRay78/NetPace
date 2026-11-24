@@ -2,22 +2,21 @@ namespace NetPace.Console.Tests;
 
 /// <summary>
 /// <c>--server-file</c> names a file listing the servers a run chooses from, in place of Ookla's
-/// nearby list. These cover what the user sees of it: the choice, the name an entry carries, and
-/// the failures that stop a run before it contacts anything.
+/// nearby list: the choice, the name an entry carries, and the failures that stop a run early.
 /// </summary>
 public sealed partial class NetPaceConsoleTests
 {
     public sealed class ServerFile
     {
         /// <summary>
-        /// A server file holding <paramref name="json"/>, deleted when the test finishes. Written
-        /// as given rather than composed, so a test can hand the reader whatever it wants to.
+        /// A server file written as given rather than composed, so a test can hand the reader
+        /// whatever it wants to, and deleted when the test finishes.
         /// </summary>
         private sealed class TempServerFile : IDisposable
         {
             public TempServerFile(string json)
             {
-                Path = System.IO.Path.Combine(System.IO.Path.GetTempPath(), $"netpace-servers-{Guid.NewGuid():N}.json");
+                Path = UnusedTempPath();
                 System.IO.File.WriteAllText(Path, json);
             }
 
@@ -33,33 +32,32 @@ public sealed partial class NetPaceConsoleTests
         }
 
         /// <summary>
-        /// A path no file was ever written to, for the tests about a file that is not there.
+        /// A temporary path nothing has been written to, fresh on every call.
         /// </summary>
-        private static string MissingPath() =>
+        private static string UnusedTempPath() =>
             Path.Combine(Path.GetTempPath(), $"netpace-servers-{Guid.NewGuid():N}.json");
 
         /// <summary>
-        /// The screening latency each server answers with, keyed by URL, and <c>null</c> for one
-        /// that cannot be reached at all - which is how a candidate drops out of selection.
+        /// Screening that picks the lowest latency <paramref name="latencyFor"/> gives a candidate.
+        /// A candidate it gives <c>null</c> for cannot be reached, so it drops out of selection.
         /// </summary>
         private static Func<IServer[], IProgress<SpeedTestProgress>?, CancellationToken, Task<LatencyTestResult>> ScreeningThatRanks(Func<string, int?> latencyFor) =>
             (servers, _, _) =>
             {
-                var ranked = servers
-                    .Select(candidate => new { candidate, latency = latencyFor(candidate.Url) })
-                    .Where(entry => entry.latency is not null)
-                    .OrderBy(entry => entry.latency)
-                    .ToArray();
+                var fastest = servers
+                    .Select(candidate => (Server: candidate, Latency: latencyFor(candidate.Url)))
+                    .Where(entry => entry.Latency is not null)
+                    .MinBy(entry => entry.Latency);
 
-                if (ranked.Length == 0)
+                if (fastest.Server is null)
                 {
                     throw new NoServersAvailableException();
                 }
 
                 return Task.FromResult(new LatencyTestResult
                 {
-                    Server = ranked[0].candidate,
-                    LatencyMilliseconds = ranked[0].latency!.Value,
+                    Server = fastest.Server,
+                    LatencyMilliseconds = fastest.Latency!.Value,
                     MinimumLatencyMilliseconds = null,
                     MaximumLatencyMilliseconds = null,
                     JitterMilliseconds = 0
@@ -67,9 +65,8 @@ public sealed partial class NetPaceConsoleTests
             };
 
         /// <summary>
-        /// A speed tester that measures whatever it is handed, records every candidate list
-        /// screening was given, and records each time server discovery was asked. Screening ranks
-        /// by <paramref name="latencyFor"/>, so the winner is the fastest reachable candidate.
+        /// A speed tester that measures whatever it is handed, recording every candidate list
+        /// screening was given and every time discovery was asked. Screening ranks by latency.
         /// </summary>
         private static (SpeedTestMock mock, List<IServer[]> screened, List<string> discoveries) TesterRanking(Func<string, int?> latencyFor)
         {
@@ -115,8 +112,7 @@ public sealed partial class NetPaceConsoleTests
 
         /// <summary>
         /// A host whose speed tester records every call a run could make before it has a result, so
-        /// a test can assert the run never got that far: discovery, screening, and both latency
-        /// probes.
+        /// a test can assert the run never got that far.
         /// </summary>
         private static (CommandLineTestHost host, List<string> serviceCalls) HostRecordingEverything()
         {
@@ -326,15 +322,16 @@ public sealed partial class NetPaceConsoleTests
         }
 
         [Theory]
-        [InlineData("")]
-        [InlineData("   \n")]
-        [InlineData("[]")]
-        [InlineData("{ \"url\": \"http://listed1.example/\" }")]
-        [InlineData("[{ \"url\": \"http://listed1.example/\" },")]
-        [InlineData("not json at all")]
-        [InlineData("[\"http://listed1.example/\"]")]
-        [InlineData("[{ \"url\": 8080 }]")]
-        public async Task AMalformedServerFile_FailsTheRunBeforeAnythingIsContacted(string json)
+        [InlineData("", "is empty")]
+        [InlineData("   \n", "is empty")]
+        [InlineData("[]", "lists no servers")]
+        [InlineData("{ \"url\": \"http://listed1.example/\" }", "must hold a JSON array")]
+        [InlineData("[{ \"url\": \"http://listed1.example/\" },", "is not valid JSON")]
+        [InlineData("not json at all", "is not valid JSON")]
+        [InlineData("[\"http://listed1.example/\"]", "is not a server")]
+        [InlineData("[{ \"url\": 8080 }]", "something other than text")]
+        [InlineData("[{ \"url\": \"http://a.example/\", \"url\": \"http://b.example/\" }]", "more than once")]
+        public async Task AMalformedServerFile_FailsTheRunBeforeAnythingIsContacted(string json, string cause)
         {
             // Given a file that is not a list of server entries: empty, not JSON, not a list, or a
             // list of something other than an entry.
@@ -351,13 +348,65 @@ public sealed partial class NetPaceConsoleTests
             Assert.NotEqual(0, result.ExitCode);
             Assert.Empty(result.Output);
             Assert.Contains(file.Path, result.ErrorOutput, StringComparison.Ordinal);
+            Assert.Contains(cause, result.ErrorOutput, StringComparison.Ordinal);
+        }
+
+        [Fact]
+        public async Task AnUnreadableServerFile_FailsTheRunBeforeAnythingIsContacted()
+        {
+            // Given a path naming a directory, which is readable but is not a file to read from.
+            var path = UnusedTempPath();
+            System.IO.Directory.CreateDirectory(path);
+
+            var (host, serviceCalls) = HostRecordingEverything();
+
+            try
+            {
+                // When
+                var result = await host.RunAsync(["--csv", "--server-file", path]);
+
+                // Then
+                Assert.Empty(serviceCalls);
+                Assert.NotEqual(0, result.ExitCode);
+                Assert.Empty(result.Output);
+                Assert.Contains(path, result.ErrorOutput, StringComparison.Ordinal);
+                Assert.Contains("could not be read", result.ErrorOutput, StringComparison.Ordinal);
+            }
+            finally
+            {
+                System.IO.Directory.Delete(path);
+            }
+        }
+
+        [Fact]
+        public async Task AnEntryWhoseValuesAreBlank_ReachesSelectionRatherThanBeingRefused()
+        {
+            // Given a file whose first entry gives a blank url and name, and whose second names a
+            // reachable server.
+            using var file = new TempServerFile(
+                """
+                [{ "url": "", "name": "" }, { "url": "http://reachable.example/" }]
+                """);
+
+            var (mock, screened, _) = TesterRanking(url => url.Length == 0 ? null : 12);
+
+            // When
+            var result = await HostOf(mock).RunAsync(["--csv", "--server-file", file.Path]);
+
+            // Then the blank entry was carried to screening, where it lost as an unreachable server
+            // does, and the run measured the entry that answered.
+            Assert.Equal(0, result.ExitCode);
+            Assert.Equal(
+                ["", "http://reachable.example/"],
+                Assert.Single(screened).Select(server => server.Url).Order());
+            Assert.Contains("http://reachable.example/", result.Output, StringComparison.Ordinal);
         }
 
         [Fact]
         public async Task AMissingServerFile_FailsTheRunBeforeAnythingIsContacted()
         {
             // Given a path no file was written to.
-            var path = MissingPath();
+            var path = UnusedTempPath();
             var (host, serviceCalls) = HostRecordingEverything();
 
             // When

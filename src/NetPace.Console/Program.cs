@@ -178,17 +178,9 @@ public static class Program
         };
         serverFileOption.Validators.Add(result =>
         {
-            // The implicit result the default value produces stands for "no file named". A value
-            // the user did pass has to name a path, because a blank one reads as "no file named"
-            // downstream: the run would quietly choose from Ookla's nearby list instead, and
-            // answer about servers the user never asked about. --server-file "$SERVERS" with
-            // SERVERS unset is the ordinary way to arrive here.
-            if (result.Implicit)
-            {
-                return;
-            }
-
-            if (string.IsNullOrWhiteSpace(result.GetValueOrDefault<string>()))
+            // Only the implicit default stands for "no file named". A blank value the user did pass
+            // reads as that downstream, so the run would answer about Ookla's nearby list instead.
+            if (!result.Implicit && string.IsNullOrWhiteSpace(result.GetValueOrDefault<string>()))
             {
                 result.AddError("--server-file needs a path: the value given names no file.");
             }

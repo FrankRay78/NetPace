@@ -381,7 +381,7 @@ The file is a JSON array. Each entry gives the server's `url`, and may give a `n
 ]
 ```
 
-Two things it is for. A run on a schedule compares one week's figures with the next only if every run picked from the same servers, and Ookla's nearby list can differ from one call to the next. And a server you host yourself has no sponsor for NetPace to show, so without a name it reads as `[Unknown]`; with one it reads as you called it. An entry that gives no `name` still reads as `[Unknown]`.
+Two things it is for. A run on a schedule compares one week's figures with the next only if every run picked from the same servers, and Ookla's nearby list can differ from one call to the next. And a server you host yourself has no sponsor for NetPace to show, so without a name it reads as `[Unknown]`; with one it reads as you called it.
 
 The entries must be servers of the kind `--provider` selects, which defaults to `ookla`. A file of LibreSpeed servers is used with `--provider librespeed`:
 

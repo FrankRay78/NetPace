@@ -23,19 +23,14 @@ internal static class ServerFileReader
     /// </summary>
     private const string NameField = "name";
 
-    /// <summary>
-    /// An example of the shape a file must have, for the messages that need to show it.
-    /// </summary>
     private const string Example = """[{"url": "https://speedtest.example.com/"}]""";
 
     /// <summary>
-    /// Reads the servers listed in <paramref name="path"/>.
+    /// Reads the servers listed in <paramref name="path"/>, or none where it is empty: no file was named.
     /// </summary>
-    /// <param name="path">The file to read, or an empty value where no file was named.</param>
     /// <returns>
-    /// The servers listed, each carrying its entry's name as its sponsor and the placeholder
-    /// <see cref="Server.UnknownSponsor"/> where the entry gave none. Empty where no file was
-    /// named.
+    /// The servers listed, each carrying its entry's name as its sponsor and
+    /// <see cref="Server.UnknownSponsor"/> where the entry gave none. Empty where no file was named.
     /// </returns>
     /// <exception cref="ArgumentException">
     /// The file is missing, unreadable, malformed or empty, or one of its entries is not a server.
@@ -55,24 +50,25 @@ internal static class ServerFileReader
         }
 
         using var document = Parse(path, json);
+        var root = document.RootElement;
 
-        if (document.RootElement.ValueKind != JsonValueKind.Array)
+        if (root.ValueKind != JsonValueKind.Array)
         {
             throw new ArgumentException($"The server file {path} must hold a JSON array of servers, as {Example}.");
+        }
+
+        if (root.GetArrayLength() == 0)
+        {
+            throw new ArgumentException($"The server file {path} lists no servers. List at least one, as {Example}.");
         }
 
         var servers = new List<IServer>();
         var entry = 0;
 
-        foreach (var element in document.RootElement.EnumerateArray())
+        foreach (JsonElement element in root.EnumerateArray())
         {
             entry++;
             servers.Add(ReadEntry(path, entry, element));
-        }
-
-        if (servers.Count == 0)
-        {
-            throw new ArgumentException($"The server file {path} lists no servers. List at least one, as {Example}.");
         }
 
         return servers;
@@ -100,7 +96,11 @@ internal static class ServerFileReader
         }
         catch (JsonException e)
         {
-            throw new ArgumentException($"The server file {path} is not valid JSON: {e.Message} A server file holds an array of entries, as {Example}.", e);
+            // System.Text.Json advises changing the reader options, which is advice for a caller of
+            // the API rather than for whoever wrote the file.
+            var cause = e.Message.Replace(" Change the reader options.", string.Empty, StringComparison.Ordinal);
+
+            throw new ArgumentException($"The server file {path} is not valid JSON: {cause} A server file holds an array of entries, as {Example}.", e);
         }
     }
 
@@ -114,17 +114,20 @@ internal static class ServerFileReader
         string? url = null;
         string? name = null;
 
-        foreach (var property in element.EnumerateObject())
+        foreach (JsonProperty property in element.EnumerateObject())
         {
             switch (property.Name)
             {
-                case UrlField:
-                    url = Text(path, entry, property);
+                case UrlField when url is null:
+                    url = StringValue(path, entry, property);
                     break;
 
-                case NameField:
-                    name = Text(path, entry, property);
+                case NameField when name is null:
+                    name = StringValue(path, entry, property);
                     break;
+
+                case UrlField or NameField:
+                    throw new ArgumentException($"Entry {entry} of the server file {path} carries the field \"{property.Name}\" more than once. An entry gives each field once.");
 
                 default:
                     throw new ArgumentException($"Entry {entry} of the server file {path} carries the field \"{property.Name}\". An entry takes \"{UrlField}\" and an optional \"{NameField}\", and nothing else.");
@@ -143,7 +146,7 @@ internal static class ServerFileReader
         };
     }
 
-    private static string Text(string path, int entry, JsonProperty property)
+    private static string StringValue(string path, int entry, JsonProperty property)
     {
         // What the value says is the run's business, not this reader's, but it has to be text at
         // all: a number or an object there is a file written wrong, not a server to go and try.

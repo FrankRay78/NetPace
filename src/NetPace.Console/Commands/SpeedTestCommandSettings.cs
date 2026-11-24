@@ -71,9 +71,8 @@ public sealed class SpeedTestCommandSettings
     public required string ServerUrl { get; init; }
 
     /// <summary>
-    /// The servers listed in the file <c>--server-file</c> named, in the order the file gives them,
-    /// each carrying its entry's name as its sponsor. Empty when no file was named, which is the
-    /// only way it can be empty: a file listing nothing is refused when it is read.
+    /// The servers listed in the file <c>--server-file</c> named, in the order the file gives them.
+    /// Empty only when no file was named: a file listing nothing is refused as it is read.
     /// </summary>
     public required IReadOnlyList<IServer> ListedServers { get; init; }
 

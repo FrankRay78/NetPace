@@ -131,9 +131,8 @@ internal static class ServerSelector
         }
 
         // A server file is the whole candidate list, which is the point of naming one: the run
-        // chooses among the same servers every time rather than among whatever discovery offers
-        // this call, so discovery is not asked at all.
-        var servers = settings.ListedServers.Count > 0
+        // chooses among the same servers every time, so discovery is not asked at all.
+        IServer[] servers = settings.ListedServers.Count > 0
             ? [.. settings.ListedServers]
             : await speedTestClient.GetServersAsync(cancellationToken);
 
