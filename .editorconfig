@@ -203,8 +203,9 @@ csharp_style_expression_bodied_lambdas = true:silent
 csharp_style_expression_bodied_local_functions = false:silent
 
 # Verify snapshots are byte-exact records of program output: their whitespace is content, not
-# formatting. Both rules stay off so no editor or format pass can silently rewrite an expectation
+# formatting. These rules stay off so no editor or format pass can silently rewrite an expectation
 # and change what the suite asserts.
 [*.verified.{txt,xml,json}]
 insert_final_newline = false
 trim_trailing_whitespace = false
+max_line_length = off
