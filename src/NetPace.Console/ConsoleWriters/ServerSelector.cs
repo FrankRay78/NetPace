@@ -130,7 +130,13 @@ internal static class ServerSelector
             };
         }
 
-        var servers = await speedTestClient.GetServersAsync(cancellationToken);
+        // A server file is the whole candidate list, which is the point of naming one: the run
+        // chooses among the same servers every time rather than among whatever discovery offers
+        // this call, so discovery is not asked at all.
+        var servers = settings.ListedServers.Count > 0
+            ? [.. settings.ListedServers]
+            : await speedTestClient.GetServersAsync(cancellationToken);
+
         if (servers.Length == 0)
         {
             throw new NoServersAvailableException();

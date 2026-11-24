@@ -127,14 +127,17 @@ OPTIONS:
         --simple                          Display the result as one named line per figure: Ping, Download, Upload.
                                           Ideal for batch scripts and line-based parsing.
         --no-latency                      Do not perform latency test.
-                                          When used without --server-url, the first available server is selected.
+                                          When used without --server-url, the first server listed is selected.
         --no-download                     Do not perform download test.
         --no-upload                       Do not perform upload test.
         --provider            ookla       The kind of server to test against. <ookla, librespeed>
-                                          'librespeed' needs --server-url naming where LibreSpeed is installed.
+                                          'librespeed' needs --server-url or --server-file naming where LibreSpeed is installed.
         --server-url                      The URL of a specific speed test server.
                                           'netpace servers -l' will return your nearest servers.
                                           With --provider librespeed, the address LibreSpeed is installed at.
+        --server-file                     A JSON file listing the servers to choose from, in place of Ookla's nearby list.
+                                          Each entry gives a 'url' and an optional 'name', shown as the server's sponsor.
+                                          Not with --server-url, which names one server outright.
         --profile             medium      Profile bundle of payload settings. <tiny, small, medium, large, mega>
         --downloadsize                    Stop the download test after this many megabytes (IEC MiB).
         --uploadsize                      Stop the upload test after this many megabytes (IEC MiB).

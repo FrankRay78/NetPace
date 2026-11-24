@@ -142,7 +142,7 @@ public static class Program
 
         var noLatencyOption = new Option<bool>("--no-latency")
         {
-            Description = "Do not perform latency test.\nWhen used without --server-url, the first available server is selected.",
+            Description = "Do not perform latency test.\nWhen used without --server-url, the first server listed is selected.",
             DefaultValueFactory = _ => false
         };
 
@@ -160,7 +160,7 @@ public static class Program
 
         var providerOption = new Option<Provider>("--provider")
         {
-            Description = $"The kind of server to test against. {OptionValues.Providers.HelpList}\n'librespeed' needs --server-url naming where LibreSpeed is installed.",
+            Description = $"The kind of server to test against. {OptionValues.Providers.HelpList}\n'librespeed' needs --server-url or --server-file naming where LibreSpeed is installed.",
             DefaultValueFactory = _ => Provider.Ookla,
             CustomParser = result => OptionValues.Providers.Parse(result, "--provider")
         };
@@ -170,6 +170,29 @@ public static class Program
             Description = "The URL of a specific speed test server.\n'netpace servers -l' will return your nearest servers.\nWith --provider librespeed, the address LibreSpeed is installed at.",
             DefaultValueFactory = _ => string.Empty
         };
+
+        var serverFileOption = new Option<string>("--server-file")
+        {
+            Description = "A JSON file listing the servers to choose from, in place of Ookla's nearby list.\nEach entry gives a 'url' and an optional 'name', shown as the server's sponsor.\nNot with --server-url, which names one server outright.",
+            DefaultValueFactory = _ => string.Empty
+        };
+        serverFileOption.Validators.Add(result =>
+        {
+            // The implicit result the default value produces stands for "no file named". A value
+            // the user did pass has to name a path, because a blank one reads as "no file named"
+            // downstream: the run would quietly choose from Ookla's nearby list instead, and
+            // answer about servers the user never asked about. --server-file "$SERVERS" with
+            // SERVERS unset is the ordinary way to arrive here.
+            if (result.Implicit)
+            {
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(result.GetValueOrDefault<string>()))
+            {
+                result.AddError("--server-file needs a path: the value given names no file.");
+            }
+        });
 
         var profileOption = new Option<Profile>("--profile")
         {
@@ -385,6 +408,7 @@ public static class Program
         command.Options.Add(noUploadOption);
         command.Options.Add(providerOption);
         command.Options.Add(serverUrlOption);
+        command.Options.Add(serverFileOption);
         command.Options.Add(profileOption);
         command.Options.Add(downloadSizeOption);
         command.Options.Add(uploadSizeOption);
@@ -433,6 +457,7 @@ public static class Program
                     NoUpload = parseResult.GetValue(noUploadOption),
                     Provider = parseResult.GetValue(providerOption),
                     ServerUrl = parseResult.GetValue(serverUrlOption) ?? string.Empty,
+                    ListedServers = ServerFileReader.Read(parseResult.GetValue(serverFileOption) ?? string.Empty),
                     Profile = parseResult.GetValue(profileOption),
                     DownloadSizeMb = parseResult.GetValue(downloadSizeOption),
                     UploadSizeMb = parseResult.GetValue(uploadSizeOption),

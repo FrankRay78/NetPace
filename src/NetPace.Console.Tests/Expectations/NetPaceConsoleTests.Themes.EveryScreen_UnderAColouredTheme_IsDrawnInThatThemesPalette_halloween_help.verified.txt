@@ -47,19 +47,28 @@ and upload speed testing.
                                           parsing.                              
     \e[38;5;104m    --no-latency\e[0m                      Do not perform latency test.          
                                           When used without --server-url, the   
-                                          first available server is selected.   
+                                          first server listed is selected.      
     \e[38;5;104m    --no-download\e[0m                     Do not perform download test.         
     \e[38;5;104m    --no-upload\e[0m                       Do not perform upload test.           
     \e[38;5;104m    --provider\e[0m            \e[1;38;5;166mookla\e[0m       The kind of server to test against.   
                                           <ookla, librespeed>                   
-                                          'librespeed' needs --server-url naming
-                                          where LibreSpeed is installed.        
+                                          'librespeed' needs --server-url or    
+                                          --server-file naming where LibreSpeed 
+                                          is installed.                         
     \e[38;5;104m    --server-url\e[0m                      The URL of a specific speed test      
                                           server.                               
                                           'netpace servers -l' will return your 
                                           nearest servers.                      
                                           With --provider librespeed, the       
                                           address LibreSpeed is installed at.   
+    \e[38;5;104m    --server-file\e[0m                     A JSON file listing the servers to    
+                                          choose from, in place of Ookla's      
+                                          nearby list.                          
+                                          Each entry gives a 'url' and an       
+                                          optional 'name', shown as the server's
+                                          sponsor.                              
+                                          Not with --server-url, which names one
+                                          server outright.                      
     \e[38;5;104m    --profile\e[0m             \e[1;38;5;166mmedium\e[0m      Profile bundle of payload settings.   
                                           <tiny, small, medium, large, mega>    
     \e[38;5;104m    --downloadsize\e[0m                    Stop the download test after this many

@@ -55,11 +55,12 @@ public sealed partial class NetPaceConsoleTests
             // When
             var result = await host.RunAsync(["--help"]);
 
-            // Then every mention of the option in the help text is of the new name: the pattern
-            // matches a bare --server not followed by -url, so the renamed option itself and the
-            // descriptions that reference it both pass only once they use --server-url.
+            // Then no mention of the option in the help text is of the old bare name: the pattern
+            // matches a --server that is neither of the options that replaced it, so the renamed
+            // option itself and the descriptions that reference it both pass only once they use
+            // --server-url or --server-file.
             Assert.Equal(0, result.ExitCode);
-            Assert.DoesNotMatch("--server(?!-url)", result.Output);
+            Assert.DoesNotMatch("--server(?!-url|-file)", result.Output);
         }
     }
 }

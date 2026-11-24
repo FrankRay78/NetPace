@@ -1,1 +1,1 @@
-﻿Error: A LibreSpeed server URL is needed: pass --server-url with the address LibreSpeed is installed at, such as --server-url http://pi.local:8080/.
+﻿Error: A LibreSpeed server is needed: pass --server-url with the address LibreSpeed is installed at, such as --server-url http://pi.local:8080/, or --server-file with a file listing the servers to choose from.
