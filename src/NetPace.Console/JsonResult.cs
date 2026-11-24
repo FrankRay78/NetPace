@@ -67,12 +67,8 @@ public sealed record JsonResult
     public int? DownloadFailed { get; init; }
 
     /// <summary>
-    /// Gets the number of bytes the download received, or <see langword="null"/> when the download
-    /// test was not run. A whole number of bytes that the unit options do not touch, counting every
-    /// byte the download's requests moved, including those of a request that then failed or was cut
-    /// off — the same count <see cref="DownloadSpeedBitsPerSecond"/> is built from. It leaves out
-    /// the run's surrounding traffic (server discovery, screening, latency measurement and protocol
-    /// overhead), so it is the bulk of what the download used, slightly under the whole of it.
+    /// Gets the number of bytes the download's own requests moved, failed ones included, or
+    /// <see langword="null"/> when the download test was not run.
     /// </summary>
     public long? DownloadBytesProcessed { get; init; }
 
@@ -124,10 +120,8 @@ public sealed record JsonResult
     public int? UploadFailed { get; init; }
 
     /// <summary>
-    /// Gets the number of bytes the upload sent, or <see langword="null"/> when the upload test was
-    /// not run. Counted on the same terms as <see cref="DownloadBytesProcessed"/>, and a ceiling
-    /// rather than an exact figure: whatever the send buffer still held when a connection closed is
-    /// counted as sent.
+    /// Gets the bytes the upload sent on the same terms, a ceiling because a closed connection's
+    /// send buffer counts as sent, or <see langword="null"/> when the upload test was not run.
     /// </summary>
     public long? UploadBytesProcessed { get; init; }
 
