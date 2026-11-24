@@ -8,9 +8,11 @@
   "DownloadSpeedBitsPerSecond": 8000,
   "DownloadSucceeded": 145,
   "DownloadFailed": 5,
+  "DownloadBytesProcessed": 1000,
   "UploadSpeedBitsPerSecond": 8000,
   "UploadSucceeded": 32,
   "UploadFailed": 0,
+  "UploadBytesProcessed": 1000,
   "IPAddress": "192.168.1.1",
   "Hostname": "test-host"
 }
