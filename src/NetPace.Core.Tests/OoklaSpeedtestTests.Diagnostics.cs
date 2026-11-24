@@ -17,9 +17,8 @@ public sealed partial class OoklaSpeedtestTests
     /// channel so a consumer that renders no progress display still receives it.
     /// </summary>
     /// <remarks>
-    /// Every request gets a record, including the latency probes made while choosing a server and the
-    /// probe that resolves where uploads go. A request that failed carries the cause attributable to
-    /// that request - the information the provider previously reduced to a failure count and threw away.
+    /// Every request gets a record, the screening probes and the upload endpoint probe included,
+    /// and a failed one carries its own cause rather than only a count.
     /// </remarks>
     public sealed class Diagnostics
     {

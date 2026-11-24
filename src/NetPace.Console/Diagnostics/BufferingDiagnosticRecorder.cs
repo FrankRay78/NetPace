@@ -6,17 +6,11 @@ namespace NetPace.Console.Diagnostics;
 /// <c>--diagnostics</c> and the named file under <c>--diagnostics-file</c>.
 /// </summary>
 /// <remarks>
-/// Requests run many-way parallel, and <see cref="RecordAt"/> is the method they reach, so this
-/// type does not assume a single caller even though <c>DiagnosticTestScope</c> happens to serialise
-/// it today. Stamping, formatting and appending all happen under one lock, which both keeps the
-/// buffer intact and fixes the recorded order - sorting by timestamp would not restore it, and not
-/// only because the clock can hand out the same instant twice: a request record carries the
-/// provider's clock while every other record carries the diagnostic clock, which under the test
-/// clocks are not the same timeline.
+/// Requests run many-way parallel, so no single caller is assumed and one lock fixes the recorded
+/// order: sorting by timestamp would not restore it, two clocks being in play.
 /// <para>
-/// Written order equals recorded order so long as one thread flushes. <see cref="Flush"/> writes
-/// outside the lock, so two concurrent flushers could take disjoint batches and interleave them;
-/// every caller today flushes from a single run loop.
+/// <see cref="Flush"/> writes outside the lock, so written order equals recorded order only while
+/// one thread flushes; every caller today flushes from a single run loop.
 /// </para>
 /// </remarks>
 public sealed class BufferingDiagnosticRecorder(IDiagnosticClock clock, TextWriter writer) : IDiagnosticRecorder

@@ -11,11 +11,8 @@ public sealed partial class NetPaceConsoleTests
     /// applies to, so a rule that held in one mode and not another fails this set.
     /// </summary>
     /// <remarks>
-    /// The rules are what a test succeeding does, what a failed test does with and without
-    /// <c>--fail-on</c>, what the <c>--fail-on</c> threshold does, what a cancellation does during a
-    /// test and during the pause between tests, what one the user did not ask for does, and what an
-    /// operational fault does. This set counts the lines those rules produce rather than reviewing
-    /// them: the reviewed snapshots live beside the format they belong to.
+    /// The rules of the run block, checked against every mode at once. This set counts the lines
+    /// they produce rather than reviewing them, the reviewed snapshots living beside their format.
     /// </remarks>
     public sealed class RunModes
     {

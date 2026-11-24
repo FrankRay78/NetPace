@@ -9,10 +9,8 @@ public sealed class ListServersCommand(IAnsiConsole console, ErrorOutput errorOu
     /// Executes the list servers command, displaying available speed test servers.
     /// </summary>
     /// <remarks>
-    /// Network and discovery outcomes are data, not errors, exactly as they are for a speed test:
-    /// they are reported and leave the exit code at <c>0</c>. Only an operational fault, or a
-    /// provider misconfigured through its settings, propagates out of this method to the top-level
-    /// handler for a non-zero exit code.
+    /// A network outcome is data, not an error, and leaves the exit code at <c>0</c>. Only an
+    /// operational fault or a misconfigured provider propagates for a non-zero exit.
     /// </remarks>
     public async Task<int> ExecuteAsync(ListServersCommandSettings settings, CancellationToken cancellationToken)
     {
@@ -87,13 +85,8 @@ public sealed class ListServersCommand(IAnsiConsole console, ErrorOutput errorOu
     /// A server detail as the table cell that shows it.
     /// </summary>
     /// <remarks>
-    /// Speedtest publishes these values, so NetPace does not control what they contain, and they
-    /// are drawn as plain text rather than handed to the table as strings: a string cell is read as
-    /// Spectre.Console markup, where an unbalanced square bracket in a location, sponsor or URL
-    /// fails the whole listing. Three more change a detail without failing at all - a balanced
-    /// styling tag is drawn styled with its brackets eaten, a doubled bracket is drawn halved, and
-    /// a colon-delimited emoji code is swapped for the emoji. The default output writer shows the
-    /// sponsor and URL as plain text too.
+    /// Drawn as plain text rather than handed to the table as strings, which Spectre.Console reads
+    /// as markup: an unbalanced square bracket in a published value would fail the whole listing.
     /// </remarks>
     private static Text Detail(string? value) => new(value ?? string.Empty);
 

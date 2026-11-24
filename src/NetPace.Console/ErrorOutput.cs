@@ -7,17 +7,11 @@ namespace NetPace.Console;
 /// tests.
 /// </summary>
 /// <remarks>
-/// An error is not a result. It goes to the error stream so standard output and a <c>--file</c>
-/// target carry only the format a script or a log is reading, and so a run whose output is
-/// redirected still shows the user what went wrong. It keeps its own console so a test can assert
-/// which stream carried what.
+/// An error is not a result, so standard output and a <c>--file</c> target carry only the format a
+/// script is reading, and a redirected run still shows the user what went wrong.
 /// <para>
-/// An <see cref="IAnsiConsole"/> rather than the plain <see cref="TextWriter"/> that
-/// <see cref="NoticeOutput"/> and <see cref="Diagnostics.DiagnosticOutput"/> use, because an error
-/// is drawn in the theme: the word that marks it is coloured where the run has colour at all. The
-/// width limit comes off, so the message is one unbroken line wherever the stream goes — a reader
-/// greps an error log by line, and a console wrapping at terminal width would split one error
-/// across several.
+/// An <see cref="IAnsiConsole"/> rather than a plain <see cref="TextWriter"/>, because an error is
+/// drawn in the theme. The width limit comes off, so a reader can grep the log by line.
 /// </para>
 /// </remarks>
 public sealed class ErrorOutput

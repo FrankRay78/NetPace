@@ -6,10 +6,12 @@ namespace NetPace.Console.Tests.Theming;
 /// The themes a theory runs over, read from <see cref="Theme.All"/> rather than listed by hand.
 /// </summary>
 /// <remarks>
-/// A theme added to <see cref="Theme.All"/> joins every theory that reads these rows, so its
-/// snapshots fail as missing until someone reads and accepts them. Rows listed by hand would leave
-/// it silently untested instead. The names a user types are the exception: they are an interface
-/// contract, so the tests that pin them list them explicitly.
+/// A theme added to <see cref="Theme.All"/> joins every theory reading these rows, so its
+/// snapshots fail as missing rather than leaving it silently untested.
+/// <para>
+/// The names a user types are the exception, being an interface contract, so the tests that pin
+/// them list them explicitly.
+/// </para>
 /// </remarks>
 internal static class ThemeRows
 {

@@ -10,10 +10,8 @@ public sealed partial class NetPaceConsoleTests
     /// the same on every console.
     /// </summary>
     /// <remarks>
-    /// The snapshots here hold the help screen down to the line above DESCRIPTION, which is the
-    /// logo and the blank lines around it. The whole help screen is snapshotted elsewhere; reading
-    /// only the opening here keeps a colour change to the lettering legible in a diff instead of
-    /// being one line of a long screen.
+    /// Only the opening of the help screen, the whole of it being snapshotted elsewhere: a colour
+    /// change to the lettering stays legible in a diff rather than one line of a long screen.
     /// </remarks>
     public sealed class HelpLogo
     {

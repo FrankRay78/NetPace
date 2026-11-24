@@ -7,11 +7,12 @@ namespace NetPace.Console.ConsoleWriters;
 /// One row of <see cref="SpeedTestTable"/>: what a single measurement has reported so far.
 /// </summary>
 /// <remarks>
-/// A figure the measurement has not reported stays absent rather than defaulting to zero, so the
-/// table draws a blank cell where nothing was measured and a number only where something was. A
-/// latency measurement fills fewer cells than a transfer does - no speed, and no count of failed
-/// requests, since a failed probe is not a verdict on anything the user asked for - and it does so
-/// simply by never reporting them.
+/// A figure the measurement has not reported stays absent rather than defaulting to zero, so a
+/// blank cell means nothing was measured.
+/// <para>
+/// A latency measurement fills fewer cells than a transfer, and does so simply by never
+/// reporting them.
+/// </para>
 /// </remarks>
 /// <param name="table">The table the row belongs to, told whenever the row changes.</param>
 /// <param name="name">What the row's Test cell names.</param>

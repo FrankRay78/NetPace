@@ -8,14 +8,11 @@ namespace NetPace.Console.ConsoleWriters;
 /// script that reads output a line at a time, as <c>speedtest-cli</c>'s <c>--simple</c> did.
 /// </summary>
 /// <remarks>
-/// Machine-readable, so the width limit comes off and nothing it writes is styled: the line shape
-/// is the contract a reader parses, and a break or an escape sequence inside one would land in the
-/// value. Every line this writer writes carries a <c>name: value</c> label, so one expression reads
-/// any of them, and a run that faults writes its unlabelled <c>Error:</c> message to the error
-/// stream, so the stream a reader parses carries figures only.
+/// Machine-readable, so the width limit comes off and nothing is styled: the line shape is the
+/// contract a reader parses, and an escape sequence would land in the value.
 /// <para>
-/// These are also the lines default output writes wherever it cannot redraw, which is why the
-/// lines themselves live in <see cref="SimpleLines"/>.
+/// These are also the lines default output writes wherever it cannot redraw, which is why they
+/// live in <see cref="SimpleLines"/>.
 /// </para>
 /// </remarks>
 public sealed class SimpleConsoleWriter : IConsoleWriter

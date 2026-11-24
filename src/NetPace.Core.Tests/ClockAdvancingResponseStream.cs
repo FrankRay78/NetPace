@@ -11,9 +11,8 @@ namespace NetPace.Core.Tests;
 /// paces the live progress figure.
 /// </summary>
 /// <remarks>
-/// The clock moves inside the read rather than from the test thread because the pacing is decided
-/// where the bytes are counted: a chunk is reported, or not reported, according to what the clock
-/// reads at the moment it arrives. Advancing from outside would race that.
+/// The clock moves inside the read, because the pacing is decided where the bytes are counted:
+/// advancing from the test thread would race it.
 /// </remarks>
 internal sealed class ClockAdvancingResponseStream : Stream
 {

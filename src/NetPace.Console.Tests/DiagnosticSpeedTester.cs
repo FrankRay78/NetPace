@@ -7,11 +7,8 @@ namespace NetPace.Console.Tests;
 /// diagnostic assembly can be snapshotted end to end.
 /// </summary>
 /// <remarks>
-/// Deliberately tiny and self-consistent: a handful of requests per test, with results whose counts
-/// and bytes are exactly what the reported records add up to. Each transfer also sends one latency
-/// probe, so the records cover a request a test makes without measuring. <see cref="SpeedTestStub"/> fabricates
-/// aggregate results with no requests behind them, which is fine for result snapshots but would make
-/// a diagnostic snapshot disagree with itself.
+/// Tiny and self-consistent, its counts and bytes being exactly what the reported records add up
+/// to; <see cref="SpeedTestStub"/> fabricates aggregates that would make a record snapshot disagree.
 /// </remarks>
 public sealed class DiagnosticSpeedTester : ISpeedTestService
 {

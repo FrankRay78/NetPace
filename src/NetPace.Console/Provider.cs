@@ -4,9 +4,8 @@ namespace NetPace.Console;
 /// Which kind of speed test server a run tests against.
 /// </summary>
 /// <remarks>
-/// A CLI concern rather than a library one: a library consumer constructs the provider they want
-/// directly. The service factory reads the provider off the settings record it is handed, so this
-/// enum chooses which record to build and nothing else.
+/// A CLI concern, a library consumer constructing the provider they want directly: the factory
+/// reads it off the settings record, so this chooses which record to build and nothing else.
 /// </remarks>
 public enum Provider
 {

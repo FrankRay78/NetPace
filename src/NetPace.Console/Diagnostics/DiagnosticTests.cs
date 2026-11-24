@@ -32,9 +32,8 @@ public static class DiagnosticTests
     /// it does alongside the measurement rather than the measurement itself.
     /// </summary>
     /// <remarks>
-    /// Read off the name rather than passed in at each scope, so that the distinction is made in
-    /// one place: a call site that forgot to say would otherwise log a probe as one of its test's
-    /// own requests and quietly put the summary out by one.
+    /// Read off the name rather than passed in at each scope: a call site that forgot to say would
+    /// log a probe as one of its test's own requests and put the summary out by one.
     /// </remarks>
     public static bool MeasuresATransfer(string test) => test is Download or Upload;
 }

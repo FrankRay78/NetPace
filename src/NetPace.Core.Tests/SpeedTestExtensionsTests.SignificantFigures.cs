@@ -5,11 +5,8 @@ namespace NetPace.Core.Tests;
 /// speed test can measure and no auto-scaled reading is wider than four characters.
 /// </summary>
 /// <remarks>
-/// The bands are read off the figure itself rather than off the unit it landed in: below 10 two
-/// decimal places, from 10 to below 100 one, and from 100 up a whole number. Rounding is what makes
-/// the bands awkward, because a figure can round out of the band it was measured in and even out of
-/// its unit, and a reading written as a bare <c>1000</c> of a unit it had rounded out of would
-/// defeat the point of fixing the width.
+/// The bands are read off the figure rather than the unit it landed in. Rounding is what makes
+/// them awkward: a figure can round out of its band and even out of its unit.
 /// </remarks>
 public sealed partial class SpeedTestExtensionsTests
 {

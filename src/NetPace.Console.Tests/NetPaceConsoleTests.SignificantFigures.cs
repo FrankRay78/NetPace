@@ -11,9 +11,8 @@ public sealed partial class NetPaceConsoleTests
     /// <c>--simple</c>.
     /// </summary>
     /// <remarks>
-    /// All three take their figure from the same library extension, so the test that matters is
-    /// that they still agree: a format formatting a speed on its own is how two of them come to
-    /// disagree, and it would not show in a snapshot of any one of them.
+    /// All three take their figure from one library extension, so what matters is that they still
+    /// agree: a format formatting a speed itself would show in no single snapshot.
     /// </remarks>
     public sealed class SignificantFigures
     {

@@ -17,13 +17,11 @@ public sealed partial class OoklaSpeedtestTests
     /// <c>OoklaSpeedtestSettingsTests.Profiles.cs</c> by proving the caps actually bound wire traffic.
     /// </summary>
     /// <remarks>
-    /// Each test reads the cap off a quantity the cap actually governs. The upload test weighs the
-    /// bodies the mock received, which is what crossed the wire. The download test cannot do the
-    /// same, because its mock builds each response up front and so records bytes the client never
-    /// read; it weighs the bytes of the requests the budget counted instead, and bounds the run as
-    /// a whole by the profile's own request list. The reported figure is deliberately not the
-    /// subject of either: it now also counts what requests still in flight had received when the
-    /// budget tripped, which runs past the cap by design.
+    /// Each test reads the cap off a quantity it actually governs: the upload test weighs the
+    /// bodies the mock received, the download test the bytes of the requests the budget counted.
+    /// <para>
+    /// The reported figure is the subject of neither, running past the cap by design.
+    /// </para>
     /// </remarks>
     public sealed class DefaultTraffic
     {

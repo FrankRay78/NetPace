@@ -79,10 +79,8 @@ public sealed class LibreSpeedtest : SpeedTestProviderBase
     /// actually using.
     /// </summary>
     /// <remarks>
-    /// An upload is sent to the ping endpoint itself, once any redirect in front of it has been
-    /// resolved, so that resolved address is probed as it stands: joining the ping path onto it as
-    /// onto an install address would probe a file that does not exist. A download's transfer
-    /// address is the install's own, which the ping path is joined onto as for the idle probe.
+    /// An upload goes to the ping endpoint itself, so its resolved address is probed as it stands;
+    /// a download's is the install's own, which the ping path is joined onto.
     /// </remarks>
     private protected override string LoadedLatencyProbeUrl(IServer server, string transferUrl) =>
         new Uri(transferUrl, UriKind.Absolute).AbsolutePath.EndsWith("/" + PingPath, StringComparison.Ordinal)
@@ -93,12 +91,12 @@ public sealed class LibreSpeedtest : SpeedTestProviderBase
     /// Whether the ping endpoint answered as LibreSpeed: with nothing at all.
     /// </summary>
     /// <remarks>
-    /// <c>backend/empty.php</c> returns a success status and an empty body. Its content type is
-    /// <c>text/html</c>, so that says nothing either way, and the body is the only part of the
-    /// answer that distinguishes a LibreSpeed install from a plain web server serving a page at the
-    /// same address. A non-success status, which is what an Ookla server gives this request, has
-    /// already failed the request before it reaches here; see
+    /// <c>backend/empty.php</c> answers with an empty body, which is the only part of the answer
+    /// distinguishing an install from a plain web server serving a page at the same address.
+    /// <para>
+    /// A non-success status has already failed the request; see
     /// <see cref="LatencyStatusFailureMessage"/>.
+    /// </para>
     /// </remarks>
     private protected override bool IsLatencyResponseValid(string response) => response.Length == 0;
 
@@ -107,12 +105,12 @@ public sealed class LibreSpeedtest : SpeedTestProviderBase
     /// non-success status as a server that failed. Both name the address.
     /// </summary>
     /// <remarks>
-    /// The user names a LibreSpeed server, so a status such as 404 almost always means the address
-    /// is wrong: naming the web root of an install under a path, or an Ookla server, answers
-    /// exactly that. It is the same mistake as an address answering with a page, so it gets the
-    /// same guidance. A server error such as 503 says the opposite: something at the right address
-    /// is failing, often a proxy whose backend is down, so the user is told the status rather than
-    /// to recheck an address that is correct.
+    /// The user names the server, so a client status almost always means a wrong address and gets
+    /// the same guidance as an address answering with a page.
+    /// <para>
+    /// A server error says the opposite, something at the right address failing, so the user is
+    /// told the status rather than to recheck an address that is correct.
+    /// </para>
     /// </remarks>
     private protected override string LatencyStatusFailureMessage(string probeUrl, HttpStatusCode status) =>
         (int)status is >= 400 and < 500
@@ -165,9 +163,8 @@ public sealed class LibreSpeedtest : SpeedTestProviderBase
     /// The install's ping endpoint, which also accepts the upload POSTs.
     /// </summary>
     /// <remarks>
-    /// LibreSpeed accepts a streamed body at <c>backend/empty.php</c> on the same address it answers
-    /// the ping on. A redirect in front of the install, such as a reverse proxy sending plain HTTP
-    /// to HTTPS, is resolved before the uploads begin, as it is for every provider.
+    /// LibreSpeed accepts a streamed body at <c>backend/empty.php</c> on the same address it
+    /// answers the ping on; a redirect in front of the install is resolved before any upload.
     /// </remarks>
     private protected override string UploadUrl(string serverUrl) => InstallDirectory(serverUrl) + PingPath;
 
@@ -177,13 +174,11 @@ public sealed class LibreSpeedtest : SpeedTestProviderBase
     /// dropped, and a trailing slash assured.
     /// </summary>
     /// <remarks>
-    /// The rest of the given path is kept, which is what makes an install under a path work.
-    /// Resolving <c>"."</c> against the address instead - what the Ookla provider does, where the
-    /// address always names a file inside the install - would turn <c>http://nas.local/speedtest</c>
-    /// into <c>http://nas.local/</c> and test the web root. So only a last segment that is plainly
-    /// a page (<c>index.html</c>, copied from the browser's address bar) is dropped, and a trailing
-    /// slash is added where the user left it off, so every form of the address tests the same
-    /// server.
+    /// The rest of the path is kept, which makes an install under a path work: resolving
+    /// <c>"."</c> against it, as the Ookla provider does, would test the web root.
+    /// <para>
+    /// So only a page name is dropped, and a trailing slash added where the user left it off.
+    /// </para>
     /// </remarks>
     /// <example>
     /// Input:  "http://nas.local/speedtest"

@@ -10,13 +10,12 @@ namespace NetPace.Console.Diagnostics;
 /// it ran, and a <c>test.end</c> summary on disposal.
 /// </summary>
 /// <remarks>
-/// The scope is the <see cref="IProgress{T}"/> the provider reports requests to, so the test's name
-/// is attached here rather than being something <c>NetPace.Core</c> has to know. Its
-/// <c>test.end</c> counts are derived from the records it saw, so the summary cannot count a
-/// record that is not above it: its <c>bytes</c> total is every record's bytes added up, whatever
-/// their outcome, which is what the measurement itself counts. It can also report a cancelled
-/// count, which the measured result does not carry. Under-load latency probes are the one thing it
-/// records without counting; see <see cref="Report"/> for why.
+/// The scope is the <see cref="IProgress{T}"/> the provider reports to, so the test's name is
+/// attached here rather than being something <c>NetPace.Core</c> has to know.
+/// <para>
+/// Its counts come from the records it saw, so the summary cannot count a record that is not above
+/// it. Under-load probes are the one thing recorded without counting; see <see cref="Report"/>.
+/// </para>
 /// </remarks>
 internal sealed class DiagnosticTestScope : IProgress<RequestDiagnostic>, IDisposable
 {
@@ -24,11 +23,8 @@ internal sealed class DiagnosticTestScope : IProgress<RequestDiagnostic>, IDispo
     /// What a request stopped because the run ran out of time is recorded as.
     /// </summary>
     /// <remarks>
-    /// <c>NetPace.Core</c> records such a request with its own generic wording
-    /// (<see cref="RequestDiagnostic.StoppedByCaller"/>), because the library knows only that its
-    /// caller asked it to stop. Here that caller is known, and the one thing that stops a NetPace
-    /// run while keeping its measurement is the run's time limit - so the record names it, and a
-    /// triager reading a cut-short run is told why it was cut short.
+    /// The library records such a request in its own generic wording, knowing only that its caller
+    /// asked it to stop. Here the caller is known, and the one such stop is the run's time limit.
     /// </remarks>
     private const string TimeLimitReached = "run time limit reached";
 
@@ -65,21 +61,14 @@ internal sealed class DiagnosticTestScope : IProgress<RequestDiagnostic>, IDispo
     /// recorded.
     /// </summary>
     /// <remarks>
-    /// Returning null rather than a scope over a disabled recorder is what lets the provider skip
-    /// the work: <c>NetPace.Core</c> tests the reporter for null before building a record, so a
-    /// null scope means no <see cref="RequestDiagnostic"/>, no URL evaluation and - on a failure -
-    /// no walk of the exception chain, per request. Paying that inside a measurement
-    /// for a user who asked for no diagnostics is the perturbation this design avoids. A scope over
-    /// a disabled recorder would also still take this type's lock and format every record before
-    /// discarding it.
+    /// Null rather than a scope over a disabled recorder, which is what lets the provider skip the
+    /// work: nothing is computed per request for a user who asked for no diagnostics.
     /// </remarks>
     /// <param name="recorder">Where the records go.</param>
     /// <param name="test">The test the records belong to.</param>
     /// <param name="timeLimitToken">
-    /// The run's time limit, for a test that reaches the library through a token linked to it
-    /// rather than as a stop: a request that test reports cancelled once the limit is reached is
-    /// recorded as stopped by the limit, because the library can only call it cancelled by its
-    /// caller.
+    /// The run's time limit. A request reported cancelled once it is reached is recorded as
+    /// stopped by the limit, the library being able only to call it cancelled by its caller.
     /// </param>
     public static DiagnosticTestScope? For(IDiagnosticRecorder recorder, string test, CancellationToken timeLimitToken = default)
     {

@@ -30,9 +30,8 @@ public sealed class ClientInfoProvider : IClientInfoProvider
 {
     /// <inheritdoc />
     /// <remarks>
-    /// Returns the first available IPv4 address; falls back to the first available IPv6 address;
-    /// returns an empty string if no unicast addresses are found; returns <c>"ERROR"</c>
-    /// if an exception occurs during retrieval.
+    /// The first IPv4 address, else the first IPv6 one; empty where there is no unicast address,
+    /// and <c>"ERROR"</c> where the lookup threw.
     /// </remarks>
     public string GetIPAddress()
     {

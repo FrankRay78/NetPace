@@ -553,10 +553,8 @@ public sealed class LibreSpeedtestTests
     /// first and report nothing measured.
     /// </summary>
     /// <remarks>
-    /// The probe is observed through the diagnostics channel rather than from the responder that
-    /// answered it: the responder returns before the probe's sample has been recorded, so releasing
-    /// the transfer there would still race. Every wait carries a hang guard, so a regression that
-    /// stops probing fails the test rather than hanging the run.
+    /// Observed through the diagnostics channel, the responder returning before the sample is
+    /// recorded. Every wait carries a hang guard, so a stalled probe fails rather than hangs.
     /// </remarks>
     private sealed class HeldTransfer : IDisposable
     {

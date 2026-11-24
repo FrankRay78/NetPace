@@ -13,15 +13,12 @@ namespace NetPace.Core.Tests;
 /// </summary>
 /// <remarks>
 /// <para>
-/// This orders a byte budget being reached while another upload is still in flight. The upload
-/// that fills the budget is held back until the stalled one has sent what it is going to send, so
-/// the stalled one is always partway through its body when the budget ends it.
+/// Orders a byte budget being reached while another upload is in flight: the filling upload is
+/// held back, so the stalled one is always partway through its body when the budget ends it.
 /// </para>
 /// <para>
-/// A stalled write is released by the cancellation token the client handed it. A client that does
-/// not pass its cancellation through to the write would hang the test, so the stall is bounded:
-/// once it runs out, the server goes back to reading and accepts the rest of the body, and the
-/// test sees an upload that carried on after the budget had ended it.
+/// The stall is bounded, because a client that did not pass its cancellation through to the write
+/// would otherwise hang the test.
 /// </para>
 /// </remarks>
 internal sealed class StalledUploadHandler : HttpMessageHandler

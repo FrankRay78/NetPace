@@ -21,15 +21,12 @@ public sealed record ServerScreeningSettings
     /// has been ranked by the end of the first stage, <see cref="FirstScreeningStageMilliseconds"/>.
     /// Must be positive; a non-positive value is rejected when selection runs, not at construction.
     /// <para>
-    /// Ten seconds, so that a link whose round trip is a second or two can still have a server
-    /// chosen for it. The ceiling is reached in stages rather than waited out: a pass that has
-    /// ranked a candidate by the end of the first stage takes it and moves on, so a run on a quick
-    /// link chooses a server as fast as it ever did, and only a pass that has ranked nothing waits
-    /// for the rest. A ceiling above the first stage therefore bounds how long a pass that has
+    /// Ten seconds by default. A ceiling above the first stage bounds how long a pass that has
     /// ranked nothing waits; it does not give a slower candidate the whole ceiling once a quicker
     /// one has been ranked. To give every candidate the whole ceiling, set
-    /// <see cref="FirstScreeningStageMilliseconds"/> to the ceiling as well. See
-    /// <c>docs/architecture/server-screening-and-measurement.md</c>.
+    /// <see cref="FirstScreeningStageMilliseconds"/> to the ceiling as well. Why it is spent in
+    /// stages: <c>docs/architecture/server-screening-and-measurement.md</c> and CIR
+    /// <c>docs/change-intent-records/2026-11-09-screening-ceiling-is-spent-in-stages.md</c>.
     /// </para>
     /// </remarks>
     public int ServerTimeoutMilliseconds { get; init; } = 10000;

@@ -6,11 +6,8 @@ namespace NetPace.Console;
 /// Holding a finished run to the targets it was given, and saying what it missed.
 /// </summary>
 /// <remarks>
-/// A target is missed when the measured figure is below a minimum or above a maximum; a figure
-/// exactly at its target meets it. A test whose every request failed measures zero, which misses
-/// any minimum it was given. A target with no figure at all to compare, because the run ended
-/// before it had an outcome, is missed too: a check that cannot see the line is not a check that
-/// passed.
+/// A figure exactly at its target meets it. A target with no figure at all to compare is missed:
+/// a check that cannot see the line is not a check that passed.
 /// <para>
 /// The lines this produces are a word to the user about the run, not part of its result, so they go
 /// to the error stream and leave every output format untouched.

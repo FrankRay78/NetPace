@@ -18,17 +18,15 @@ public sealed partial class OoklaSpeedtestTests
     /// using, and the figures the transfer's result then reports for them.
     /// </summary>
     /// <remarks>
-    /// Every test here paces the probes itself through <see cref="GatedDelayProvider"/> and times
-    /// them on a <see cref="ControlledTimeProvider"/>, so a figure asserted below is exactly what
-    /// the test said it was rather than a wall-clock reading. The transfer is held open while the
-    /// probes it is being measured under go out, which is also what makes the probe count the
-    /// test's to decide: a transfer that ended first would simply report nothing measured.
+    /// Every test paces its probes and times them on clocks it moves itself, so a figure asserted
+    /// below is what the test said rather than a wall-clock reading.
     /// <para>
-    /// A probe's answer is observed through the diagnostics channel rather than from the responder
-    /// that answered it. The responder returns before the probe's elapsed figure has been read, so
-    /// a test that released the next probe on the responder would let that probe advance the clock
-    /// inside the previous probe's measurement. The diagnostic report is the seam that fires after
-    /// the sample has been taken.
+    /// The transfer is held open while the probes go out, which makes the probe count the test's
+    /// to decide: one that ended first would report nothing measured.
+    /// </para>
+    /// <para>
+    /// A probe's answer is observed through the diagnostics channel, the seam that fires after the
+    /// sample is taken; a responder returns before the elapsed figure is read.
     /// </para>
     /// </remarks>
     public sealed class LoadedLatency

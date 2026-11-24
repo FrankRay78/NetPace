@@ -41,20 +41,15 @@ public sealed partial class OoklaSpeedtestTests
     /// but the request is not answered until <paramref name="gate"/> completes.
     /// </summary>
     /// <remarks>
-    /// Screening runs every candidate concurrently against one clock, so without an order between
-    /// them one candidate's advance can land inside another candidate's measurement and neither
-    /// figure is predictable. Gating the later candidate on the earlier one's completion orders the
-    /// two without anything waiting on the wall clock.
+    /// Candidates are screened concurrently against one clock, so without an order one advance
+    /// can land inside another's measurement and neither figure is predictable.
     /// <para>
-    /// A caller opens the gate from a progress report, which is the only seam that fires after a
-    /// candidate's elapsed figure has been recorded - signalling from the earlier candidate's own
-    /// responder races, because the responder returns before that figure is read. The order
-    /// therefore rests on screening reporting progress once per completed candidate and not at
-    /// candidate start; an implementation that also reported 0% up front would open the gate early
-    /// and put the figures back in doubt. A test using this helper must assert that the gated
-    /// candidate was screened at all: a gate that never opens leaves it abandoned at the screening
-    /// ceiling, which is shorter than <see cref="HangGuard"/> and would otherwise pass quietly with
-    /// only one candidate compared.
+    /// The gate opens from a progress report, the only seam that fires after a candidate's elapsed
+    /// figure is recorded; a responder returns before it is read.
+    /// </para>
+    /// <para>
+    /// A test using this must assert the gated candidate was screened at all: a gate that never
+    /// opens leaves it abandoned at the ceiling, passing quietly with one candidate compared.
     /// </para>
     /// </remarks>
     private static void RespondAfterAdvancing(MockHttpMessageHandler mockHttp, string url, ControlledTimeProvider clock, TimeSpan duration, Task gate)

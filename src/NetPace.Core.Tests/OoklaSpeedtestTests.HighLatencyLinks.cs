@@ -22,12 +22,8 @@ public sealed partial class OoklaSpeedtestTests
         /// server answering only after this stands in for one reached across a slow link.
         /// </summary>
         /// <remarks>
-        /// Bounded above by the screening ceiling divided by <c>ScreeningRequestCount</c>: a
-        /// candidate is screened with that many requests, issued one after another, and is ranked
-        /// only once the last of them returns. Raise this past a third of the ceiling and a
-        /// screening pass can no longer finish inside it, leaving the candidates abandoned and the
-        /// test resting on whether an abandoned candidate's figure happens to be recorded before
-        /// the pass reads its results.
+        /// Bounded above by the ceiling divided by <c>ScreeningRequestCount</c>: raise it past a
+        /// third of the ceiling and no screening pass finishes inside it.
         /// </remarks>
         private const int SlowLinkRoundTripMilliseconds = 2500;
 

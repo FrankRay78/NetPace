@@ -11,9 +11,8 @@ namespace NetPace.Core.Tests;
 /// which the client sees as a transport failure partway through sending the body.
 /// </summary>
 /// <remarks>
-/// A handler of its own rather than a mocked response, because the point of the test it serves is
-/// that the body was really being serialised when the connection went: a mock that never reads the
-/// request content has nothing to cut off.
+/// A handler of its own rather than a mocked response: the body has to be really serialised when
+/// the connection goes, and a mock that never reads the content has nothing to cut off.
 /// </remarks>
 internal sealed class CutOffUploadHandler : HttpMessageHandler
 {

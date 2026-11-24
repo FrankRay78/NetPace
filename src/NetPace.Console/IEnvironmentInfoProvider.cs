@@ -36,10 +36,8 @@ public interface IEnvironmentInfoProvider
 /// Production implementation of <see cref="IEnvironmentInfoProvider"/>.
 /// </summary>
 /// <remarks>
-/// Every value comes from a BCL API that survives trimming - three <see cref="RuntimeInformation"/>
-/// properties and <see cref="AppVersion"/>, which reads this assembly's informational version
-/// attribute. None of them reflects over types or members, which is what would make the type unsafe
-/// to trim or publish AOT, so any value added here must come from the same kind of source.
+/// Every value comes from a BCL API that survives trimming and reflects over no type or member,
+/// so any value added here must come from the same kind of source.
 /// </remarks>
 public sealed class EnvironmentInfoProvider : IEnvironmentInfoProvider
 {

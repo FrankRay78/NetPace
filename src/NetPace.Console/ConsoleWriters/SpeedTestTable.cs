@@ -11,27 +11,9 @@ namespace NetPace.Console.ConsoleWriters;
 /// straight down a column.
 /// </summary>
 /// <remarks>
-/// <para>
-/// Built afresh on every draw rather than updated in place. Spectre.Console's table refuses a
-/// column added once it holds rows, and the <c>Failed</c> column appears only when a transfer
-/// turns out to have failed, so a table kept between draws would have to be rebuilt at exactly
-/// that moment anyway. Rebuilding always is one path instead of two.
-/// </para>
-/// <para>
-/// A column's width is therefore the one thing that cannot be read off a single draw, and it is
-/// held here instead: a held column opens at the width reserved for it, grows where a wider
-/// value arrives, and never narrows again for the rest of the run. Letting a column size itself to
-/// its current widest value moved the figures sideways while the user was reading them - a speed
-/// passing from Kbps to Mbps shifted every column to its right. The widths belong to this instance, and a run builds
-/// its own table, so a width grown under <c>--count</c> or <c>--loop</c> does not carry into the
-/// next run.
-/// </para>
-/// <para>
-/// Down to about twenty-five characters, every column is drawn. A window too narrow for the
-/// table wraps it rather than dropping a figure the user asked to see, because a missing column
-/// reads as a measurement that was never taken. Narrower than that, the console library reduces
-/// the table itself and a column can go.
-/// </para>
+/// Built afresh on every draw, Spectre.Console refusing a column added once a table holds rows.
+/// Column widths are therefore held here, growing but never narrowing. See CIR
+/// <c>docs/change-intent-records/2026-11-15-three-significant-figures-and-held-column-widths.md</c>.
 /// </remarks>
 /// <param name="theme">The colours and emphasis to draw in.</param>
 /// <param name="unit">The unit a speed is shown in.</param>
@@ -42,9 +24,8 @@ namespace NetPace.Console.ConsoleWriters;
 /// <c>--no-latency</c>, where nothing would ever fill them.
 /// </param>
 /// <param name="animated">
-/// Whether the spinner beside a running measurement turns as the measurement reports. Off leaves
-/// it on its first frame, so a captured screen does not depend on how much a run happened to
-/// report - the same reason <see cref="ILiveDisplayRefresh"/> exists, and driven by the same switch.
+/// Whether the spinner turns as the measurement reports. Off leaves it on its first frame, so a
+/// captured screen does not depend on how much a run happened to report.
 /// </param>
 internal sealed class SpeedTestTable(
     Theme theme,
@@ -128,11 +109,8 @@ internal sealed class SpeedTestTable(
     /// at all.
     /// </summary>
     /// <remarks>
-    /// A row is added for every test the run was asked for, before any of them has started, so
-    /// that the screen shows what is coming rather than filling in from blank. A test the run then
-    /// never reached - because its turn came after the run's time limit - is not a measurement that
-    /// failed, and leaving its row behind with a spinner or a cross would say it was. Dropping it
-    /// leaves the table reading exactly as it does for a test nobody asked for.
+    /// Every test the run was asked for gets a row before any starts, so the screen shows what is
+    /// coming. A test never reached did not fail, so a spinner or a cross left behind would lie.
     /// </remarks>
     public void Remove(SpeedTestTableRow row)
     {
@@ -143,8 +121,7 @@ internal sealed class SpeedTestTable(
     /// <summary>Called by a row when something it shows has changed.</summary>
     /// <remarks>
     /// Also what turns the spinner, so the screen moves whenever the measurement has something new
-    /// to say and stands still when it has not. A measurement reports as it goes - per probe, per
-    /// request - so this is often enough for the spinner to read as turning.
+    /// to say. A measurement reports per probe and per request, often enough to read as turning.
     /// </remarks>
     internal void Changed() => reportsTaken++;
 
@@ -167,9 +144,8 @@ internal sealed class SpeedTestTable(
 
     /// <inheritdoc/>
     /// <remarks>
-    /// Once every row has been removed, because the run's time limit came before any test had
-    /// anything to show, nothing is drawn: headings over no figures would read as a result with
-    /// its figures missing, where <c>--simple</c> writes nothing for the same run.
+    /// With every row removed, nothing is drawn: headings over no figures would read as a result
+    /// with its figures missing, where <c>--simple</c> writes nothing for the same run.
     /// </remarks>
     protected override IEnumerable<Segment> Render(RenderOptions options, int maxWidth)
     {
@@ -270,11 +246,11 @@ internal sealed class SpeedTestTable(
     /// holds, widening that column where the text is wider than anything it has held before.
     /// </summary>
     /// <remarks>
-    /// Padding the value rather than fixing the column's width leaves Spectre.Console sizing the
-    /// column as it always has - to the widest thing in it, heading included - and only raises the
-    /// floor it sizes against. A value too wide for the floor is still drawn whole, which is the
-    /// one thing a column must not refuse. Blank cells are padded too, so a column is at its
-    /// reserved width from the first draw rather than from the first figure.
+    /// Padding the value rather than fixing the width only raises the floor Spectre.Console sizes
+    /// against, so a value too wide for it is still drawn whole.
+    /// <para>
+    /// Blank cells are padded too, so a column is at its reserved width from the first draw.
+    /// </para>
     /// </remarks>
     private string AtColumnWidth(string heading, string text)
     {
@@ -291,11 +267,8 @@ internal sealed class SpeedTestTable(
     /// The width a column opens at, before any value has been drawn in it.
     /// </summary>
     /// <remarks>
-    /// Only the columns whose figures change width while a run is under way reserve anything. The
-    /// <c>Done</c> and <c>Failed</c> columns reserve nothing: a percentage never outgrows its own
-    /// heading, and a failure count is written once, when the measurement that failed settles. They
-    /// are still held, so that the no-narrowing guarantee covers every column rather than the ones
-    /// it happened to be needed for.
+    /// Only a column whose figures change width mid-run reserves anything. All are still held, so
+    /// the no-narrowing guarantee covers every column rather than the ones it was needed for.
     /// </remarks>
     private int ReservedWidth(string heading) => heading switch
     {
@@ -309,9 +282,8 @@ internal sealed class SpeedTestTable(
     /// reach, or the one the run pinned.
     /// </summary>
     /// <remarks>
-    /// Read back out of the formatter rather than from a list of unit names kept here, so the
-    /// reserved width cannot drift from the units a speed is actually written in - a new unit
-    /// system, or a renamed unit, widens the reserve by itself.
+    /// Read back out of the formatter rather than from a list kept here, so a new or renamed unit
+    /// widens the reserve by itself.
     /// </remarks>
     private int WidestUnitName()
     {

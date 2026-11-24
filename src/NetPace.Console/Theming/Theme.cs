@@ -4,16 +4,11 @@ namespace NetPace.Console.Theming;
 /// The colours and emphasis NetPace draws its human-readable screens in.
 /// </summary>
 /// <remarks>
-/// A theme is a standing preference rather than a per-run choice, so it is chosen through the
-/// environment and never through an option — see <see cref="EnvironmentThemeProvider"/>. Only the
-/// screens a person reads take their appearance from here: CSV and JSON carry numbers another
-/// program parses, <c>--file</c> output is always written without colour, and <c>--simple</c> has
-/// never been coloured.
+/// A standing preference rather than a per-run choice, so it is chosen through the environment and
+/// never through an option. Only the screens a person reads take their appearance from here.
 /// <para>
-/// Every element NetPace colours has a slot, so a new theme is a list of values rather than a
-/// search through the renderers. A slot's name says what is being drawn, never which colour it
-/// ends up — <c>Figure</c>, not <c>BoldYellow</c> — because the colour is what a theme
-/// changes.
+/// Every element NetPace colours has a slot, named for what is being drawn and never for the
+/// colour it ends up, because the colour is what a theme changes.
 /// </para>
 /// </remarks>
 public sealed record Theme
@@ -28,11 +23,8 @@ public sealed record Theme
     /// away from the console rather than relying on every slot being left unset.
     /// </summary>
     /// <remarks>
-    /// Read off the slots rather than stated alongside them, so it cannot disagree with them. A
-    /// theme that said it suppressed colour while colouring a slot would have that colour taken
-    /// away by <see cref="ApplyTo"/>; one that said it did not while colouring nothing would leave
-    /// the console colour-capable, so anything Spectre.Console draws of its own accord would still
-    /// be coloured — the failure <see cref="ApplyTo"/> exists to prevent.
+    /// Read off the slots rather than stated alongside them, so it cannot disagree with them: a
+    /// theme wrongly claiming colour would leave the console colour-capable.
     /// </remarks>
     public bool SuppressesColour =>
         BannerNet == Color.Default && BannerPace == Color.Default
@@ -42,11 +34,8 @@ public sealed record Theme
     /// The Net half of the lettering at the top of the help screen.
     /// </summary>
     /// <remarks>
-    /// A theme may draw the two halves in a pair of colours, purely as decoration, which is why there
-    /// are two slots and not one; <see cref="Default"/> gives both the same colour as its headings.
-    /// The split carries no meaning: the lettering spells the product name
-    /// whether or not the halves are told apart, as they are not under <see cref="Plain"/> or
-    /// <c>NO_COLOR</c>.
+    /// Two slots so a theme may draw the halves in a pair of colours, purely as decoration: the
+    /// lettering spells the product name whether or not they are told apart.
     /// </remarks>
     public required Color BannerNet { get; init; }
 
@@ -125,12 +114,12 @@ public sealed record Theme
     /// rather than one named property at a time.
     /// </summary>
     /// <remarks>
-    /// Every <see cref="Style"/> slot added above belongs here too; <see cref="BannerNet"/> and
-    /// <see cref="BannerPace"/> are a <see cref="Color"/> each and so cannot be, and are asserted
-    /// on separately by the same sweeps. A test pins this list against the <see cref="Style"/>
-    /// properties the type declares, so a slot left out of it fails rather than quietly going
-    /// uncovered. The whole-theme sweeps read the list: the plain theme leaves every slot unstyled,
-    /// and each coloured theme moves every slot off the default theme's value.
+    /// Every <see cref="Style"/> slot belongs here, the two <see cref="Color"/> banner slots being
+    /// asserted on separately.
+    /// <para>
+    /// A test pins this list against the <see cref="Style"/> properties the type declares, so a
+    /// slot left out of it fails rather than quietly going uncovered.
+    /// </para>
     /// </remarks>
     public IReadOnlyList<Style> Styles =>
     [
@@ -221,17 +210,11 @@ public sealed record Theme
     /// A green-led look.
     /// </summary>
     /// <remarks>
-    /// Every colour here but one is a mid-tone green: light enough to read against a black
-    /// terminal and dark enough to read against a white one, which a bright green manages only on
-    /// the first and a deep green only on the second. Four tones carry the screen itself — a
-    /// leading green for what the eye should land on, a teal green and an olive green for the
-    /// things beside it, and a grey-green for what is deliberately quiet.
+    /// Every colour but one is a mid-tone green, which reads against a black terminal and a white
+    /// one alike where a bright or a deep green manages only one.
     /// <para>
-    /// <see cref="BannerPace"/> is the one exception: a bright green, kept because the help
-    /// lettering needs a pair of greens far enough apart to read as two words, and a second
-    /// mid-tone would not. It reads on a black terminal and washes out on a white one, which costs
-    /// the reader nothing they cannot get elsewhere, since the lettering says the product name and
-    /// no more.
+    /// <see cref="BannerPace"/> is the exception: the help lettering needs a pair of greens far
+    /// enough apart to read as two words, and it washes out on a white terminal.
     /// </para>
     /// </remarks>
     public static Theme Green { get; } = new()
@@ -263,16 +246,11 @@ public sealed record Theme
     /// An orange-led look for Halloween, chosen by name and never by the date.
     /// </summary>
     /// <remarks>
-    /// Four roles carry the screen: orange for what the eye should land on, purple for the things
-    /// beside it, green for what has finished, and a grey for what is deliberately quiet. Two more
-    /// tones mark a measurement that went wrong: a dimmer orange where some requests failed and a
-    /// deep red where the whole thing did. Neither outcome rests on its colour, since the mark and
-    /// the failed count say how the measurement went, as <see cref="Error"/> describes.
+    /// Neither failure tone is load-bearing: the mark and the failed count say how a measurement
+    /// went, as <see cref="Error"/> describes.
     /// <para>
-    /// Every colour is picked from the 256-colour palette by name, as <see cref="Green"/> is, and
-    /// every one of them clears a 3:1 contrast ratio against pure black and pure white alike, so
-    /// the palette reads on a dark terminal and a light one. A terminal that can draw only sixteen
-    /// colours approximates them, and nothing here promises how that approximation reads.
+    /// Every colour clears a 3:1 contrast ratio against pure black and pure white alike, so the
+    /// palette reads on a dark terminal and a light one.
     /// </para>
     /// </remarks>
     public static Theme Halloween { get; } = new()
@@ -341,9 +319,8 @@ public sealed record Theme
     /// Narrows <paramref name="console"/> to what this theme is willing to draw.
     /// </summary>
     /// <remarks>
-    /// A theme that uses no colour takes colour away from the console rather than setting every
-    /// slot to nothing and hoping: anything Spectre.Console draws of its own accord, rather than
-    /// through a slot here, has no slot to leave unset.
+    /// A colourless theme takes colour off the console rather than leaving every slot unset:
+    /// anything Spectre.Console draws of its own accord has no slot here to unset.
     /// </remarks>
     /// <param name="console">The console the run draws on.</param>
     /// <exception cref="ArgumentNullException"><paramref name="console"/> is <c>null</c>.</exception>

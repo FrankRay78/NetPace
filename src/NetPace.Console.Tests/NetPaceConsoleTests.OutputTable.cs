@@ -33,10 +33,8 @@ public sealed partial class NetPaceConsoleTests
 
         /// <summary>A transfer result carrying latency measured under its own load.</summary>
         /// <remarks>
-        /// By default a transfer with no successes carries no bytes, which is what a link that
-        /// never answered looks like. Pass <paramref name="bytesProcessed"/> to say otherwise: a
-        /// transfer whose every request failed after delivering something reports a real figure
-        /// beside the count, and that shape needs drawing too.
+        /// A transfer with no successes carries no bytes by default, which is what a link that
+        /// never answered looks like; <paramref name="bytesProcessed"/> draws the other shape.
         /// </remarks>
         private static SpeedTestResult Transfer(int succeeded, int failed, long? latencyMilliseconds, long jitterMilliseconds = 4, long? bytesProcessed = null) =>
             new()

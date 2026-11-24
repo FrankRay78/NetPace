@@ -7,9 +7,8 @@ namespace NetPace.Console.Diagnostics;
 /// stream.
 /// </summary>
 /// <remarks>
-/// An abstraction over one <see cref="StreamWriter"/> because a destination that fails part way
-/// through a run is behaviour NetPace reports, and no real path fails that way on demand on every
-/// platform the suite runs on.
+/// An abstraction over one <see cref="StreamWriter"/>, because a destination that fails part way
+/// through a run is reported behaviour and no real path fails that way on demand everywhere.
 /// </remarks>
 public interface IDiagnosticFileOpener
 {
@@ -19,12 +18,8 @@ public interface IDiagnosticFileOpener
     /// <param name="path">The path the user named.</param>
     /// <returns>The writer the records are flushed to. The caller owns it and closes it.</returns>
     /// <remarks>
-    /// An open that fails raises, and the caller treats that as fatal. The type raised is whatever
-    /// the destination produced, so a caller catches by intent rather than by type: a file path
-    /// alone reaches here as <see cref="IOException"/> for a missing directory,
-    /// <see cref="UnauthorizedAccessException"/> for a denied one or for a directory given as the
-    /// path, and <see cref="ArgumentException"/> or <see cref="NotSupportedException"/> for a path
-    /// the platform will not take.
+    /// An open that fails raises whatever the destination produced, so a caller catches by intent
+    /// rather than by type.
     /// </remarks>
     TextWriter Open(string path);
 }
@@ -34,9 +29,10 @@ public interface IDiagnosticFileOpener
 /// </summary>
 /// <remarks>
 /// Replaced rather than appended to, and <c>--file-mode</c> does not reach it: a diagnostics file
-/// describes one run, so a second run's records behind a first run's would make the totals in it
-/// read as one. UTF-8 with no byte-order mark, for the reason <see cref="FileConsole"/> states:
-/// nothing stands in front of the first record, so a Unix text tool reads it as a record.
+/// describes one run, so two runs' records would make its totals read as one.
+/// <para>
+/// UTF-8 with no byte-order mark, for the reason <see cref="FileConsole"/> states.
+/// </para>
 /// </remarks>
 public sealed class DiagnosticFileOpener : IDiagnosticFileOpener
 {

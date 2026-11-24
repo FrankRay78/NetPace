@@ -4,10 +4,8 @@ namespace NetPace.Console;
 /// Controls whether a measurement outcome causes a non-zero exit code.
 /// </summary>
 /// <remarks>
-/// By default (<see cref="None"/>) network conditions never affect the exit code — they are data,
-/// reported via the request counts in the output. The other values let a consumer opt in to
-/// treating a failed measurement as a process failure (for example, in CI). Evaluation is
-/// fail-fast and uniform across single, <c>--count</c>, and <c>--loop</c> runs.
+/// A network condition is data by default, reported through the request counts; the other values
+/// opt in to treating a failed measurement as a process failure. Fail-fast, and uniform.
 /// </remarks>
 public enum FailOn
 {

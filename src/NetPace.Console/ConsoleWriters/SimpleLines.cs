@@ -7,10 +7,8 @@ namespace NetPace.Console.ConsoleWriters;
 /// The <c>--simple</c> result: one <c>name: value</c> line per figure, in the order the tests ran.
 /// </summary>
 /// <remarks>
-/// Written here rather than inside <see cref="SimpleConsoleWriter"/> because default output writes
-/// these same lines wherever it cannot redraw — a pipe, a redirect, a <c>--file</c> target — and
-/// the two must be the same lines, not two renderings that agree today. A test that did not run
-/// contributes no line, so nothing here ever reports a zero for a measurement nobody asked for.
+/// Here rather than inside <see cref="SimpleConsoleWriter"/>, because default output writes these
+/// same lines wherever it cannot redraw: one set of lines, not two renderings that agree today.
 /// </remarks>
 internal static class SimpleLines
 {

@@ -4,9 +4,8 @@ namespace NetPace.Console;
 /// Bounds how long one speed test run may take.
 /// </summary>
 /// <remarks>
-/// A seam rather than a bare timer, so a test can decide when a run is cut short instead of
-/// waiting out a duration: a suite that had to sit through the limit to watch it fire would be
-/// neither fast nor repeatable.
+/// A seam rather than a bare timer, so a test decides when a run is cut short: a suite that sat
+/// through the limit to watch it fire would be neither fast nor repeatable.
 /// </remarks>
 public interface IRunTimeLimit
 {

@@ -6,11 +6,11 @@ namespace NetPace.Core.Tests;
 /// reading of how long the machine happened to take.
 /// </summary>
 /// <remarks>
-/// <see cref="TimeZoneInfo.Utc"/> is reported as the local zone so that local-time stamps do not
-/// vary with the machine running the suite. <see cref="TimeProvider.GetTimestamp"/> is overridden
-/// alongside <see cref="TimeProvider.GetUtcNow"/> because the base implementation reads the system
-/// stopwatch: a double that moved only <see cref="TimeProvider.GetUtcNow"/> would control the
-/// stamps on a record while its durations still came off the wall clock.
+/// UTC is reported as the local zone, so a local-time stamp does not vary with the machine.
+/// <para>
+/// <see cref="TimeProvider.GetTimestamp"/> is overridden too, the base implementation reading the
+/// system stopwatch: a double moving only the clock would leave durations on the wall clock.
+/// </para>
 /// </remarks>
 internal sealed class ControlledTimeProvider(DateTimeOffset start) : TimeProvider
 {

@@ -7,12 +7,8 @@ public sealed partial class NetPaceConsoleTests
     /// merits: a timeout is reported like any other network failure, and honours <c>--fail-on</c>.
     /// </summary>
     /// <remarks>
-    /// What a timeout does to a run that repeats, and how it is told apart from a cancellation in
-    /// each run mode, belong to <see cref="RunModes"/>: those are rules of the run block, checked
-    /// there against every mode at once, and every rule about a failed test is checked against a
-    /// plain network failure as well as a timeout.
-    /// This class holds what is particular to a timeout - the line composed for it, and the places
-    /// it can surface from.
+    /// What a timeout does to a repeating run belongs to <see cref="RunModes"/>, those being rules
+    /// of the run block. This class holds the line composed for a timeout and where it surfaces.
     /// </remarks>
     public sealed class Timeouts
     {

@@ -10,9 +10,8 @@ namespace NetPace.Core.Tests;
 /// behaves when it closes a connection it has decided is too old to keep writing to.
 /// </summary>
 /// <remarks>
-/// A test uses this rather than a short body because the two are not the same thing: a short body
-/// is a complete response, while this one faults the read that would have continued it, so the
-/// request fails after data has already arrived.
+/// Not the same as a short body, which is a complete response: this faults the read that would
+/// have continued it, so the request fails after data has already arrived.
 /// </remarks>
 internal sealed class CutOffResponseStream : Stream
 {

@@ -16,9 +16,8 @@ public sealed partial class OoklaSpeedtestTests
     /// consumer can show a figure that climbs rather than one that appears only at the end.
     /// </summary>
     /// <remarks>
-    /// Every probe here is timed on a clock the test moves itself and paced through
-    /// <see cref="GatedDelayProvider"/>, so a reported figure is exactly what the test's probe
-    /// times imply rather than a wall-clock reading.
+    /// Every probe is timed on a clock the test moves itself, so a reported figure is what the
+    /// test's probe times imply rather than a wall-clock reading.
     /// </remarks>
     public sealed class LiveFigures
     {

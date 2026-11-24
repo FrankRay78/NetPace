@@ -13,10 +13,8 @@ internal static class CustomHelpProvider
     /// Pace begins so each half can be drawn in its own colour.
     /// </summary>
     /// <remarks>
-    /// ASCII alone, so every monospace font has the characters and draws them all at one width.
-    /// The quadrant-block lettering this replaced lined up only where the font in use carried
-    /// those characters; where it did not, the browser or terminal took them from a fallback font
-    /// of different metrics and the rows came apart, as they did in the README's help block.
+    /// ASCII alone, so every monospace font has the characters at one width: the quadrant-block
+    /// lettering this replaced came apart wherever a fallback font of other metrics supplied it.
     /// </remarks>
     private static readonly (string Net, string Pace)[] WordmarkRows =
     [

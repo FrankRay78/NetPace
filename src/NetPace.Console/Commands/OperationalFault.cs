@@ -5,13 +5,12 @@ namespace NetPace.Console.Commands;
 /// rather than a network condition.
 /// </summary>
 /// <remarks>
-/// Network conditions — an outage, a server that never answered, nothing discovered at all — are
-/// data, so they are reported and leave the exit code at <c>0</c> unless the user opted in to
-/// a non-zero one with <c>--fail-on</c> or a target. An operational fault is
-/// NetPace failing at its own job, and must exit non-zero. One definition, shared, because a
-/// command that recognised operational faults differently would make the documented exit-code
-/// rule depend on which command the user ran. It is one component of that rule rather than the
-/// whole of it: a command may exit non-zero for a usage error too, as <c>servers</c> does.
+/// A network condition is data, so it leaves the exit code at <c>0</c> unless the user opted in
+/// with <c>--fail-on</c> or a target; an operational fault is NetPace failing at its own job.
+/// <para>
+/// One shared definition, or the documented exit-code rule would depend on which command ran. One
+/// component of that rule, not the whole: a usage error exits non-zero too.
+/// </para>
 /// </remarks>
 internal static class OperationalFault
 {

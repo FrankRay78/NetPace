@@ -6,14 +6,11 @@ namespace NetPace.Console;
 /// the process error stream in production, a buffer in tests.
 /// </summary>
 /// <remarks>
-/// A notice is not the result and is not a diagnostic. It goes to the error stream so a run whose
-/// result is being read by another program — piped, redirected, or written with <c>--csv</c> or
-/// <c>--json</c> — is never handed a sentence of English in the middle of its data, and it keeps
-/// its own writer so a test can assert which stream carried what.
+/// A notice is neither the result nor a diagnostic. It goes to the error stream, so a run whose
+/// result another program is reading is never handed a sentence of English mid-data.
 /// <para>
-/// A plain <see cref="TextWriter"/> rather than an <see cref="IAnsiConsole"/>, for the same reason
-/// <see cref="Diagnostics.DiagnosticOutput"/> is: the message is one line whatever the terminal
-/// width, and a <c>[</c> in it would be markup to Spectre.Console.
+/// A plain <see cref="TextWriter"/> rather than an <see cref="IAnsiConsole"/>: the message is one
+/// line whatever the width, and a <c>[</c> in it would be markup to Spectre.Console.
 /// </para>
 /// </remarks>
 public sealed class NoticeOutput(TextWriter writer)

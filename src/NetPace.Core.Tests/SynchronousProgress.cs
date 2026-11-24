@@ -8,12 +8,12 @@ namespace NetPace.Core.Tests;
 /// order deterministically.
 /// </summary>
 /// <remarks>
-/// <see cref="System.Progress{T}"/> is unsuitable for asserting on a progress sequence: it posts
-/// each handler invocation to the captured synchronization context (the thread pool in a unit-test
-/// run), so callbacks can arrive out of order — or even after the awaited operation has returned
-/// and the assertion has already run. That non-determinism was the source of the historic
-/// progress-test flakiness. The Ookla progress paths emit reports in a well-defined order
-/// (sequential loops, or serialised under a lock), so observing them synchronously is exact.
+/// <see cref="System.Progress{T}"/> posts each invocation to the captured synchronization context,
+/// so callbacks can arrive out of order or after the awaited operation has returned.
+/// <para>
+/// The provider's own paths emit reports in a defined order, so observing them synchronously is
+/// exact.
+/// </para>
 /// </remarks>
 internal sealed class SynchronousProgress<T> : IProgress<T>
 {

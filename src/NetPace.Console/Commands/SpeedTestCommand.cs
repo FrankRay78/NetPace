@@ -33,11 +33,8 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ErrorOutput errorOutp
     /// Executes the speed test command using the provided settings.
     /// </summary>
     /// <remarks>
-    /// Network and discovery outcomes are data, not errors: they are reported through the output
-    /// counts and leave the exit code at <c>0</c> unless the consumer opts in, with <c>--fail-on</c>
-    /// for <c>1</c> or with a <c>--min-download</c>, <c>--min-upload</c> or <c>--max-latency</c>
-    /// target for <see cref="ThresholdCheck.MissedExitCode"/>. Otherwise only operational failures
-    /// (which propagate out of this method to the top-level handler) produce a non-zero exit code.
+    /// A network outcome is data, not an error, and leaves the exit code at <c>0</c> unless the
+    /// consumer opts in. Only an operational fault, which propagates, exits non-zero of itself.
     /// </remarks>
     public async Task<int> ExecuteAsync(SpeedTestCommandSettings settings, CancellationToken cancellationToken)
     {
@@ -230,20 +227,11 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ErrorOutput errorOutp
     /// raised, and is reported to the user only where there is somewhere to report it.
     /// </summary>
     /// <remarks>
-    /// Diagnostics are a second stream alongside the result, so one that cannot be written must not
-    /// decide the run's fate: raising here would turn a completed measurement into a non-zero exit,
-    /// and from the <c>finally</c> in <see cref="ExecuteAsync"/> it would replace the very exception
-    /// the records were written to explain. The unwritten records stay buffered, so a later flush
-    /// still carries them.
+    /// A second stream must not decide the run's fate, and from the <c>finally</c> in
+    /// <see cref="ExecuteAsync"/> a raise here would replace the very exception the records explain.
     /// <para>
-    /// Where <c>--diagnostics-file</c> named the destination, the error stream is a different place
-    /// and says once which path failed, because a user who asked for a file and got none would
-    /// otherwise learn that only when they went looking for it. It says so as a notice, not an
-    /// error: the run succeeded, and a script scanning the error stream for errors must not read it
-    /// as failed. Nor does <c>--quiet</c> silence it, since <c>--quiet</c> leaves diagnostics alone. Under <c>--diagnostics</c> alone
-    /// there is nowhere to say it: the stream that would carry the message is the one that just
-    /// failed. At most once per run, so a <c>--loop</c> over a destination that is gone for
-    /// good does not fill the error stream with the same line.
+    /// Where <c>--diagnostics-file</c> named the destination there is somewhere else to report it:
+    /// once per run, as a notice rather than an error, since the run succeeded.
     /// </para>
     /// </remarks>
     /// <param name="settings">The settings the run was asked for, which name the destination.</param>
@@ -269,12 +257,8 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ErrorOutput errorOutp
     /// merits.
     /// </summary>
     /// <remarks>
-    /// A timeout and a cancellation arrive as the same exception type, so the two are told apart by
-    /// what the cancellation carries: .NET's HTTP client reports its own
-    /// <see cref="HttpClient.Timeout"/> as a cancellation with a <see cref="TimeoutException"/>
-    /// inside, and <c>NetPace.Core</c>'s latency probe reports its per-probe timeout the same way.
-    /// A cancellation the caller asked for never reaches here - the catch above it claims one
-    /// whenever this command's own token has been cancelled.
+    /// A timeout and a cancellation arrive as the same type, so they are told apart by what the
+    /// cancellation carries: a <see cref="TimeoutException"/> inside means a timeout.
     /// </remarks>
     private static string Describe(Exception e) =>
         e is OperationCanceledException && e.InnerException is TimeoutException
@@ -285,10 +269,8 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ErrorOutput errorOutp
     /// Writes one line per target the run missed, and says whether there were any.
     /// </summary>
     /// <remarks>
-    /// The lines go to the error stream rather than through the console: the result another program
-    /// is reading must be the same text with the targets as without them, in every output format
-    /// and in a <c>--file</c> target, and a user who asked for <c>--quiet</c> still wants to hear
-    /// that the line fell short, which is the whole reason they set a target.
+    /// To the error stream, not the console: the result another program reads must be the same
+    /// text with the targets as without, and <c>--quiet</c> still wants to hear about a miss.
     /// </remarks>
     private bool ReportMisses(SpeedTestOutcome? outcome, SpeedTestCommandSettings settings)
     {
@@ -322,9 +304,8 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ErrorOutput errorOutp
     /// Whether the consumer opted in to failure exit codes at all.
     /// </summary>
     /// <remarks>
-    /// Used where a measurement threw rather than completing. <c>Partial</c> is the stricter
-    /// threshold, so it must fire wherever <c>Total</c> does - a run that produced nothing cannot
-    /// be more acceptable to a pristine-run check than one that produced an all-failed result.
+    /// <c>Partial</c> is the stricter threshold, so it must fire wherever <c>Total</c> does: a run
+    /// that produced nothing cannot be more acceptable than one that produced an all-failed result.
     /// </remarks>
     private static bool FailOnRequested(SpeedTestCommandSettings settings) =>
         settings.FailOn != FailOn.None;

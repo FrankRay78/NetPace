@@ -56,9 +56,8 @@ public sealed class ScriptedSpeedTester : ISpeedTestService
     /// something before it did, so the figure beside the counts is a real speed.
     /// </summary>
     /// <remarks>
-    /// The shape a link produces when a server keeps cutting its transfers off, which is what
-    /// <see cref="SpeedTestResult.BytesProcessed"/> counting delivered bytes makes possible. Kept
-    /// apart from <see cref="AllFailed"/> because the two render differently and both need pinning.
+    /// The shape a link produces when a server keeps cutting its transfers off. Kept apart from
+    /// <see cref="AllFailed"/>, the two rendering differently and both needing pinning.
     /// </remarks>
     public static SpeedTestResult AllFailedWithBytes(int attempts) =>
         new() { BytesProcessed = 1000, ElapsedMilliseconds = 1000, RequestsSucceeded = 0, RequestsFailed = attempts, Latency = null };

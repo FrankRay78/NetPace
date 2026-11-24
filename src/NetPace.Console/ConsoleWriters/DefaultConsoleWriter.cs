@@ -10,22 +10,16 @@ namespace NetPace.Console.ConsoleWriters;
 /// arriving beside the test it belongs to. The table is the result, so no result line follows it.
 /// </summary>
 /// <remarks>
+/// For a person at a modern terminal; wherever it cannot redraw it writes the <c>--simple</c>
+/// lines instead, each destination judged on its own. See CIR
+/// <c>docs/change-intent-records/2026-11-09-default-output-is-for-a-modern-terminal.md</c>.
 /// <para>
-/// This output is for a person at a modern terminal, and wherever it cannot redraw — a pipe, a
-/// redirect, a <c>--file</c> target, a terminal Spectre.Console reports as not interactive — it
-/// writes the <c>--simple</c> lines instead, so a log never holds control codes and a script never
-/// parses a half-drawn table. A run with <c>--file</c> at a terminal therefore has both at once:
-/// the table on screen and the simple lines in the file. Each destination is judged on its own.
-/// </para>
-/// <para>
-/// The only writer that takes a theme: the machine-readable writers produce records another
-/// program parses, and <c>--simple</c> is a plain line per figure that has never been coloured, so
-/// none of them has an appearance to choose.
+/// The only writer that takes a theme, no other having an appearance to choose.
 /// </para>
 /// </remarks>
 /// <param name="liveDisplayRefresh">
-/// Whether the live displays redraw as they go. Switching redrawing off — as the console test host
-/// does — leaves a slow run with the same screen as an instant one.
+/// Whether the live displays redraw as they go. Off leaves a slow run with the same screen as an
+/// instant one.
 /// </param>
 /// <param name="theme">The colours and emphasis to draw in.</param>
 public sealed class DefaultConsoleWriter(ILiveDisplayRefresh liveDisplayRefresh, Theme theme) : IConsoleWriter
@@ -251,9 +245,8 @@ public sealed class DefaultConsoleWriter(ILiveDisplayRefresh liveDisplayRefresh,
     /// or <c>null</c> where this run has none of that kind.
     /// </summary>
     /// <remarks>
-    /// A composite console is unpacked so each destination is judged on what it is: a terminal
-    /// redraws, a <c>--file</c> target never does. Both can be <c>null</c> under <c>--quiet</c>
-    /// with no file, where the run writes nowhere at all.
+    /// A composite is unpacked so each destination is judged on what it is. Both can be
+    /// <c>null</c> under <c>--quiet</c> with no file, where the run writes nowhere at all.
     /// </remarks>
     private static (IAnsiConsole? Animating, IAnsiConsole? Plain) Split(IAnsiConsole console)
     {

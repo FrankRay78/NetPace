@@ -9,10 +9,8 @@ public sealed partial class NetPaceConsoleTests
     /// the unit the run asked for, and that it is the speed the run went on to measure.
     /// </summary>
     /// <remarks>
-    /// Default output has no result line to compare a figure against, so these tests compare the
-    /// table's figure with the one <c>--simple</c> reports for the same measurement. That is the
-    /// stable format a script reads, so a figure the table showed and a figure a script was given
-    /// disagreeing is the failure worth catching.
+    /// Default output has no result line, so the table's figure is compared with <c>--simple</c>'s
+    /// for the same measurement: the two disagreeing is the failure worth catching.
     /// </remarks>
     public sealed class LiveSpeed
     {

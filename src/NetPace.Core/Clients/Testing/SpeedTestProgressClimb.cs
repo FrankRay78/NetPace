@@ -15,11 +15,8 @@ public static class SpeedTestProgressClimb
     /// that has arrived by then.
     /// </summary>
     /// <remarks>
-    /// Bytes trail the clock throughout, and the last report still trails it, so a consumer
-    /// averaging since the test began watches the figure climb without ever reaching the result's
-    /// own speed. Landing on that speed is the job of whatever the consumer does when the
-    /// measurement returns, and a stub whose last report already matched the result would hide
-    /// whether the consumer does it at all.
+    /// Bytes trail the clock throughout, the last report included, so a stub whose last report
+    /// already matched the result would hide whether the consumer lands on it at all.
     /// </remarks>
     private static readonly (int PercentageComplete, int BytesPercentage)[] Climb =
     [
@@ -44,12 +41,12 @@ public static class SpeedTestProgressClimb
     /// </returns>
     /// <exception cref="ArgumentNullException"><paramref name="result"/> is <c>null</c>.</exception>
     /// <remarks>
-    /// The latency figures arrive as a real transfer's do: none by the first report, because no
-    /// probe has answered that early; the latency alone by the second; and the unevenness from the
-    /// third, which is the first report with a consecutive pair of probes behind it. Unlike the
-    /// bytes, they land on the result's own figures, so a consumer watching them is watching the
-    /// numbers it will be given. A result that measured no latency under load carries neither
-    /// figure on any report.
+    /// The latency figures arrive as a real transfer's do: none by the first report, the latency
+    /// alone by the second, and the jitter from the third.
+    /// <para>
+    /// Unlike the bytes they land on the result's own figures, so a consumer is watching the
+    /// numbers it will be given.
+    /// </para>
     /// </remarks>
     public static IEnumerable<SpeedTestProgress> Towards(SpeedTestResult result)
     {

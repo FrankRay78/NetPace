@@ -9,14 +9,11 @@ namespace NetPace.Console.ConsoleWriters;
 /// looping in a terminal and scanning the lines that scroll past, as <c>ping</c> is read.
 /// </summary>
 /// <remarks>
-/// Machine-readable, so the width limit comes off and nothing it writes is styled: a line that
-/// broke, or that carried an escape sequence, would be unreadable at exactly the moment this format
-/// exists for, which is a column of lines compared by eye.
+/// Machine-readable, so the width limit comes off and nothing is styled: a broken line would be
+/// unreadable at exactly the moment this format exists for, a column compared by eye.
 /// <para>
-/// The timestamp is always there rather than behind a switch, because a line in a running log is of
-/// little use without the time it was taken. A run that faults writes no line here at all: its
-/// unlabelled <c>Error:</c> line goes to the error stream, with no timestamp in front of it, this
-/// format being a quick shorthand rather than a detailed log.
+/// The timestamp is always there rather than behind a switch, a line in a running log being of
+/// little use without it. A run that faults writes no line here at all.
 /// </para>
 /// </remarks>
 public sealed class MinimalConsoleWriter : IConsoleWriter

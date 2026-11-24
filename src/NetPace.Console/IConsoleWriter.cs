@@ -20,10 +20,8 @@ public interface IConsoleWriter
     /// Performs a speed test and writes the result to the console.
     /// </summary>
     /// <remarks>
-    /// The writer the command builds for a run serves that whole run, so a format with anything to
-    /// say once per run (the CSV header line) may remember that for itself rather than being told
-    /// which test it is on. A test abandoned by an exception composes no result, so a once-per-run
-    /// line belongs above the first test that writes one, not the first that is attempted.
+    /// One writer serves a whole run, so a format with a once-per-run line may remember it for
+    /// itself. That line belongs above the first test that writes a result, not the first attempted.
     /// </remarks>
     /// <param name="console">The Spectre.Console instance used for output.</param>
     /// <param name="clock">Clock used to obtain the current timestamp for each result.</param>

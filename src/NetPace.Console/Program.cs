@@ -527,14 +527,8 @@ public static class Program
     }
 
     /// <summary>
-    /// Build the provider's <see cref="SpeedTestSettings"/> from the parsed CLI settings.
-    /// <c>--provider</c> picks which record is built; everything after that is provider-neutral and
-    /// is applied once, to the shared half of it. Profile sets per-request shape and cap defaults;
-    /// explicit --downloadsize / --uploadsize override only the cap via with-expressions, and
-    /// --connections overrides only the number of transfers each direction runs at once.
-    /// <c>--simple</c> and <c>--minimal</c> additionally switch the under-load latency probes off,
-    /// because neither format shows an under-load figure, and <c>--no-latency</c> does because it
-    /// asks for no latency at all.
+    /// Builds the provider's <see cref="SpeedTestSettings"/> from the parsed CLI settings:
+    /// <c>--provider</c> picks the record, and everything after it applies to the shared half.
     /// </summary>
     internal static SpeedTestSettings BuildSpeedTestSettings(SpeedTestCommandSettings settings)
     {
@@ -601,10 +595,8 @@ public static class Program
     /// culture independent, and a duration of more than nothing.
     /// </summary>
     /// <remarks>
-    /// Exactly <c>hh:mm:ss</c>, because <see cref="TimeSpan"/>'s own parsing reads shorter forms
-    /// as something else: <c>600</c> as six hundred days and <c>10:00</c> as ten hours, so a user
-    /// asking for ten minutes would get no limit worth the name. <c>--delay</c> accepts any
-    /// <see cref="TimeSpan"/> form; only this option is strict.
+    /// Exactly <c>hh:mm:ss</c>, because <see cref="TimeSpan"/> reads <c>600</c> as six hundred
+    /// days and <c>10:00</c> as ten hours. <c>--delay</c> accepts any form; only this is strict.
     /// </remarks>
     private static bool TryParseTimeLimit(string? value, out TimeSpan limit) =>
         TimeSpan.TryParseExact(value, TimeLimitFormat, CultureInfo.InvariantCulture, out limit) && limit > TimeSpan.Zero;
@@ -729,16 +721,11 @@ public static class Program
     /// Builds the console every error is written to, over the given stream.
     /// </summary>
     /// <remarks>
-    /// How ANSI support is settled is <see cref="ErrorAnsiSupport"/>'s decision, and the platform
-    /// is a parameter rather than read here so that a test fixes it instead of inheriting the
-    /// machine it runs on. The <c>styled</c> argument below is what keeps a captured error log to
-    /// the words: where the stream is redirected, errors are not styled at all.
+    /// The platform is a parameter rather than read here, so a test fixes it instead of inheriting
+    /// the machine it runs on.
     /// <para>
-    /// Detection only ever reaches the error handle because <paramref name="writer"/> is
-    /// <see cref="System.Console.Error"/> itself. Spectre.Console picks the handle to probe by
-    /// reference-comparing the writer against the standard streams, so handing this method any
-    /// other writer with <paramref name="isWindows"/> set would send detection to standard
-    /// output - the one handle the error stream exists to leave alone.
+    /// Detection reaches the error handle only because <paramref name="writer"/> is
+    /// <see cref="System.Console.Error"/> itself, which Spectre.Console reference-compares.
     /// </para>
     /// </remarks>
     /// <param name="writer">The stream errors are written to.</param>
@@ -758,32 +745,9 @@ public static class Program
     /// Whether Spectre.Console detects the error stream's ANSI support or is told it outright.
     /// </summary>
     /// <remarks>
-    /// Platform-specific: a Windows terminal detects, everything else is told.
-    /// <para>
-    /// Told outright, Spectre.Console writes colour as escape sequences to the writer it was
-    /// given, and to no other stream. That is what the error stream needs almost everywhere. But
-    /// being told also means Spectre.Console never asks to switch the mode on. It may still read
-    /// the handle, and only detection passes the flag that upgrades it, which on Windows is what
-    /// switches virtual terminal processing on. A classic console window renders escape sequences
-    /// only once something has switched that mode on. Normally the console that writes the result
-    /// does it, and the error stream benefits because both share the window; when the result is
-    /// redirected or piped, nothing does, and the error line shows literal escape characters. So
-    /// on Windows, where the error stream is a terminal, support is detected: Spectre.Console
-    /// reads the error handle and switches the mode on. Where that call fails, it falls back to
-    /// setting colour through System.Console's own colour properties, which on Windows write no
-    /// bytes to any stream; they set the standard OUTPUT handle's colour attributes, so where
-    /// that handle is a redirected file the call fails and the error simply prints unstyled.
-    /// </para>
-    /// <para>
-    /// Detecting is unsafe anywhere else. On Unix that same fallback is reached whenever
-    /// <c>TERM</c> is not one Spectre.Console recognises, and .NET then writes those colour
-    /// properties to standard OUTPUT wherever that is a terminal, stamping the error console's
-    /// colours onto the live result. The trigger is not an incapable terminal: a terminal that
-    /// cannot take escape sequences writes nothing at all, while a capable one Spectre.Console's
-    /// list has not caught up with is exactly the case that spills. A redirected standard stream
-    /// is read as unable to take escape sequences before <c>TERM</c> or the console mode is
-    /// consulted at all, reaching the fallback on every platform. Both keep the forced answer.
-    /// </para>
+    /// A Windows terminal detects, only detection switching virtual terminal processing on;
+    /// everything else is told. See CIR
+    /// <c>docs/change-intent-records/2026-11-17-error-colour-on-a-windows-console.md</c>.
     /// </remarks>
     /// <param name="isWindows">Whether the run is on Windows.</param>
     /// <param name="isRedirected">Whether the error stream goes somewhere other than a terminal.</param>
@@ -932,10 +896,8 @@ public static class Program
     /// do. Nothing is written when the value named a theme, or named nothing.
     /// </summary>
     /// <remarks>
-    /// Written before <c>--help</c> and <c>--version</c> return, so a user who typo'd the variable
-    /// hears about it whichever command they ran. Whether the run is quiet is read from the parse
-    /// rather than the raw arguments, so every spelling the parser accepts — a separate
-    /// <c>false</c>, a bundled <c>-tq</c>, a response file — means here what it means to the run.
+    /// Before <c>--help</c> and <c>--version</c> return, so a typo is heard about whichever
+    /// command ran. Quietness is read from the parse, so every spelling means what it does there.
     /// </remarks>
     private static void ReportUnrecognisedTheme(IServiceProvider serviceProvider, ParseResult parseResult, ThemeSelection selection)
     {

@@ -37,15 +37,12 @@ public enum CutShortStage
 /// </summary>
 /// <remarks>
 /// <para>
-/// The stop-and-report behaviour itself belongs to <c>NetPace.Core</c> and is verified there. This
-/// double exists so that a CLI test can watch what the run does about a measurement that was cut
-/// short: which tests it goes on to run, what it writes, what it exits with, and how it words the
-/// record of a stopped request.
+/// Stop-and-report itself belongs to <c>NetPace.Core</c>. This double lets a CLI test watch what
+/// the run does about a cut-short measurement.
 /// </para>
 /// <para>
-/// A transfer the limit does not fall in answers cleanly, so a test can tell an upload that was
-/// never run from one that was. Which runs are cut short is <see cref="CutsShortRun"/>'s to say, so a repeated run can
-/// have its first run cut short and its second complete.
+/// A transfer the limit misses answers cleanly, so a test can tell an upload never run from one
+/// that was; <see cref="CutsShortRun"/> says which runs are cut short.
 /// </para>
 /// </remarks>
 public sealed class CutShortSpeedTester(RecordingRunTimeLimit limit) : ISpeedTestService

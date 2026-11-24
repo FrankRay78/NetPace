@@ -9,10 +9,7 @@ namespace NetPace.Core.Tests;
 /// </summary>
 /// <remarks>
 /// <see cref="DelayProviderStub"/> completes every wait at once, which turns a loop that waits
-/// between iterations into one that spins for as long as the loop runs - fine for counting the waits
-/// a fixed number of iterations asked for, useless for a loop whose iteration count is whatever the
-/// interval and the surrounding operation's duration happen to produce. Holding each wait makes that
-/// count the test's to decide.
+/// between iterations into one that spins. Holding each wait makes the count the test's to decide.
 /// </remarks>
 internal sealed class GatedDelayProvider : IDelayProvider
 {

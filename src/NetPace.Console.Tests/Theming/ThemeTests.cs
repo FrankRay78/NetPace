@@ -144,10 +144,8 @@ public sealed class ThemeTests
     /// white one, with what each is and why it is let off.
     /// </summary>
     /// <remarks>
-    /// The green theme's help lettering needs a pair of greens far enough apart to read as two
-    /// words, which two mid-tones are not; the brighter of the pair costs the reader nothing they
-    /// cannot get elsewhere, since the lettering says the product name and no more. Documented for
-    /// users under "Choosing a colour theme" in USER_GUIDE.md.
+    /// The green theme's lettering needs a pair of greens far enough apart to read as two words,
+    /// which two mid-tones are not. Documented under "Choosing a colour theme" in USER_GUIDE.md.
     /// </remarks>
     public static TheoryData<string, string> LightBackgroundExemptions() => new()
     {

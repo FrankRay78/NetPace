@@ -7,11 +7,12 @@ namespace NetPace.Console;
 /// <c>--min-upload</c> and <c>--max-latency</c> each hold the run to.
 /// </summary>
 /// <remarks>
-/// The target is kept in the measurement's own fixed unit, whole bits per second for a speed and
-/// whole milliseconds for a latency, so the comparison is between two whole numbers of the same
-/// unit and no display option can move it. The unit the user typed is kept only to write the
-/// figures back in: a target given in <c>Mbps</c> is reported in <c>Mbps</c>, whatever
-/// <c>--unit</c>, <c>--unit-system</c> and <c>--unit-scale</c> say about the result itself.
+/// Kept in the measurement's own fixed unit, so the comparison is between two whole numbers and
+/// no display option can move it.
+/// <para>
+/// The unit the user typed is kept only to write the figures back in, whatever the unit options
+/// say about the result itself.
+/// </para>
 /// </remarks>
 public sealed record MeasurementThreshold
 {
@@ -59,10 +60,8 @@ public sealed record MeasurementThreshold
     /// Gets the target in the unit it was given in, for example <c>50 Mbps</c>.
     /// </summary>
     /// <remarks>
-    /// Written to as many decimal places as it takes to state the target exactly, so a measured
-    /// figure reported beside it can never read as the higher number: a 2.564 Mbps minimum is
-    /// reported as <c>2.564 Mbps</c>, not rounded to the <c>2.56 Mbps</c> that a measurement of
-    /// 2.563 Mbps would read above.
+    /// As many decimal places as it takes to state the target exactly, so a measured figure
+    /// reported beside it can never read as the higher number.
     /// </remarks>
     public string TargetFigure => Write(Target, MostDecimals);
 
@@ -70,9 +69,8 @@ public sealed record MeasurementThreshold
     /// A measured figure written in the target's own unit, for example <c>0.01 Mbps</c>.
     /// </summary>
     /// <remarks>
-    /// Carries however many decimal places it takes for the figure not to read as the target: a
-    /// download of 49,999,999 bits per second against a 50 Mbps minimum is reported as
-    /// <c>49.999999 Mbps</c> rather than rounded onto the very target it missed.
+    /// However many decimal places it takes for the figure not to read as the target, rather than
+    /// rounding a near miss onto the very target it missed.
     /// </remarks>
     /// <param name="figure">The measured figure, in the measurement's own fixed unit.</param>
     public string Figure(long figure)

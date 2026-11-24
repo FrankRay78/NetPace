@@ -14,9 +14,8 @@ public sealed class SpeedTestMockTests
     /// this test holds on to, and the call a consumer makes to reach it.
     /// </summary>
     /// <remarks>
-    /// The injected function's result is returned to the test as well as configured on the mock,
-    /// so a single theory can assert the mock handed back that very object whichever result type
-    /// the operation returns.
+    /// The injected result is returned to the test as well as configured, so one theory can assert
+    /// the mock handed back that very object whichever type the operation returns.
     /// </remarks>
     public static TheoryData<string, Func<SpeedTestMock, object>, Func<SpeedTestMock, IProgress<LatencyTestProgress>, IProgress<SpeedTestProgress>, Task<object>>> Operations => new()
     {

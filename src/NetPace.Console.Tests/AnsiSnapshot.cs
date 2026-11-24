@@ -7,10 +7,8 @@ namespace NetPace.Console.Tests;
 /// answers whether anything in it was styled.
 /// </summary>
 /// <remarks>
-/// A colour-recording run captures real escape sequences, and an escape character in a committed
-/// snapshot is invisible in a diff — a colour change would land as an unreadable blob of control
-/// bytes. Spelling the escape as <c>\e</c> keeps the sequence legible, so a reviewer can see which
-/// colour an element moved to.
+/// An escape character in a committed snapshot is invisible in a diff, so a colour change would
+/// land as a blob of control bytes. Spelling it <c>\e</c> keeps the sequence legible.
 /// </remarks>
 internal static partial class AnsiSnapshot
 {
@@ -26,11 +24,8 @@ internal static partial class AnsiSnapshot
     /// Whether anything in the captured output was drawn in a colour or with emphasis.
     /// </summary>
     /// <remarks>
-    /// Reads the escape sequences the terminal is sent rather than the styles the code asked for,
-    /// so it answers for whatever reaches the screen. Only the sequence that sets graphics —
-    /// colour, bold, dim, italic, underline — counts: moving the cursor and clearing a line are how
-    /// a live display redraws itself and say nothing about appearance, and a hyperlink is an
-    /// address rather than a colour.
+    /// Reads the escape sequences sent rather than the styles asked for, so it answers for
+    /// whatever reaches the screen. Only the graphics sequence counts; a redraw is not appearance.
     /// </remarks>
     public static bool CarriesStyling(string output) => GraphicsSequence().IsMatch(output);
 

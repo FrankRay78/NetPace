@@ -9,10 +9,8 @@ public sealed partial class NetPaceConsoleTests
     /// What a chosen theme changes about the screens a person reads, and what it must leave alone.
     /// </summary>
     /// <remarks>
-    /// These are the only snapshots in the suite recorded with colour. Every other snapshot runs
-    /// through a colourless console, so it records NetPace's wording and holds still when a colour
-    /// moves; the snapshots here are the opposite, and exist to make a colour change visible in a
-    /// diff.
+    /// The only snapshots recorded with colour. Every other runs colourless, holding still when a
+    /// colour moves; these are the opposite, and exist to make a colour change visible.
     /// </remarks>
     public sealed class Themes
     {
@@ -515,9 +513,8 @@ public sealed partial class NetPaceConsoleTests
         /// partially failed and one still running. A row that failed outright is not among them.
         /// </summary>
         /// <remarks>
-        /// A completed run reaches none of the slots that only a row in flight is drawn with - the
-        /// spinner and the running percentage - because by the time the display closes every row
-        /// has finished. Ending the run part-way is the only way to draw them.
+        /// A completed run reaches none of the slots only a row in flight is drawn with, every row
+        /// having finished by the time the display closes.
         /// </remarks>
         private static ServiceCollection PartWayTableServices(IThemeProvider themeProvider, CancellationTokenSource cancellation)
         {

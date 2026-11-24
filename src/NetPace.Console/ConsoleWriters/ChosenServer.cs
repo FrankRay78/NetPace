@@ -7,11 +7,12 @@ namespace NetPace.Console.ConsoleWriters;
 /// against it.
 /// </summary>
 /// <remarks>
-/// Choosing and measuring are separate steps because the person watching wants the server named
-/// while the first probe is still out: on a slow link that wait is seconds long, and a spinner
-/// that says only "Choosing server" tells them nothing about what is being tested. The route is
-/// carried alongside the server because the server alone cannot distinguish one the user named
-/// from one screening picked, and a diagnostic log has to say which happened.
+/// Separate steps, because the person watching wants the server named while the first probe is
+/// still out, which on a slow link is seconds long.
+/// <para>
+/// The route is carried alongside it because the server alone cannot distinguish one the user
+/// named from one screening picked, and a diagnostic log has to say which.
+/// </para>
 /// </remarks>
 internal sealed record ChosenServer
 {

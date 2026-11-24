@@ -4,10 +4,8 @@ namespace NetPace.Console.Diagnostics;
 /// The clock that stamps diagnostic records.
 /// </summary>
 /// <remarks>
-/// Deliberately separate from <see cref="IClock"/>, which stamps the result. The result stream must
-/// be byte-identical whether or not <c>--diagnostics</c> was passed, and the test clocks count the
-/// reads they are given - so sharing one instance between the two would make the presence of
-/// diagnostics shift the timestamp in the result.
+/// Deliberately separate from the <see cref="IClock"/> that stamps the result: the test clocks
+/// count their reads, so one shared instance would let diagnostics shift a result's timestamp.
 /// </remarks>
 public interface IDiagnosticClock
 {

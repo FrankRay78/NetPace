@@ -6,10 +6,8 @@ namespace NetPace.Console;
 /// The version NetPace reports about itself, through <c>--version</c> and the diagnostic log.
 /// </summary>
 /// <remarks>
-/// Read from the informational version rather than the assembly version, because only the
-/// informational version can carry a prerelease suffix: the assembly version accepts numbers alone,
-/// so a <c>0.27.0-rc1</c> build carries assembly version <c>0.27.0</c>. Reading an assembly attribute
-/// does not reflect over types or members, so it is safe to trim and publish AOT.
+/// The informational version, because only it can carry a prerelease suffix. Reading an assembly
+/// attribute reflects over no type or member, so it is safe to trim and publish AOT.
 /// </remarks>
 internal static class AppVersion
 {

@@ -4,9 +4,8 @@ namespace NetPace.Console.Theming;
 /// Where the theme for a run comes from.
 /// </summary>
 /// <remarks>
-/// An interface rather than a call to <see cref="Environment.GetEnvironmentVariable(string)"/> at
-/// the point of use, so a test says what the user set without changing the environment every other
-/// test in the run shares.
+/// An interface rather than a call at the point of use, so a test says what the user set without
+/// changing the environment every other test shares.
 /// </remarks>
 public interface IThemeProvider
 {
@@ -20,16 +19,15 @@ public interface IThemeProvider
 /// Reads the theme from the environment.
 /// </summary>
 /// <remarks>
-/// <c>NETPACE_THEME</c> is set once, in a shell profile, and reaches every command — including
-/// <c>--help</c>, which NetPace renders before it parses any option and which an option therefore
-/// could not reach.
+/// <c>NETPACE_THEME</c> reaches every command, <c>--help</c> included, which NetPace renders
+/// before it parses any option and which an option therefore could not reach.
 /// <para>
-/// <c>NO_COLOR</c> outranks it. A user who has asked every program on the machine for no colour has
-/// already answered the question a theme asks, so any non-empty value selects
-/// <see cref="Theme.Plain"/> whatever <c>NETPACE_THEME</c> says — the convention published at
-/// no-color.org. Spectre.Console reads the variable too, but only to drop colour, so without this a
-/// theme's bold would survive it. Spectre also treats an empty value as set where no-color.org does
-/// not, so an empty <c>NO_COLOR</c> draws the chosen theme's emphasis without its colour.
+/// <c>NO_COLOR</c> outranks it: any non-empty value selects <see cref="Theme.Plain"/>, the
+/// convention at no-color.org, which also drops a theme's bold where Spectre would not.
+/// </para>
+/// <para>
+/// Spectre treats an empty value as set where no-color.org does not, so an empty
+/// <c>NO_COLOR</c> draws the chosen theme's emphasis without its colour.
 /// </para>
 /// </remarks>
 public sealed class EnvironmentThemeProvider : IThemeProvider

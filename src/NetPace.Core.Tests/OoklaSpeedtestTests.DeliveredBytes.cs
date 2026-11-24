@@ -16,9 +16,8 @@ public sealed partial class OoklaSpeedtestTests
     /// reached, both moved data across the link, and the reported figure is about the link.
     /// </summary>
     /// <remarks>
-    /// How requests are counted is deliberately not what these tests are about: a request that did
-    /// not finish still counts as failed, and one dropped at the byte budget still counts as
-    /// neither. Only the bytes change.
+    /// How requests are counted is deliberately not what these tests are about. Only the bytes
+    /// change.
     /// </remarks>
     public sealed class DeliveredBytes
     {

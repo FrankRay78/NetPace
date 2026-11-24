@@ -7,10 +7,8 @@ namespace NetPace.Console;
 /// log can carry context NetPace knows nothing about — an ISP plan, a site name, a connection type.
 /// </summary>
 /// <remarks>
-/// NetPace does not police the keys. A key matching a built-in field name, or repeating an earlier
-/// key, is recorded as given, and each output format resolves that in its own shape: CSV writes a
-/// second column of that name, while JSON groups every pair in one object and keeps the last value
-/// given for a repeated key.
+/// The keys are not policed: a key matching a built-in field, or repeating an earlier one, is
+/// recorded as given, and each output format resolves that in its own shape.
 /// </remarks>
 public sealed record CustomField
 {
@@ -77,10 +75,8 @@ public sealed record CustomField
     /// Reads every <c>key=value</c> argument, keeping the order they were given in.
     /// </summary>
     /// <remarks>
-    /// Nothing is dropped. The <c>--custom-field</c> option's own validator fails the parse first,
-    /// so a malformed argument from the command line stops the run with a message naming the
-    /// expected form before any test is performed; one reaching here has bypassed that validation,
-    /// and is reported rather than silently left out.
+    /// Nothing is dropped: the option's own validator fails the parse first, so a malformed pair
+    /// reaching here bypassed it and is reported rather than silently left out.
     /// </remarks>
     /// <exception cref="ArgumentException">
     /// An argument is not in the form <c>key=value</c>.

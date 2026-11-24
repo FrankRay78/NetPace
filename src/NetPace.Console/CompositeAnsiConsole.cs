@@ -7,10 +7,8 @@ namespace NetPace.Console;
 /// Useful for writing output to multiple destinations (e.g., terminal + file).
 /// </summary>
 /// <remarks>
-/// A composite borrows its destinations and owns none of them, so it is not disposable: whoever
-/// opened a destination closes it. A composite that closed its destinations would close the
-/// terminal console it was given as well as the file, and that console is one the caller was
-/// handed and goes on using.
+/// A composite borrows its destinations and owns none, so it is not disposable: closing them
+/// would take the caller's own terminal console with the file.
 /// </remarks>
 public sealed class CompositeAnsiConsole : IAnsiConsole
 {

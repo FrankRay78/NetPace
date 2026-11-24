@@ -5,9 +5,8 @@ namespace NetPace.Console.Tests;
 /// clock says so, and which records the limit every run was given.
 /// </summary>
 /// <remarks>
-/// A real limit would have the suite wait out a duration to watch it fire, which is neither fast
-/// nor repeatable. Reaching it on demand puts the moment a run is cut short under the test's
-/// control, so what is asserted is what the run does about it.
+/// A real limit would have the suite wait out a duration to watch it fire. Reaching it on demand
+/// puts the moment a run is cut short under the test's control.
 /// </remarks>
 public sealed class RecordingRunTimeLimit : IRunTimeLimit
 {

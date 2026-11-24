@@ -11,18 +11,12 @@ internal static class Measurements
 {
     /// <summary>
     /// Performs the download and upload tests the settings ask for, each inside its own diagnostic
-    /// test scope, and returns them with the latency already measured. A test switched off with
-    /// <c>--no-latency</c>, <c>--no-download</c> or <c>--no-upload</c> is absent from the outcome,
-    /// never a zeroed result - and so is one whose turn came after the run's time limit had been
-    /// reached, which is a test that did not run and is reported as one.
+    /// test scope. A test switched off, or one whose turn came after the run's time limit, is
+    /// absent from the outcome rather than a zeroed result.
     /// </summary>
     /// <remarks>
-    /// Run here rather than in each of the line-based writers: <c>--minimal</c>, <c>--simple</c>,
-    /// <c>--csv</c> and <c>--json</c> run the same tests, so which tests ran, the order they ran in
-    /// and the scope each was recorded under are settled in one place. The one way they differ in
-    /// what they measure, <c>--minimal</c> and <c>--simple</c> turning the under-load probes off, is
-    /// decided in <c>Program.BuildSpeedTestSettings</c>, not here. The default writer keeps its own copy, because it
-    /// feeds a live display as each transfer runs.
+    /// Here rather than in each line-based writer, so which tests ran and their order are settled
+    /// once. The default writer keeps its own copy, feeding a live display as each transfer runs.
     /// </remarks>
     /// <param name="latency">The latency already measured against <paramref name="server"/>, or
     /// <see langword="null"/> where none was: under <c>--no-latency</c>, or where the time limit

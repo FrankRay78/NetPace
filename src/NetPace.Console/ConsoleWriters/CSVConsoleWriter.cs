@@ -113,12 +113,9 @@ public sealed class CSVConsoleWriter : IConsoleWriter
     private static string Record(params string[] fields) => string.Join(',', fields.Select(ToField));
 
     /// <summary>
-    /// Writes a single value as a CSV field. A value holding a comma or a double quote is wrapped in
-    /// double quotes with any of its own doubled, as RFC 4180 asks, so a reader returns the original
-    /// text and the row keeps one field per column. A line break is written as a space rather than
-    /// quoted, so every record stays on one line whatever the machine reports. Anything else — every
-    /// number, the timestamp, and an ordinary hostname — is written exactly as it arrives.
-    /// Why the separator is fixed and why a line break is not quoted instead:
+    /// Writes a single value as a CSV field: quoted per RFC 4180 where it holds a comma or a
+    /// double quote, with a line break written as a space so every record stays on one line.
+    /// Why the separator is fixed, and why a break is not quoted instead:
     /// docs/change-intent-records/2026-10-29-csv-is-always-comma-separated.md.
     /// </summary>
     private static string ToField(string value)

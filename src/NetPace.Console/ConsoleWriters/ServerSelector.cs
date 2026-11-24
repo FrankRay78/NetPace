@@ -8,11 +8,12 @@ namespace NetPace.Console.ConsoleWriters;
 /// Choosing the speed test server a run will use, and then measuring its latency.
 /// </summary>
 /// <remarks>
-/// The two are separate steps, in that order, and every output format takes them the same way:
-/// the choice is made and recorded first, so a format that shows the server can name it while the
-/// first probe is still out, and the measurement follows against a server that is already
-/// settled. Once chosen, the server is not swapped out: if its measurement fails, the run fails
-/// rather than falling back to another candidate.
+/// Separate steps, in that order, and every output format takes them the same way: the choice is
+/// recorded first, so a format that shows the server can name it before the first probe answers.
+/// <para>
+/// Once chosen, the server is not swapped out: a failed measurement fails the run rather than
+/// falling back to another candidate.
+/// </para>
 /// </remarks>
 internal static class ServerSelector
 {
@@ -20,10 +21,8 @@ internal static class ServerSelector
     /// Chooses the server to use, by whichever route the settings ask for, and records the choice.
     /// </summary>
     /// <remarks>
-    /// Recorded here rather than in each of the four writers: they all want the same record, and
-    /// none of them needs the route for anything else. Written when the choice is made rather than
-    /// after the measurement, so a diagnostic log names the server even for a run whose
-    /// measurement then failed.
+    /// Recorded here rather than in each writer, and when the choice is made rather than after
+    /// the measurement, so a diagnostic log names the server even for a run that then failed.
     /// </remarks>
     public static async Task<ChosenServer> ChooseServerAsync(ISpeedTestService speedTestClient, SpeedTestCommandSettings settings, IDiagnosticRecorder recorder, CancellationToken cancellationToken = default, CancellationToken timeLimitToken = default)
     {

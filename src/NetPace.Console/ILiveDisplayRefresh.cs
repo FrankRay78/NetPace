@@ -5,10 +5,8 @@ namespace NetPace.Console;
 /// measures — redraws itself as it goes.
 /// </summary>
 /// <remarks>
-/// Injected for the same reason <see cref="IClock"/> is: how many frames a run otherwise produces
-/// depends on how long the measurement took, and a screen whose frame count varies with the
-/// machine cannot be snapshotted. See the change-intent record
-/// <c>docs/change-intent-records/2026-11-03-live-displays-redraw-on-an-injected-switch.md</c>.
+/// Injected because a screen whose frame count varies with the machine cannot be snapshotted. See
+/// CIR <c>docs/change-intent-records/2026-11-03-live-displays-redraw-on-an-injected-switch.md</c>.
 /// </remarks>
 public interface ILiveDisplayRefresh
 {
@@ -34,9 +32,8 @@ public sealed class LiveDisplayRefresh : ILiveDisplayRefresh
 /// measurement took.
 /// </summary>
 /// <remarks>
-/// Useful for testing, and registered only by the console test host: the captured screen is then
-/// a function of what was measured, not of how fast the machine ran. Production keeps redrawing,
-/// since anything meant to be seen mid-run would otherwise be lost.
+/// Registered only by the console test host, so a captured screen is a function of what was
+/// measured. Production keeps redrawing, or anything meant to be seen mid-run would be lost.
 /// </remarks>
 public sealed class NoRefreshStub : ILiveDisplayRefresh
 {

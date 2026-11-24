@@ -6,19 +6,10 @@ namespace NetPace.Console.Diagnostics;
 /// Formats one diagnostic record as a single logfmt line.
 /// </summary>
 /// <remarks>
+/// Every line is one record, in a fixed field order. Repeating the context a record needs to stand
+/// alone is the point: a grepped subset stays meaningful without the records around it.
 /// <para>
-/// Every line is one record: <c>ts</c> first, <c>event</c> second, then the fields the event
-/// carries, in a fixed order, separated by exactly one space. Repeating the context a record needs
-/// to stand alone - <c>ts</c> on every record, and <c>test</c> on each one belonging to a test - is
-/// the point of the format: a grepped subset stays meaningful without the records around it, which
-/// makes <c>grep status=failed</c> the whole triage workflow. Run-level records
-/// (<c>run.start</c>, <c>run.invocation</c>, <c>server.selected</c>, <c>run.end</c>) belong to no
-/// test and carry no <c>test</c> field.
-/// </para>
-/// <para>
-/// There is no column padding, deliberately. Padded columns would make one long URL reflow a whole
-/// block in a snapshot diff, burying the real change - the same reason the codebase avoids aligned
-/// whitespace in source.
+/// No column padding, deliberately: one long URL would reflow a whole block in a snapshot diff.
 /// </para>
 /// </remarks>
 public static class DiagnosticRecord
@@ -57,21 +48,13 @@ public static class DiagnosticRecord
     /// A value, bare unless it needs quoting.
     /// </summary>
     /// <remarks>
-    /// Newlines, carriage returns and tabs are escaped whatever the value looks like, because
-    /// exception messages are frequently multi-line and a raw newline mid-record would split one
-    /// record into two lines that each mean nothing, while a raw tab is whitespace a reader
-    /// splitting fields would take for a separator. Backslashes are escaped too, so a value ending
-    /// in one cannot close its own quote with <c>\"</c> and swallow the rest of the line.
+    /// Newlines, tabs and backslashes are always escaped: a raw newline would split one record
+    /// into two meaningless lines, and a trailing backslash would close its own quote.
     /// <para>
-    /// The backslash pass must stay first. Escaping quotes first turns <c>a"b</c> into
-    /// <c>a\"b</c>, and a later backslash pass then doubles that escape into <c>a\\"b</c>,
-    /// breaking the very quote it was escaping. Order the other way and each pass sees only
-    /// characters the other has not touched.
+    /// The backslash pass must stay first, or a later pass doubles the escape it just added.
     /// </para>
     /// <para>
-    /// A value that needed escaping is always quoted, even when it carries no space. logfmt readers
-    /// process escapes only inside quotes, so a bare <c>C:\\x</c> would be read back with the
-    /// doubled separator it never had.
+    /// An escaped value is always quoted, logfmt readers processing escapes only inside quotes.
     /// </para>
     /// </remarks>
     private static string FormatValue(string value)

@@ -11,9 +11,8 @@ namespace NetPace.Console.Tests.ConsoleWriters;
 /// arriving beside the test they belong to.
 /// </summary>
 /// <remarks>
-/// Rendered straight to a test console rather than through a run, because the figures a row shows
-/// mid-measurement are the point: a run's captured screen holds only the frame drawn as the
-/// display closed, by which time every measurement has finished.
+/// Rendered straight to a test console, because the figures a row shows mid-measurement are the
+/// point: a run's captured screen holds only the frame drawn as the display closed.
 /// </remarks>
 public sealed class SpeedTestTableTests
 {

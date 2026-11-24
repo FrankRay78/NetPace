@@ -218,10 +218,8 @@ public sealed partial class NetPaceConsoleTests
         /// destination that fails once the run is under way: a full disk, a share that went away.
         /// </summary>
         /// <remarks>
-        /// Refuses the close as well as the writes, because a real <see cref="StreamWriter"/>
-        /// flushes what it still holds when it is disposed and raises there too. A stub that
-        /// accepted the close would fail only where the code already handles it, and report green
-        /// over a run whose last act throws.
+        /// Refuses the close as well as the writes, a real <see cref="StreamWriter"/> flushing on
+        /// dispose: a stub that accepted it would report green over a run whose last act throws.
         /// </remarks>
         private sealed class UnwritableFileOpener : IDiagnosticFileOpener
         {

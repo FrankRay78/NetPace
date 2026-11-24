@@ -87,10 +87,8 @@ public abstract class SpeedTestProviderBase : ISpeedTestService
     /// The address the under-load latency probes of one transfer are sent to.
     /// </summary>
     /// <remarks>
-    /// Probed against the address the transfer is actually using by default, not the server's
-    /// listed one: an upload resolves a redirect first, and those can differ in scheme, host and
-    /// port, so probing the listed address would time a line that is carrying nothing. A provider
-    /// whose transfer address cannot have the probe path joined onto it overrides this.
+    /// The address the transfer is actually using, not the server's listed one, which an upload's
+    /// redirect may differ from: probing the listed one would time an idle line.
     /// </remarks>
     /// <param name="server">The server being measured.</param>
     /// <param name="transferUrl">The address the transfer's requests are going to.</param>
@@ -109,9 +107,8 @@ public abstract class SpeedTestProviderBase : ISpeedTestService
     /// HTTP failure as it came.
     /// </summary>
     /// <remarks>
-    /// <see langword="null"/> by default. A provider whose server is named by the user, where a
-    /// wrong address answers with a status such as 404, gives a message here, so the user is told
-    /// which address answered and what to check.
+    /// <see langword="null"/> by default. A provider whose server the user names gives a message
+    /// here, so a wrong address is reported with what to check.
     /// </remarks>
     private protected virtual string? LatencyStatusFailureMessage(string probeUrl, HttpStatusCode status) => null;
 
@@ -727,10 +724,11 @@ public abstract class SpeedTestProviderBase : ISpeedTestService
     /// with an empty probe POST before the measured uploads begin.
     /// </summary>
     /// <remarks>
-    /// A streaming body cannot survive a redirect, so the endpoint is resolved once before any
-    /// upload is sent. The probe carries no body, which draws the same answer and keeps it out of
-    /// the measurement. Best-effort: anything but caller cancellation falls back to the original
-    /// address and lets a real fault surface through the uploads.
+    /// A streaming body cannot survive a redirect, so the endpoint is resolved once, with a probe
+    /// that carries no body and so stays out of the measurement.
+    /// <para>
+    /// Best-effort: anything but caller cancellation falls back to the original address.
+    /// </para>
     /// </remarks>
     /// <returns>
     /// The address to upload to, and how many requests the probe issued getting there; the
@@ -820,9 +818,8 @@ public abstract class SpeedTestProviderBase : ISpeedTestService
     /// Determines whether a status code asks the caller to repeat the request elsewhere.
     /// </summary>
     /// <remarks>
-    /// Permanent and temporary redirects are alike here because this resolves an address rather
-    /// than replaying a transfer, so the method rewriting a handler applies to 301/302/303 does not
-    /// matter: the probe is discarded once its address is known.
+    /// Permanent and temporary redirects are alike here, this resolving an address rather than
+    /// replaying a transfer: the probe is discarded once its address is known.
     /// </remarks>
     private static bool IsRedirect(HttpStatusCode statusCode) => statusCode is
         HttpStatusCode.MovedPermanently or
@@ -1357,11 +1354,12 @@ public abstract class SpeedTestProviderBase : ISpeedTestService
     /// </summary>
     /// <remarks>
     /// Probes never overlap and have no time limit of their own: a slow probe under load is the
-    /// measurement, not a fault. They share the transfer's <see cref="HttpClient"/>, which does not
-    /// queue them behind its data because <c>MaxConnectionsPerServer</c> is unbounded. One still
-    /// out when the transfer ends is discarded rather than waited for, so every figure comes from a
-    /// probe that answered. See CIR
+    /// measurement, not a fault.
+    /// <para>
+    /// They share the transfer's <see cref="HttpClient"/>, which does not queue them behind its
+    /// data, and one still out when the transfer ends is discarded rather than waited for. See CIR
     /// <c>docs/change-intent-records/2026-11-09-under-load-latency-rides-on-the-transfer-result.md</c>.
+    /// </para>
     /// </remarks>
     private sealed class LoadedLatencyProbing : IDisposable
     {

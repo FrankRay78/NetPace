@@ -267,11 +267,11 @@ public static class SpeedTestExtensions
     /// The figure <paramref name="speed"/> will be written as, and the decimal places it takes.
     /// </summary>
     /// <remarks>
-    /// Rounding can carry a figure into the band above, which allows one fewer decimal place:
-    /// 9.996 is a two-place figure that rounds to 10, and writing that as <c>10.00</c> would show
-    /// four significant figures. Where that happens the band is read again off the rounded figure
-    /// and the original speed rounded afresh, so the text and the band always agree. A second pass
-    /// is enough, because a figure can only ever cross one band boundary by rounding.
+    /// Rounding can carry a figure into the band above, which allows one fewer decimal place, so
+    /// the band is read again off the rounded figure and the speed rounded afresh.
+    /// <para>
+    /// A second pass is enough, a figure being able to cross only one band boundary by rounding.
+    /// </para>
     /// </remarks>
     private static (double Value, int DecimalPlaces) Figure(double speed)
     {

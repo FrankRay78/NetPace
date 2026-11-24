@@ -13,11 +13,8 @@ public sealed partial class OoklaSpeedtestTests
     /// <summary>
     /// Upload behaviour when a speed test server redirects the upload endpoint.
     /// <para>
-    /// Regression cover: Ookla is migrating its fleet to HTTPS, and a migrated server answers a
-    /// plain-HTTP upload POST with a 307 to its HTTPS endpoint. From 0.14.0 (PR #69, which replaced
-    /// buffered <c>ByteArrayContent</c> with a streaming body) every upload against such a server
-    /// failed, reporting 0 bps. The observable contract pinned here is throughput, not the mechanism
-    /// by which the redirect is honoured.
+    /// Regression cover, PR #69: a streaming body replaced a buffered one, and every upload against
+    /// a server redirecting plain HTTP to HTTPS then failed at 0 bps. Throughput is what is pinned.
     /// </para>
     /// </summary>
     public sealed class Redirects

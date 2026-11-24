@@ -8,18 +8,11 @@ namespace NetPace.Console;
 /// <c>--min-upload</c>, a latency with its unit for <c>--max-latency</c>.
 /// </summary>
 /// <remarks>
-/// The units accepted are the ones NetPace displays speeds in, listed here rather than in
-/// <c>NetPace.Core</c>: how a command line is read is a CLI concern, and the library's own
-/// suffixes are an output format with no parser of its own. A test reads every suffix the library
-/// writes back through this parser, so a unit the library gains or renames shows up as a threshold
-/// value the CLI refuses.
+/// The accepted units are the ones NetPace displays, listed here rather than in
+/// <c>NetPace.Core</c>: how a command line is read is a CLI concern.
 /// <para>
-/// A suffix is matched with the scale prefix in any case and the rest of it exactly, so
-/// <c>50mbps</c> and <c>50Mbps</c> are the same 50 megabits while <c>50MBps</c> is 50 megabytes,
-/// eight times as much. A spelling that folds the bits-or-bytes letter away, such as
-/// <c>50MBPS</c>, is refused: it could be either, and reading it as the eight-times target would
-/// be the costlier guess. The target is rounded to a whole bit per second or a whole millisecond,
-/// which is the unit the measurement itself reports in.
+/// The scale prefix matches in any case and the rest exactly, so <c>50MBps</c> is eight times
+/// <c>50Mbps</c>; a spelling that folds the bits-or-bytes letter away is refused.
 /// </para>
 /// </remarks>
 internal static class ThresholdOption
@@ -185,9 +178,8 @@ internal static class ThresholdOption
     /// and between the two.
     /// </summary>
     /// <remarks>
-    /// The figure is read through the invariant culture, matching the way every formatted figure
-    /// NetPace writes is composed: <c>2.5</c> is two and a half whatever the machine's locale, and
-    /// <c>2,5</c> is not a figure at all.
+    /// Read through the invariant culture, as every figure NetPace writes is composed: <c>2.5</c>
+    /// is two and a half whatever the locale, and <c>2,5</c> is not a figure at all.
     /// </remarks>
     private static bool TrySplit(string value, out decimal figure, out string suffix)
     {
