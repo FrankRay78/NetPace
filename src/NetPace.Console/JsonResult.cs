@@ -67,8 +67,8 @@ public sealed record JsonResult
     public int? DownloadFailed { get; init; }
 
     /// <summary>
-    /// Gets the number of bytes the download's own requests moved, failed ones included, or
-    /// <see langword="null"/> when the download test was not run.
+    /// Gets the number of bytes the download's own requests moved, whatever became of the request,
+    /// or <see langword="null"/> when the download test was not run.
     /// </summary>
     public long? DownloadBytesProcessed { get; init; }
 

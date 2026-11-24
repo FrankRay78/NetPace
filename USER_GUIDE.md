@@ -227,7 +227,7 @@ Timestamp,LatencyMilliseconds,JitterMilliseconds,DownloadSpeedBitsPerSecond,Down
 1980-01-01T10:05:00+01:00,12,3,512600000,150,0,106430464,48,31,96,9,48200000,32,0,26869760,52,33,104,11,192.168.1.1,test-host,London,Foo Telecom,http://speedtest.foo.example:8080/speedtest/upload.php,
 ```
 
-**The two byte figures count the test transfers only.** Each is every byte that direction's own requests moved, the bytes of a request that then failed or was cut off included, so it is the same count the speed beside it is built from. Server discovery, server screening, the latency measurements and protocol overhead such as HTTP headers are not in it, so a run uses a little more than the two figures add up to. That makes them the figure to total when you want to know what a scheduled run costs on a capped or metered line.
+**The two byte figures count the test transfers only.** Each is every byte that direction's own requests moved, the bytes of a request that then failed or was cut off included, so it is the same count the speed beside it is built from. Server discovery, server screening, the latency measurements and protocol overhead such as HTTP headers are not in it. Totalling the two tells you roughly what a scheduled run costs on a capped or metered line, give or take that overhead and the upload's ceiling.
 
 **Latency under load is where bufferbloat shows.** A line whose idle latency is 12 ms and whose download latency is 48 ms is filling a buffer somewhere between you and the server; the highest figure is what a video call hears. Each direction's four figures sit beside that direction's speed, so one row holds the whole picture of one run.
 
@@ -332,9 +332,9 @@ NetPace --json-pretty
 }
 ```
 
-The same nine figures CSV carries, under the same names and as the same numbers for the same run. **A figure that was not measured is left out rather than reported as `0`** — a direction's four fields are absent where the transfer measured nothing under load or the test did not run, and the lowest and highest are absent where no run of probe times was kept. `JitterMilliseconds` goes whenever `LatencyMilliseconds` does, so `--no-latency` leaves out both — and only those two: each direction's four under-load fields are still reported, and only `--no-download` or `--no-upload` leaves them out.
+The same figures CSV carries, under the same names and as the same numbers for the same run. **A figure that was not measured is left out rather than reported as `0`** — a direction's four fields are absent where the transfer measured nothing under load or the test did not run, and the lowest and highest are absent where no run of probe times was kept. `JitterMilliseconds` goes whenever `LatencyMilliseconds` does, so `--no-latency` leaves out both — and only those two: each direction's four under-load fields are still reported, and only `--no-download` or `--no-upload` leaves them out.
 
-**`DownloadBytesProcessed` and `UploadBytesProcessed` count the test transfers only**, not the run's server discovery, screening, latency measurements or protocol overhead, so a run uses a little more than the two add up to. They are the counts the two speeds are built from, and they are the same numbers the matching CSV columns carry for the same run.
+**`DownloadBytesProcessed` and `UploadBytesProcessed` count the test transfers only**, not the run's server discovery, screening, latency measurements or protocol overhead. They are the counts the two speeds are built from, and they are the same numbers the matching CSV columns carry for the same run.
 
 **`--unit`, `--unit-scale` and `--unit-system` do not change JSON output at all.** They shape the default, minimal and simple output only. Passing one with `--json` or `--json-pretty` is accepted without an error or warning, and the result is byte-for-byte what the same run writes without it. That is what makes a saved JSON result comparable: a script comparing runs, writing to a database or checking a threshold reads the numbers and never has to strip a unit, convert between scales, or know which switches the run was made with.
 
