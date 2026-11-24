@@ -22,6 +22,9 @@ public sealed class ErrorOutput
 {
     private readonly bool styled;
 
+    /// <summary>
+    /// Takes a console over as the one every error is written to.
+    /// </summary>
     /// <param name="console">
     /// The console errors are written to. This type takes it over and removes its width limit, so
     /// it must be the error stream's alone: a console whose profile is shared with the result —
