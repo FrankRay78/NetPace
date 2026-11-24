@@ -38,7 +38,7 @@ await Verify(result.Output).UseTextForParameters("stdout");
 await Verify(result.ErrorOutput).UseTextForParameters("stderr");
 ```
 
-**Regression exception**: a test that pins a specific mechanism is permitted only when it exists to prevent a named, previously-fixed bug. Reference the bug in the test name or a one-line comment at the site (e.g. `// GH#176 — release archive omitted .pdb after AOT publish`), so a future reader knows why the coupling is deliberate.
+**Regression exception**: a test that pins a specific mechanism is permitted only when it exists to prevent a named, previously-fixed bug. Reference the bug in the test name or a one-line comment at the site (e.g. `// GH#176 — release archive omitted .pdb after AOT publish`), so a future reader knows why the coupling is deliberate. `CONVENTIONS.md` → *Code quality* → *Comments* bounds the comment.
 
 ---
 

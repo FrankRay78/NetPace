@@ -71,6 +71,10 @@ The field rules are the ones `.editorconfig` states, so the IDE flags a field th
 - **One statement per line**, one declaration per line
 - **No column alignment.** Separate tokens with a single space. Don't pad consecutive `if`/`return`/`=>`/`=` lines to line up columns: renaming the longest identifier then reformats every row, and the alignment breaks outside the editor that made it. The only exception is end-of-line comments on tabular test data such as `[InlineData]` rows.
 
+## Comments
+
+`CONVENTIONS.md` → *Code quality* states the rule, and this guide adds one style point to it: the end-of-line exception under *Code Structure* above, for comments on tabular test data.
+
 ## Member Ordering
 
 Within a class, order members as follows:

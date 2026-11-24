@@ -9,6 +9,7 @@ NetPace's additions to the review method in the [gaffer](https://github.com/Fran
 ## Severity
 
 - **Major** includes a breach of a codebase rule in `CONVENTIONS.md` → *Test-driven development*, *Testing*, *Acceptance criteria*, *Code quality*, *Dependencies*, *Public API and breaking changes* or *Commit messages*, or of a product principle `CLAUDE.md` → *Product Principles* states.
+- **Minor** includes a comment that breaks the comment rule `CONVENTIONS.md` → *Code quality* states, including the exemptions that rule names. It is Minor despite sitting under *Code quality* in the Major bullet above. Report it only against a comment the pull request writes or edits; the rule does not ask for a sweep of the comments around it.
 
 ## What not to flag
 
