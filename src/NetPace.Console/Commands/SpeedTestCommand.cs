@@ -56,6 +56,8 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ErrorOutput errorOutp
             // Spectre's wrapping puts real newlines inside JSON string values and CSV header
             // names, so the width limit comes off here
             // (docs/change-intent-records/2026-10-15-machine-readable-output-is-never-wrapped.md).
+            // Default output joins them wherever it cannot redraw, because there it writes the
+            // --simple lines, which carry the same contract whichever switch asked for them.
             // CompositeAnsiConsole delegates Profile to its primary, so the terminal leg shares
             // this profile object and the lift reaches it wherever the composite is built.
             console.Profile.Width = int.MaxValue;

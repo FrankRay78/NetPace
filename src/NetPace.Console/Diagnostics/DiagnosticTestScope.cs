@@ -154,8 +154,6 @@ internal sealed class DiagnosticTestScope : IProgress<RequestDiagnostic>, IDispo
         }
     }
 
-    // The provider's own reason, unless it is the generic stop the library records, which only the
-    // run's time limit asks for here.
     private string? ReasonOf(RequestDiagnostic value) =>
         string.Equals(value.FailureReason, RequestDiagnostic.StoppedByCaller, StringComparison.Ordinal)
         || (value.Outcome == RequestOutcome.Cancelled && timeLimitToken.IsCancellationRequested)

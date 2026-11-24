@@ -691,8 +691,8 @@ public static class Program
         // Registered outside the --test branch below, because each is wanted whether the
         // measurement behind it was stubbed or not: a named diagnostics file writes a real file,
         // the accessor is populated after option binding, a person watching wants the live
-        // displays to redraw, and a run is bounded by a real clock. Only the test host replaces
-        // them, so a suite holds one frame and does not wait a time limit out.
+        // displays to redraw, and a run is bounded by a real clock. The test host replaces only
+        // the last two, so a suite holds one frame and does not wait a time limit out.
         services.AddSingleton<IDiagnosticFileOpener, DiagnosticFileOpener>();
         services.AddSingleton<SpeedTestSettingsAccessor>();
         services.AddSingleton<ILiveDisplayRefresh, LiveDisplayRefresh>();

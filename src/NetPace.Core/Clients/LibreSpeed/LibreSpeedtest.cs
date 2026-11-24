@@ -24,7 +24,8 @@ public sealed class LibreSpeedtest : SpeedTestProviderBase
     /// <summary>The largest <c>ckSize</c> <c>garbage.php</c> honours; it caps anything above.</summary>
     private const int MaximumDownloadRequestSizeMib = 1024;
 
-    // What a user copies from the browser's address bar in place of the install's directory.
+    // The extensions a user copies from the browser's address bar in place of the install's
+    // directory.
     private static readonly string[] PageExtensions = [".html", ".htm", ".php"];
 
     private readonly LibreSpeedtestSettings settings;

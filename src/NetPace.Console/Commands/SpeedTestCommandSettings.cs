@@ -191,7 +191,6 @@ public sealed class SpeedTestCommandSettings
 
 public static class SpeedTestCommandSettingsExtensions
 {
-
     public static void Validate(this SpeedTestCommandSettings settings)
     {
         // --json-pretty shapes the JSON format rather than selecting a second one, so it counts as

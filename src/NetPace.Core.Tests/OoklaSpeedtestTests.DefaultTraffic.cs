@@ -20,8 +20,6 @@ public sealed partial class OoklaSpeedtestTests
     /// Each test reads the cap off a quantity the cap actually governs. The upload test weighs the
     /// bodies the mock received; the download test cannot, because its mock builds each response up
     /// front and so records bytes the client never read, and weighs the counted requests instead.
-    /// Neither reads the reported figure, which also counts what requests still in flight had
-    /// received when the budget tripped and so runs past the cap by design.
     /// </remarks>
     public sealed class DefaultTraffic
     {

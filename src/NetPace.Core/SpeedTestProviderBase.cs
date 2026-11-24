@@ -508,9 +508,9 @@ public abstract class SpeedTestProviderBase : ISpeedTestService
                     });
                 }
 
-                // Only the three kinds caught above rank a candidate out; anything else - a
-                // disposed client, a bad proxy, an exhausted socket pool - is a fault in NetPace
-                // and propagates rather than being disguised as one unreachable candidate.
+                // Anything not caught above - a disposed client, a bad proxy, an exhausted socket
+                // pool - is a fault in NetPace and propagates rather than being disguised as one
+                // unreachable candidate.
                 break;
             }
         }
@@ -670,9 +670,8 @@ public abstract class SpeedTestProviderBase : ISpeedTestService
     // mid-write, or the body is sent twice and counted once, or dropped when the POST is replayed
     // as a GET. So the endpoint is resolved first, with a body-less POST - a redirect is decided by
     // scheme and host rather than payload, and sending no bytes keeps the probe out of the
-    // measurement. A probe that is rejected or fails is recorded, not acted on; only caller
-    // cancellation ends the test here. Returns how many requests it issued, because the measured
-    // uploads are numbered after them.
+    // measurement. A probe that is rejected or fails is recorded, not acted on. Returns how many
+    // requests it issued, because the measured uploads are numbered after them.
     private async Task<(string Url, int RequestsIssued)> ResolveUploadUrlAsync(string serverUrl, IProgress<RequestDiagnostic>? diagnostics, CancellationToken cancellationToken, CancellationToken stopAndReportToken)
     {
         const int maximumHops = 5;
@@ -930,9 +929,9 @@ public abstract class SpeedTestProviderBase : ISpeedTestService
                 // finally block below.
                 failure = e;
 
-                // A cancellation the byte budget raised is not a failure; the request is simply
-                // excluded. Anything else is counted as a per-request failure rather than
-                // swallowed. Either way, whatever the request delivered stays in the measurement.
+                // Only a cancellation escapes the failure count, whether the byte budget, the
+                // caller or a stop raised it. Whatever the request delivered stays in the
+                // measurement either way.
                 //
                 // wasCancelledLocally is read without holding lockObject, which stays safe only
                 // while cts.Cancel() sits inside the lock the finally block's gate takes and every
@@ -1113,8 +1112,8 @@ public abstract class SpeedTestProviderBase : ISpeedTestService
         }
         catch
         {
-            // Swallowed deliberately: the one catch-all in NetPace, isolating caller-supplied
-            // callback code rather than hiding an internal error.
+            // Swallowed deliberately: isolating caller-supplied callback code, not hiding an
+            // internal error.
         }
     }
 

@@ -8,7 +8,6 @@ namespace NetPace.Console.ConsoleWriters;
 // a transfer does, simply by never reporting them.
 internal sealed class SpeedTestTableRow(SpeedTestTable table, string name)
 {
-
     internal string Name { get; } = name;
 
     internal SpeedTestTableRowState State { get; private set; } = SpeedTestTableRowState.Running;

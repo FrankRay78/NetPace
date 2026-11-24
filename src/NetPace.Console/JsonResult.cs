@@ -5,7 +5,6 @@ namespace NetPace.Console;
 /// </summary>
 public sealed record JsonResult
 {
-
     /// <summary>
     /// Gets the geographic location of the test server.
     /// </summary>

@@ -1211,7 +1211,6 @@ public sealed partial class OoklaSpeedtestTests
     [Fact]
     public async Task GetDownloadSpeedAsync_WithProgress_ShouldNotPropagateException_WhenProgressCallbackThrows()
     {
-
         // Given
         using var mockHttp = new MockHttpMessageHandler();
         mockHttp.When("*").Respond("text/plain", new string('X', 1024));
@@ -1596,7 +1595,6 @@ public sealed partial class OoklaSpeedtestTests
     [Fact]
     public async Task GetUploadSpeedAsync_WithProgress_ShouldNotPropagateException_WhenProgressCallbackThrows()
     {
-
         // Given
         using var mockHttp = new MockHttpMessageHandler();
         mockHttp.When("*").Respond(HttpStatusCode.OK);
