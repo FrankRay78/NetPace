@@ -22,16 +22,12 @@ internal static class ThemeRows
     /// </summary>
     public static IEnumerable<Theme> Coloured => InColour.Where(theme => theme != Theme.Default);
 
-    /// <summary>Every theme NetPace carries, by name.</summary>
     public static TheoryData<string> EveryName => Names(Theme.All);
 
-    /// <summary>Every theme that draws in colour, by name.</summary>
     public static TheoryData<string> InColourNames => Names(InColour);
 
-    /// <summary>Every theme a user chooses for its colours, by name.</summary>
     public static TheoryData<string> ColouredNames => Names(Coloured);
 
-    /// <summary>The theme a theory row names.</summary>
     public static Theme Named(string name) => Theme.All.Single(theme => theme.Name == name);
 
     private static TheoryData<string> Names(IEnumerable<Theme> themes)

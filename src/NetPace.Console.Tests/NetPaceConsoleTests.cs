@@ -130,9 +130,6 @@ public sealed partial class NetPaceConsoleTests
     /// </summary>
     private static string Slug(string screen) => string.Join('-', screen.Split(' ').Select(word => word.TrimStart('-')));
 
-    /// <summary>
-    /// Create the CommandLineTestHost with System.CommandLine.
-    /// </summary>
     private static CommandLineTestHost GetCommandLineTestHost(IServiceCollection? serviceCollection)
     {
         return new CommandLineTestHost(serviceCollection);
