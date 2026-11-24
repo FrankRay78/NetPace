@@ -67,6 +67,16 @@ public sealed record JsonResult
     public int? DownloadFailed { get; init; }
 
     /// <summary>
+    /// Gets the number of bytes the download received, or <see langword="null"/> when the download
+    /// test was not run. A whole number of bytes that the unit options do not touch, counting every
+    /// byte the download's requests moved, including those of a request that then failed or was cut
+    /// off — the same count <see cref="DownloadSpeedBitsPerSecond"/> is built from. It leaves out
+    /// the run's surrounding traffic (server discovery, screening, latency measurement and protocol
+    /// overhead), so it is the bulk of what the download used, slightly under the whole of it.
+    /// </summary>
+    public long? DownloadBytesProcessed { get; init; }
+
+    /// <summary>
     /// Gets the average latency measured while the download ran — latency under load — in
     /// milliseconds, or <see langword="null"/> where it was not measured or the download test was
     /// not run. Comparable directly with <see cref="LatencyMilliseconds"/>, which is the same line
@@ -112,6 +122,14 @@ public sealed record JsonResult
     /// test was not run.
     /// </summary>
     public int? UploadFailed { get; init; }
+
+    /// <summary>
+    /// Gets the number of bytes the upload sent, or <see langword="null"/> when the upload test was
+    /// not run. Counted on the same terms as <see cref="DownloadBytesProcessed"/>, and a ceiling
+    /// rather than an exact figure: whatever the send buffer still held when a connection closed is
+    /// counted as sent.
+    /// </summary>
+    public long? UploadBytesProcessed { get; init; }
 
     /// <summary>
     /// Gets the average latency measured while the upload ran — latency under load — in

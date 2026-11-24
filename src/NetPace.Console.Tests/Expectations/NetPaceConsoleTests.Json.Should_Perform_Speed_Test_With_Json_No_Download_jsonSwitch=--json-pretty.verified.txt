@@ -8,6 +8,7 @@
   "UploadSpeedBitsPerSecond": 18667,
   "UploadSucceeded": 32,
   "UploadFailed": 0,
+  "UploadBytesProcessed": 7000,
   "UploadLatencyMilliseconds": 150,
   "UploadLowestLatencyMilliseconds": 120,
   "UploadHighestLatencyMilliseconds": 200,

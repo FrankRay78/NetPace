@@ -8,6 +8,7 @@
   "DownloadSpeedBitsPerSecond": 8000,
   "DownloadSucceeded": 150,
   "DownloadFailed": 0,
+  "DownloadBytesProcessed": 1000,
   "DownloadLatencyMilliseconds": 150,
   "DownloadLowestLatencyMilliseconds": 120,
   "DownloadHighestLatencyMilliseconds": 200,

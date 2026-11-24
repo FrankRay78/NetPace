@@ -8,9 +8,11 @@
   "DownloadSpeedBitsPerSecond": 250000,
   "DownloadSucceeded": 40,
   "DownloadFailed": 0,
+  "DownloadBytesProcessed": 31250,
   "UploadSpeedBitsPerSecond": 500000,
   "UploadSucceeded": 12,
   "UploadFailed": 0,
+  "UploadBytesProcessed": 62500,
   "IPAddress": "192.168.1.1",
   "Hostname": "test-host"
 }
@@ -24,9 +26,11 @@
   "DownloadSpeedBitsPerSecond": 1000000,
   "DownloadSucceeded": 150,
   "DownloadFailed": 0,
+  "DownloadBytesProcessed": 125000,
   "UploadSpeedBitsPerSecond": 3000000,
   "UploadSucceeded": 64,
   "UploadFailed": 0,
+  "UploadBytesProcessed": 375000,
   "IPAddress": "192.168.1.1",
   "Hostname": "test-host"
 }
@@ -40,9 +44,11 @@
   "DownloadSpeedBitsPerSecond": 2750000,
   "DownloadSucceeded": 400,
   "DownloadFailed": 0,
+  "DownloadBytesProcessed": 343750,
   "UploadSpeedBitsPerSecond": 1330000,
   "UploadSucceeded": 30,
   "UploadFailed": 0,
+  "UploadBytesProcessed": 166250,
   "IPAddress": "192.168.1.1",
   "Hostname": "test-host"
 }
