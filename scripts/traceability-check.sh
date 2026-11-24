@@ -75,10 +75,8 @@ if [ -z "$BRANCH" ]; then
 fi
 [ -n "$BRANCH" ] || die "could not read the current branch name."
 
-# Only the `<prefix>/<N>-<slug>` shape, and only the LEADING number of the segment after the
-# prefix. Anchoring the digits to the start of that segment is what keeps `feature/net10-upgrade`
-# from yielding 10 — the same restriction /gaffer:raise-pr applies, for the same reason: a
-# number guessed from elsewhere in the name checks the wrong issue with full confidence.
+# Only the LEADING number of the segment after the prefix, so `feature/net10-upgrade` yields
+# nothing: a number guessed from elsewhere checks the wrong issue with full confidence.
 ISSUE=""
 if [[ "$BRANCH" == */* ]] && [[ "${BRANCH#*/}" =~ ^0*([0-9]+)- ]]; then
   ISSUE="${BASH_REMATCH[1]}"
@@ -98,9 +96,8 @@ fi
 
 if ! RESPONSE="$(gh issue view "$ISSUE" --json body,url -R "$REPO_SLUG" 2>"$TMP/err")"; then
   ERR="$(cat "$TMP/err")"
-  # Read the stderr, not the exit code: both of these exit non-zero, and they are opposite
-  # answers. "Could not resolve" is GitHub definitively saying nothing exists at that number —
-  # an answer, so there is nothing to trace. Anything else is the check failing to run.
+  # Read the stderr, not the exit code: both exit non-zero and they are opposite answers.
+  # "Could not resolve" is an answer; anything else is the check failing to run.
   if printf '%s' "$ERR" | grep -qi 'could not resolve to an issue or pull request'; then
     say "#$ISSUE does not exist in $REPO_SLUG — nothing to check."
     exit 0
@@ -119,16 +116,11 @@ case "$URL" in
 esac
 
 # --- the labels -------------------------------------------------------------------
-# A label is a whole line that opens with `**Scenario:` and closes with `**`. Fenced blocks are
-# dropped first and inline code never matches the line anchor, so neither counts: the rule itself
-# carries a fenced example, and this issue's own body quotes the syntax in backticks — both
-# describe the convention rather than declaring a scenario.
-# Read one stage at a time, each checked, rather than as one pipeline. A pipeline cannot be
-# checked here: `grep` exits 1 for the legitimate "this issue carries no labels", so a blanket
-# `|| die` would reject every unlabelled issue, and `pipefail` reports only the rightmost
-# non-zero status, which `grep`'s 1 masks. Unchecked, every failure in the chain — a missing `tr`,
-# a non-GNU `awk`, a locale abort, a body field that is absent or null — would be
-# indistinguishable from "no labels", i.e. a silent pass.
+# A label is a whole line opening `**Scenario:` and closing `**`. Fenced and inline code never
+# match, so an example of the convention does not declare a scenario.
+#
+# One checked stage at a time, not a pipeline: `grep` exits 1 for the legitimate "no labels", so
+# `pipefail` would mask every other failure in the chain behind it as a silent pass.
 
 printf '%s' "$RESPONSE" | jq -e 'has("body") and (.body | type == "string")' >/dev/null 2>&1 \
   || die "'gh issue view' returned no readable body for #$ISSUE, so its labels cannot be read. A response of that shape means the field changed or the reply was partial, not that the issue is unlabelled."
@@ -136,10 +128,8 @@ printf '%s' "$RESPONSE" | jq -e 'has("body") and (.body | type == "string")' >/d
 printf '%s' "$RESPONSE" | jq -r '.body' | tr -d '\r' > "$TMP/body" \
   || die "could not read the body of issue #$ISSUE."
 
-# Fenced blocks, dropped by their own delimiter: only the delimiter that opened a block may close
-# it, so a `~~~` block quoting a ``` line — which is precisely what an issue documenting this
-# convention contains — stays one block. A block still open at EOF would hide every label below
-# it, so it is a malformed body, which fails rather than passing as unlabelled.
+# Dropped by their own delimiter, so a `~~~` block quoting ``` stays one block. A block still
+# open at EOF would hide every label below it, so it fails rather than passing as unlabelled.
 awk '
   match($0, /^[[:space:]]*(```+|~~~+)/) {
     marker = substr($0, RSTART, RLENGTH)
@@ -176,40 +166,26 @@ LABELS="$(printf '%s\n' "$RAW_LABELS" \
   || die "could not normalise the scenario labels of issue #$ISSUE."
 
 # --- the markers ------------------------------------------------------------------
-# Committed test files only, in two shapes: any `*.tests.sh`, and `*.cs` inside a `*Tests*`
-# project directly under src/. Scanning `HEAD` rather than the working tree is what makes
-# "committed" true: a file that is `git add`ed and never committed is not what merges. Production
-# code and docs are excluded: docs/conventions/testing.md restates the rule verbatim, so a
-# docs-wide scan would let the rule's own description satisfy it.
+# Committed test files only. `HEAD` rather than the working tree is what makes "committed" true,
+# and docs are excluded because testing.md restates the rule verbatim.
 #
-# `:(glob)` on the first pathspec is load-bearing: it stops `*` at a `/`, which is what pins the
-# `*Tests*` directory to being an immediate child of src/ — `src/Foo/BarTests/x.cs` is production
-# code in a test-named folder, not a test project. The second pathspec keeps git's default
-# matching, where `*` does cross `/`, so a `*.tests.sh` anywhere in the tree counts.
+# `:(glob)` stops `*` at a `/`, pinning `*Tests*` to an immediate child of src/; the second
+# pathspec keeps git's default matching, so a `*.tests.sh` anywhere counts.
 #
-# `--no-line-number --no-column` are not belt-and-braces: `git grep` honours grep.lineNumber and
-# grep.column from the user's own git config, and either one prepends digits the trim below cannot
-# strip — which would fail every label on one developer's machine and on nobody else's.
+# `--no-line-number --no-column` override the user's own grep.lineNumber and grep.column, either
+# of which would prepend digits the trim below cannot strip.
 #
-# What is captured is the text after `SCENARIO:`, trimmed. The prefix class accepts all three
-# comment shapes in use (`// `, `# // `, `# `) without enumerating them, and the anchor is what
-# keeps a mid-line mention — prose, a string literal, an `ok "…"` assertion — from registering as
-# a marker. Its reach is one line: a *continuation* line of a multi-line literal that itself
-# begins at column 0 with `//` or `#` is indistinguishable from a marker and does register, which
-# is why traceability-check.tests.sh builds multi-line fixtures with an escape rather than a
-# literal newline, and why its fixture names are fictional.
-# Exit 1 is "no markers anywhere", which is a real state on a branch whose tests are not written
-# yet and is answered by the verdict below. Anything above it is the scan failing, and that must
-# not be read as "no markers": that would turn a sparse checkout or an unreadable path into a FAIL
-# telling the author to add a marker that is already there, character for character.
+# The anchor keeps a mid-line mention from registering, but its reach is one line: a continuation
+# line opening at column 0 with `//` or `#` does register, which is why the tests use an escape.
+#
+# Exit 1 is "no markers anywhere", a real state the verdict answers. Anything above it is the scan
+# failing, which must not read as "no markers" and fail a marker that is sitting right there.
 MARKER_LINES="$(git -C "$REPO_ROOT" grep -hE --no-line-number --no-column '^[[:space:]/#]*SCENARIO:' \
   HEAD -- ':(glob)src/*Tests*/**/*.cs' '*.tests.sh' 2>"$TMP/grep-err")"
 SCAN_RC=$?
 
-# Any error at all means the marker set is incomplete, so there is no verdict to render. The exit
-# status alone is not enough: an unreadable tracked file makes `git grep` print `error: failed to
-# stat …` and still exit 0, silently omitting that file's markers — which would surface as a traceability
-# violation against a marker that is sitting right there.
+# The exit status alone is not enough: an unreadable tracked file makes `git grep` print to stderr
+# and still exit 0, omitting that file's markers and failing a marker that is sitting right there.
 [ -s "$TMP/grep-err" ] \
   && die "the scan of the committed test files reported an error, so the marker set is incomplete and no verdict is possible: $(tr '\n' ' ' < "$TMP/grep-err")"
 case "$SCAN_RC" in
@@ -222,8 +198,8 @@ MARKERS="$(printf '%s\n' "$MARKER_LINES" \
   | trim)"
 
 # --- the verdict ------------------------------------------------------------------
-# Both verdicts carry the marker count, which makes a run self-diagnosing after the fact: "0
-# markers scanned" alongside a list of unmatched labels reads very differently from "72 scanned".
+# Both verdicts carry the marker count: "0 markers scanned" alongside a list of unmatched labels
+# reads nothing like "72 scanned".
 scanned="$(printf '%s' "$MARKERS" | grep -c . || true)"
 
 missing=""

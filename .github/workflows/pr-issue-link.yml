@@ -32,10 +32,8 @@ permissions:
   pull-requests: read
 
 jobs:
-  # Do NOT add a `paths:` filter or an `if:` condition to this job. To GitHub a skipped job is not
-  # a failure, so a required `issue-link` context is satisfied by one that never ran — and since
-  # `pull_request` workflows are evaluated from the head ref, the branch adding the filter is the
-  # branch it stops gating. The same hazard, and the same answer, as `traceability.yml`.
+  # Do NOT add a `paths:` filter or an `if:` condition. A skipped job is not a failure to GitHub,
+  # and the branch adding the filter is the branch it stops gating, as in `traceability.yml`.
   issue-link:
     name: issue-link
     runs-on: ubuntu-latest
@@ -43,9 +41,8 @@ jobs:
 
     steps:
     - name: Check the pull request closes an open issue
-      # Everything from the event arrives through the environment rather than being interpolated
-      # into the shell text. Any failure to reach or read GitHub's answer fails the step, because
-      # the shell runs with `-e`: a gate that could not run must not report green.
+      # Event data arrives through the environment rather than interpolated into the shell text,
+      # and `-e` fails the step: a gate that could not run must not report green.
       env:
         GH_TOKEN: ${{ github.token }}
         REPO: ${{ github.repository }}

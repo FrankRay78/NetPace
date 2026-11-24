@@ -41,26 +41,21 @@ on:
 
 jobs:
   review:
-    # The gate reads `sender` (the account that applied the label), not `issue.user`
-    # (the account that raised it) — the repository is public and anyone can raise an issue.
-    # Known residual: a label applied by any other account creates no run at all, and so
-    # sends no notification. See the CIR's known residuals.
+    # `sender`, not `issue.user`: the repository is public and anyone can raise an issue. A label
+    # applied by another account creates no run, and so sends no notification.
     if: >-
       github.event_name == 'workflow_dispatch' ||
       ((github.event.label.name == 'review' || github.event.label.name == 'refine') &&
       github.event.sender.login == 'FrankRay78')
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    # Serialise per issue. The guard reads the comment list at the start of a run that
-    # posts twenty-odd minutes later, so overlapping runs would both pass it and both
-    # post — orphaning any answers already written against the first review, which is the
-    # exact harm the guard exists to prevent. Cancelling instead of queueing could kill a
-    # run between its post and its label removal, so in-progress runs are left alone.
-    # The group is shared with confirmissue.yml, not private to this workflow:
-    # concurrency groups are repo-wide, so one name serialises review against confirm too —
-    # and a refine run, which rewrites the very comment a confirmation reads, against both.
-    # The three write the same state from opposite ends — a review posting mid-confirmation
-    # would land on top of decisions being saved.
+    # The guard reads the comment list at the start of a run that posts twenty minutes later, so
+    # overlapping runs would both pass it and both post, orphaning answers already written.
+    #
+    # Queued rather than cancelled: cancelling could kill a run between its post and its label.
+    #
+    # Shared with confirmissue.yml, groups being repo-wide, so one name serialises all three.
+    # They write the same state from opposite ends.
     concurrency:
       group: issue-${{ github.event.issue.number || inputs.issue_number }}
       cancel-in-progress: false
@@ -70,10 +65,8 @@ jobs:
       id-token: write
     env:
       ISSUE_NUMBER: ${{ github.event.issue.number || inputs.issue_number }}
-      # Which job this run is doing, taken from the label that triggered it. A manual dispatch
-      # carries no label and is always a review: a mode input was considered and dropped, because
-      # its only purpose would have been exercising refine once before merge, and refine is
-      # exercised on a real issue afterwards instead.
+      # Taken from the label that triggered the run. A manual dispatch carries none and is always
+      # a review; a mode input was dropped, refine being exercised on a real issue instead.
       MODE: ${{ github.event_name == 'workflow_dispatch' && 'review' || github.event.label.name }}
     steps:
       - name: Checkout repository
@@ -81,20 +74,16 @@ jobs:
         with:
           fetch-depth: 0
 
-      # The command comes from the gaffer plugin, loaded from its main: a fresh clone per job, the
-      # URL and ref written here, and the commit printed so the log says which gaffer ran. The
-      # action passes the clone to claude as --plugin-dir, and --add-dir lets the agent read the
-      # command and the defaults from outside the workspace, which a headless run otherwise denies.
+      # A fresh clone of gaffer's main per job, with the URL and ref written here and the commit
+      # printed. --add-dir is what lets the agent read it, which a headless run otherwise denies.
       - name: Load gaffer from its main
         id: gaffer
         run: |
           set -euo pipefail
           git clone -q --depth 1 --branch main https://github.com/FrankRay78/gaffer-claude.git "$RUNNER_TEMP/gaffer"
           echo "gaffer $(git -C "$RUNNER_TEMP/gaffer" rev-parse HEAD)"
-          # Read-only before the agent starts: --add-dir makes the clone a working directory the
-          # agent's Write reaches, and the plugin's hook runs from it on every Bash call, so a
-          # writable clone would let text the agent was handed get a script run with this job's
-          # token. The agent's allowlist has no way to lift the mode back.
+          # Read-only before the agent starts: --add-dir puts the clone in reach of its Write, and
+          # the plugin's hook runs from it on every Bash call. The allowlist cannot lift the mode.
           chmod -R a-w "$RUNNER_TEMP/gaffer"
           echo "dir=$RUNNER_TEMP/gaffer" >> "$GITHUB_OUTPUT"
 
@@ -108,10 +97,8 @@ jobs:
           refine=$(bash scripts/stage-flags.sh reviewissue-refine)
           echo "refine=$refine" >> "$GITHUB_OUTPUT"
 
-      # Snapshot the issue rather than relying on the context the action injects. The
-      # action sanitises injected content by stripping HTML comments, which would remove
-      # the `<!-- speckit:review -->` sentinel this whole workflow keys on; and
-      # workflow_dispatch carries no issue payload to inject in the first place.
+      # Snapshotted rather than injected: the action strips HTML comments, which would remove the
+      # sentinel this workflow keys on, and workflow_dispatch carries no issue payload at all.
       - name: Fetch issue context
         env:
           GH_TOKEN: ${{ github.token }}
@@ -124,29 +111,23 @@ jobs:
             .claude/scratch/issue-context.json > /dev/null \
             || { echo "::error::Issue snapshot for #$ISSUE_NUMBER is empty or malformed."; exit 1; }
 
-      # A workflow step, not a prompt instruction: a model can skip an instruction, and this
-      # guard is the only thing stopping a second review from landing on an issue that has
-      # already been through the gate. Each label has exactly one issue state it fits, and
-      # applying it in any other state is a wrong-state trigger: the label is cleared, nothing
-      # else on the issue changes, and the run finishes green. Which state is wrong depends on
-      # the mode — `review` wants no review yet, `refine` wants one already posted — and both
-      # want an issue that is not `ready`. A reviewed issue and a confirmed one leave different
-      # traces: `ready` is the done-marker once /gaffer:confirmissue has folded the answers into the
-      # body and deleted the review; the sentinel still marks a review posted but not yet
-      # confirmed, and confirmations predating that deletion. `ready` is checked first because it
-      # is one call against the paginated comment fetch below, which is paginated because
-      # `gh issue view --json comments` returns a bounded page and a sentinel past it would be
-      # invisible. Both reads are live, not from the previous step's snapshot: a local
-      # /gaffer:confirmissue is a second writer here, and a stale label paired with a live
-      # comment read would see neither marker on an issue confirmed between the two, and
-      # post over its decisions. The label read is assigned outside an `if` because inside
-      # one errexit is suppressed, making a gh or jq failure indistinguishable from "label
-      # absent" — failing open towards posting a duplicate. Clearing the label keeps the
-      # state model honest: a green run always ends with its trigger label gone, done or skipped.
-      # The third wrong state for `refine` — a review whose answers are all concrete — is not
-      # checked here: deciding it means applying step 6's hedging dictionary to every answer,
-      # which is the agent's job. That run makes no edit and falls through to the same cleared
-      # label, so the outcome matches.
+      # A workflow step, not a prompt instruction, which a model can skip: this guard is the only
+      # thing stopping a second review landing on an issue already through the gate.
+      #
+      # Each label fits exactly one issue state, and applying it in another clears the label,
+      # changes nothing else and finishes green. `review` wants no review yet, `refine` wants one.
+      #
+      # `ready` is the done-marker once the answers are folded in; the sentinel marks a review
+      # posted but not confirmed. `ready` is checked first, being one call against the fetch below.
+      #
+      # Both reads are live, not from the snapshot: a local /gaffer:confirmissue is a second
+      # writer, and a stale label with a live comment read would post over its decisions.
+      #
+      # The label read is assigned outside an `if`, inside which errexit is suppressed and a gh
+      # failure would be indistinguishable from "label absent", failing open towards a duplicate.
+      #
+      # The third wrong state for `refine`, a review whose answers are all concrete, is the
+      # agent's to decide: that run makes no edit and falls through to the same cleared label.
       - name: Skip a label applied in the wrong state
         id: guard
         env:
@@ -177,15 +158,11 @@ jobs:
             echo "wrong_state=true" >> "$GITHUB_OUTPUT"
           fi
 
-      # The body-file delta in the prompt below names a path under `ci-scratch/` because headless
-      # Claude Code refuses agent writes under `.claude/scratch/`, whatever `--allowedTools` says —
-      # the same refusal confirmissue.yml routes round (decision 12 of
-      # docs/change-intent-records/2026-09-26-automated-prespec-confirmation.md). Left unnamed,
-      # the only path the command's conventions offer is `.claude/scratch/`: a local headless run was
-      # refused there and posted only by improvising another path. On #239 the agent step exited
-      # green having posted nothing — presumed to be the same refusal without the recovery — and
-      # only the verify step below turned the run red. The shell steps here stay on
-      # `.claude/scratch/`, because the protection binds the agent, not the runner.
+      # `ci-scratch/` because headless Claude Code refuses agent writes under `.claude/scratch/`:
+      # CIR docs/change-intent-records/2026-09-26-automated-prespec-confirmation.md.
+      #
+      # Left unnamed, the only path the conventions offer is the refused one. The shell steps stay
+      # there: the protection binds the agent, not the runner.
       - name: Run issue review
         if: steps.guard.outputs.wrong_state != 'true' && env.MODE == 'review'
         uses: anthropics/claude-code-action@v1
@@ -212,22 +189,17 @@ jobs:
 
             Do not edit the issue body — folding answers into it is the author's deliberate `/gaffer:confirmissue` step.
 
-      # The refine mode of the same command. It rewrites the existing comment and posts nothing, so
-      # it needs `gh api` for the PATCH and the numeric comment id, which the GraphQL-backed
-      # `--json comments` in the snapshot does not carry.
-      # The prompt removes the `refine` label, and only once the PATCH has landed or it has
-      # concluded that no gap qualifies. So a label still on the issue means the model reached
-      # neither terminal state, and that is what the check step below turns red. Clearing the
-      # label from the workflow instead cannot fail, which is the problem: the action exits 0
-      # whenever the model finishes its turn, so a refused tool call or a rejected PATCH would
-      # clear the label and go green with the comment untouched — the silent skip this whole
-      # change exists to remove. The cost of the split is a model that forgets the removal on the
-      # no-edit path, which shows up as a false red that re-labelling clears.
-      # `Bash(gh api:*)` is broader than the one PATCH the prompt sanctions — it also reaches the
-      # issue body and the comment-delete endpoint — and the allowlist cannot pin the method,
-      # because `-X DELETE` may follow the path as easily as precede it. So the check below
-      # asserts the body and the sentinel survived rather than trusting the instruction not to
-      # touch them. The review path's `Bash(gh issue edit:*)` is equally broad via `--body`.
+      # Refine rewrites the existing comment and posts nothing, so it needs `gh api` for the PATCH
+      # and the numeric comment id, which the GraphQL-backed `--json comments` does not carry.
+      #
+      # The prompt removes the label, and only once the PATCH has landed or no gap qualifies, so a
+      # surviving label means neither terminal state was reached and the check below turns red.
+      #
+      # Clearing it from the workflow cannot fail, which is the problem: the action exits 0
+      # whenever the model finishes, so a refused call would clear the label and go green.
+      #
+      # `Bash(gh api:*)` is broader than the one PATCH sanctioned and the allowlist cannot pin the
+      # method, so the check below asserts the body and sentinel survived.
       - name: Refine the questions that asked for help
         if: steps.guard.outputs.wrong_state != 'true' && env.MODE == 'refine'
         uses: anthropics/claude-code-action@v1
@@ -257,16 +229,14 @@ jobs:
             `gh issue edit <number> --repo <repo> --remove-label refine`
             Leave every other label alone. If the PATCH fails, leave `refine` in place: the check step reads that label as the signal the refine did not complete, and clearing it would report a failed run as a finished one.
 
-      # The action exits successfully whenever the model finishes its turn: a failed
-      # `gh issue comment` is tool output the model reads and reasons about, not a step
-      # failure. Without this check a run that posted nothing would still be green, and
-      # the "GitHub's failed-run notification is the alert" contract would never fire on
-      # the failures most likely to actually happen. Checking the sentinel rather than
-      # merely "a comment exists" also catches a comment posted without the marker, which
-      # /gaffer:confirmissue would not find.
-      # `needs answers` is applied here, not left to the model: the command file's
-      # instruction to add it was skipped on the first CI run that carried it (#296),
-      # and a verified post is the one point where the label is known to be true.
+      # The action exits successfully whenever the model finishes its turn, a failed
+      # `gh issue comment` being tool output it reasons about rather than a step failure.
+      #
+      # The sentinel rather than merely "a comment exists", so a comment posted without the marker
+      # that /gaffer:confirmissue would not find is caught too.
+      #
+      # `needs answers` is applied here, a verified post being the one point where it is known to
+      # be true; the command file's own instruction was skipped on the first CI run carrying it.
       - name: Verify the review posted, mark it awaiting answers, and check the label cleared
         if: steps.guard.outputs.wrong_state != 'true' && env.MODE == 'review'
         env:
@@ -286,17 +256,14 @@ jobs:
             exit 1
           fi
 
-      # Three assertions, and none of them is "the comment changed" — a refine run that correctly
-      # changes nothing, because every answer is concrete, leaves the comment byte-for-byte as a
-      # run that should have re-framed a question and did not, so a check on the edit itself
-      # would fail the commonest correct outcome. What these three check holds on every
-      # legitimate path instead, so none of them can false-alarm. No report file: the cleared
-      # label is the completion signal.
+      # None of the three is "the comment changed": a refine run that correctly changes nothing
+      # leaves the comment byte-for-byte as one that should have re-framed a question and did not.
+      #
+      # What these three hold on every legitimate path instead, so none can false-alarm. No report
+      # file: the cleared label is the completion signal.
+      #
       # The sentinel and the body are checked because the model rewrites the whole comment in one
-      # PATCH, over a long list of byte-for-byte invariants in step 6 — the sentinel, every gap
-      # number, every answer line. Losing the sentinel strands the author's answers where
-      # /gaffer:confirmissue can no longer find them, and that is now a green skip there rather than a
-      # red run, so this is the only place it gets caught.
+      # PATCH: losing the sentinel strands the author's answers, now a green skip elsewhere.
       - name: Verify the refine left the review intact and cleared the label
         if: steps.guard.outputs.wrong_state != 'true' && env.MODE == 'refine'
         env:

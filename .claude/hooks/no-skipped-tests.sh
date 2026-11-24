@@ -54,35 +54,27 @@
 
 set -uo pipefail
 
-# Root to scan. Honours CLAUDE_PROJECT_DIR (as the harness always sets it, and as the other
-# filesystem-reading gate green-gate.sh already does), falling back to the script's own location.
-# Matching green-gate.sh here keeps the FS-reading gates consistent and lets a test matrix point
-# this one at a sandbox by env var instead of relocating it.
+# Honours CLAUDE_PROJECT_DIR, as green-gate.sh does, so the filesystem-reading gates agree and
+# a test matrix can point this one at a sandbox by env var rather than relocating it.
 REPO_ROOT="${CLAUDE_PROJECT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
 
-# Banned constructs: xUnit runtime skips (Skip.If/IfNot/Always/Unless, Assert.Skip), the
-# SkippableFact/Theory family, SkipException, and the attribute-argument family — Skip=,
-# plus xUnit v3's conditional SkipUnless=/SkipWhen=. The argument alternative deliberately
-# matches a string OR an identifier ([Fact(Skip = GateReason)]), which is why it is a bare
-# `Skip…=` rather than something anchored to a quote: breadth here over-blocks (loud, fixable
-# by a rename) where narrowness would under-block (silent non-coverage — the thing the ban exists
-# to prevent). Note `If` is a prefix of `IfNot`, so the IfNot alternative never decides a match;
-# it is kept for readability of intent.
+# The banned constructs: the xUnit runtime skips, the SkippableFact family, and the
+# attribute-argument family.
+#
+# The argument alternative is a bare `Skip…=` rather than anchored to a quote, so it catches an
+# identifier too. Breadth over-blocks loudly where narrowness under-blocks silently.
+#
+# `If` is a prefix of `IfNot`, so that alternative never decides a match; it states intent.
 BANNED_RE='Skip\.(If|IfNot|Always|Unless)|Assert\.Skip|Skippable(Fact|Theory)|Skip(Unless|When)?[[:space:]]*=|SkipException'
 
-# Scan src/ for banned constructs. Returns 0 with matching lines on stdout, 0 with no
-# output when clean, and 2 when the scan itself errored (permission, unreadable tree) so
-# the caller can fail closed instead of reading an error as "clean". On error, grep's own
-# stderr is echoed so the caller can name the offending path rather than reporting a bare
-# "could not scan" — one unreadable file blocks every commit, so the diagnostic must point
-# at it.
+# Scan src/ for banned constructs. 0 with matching lines, 0 with none, 2 when the scan itself
+# errored, so the caller fails closed rather than reading an error as "clean".
 #
-# bin/ and obj/ are excluded by grep during traversal (--exclude-dir), NOT by filtering its
-# output afterwards. An output filter tests the whole `path:lineno:content` line, so a banned
-# construct whose SOURCE TEXT mentions /bin/ or /obj/ would filter itself out and commit clean
-# — e.g. `Skip.If(!File.Exists("/bin/bash"), …)`, which is exactly the shape of skip the ban most
-# often has to stop (a runtime skip guarding a missing dependency, and dependency probes name
-# absolute paths).
+# grep's own stderr is echoed: one unreadable file blocks every commit, so the diagnostic has to
+# name the path.
+#
+# Excluded during traversal, NOT by filtering grep's output: an output filter tests the whole
+# `path:lineno:content` line, so `Skip.If(!File.Exists("/bin/bash"), …)` would filter itself out.
 scan() {
   local raw status
   raw="$(grep -rnE --include='*.cs' --exclude-dir=bin --exclude-dir=obj "$BANNED_RE" "$REPO_ROOT/src" 2>"$SCAN_ERR")"
@@ -100,11 +92,8 @@ scan() {
 SCAN_ERR="$(mktemp 2>/dev/null)" || SCAN_ERR=/dev/null
 [ "$SCAN_ERR" != /dev/null ] && trap 'rm -f "$SCAN_ERR"' EXIT
 
-# --check is deliberately ABOVE the override: an audit must never be silenceable by an env var.
-# NETPACE_ALLOW_SKIPS=1 is a local, per-commit emergency hatch for the interactive agent loop; if it
-# leaked into a CI environment it would turn this audit into a no-op that still reports green —
-# silent non-coverage dressed as a pass, which is precisely what the ban exists to stop. The
-# override is for genuine emergencies, not routine bypass; an unattended runner is neither.
+# --check is deliberately ABOVE the override: NETPACE_ALLOW_SKIPS=1 is a local emergency hatch,
+# and leaked into CI it would turn this audit into a no-op that still reports green.
 if [ "${1:-}" = "--check" ]; then
   # Fail closed if we cannot locate the tree to scan (a wrong REPO_ROOT must not read as clean).
   if [ ! -d "$REPO_ROOT/src" ]; then
@@ -134,33 +123,24 @@ fi
 
 # Hook mode: read the PreToolUse JSON on stdin and gate ONLY `git commit`.
 #
-# Classify the command as a commit BEFORE requiring jq or the src/ tree. This classification is
-# the only one there is: .claude/settings.json registers the hook with no `if:` filter, so the
-# harness narrows nothing and every Bash call arrives here. The script would classify for itself
-# regardless — the registration is configuration it cannot see, and running the script by hand or
-# porting it to another repo hands it arbitrary Bash calls either way. A fail-closed dependency
-# check placed ahead of that classification would block unrelated commands (`ls`, `cat`, even
-# `apt install jq`) on any box without jq — a bootstrap deadlock on a fresh machine. The
-# fail-closed guards below therefore apply only once the payload mentions git and commit; a Bash
-# call that does not is always waved straight through.
+# Classify the command as a commit BEFORE requiring jq or the src/ tree. The hook is registered
+# with no `if:` filter, so every Bash call arrives here and this is the only classification.
+#
+# A fail-closed dependency check ahead of it would block `ls`, `cat`, even `apt install jq` on a
+# box without jq: a bootstrap deadlock. So the guards below apply only to a would-be commit.
 input="$(cat)"
 
-# Cheap pre-filter: if the raw payload cannot even contain a `git commit`, there is nothing to
-# gate — return before touching any external tool. This deliberately over-matches (any payload
-# mentioning git…commit, including a non-Bash tool editing such text); the precise parse below
-# narrows it. It only ever WIDENS what reaches the real check, so no commit can slip past here.
+# Cheap pre-filter, returning before any external tool is touched. It over-matches deliberately
+# and only ever WIDENS what reaches the real check, so no commit slips past here.
 #
-# It uses BASH PATTERN MATCHING, not grep, and that is load-bearing. This test is the one thing
-# that must run before any dependency check — so if it shelled out, a `grep` that was missing or
-# erroring would make `… || exit 0` wave a real commit straight through, fail-OPEN, silently.
-# `[[ ]]` is a shell builtin: it cannot be absent and cannot fail. (grep is still needed for the
-# scan, but only AFTER we know this is a commit — where a hard fail-closed check is safe and does
-# not deadlock unrelated commands on a box without it.)
+# Bash pattern matching, not grep, and that is load-bearing: this runs before any dependency
+# check, so a missing grep behind `… || exit 0` would wave a real commit through, fail-OPEN.
+#
+# `[[ ]]` is a builtin: it cannot be absent and cannot fail.
 [[ "$input" == *git* && "$input" == *commit* ]] || exit 0
 
-# From here we know the payload mentions git+commit, so it is a would-be commit and every
-# uncertainty below must fail CLOSED. jq parses the payload; grep performs the scan. A missing
-# either one must block rather than wave through.
+# From here the payload mentions git+commit, so every uncertainty below must fail CLOSED: a
+# missing jq or grep blocks rather than waving through.
 if ! command -v jq >/dev/null 2>&1; then
   echo "BLOCKED: no-skipped-tests requires jq to parse the hook payload, but jq is not installed — failing closed." >&2
   exit 2
@@ -176,23 +156,20 @@ tool="$(printf '%s' "$input" | jq -r '.tool_name // empty')" || {
 }
 cmd="$(printf '%s' "$input" | jq -r '.tool_input.command // empty')"
 
-# Flatten line continuations before matching. `grep -qE` is line-oriented, so a command split
-# across lines — `git \<newline>  commit -m x` — has no single line carrying both tokens, and the
-# check below would wave a real commit through. (A bare newline is a genuine command separator
-# and is left alone: `git` on one line and `commit` on the next are two unrelated commands, and
-# grep -q already matches a `git commit` sitting on any single line of a multi-line script.)
+# Flattened because `grep -qE` is line-oriented, so a continuation-split `git \<newline> commit`
+# carries both tokens on no single line.
+#
+# A bare newline is a genuine command separator and is left alone.
 cmd_flat="${cmd//\\$'\n'/ }"
 
-# Deliberately NOT narrowed to command-word position. A read-only command that merely mentions
-# the words — `grep -r "git commit" docs/` — is gated too, and that over-block is accepted: it can
-# only bite HERE when src/ ALREADY holds a banned construct, which includes read-only review and audit
-# sessions (e.g. `git rev-parse <ref>^{commit}`) that meet a dirty src/ while doing their job and
-# cannot fix it; the fail-closed guards above bite on any such command, clean tree or
-# not, which is the real cost of the breadth. Parsing shell to find the command-word
-# would trade this harmless over-block for the failure that actually matters — a parser gap
-# missing a real commit and letting a skip land silently. The breadth is what lets the hook be
-# registered with no `if:` filter: it matches `git -C <path> commit` and every other form that put
-# a global option or a wrapper ahead of the subcommand, which a leading-word filter could not.
+# Deliberately NOT narrowed to command-word position, so a read-only command merely mentioning
+# the words is gated too. That over-block is the accepted cost.
+#
+# Parsing shell to find the command word would trade it for the failure that matters: a parser
+# gap missing a real commit and letting a skip land silently.
+#
+# The breadth is what lets the hook carry no `if:` filter, matching `git -C <path> commit` and
+# every other form putting a global option or a wrapper ahead of the subcommand.
 if [ "$tool" != "Bash" ] || ! printf '%s' "$cmd_flat" | grep -qE '\bgit\b.*\bcommit\b'; then
   exit 0
 fi

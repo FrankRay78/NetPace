@@ -22,10 +22,8 @@ trap 'rm -rf "$SB"' EXIT
 # `gh` stub: emits the asset list named by STUB_ASSETS, or fails like a missing release when
 # STUB_FAIL is set. Placed first on PATH so the script under test cannot reach the real gh.
 #
-# It asserts the call before answering it. That single `gh release view` is the script's whole
-# contract with GitHub, so a stub answering any argv would stay green if the version stopped
-# being passed — and `gh release view --json assets` with no tag reads the *latest* release,
-# which is the wrong one on a retry for an older version.
+# It asserts the call before answering it: a stub answering any argv would stay green if the
+# version stopped being passed, and no tag reads the *latest* release.
 mkdir -p "$SB/bin"
 cat > "$SB/bin/gh" <<'STUB'
 #!/usr/bin/env bash
@@ -57,12 +55,10 @@ export PATH="$SB/bin:$PATH"
 
 DL="https://github.com/FrankRay78/NetPace/releases/download"
 
-# The asset list a complete 0.9.0 release carries, trimmed to the entries winget reads, with the
-# `state` and `size` real asset objects carry. The non-AOT and non-Windows archives are present
-# deliberately: the script must pick the two AOT Windows archives out of a full release, not
-# assume a release holds only what it wants. The `.sha256` entry sits ahead of the archive it
-# names so that selection has to be an exact match — a prefix match would take the sidecar's URL
-# and the exact-equality assertions below would catch it.
+# A complete release's asset list, with the `state` and `size` real asset objects carry. The
+# non-Windows and non-AOT archives are present deliberately: the script must pick its two out.
+#
+# The `.sha256` entry sits ahead of the archive it names, so selection has to be exact.
 assets_complete() {
   cat <<JSON
 {"assets":[
@@ -87,19 +83,18 @@ ok() { if eval "$2"; then echo "  ok   $1"; pass=$((pass+1)); else echo "  FAIL 
 echo "argument validation:"
 OUTPUT="$(bash "$SCRIPT" 2>&1)"; RC=$?
 ok "no version → usage error" '[ "$RC" != 0 ] && grep -qi usage <<<"$OUTPUT"'
-# Each of these greps text only the guard itself emits. Matching the version back out of the
-# message would pass with the guard deleted, because every later failure path echoes the version
-# inside the archive name it could not find.
+# Each of these greps text only the guard itself emits: matching the version back out would pass
+# with the guard deleted, every later failure echoing it inside the archive name.
 run "refs/tags/0.9.0" "STUB_ASSETS=$(assets_complete)"
 ok "refs/tags/ prefix → rejected" '[ "$RC" != 0 ] && grep -q "not a ref" <<<"$OUTPUT"'
 run "v0.9.0" "STUB_ASSETS=$(assets_complete)"
 ok "v prefix → rejected" '[ "$RC" != 0 ] && grep -q "carry no .v. prefix" <<<"$OUTPUT"'
 
-# release-binaries.yml builds on any tag push and creates the release itself, so a non-release
-# tag arrives here behind a green release run. Submitting one publishes it to every user as the
-# current NetPace.
-# Each tag is given archives named after itself, as release-binaries.yml would attach, so that
-# with the guard removed the script would find them — and "emits no URL" is what catches it.
+# A non-release tag arrives here behind a green release run, and submitting one publishes it to
+# every user as the current NetPace.
+#
+# Each tag is given archives named after itself, so with the guard removed the script would find
+# them, and "emits no URL" is what catches it.
 run "test-archive-whitelist-0.0.1" "STUB_ASSETS=$(assets_complete | sed 's/0\.9\.0/test-archive-whitelist-0.0.1/g')"
 ok "non-release tag → rejected" '[ "$RC" != 0 ] && grep -q "MAJOR.MINOR.PATCH" <<<"$OUTPUT"'
 ok "non-release tag → emits no URL" '! grep -q "releases/download" <<<"$OUTPUT"'
@@ -135,8 +130,7 @@ ok "release with no assets → emits no URL" '! grep -q "releases/download" <<<"
 
 echo "stranded upload (listed, but never finished uploading):"
 # A half-attached archive is still in the asset list, so matching on name alone would hand
-# wingetcreate a URL that 404s for every user who installs it.
-# Each clause of the check is exercised on its own, so deleting either one turns a case red.
+# wingetcreate a URL that 404s for every user. Each clause is exercised on its own.
 run "0.9.0" "STUB_ASSETS=$(assets_complete | sed 's/"state":"uploaded","size":4017822/"state":"starter","size":4017822/')"
 ok "x64 archive not in uploaded state → fails naming it" '[ "$RC" != 0 ] && grep -q "netpace-0.9.0-win-x64-aot.zip" <<<"$OUTPUT"'
 ok "x64 archive not in uploaded state → emits no URL" '! grep -q "releases/download" <<<"$OUTPUT"'
@@ -152,9 +146,8 @@ ok "another version's archives → rejected" '[ "$RC" != 0 ]'
 ok "another version's archives → emits no URL" '! grep -q "releases/download" <<<"$OUTPUT"'
 
 echo "gh failure:"
-# The message must blame reading the release, not a missing archive: with the error handling
-# removed the script dies anyway, on both architectures being absent, and sends whoever reads the
-# auto-raised issue to check release assets that are in fact fine.
+# The message must blame reading the release, not a missing archive: without the error handling
+# the script still dies, and sends whoever reads the issue to check sound release assets.
 run "0.9.0" "STUB_FAIL=1" "STUB_ASSETS=$(assets_complete)"
 ok "gh fails → script fails" '[ "$RC" != 0 ]'
 ok "gh fails → blames the release read" 'grep -q "could not read release" <<<"$OUTPUT"'
@@ -162,9 +155,8 @@ ok "gh fails → does not blame a missing archive" '! grep -q "is missing" <<<"$
 ok "gh fails → emits no URL" '! grep -q "releases/download" <<<"$OUTPUT"'
 
 echo "unreadable asset list:"
-# gh exiting zero with the wrong shape: `.assets[]?` does not tolerate indexing an array, so this
-# is a jq hard error, and without a diagnostic of its own it surfaces as a bare parse error with
-# no mention of the version or of whether anything was submitted.
+# gh exiting zero with the wrong shape, which `.assets[]?` cannot tolerate: a jq hard error that
+# otherwise surfaces as a bare parse error naming neither version nor outcome.
 run "0.9.0" 'STUB_ASSETS=[]'
 ok "unparseable asset list → fails" '[ "$RC" != 0 ]'
 ok "unparseable asset list → says nothing was submitted" 'grep -q "nothing submitted" <<<"$OUTPUT"'

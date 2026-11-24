@@ -9,9 +9,8 @@ on:
       - '[0-9]+.[0-9]+.[0-9]+-*'
 
 jobs:
-  # Every release tag publishes NetPace.Core, whether or not the library changed since the last
-  # one, so a release never leaves the library behind. docs/RELEASING.md, NetPace.Core publishes
-  # on every release.
+  # Every release tag publishes NetPace.Core whether or not it changed, so a release never leaves
+  # the library behind. docs/RELEASING.md, NetPace.Core publishes on every release.
   publish:
     runs-on: ubuntu-latest
     # id-token: write lets the job request the OIDC token the NuGet login step exchanges for a key.
@@ -29,9 +28,8 @@ jobs:
         with:
           dotnet-version: 10.0.x
 
-      # AssemblyVersion and FileVersion accept numbers alone, so they take the tag's numeric part
-      # (0.27.0 for 0.27.0-rc1); every other version property takes the whole tag. docs/RELEASING.md,
-      # Prerelease tags.
+      # AssemblyVersion and FileVersion accept numbers alone, so they take the tag's numeric part;
+      # every other version property takes the whole tag. docs/RELEASING.md, Prerelease tags.
       - name: Extract version from tag
         id: get_version
         run: |
@@ -94,10 +92,8 @@ jobs:
             }
           }
 
-      # Trusted publishing: nuget.org trusts this workflow file in this repository (a policy on the
-      # nuget.org account) and exchanges the job's GitHub OIDC token for an API key that expires within
-      # the hour, so no long-lived key is stored anywhere. Run immediately before the push, after every
-      # gate, so the key exists only for the push. docs/RELEASING.md, Trusted publishing.
+      # Trusted publishing exchanges the job's OIDC token for a key that expires within the hour,
+      # so no long-lived key is stored. Run immediately before the push, after every gate.
       - name: Log in to NuGet
         id: nuget_login
         uses: NuGet/login@v1

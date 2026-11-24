@@ -24,23 +24,18 @@ on:
 
 jobs:
   confirm:
-    # The gate reads `sender` (the account that applied the label), not `issue.user`
-    # (the account that raised it) — the repository is public and anyone can raise an issue.
-    # Known residual: a label applied by any other account creates no run at all, and so
-    # sends no notification. See the CIR's known residuals.
+    # `sender`, not `issue.user`: the repository is public and anyone can raise an issue. A label
+    # applied by another account creates no run, and so sends no notification.
     if: >-
       github.event_name == 'workflow_dispatch' ||
       (github.event.label.name == 'confirm' && github.event.sender.login == 'FrankRay78')
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    # One group per issue, shared with reviewissue.yml. Concurrency groups are
-    # repo-wide, so naming both `issue-<n>` serialises confirm against review as well
-    # as against itself. That matters because the two write the same state from opposite ends:
-    # a review posting while a confirmation is folding answers in would post over decisions
-    # the confirmation is about to save, and a confirmation running while a review posts would
-    # resolve the wrong comment. Cancelling instead of queueing could kill a confirmation
-    # between its body patch and its label — the split state the post-condition exists to
-    # catch — so in-progress runs are left alone.
+    # Shared with reviewissue.yml, because groups are repo-wide and the two write the same state
+    # from opposite ends: a review posting mid-confirmation would land on decisions being saved.
+    #
+    # Queued rather than cancelled: cancelling could kill a confirmation between its body patch
+    # and its label, the split state the post-condition exists to catch.
     concurrency:
       group: issue-${{ github.event.issue.number || inputs.issue_number }}
       cancel-in-progress: false
@@ -57,20 +52,16 @@ jobs:
         with:
           fetch-depth: 0
 
-      # The command comes from the gaffer plugin, loaded from its main: a fresh clone per job, the
-      # URL and ref written here, and the commit printed so the log says which gaffer ran. The
-      # action passes the clone to claude as --plugin-dir, and --add-dir lets the agent read the
-      # command and the defaults from outside the workspace, which a headless run otherwise denies.
+      # A fresh clone of gaffer's main per job, with the URL and ref written here and the commit
+      # printed. --add-dir is what lets the agent read it, which a headless run otherwise denies.
       - name: Load gaffer from its main
         id: gaffer
         run: |
           set -euo pipefail
           git clone -q --depth 1 --branch main https://github.com/FrankRay78/gaffer-claude.git "$RUNNER_TEMP/gaffer"
           echo "gaffer $(git -C "$RUNNER_TEMP/gaffer" rev-parse HEAD)"
-          # Read-only before the agent starts: --add-dir makes the clone a working directory the
-          # agent's Write reaches, and the plugin's hook runs from it on every Bash call, so a
-          # writable clone would let text the agent was handed get a script run with this job's
-          # token. The agent's allowlist has no way to lift the mode back.
+          # Read-only before the agent starts: --add-dir puts the clone in reach of its Write, and
+          # the plugin's hook runs from it on every Bash call. The allowlist cannot lift the mode.
           chmod -R a-w "$RUNNER_TEMP/gaffer"
           echo "dir=$RUNNER_TEMP/gaffer" >> "$GITHUB_OUTPUT"
 
@@ -82,38 +73,20 @@ jobs:
           args=$(bash scripts/stage-flags.sh confirmissue)
           echo "args=$args" >> "$GITHUB_OUTPUT"
 
-      # A workflow step, not a prompt instruction: a model can skip an instruction. Narrower than
-      # the command's own "already confirmed" stop, which fires on the decisions section *or* the
-      # label; this reads the label only. What it buys is not a green run — a genuinely confirmed
-      # issue passes all five post-conditions below without it — but a skipped twenty-minute agent
-      # turn, and untrusted issue content kept away from an `issues: write` token.
-      # `confirm` fits exactly one issue state: a review posted and answered. Two of the states it
-      # does not fit are cheap wrong-state triggers, handled here — the label is cleared, nothing
-      # else on the issue changes, and the run finishes green. They are an issue already confirmed,
-      # and an issue with no review at all. The other two are not: `ready` with a surviving review
-      # comment is red below, and a review whose answers still hedge is red from the command's own
-      # stop and the post-conditions. So a mislabelled `confirm` is not always a free no-op.
-      # On the no-review state: left to the agent, the command's own "no review comment to confirm"
-      # stop fires, the post-condition below finds no decisions on the body and turns the run red —
-      # a failure notification for a mislabelled issue that nothing is wrong with. Caught here
-      # instead, it costs no agent turn and reads as what it is.
-      # The two reads are live rather than snapshotted because a local /gaffer:confirmissue is a
-      # second writer to the same state.
-      # `ready` with a surviving review comment is not a confirmed issue, it is a half-confirmed
-      # one: step 7 of the command saves the decisions and applies the label before deleting the
-      # comment, and that deletion is deliberately never fatal. Skipping such an issue green would
-      # make the command's documented recovery ("re-running /gaffer:confirmissue will retry it")
-      # a silent no-op in CI, because re-labelling lands here. Running the agent instead would not
-      # duplicate anything — the command rebuilds an existing `## Confirmed decisions` section in
-      # place, carrying forward every decision the review does not re-raise — but that rebuild path
-      # is reserved for a deliberate reopen, and here the surviving comment is the very one whose
-      # decisions are already on the body. Re-folding it repairs nothing: the thing that failed is
-      # the deletion. And deleting the comment here would put this workflow ahead of the command's
-      # own ordering — so the only correct move is to stop and say what to repair.
+      # A workflow step, not a prompt instruction, which a model can skip. What it buys is not a
+      # green run but a skipped agent turn, and untrusted issue content kept off a write token.
+      #
+      # `confirm` fits one issue state: a review posted and answered. The two cheap wrong-state
+      # triggers are handled here, clearing the label and finishing green. The other two are red.
+      #
+      # `ready` with a surviving review comment is half-confirmed: the command's own deletion is
+      # never fatal, so skipping it green would make its documented recovery a silent no-op.
+      #
+      # Both reads are live rather than snapshotted, a local /gaffer:confirmissue being a second
+      # writer to the same state.
+      #
       # Clearing the label keeps the state model honest: a green run always ends with `confirm`
-      # gone, confirmed or skipped. The output is recorded before the label is cleared, so a failed
-      # `gh issue edit` leaves the label on — the signal this file reserves for "did not complete".
-      # `mkdir` covers this step's sentinel read and the post-condition's writes below.
+      # gone. Recorded before the label is cleared, so a failed edit leaves the label on.
       - name: Skip a label applied in the wrong state
         id: guard
         env:
@@ -142,21 +115,16 @@ jobs:
             fi
           fi
 
-      # No issue snapshot step, unlike reviewissue.yml. That workflow snapshots for two
-      # reasons: the action strips HTML comments from injected context, which would remove the
-      # `<!-- speckit:review -->` sentinel, and workflow_dispatch carries no issue payload to
-      # inject at all. Neither bites here, because this command resolves the review over REST
-      # itself — it needs the numeric comment id, which the GraphQL-backed `--json comments` does
-      # not give — so the sentinel reaches it intact through its own call and the injected context
-      # is not load-bearing. See CIR decision 3.
+      # No issue snapshot step, unlike reviewissue.yml: this command resolves the review over REST
+      # itself, needing the numeric comment id, so the injected context is not load-bearing.
       #
-      # Denied tool calls do not fail this step, and show_full_output: false logs only their
-      # count (`permission_denials_count`), not which calls were refused. To see them, reproduce
-      # locally with the same Claude Code version and read `permission_denials`:
+      # Denied tool calls do not fail this step, and only their count is logged. To see which,
+      # reproduce locally and read `permission_denials`:
+      #
       #   claude -p '<task>' --permission-mode default --setting-sources project \
       #     --allowedTools '<the claude_args list below>' --output-format json
-      # --setting-sources project keeps local user hooks and plugins out of the result. See CIR
-      # decision 12 for the two refusals this found.
+      #
+      # --setting-sources project keeps local user hooks and plugins out of the result.
       - name: Fold the answered review into the issue body
         if: steps.guard.outputs.wrong_state != 'true'
         uses: anthropics/claude-code-action@v1
@@ -178,9 +146,8 @@ jobs:
 
             The command's hard-stops are hard: if a gap is unanswered or hedging, a decision contradicts a body passage without settling its replacement, or the body patch does not land, stop exactly where it says to and leave the issue untouched. Do not "helpfully" answer a gap yourself, and do not post a comment on the issue — the failed run is the alert.
 
-      # `if: always()` because the report is most valuable on the paths that did not finish: a
-      # stopped run's gap list is the whole alert, and the post-condition below turns those runs
-      # red. Guarded on existence, since the guard path skips the agent and writes no report.
+      # `always()`, because the report matters most on the paths that did not finish. Guarded on
+      # existence, since the guard path skips the agent and writes none.
       - name: Publish the confirmation report to the run summary
         if: always()
         env:
@@ -200,14 +167,11 @@ jobs:
             echo "No confirmation report was written, so this summary cannot say what the run did. Read the step logs and the issue itself." >> "$GITHUB_STEP_SUMMARY"
           fi
 
-      # The action exits successfully whenever the model finishes its turn, and three operations
-      # across the command's steps 6 and 7 are never fatal — the `ready` label, the `needs answers`
-      # removal and the comment deletion all report rather than fail, because the decisions are
-      # already saved by then. Left alone, a half-finished confirmation would go green and notify
-      # no one. This step is what makes the run's colour reflect the issue's actual end state.
-      # Every condition is checked before exiting, so one run names every half that is missing
-      # rather than the first. The `confirm` label is removed only once they all hold, which is
-      # what leaves a still-labelled issue as the visible "did not complete" signal.
+      # The action exits successfully whenever the model finishes its turn, and three of the
+      # command's own operations are never fatal, so a half-finished confirmation would go green.
+      #
+      # Every condition is checked before exiting, so one run names every missing half. The label
+      # comes off only once they all hold, leaving a still-labelled issue as the signal.
       - name: Verify the issue is fully confirmed, then clear the label
         if: steps.guard.outputs.wrong_state != 'true'
         env:
@@ -228,9 +192,8 @@ jobs:
             echo "::error::#$ISSUE_NUMBER is still labelled 'needs answers' — the review is confirmed but the issue still reads as awaiting answers."
             failed=1
           fi
-          # Paginated, because `gh issue view --json comments` returns a bounded page and a
-          # surviving sentinel past it would be invisible — reporting a review deleted when it
-          # is still on the thread, ready to be folded in a second time.
+          # Paginated, because `--json comments` returns a bounded page and a surviving sentinel
+          # past it would read as a review deleted, ready to be folded in twice.
           gh api --paginate "repos/$GITHUB_REPOSITORY/issues/$ISSUE_NUMBER/comments" \
             --jq '.[].body' > .claude/scratch/issue-comments-after.txt
           if grep -qF '<!-- speckit:review -->' .claude/scratch/issue-comments-after.txt; then

@@ -23,9 +23,8 @@ on:
     types: [ closed ]
     branches: [ "main" ]
 
-# Serialise per pull request. A merge fires once, but a re-run alongside the original would have
-# two runs writing the same labels; cancelling is wrong, because a cancelled run could stop
-# between two issues and leave the second one labelled.
+# Serialised per pull request, because a re-run alongside the original would write the same
+# labels. Queued rather than cancelled: a cancelled run could leave the second issue labelled.
 concurrency:
   group: clear-workflow-labels-${{ github.event.pull_request.number }}
   cancel-in-progress: false
@@ -46,9 +45,8 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
       with:
-        # Pinned to the head ref. `github.ref` on a `pull_request` event is `refs/pull/<N>/merge`,
-        # which GitHub deletes as the pull request closes, so the default checkout races a ref
-        # that is on its way out; `refs/pull/<N>/head` survives the merge.
+        # Pinned to the head ref: GitHub deletes `refs/pull/<N>/merge` as the pull request
+        # closes, so the default checkout races a ref on its way out.
         ref: ${{ github.event.pull_request.head.sha }}
 
     - name: Clear the workflow labels off every issue this pull request closed

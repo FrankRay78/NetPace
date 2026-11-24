@@ -24,11 +24,10 @@ permissions:
   issues: read
 
 jobs:
-  # Do NOT add a `paths:` filter or an `if:` condition to this job. To GitHub a skipped job is not
-  # a failure, so a required `traceability` context is satisfied by one that never ran — and since
-  # `pull_request` workflows are evaluated from the head ref, the branch adding the filter is the
-  # branch it stops gating. `shell-tests.yml` defends the same hazard with an explicit
-  # `result != success` gate job; this job stays unconditional instead, which needs no gate.
+  # Do NOT add a `paths:` filter or an `if:` condition. A skipped job is not a failure to GitHub,
+  # and the branch adding the filter is the branch it stops gating.
+  #
+  # `shell-tests.yml` meets the same hazard with a gate job; this one stays unconditional.
   traceability:
     name: traceability
     runs-on: ubuntu-latest
@@ -39,9 +38,8 @@ jobs:
       uses: actions/checkout@v4
 
     - name: Check every labelled scenario traces to a test marker
-      # The branch comes from `github.head_ref` — the PR's source branch. The checked-out ref on a
-      # pull_request event is a detached merge commit, so the script's own fallback would read
-      # `HEAD` and find no issue number, passing without having checked anything.
+      # From `github.head_ref`, because the checked-out ref is a detached merge commit: the
+      # script's own fallback would find no issue number and pass having checked nothing.
       #
       # The repository is passed in rather than resolved with `gh repo view`: one fewer API call,
       # and on a fork the value is the base repository, which is where the issue lives.

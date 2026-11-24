@@ -2,9 +2,8 @@ version: 2
 updates:
   - package-ecosystem: "nuget"
     directory: "/src/"
-    # Routine "stay current" bumps run twice a year (first of January and July). Anything with a
-    # known advisory is handled promptly and separately by Dependabot security updates (enabled in
-    # repo Settings), which ignore this schedule and the cooldown below.
+    # Routine bumps twice a year. A known advisory is handled separately by security updates,
+    # which ignore this schedule and the cooldown below.
     schedule:
       interval: "semiannually"
       time: "23:00"
@@ -14,10 +13,8 @@ updates:
       all-dependencies:
         patterns:
           - "*"
-    # Never ingest a release on its publish day: wait until a candidate version is at least
-    # 14 days old before opening a bump PR, so a same-day compromised or later-yanked publish
-    # ages out of the window before it can reach a PR. (Applies to these version updates only,
-    # not to security updates.)
+    # Never ingest a release on its publish day, so a compromised or later-yanked publish ages
+    # out before it can reach a pull request. Version updates only, not security updates.
     cooldown:
       default-days: 14
     open-pull-requests-limit: 10

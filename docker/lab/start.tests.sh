@@ -41,10 +41,8 @@ ok() {
   if eval "$2"; then echo "  ok   $1"; pass=$((pass+1)); else echo "  FAIL $1 -- rc=$RC output:[$OUTPUT]"; fail=$((fail+1)); fi
 }
 
-# run [args...] — run start.sh with <args>, against the stub docker. Sets OUTPUT (stdout and
-# stderr), RC and DOCKER_CALLS (one line per docker invocation). Cleared first: they are what `ok`
-# reads, so a case whose `run` was lost or mis-edited would otherwise silently re-assert the
-# previous case's result.
+# run [args...] — run start.sh with <args> against the stub docker, setting OUTPUT, RC and
+# DOCKER_CALLS. Cleared first, so a case whose `run` was lost cannot re-assert the last result.
 run() {
   OUTPUT=; RC=; DOCKER_CALLS=
   : > "$DOCKER_LOG"
@@ -52,9 +50,8 @@ run() {
   DOCKER_CALLS="$(cat "$DOCKER_LOG")"
 }
 
-# error_line — the ERROR line start.sh printed, without the usage text after it. Every refusal
-# prints usage, and usage names every profile and both server flags, so a check against the whole
-# output would pass whatever the error said.
+# error_line — the ERROR line alone. Every refusal prints usage, which names every profile and
+# both server flags, so a check against the whole output would pass whatever the error said.
 error_line() { grep -m1 "^ERROR:" <<<"$OUTPUT"; }
 
 # up_services — the services the stubbed `docker compose up` was asked for, sorted onto one line.
@@ -67,9 +64,8 @@ for f in "$START" "$COMPOSE" "$PROFILES"; do
   [ -f "$f" ] || { echo "FAIL -- $f is missing, so the lab cannot be checked." >&2; exit 1; }
 done
 
-# The profile names, read from the table itself so the cases below cannot drift from it. Sourced
-# in a subshell: the table is meant to be read by the lab's own scripts, and pulling its
-# variables and function into this matrix's scope would let a case pass off a leftover as a read.
+# Read from the table itself, so the cases cannot drift from it. Sourced in a subshell, or a case
+# could pass off a leftover variable as a read.
 ALL_PROFILES="$(. "$PROFILES"; echo $LINK_PROFILES)"
 # An empty list would make every case that iterates it pass having checked nothing: a `for` over
 # no words runs its body no times and succeeds. Refuse it here rather than report that green.
@@ -82,10 +78,8 @@ SB="$(mktemp -d)" || { echo "FAIL -- could not create a sandbox directory." >&2;
 trap 'rm -rf "$SB"' EXIT
 SHAPE_READY="$SB/shaped"
 
-# The stub docker: an exported function, which bash resolves before any binary on PATH, so the
-# start.sh each case runs never reaches the real one. It records each call and answers as a daemon
-# with nothing running would, except that `compose up` fails, so every run that reaches it ends on
-# start.sh's failed-start path within a second instead of waiting on servers that do not exist.
+# An exported function, which bash resolves before any binary on PATH, so no case reaches the
+# real docker. `compose up` fails, so a run ends on the failed-start path within a second.
 DOCKER_LOG="$SB/docker-calls"
 docker() {
   echo "$*" >> "$DOCKER_LOG"
@@ -98,9 +92,8 @@ docker() {
 export -f docker
 export DOCKER_LOG
 
-# run_shape <profile> — run the real shape.sh for <profile>, with its readiness file redirected
-# into the sandbox. Sets OUTPUT (stdout and stderr) and RC, cleared first for the reason `run`
-# clears them.
+# run_shape <profile> — the real shape.sh for <profile>, with its readiness file redirected into
+# the sandbox. Sets OUTPUT and RC, cleared first for the reason `run` clears them.
 run_shape() {
   OUTPUT=; RC=
   OUTPUT="$(NETPACE_LINK_PROFILE="$1" NETPACE_LAB_READY="$SHAPE_READY" bash "$HERE/shape.sh" 2>&1)"
@@ -109,18 +102,15 @@ run_shape() {
 
 # SCENARIO: Both providers on the same slow link
 # SCENARIO: One server at full speed
-# The traceability markers for the labels of those names. Both outcomes are gated by the lab runs
-# recorded with the change, per the header above; what the cases below verify is the argument
-# handling that selects each one, which services each choice asks Compose for, and the
-# configuration the outcomes rest on.
+# Both outcomes are gated by the recorded lab runs, per the header above; these cases verify the
+# argument handling, the services each choice asks Compose for, and the configuration beneath.
 
 echo "Help:"
 run --help
 ok "succeeds" '[ "$RC" = 0 ]'
 ok "says a profile is optional" 'grep -qF "With no profile" <<<"$OUTPUT"'
 # Subshelled: `ok` evaluates its condition in the current shell, so a bare `exit` in a loop body
-# would end the matrix rather than fail the case — no FAIL line, no RESULT line, every later case
-# skipped. The parentheses scope it to the condition.
+# would end the matrix rather than fail the case.
 ok "names every profile the table defines" \
   '(for p in $ALL_PROFILES; do grep -qF "$p" <<<"$OUTPUT" || exit 1; done)'
 ok "names both servers, so a reader can start either alone" \
@@ -191,10 +181,11 @@ ok "gives every profile both directions, each with an impairment" \
        grep -Eq "delay|rate|loss" <<<"$LINK_DOWN" || exit 1
        grep -Eq "delay|rate|loss" <<<"$LINK_UP" || exit 1) || exit 1
     done)'
-# The description is what start.sh prints as the lab's state, so a rate that disagrees with it is
-# read as fact: the maintainer records the figure the screen names, not the one tc applied. A
-# copy-paste between the two direction lines is the likeliest edit here and the only silent one,
-# so the two are held to the claim every description makes — whether the link is symmetric.
+# The maintainer records the figure the screen names, not the one tc applied, so a description
+# that disagrees is read as fact.
+#
+# A copy-paste between the two direction lines is the likeliest silent edit, so both are held to
+# the claim every description makes: whether the link is symmetric.
 ok "shapes each profile the way its own description advertises" \
   '(for p in $ALL_PROFILES; do
       (. "$PROFILES"; link_profile "$p" || exit 1
@@ -213,10 +204,8 @@ ok "documents every profile's exact arguments in README.md" \
     done)'
 ok "refuses a name it does not define" '! (. "$PROFILES"; link_profile no-such-profile)'
 
-# The readiness file shape.sh writes is what admits a server to the link: the link image's
-# healthcheck tests for it, and each server waits on that healthcheck. So a profile it cannot
-# apply must leave the file unwritten — that, not the exit code, is what keeps a server off an
-# unshaped link. The cases that need tc and a container are gated by the recorded lab run.
+# The readiness file is what admits a server to the link, so a profile shape.sh cannot apply must
+# leave it unwritten: that, not the exit code, is what keeps a server off an unshaped link.
 echo "The shaping script, asked for a profile it cannot apply:"
 # A readiness file left by an earlier run would admit both servers to an unshaped link, so it is
 # planted first: the case below checks shape.sh removes it, not merely that it writes none.
@@ -228,9 +217,8 @@ ok "and lists the profiles that do exist" 'grep -qF "satellite" <<<"$OUTPUT"'
 ok "and leaves no readiness file, not even one from an earlier run, so no server is admitted" \
   '[ ! -f "$SHAPE_READY" ]'
 
-# The capability that shapes the link. A lab run cannot tell whether a server container also
-# holds it: the link is shaped either way and every figure reads the same. Checked here instead,
-# because a server that could lift its own shaping is the one thing the design exists to rule out.
+# A lab run cannot tell whether a server container also holds NET_ADMIN, every figure reading the
+# same either way, so it is checked here: a server that could lift its own shaping is the risk.
 echo "The real lab:"
 # The verdict globals are cleared: no case below runs the script, so `ok` would otherwise report
 # the previous case's exit code and output against a grep that failed for its own reasons.
@@ -251,9 +239,8 @@ ok "copies the profile table and the shaping script into the link image only" \
   'grep -qE "^COPY .*link-profiles\.sh" "$HERE/Dockerfile.link" \
    && grep -qE "^COPY .*shape\.sh" "$HERE/Dockerfile.link" \
    && ! grep -qE "^COPY .*(link-profiles|shape)\.sh" "$HERE/Dockerfile.ooklaserver"'
-# Each server waits for the link container to report healthy. Without that both servers start
-# alongside the shaping rather than after it, and can take their first connection on a link that
-# is not shaped yet — which no lab run would show, because the qdisc catches them a moment later.
+# Without this the servers would start alongside the shaping rather than after it, and could take
+# a first connection on an unshaped link, which no lab run would show.
 ok "makes both servers wait for the link to be healthy" \
   '[ "$(grep -c "condition: service_healthy" "$COMPOSE")" = 2 ]'
 # And that healthcheck has to test the file shape.sh actually writes. Were the two paths to drift

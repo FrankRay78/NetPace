@@ -16,9 +16,8 @@ name: Publish Homebrew Tap
 
 on:
   workflow_run:
-    # Matched on release-binaries.yml's `name:`, verbatim. Renaming that workflow stops this one
-    # firing at all — no run, nothing red, and no issue raised, because there is no run for the
-    # failure job to attach to. Change the two together (docs/RELEASING.md, *Homebrew tap*).
+    # Matched on release-binaries.yml's `name:`, verbatim. Renaming it stops this one firing at
+    # all, with no run for the failure job to attach to: change the two together.
     workflows: ["Build and Release Cross-Platform Binaries"]
     types: [completed]
   # Manual retry for a tap update that failed after the release itself was fine. Registered from
@@ -34,10 +33,8 @@ permissions:
   contents: read
 
 env:
-  # The tap repository and the path within it. Users reach the formula as
-  # `brew install FrankRay78/tap/netpace` — Homebrew strips the `homebrew-` prefix from the
-  # repository name — so both the repository name and the formula filename are user-typed
-  # contracts (docs/RELEASING.md, *Homebrew tap*).
+  # Homebrew strips the `homebrew-` prefix from the repository name, so both it and the formula
+  # filename are user-typed contracts (docs/RELEASING.md, *Homebrew tap*).
   HOMEBREW_TAP_REPO: FrankRay78/homebrew-tap
   FORMULA_PATH: Formula/netpace.rb
 
@@ -47,9 +44,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
-    # A run of release-binaries.yml that did not succeed has no complete set of archives to
-    # publish. That workflow also builds on release-candidate tags; which tags are releases is
-    # decided by the version step below, since an expression here cannot match a pattern.
+    # A release-binaries.yml run that did not succeed has no complete set of archives. Which tags
+    # are releases is decided below, an expression here being unable to match a pattern.
     if: >-
       github.event_name == 'workflow_dispatch' ||
       (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push')
@@ -65,15 +61,11 @@ jobs:
       # On a workflow_run the tag that triggered release-binaries.yml arrives as head_branch;
       # GitHub populates it with the short ref, which for a tag push is the tag name.
       #
-      # A release candidate is a clean skip, not a failure: it is not a release, and reporting it as
-      # a failed tap update would raise a false issue on every such tag. A version given by hand is
-      # never skipped — the generator refuses a bad one loudly instead.
+      # A release candidate is a clean skip, not a failure, which would raise a false issue on
+      # every such tag. A version given by hand is never skipped.
       #
-      # A ref of neither shape is an error rather than a skip. release-binaries.yml triggers only on
-      # `[0-9]+.[0-9]+.[0-9]+` and `[0-9]+.[0-9]+.[0-9]+-*`, so every ref that can reach here is one
-      # of the two; anything else means head_branch did not hold the tag this step assumes it holds.
-      # Treating that as a skip would leave the tap silently a version behind, green, with the only
-      # trace a `::notice::` in a log nobody opens — and the first report a user's `brew upgrade`.
+      # A ref of neither shape means head_branch did not hold the tag this step assumes, so it is
+      # an error: a skip would leave the tap a version behind, green, until a user's `brew upgrade`.
       - name: Resolve version
         id: version
         env:
@@ -106,9 +98,8 @@ jobs:
           echo "Publishing version: $version"
           echo "release=true" >> "$GITHUB_OUTPUT"
 
-      # Fails before anything is rendered or pushed: a missing secret is one-off setup that was
-      # never done (docs/RELEASING.md, *One-off tap setup*), and skipping on it would report a release
-      # as published to the tap when nothing was pushed.
+      # Fails before anything is rendered or pushed: a missing secret is one-off setup never done,
+      # and skipping would report a release as published when nothing was.
       - name: Verify tap token is configured
         if: steps.version.outputs.release == 'true'
         env:
@@ -120,10 +111,8 @@ jobs:
             exit 1
           fi
 
-      # Reads every archive URL off the published release and takes each checksum over the bytes
-      # that URL serves, refusing to emit a partial formula. A release missing one of the four
-      # Unix AOT archives therefore stops here, rather than producing a formula that installs on
-      # some platforms and fails on the rest. Covered by scripts/homebrew-formula.tests.sh.
+      # Refuses to emit a partial formula, so a release missing one archive stops here rather than
+      # installing on some platforms and failing on the rest.
       - name: Render netpace.rb from the release
         if: steps.version.outputs.release == 'true'
         env:
@@ -143,10 +132,8 @@ jobs:
           name: homebrew-formula
           path: netpace.rb
 
-  # The formula is installed before it is pushed, because nothing downstream of the push would
-  # catch a bad one: the tap has no CI of its own, and the first report would be a user's failed
-  # `brew install`. This is what makes the URLs and checksums in the pushed formula ones that
-  # have actually been installed from, on three of its four platforms (linux-arm64 is not; below).
+  # Installed before it is pushed, because the tap has no CI of its own and the first report
+  # would be a user's failed `brew install`. Three of the four platforms; linux-arm64 below.
   verify:
     name: Install on ${{ matrix.runs_on }}
     needs: formula
@@ -159,17 +146,14 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # The macOS pair is split across architectures for the same reason
-          # release-binaries.yml splits it: an Apple silicon runner would install the osx-arm64
-          # archive whichever one the formula was asked for, leaving the osx-x64 entry
-          # unverified (docs/RELEASING.md, *Runner per RID*).
+          # Split across architectures, as release-binaries.yml splits it: an Apple silicon
+          # runner would install osx-arm64 either way, leaving the osx-x64 entry unverified.
           #
-          # Linux is checked on x64 only, deliberately. Homebrew is pre-installed on GitHub's
-          # x64 Ubuntu images but not dependably on the ARM64 ones, so adding that runner would
-          # turn every release's tap update red for want of `brew` rather than for anything
-          # wrong with the formula. The linux-arm64 entry is structurally identical to the
-          # linux-x64 one that is checked, and its URL and checksum come off the release and the
-          # bytes it serves either way (docs/RELEASING.md, *Homebrew tap*).
+          # x64 only: Homebrew is not dependably pre-installed on GitHub's ARM64 Ubuntu images,
+          # so that runner would turn every tap update red for want of `brew`.
+          #
+          # The linux-arm64 entry is structurally identical to the one checked, and its URL and
+          # checksum come off the release either way.
           - runs_on: ubuntu-latest
           - runs_on: macos-15-intel
           - runs_on: macos-latest
@@ -184,10 +168,8 @@ jobs:
         with:
           name: homebrew-formula
 
-      # Homebrew is pre-installed on GitHub's macOS and x64 Ubuntu images, but on Linux it lives
-      # outside the default PATH on some image versions. Resolved here rather than assumed, so a
-      # missing Homebrew fails saying so instead of as an unhelpful `brew: command not found`
-      # inside the install step.
+      # On Linux, Homebrew lives outside the default PATH on some image versions. Resolved here,
+      # so a missing one fails saying so rather than as `brew: command not found` later.
       - name: Locate Homebrew
         run: |
           set -euo pipefail
@@ -202,10 +184,8 @@ jobs:
           fi
           brew --version
 
-      # Installed through a throwaway local tap rather than from FrankRay78/homebrew-tap, because
-      # the point is to check this formula before the real tap ever carries it. Not from the file
-      # path: from Homebrew 5.0.0 `brew install ./netpace.rb` is refused outright unless
-      # HOMEBREW_DEVELOPER is set, which would change other behaviour too.
+      # A throwaway local tap, because the point is to check this formula before the real tap
+      # carries it. Not the file path, which Homebrew 5.0.0 refuses without HOMEBREW_DEVELOPER.
       - name: Install NetPace from the rendered formula
         env:
           HOMEBREW_NO_AUTO_UPDATE: 1
@@ -217,13 +197,11 @@ jobs:
           cp netpace.rb "$(brew --repository local/verify)/Formula/netpace.rb"
           brew install local/verify/netpace
 
-      # The check the whole job exists for: the binary Homebrew laid down runs, and it is the
-      # release the formula names. A formula that installs an archive from another version would
+      # The check the whole job exists for: a formula installing another version's archive would
       # otherwise reach users as a successful upgrade that changed nothing.
       #
-      # On macOS this also stands in for the Gatekeeper check: a formula's download carries no
-      # quarantine flag, so an unsigned binary that would be refused from a browser download runs
-      # here. If that ever stops being true, this step is where it surfaces.
+      # On macOS this stands in for the Gatekeeper check: a formula's download carries no
+      # quarantine flag, so an unsigned binary runs here where a browser download would not.
       - name: netpace --version reports the release
         env:
           VERSION: ${{ needs.formula.outputs.version }}
@@ -253,11 +231,11 @@ jobs:
     if: needs.formula.outputs.release == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    # One push at a time, so two releases close together cannot race — one would be rejected as a
-    # non-fast-forward and raise a false failure issue. Set on this job, not the workflow, so
-    # prereleases and failed builds never queue here. Any release run still can, including a
-    # retry that turns out to have nothing to push, and GitHub cancels a waiting entry when another
-    # arrives; a cancelled job, unlike a cancelled run, still reaches report-failure.
+    # One push at a time, so two close releases cannot race into a non-fast-forward rejection.
+    # On this job, not the workflow, so prereleases and failed builds never queue here.
+    #
+    # GitHub cancels a waiting entry when another arrives, and a cancelled job, unlike a cancelled
+    # run, still reaches report-failure.
     concurrency:
       group: homebrew-tap-push
       cancel-in-progress: false
@@ -277,14 +255,13 @@ jobs:
         with:
           name: homebrew-formula
 
-      # Committing nothing when nothing changed keeps a manual retry of an already-published
-      # version a no-op rather than an empty commit — and `git commit` would fail on it, which
-      # would raise a failure issue for a tap that is in fact correct.
+      # A retry of an already-published version stays a no-op: `git commit` would fail on an empty
+      # commit and raise a failure issue for a tap that is correct.
       #
-      # An older version than the tap already carries is skipped, never pushed: a retry of a
-      # superseded release, or a re-run of an old tag's release-binaries.yml run, would otherwise
-      # hand every `brew install` the older NetPace with nothing red. A skip rather than a failure,
-      # because the tap is already ahead and correct — a failure would raise an issue for nothing.
+      # An older version than the tap carries is skipped, never pushed: a re-run of an old tag
+      # would otherwise hand every `brew install` the older NetPace with nothing red.
+      #
+      # A skip rather than a failure, the tap being already ahead and correct.
       - name: Commit the formula
         working-directory: tap
         env:
@@ -317,10 +294,8 @@ jobs:
 
   # A workflow_run failure notifies nobody, so the failure is written where it will be read.
   #
-  # The condition covers the render job breaking before it set `release` — which is why it tests
-  # that job's result rather than only its output — and a verify or push failure on a run that
-  # was a release. A tag that is not a release leaves every job either skipped or cleanly
-  # successful, and raises nothing.
+  # Tests the render job's result and not only its output, so it covers that job breaking before
+  # it set `release`. A tag that is not a release leaves every job skipped or clean.
   report-failure:
     name: Report a failed tap update
     needs: [ formula, verify, publish ]

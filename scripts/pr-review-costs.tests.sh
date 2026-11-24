@@ -62,9 +62,10 @@ col() { row "$1" | cells_of "$2"; }
 
 FOOTER='\n\n<!-- pr-cost-footer -->\n\n---\n\n| Round | Tokens | API cost |\n| --- | --- | --- |'
 # pr <n> <closed> <merged-or-null> <footer rows> [title] — one closed pull request, as gh pr list
-# gives it, opened by the maintainer from a branch of this repository. PR_CRLF=true gives the
-# description CRLF line endings, as GitHub returns one saved in the web UI; PR_INTRO replaces the
-# text above the footer; PR_AUTHOR and PR_CROSS=true change who opened it and from where.
+# gives it, opened by the maintainer from a branch of this repository.
+#
+# PR_CRLF gives the description CRLF endings; PR_INTRO replaces the text above the footer;
+# PR_AUTHOR and PR_CROSS change who opened it and from where.
 pr() {
   local body="${PR_INTRO:-Why}${4:+$FOOTER$4}"
   jq -n --argjson n "$1" --arg c "$2" --argjson m "$3" --arg b "$(printf "$body")" --arg t "${5:-Change $1}" \
@@ -180,9 +181,8 @@ ok "a description with CRLF line endings still has its footer read" '[ "$(col 31
 
 echo "The totals row:"
 fresh
-# Listed out of date order, so the order on the page is the script's sort. #51's title carries a
-# pipe, a quote and a comma: the pipe is escaped on the page and has to be set aside again by every
-# reader of the row, and the quote and comma have to survive the CSV's quoting.
+# Listed out of date order, so the order on the page is the script's sort. One title carries a
+# pipe, a quote and a comma, which the page escapes and the CSV's quoting must survive.
 { pr 52 2026-11-02T09:00:00Z null $'\n| PR Review | 2,000,000 | $1.00 |\n| Review 1 | unknown | unknown |\n| Total | 2,000,000 + unknown | $1.00 + unknown |'
   pr 50 2026-11-04T09:00:00Z '"2026-11-04T09:00:00Z"' $'\n| PR Review | 2,000,000 | $5.34 |\n| Review 1 | 1,000,000 | $1.10 |\n| Total | 3,000,000 | $6.44 |'
   pr 51 2026-11-03T09:00:00Z '"2026-11-03T09:00:00Z"' $'\n| PR Review | 1,500,000 | $1,026.00 |\n| Total | 1,500,000 | $1,026.00 |' 'Say "hi", a | b'; } | prs

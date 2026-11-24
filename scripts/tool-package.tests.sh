@@ -92,9 +92,8 @@ OUTPUT="$(dotnet pack "$PROJECT" \
 ok "the console project packs at an earlier version too" '[ "$RC" = 0 ]'
 
 echo "A package exists for every platform the tool covers:"
-# The cases in this block read the feed and the wrapper's own settings file, not the pack output, so the
-# pack's log is cleared first rather than being reported against a failure it had nothing to do with.
-# The install, update and dnx cases further down each set their own RC and OUTPUT.
+# These cases read the feed and the wrapper's settings, not the pack output, so the pack's log is
+# cleared first rather than reported against a failure it had nothing to do with.
 OUTPUT=""; RC=0
 ok "the wrapper package carries the user-facing id" '[ -f "$FEED/$PACKAGE.$VERSION.nupkg" ]'
 SETTINGS="$(python3 -I -c "
@@ -143,8 +142,7 @@ ok "and the command now reports the newer version" '[ "$RC" = 0 ] && [ "$OUTPUT"
 
 echo "Installing a prerelease:"
 # SCENARIO: An installed prerelease tool reports its prerelease version
-# Packed as the release workflows pack a prerelease tag: the assembly and file versions accept only
-# numbers, so they take the tag without its suffix, and everything else takes the whole tag.
+# The assembly and file versions accept only numbers, so they take the tag without its suffix.
 PRERELEASE="$VERSION-rc.1"
 OUTPUT="$(dotnet pack "$PROJECT" \
   --configuration Release \

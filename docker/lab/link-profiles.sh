@@ -26,9 +26,8 @@ LINK_PROFILES="satellite 3g-bloated gprs radio flaky"
 
 # link_profile <name>
 #
-# Sets LINK_MODELS, LINK_DOWN and LINK_UP for <name>. Returns 1 and leaves them
-# untouched for a name that is not one of LINK_PROFILES, which is how both callers
-# detect an unknown profile.
+# Sets LINK_MODELS, LINK_DOWN and LINK_UP for <name>. Returns 1 and leaves them untouched for an
+# unknown name, which is how both callers detect one.
 link_profile() {
   case "$1" in
     satellite)
@@ -39,9 +38,8 @@ link_profile() {
       LINK_UP="delay 300ms loss 0.25% rate 2mbit"
       ;;
     3g-bloated)
-      # A congested 3G cell with full queues: the bandwidth is poor but the latency
-      # is what hurts, and it swings as the queues fill and drain. The jitter is
-      # deliberately large relative to the delay for that reason.
+      # A congested 3G cell: the latency hurts more than the bandwidth and swings as the queues
+      # fill, so the jitter is deliberately large relative to the delay.
       LINK_MODELS="congested 3G with full queues: ~2 s round trip with jitter, 1 Mbit down / 384 kbit up, ~1% loss"
       LINK_DOWN="delay 1000ms 200ms distribution normal loss 0.5% rate 1mbit"
       LINK_UP="delay 1000ms 200ms distribution normal loss 0.5% rate 384kbit"
@@ -61,12 +59,11 @@ link_profile() {
       LINK_UP="delay 500ms loss 1% rate 9600bit"
       ;;
     flaky)
-      # Usable on paper but keeps failing. The loss is bursty rather than uniform,
-      # which is what breaks a retry policy that uniform loss survives: netem's
-      # Gilbert-Elliott model (`loss gemodel p r 1-h 1-k`) alternates between a good
-      # state and a lossy one. p=2% into the bad state, r=50% out of it, so the link
-      # is bad about 3.8% of the time and drops 30% of packets while it is — about
-      # 1.2% loss per direction on average, arriving in clumps.
+      # Usable on paper but keeps failing: the loss is bursty rather than uniform, which breaks a
+      # retry policy that uniform loss survives.
+      #
+      # netem's Gilbert-Elliott model alternates a good state with a lossy one: bad about 3.8% of
+      # the time, dropping 30% while it is, so about 1.2% per direction arriving in clumps.
       LINK_MODELS="a usable link that keeps failing: ~200 ms round trip, 2 Mbit down / 1 Mbit up, burst loss averaging ~2%"
       LINK_DOWN="delay 100ms loss gemodel 2% 50% 30% 0% rate 2mbit"
       LINK_UP="delay 100ms loss gemodel 2% 50% 30% 0% rate 1mbit"

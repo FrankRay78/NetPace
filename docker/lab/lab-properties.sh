@@ -45,9 +45,8 @@ for key in "${OUTBOUND_KEYS[@]}"; do
   # this file's own keys, but a pattern that means what it says is one less thing to reason about.
   pattern="${key//./\\.}"
 
-  # An assignment the server reads, as opposed to a commented line documenting the setting. Named
-  # once because the delete below and the two read-backs after it have to mean the same thing by
-  # it; were they written out separately, one could be narrowed without the others.
+  # An assignment the server reads, as against a commented line documenting it. Named once, so
+  # the delete and the two read-backs cannot drift apart.
   active="^[[:space:]]*${pattern}[[:space:]]*="
 
   grep -qE "^[[:space:]]*#?[[:space:]]*${pattern}[[:space:]]*=" "$PROPS" \
@@ -62,9 +61,8 @@ for key in "${OUTBOUND_KEYS[@]}"; do
     "$key" >> "$PROPS" \
     || die "could not append to '$PROPS'."
 
-  # Read every active assignment back, whatever its value, so a delete that missed one cannot
-  # leave the server picking between two. Counting only the `false` ones would always find the
-  # line just appended, and so could never fail.
+  # Every active assignment, whatever its value, so a delete that missed one cannot leave two.
+  # Counting only the `false` ones would always find the line just appended.
   assignments="$(grep -cE "$active" "$PROPS")"
   [ "$assignments" = 1 ] \
     || die "after editing, '$PROPS' holds $assignments active assignment(s) of $key, expected exactly 1."

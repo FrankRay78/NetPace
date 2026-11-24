@@ -36,14 +36,11 @@ trap cleanup EXIT
 pass=0; fail=0; cases=0
 ok() { if eval "$2"; then echo "  ok   $1"; pass=$((pass+1)); else echo "  FAIL $1 -- rc=$RC out:[$(printf '%s' "$OUTPUT" | head -3 | tr '\n' '/')]"; fail=$((fail+1)); fi; }
 
-# new_case — a fresh sandbox repo on main, a stub dir, and a `gh` stub earlier on PATH than the
-# real one. The stub serves from $STUB_DIR and exits non-zero with GitHub's own "could not
-# resolve" wording for an unknown number, so the check's answer/outage distinction is exercised
-# against the real string rather than a paraphrase.
-# setup_fail — a broken fixture is not a test result. Every setup step below is checked through
-# this, because an unchecked one is worse than useless: with the fixtures missing, a sandbox has
-# no committed test files, so every case asserting `failed && names "…"` still passes while
-# verifying nothing about the discrimination it claims to test.
+# new_case — a fresh sandbox repo on main, with a `gh` stub ahead of the real one. It exits
+# non-zero with GitHub's own "could not resolve" wording, not a paraphrase.
+#
+# setup_fail — a broken fixture is not a test result. With the fixtures missing a sandbox has no
+# committed test files, so every `failed && names "…"` case passes while verifying nothing.
 setup_fail() { echo "  FIXTURE SETUP FAILED (case $cases): $*" >&2; exit 1; }
 
 new_case() {
@@ -98,9 +95,8 @@ commit_file() {
 issue() { jq -n --arg b "$2" --arg u "https://github.com/o/r/issues/$1" '{body:$b,url:$u}' > "$STUB_DIR/issue-$1.json" || setup_fail "issue $1"; }
 # raw N JSON — the stub's reply for N, verbatim, for malformed-response cases.
 raw()   { printf '%s' "$2" > "$STUB_DIR/issue-$1.json" || setup_fail "raw $1"; }
-# pull N BODY — the stub's reply for a number that is a pull request, as `gh issue view` really
-# answers. The body carries a label on purpose: with an empty one the check exits 0 down the
-# no-labels route, and the URL discrimination never runs.
+# pull N BODY — the stub's reply for a number that is a pull request. The body carries a label on
+# purpose: an empty one exits 0 down the no-labels route and never reaches the discrimination.
 pull()  { jq -n --arg b "$2" --arg u "https://github.com/o/r/pull/$1" '{body:$b,url:$u}' > "$STUB_DIR/issue-$1.json" || setup_fail "pull $1"; }
 # unreachable N MESSAGE — the stub cannot answer for N (auth, network, rate limit).
 unreachable() { printf '%s\n' "$2" > "$STUB_DIR/unreachable-$1" || setup_fail "unreachable $1"; }
@@ -114,10 +110,8 @@ check() {
 
 passed()  { [ "$RC" = 0 ]; }
 failed()  { [ "$RC" = 1 ]; }
-# A pass must say WHICH pass it is: "nothing to check" and "checked and clean" are different
-# answers. `nothing` therefore takes the verdict it expects — all FOUR quiet passes print the
-# shared words "nothing to check", so matching only those would prove the exit code and nothing
-# else.
+# A pass must say WHICH pass it is, so `nothing` takes the verdict it expects: all four quiet
+# passes share the words "nothing to check", which alone would prove only the exit code.
 clean()   { passed && printf '%s' "$OUTPUT" | grep -qF 'OK'; }
 nothing() { passed && printf '%s' "$OUTPUT" | grep -qF 'nothing to check' && printf '%s' "$OUTPUT" | grep -qF -- "$1"; }
 names()   { printf '%s' "$OUTPUT" | grep -qF -- "$1"; }
@@ -137,9 +131,8 @@ check feature/401-widget-hum
 ok "a label matched by a C# marker passes"         'clean'
 ok "the report names the issue it checked"         'names "#401"'
 new_case
-# Built with an escape rather than a literal newline: as a two-line single-quoted string, the
-# continuation would begin at column 0 with `//`, making this fixture a live marker in a committed
-# `*.tests.sh`. The rule calls a marker that names no label worse than no marker at all.
+# Built with an escape, not a literal newline: a continuation beginning at column 0 with `//`
+# would make this fixture a live marker, which the rule calls worse than no marker at all.
 commit_file "src/NetPace.Core.Tests/WidgetTests.cs" $'// SCENARIO: Widget hums when wound\n// SCENARIO: Widget chimes on the hour'
 issue 402 '**Scenario: Widget hums when wound**
 
@@ -378,24 +371,21 @@ echo "Fail-closed guards — a gate that cannot run must not report green:"
 new_case
 commit_file "src/NetPace.Core.Tests/WidgetTests.cs" '// SCENARIO: Widget hums when wound'
 issue 428 '**Scenario: Widget hums when wound**'
-# PATH is emptied so the check cannot find `gh`. The interpreter is named by absolute path, since
-# an emptied PATH would otherwise stop `bash` itself resolving and report 127 — the check never
-# running, read as the check's own verdict. Asserting rc=1 rather than non-zero is what pins that.
+# PATH is emptied so the check cannot find `gh`, and the interpreter named absolutely so the
+# emptied PATH cannot report 127 instead. rc=1 rather than non-zero is what pins that.
 mkdir -p "$SB/empty"
 OUTPUT="$(env CLAUDE_PROJECT_DIR="$REPO" STUB_DIR="$STUB_DIR" PATH="$SB/empty" "$BASH_BIN" "$CHECK" feature/428-widget 2>&1)"; RC=$?
 ok "missing tooling fails closed"                    'failed'
 new_case
 rm -rf "$REPO/.git"
 issue 429 '**Scenario: Widget hums when wound**'
-# GIT_CEILING_DIRECTORIES stops `rev-parse --git-dir` walking upward out of the sandbox, so the
-# case does not depend on $TMPDIR sitting outside a working tree. Asserting the wording as well as
-# the code is what pins which failure this is.
+# GIT_CEILING_DIRECTORIES stops `rev-parse --git-dir` walking out of the sandbox, so the case does
+# not depend on $TMPDIR. The wording as well as the code pins which failure this is.
 check feature/429-widget GIT_CEILING_DIRECTORIES="$ROOT"
 ok "a repo root that is not a git repository fails closed" 'failed && names "is not a git repository"'
 new_case
-# A single missing tool, rather than an emptied PATH. The emptied-PATH case above hides `gh`
-# first, so it never reaches the extraction stages — where a missing `tr` must not report a
-# labelled issue as unlabelled.
+# A single missing tool, not an emptied PATH: that case hides `gh` first and never reaches the
+# extraction stages, where a missing `tr` must not report a labelled issue as unlabelled.
 commit_file "src/NetPace.Core.Tests/WidgetTests.cs" '// SCENARIO: Widget hums when wound'
 issue 436 '**Scenario: Widget hums when wound**'
 mkdir -p "$SB/notr" || setup_fail "mkdir notr"
@@ -419,9 +409,8 @@ raw 439 'not json at all'
 check feature/439-widget
 ok "an unparseable reply fails closed"               'failed && names "could not parse"'
 new_case
-# A marker scan that cannot complete must not become a traceability verdict: coming back short looks
-# exactly like a missing marker, and would accuse the author of omitting one that is committed.
-# An unborn HEAD is the cheapest way to induce it.
+# A marker scan that cannot complete must not become a verdict: coming back short looks exactly
+# like a missing marker. An unborn HEAD is the cheapest way to induce it.
 commit_file "src/NetPace.Core.Tests/WidgetTests.cs" '// SCENARIO: Widget hums when wound'
 issue 443 '**Scenario: Widget hums when wound**'
 git -C "$REPO" update-ref -d HEAD || setup_fail "unborn HEAD 443"
@@ -443,8 +432,7 @@ ok "…and an unmatched CRLF label is named without the \\r" 'failed && names "W
 echo ""
 echo "----------------------------------------"
 echo "cases: $cases   passed: $pass   failed: $fail"
-# A matrix that silently shrinks is the failure mode shell-tests.yml guards against in its own
-# discovery step: discovering nothing is a failure, not a pass. Without this floor, deleting a
-# whole block reports fewer cases, zero failures, and exit 0.
+# A matrix that silently shrinks is the failure mode shell-tests.yml guards against in discovery:
+# without this floor, deleting a whole block reports zero failures and exit 0.
 [ "$cases" -ge 46 ] || { echo "FAIL: expected at least 46 cases, ran $cases — did a block get dropped?" >&2; exit 1; }
 [ "$fail" -eq 0 ] || exit 1

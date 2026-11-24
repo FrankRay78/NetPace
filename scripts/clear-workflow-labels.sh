@@ -120,9 +120,8 @@ main() {
     if gh issue edit "$n" "${flags[@]}" >/dev/null </dev/null; then
       say "#$n: cleared ${cleared[*]}"
     else
-      # A warning annotation, not a plain line: a write that fails for every issue and forever —
-      # `issues: write` dropped from the workflow, a token scope changed — otherwise shows only
-      # in the log of a green run, which nobody opens after the merge.
+      # A warning annotation, not a plain line: a write that fails for every issue and forever
+      # otherwise shows only in the log of a green run, which nobody opens.
       echo "::warning::clear-workflow-labels: #$n: could not clear its workflow labels" \
         "— left as it is, and the run carries on."
     fi

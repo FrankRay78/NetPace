@@ -27,9 +27,8 @@ IFACE=eth0
 # block device that incoming traffic is redirected through.
 IFB=ifb0
 
-# Written once the link is in the state that was asked for: both directions shaped and read back,
-# or deliberately unshaped. The image's healthcheck tests for it, and each server waits for that
-# healthcheck, so this file is what admits a server to the link.
+# Written once the link is in the state asked for. The image's healthcheck tests for it and each
+# server waits on that, so this file is what admits a server to the link.
 #
 # Overridable so that the refusal paths can be exercised off-container, where /run is not
 # writable; nothing in the lab sets it, and Dockerfile.link's healthcheck tests the default.
@@ -44,9 +43,8 @@ PROFILE="${NETPACE_LINK_PROFILE:-}"
 
 say() { echo "shape: $*"; }
 
-# Anything that leaves the link less than fully shaped ends here. Nothing is torn down on the way
-# out: the container exits non-zero, start.sh prints this log tail and removes the lab, and a
-# leftover qdisc in a dead container's namespace goes with it.
+# Anything leaving the link less than fully shaped ends here. Nothing is torn down: a leftover
+# qdisc goes with the dead container's namespace.
 die() {
   echo "shape: ERROR: $*" >&2
   echo "shape: the '$PROFILE' profile was not applied in full, so no server will be started." >&2
@@ -54,13 +52,11 @@ die() {
   exit 1
 }
 
-# Hold the network namespace open. Every server in the lab lives in this namespace, so this
-# process running is what gives them a network at all. Signals are trapped because this is the
-# container's PID 1, where the default action for SIGTERM is to ignore it: `docker compose down`
-# would then wait out its whole kill timeout on every stop.
-# Never returns, so neither caller can fall through to the code below it: the no-profile branch
-# would otherwise reach the unknown-profile check and report `unknown link profile ''` for a lab
-# that is configured correctly.
+# Holds the network namespace open, which is what gives every server in the lab a network.
+# Signals are trapped because this is PID 1, where SIGTERM's default action is to ignore it.
+#
+# Never returns, so no caller falls through: the no-profile branch would otherwise reach the
+# unknown-profile check and reject a lab that is configured correctly.
 hold() {
   trap 'echo; say "stopping — the link is going away."; exit 0' TERM INT
   sleep infinity &
@@ -100,8 +96,8 @@ say "applying '$PROFILE' — $LINK_MODELS"
 tc qdisc del dev "$IFACE" root 2>/dev/null || true
 tc qdisc del dev "$IFACE" ingress 2>/dev/null || true
 
-# Download: traffic leaving the container. Plain egress netem on the interface.
-# Unquoted on purpose — the profile string is a list of tc arguments to split.
+# Download is traffic leaving the container, so plain egress netem. Unquoted on purpose: the
+# profile string is a list of tc arguments to split.
 # shellcheck disable=SC2086
 tc qdisc replace dev "$IFACE" root netem $LINK_DOWN \
   || die "could not shape the download direction on $IFACE — see the tc error above. Check NET_ADMIN is granted (cap_add in docker-compose.yml), and that the host kernel's netem supports this profile's arguments"
@@ -123,9 +119,8 @@ tc filter add dev "$IFACE" parent ffff: protocol all u32 match u32 0 0 \
 tc qdisc replace dev "$IFB" root netem $LINK_UP \
   || die "could not shape the upload direction on $IFB"
 
-# Read both qdiscs back. Every command above reported success, but this is the one check that
-# distinguishes "tc accepted the arguments" from "the link is shaped", and it is the claim
-# start.sh goes on to make to the maintainer.
+# The one check that distinguishes "tc accepted the arguments" from "the link is shaped", which
+# is the claim start.sh goes on to make to the maintainer.
 tc qdisc show dev "$IFACE" | grep -Eq 'netem .*(delay|rate|loss)' \
   || die "no impairment on the netem qdisc on $IFACE after shaping the download direction"
 # The redirect is what carries $IFACE ingress to $IFB. Without it $IFB is a perfectly shaped

@@ -31,9 +31,8 @@ CHECK="$HERE/link-check.sh"
 # Assembled, never written out. See note 2 above.
 RECDIR="docs/change-intent""-records"
 
-# This repository's canonical web URL, as a full link to a file on `main` is written. The check
-# matches a lowercased copy of its own constant against it, so writing it here in canonical case is
-# what drives the mapping onto the local checkout — the URL is never fetched.
+# Written in canonical case deliberately: the check lowercases its own constant to match, so this
+# is what drives the mapping onto the local checkout. The URL is never fetched.
 MAINURL="https://github.com/FrankRay78/NetPace"
 
 # One parent-scoped root holds every sandbox, so cleanup cannot be defeated by a subshell.
@@ -44,9 +43,8 @@ trap cleanup EXIT
 pass=0; fail=0; cases=0
 ok() { if eval "$2"; then echo "  ok   $1"; pass=$((pass+1)); else echo "  FAIL $1 -- rc=$RC out:[$(printf '%s' "$OUTPUT" | head -4 | tr '\n' '/')]"; fail=$((fail+1)); fi; }
 
-# setup_fail — a broken fixture is not a test result. Every setup step is checked through this,
-# because with the fixtures missing a sandbox has no files to scan, and every case asserting
-# `failed && names "…"` would still pass while verifying nothing.
+# setup_fail — a broken fixture is not a test result. With the fixtures missing a sandbox has no
+# files to scan, so every `failed && names "…"` case would pass while verifying nothing.
 setup_fail() { echo "  FIXTURE SETUP FAILED (case $cases): $*" >&2; exit 1; }
 
 new_case() {
@@ -365,9 +363,8 @@ commit_file "README.md" "$(printf '# Guide\n\nJump to [it](#treat-this-as-a-fail
 check
 ok "a hash line inside a fenced block is not a heading" 'failed && names "#treat-this-as-a-failure"'
 
-# The target is a shell script with a `# Usage` comment, so only the not-markdown guard keeps the
-# anchor from being matched against comment lines: an `L…` anchor would be skipped by the
-# line-reference rule first, and would pass whether the guard existed or not.
+# A shell script with a `# Usage` comment, so only the not-markdown guard stops the anchor being
+# matched against comment lines; an `L…` anchor would pass whether the guard existed or not.
 new_case
 commit_file "README.md" 'The [usage](scripts/foo.sh#nowhere), and [the guide](docs/guide.md).'
 commit_file "scripts/foo.sh" "$(printf '#!/usr/bin/env bash\n# Usage\n')"

@@ -1,6 +1,5 @@
-// This example omits exception handling for brevity. However, network operations
-// are inherently unreliable and you should assume that every method call may throw.
-// NetPace.Core propagates all exceptions to the caller; handle them appropriately.
+// Exception handling is omitted for brevity. NetPace.Core propagates every exception to the
+// caller, so a real consumer handles them.
 
 using NetPace.Core;
 using NetPace.Core.Clients.Ookla;

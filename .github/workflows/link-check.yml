@@ -25,11 +25,11 @@ permissions:
   contents: read
 
 jobs:
-  # Do NOT add a `paths:` filter or an `if:` condition to this job. To GitHub a skipped job is not
-  # a failure, so a required `link-check` context is satisfied by one that never ran — and since
-  # `pull_request` workflows are evaluated from the head ref, the branch adding the filter is the
-  # branch it stops gating. A docs-only `paths` filter would be especially wrong here: a branch
-  # that deletes a linked-to file under `scripts/` or `.claude/` is exactly what this catches.
+  # Do NOT add a `paths:` filter or an `if:` condition. A skipped job is not a failure to GitHub,
+  # and the branch adding the filter is the branch it stops gating.
+  #
+  # A docs-only filter would be especially wrong: a branch deleting a linked-to file under
+  # `scripts/` or `.claude/` is exactly what this catches.
   link-check:
     name: link-check
     runs-on: ubuntu-latest

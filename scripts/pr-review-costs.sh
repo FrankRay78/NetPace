@@ -66,9 +66,8 @@ REVIEW_BOT='github-actions[bot]'
 HEADER='| PR | Title | Closed | Code | Tests | Docs | Risk | No-human merge | Human review | Review | Follow-up 1 | Follow-up 2 | Total cost | Total tokens |'
 SEPARATOR='| --- | --- | --- | ---: | ---: | ---: | --- | --- | --- | ---: | ---: | ---: | ---: | ---: |'
 
-# The awk helpers every reader of a row shares. A row is split on its pipes once escaped pipes in a
-# title are set aside, so an empty cell is still a cell; cells(row, c) fills c[1..] with the trimmed
-# cells and returns how many there are. commafy groups a whole number in thousands.
+# The awk helpers every reader of a row shares. A row is split on its pipes once escaped pipes in
+# a title are set aside, so an empty cell is still a cell.
 AWK_LIB='
   function cells(line, c,   raw, n, i, k) {
     gsub(/\\\|/, "\001", line)
@@ -105,17 +104,13 @@ lines_changed() {
   '
 }
 
-# footer_costs <body> — <review>, <follow-up 1>, <follow-up 2>, <total cost> and <total tokens>,
-# read from the cost footer. Two follow-up columns: a third is exceptional, so a later round gets no
-# column of its own, though the footer's total still counts it.
+# footer_costs <body> — <review>, <follow-up 1>, <follow-up 2>, <total cost> and <total tokens>.
+# Two follow-up columns: a third is exceptional, though the footer's total still counts it.
 #
-# A figure the footer could not report (its `unknown`) is an empty cell, and a total the footer
-# marks as partial keeps only the part it does state: the table records what was measured and
-# leaves out what was not, rather than carry a second notion of "missing" beside an empty cell.
+# The footer's `unknown` becomes an empty cell rather than a second notion of "missing".
 #
-# The footer is the marker line, a blank line, then a horizontal rule — the last such occurrence, as
-# scripts/pr-cost-footer.sh finds its own — so an example quoted above it is not read. Fails, with
-# nothing printed, when the body has no footer.
+# Found by the whole three-line shape, last occurrence winning, as pr-cost-footer.sh finds its
+# own, so an example quoted above it is not read. Fails silently when there is no footer.
 footer_costs() {
   printf '%s\n' "$1" | tr -d '\r' | awk -v marker="$FOOTER_MARKER" '
     function trim(s) { gsub(/^[ \t]+|[ \t]+$/, "", s); return s }
@@ -186,11 +181,8 @@ build_row() {
     "$r0" "$r1" "$r2" "$total" "$tokens"
 }
 
-# totals_row <rows> — the bold Total row under the table, summed from the rows as they stand on
-# the page, so a row corrected by hand is counted as corrected. Only the numeric columns are
-# summed — size and cost — and every other cell is left empty. A cell that is not a plain figure is
-# not counted. Tokens are the sum of the rounded figures shown, so the total is to within a few
-# tenths of a million.
+# totals_row <rows> — the bold Total row, summed from the rows as they stand on the page so a hand
+# correction counts. Only size and cost, only where the cell is a plain figure.
 totals_row() {
   printf '%s\n' "$1" | awk "$AWK_LIB"'
     function money(s, k) {
@@ -217,15 +209,11 @@ totals_row() {
   '
 }
 
-# write_csv <sorted rows> — the same rows as CSV, for a spreadsheet: one header line, then one line
-# per pull request, with no totals row (a spreadsheet sums for itself). Numbers are plain — no
-# dollar sign, no thousands separator — and tokens are in millions, as precise as the table holds
-# them, so the CSV never claims a precision the page does not have. A cell that is not a plain
-# number is left empty rather than break a column's sum. Every text field is quoted, so a comma in
-# one — a risk cell corrected by hand, say — moves no later field; and one a spreadsheet would read
-# as a formula (=, +, - or @ first) is opened with a quote mark, which a spreadsheet shows as text.
-# Derived from the page's rows,
-# so a correction made to a row by hand reaches the CSV too.
+# write_csv <sorted rows> — the same rows as CSV, for a spreadsheet: a header line, then one line
+# per pull request, no totals row. Tokens are as precise as the page holds them, no more.
+#
+# Every text field is quoted, so a comma moves no later field, and one a spreadsheet would read as
+# a formula is opened with a quote mark. Derived from the page, so a hand correction reaches it.
 write_csv() {
   printf '%s\n' 'PR,Url,Title,Merged,Closed,CodeLines,TestLines,DocsLines,Risk,NoHumanMerge,HumanReview,ReviewCost,FollowUp1Cost,FollowUp2Cost,TotalCost,TotalTokensMillions'
   [ -z "$1" ] || printf '%s\n' "$1" | awk "$AWK_LIB"'

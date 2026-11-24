@@ -114,9 +114,8 @@ cell() {
 # above / footer — the description either side of the footer marker.
 above() { sed -n '/^<!-- pr-cost-footer -->$/q;p' "$STUB_DIR/body.md"; }
 footer() { sed -n '/^<!-- pr-cost-footer -->$/,$p' "$STUB_DIR/body.md"; }
-# gap — how many blank lines sit between the author's last line and the footer marker. Counted,
-# because `$(…)` strips trailing newlines: comparing `above` against the author's own text passes
-# whether the gap is zero, one or ten, so it cannot hold this invariant on its own.
+# gap — the blank lines between the author's last line and the marker. Counted, because `$(…)`
+# strips trailing newlines, so comparing `above` passes whether the gap is zero or ten.
 gap() { awk '/^<!-- pr-cost-footer -->$/ { print n + 0; exit } /^$/ { n++; next } { n = 0 }' "$STUB_DIR/body.md"; }
 # footers / rules — how many footers and horizontal rules the description carries.
 footers() { grep -cF '<!-- pr-cost-footer -->' "$STUB_DIR/body.md"; }
@@ -330,9 +329,8 @@ ok "and the description is still the author's" '[ "$(now)" = "Closes #7." ]'
 echo "A description GitHub hands back with CRLF endings stays one footer:"
 new_case
 run
-# GitHub returns a description saved through its web UI with CRLF line endings. While the split
-# matched the marker line exactly, it matched nothing at all in such a body, and every later round
-# appended a whole second footer with its own disagreeing Total.
+# GitHub returns a web-UI-saved description with CRLF endings, which an exact marker match missed
+# entirely: every later round appended a second footer with its own disagreeing Total.
 sed -i 's/$/\r/' "$STUB_DIR/body.md"
 run
 ok "a second round appends a row rather than a second footer" \
@@ -450,8 +448,7 @@ ok "the footer starts the description, with no blank line above it" \
 
 echo ""
 echo "RESULT: $pass passed, $fail failed"
-# A floor, as scripts/traceability-check.tests.sh and scripts/homebrew-formula.tests.sh carry for
-# the same reason: dropping a whole block lowers the count while reporting zero failures and
-# exit 0 — a matrix that shrinks towards nothing and still reads green.
+# A floor, as the sibling test matrices carry: dropping a whole block lowers the count while
+# reporting zero failures and exit 0, a matrix shrinking towards nothing and still reading green.
 [ "$pass" -ge 65 ] || { echo "FAIL: expected at least 65 assertions, ran $pass — did a block get dropped?" >&2; exit 1; }
 [ "$fail" = 0 ]

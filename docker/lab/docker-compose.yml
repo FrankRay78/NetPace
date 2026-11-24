@@ -3,11 +3,8 @@
 name: netpace-lab
 
 services:
-  # The link, and the only container in the lab that shapes anything. It holds the profile table,
-  # the NET_ADMIN capability and the published ports; each server joins its network namespace
-  # instead of having a network of its own. One shaped link therefore carries both servers, with
-  # one set of profiles behind it, so a difference between two providers' figures can only come
-  # from the providers.
+  # The only container that shapes anything: each server joins its network namespace rather than
+  # having one of its own, so a difference between two providers' figures is the providers'.
   link:
     build:
       context: .
@@ -21,11 +18,8 @@ services:
       - "18080:8080/udp"
       # LibreSpeed, on the port it has always had. Loopback only, as before.
       - "127.0.0.1:18081:8081/tcp"
-    # tc needs NET_ADMIN to shape this container's own interface. Compose cannot grant a
-    # capability conditionally on an environment variable, so it is granted always and shape.sh
-    # is what refuses: asked for a profile it cannot apply, it exits rather than hold open a fast
-    # link while claiming to be slow. Neither server container is granted it, so neither server
-    # ever holds it.
+    # Compose cannot grant a capability conditionally, so it is granted always and shape.sh is
+    # what refuses, exiting rather than holding open a fast link while claiming to be slow.
     cap_add:
       - NET_ADMIN
     environment:
@@ -44,15 +38,13 @@ services:
     # published 18080, and over the link container's shaped interface.
     network_mode: "service:link"
     depends_on:
-      # The link image's healthcheck passes only once the link is in the state that was asked for,
-      # so the server never accepts a connection on a link that is not shaped yet. A profile that
-      # cannot be applied stops the link container, and this server is then never started.
+      # The healthcheck passes only once the link is in the state asked for, so this server never
+      # takes a connection on an unshaped link and never starts behind a refused profile.
       link:
         condition: service_healthy
 
-  # LibreSpeed's official image, so there is nothing to build for it.
-  # Pinned, so a local run tests against the server the docs describe rather than whatever was
-  # published last. Bump it deliberately.
+  # LibreSpeed's official image, pinned so a local run tests the server the docs describe rather
+  # than whatever was published last.
   librespeed:
     image: ghcr.io/librespeed/speedtest:6.3.1
     container_name: netpace-lab-librespeed
@@ -61,12 +53,9 @@ services:
       link:
         condition: service_healthy
     environment:
-      # Standalone serves the test backend with no telemetry database behind it, which is all
-      # NetPace speaks to. The install directory is then the web root, so the endpoints are at
-      # /backend/empty.php and /backend/garbage.php.
+      # Standalone serves the test backend with no telemetry database, which is all NetPace
+      # speaks to; the install directory is then the web root.
       MODE: standalone
-      # 8081 inside the container, not the image's default 8080: both servers share the link
-      # container's network namespace, so their inside ports have to differ. LibreSpeed's is the
-      # cheaper one to move — WEBPORT is an image setting, where OoklaServer's ports would need
-      # its properties file edited — so the official image is still used unchanged.
+      # 8081 inside, not the image's default: both servers share one network namespace, so their
+      # inside ports must differ, and WEBPORT is the cheaper of the two to move.
       WEBPORT: "8081"

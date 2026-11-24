@@ -44,8 +44,7 @@ ok() {
 }
 
 # props <contents> — a fresh fixture properties file holding <contents>. Clears the verdict
-# globals too: they are what `ok` reads, so a stale value would let a case whose `run` was lost
-# or mis-edited silently re-assert the previous case's result.
+# globals too, so a case whose `run` was lost cannot re-assert the previous result.
 props() { RC=; OUTPUT=; printf '%s' "$1" > "$PROPS"; }
 # run [args...] — run the script, defaulting to the fixture file. Sets OUTPUT (stdout and
 # stderr) and RC.
@@ -58,9 +57,8 @@ active() { grep -E "^[[:space:]]*${1//./\\.}[[:space:]]*=" "$PROPS"; }
 UPSTREAM=$'# Enable auto updates (default)\n#\n# OoklaServer.enableAutoUpdate = true\n\n# Enable Let\'s Encrypt certificate generation (default)\n#\n# OoklaServer.ssl.useLetsEncrypt = true\n\nopenSSL.server.minimumTLSProtocol = 1.2\n'
 
 # SCENARIO: A run straight after start measures the link
-# The traceability marker for the label of that name. The outcome itself is gated by the lab run
-# recorded with the change, per the header above; what the cases below verify is the configuration
-# the outcome rests on.
+# The outcome is gated by the recorded lab run, per the header above; these cases verify the
+# configuration it rests on.
 echo "An upstream properties file that leaves both settings at their defaults:"
 props "$UPSTREAM"
 run
@@ -108,9 +106,8 @@ ok "the second run succeeds" '[ "$RC" = 0 ]'
 ok "still one assignment of each" \
   '[ "$(active OoklaServer.ssl.useLetsEncrypt | wc -l)" = 1 ] && [ "$(active OoklaServer.enableAutoUpdate | wc -l)" = 1 ]'
 
-# Each key is checked in its own case: the loop dies on the first key it cannot find, so a fixture
-# missing only the first one would never reach the second, and a release that renamed the second
-# would go unnoticed.
+# Each key in its own case: the loop dies on the first it cannot find, so a release that renamed
+# the second would go unnoticed.
 echo "A properties file that does not mention the first of the settings:"
 props $'# Enable auto updates (default)\n# OoklaServer.enableAutoUpdate = true\n'
 run
@@ -124,8 +121,7 @@ ok "fails rather than report a setting turned off that the server never reads" '
 ok "names the setting it could not find" 'grep -qF "OoklaServer.enableAutoUpdate" <<<"$OUTPUT"'
 
 # A valid fixture throughout, so the argument is the only thing that can fail these runs. The
-# exit code is asserted rather than just non-zero, because that is what separates "the arguments
-# were rejected" (2) from "the edit could not be made" (1).
+# exact code separates arguments rejected (2) from an edit that could not be made (1).
 echo "Arguments:"
 props "$UPSTREAM"
 run /no/such/properties/file
@@ -140,10 +136,8 @@ props "$UPSTREAM"
 run "$PROPS" "$PROPS"
 ok "a second argument is a usage error rather than ignored" '[ "$RC" = 2 ]'
 
-# The whole RUN instruction, not the filename: a bare grep for the filename is satisfied by the
-# COPY line below, so it stays green when the image copies the script in and never runs it. The
-# argument is part of the assertion because the OoklaServer image holds two properties files, and
-# running over OoklaServer.properties.default would leave the served copy untouched.
+# The whole RUN instruction, not the filename, which the COPY line below would satisfy. The
+# argument counts too: running over the .default copy would leave the served one untouched.
 echo "The real lab:"
 props "$UPSTREAM"
 ok "the image runs the script over the properties file it serves" \

@@ -49,9 +49,8 @@ SETTINGS="$ROOT/.claude/settings.json"
 REGISTRY="$CLAUDE_HOME/plugins/installed_plugins.json"
 HOME_SETTINGS="$CLAUDE_HOME/settings.json"
 
-# Verdict codes. UNKNOWN is load-bearing: it is what keeps a failed lookup out of the `no`
-# column. NA marks a cell there is no probe for, so a reader does not read a duplicated value
-# as corroboration.
+# UNKNOWN keeps a failed lookup out of the `no` column; NA marks a cell there is no probe for, so
+# a duplicated value does not read as corroboration.
 YES=0; NO=1; UNKNOWN=2; NA=3
 
 have_jq=1
@@ -93,21 +92,15 @@ command -v timeout >/dev/null 2>&1 || have_timeout=0
 TIMEOUT=(); TIMEOUT_AI=()
 # The model call in PERFORMANCE needs its own, far longer budget; 10s would guarantee a timeout.
 if [ "$have_timeout" -eq 1 ]; then TIMEOUT=(timeout 10); TIMEOUT_AI=(timeout 180); fi
-# Every expansion uses the ${a[@]+"${a[@]}"} form: an EMPTY array under `set -u` is a fatal
-# unbound-variable error on bash < 4.4, and macOS ships bash 3.2 *and* no timeout(1) — so the
-# empty-array branch and the old-bash branch are the same box, where the plain form aborts the
-# whole report mid-TOOLING.
+# Every expansion uses the ${a[@]+"${a[@]}"} form: an empty array under `set -u` is fatal on the
+# bash 3.2 macOS ships, which is also the box with no timeout(1), so both branches are one.
 
-# </dev/null is load-bearing, not tidiness: a probed tool that reads fd 0 (context-mode's
-# `statusline` does) otherwise blocks on the terminal — 10s to a false timeout with timeout(1)
-# present, and forever without it.
+# </dev/null is load-bearing: a probed tool that reads fd 0 otherwise blocks on the terminal,
+# which is a false timeout with timeout(1) present and a hang without it.
 probe() { ${TIMEOUT[@]+"${TIMEOUT[@]}"} "$@" </dev/null >/dev/null 2>&1; }
 
-# Map a probe's exit status onto a verdict. Only the tool's own failure code (1) is a `no`;
-# every other non-zero is a lookup that never reached a verdict — 124 timed out, 126/127 could
-# not launch, 139 crashed. Assigning a raw $? instead would be worse than wrong: a probe exiting
-# 3 reads back out of yn() as `n/a`, which this report defines as "there is no probe for this
-# cell" — asserting none was attempted when one ran and failed.
+# Maps a probe's exit status onto a verdict. Only the tool's own 1 is a `no`; a raw $? would read
+# a probe exiting 3 back out of yn() as `n/a`, claiming no probe ran when one ran and failed.
 probe_verdict() {
   probe "$@"
   case $? in
@@ -117,11 +110,8 @@ probe_verdict() {
   esac
 }
 
-# Does this repo reference the tool at all — in harness config, or in the docs and commands that
-# describe it? Applied to every row so the column means one thing throughout: read-once is named
-# only in /install-harness-tooling and docs (no config anywhere references it), and the column
-# says so uniformly rather than meaning "in settings" on some rows and "in settings or docs" on
-# others.
+# Does this repo reference the tool at all, in config or in docs? Applied to every row, so the
+# column cannot mean "in settings" on some rows and "in settings or docs" on others.
 declared_in_repo() {
   { [ -f "$SETTINGS" ] && grep -q -- "$1" "$SETTINGS" 2>/dev/null; } && return "$YES"
   grep -rq -- "$1" "$ROOT/docs" "$ROOT/.claude/commands" 2>/dev/null && return "$YES"
@@ -136,10 +126,8 @@ plugin_enabled() {
   [ "$(jq -r --arg k "$1" '.enabledPlugins[$k] // false' "$SETTINGS" 2>/dev/null)" = "true" ]
 }
 
-# The first recorded installPath that exists on disk, empty when there is none. A plugin's own
-# binaries are only reachable through this: `context-mode` declares a bin entry but is not
-# npm-linked, so nothing it ships is on PATH. Plain success/failure, not a verdict — a caller
-# that needs one goes through plugin_installed, which maps registry state onto the verdict codes.
+# The first recorded installPath that exists on disk, empty when there is none: a plugin's own
+# binaries are reachable only through this, nothing it ships being on PATH.
 plugin_install_path() {
   [ "$REGISTRY_STATE" = "ok" ] || return 1
   local p
@@ -149,11 +137,8 @@ plugin_install_path() {
   return 1
 }
 
-# Is any recorded installPath for this plugin present on disk? Deliberately scope-blind — a
-# plugin is installed on this box or it is not; modelling user vs project scope would buy a
-# state machine nobody reads. A registry that will not parse is `unknown`, not `no`: the
-# .plugins[k][].installPath shape is Claude Code's private layout, and the day it changes this
-# must report a broken probe rather than "nothing is installed".
+# Is any recorded installPath present on disk? Deliberately scope-blind. A registry that will not
+# parse is `unknown`: the shape is Claude Code's private layout, and a change must read as broken.
 plugin_installed() {
   case "$REGISTRY_STATE" in
     nojq|unparseable) return "$UNKNOWN" ;;
@@ -163,9 +148,8 @@ plugin_installed() {
   return "$NO"
 }
 
-# Does a hook registered in the Claude home settings actually invoke this tool? Matched against
-# the hook commands only — grepping the whole file would count a permission entry or a stray
-# path string as a registered hook.
+# Matched against the hook commands only: grepping the whole file would count a permission entry
+# or a stray path string as a registered hook.
 hooked_in_claude_home() {
   case "$HOME_SETTINGS_STATE" in
     nojq|unparseable) return "$UNKNOWN" ;;
@@ -206,12 +190,8 @@ line read-once "$(yn $ro_decl)" "$(yn $ro_inst)" "$(yn $ro_en)" "$(yn $ro_reach)
 declared_in_repo 'context-mode'; cm_decl=$?
 plugin_installed 'context-mode@context-mode'; cm_inst=$?
 plugin_enabled 'context-mode@context-mode'; cm_en=$?
-# `doctor` is context-mode's own health check and it runs from a shell — platform, storage
-# paths, hooks and FTS5. Only its own verdict may produce a `no`: it exits 1 when it finds
-# critical issues, so 1 is the health answer and every OTHER non-zero code is a lookup that
-# never reached one — 124 timed out (doctor makes a network call, so a black-holed resolver
-# lands here), 126/127 could not launch, 139 crashed. Those are `unknown`. Assigning a raw $?
-# would be worse still: a probe exiting 3 would read back out of `yn` as `n/a`.
+# Only `doctor`'s own exit 1 is a `no`; every other non-zero code is a lookup that never reached
+# a verdict and is `unknown`. A raw $? would read a probe exiting 3 back out of `yn` as `n/a`.
 cm_path="$(plugin_install_path 'context-mode@context-mode')"
 cm_cli="${cm_path:+$cm_path/cli.bundle.mjs}"
 if [ $cm_inst -ne "$YES" ]; then
@@ -238,10 +218,8 @@ plugin_enabled 'pr-review-toolkit@claude-plugins-official'; pr_en=$?
 pr_reach=$NA   # agents are resolved by the harness at session start; nothing to probe here
 line pr-review-toolkit "$(yn $pr_decl)" "$(yn $pr_inst)" "$(yn $pr_en)" "$(yn $pr_reach)"
 
-# gaffer — supplies the /gaffer: commands. `installed` reads the user-level registry, so a box
-# that gets the plugin only through this repo's settings (extraKnownMarketplaces + enabledPlugins,
-# fetched when the project is opened) reports declared and enabled but not installed; that is
-# the honest answer, not a fault.
+# `installed` reads the user-level registry, so a box that gets gaffer only through this repo's
+# settings reports declared and enabled but not installed. That is the honest answer.
 declared_in_repo 'gaffer@gaffer-claude'; gf_decl=$?
 plugin_installed 'gaffer@gaffer-claude'; gf_inst=$?
 plugin_enabled 'gaffer@gaffer-claude'; gf_en=$?
@@ -262,9 +240,8 @@ case "$SETTINGS_STATE" in
   nojq) note "unchecked: jq not installed, cannot parse settings" ;;
   unparseable) note "unparseable-settings: $(scrub "$SETTINGS")" ;;
   ok)
-    # Every $CLAUDE_PROJECT_DIR-rooted path in a hook or statusLine command must resolve. All
-    # matches per command, not just the first — compound commands (`a.sh && b.sh`) are already
-    # live in this repo's settings.
+    # All matches per command, not just the first: compound commands (`a.sh && b.sh`) are
+    # already live in this repo's settings.
     while IFS= read -r cmd; do
       [ -n "$cmd" ] || continue
       found=0
@@ -339,55 +316,24 @@ perf() {
   printf '%s\n' "$out" | sed 's/^/  /'
 }
 if [ $rtk_inst -eq "$YES" ]; then perf rtk rtk gain; else echo "rtk: n/a — not installed"; fi
-# `stats`, not `verify` (issue #252). The two calls deliberately use different subcommands, and
-# making them agree is the wrong refactor: the TOOLING reachability probe above runs `verify`,
-# read-once's full diagnostic, while counters live under `stats` (`gain` is an alias for it).
-# `verify` here would fill a counter row with a checklist that exits 0, so the missing figure
-# would read as a healthy report.
+# `stats`, not the `verify` the reachability probe above runs: making the two agree is the wrong
+# refactor, because `verify` would fill a counter row with a checklist that exits 0.
 if [ -x "$ro_dir/read-once" ]; then perf read-once "$ro_dir/read-once" stats; else echo "read-once: n/a — not installed"; fi
-# context-mode's counters are NOT simply sitting on disk. The per-PID stats-pid-*.json sidecars
-# under the storage root look like the answer and are not: context-mode's own statusline source
-# records them as legacy and "no longer the source of truth" — they were eventually-consistent
-# and PID-scoped — and on a real box they disagree with ctx_stats by a wide margin. The
-# authoritative figures live behind the ctx_stats MCP tool, so the only way to report them
-# truthfully is to ask the tool, which means starting a headless model. That is disclosed in the
-# header rather than smuggled in; a wrong number printed confidently is the failure this whole
-# report exists to catch in others.
+# The stats-pid-*.json sidecars look like the answer and are not: the authoritative figures are
+# behind the MCP tool, so reporting them truthfully means starting a headless model.
 #
-# Two argument details are load-bearing, both learned the hard way in the sibling script this
-# pattern comes from:
-#   * the prompt MUST be the positional immediately after -p. --disallowedTools is variadic, so
-#     a positional following it is eaten word-by-word as deny rules and the model gets no prompt.
-#   * stdin MUST be redirected, or the call stalls waiting on the terminal.
+# The prompt MUST be the positional immediately after -p, --disallowedTools being variadic, and
+# stdin MUST be redirected or the call stalls waiting on the terminal.
 CM_STATS_TOOL='mcp__plugin_context-mode_context-mode__ctx_stats'
 
-# ctx_stats' reply is printed whole rather than sliced. An earlier revision kept only the one
-# line proven to be box-wide, which threw away the headline totals with it — the cure was worse
-# than the disease, and slicing is what caused it. What IS worth knowing, and was measured
-# rather than assumed: the reply is scoped to the directory the probe runs in. The same probe
-# run from this repo and from the Claude home returns an identical section-3 "All your work"
-# total but a different section-4 dollar figure ($3.84 against $2.80, each stable on repeat).
+# Printed whole rather than sliced, an earlier revision having thrown the headline totals away.
+# The reply is scoped to the directory the probe runs in, so it runs from this repo.
 #
-# So it runs from the repo this report is about, which is the scope a per-repo tooling report
-# wants: section 1 then carries this repo's real figures instead of an empty throwaway session,
-# and no phantom project is created (a fresh directory per run would add one every time, and was
-# observed pushing the project count from 10 to 12 during development). The cost is that the
-# nested session runs this repo's hooks. The validation below is what detects a reply that did
-# not end where ctx_stats ends, which is the shape a hook-forced extra turn produces.
-# `claude -p` does not guarantee a verbatim echo: it may paraphrase, refuse, report a usage
-# limit, or be cut short, and every one of those exits 0. Unrecognised text must never occupy
-# this row — printing it under a counters label inside a section headed "Live counters" would
-# launder a failed lookup into an answer, which is the fault this whole report exists to catch
-# in others. It is still shown, under a label that says what it is.
+# `claude -p` may paraphrase, refuse or be cut short, and every one of those exits 0, so
+# unrecognised text must never occupy this row under a counters label.
 #
-# The end anchor is the load-bearing half, and the reason this is not just a marker check.
-# Marker presence proves only that the real output is in there SOMEWHERE — which is precisely
-# the dangerous case: the nested session runs this repo's hooks, and a blocking Stop hook forces
-# another turn, so the genuine counters can be present with the model's answer to that hook
-# appended after them. Both markers still match; the blob still prints. Requiring the reply to
-# END where ctx_stats ends — its footer is a bare version line — is what catches trailing text
-# that a substring check cannot see. If that footer ever changes the row reports `unknown` and
-# shows the reply, which is a visible failure rather than a silently wrong one.
+# The END anchor is the load-bearing half: a blocking Stop hook forces another turn whose answer
+# is appended after genuine counters, which both markers still match.
 cm_reply_is_stats() {
   case "$1" in *"── 3."*) ;; *) return 1 ;; esac
   case "$1" in *"── 4."*) ;; *) return 1 ;; esac
@@ -396,9 +342,8 @@ cm_reply_is_stats() {
   [[ "$last" =~ ^[[:space:]]*v[0-9]+\.[0-9]+\.[0-9]+[[:space:]]*$ ]]
 }
 
-# claude's error output routinely carries absolute paths and account detail. PERFORMANCE is
-# exempt from the diffability rule, not from "do not paste someone's home directory into a
-# report they will attach to an issue".
+# claude's error output carries absolute paths and account detail, and PERFORMANCE is exempt from
+# the diffability rule, not from keeping a home directory out of an attached report.
 cm_show_reply() {
   local l
   while IFS= read -r l; do printf '  %s\n' "$(scrub "$l")"; done <<<"$1"
@@ -407,10 +352,8 @@ cm_show_reply() {
 cm_counters_row() {
   local out rc wd
   wd=$ROOT; [ -d "$wd" ] || wd=/
-  # --allowedTools is a permission GRANT, not a whitelist: Read/Glob/Grep/Task stay
-  # auto-approved unless denied, and a model asked for context-mode's counters with ctx_stats
-  # unavailable will go looking — finding the legacy stats-pid-*.json sidecars this change
-  # exists to stop trusting. Deny them, so the only counters it can reach are the real ones.
+  # --allowedTools is a permission GRANT, not a whitelist, so a model whose ctx_stats is
+  # unavailable goes looking and finds the legacy sidecars. Deny them.
   out=$(cd "$wd" 2>/dev/null && ${TIMEOUT_AI[@]+"${TIMEOUT_AI[@]}"} claude -p \
     "Call the $CM_STATS_TOOL tool once and output its result verbatim. Add no commentary of your own." \
     --allowedTools "$CM_STATS_TOOL" \
@@ -426,9 +369,8 @@ cm_counters_row() {
     echo "  raw probe reply (NOT counters):"
     cm_show_reply "$out"
   else
-    # The only row here whose figures came through a model round-trip; say so, so a reader can
-    # tell it apart from rtk's and read-once's at a glance — and so "this chat" in the reply is
-    # read as the probe's session, which is what it is.
+    # The only row whose figures came through a model round-trip, said so a reader reads "this
+    # chat" in the reply as the probe's own session.
     echo "context-mode: (via ctx_stats, headless probe)"
     cm_show_reply "$out"
   fi
@@ -438,9 +380,8 @@ if [ $cm_inst -eq "$NO" ]; then
   echo "context-mode: n/a — not installed"
 elif [ $cm_inst -ne "$YES" ]; then
   echo "context-mode: unknown — cannot tell whether it is installed, so the counters were not read"
-# Deliberately NOT gated on `enabled`: that column reports enablement for THIS repo, while
-# ctx_stats resolves through the user-level plugin install — verified by running the probe from
-# outside any project and still getting a reply. A `no` there would suppress a probe that works.
+# Deliberately NOT gated on `enabled`, which reports this repo while ctx_stats resolves through
+# the user-level install: a `no` there would suppress a probe that works.
 elif ! command -v claude >/dev/null 2>&1; then
   echo "context-mode: unknown — the counters live behind ctx_stats, and claude is not on PATH"
 else

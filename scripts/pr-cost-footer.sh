@@ -53,9 +53,8 @@
 
 set -euo pipefail
 
-# The footer's own marker. It sits above the horizontal rule rather than below it so the split
-# point is a line that renders as nothing, leaving the rendered description ending in the rule
-# and the table.
+# Above the horizontal rule rather than below it, so the split point renders as nothing and the
+# description ends in the rule and the table.
 MARKER='<!-- pr-cost-footer -->'
 REVIEW_MARKER='<!-- review-pr -->'
 
@@ -110,9 +109,8 @@ parse_cents() {
 
 # total_cell <formatter> <value…> — the Total row's cell for one column, formatted by <formatter>.
 #
-# A total that silently dropped an unknown round would read as the cost of the whole cycle, so it
-# carries what it could add and admits what it could not. The two columns are totalled
-# separately because their gaps are independent: a run can report its tokens and not its cost.
+# A total that dropped an unknown round would read as the whole cycle's cost. The two columns are
+# totalled separately, their gaps being independent: a run can report tokens and not cost.
 total_cell() {
   local fmt=$1 sum=0 known=0 missing=0 value
   shift
@@ -131,15 +129,10 @@ total_cell() {
 }
 
 # The two halves of a description: everything before the footer is the author's, everything from
-# the footer down belongs to this script and is regenerated.
+# the footer down is regenerated.
 #
-# The footer is identified by the shape this script writes it in — the marker line, a blank line,
-# then the horizontal rule — and the last such occurrence wins. Matching the bare marker line
-# instead meant a description that merely quoted the marker, in prose or inside a fenced block, was
-# split at the quotation: everything the author had written below it was replaced by the footer and
-# only GitHub's edit history still had it. A pull request documenting this footer is exactly the
-# body most likely to quote the marker. Each comparison is an exact line match, not a pattern, so
-# no metacharacter in a description can stand in for any of the three lines.
+# Identified by the whole three-line shape, last occurrence winning: matching the bare marker
+# split a description that merely quoted it. Exact line matches, not patterns.
 split_body() {
   awk -v m="$MARKER" -v mode="$1" '
     { line[NR] = $0 }
@@ -155,26 +148,14 @@ after_marker() { split_body after; }
 
 # read_usage <execution-file> — prints "<tokens>\t<cents>", either value `unknown`.
 #
-# The action writes the run's whole message list; its final result message carries the totals.
-# `modelUsage` is preferred over `usage` because it is keyed by model, and a review run spends on
-# several — the orchestrator plus every specialist and verifier subagent it started — so summing
-# its entries is what makes a row cover the whole run rather than one model's share of it. Every
-# token the run was charged for counts, cache reads and cache writes included. Cost takes the
-# opposite precedence — the scalar `total_cost_usd` first, the per-model `costUSD` sum only as a
-# fallback — because that scalar is the run's own total, already covering every model, where the
-# token fields are per-model and have to be summed to reach the same scope. Cents are rounded, not
-# truncated, so a round is never reported a penny cheaper than it was.
+# `modelUsage` over `usage`, summed, because a review run spends on several models; cost takes the
+# opposite precedence, the scalar `total_cost_usd` already covering every. Cents round, not truncate.
 #
-# A file that never reached a result message needs no branch of its own: `$r` is then null, every
-# figure read out of it is null too, and both cells come out `unknown` by the same route as a
-# result message that carried no usage at all.
+# A file that never reached a result message needs no branch: every figure reads null and both
+# cells come out `unknown` by the same route as a result carrying no usage.
 #
-# `-s` so the filter runs exactly once whatever the file holds. Without it an empty or
-# whitespace-only file gives jq no input to run the filter on, so it printed nothing and exited 0 —
-# the one case the fallback below cannot catch — and `read` at the call site hit EOF and killed the
-# script under `set -e`, silently, after the review had already posted. It also means a file
-# holding one JSON document per line, the natural shape for a streamed agent log, is read whole
-# rather than answered once per line with only the first answer being read.
+# `-s` so the filter runs exactly once whatever the file holds. Without it an empty file gave jq
+# no input, printing nothing and exiting 0, and `read` then hit EOF and killed the script.
 read_usage() {
   local file=$1
   if [ ! -f "$file" ]; then
@@ -202,11 +183,8 @@ read_usage() {
 
 main() {
   local pr=${1:-} exec_file=${2:-} head=${3:-} repo pr_json body reviews want author
-  # Three arguments, always. The execution file need not exist — `unknown` is a real answer, and the
-  # review it belongs to has already posted — but the caller must still name it. This catches a
-  # caller that omits the argument outright; a caller passing a quoted variable that expanded to
-  # nothing, which is what a renamed action output looks like, satisfies it and records the round as
-  # unknown. The `say` below is what makes that visible in the run.
+  # The execution file need not exist, `unknown` being a real answer, but the caller must name it.
+  # A quoted variable that expanded to nothing satisfies this and records the round as unknown.
   [ "$#" -eq 3 ] || { usage; exit 1; }
   case "$pr" in
     '' | *[!0-9]*) usage; exit 1 ;;
@@ -262,18 +240,14 @@ main() {
   IFS=$'\t' read -r round_tokens round_cents < <(read_usage "$exec_file")
   [[ "$round_tokens" =~ ^[0-9]+$ ]] || round_tokens=unknown
   [[ "$round_cents" =~ ^[0-9]+$ ]] || round_cents=unknown
-  # An `unknown` row is a real answer, but it is also what a renamed action output and a changed
-  # execution-file shape both look like, and those are indistinguishable from the footer alone.
-  # Saying it here puts the gap in the run's own log, where it can be told apart from a round that
-  # genuinely reported nothing.
+  # An `unknown` row is also what a renamed action output looks like, and the footer cannot tell
+  # the two apart. Saying it here puts the gap in the run's own log.
   if [ "$round_tokens" = unknown ] || [ "$round_cents" = unknown ]; then
     say "could not read this round's usage from '${exec_file:-}' — the row will say unknown."
   fi
 
-  # Row 1 is the review that runs when the pull request opens; every later row is a follow-up
-  # round, numbered from one. These names count rows written, not the rounds /gaffer:review-followup
-  # counts — it calls the first follow-up round 2, where its row here is `Review 1` — which is the
-  # distinction WHY THE ROW NAME COMES FROM THE FOOTER sets out above.
+  # These names count rows written, not the rounds /gaffer:review-followup counts, which calls the
+  # first follow-up round 2 where its row here is `Review 1`.
   if [ "${#row_name[@]}" -eq 0 ]; then
     row_name+=("PR Review")
   else
@@ -285,9 +259,8 @@ main() {
   tmp=$(mktemp)
   # shellcheck disable=SC2064
   trap "rm -f '$tmp'" EXIT
-  # One blank line between the author's last line and the marker, whatever the author left —
-  # command substitution has already dropped any trailing newlines, so the gap neither closes up
-  # nor grows a line per round.
+  # One blank line whatever the author left: command substitution has already dropped trailing
+  # newlines, so the gap neither closes up nor grows a line per round.
   {
     if [ -n "$author" ]; then printf '%s\n\n' "$author"; fi
     printf '%s\n\n---\n\n' "$MARKER"

@@ -20,10 +20,8 @@
 
 set -euo pipefail
 
-# Architectures the winget package covers. The order is not significant to the manifest — each
-# URL carries its own architecture, so wingetcreate never infers one — but a fixed order keeps
-# the submission log readable. The .NET RID architecture and the winget architecture name
-# coincide for both, so one token serves the archive name and the wingetcreate override.
+# Architectures the winget package covers. The order means nothing to the manifest, each URL
+# carrying its own, and the RID and winget names coincide, so one token serves both.
 ARCHITECTURES=(x64 arm64)
 
 die() { echo "FAIL: $*" >&2; exit 1; }
@@ -41,10 +39,8 @@ case "$version" in
   "") die "version must not be empty" ;;
 esac
 
-# Only a MAJOR.MINOR.PATCH version is a release. release-binaries.yml builds on any tag push, and
-# creates the GitHub Release itself, so a test tag or a release candidate arrives here behind a
-# perfectly green release run. Submitting one publishes it to every `winget upgrade` as the
-# current NetPace, and only a moderated pull request upstream can take it back.
+# Only MAJOR.MINOR.PATCH is a release, and release-binaries.yml builds on any tag push: submitting
+# a test tag publishes it to every `winget upgrade`, and only a moderated PR can take it back.
 if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
   die "version must be MAJOR.MINOR.PATCH: got '$version' — not a release version, nothing submitted"
 fi
@@ -56,9 +52,8 @@ urls=()
 missing=()
 for arch in "${ARCHITECTURES[@]}"; do
   name="netpace-${version}-win-${arch}-aot.zip"
-  # `state` and `size` are checked alongside the name because a stranded upload still appears in
-  # the asset list: an archive GitHub never finished receiving would otherwise resolve to a URL
-  # that 404s for every user who installs it, which is the one outcome this script exists to stop.
+  # `state` and `size` too, because a stranded upload still appears in the asset list and would
+  # resolve to a URL that 404s for every user who installs it.
   url="$(jq -r --arg n "$name" \
     'first(.assets[]? | select(.name == $n and .state == "uploaded" and .size > 0) | .url) // empty' \
     <<<"$assets")" \
@@ -73,9 +68,8 @@ for arch in "${ARCHITECTURES[@]}"; do
   urls+=("${url}|${arch}")
 done
 
-# Nothing is printed until every architecture resolved: a caller that pipes this into
-# wingetcreate must not receive a partial installer list, which would submit a manifest
-# describing fewer architectures than the package promises.
+# Nothing is printed until every architecture resolved: a partial installer list would submit a
+# manifest describing fewer architectures than the package promises.
 if [ "${#missing[@]}" -gt 0 ]; then
   die "release '$version' is missing ${missing[*]} — nothing submitted"
 fi

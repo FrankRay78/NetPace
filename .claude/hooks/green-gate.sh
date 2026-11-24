@@ -42,11 +42,10 @@ TOOL=$(jget '.tool_name // empty')
 
 ROOT="${CLAUDE_PROJECT_DIR:-$(pwd)}"
 
-# Print the first source file newer than the reference file $1, or nothing. The source root
-# whose edits invalidate a build is the .NET tree under src/ (*.cs) — where NetPace keeps both
-# production and *.Tests projects; obj/ and bin/ (generated .cs) are excluded so an unrelated
-# restore/build can't read as "our code changed". Only roots that exist are scanned; find needs
-# the roots BEFORE the expression, and -quit stops at the first hit (cheap).
+# Print the first source file newer than the reference file $1, or nothing.
+#
+# obj/ and bin/ hold generated .cs and are excluded, so an unrelated restore cannot read as
+# "our code changed". find needs the roots BEFORE the expression.
 first_newer_than() {
   local ref="$1" d roots=()
   for d in src; do [ -d "$ROOT/$d" ] && roots+=("$ROOT/$d"); done
@@ -56,10 +55,8 @@ first_newer_than() {
     -newer "$ref" -print -quit 2>/dev/null
 }
 
-# Strip the known-benign LEADING prefixes so what remains begins with the real command:
-# chained `cd …&&` / `export …&&`, env-assignments, an optional `rtk` wrapper. Regex can't
-# parse shell, so we only ever strip these safe leaders — never anything that could hide a
-# different command.
+# Strip the known-benign LEADING prefixes so what remains begins with the real command. Regex
+# cannot parse shell, so only these safe leaders are stripped, never one that could hide a command.
 strip_cmd_prefixes() {
   printf '%s' "$1" | sed -E '
     s/^[[:space:]]+//
@@ -69,18 +66,14 @@ strip_cmd_prefixes() {
   '
 }
 
-# True only when `dotnet test` is the actual command being run — not text inside an
-# argument (a commit message, an echo string, quoted data that merely mentions it). After
-# prefix-stripping, require what remains to START with `dotnet test` at a word boundary
-# (so `dotnet testfoo` and `git commit -m "…dotnet test…"` do not match).
+# True only when `dotnet test` is the command being run, not text inside an argument: what
+# remains after prefix-stripping must START with it, at a word boundary.
 is_dotnet_test() {
   strip_cmd_prefixes "$1" | grep -Eq '^dotnet[[:space:]]+test([[:space:]]|$)'
 }
 
-# Echo only the leading `dotnet test …` invocation — the segment up to the first chained
-# command (&&, ||, ;, |, &) — so a `--no-build` sitting in a trailing `echo` or a quoted
-# argument can't be mistaken for a flag belonging to `dotnet test`. Empty if not a real
-# `dotnet test` run.
+# Only the segment up to the first chained command, so a `--no-build` in a trailing `echo`
+# cannot be mistaken for a flag of `dotnet test`. Empty if this is not a real run.
 dotnet_test_invocation() {
   is_dotnet_test "$1" || return 0
   strip_cmd_prefixes "$1" | sed -E 's/[[:space:]]*(&&|\|\||[;&|]).*$//'

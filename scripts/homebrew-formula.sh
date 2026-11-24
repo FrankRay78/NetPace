@@ -22,14 +22,10 @@
 set -euo pipefail
 
 # Platforms the tap covers, as `<rid>|<homebrew-os-block>|<homebrew-cpu-block>`. Homebrew selects
-# on operating system and then on CPU, so the order here is the order the blocks are emitted in
-# and must keep each operating system's two architectures together.
+# on OS then CPU, so this order is the emission order and must keep each OS's pair together.
 #
-# The AOT archive is the one offered on every platform: it carries no .NET runtime dependency and
-# is roughly a seventh the size of the standalone build. macOS included — it gained Native AOT
-# archives after this tap's acceptance criteria were written, and those criteria name the
-# standalone build for macOS only because no AOT build existed then
-# (docs/change-intent-records/2026-10-21-homebrew-tap-ships-the-aot-archives.md).
+# The AOT archive on every platform, macOS included: CIR
+# docs/change-intent-records/2026-10-21-homebrew-tap-ships-the-aot-archives.md.
 PLATFORMS=(
   "osx-x64|on_macos|on_intel"
   "osx-arm64|on_macos|on_arm"
@@ -52,18 +48,14 @@ case "$version" in
   "") die "version must not be empty" ;;
 esac
 
-# Only a MAJOR.MINOR.PATCH version is a release. release-binaries.yml also builds on release-candidate
-# tags, so a candidate can arrive here behind a perfectly green release run, as can any version
-# given by hand. The tap follows plain releases only: pushing a candidate to it publishes that
-# candidate to every `brew upgrade` as the current NetPace.
+# Only MAJOR.MINOR.PATCH is a release, and release-binaries.yml also builds on candidate tags:
+# pushing one here publishes it to every `brew upgrade` as the current NetPace.
 if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
   die "version must be MAJOR.MINOR.PATCH: got '$version' — not a release version, nothing published"
 fi
 
-# Each tool is named before it is reached, because every call below is in a pipeline or a command
-# substitution whose `|| die` blames the release: a machine with no `sha256sum` — any Mac, which
-# ships `shasum -a 256` instead — otherwise reports "could not download ... to checksum it", and
-# sends whoever reads that to inspect release assets which are in fact fine.
+# Each tool is named before it is reached, because every call below sits behind a `|| die` that
+# blames the release: a Mac with no `sha256sum` would otherwise fail against sound assets.
 for tool in gh jq curl sha256sum; do
   command -v "$tool" >/dev/null \
     || die "$tool is required but is not on PATH — nothing published"
@@ -78,9 +70,8 @@ missing=()
 for platform in "${PLATFORMS[@]}"; do
   rid="${platform%%|*}"
   name="netpace-${version}-${rid}-aot.tar.gz"
-  # `state` and `size` are checked alongside the name because a stranded upload still appears in
-  # the asset list: an archive GitHub never finished receiving would otherwise resolve to a URL
-  # that 404s for every user who installs it, which is the one outcome this script exists to stop.
+  # `state` and `size` too, because a stranded upload still appears in the asset list and would
+  # resolve to a URL that 404s for every user who installs it.
   url="$(jq -r --arg n "$name" \
     'first(.assets[]? | select(.name == $n and .state == "uploaded" and .size > 0) | .url) // empty' \
     <<<"$assets")" \
@@ -93,16 +84,14 @@ for platform in "${PLATFORMS[@]}"; do
   urls+=("$url")
 done
 
-# Nothing is printed until every platform resolved, and nothing is downloaded either: a partial
-# formula would install on the platforms it happens to name and fail on the rest, which reads to
-# those users as a broken tool rather than as an incomplete release.
+# Nothing is printed until every platform resolved: a partial formula reads to the users it omits
+# as a broken tool rather than as an incomplete release.
 if [ "${#missing[@]}" -gt 0 ]; then
   die "release '$version' is missing ${missing[*]} — nothing published"
 fi
 
-# Homebrew verifies the archive it downloads against this checksum, so it is taken over the bytes
-# the release actually serves: that makes the download itself part of the check, and a formula is
-# never published naming a URL that could not be fetched.
+# Taken over the bytes the release actually serves, which makes the download part of the check:
+# no formula is published naming a URL that could not be fetched.
 shas=()
 for i in "${!urls[@]}"; do
   sha="$(curl -sSLf "${urls[$i]}" | sha256sum | cut -d' ' -f1)" \
@@ -110,9 +99,8 @@ for i in "${!urls[@]}"; do
   shas+=("$sha")
 done
 
-# `version` is stated rather than left to Homebrew: every url sits inside an on_os block, so there
-# is no top-level url to infer it from, and the formula's own `test` asserts the installed binary
-# reports it. `desc` is kept under Homebrew's 80-character audit limit.
+# `version` is stated rather than inferred: every url sits inside an on_os block, so there is no
+# top-level url to read it from. `desc` stays under Homebrew's 80-character audit limit.
 cat <<RUBY
 # Generated by scripts/homebrew-formula.sh in FrankRay78/NetPace — do not edit by hand.
 # Each NetPace release overwrites this file; change the generator instead.
@@ -138,10 +126,8 @@ for i in "${!PLATFORMS[@]}"; do
 done
 printf '  end\n'
 
-# Every archive holds exactly one entry, the `netpace` binary (docs/RELEASING.md,
-# *Archive-contents contract*), so the install is the one file and nothing needs unpacking around
-# it. The `test` block is what `brew test` runs; homebrew-publish.yml asserts the version itself,
-# against the binary it installed, rather than through `brew test`.
+# Every archive holds exactly one entry (docs/RELEASING.md, *Archive-contents contract*), so the
+# install is that file. homebrew-publish.yml asserts the version itself, not through `brew test`.
 cat <<'RUBY'
 
   def install

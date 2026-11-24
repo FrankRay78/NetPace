@@ -31,9 +31,9 @@ jobs:
 
     - name: Find every committed *.tests.sh
       id: find
-      # Discovering nothing is a failure, not a pass: this repo has several matrices and two docs
-      # promise they run, so an empty result means the pattern or the naming convention has
-      # drifted — the one outcome that would otherwise report green having verified nothing.
+      # Discovering nothing is a failure, not a pass: an empty result means the pattern or the
+      # naming convention drifted, which would otherwise report green having verified nothing.
+      #
       # -z keeps paths raw, so a name core.quotePath would C-quote cannot corrupt the JSON.
       run: |
         set -euo pipefail
@@ -50,9 +50,8 @@ jobs:
     name: ${{ matrix.script }}
     needs: discover
     runs-on: ubuntu-latest
-    # Shared by every matrix, so it is sized for the heaviest: tool-package.tests.sh packs the console
-    # project for six RIDs and installs the result, which runs in about a minute warm but has a cold
-    # NuGet cache and fewer cores here than on a developer machine.
+    # Shared by every matrix, so sized for the heaviest: tool-package.tests.sh packs six RIDs and
+    # installs the result, with a cold NuGet cache and fewer cores than a developer machine.
     timeout-minutes: 20
     strategy:
       # Every matrix runs to completion and names its own failure, so one red script never hides
@@ -84,10 +83,8 @@ jobs:
         fi
         "./$SCRIPT"
 
-  # The one check with a stable name, so branch protection has something to require: the matrix
-  # job's own names are derived from filenames and change whenever a matrix is added or renamed.
-  # Without this, a required check would have to name each script — the per-file list this design
-  # exists to avoid, relocated somewhere less visible than a workflow file.
+  # The one check with a stable name, the matrix job's own names being derived from filenames:
+  # without it, branch protection would have to carry the per-file list this design avoids.
   gate:
     name: shell-tests
     needs: [ discover, run ]

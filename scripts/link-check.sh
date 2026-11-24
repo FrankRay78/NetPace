@@ -17,7 +17,6 @@
 #           renders it; or a root-relative one, resolved from the repository root, which GitHub
 #           does NOT do — it reads a leading `/` against the site root, so such a link renders
 #           broken there. Resolving it here is a deliberate leniency, not a match for GitHub;
-
 #        b. a full `https://github.com/FrankRay78/NetPace/{blob,tree,raw}/main/<path>` link, mapped
 #           onto `<path>` in the checkout — the file the link points at, read locally;
 #        c. an `#anchor`, on either of those or on its own, checked against the headings of the
@@ -104,22 +103,18 @@ git -C "$REPO_ROOT" rev-parse --git-dir >/dev/null 2>&1 \
 TMP="$(mktemp -d)" || die "could not create a temporary directory."
 trap 'rm -rf "$TMP"' EXIT
 
-# The records folder, as it is written in a citation. Neither line is itself a reference the
-# second check reads: `RECORD_REF`'s filename part is a bracket expression, whose `[` is outside
-# the class it spells, and `RECORD_DIR` carries no filename at all.
+# The records folder, as a citation writes it. Neither line is itself a reference the second
+# check reads, which is why the filename part is spelled as a bracket expression.
 RECORD_DIR="docs/change-intent-records"
 RECORD_REF='docs/change-intent-records/[A-Za-z0-9._-]+\.md'
 
-# This repository's canonical web URL, lowercased, with its trailing slash. Hardcoded rather than
-# read from `git remote`: the links in these documents name the canonical repository whoever is
-# holding the clone, so a fork's own origin is the wrong thing to resolve them against.
+# Hardcoded rather than read from `git remote`: these links name the canonical repository whoever
+# holds the clone, so a fork's own origin is the wrong thing to resolve them against.
 MAIN_URL_PREFIX="https://github.com/frankray78/netpace/"
 
 # --- resolve BASE_DIR TARGET ------------------------------------------------------
-# Prints the repository-root-relative path a link target names, or returns 1 when it climbs above
-# the root. Done in the shell rather than with `realpath`, which resolves against the real
-# filesystem and would follow a symlink out of the tree and succeed on a path that GitHub, which
-# resolves textually, would render as broken.
+# Prints the repository-root-relative path a link target names, or returns 1 above the root.
+# Not `realpath`, which follows symlinks and would pass a path GitHub renders as broken.
 resolve_path() {
   local base="$1" target="$2" joined seg out=""
   local -a segs=() parts=()
@@ -149,19 +144,16 @@ resolve_path() {
 }
 
 # --- main_ref_path URL ------------------------------------------------------------
-# Prints the repository-root-relative path a full link to a file on this repository's `main`
-# branch names, or returns 1 when the URL is not one. The whole shape is matched against a
-# lowercased copy, so the scheme, host, owner, repository and the `blob`/`tree`/`raw` and `main`
-# segments are all read whatever their case; the path is then cut from the original URL by length,
-# so it keeps the case it was written in, because the checkout does. Lowercasing goes through `tr`
-# rather than `${var,,}` so the check runs under the bash 3.2 that is still /bin/bash on macOS.
+# Prints the repository-root-relative path a full link to a file on `main` names, or returns 1.
+# Matched case-insensitively, but the path is cut by length so it keeps the checkout's own case.
+#
+# `tr` rather than `${var,,}`, so this runs under the bash 3.2 that is still /bin/bash on macOS.
 main_ref_path() {
   local url="$1" lower path tail
   lower="$(printf '%s' "$url" | LC_ALL=C tr 'A-Z' 'a-z')"
 
-  # Only a path on `main` can be answered for by the files in this branch. `blob` and `raw` name a
-  # file, `tree` a folder; anything else under this repository's URL is a web page, and any other
-  # ref is a different set of files.
+  # Only a path on `main` can be answered for by the files in this branch; any other ref names a
+  # different set of files, and any other segment a web page.
   case "$lower" in
     "$MAIN_URL_PREFIX"blob/main/*|"$MAIN_URL_PREFIX"tree/main/*|"$MAIN_URL_PREFIX"raw/main/*) ;;
     *) return 1 ;;
@@ -177,8 +169,8 @@ main_ref_path() {
 }
 
 # --- heading_slugs FILE -----------------------------------------------------------
-# Prints the GitHub anchor of every ATX heading in a markdown file, in document order. See
-# HOW A HEADING IS MATCHED above. Returns non-zero when the file cannot be read to the end.
+# Prints the GitHub anchor of every ATX heading in a markdown file, in document order; see
+# HOW A HEADING IS MATCHED above. Non-zero when the file cannot be read to the end.
 heading_slugs() {
   awk '
     match($0, /^[[:space:]]*(```+|~~~+)/) {
@@ -225,9 +217,8 @@ scanned=0
 
 while IFS= read -r -d '' file; do
   path="$REPO_ROOT/$file"
-  # A tracked path that is gone from the working tree is the half-finished deletion this check
-  # exists to be run during. There is nothing to scan in it; what points AT it is the finding,
-  # and that is raised by whichever file carries the pointer.
+  # A tracked path gone from the working tree is the half-finished deletion this check exists for:
+  # nothing to scan, and the pointer AT it is raised by whichever file carries it.
   [ -f "$path" ] || continue
 
   # --- check 2: a bare citation of a record, in any text file ---------------------
@@ -247,9 +238,8 @@ while IFS= read -r -d '' file; do
   # --- check 1: markdown links, in a tracked *.md file ----------------------------
   case "$file" in *.md) ;; *) continue ;; esac
 
-  # Fenced blocks first, dropped by their own delimiter so that a `~~~` block quoting a ``` line
-  # stays one block; then backtick spans, shortest-first, so `a` and `b` on one line is two spans
-  # and not everything between them.
+  # Fenced blocks first, dropped by their own delimiter so a `~~~` block quoting ``` stays one;
+  # then backtick spans, shortest-first, so two spans on a line are not one.
   awk '
     match($0, /^[[:space:]]*(```+|~~~+)/) {
       marker = substr($0, RSTART, RLENGTH)
@@ -296,8 +286,7 @@ while IFS= read -r -d '' file; do
       mailto:*) continue ;;
       *://*)
         # Every scheme goes through the mapping, which returns 1 for anything that is not a path
-        # on this repository's `main` — so a scheme written in any case is read, and nothing else
-        # about the URL has to be matched twice.
+        # on this repository's `main`, so nothing about the URL is matched twice.
         resolved="$(main_ref_path "$target_path")" || continue
         ;;
       *)
@@ -333,11 +322,8 @@ done < "$TMP/tracked"
   || die "found no tracked '*.md' files in '$REPO_ROOT'. This repository has many, so an empty result means the discovery or the naming has drifted — which is the one outcome that would otherwise report green having checked nothing."
 
 # --- the verdict ------------------------------------------------------------------
-# Deduplicated: a markdown link to a record matches both checks, and one dangling reference should
-# be reported once — the anchor is cut before the pair is recorded so that the two checks agree on
-# the string, though a record link written relative to the linking file still differs from a bare
-# citation and is reported twice. Both verdicts carry the counts, which makes a run self-diagnosing
-# after the fact — "2 references checked" alongside a clean verdict reads very differently from "431".
+# Deduplicated, because a markdown link to a record matches both checks. Both verdicts carry the
+# counts: "2 references checked" alongside a clean verdict reads nothing like "431".
 if [ -s "$TMP/missing" ] || [ -s "$TMP/noheading" ]; then
   {
     if [ -s "$TMP/missing" ]; then

@@ -27,8 +27,7 @@ set -uo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 HOOK="$HERE/no-skipped-tests.sh"
 
-# One parent-scoped root holds every sandbox, so cleanup cannot be defeated by subshells (a
-# `TMPDIRS+=(…)` inside `$(sandbox …)` mutates a subshell's copy and leaks every fixture).
+# One parent-scoped root, so cleanup cannot be defeated by a subshell's own copy of an array.
 # u+rwX first: the scan-error case deliberately leaves an unreadable file behind.
 ROOT="$(mktemp -d)"
 cleanup() { chmod -R u+rwX "$ROOT" 2>/dev/null; rm -rf "$ROOT"; }
@@ -38,8 +37,7 @@ pass=0; fail=0
 ok() { if eval "$2"; then echo "  ok   $1"; pass=$((pass+1)); else echo "  FAIL $1 -- rc=$RC out:[$(printf '%s' "$OUTPUT" | head -1)]"; fail=$((fail+1)); fi; }
 
 # sandbox CONTENT [RELPATH] — build a throwaway project root whose src/ holds CONTENT; echo it.
-# Returns empty on any setup failure; run_* below turn that into a loud FAIL rather than letting
-# an empty CLAUDE_PROJECT_DIR silently send the gate at the real repo.
+# Empty on failure, which run_* turns into a FAIL rather than sending the gate at the real repo.
 sandbox() {
   local t rel; t="$(mktemp -d -p "$ROOT")" || return 1
   rel="${2:-src/Sample.Tests/SampleTests.cs}"
@@ -101,10 +99,8 @@ run_hook "$(sandbox 'class T { [Fact(SkipWhen = nameof(IsCi))] void M(){} }')"; 
 
 echo ""
 echo "Exclusion by PATH, not by line content — the escape that let skips commit clean:"
-# The bin/obj exclusion must filter on the file's PATH. Filtering grep's output instead tests the
-# whole `path:lineno:content` line, so a construct whose SOURCE TEXT names /bin/ or /obj/ filters
-# itself out — and a dependency-probe skip naming an absolute path is the likeliest real skip
-# there is, which made the hole line up exactly with what the ban most needs to catch.
+# The exclusion must filter on the file's PATH: filtering grep's output tests the whole line, so
+# a construct whose source text names /bin/ filters itself out — the likeliest real skip there is.
 run_hook "$(sandbox 'class T { void M(){ Skip.If(!File.Exists("/bin/bash"), "no bash"); } }')"; ok "Skip.If with \"/bin/…\" in the string" 'blocked_detect'
 run_hook "$(sandbox 'class T { void M(){ Assert.Skip("see /obj/notes"); } }')";                 ok "Assert.Skip with \"/obj/…\" in the string" 'blocked_detect'
 run_hook "$(sandbox 'class T { void M(){ Skip.If(x); } }' 'src/Sample.Tests/bin/Debug/G.cs')"; ok "real bin/ dir still excluded"  'allowed'
@@ -129,9 +125,8 @@ run_hook "$(empty_sandbox)"    'ls';           ok "non-commit + no src/ (no dead
 
 echo ""
 echo "Commit shape — a global option or a wrapper before the subcommand must not dodge the match:"
-# The forms a leading-word filter (`if: Bash(git commit:*)`) could not see, which is why the hook is
-# registered with no filter at all. Each is pinned here because the classifier's breadth is the only
-# thing now catching them: narrowing it to command-word position would restore the gap they close.
+# The forms a leading-word filter could not see, which is why the hook carries none. Pinned
+# because the classifier's breadth is now the only thing catching them.
 run_hook "$(sandbox "$DIRTY")" 'cd /elsewhere && git commit -m x'; ok "compound: cd … && git commit" 'blocked_detect'
 run_hook "$(sandbox "$DIRTY")" 'git -C /elsewhere commit -m x';    ok "git -C <path> commit"         'blocked_detect'
 run_hook "$(sandbox "$DIRTY")" 'git -c user.name=x commit -m x';   ok "git -c k=v commit"            'blocked_detect'
@@ -162,19 +157,19 @@ echo "Fail-closed — for a would-be COMMIT, uncertainty must block, never wave 
 run_hook "$(empty_sandbox)";                                        ok "commit + no src/ tree"        'blocked_closed'
 run_raw  "$(sandbox "$CLEAN")" 'git commit -m "not json at all"';   ok "commit-ish, unparseable payload" 'blocked_closed'
 run_raw  "$(sandbox "$CLEAN")" '{"tool_name":"Bash","tool_input":{"command":"git commit -m x"';  ok "commit-ish, truncated JSON" 'blocked_closed'
-# An unreadable file makes grep error. Reading that as "clean" would be silent non-coverage, so it
-# must block — and must name the path, since one bad file mode blocks EVERY commit repo-wide.
-# NOTE: this case requires a non-root runner; root reads through mode 000 and it will fail. That
-# is deliberate — conditioning a test on the environment is the skip pattern this very gate bans.
+# An unreadable file makes grep error, which must block and must name the path, one bad mode
+# blocking every commit repo-wide.
+#
+# Requires a non-root runner, deliberately: conditioning a test on its environment is the skip
+# pattern this very gate bans.
 _sb="$(sandbox "$CLEAN")"; printf 'class L {}\n' > "$_sb/src/Sample.Tests/Locked.cs"; chmod 000 "$_sb/src/Sample.Tests/Locked.cs"
 run_hook "$_sb";                                                    ok "commit + unreadable file → block" 'blocked_closed'
 ok "…and the message names the offending path" 'printf "%s" "$OUTPUT" | grep -q "Locked.cs"'
 
 echo ""
 echo "Dependency bootstrap — a missing tool must block a commit, never wave it through:"
-# The gate's own contract says it fails closed for a commit. That held for jq but NOT for grep:
-# the classifier used `grep … || exit 0`, which cannot tell "no match" from "grep is missing", so
-# a broken grep allowed every commit. The classifier is now a shell builtin and grep is checked.
+# The contract held for jq but not grep: `grep … || exit 0` cannot tell "no match" from "grep is
+# missing", so a broken grep allowed every commit.
 MINBIN="$(mktemp -d -p "$ROOT")"
 for b in bash dirname cat jq mktemp sed rm; do ln -s "$(env -i bash -c "command -v $b")" "$MINBIN/$b" 2>/dev/null; done
 [ -x "$MINBIN/bash" ] || { echo "  FAIL MINBIN setup (bash not linked)"; fail=$((fail+1)); }
@@ -190,10 +185,8 @@ run_raw_env "$_sb" "$NOJQ" '{"tool_name":"Bash","tool_input":{"command":"git com
 ok "commit + no jq → block"                    'blocked_closed'
 run_raw_env "$_sb" "$NOJQ" '{"tool_name":"Bash","tool_input":{"command":"ls"}}'
 ok "non-commit + no jq → allow (no deadlock)"  'allowed'
-# The pre-filter reads the WHOLE payload and only ever widens, so a read-only command whose payload
-# mentions both words reaches the dependency guards and is denied — on a clean tree, for want of jq.
-# That is the accepted cost of registering the hook with no `if:` filter; pinned so the prose in the
-# script header and README stays answerable to the code.
+# The pre-filter only widens, so a read-only command mentioning both words reaches the dependency
+# guards and is denied for want of jq. Pinned, so the header and README stay answerable.
 run_raw_env "$(sandbox "$CLEAN")" "$NOJQ" '{"tool_name":"Bash","tool_input":{"command":"cat README.md"},"description":"read the git commit docs"}'
 ok "mention-only + no jq + CLEAN tree → block" 'blocked_closed'
 
@@ -222,20 +215,16 @@ run_hook "$(sandbox "$CLEAN")"; ok "clean sandbox is clean (real repo's src/ not
 
 echo ""
 echo "KNOWN OVER-BLOCKS — deliberate, pinned so a future 'tighten this' sees the trade:"
-# BANNED_RE carries a bare `Skip…=` to catch [Fact(Skip = GateReason)], where the reason is an
-# identifier. That breadth also matches ordinary C# assigning to something named Skip. Over-blocking
-# is the safe failure — loud, and fixed by a rename — where a false pass is silent non-coverage,
-# which is what the ban exists to prevent.
+# The bare `Skip…=` catches an identifier reason, and so also matches ordinary C# assigning to
+# something named Skip. Over-blocking is loud and fixed by a rename; a false pass is silent.
 run_hook "$(sandbox 'class T { void M(){ var q = new Page { Skip = 10, Take = 5 }; } }')"
 ok "pagination initializer { Skip = 10 }" 'blocked_detect'
 run_hook "$(sandbox 'class T { void M(){ int Skip = 0; } }')"
 ok "local variable named Skip"            'blocked_detect'
-# Assessed and accepted: classification is not narrowed to command-word position. A
-# read-only command merely MENTIONING the words is gated — on the scan path only when src/ already
-# holds a banned construct, i.e. when the ban is already violated and must be fixed anyway, but on
-# the fail-closed paths on a clean tree too. Parsing shell to find the command-word would trade this
-# over-block for the failure that matters: a parser gap missing a real commit and letting a skip
-# land silently.
+# Assessed and accepted: a read-only command merely mentioning the words is gated, including on
+# the fail-closed paths with a clean tree.
+#
+# Parsing shell to find the command word would trade that for the failure that matters.
 run_hook "$(sandbox "$DIRTY")" 'grep -r "git commit" docs/'
 ok "read-only grep mentioning 'git commit'" 'blocked_detect'
 run_hook "$(sandbox "$CLEAN")" 'grep -r "git commit" docs/'
@@ -247,12 +236,10 @@ ok "…yet IS denied, clean or not, when src/ is unlocatable" 'blocked_closed'
 
 echo ""
 echo "Registration — the gate must be handed every Bash call, not a pre-filtered subset:"
-# Every case above drives the script directly, so none of them can see how it is registered. An
-# `if:` filter on the hook entry narrows what reaches it to commands whose LEADING words match,
-# which is exactly how `git -C <path> commit` went unscanned: the classifier's breadth above is
-# worthless if the registration re-narrows it, and re-adding the filter would leave every case
-# above green. `[false]` means one matching entry, carrying no `if:`; `[true]` a filter is back,
-# `[]` the entry is gone.
+# Every case above drives the script directly, so none can see how it is registered, and the
+# classifier's breadth is worthless if an `if:` filter re-narrows it.
+#
+# `[false]` is one matching entry with no `if:`; `[true]` a filter is back, `[]` the entry is gone.
 check_registration() {
   OUTPUT="$(jq -c '[.hooks.PreToolUse[] | select(.matcher == "Bash") | .hooks[] | select((.command // "") | test("no-skipped-tests")) | has("if")]' "$HERE/../settings.json" 2>&1)"; RC=$?
 }

@@ -10,9 +10,8 @@ RUN apt-get update \
 
 WORKDIR /opt/ookla
 
-# The upstream OoklaServer.tgz is a bundle of per-platform archives. Pick the
-# static-musl Linux build for the target architecture, then extract its
-# binary and default properties file into the working directory above.
+# The upstream OoklaServer.tgz is a bundle of per-platform archives, so the static-musl Linux
+# build for this architecture has to be picked out of it.
 RUN set -eux; \
     case "${TARGETARCH}" in \
       amd64) inner="OoklaServer-linux-x86_64-static-musl.tgz" ;; \
@@ -28,18 +27,16 @@ RUN set -eux; \
 
 COPY lab-properties.sh ./
 
-# Turn off the server's own outbound traffic, which would otherwise cross a shaped link while
-# NetPace is measuring it. Build-time rather than entry-point work: the properties file is baked
-# into the image, so doing it here also means a setting the upstream file no longer names fails
-# the build.
+# Turns off the server's own outbound traffic, which would cross a shaped link mid-measurement.
+# Build-time, so a setting the upstream file no longer names fails the build.
 RUN bash lab-properties.sh OoklaServer.properties
 
 EXPOSE 8080/tcp 8080/udp
 
-# Loopback, deliberately: shaping is applied to the link container's eth0, so the healthcheck
-# stays fast and honest on every profile and reports on OoklaServer itself rather than the link.
-# Nothing gates on it — it is what `docker ps` reports. start.sh polls the published port, and
-# that poll plus its final status sweep are what decide whether the lab came up.
+# Loopback deliberately: shaping is on the link container's eth0, so this stays fast on every
+# profile and reports on OoklaServer rather than the link.
+#
+# Nothing gates on it. start.sh's own poll and status sweep decide whether the lab came up.
 HEALTHCHECK --interval=10s --timeout=3s --start-period=10s --retries=3 \
   CMD wget -q --spider http://localhost:8080/speedtest/latency.txt || exit 1
 

@@ -118,20 +118,14 @@ else
   DEADLINE=60
 fi
 
-# This lab replaces two earlier ones, since removed, in docker/ooklaserver/ and
-# docker/librespeed/. A container either of them left running holds host port 18080 or 18081, so
-# the lab would fail to publish it. Matched on the Compose project and service labels, both of which must match, so this lab's
-# own ooklaserver service (project netpace-lab) is never caught by it.
+# A container left by either of the two earlier labs holds host port 18080 or 18081. Matched on
+# both the Compose project and service labels, so this lab's own service is never caught.
 #
-# The old librespeed lab named its project netpace-librespeed, so that call can match nothing
-# else. The old ookla lab named no project, so Compose derived one from its directory and the
-# label is the generic `ooklaserver`. That call also passes the container name the old lab fixed,
-# matched exactly as the optional third argument, so a contributor's own project and service of
-# that name is caught only if its container carries that name too.
+# The old librespeed lab named its project, so that call can match nothing else. The old ookla
+# lab named none, so its generic label is narrowed by the container name it fixed.
 remove_old_lab() {
-  # No `|| true`: docker ps exits 0 with no output when nothing matches, so a non-zero exit means
-  # the daemon could not be reached. Letting set -e stop here says that, where carrying on would
-  # report the old labs cleared and then fail on a port one of them still holds.
+  # No `|| true`: docker ps exits 0 with no output when nothing matches, so non-zero means the
+  # daemon could not be reached, and carrying on would fail later on a port still held.
   old_ids="$(docker ps -aq \
     --filter "label=com.docker.compose.project=$1" \
     --filter "label=com.docker.compose.service=$2" \
@@ -146,18 +140,15 @@ remove_old_lab() {
 remove_old_lab ooklaserver ooklaserver ooklaserver
 remove_old_lab netpace-librespeed librespeed
 
-# Down first, not just `up -d`: the profile travels as an environment variable, and tearing the
-# containers down is the one thing that cannot leave a running lab shaped differently from what
-# was asked for, or carrying a server that was not.
+# Down first, not just `up -d`: the profile travels as an environment variable, so only a
+# teardown cannot leave a running lab shaped differently from what was asked for.
 docker compose down --remove-orphans
 
-# Every path out of a started lab removes it, so the removal is written once. Reported on stderr
-# and never fatal: the caller is already on its way out with a status of its own to return, and a
-# removal that failed is something the maintainer has to be told, not something to abort on.
+# Written once, because every path out of a started lab removes it. Never fatal: the caller
+# already has a status to return, and a failed removal is to be told, not aborted on.
 remove_lab() {
-  # The remedy names the containers rather than ./stop.sh, which is this same command: advising it
-  # here would send the maintainer back to the thing that has just failed, with the host ports
-  # still held and the next start failing on a conflict that looks nothing like the real cause.
+  # The remedy names the containers rather than ./stop.sh, which is this same command: advising
+  # it would send the maintainer back to the thing that has just failed.
   docker compose down --remove-orphans >&2 \
     || echo "ERROR: could not remove the lab — run 'docker rm -f $LINK_CONTAINER $OOKLA_CONTAINER $LIBRESPEED_CONTAINER'." >&2
 }
@@ -173,9 +164,8 @@ interrupted() {
 }
 trap interrupted INT TERM
 
-# Either server failing takes the whole lab down with it. Comparing two providers across one
-# link is the point of the lab, and a figure from a lab that only half started cannot be
-# compared with anything — so the failure is reported, named, and nothing is left running.
+# Either server failing takes the whole lab down: comparing two providers across one link is the
+# point, and a figure from a half-started lab compares with nothing.
 failed_start() {
   echo >&2
   echo "ERROR: $1" >&2
@@ -190,19 +180,15 @@ failed_start() {
 
 export NETPACE_LINK_PROFILE="$PROFILE"
 
-# Each server waits for the link container's healthcheck, which passes only once both directions
-# are shaped, so a profile that cannot be applied fails here rather than starting a server. So does
-# everything else that stops Compose — a held port, a failed build or pull — so the message names
-# what did not start and leaves the cause to Compose's own output, which is printed above it.
+# A profile that cannot be applied fails here rather than starting a server, as does everything
+# else that stops Compose, so the message names what did not start and leaves Compose the cause.
 # shellcheck disable=SC2086
 docker compose up -d --build $SERVICES \
   || failed_start "the lab did not start, so $SERVERS is not running. Docker's output above names the cause.${PROFILE:+ If the '$PROFILE' profile could not be applied, the link log below says so.}"
 
 if [ -n "$PROFILE" ]; then
-  # The values printed at the end come from the argument, so take the claim from the container
-  # itself: shape.sh says this only once both directions are shaped and read back. Captured, not
-  # piped into `grep -q`: grep would exit on the match while compose is still writing later
-  # lines, and under pipefail compose's SIGPIPE would fail a link that was shaped correctly.
+  # Taken from the container itself, which says this only once both directions are read back.
+  # Captured, not piped into `grep -q`, whose early exit would SIGPIPE compose under pipefail.
   shape_log="$(docker compose logs link 2>/dev/null || true)"
   case "$shape_log" in
     *"both directions shaped"*) ;;
@@ -210,10 +196,8 @@ if [ -n "$PROFILE" ]; then
   esac
 fi
 
-# Neither check suppresses curl's own error text. The polling loop below silences it per attempt,
-# and shows it once on the timeout path: a proxy inherited from the environment, a refused
-# loopback connection or an exceeded --max-time are all host-side, so curl is the only thing that
-# names them and none of them appear in the container logs failed_start prints.
+# Neither check suppresses curl's own error text, shown once on the timeout path: an inherited
+# proxy or a refused loopback connection is host-side and appears in no container log.
 ready_ookla() {
   curl -fsS --max-time 10 "${OOKLA_URL}latency.txt" | grep -q "^test=test"
 }
@@ -228,10 +212,8 @@ ready_librespeed() {
 
 # await <container> <ready-function> <name> <port>
 #
-# Polled through the published port, so what is confirmed is the address the maintainer is about
-# to point NetPace at, not loopback inside the container. A wall-clock budget, not a loop count:
-# each pass costs a curl and a docker inspect, so counting iterations would overrun the figure
-# printed above many times over.
+# Polled through the published port, so what is confirmed is the address NetPace will be pointed
+# at. A wall-clock budget: each pass costs a curl and an inspect, so a loop count would overrun.
 await() {
   container="$1"
   check="$2"
@@ -269,11 +251,10 @@ if [ -n "$WANT_LIBRESPEED" ]; then
   await "$LIBRESPEED_CONTAINER" ready_librespeed LibreSpeed "$LIBRESPEED_PORT"
 fi
 
-# `await` watches only the server it is waiting for, so a server that answered and then exited is
-# not looked at again — and the second wait can run for the whole deadline. Without this sweep the
-# lab would print the ready message, and the command to use, for a container that is gone.
-# OoklaServer is the one that dies late in practice: it aborts on an out-of-date warning or
-# missing AES-NI, both of which happen after it has served latency.txt.
+# `await` watches only the server it waits for, so without this sweep the lab would print its
+# ready message for a container that answered and then exited.
+#
+# OoklaServer is the one that dies late, aborting on an out-of-date warning or missing AES-NI.
 # shellcheck disable=SC2086
 for c in "$LINK_CONTAINER" \
          ${WANT_OOKLA:+"$OOKLA_CONTAINER"} ${WANT_LIBRESPEED:+"$LIBRESPEED_CONTAINER"}; do

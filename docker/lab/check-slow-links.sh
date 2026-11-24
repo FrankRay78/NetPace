@@ -29,9 +29,8 @@ cd "$(dirname "$0")"
 
 SERVER_URL="http://localhost:18080/speedtest/upload.php"
 
-# Each line is `<lab profile>:<NetPace profile>` - the NetPace profile a user on that link
-# would reasonably choose. `default` means the run is given no --profile option at all, so
-# it exercises the shipped default rather than a value that happens to equal it.
+# Each line is `<lab profile>:<NetPace profile>`. `default` means no --profile option at all, so
+# the run exercises the shipped default rather than a value that happens to equal it.
 #
 # The pairing is what the check means. If a row stops finishing in a reasonable time, raise
 # it rather than quietly moving that row to a smaller NetPace profile.
@@ -102,19 +101,15 @@ format_speed() {
   }'
 }
 
-# The named field out of the run's one-line JSON result, or empty where it is not there.
-# Showing the figures is the point of the summary: `--fail-on total` says a run completed,
-# not that it measured anything like what the link carries, which is the failure this whole
-# check exists to make visible.
+# The named field out of the run's JSON result, or empty. Showing the figures is the point:
+# `--fail-on total` says a run completed, not that it measured what the link carries.
 json_number() {
-  # A run that died before writing a result has no figure to read, and that is not worth a word:
-  # the FAIL beside it already says what happened. The run's output
-  # was redirected into the file, so the file always exists; an empty one is what no result means.
+  # A run that died has no figure to read, and the FAIL beside it already says so. The output was
+  # redirected into the file, so an empty file is what no result means.
   [ -s "$1" ] || return 0
 
-  # A result file that exists but carries no such field is a different matter, and is said out
-  # loud: it means the field was renamed or the figure is not a plain integer, and a silent `-`
-  # in the summary would read as "this run measured nothing" when the run measured fine.
+  # A result carrying no such field is said out loud: the field was renamed or is not a plain
+  # integer, and a silent `-` would read as a run that measured nothing.
   value=$(sed -n "s/.*\"$2\":\\([0-9][0-9]*\\).*/\\1/p" "$1" || true)
 
   if [ -z "$value" ]; then
