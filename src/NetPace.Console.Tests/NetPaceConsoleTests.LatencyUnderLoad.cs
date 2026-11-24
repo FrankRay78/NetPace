@@ -1,4 +1,3 @@
-using System.Text.Json;
 using NetPace.Core;
 using NetPace.Core.Clients.Ookla;
 
@@ -133,43 +132,6 @@ public sealed partial class NetPaceConsoleTests
             Assert.Equal(0, csv.ExitCode);
             Assert.Equal(0, json.ExitCode);
             AssertBothLeaveOut(csv.Output, json.Output, [.. IdleFields, "LatencyMilliseconds"]);
-        }
-
-        /// <summary>
-        /// Asserts that each named field is a number in JSON and the same number in the CSV cell of
-        /// that name, so the two formats cannot drift apart on a figure.
-        /// </summary>
-        private static void AssertBothCarry(string csvOutput, string jsonOutput, string[] fields)
-        {
-            string[][] records = CsvOutput.Records(csvOutput);
-            using var document = JsonDocument.Parse(jsonOutput);
-
-            foreach (string field in fields)
-            {
-                Assert.True(
-                    document.RootElement.TryGetProperty(field, out JsonElement value),
-                    $"JSON does not carry a '{field}' field: {jsonOutput}");
-                Assert.Equal(JsonValueKind.Number, value.ValueKind);
-                Assert.Equal(value.GetRawText(), CsvOutput.Field(records, field));
-            }
-        }
-
-        /// <summary>
-        /// Asserts that each named field is missing in the shape its format uses: CSV keeps the
-        /// column and leaves the cell empty, JSON leaves the field out. Never a zero.
-        /// </summary>
-        private static void AssertBothLeaveOut(string csvOutput, string jsonOutput, string[] fields)
-        {
-            string[][] records = CsvOutput.Records(csvOutput);
-            using var document = JsonDocument.Parse(jsonOutput);
-
-            foreach (string field in fields)
-            {
-                Assert.Equal(string.Empty, CsvOutput.Field(records, field));
-                Assert.False(
-                    document.RootElement.TryGetProperty(field, out _),
-                    $"JSON carries a '{field}' field it should have left out: {jsonOutput}");
-            }
         }
 
         /// <summary>

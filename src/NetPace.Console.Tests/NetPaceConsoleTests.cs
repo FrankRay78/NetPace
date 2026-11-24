@@ -1,3 +1,4 @@
+using System.Text.Json;
 using NetPace.Console.Theming;
 using NetPace.Core.Clients.Ookla;
 
@@ -177,6 +178,60 @@ public sealed partial class NetPaceConsoleTests
         services.AddSingleton<IWaiter, NoDelayStub>();
 
         return (new CommandLineTestHost(services), serviceCalls);
+    }
+
+    /// <summary>
+    /// A host whose speed tester accounts for every request it makes in the diagnostic records, so
+    /// what a run reports can be checked against what its records say. Shared by the nested classes
+    /// that read the diagnostic stream.
+    /// </summary>
+    private static CommandLineTestHost DiagnosticHost(bool failEveryUpload = false)
+    {
+        var services = new ServiceCollection();
+        services.AddSingleton<ISpeedTestService>(new DiagnosticSpeedTester { FailEveryUpload = failEveryUpload });
+        services.AddSingleton<IClock, ClockStub>();
+        services.AddSingleton<IWaiter, NoDelayStub>();
+        return new CommandLineTestHost(services);
+    }
+
+    /// <summary>
+    /// Asserts that each named field is a number in JSON and the same number in the CSV cell of
+    /// that name, so the two formats cannot drift apart on a figure. Shared by the nested classes
+    /// that check a figure both machine-readable formats carry.
+    /// </summary>
+    private static void AssertBothCarry(string csvOutput, string jsonOutput, string[] fields)
+    {
+        string[][] records = CsvOutput.Records(csvOutput);
+        using var document = JsonDocument.Parse(jsonOutput);
+
+        foreach (string field in fields)
+        {
+            Assert.True(
+                document.RootElement.TryGetProperty(field, out JsonElement value),
+                $"JSON does not carry a '{field}' field: {jsonOutput}");
+            Assert.Equal(JsonValueKind.Number, value.ValueKind);
+            Assert.Equal(value.GetRawText(), CsvOutput.Field(records, field));
+        }
+    }
+
+    /// <summary>
+    /// Asserts that each named field is missing in the shape its format uses: CSV keeps the column
+    /// and leaves the cell empty, JSON leaves the field out. Never a zero, which a figure that was
+    /// measured and came to nothing has. Shared by the nested classes that check a figure both
+    /// machine-readable formats carry.
+    /// </summary>
+    private static void AssertBothLeaveOut(string csvOutput, string jsonOutput, string[] fields)
+    {
+        string[][] records = CsvOutput.Records(csvOutput);
+        using var document = JsonDocument.Parse(jsonOutput);
+
+        foreach (string field in fields)
+        {
+            Assert.Equal(string.Empty, CsvOutput.Field(records, field));
+            Assert.False(
+                document.RootElement.TryGetProperty(field, out _),
+                $"JSON carries a '{field}' field it should have left out: {jsonOutput}");
+        }
     }
 
     [Fact]

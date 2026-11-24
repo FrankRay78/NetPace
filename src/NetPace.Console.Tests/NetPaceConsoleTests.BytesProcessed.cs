@@ -162,15 +162,6 @@ public sealed partial class NetPaceConsoleTests
                 .Trim();
         }
 
-        private static CommandLineTestHost DiagnosticHost(bool failEveryUpload = false)
-        {
-            var services = new ServiceCollection();
-            services.AddSingleton<ISpeedTestService>(new DiagnosticSpeedTester { FailEveryUpload = failEveryUpload });
-            services.AddSingleton<IClock, ClockStub>();
-            services.AddSingleton<IWaiter, NoDelayStub>();
-            return GetCommandLineTestHost(services);
-        }
-
         /// <summary>
         /// A run where every request of both directions failed: the download moved nothing before
         /// it did, the upload moved something — the two shapes a failed transfer can leave behind.
@@ -186,43 +177,6 @@ public sealed partial class NetPaceConsoleTests
             services.AddSingleton<IClock, ClockStub>();
             services.AddSingleton<IWaiter, NoDelayStub>();
             return services;
-        }
-
-        /// <summary>
-        /// Asserts that each named field is a number in JSON and the same number in the CSV cell of
-        /// that name, so the two formats cannot drift apart on a figure.
-        /// </summary>
-        private static void AssertBothCarry(string csvOutput, string jsonOutput, string[] fields)
-        {
-            string[][] records = CsvOutput.Records(csvOutput);
-            using var document = JsonDocument.Parse(jsonOutput);
-
-            foreach (string field in fields)
-            {
-                Assert.True(
-                    document.RootElement.TryGetProperty(field, out JsonElement value),
-                    $"JSON does not carry a '{field}' field: {jsonOutput}");
-                Assert.Equal(JsonValueKind.Number, value.ValueKind);
-                Assert.Equal(value.GetRawText(), CsvOutput.Field(records, field));
-            }
-        }
-
-        /// <summary>
-        /// Asserts that each named field is missing in the shape its format uses: an empty CSV cell,
-        /// an absent JSON field. Never a zero, which a direction that ran and received nothing has.
-        /// </summary>
-        private static void AssertBothLeaveOut(string csvOutput, string jsonOutput, string[] fields)
-        {
-            string[][] records = CsvOutput.Records(csvOutput);
-            using var document = JsonDocument.Parse(jsonOutput);
-
-            foreach (string field in fields)
-            {
-                Assert.Equal(string.Empty, CsvOutput.Field(records, field));
-                Assert.False(
-                    document.RootElement.TryGetProperty(field, out _),
-                    $"JSON carries a '{field}' field it should have left out: {jsonOutput}");
-            }
         }
     }
 }

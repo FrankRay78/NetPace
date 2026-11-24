@@ -332,7 +332,7 @@ NetPace --json-pretty
 }
 ```
 
-The same figures CSV carries, under the same names and as the same numbers for the same run. **A figure that was not measured is left out rather than reported as `0`** — a direction's four fields are absent where the transfer measured nothing under load or the test did not run, and the lowest and highest are absent where no run of probe times was kept. `JitterMilliseconds` goes whenever `LatencyMilliseconds` does, so `--no-latency` leaves out both — and only those two: each direction's four under-load fields are still reported, and only `--no-download` or `--no-upload` leaves them out.
+The same figures CSV carries, under the same names and as the same numbers for the same run. **A figure that was not measured is left out rather than reported as `0`**: a direction's four fields are absent where the transfer measured nothing under load or the test did not run, and the lowest and highest are absent where no run of probe times was kept. `JitterMilliseconds` goes whenever `LatencyMilliseconds` does, so `--no-latency` leaves out both — and only those two: each direction's four under-load fields are still reported, and only `--no-download` or `--no-upload` leaves them out.
 
 **`DownloadBytesProcessed` and `UploadBytesProcessed` count the test transfers only**, not the run's server discovery, screening, latency measurements or protocol overhead. They are the counts the two speeds are built from, and they are the same numbers the matching CSV columns carry for the same run.
 
