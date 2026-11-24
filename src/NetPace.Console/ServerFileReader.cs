@@ -8,13 +8,8 @@ namespace NetPace.Console;
 /// <c>url</c> and an optional <c>name</c>.
 /// </summary>
 /// <remarks>
-/// Read whole and checked before the run starts, so a file the user got wrong costs them a message
-/// rather than a measurement against the wrong set of servers. Only the file's structure is
-/// checked: a URL that is bad, unreachable or belongs to the other provider surfaces when the run
-/// contacts it, where it loses in selection as any unreachable server does. Parsed through
-/// <see cref="JsonDocument"/> rather than deserialised onto a type, because an entry carrying an
-/// unexpected field has to be reported rather than ignored, and because the published binary is
-/// trimmed.
+/// Why the format is this and why only its structure is checked:
+/// <c>docs/change-intent-records/2026-11-24-a-server-file-lists-the-candidates.md</c>.
 /// </remarks>
 internal static class ServerFileReader
 {
@@ -151,8 +146,7 @@ internal static class ServerFileReader
     private static string Text(string path, int entry, JsonProperty property)
     {
         // What the value says is the run's business, not this reader's, but it has to be text at
-        // all: a number or an object there is a file the user wrote wrong, not a server NetPace
-        // could go on to try.
+        // all: a number or an object there is a file written wrong, not a server to go and try.
         if (property.Value.ValueKind != JsonValueKind.String)
         {
             throw new ArgumentException($"Entry {entry} of the server file {path} gives \"{property.Name}\" as something other than text. Quote the value, as {Example}.");

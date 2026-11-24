@@ -60,6 +60,11 @@ Test against a LibreSpeed server on your own network:
 netpace --provider librespeed --server-url http://pi.local:8080/
 ```
 
+Always choose from your own list of servers, rather than from Ookla's nearby list:  
+```bash
+netpace --server-file servers.json
+```
+
 Show speeds in bytes/sec, using IEC units (KiB, MiB, GiB):  
 ```bash
 netpace --unit bytes --unit-system IEC
@@ -353,10 +358,42 @@ The offset is what makes the machine-readable timestamp one unambiguous instant,
 
 | Value | What it tests against |
 |---|---|
-| `ookla` | Ookla's Speedtest servers, discovered for you or named with `--server-url`. The default. |
-| `librespeed` | A [LibreSpeed](https://github.com/librespeed/speedtest) server, always named with `--server-url`. |
+| `ookla` | Ookla's Speedtest servers, discovered for you, listed in a `--server-file`, or named with `--server-url`. The default. |
+| `librespeed` | A [LibreSpeed](https://github.com/librespeed/speedtest) server, named with `--server-url` or listed in a `--server-file`. |
 
 Leave `--provider` out and a run behaves exactly as it always has: Ookla, with a server chosen for you.
+
+### Testing against your own list of servers
+
+`--server-file` names a file listing the servers a run chooses from. NetPace then chooses among those entries exactly as it chooses among the servers it discovers, and asks Ookla for nothing.
+
+```bash
+netpace --server-file servers.json
+```
+
+The file is a JSON array. Each entry gives the server's `url`, and may give a `name` that NetPace shows wherever it shows a server's sponsor:
+
+```json
+[
+  { "url": "http://ffm.wsqm.telekom-dienste.de:8080/speedtest/upload.php", "name": "Telekom Frankfurt" },
+  { "url": "http://speedtest.example.net:8080/speedtest/upload.php" },
+  { "url": "http://pi.local:8080/", "name": "Home Pi" }
+]
+```
+
+Two things it is for. A run on a schedule compares one week's figures with the next only if every run picked from the same servers, and Ookla's nearby list can differ from one call to the next. And a server you host yourself has no sponsor for NetPace to show, so without a name it reads as `[Unknown]`; with one it reads as you called it. An entry that gives no `name` still reads as `[Unknown]`.
+
+The entries must be servers of the kind `--provider` selects, which defaults to `ookla`. A file of LibreSpeed servers is used with `--provider librespeed`:
+
+```bash
+netpace --provider librespeed --server-file my-librespeed-servers.json
+```
+
+NetPace reads and checks the whole file before it contacts anything. A file that is missing, unreadable, empty, or not a JSON array of entries fails the run, and so does an entry with no `url` or with any field besides `url` and `name`. The message names the file and, where there is one, the entry at fault.
+
+What the values say is not checked. An entry whose URL is wrong, unreachable, or a server of the other kind is simply passed over when the run tries it, the way an unreachable discovered server is. If no entry can be reached, the run reports `Error: No servers available`, exactly as a run that discovered no reachable server does.
+
+`--server-file` and `--server-url` both say which server to test, so a run that gives both is rejected. The file is read once, when the run starts, so an edit made part-way through a `--loop` run is not picked up. `netpace servers` lists Ookla's nearby servers and takes no `--server-file`: write the file yourself.
 
 ### Testing against a LibreSpeed server
 
@@ -374,7 +411,7 @@ netpace --provider librespeed --server-url http://nas.local/speedtest/
 
 A LibreSpeed run reports everything an Ookla run does, in every output format, and the options that shape an Ookla run shape it the same way: `--profile`, `--connections`, `--downloadsize`, `--uploadsize`, `--no-latency`, `--no-download`, `--no-upload`, and the repetition, file, exit-code and diagnostics options all apply. The server fields in CSV and JSON show the LibreSpeed URL tested; the sponsor and location read as they do for any server named by URL, because nothing else is known about one.
 
-There is nothing to discover: LibreSpeed publishes no server list, so `--provider librespeed` without `--server-url` is rejected before any test runs. `netpace servers` lists Ookla's nearby servers and takes no `--provider`.
+There is nothing to discover: LibreSpeed publishes no server list, so `--provider librespeed` is rejected before any test runs unless `--server-url` or `--server-file` says which server to test. `netpace servers` lists Ookla's nearby servers and takes no `--provider`.
 
 If the address answers but not as a LibreSpeed server, the run says which URL answered wrongly and what to check. If it answers with a server error, the run names the URL and the status, since the address is likely right but the server is failing. If it cannot be reached at all, the run reports that the same way an Ookla run does. Either way nothing is reported as measured, and the exit code stays `0` unless you opt in with `--fail-on` or set a target, which a run that measured nothing misses (see [Exit codes](#exit-codes)).
 
@@ -384,13 +421,15 @@ There is a local LibreSpeed server to try this against in [`docker/lab/`](https:
 
 ## How a server is chosen
 
-This is how an Ookla run picks a server. A LibreSpeed run always names one, so none of it applies.
+This is how a run picks a server when it was not handed one. A run naming its server with `--server-url` skips all of it.
 
-With no `--server-url`, NetPace picks the server for you in two steps.
+With no `--server-url`, NetPace picks the server for you in two steps. The candidates are the entries of a `--server-file` where one was given, and Ookla's nearby servers otherwise.
 
-**Screening.** Every server discovery returned is sent a few quick requests, all at the same time, to answer one question: did it answer, and roughly how fast? Screening normally ends within about two seconds, no matter how many servers were discovered or how many of them never answer. If no server has been ranked by then — as on a satellite link or a congested mobile connection — it waits up to ten seconds, so a slow link can still have a server chosen. A server that answers slowly is not thrown out — it is simply ranked below the quicker ones. Only a server that has not answered by the time screening ends drops out of the running.
+**Screening.** Every candidate is sent a few quick requests, all at the same time, to answer one question: did it answer, and roughly how fast? Screening normally ends within about two seconds, no matter how many candidates there are or how many of them never answer. If no server has been ranked by then — as on a satellite link or a congested mobile connection — it waits up to ten seconds, so a slow link can still have a server chosen. A server that answers slowly is not thrown out — it is simply ranked below the quicker ones. Only a server that has not answered by the time screening ends drops out of the running.
 
 **Measuring.** The fastest server that answered is then measured properly, with the full latency probe, and that is the figure NetPace reports. Everything after it — latency, download, upload — runs against that same server; NetPace does not switch servers part-way through a run.
+
+`--no-latency` leaves nothing to rank the candidates by, so neither step happens: the first candidate is used, unscreened. That is the first server Ookla's list offers, or the first entry of a `--server-file`.
 
 If nothing answered during screening, the run reports `Error: No servers available` on standard error. That is a network outcome rather than a fault in NetPace, so the exit code stays `0`, unless you set a target: a run that reached no server misses every target it was given, and exits `3` (see [Exit codes](#exit-codes)).
 
