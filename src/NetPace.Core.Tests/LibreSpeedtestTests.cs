@@ -506,8 +506,8 @@ public sealed class LibreSpeedtestTests
     [InlineData(1, -1)]
     public async Task GetDownloadSpeedAsync_WithARequestShapeGarbageWouldNotHonour_IsRejected(int requestSizeMib, int requestCount)
     {
-        // garbage.php answers a ckSize of zero or less with its own default and caps one above
-        // 1024, so either would measure a size nobody asked for.
+        // garbage.php defaults a ckSize of zero or less and caps one above 1024, so either would
+        // measure a size nobody asked for; no requests at all would report a download never run.
 
         // Given
         using var mockHttp = LibreSpeedServer(InstallUrl);

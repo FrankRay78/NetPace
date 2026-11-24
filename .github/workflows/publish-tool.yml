@@ -102,8 +102,8 @@ jobs:
       # Nothing else in this workflow runs a macOS binary before the push, the publish job's own
       # install check only ever exercising linux-x64.
       #
-      # Both go into a feed of their own, so the package this job uploads stays exactly what the
-      # AOT pack produced whatever a later SDK does with CreateRidSpecificToolPackages.
+      # The RID package and the wrapper both go into a feed of their own, so what this job uploads
+      # stays exactly what the AOT pack produced, whatever CreateRidSpecificToolPackages does.
       #
       # The Apple silicon installer was seen to request a host package only nuget.org holds, so it
       # is a source too; source mapping keeps a previously pushed copy from standing in.

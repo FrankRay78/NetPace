@@ -186,8 +186,8 @@ public sealed partial class OoklaSpeedtestTests
             result.Latency.MaximumLatencyMilliseconds.ShouldBe(60);
             result.Latency.JitterMilliseconds.ShouldBe(30);
 
-            // The speed comes from the transfer's own bytes and time alone. 620ms because probes and
-            // transfer share one clock here; on a real clock they run concurrently and cost nothing.
+            // And its speed comes from the transfer's own bytes and time alone. 620ms because probes
+            // and transfer share one clock here; on a real clock they run concurrently and cost nothing.
             result.BytesProcessed.ShouldBe(DownloadResponseBytes);
             result.RequestsSucceeded.ShouldBe(1);
             result.RequestsFailed.ShouldBe(0);

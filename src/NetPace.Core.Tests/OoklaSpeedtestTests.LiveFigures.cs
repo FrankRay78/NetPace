@@ -207,6 +207,8 @@ public sealed partial class OoklaSpeedtestTests
 
             var speedtest = SingleRequestDownloadSpeedtest(mockHttp, delays, clock);
 
+            // When that one probe has answered and the download then finishes.
+
             // The barrier is the probe loop asking for its next delay, which it can only do once
             // its sample is published; a counter inside the response handler would race that.
             var download = speedtest.GetDownloadSpeedAsync(TestServer, new SynchronousProgress<SpeedTestProgress>(reports.Add));

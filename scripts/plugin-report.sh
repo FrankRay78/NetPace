@@ -92,8 +92,8 @@ command -v timeout >/dev/null 2>&1 || have_timeout=0
 TIMEOUT=(); TIMEOUT_AI=()
 # The model call in PERFORMANCE needs its own, far longer budget; 10s would guarantee a timeout.
 if [ "$have_timeout" -eq 1 ]; then TIMEOUT=(timeout 10); TIMEOUT_AI=(timeout 180); fi
-# Every expansion uses the ${a[@]+"${a[@]}"} form: an empty array under `set -u` is fatal on the
-# bash 3.2 macOS ships, which is also the box with no timeout(1), so both branches are one.
+# Every expansion uses the ${a[@]+"${a[@]}"} form: an empty array under `set -u` is fatal before
+# bash 4.4, including the 3.2 macOS ships, which is also the box with no timeout(1).
 
 # </dev/null is load-bearing: a probed tool that reads fd 0 otherwise blocks on the terminal,
 # which is a false timeout with timeout(1) present and a hang without it.
@@ -369,8 +369,8 @@ cm_counters_row() {
     echo "  raw probe reply (NOT counters):"
     cm_show_reply "$out"
   else
-    # The only row whose figures came through a model round-trip, said so a reader reads "this
-    # chat" in the reply as the probe's own session.
+    # Labelled because this is the only row whose figures came through a model round-trip, so a
+    # reader takes "this chat" in the reply as the probe's own session.
     echo "context-mode: (via ctx_stats, headless probe)"
     cm_show_reply "$out"
   fi

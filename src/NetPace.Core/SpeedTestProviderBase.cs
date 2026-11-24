@@ -690,6 +690,7 @@ public abstract class SpeedTestProviderBase : ISpeedTestService
         }
         catch (OperationCanceledException) when (stopAndReportToken.IsCancellationRequested && !cancellationToken.IsCancellationRequested)
         {
+            // A stop before any upload was sent reports what a test stopped before it began reports.
             return new SpeedTestResult { BytesProcessed = 0, ElapsedMilliseconds = 0, RequestsSucceeded = 0, RequestsFailed = 0, Latency = null };
         }
 
@@ -727,7 +728,8 @@ public abstract class SpeedTestProviderBase : ISpeedTestService
     /// A streaming body cannot survive a redirect, so the endpoint is resolved once, with a probe
     /// that carries no body and so stays out of the measurement.
     /// <para>
-    /// Best-effort: anything but caller cancellation falls back to the original address.
+    /// Best-effort: a transport failure falls back to the original address. Either cancellation
+    /// propagates, as does any other exception type.
     /// </para>
     /// </remarks>
     /// <returns>

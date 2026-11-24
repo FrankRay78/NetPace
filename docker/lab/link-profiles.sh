@@ -62,8 +62,8 @@ link_profile() {
       # Usable on paper but keeps failing: the loss is bursty rather than uniform, which breaks a
       # retry policy that uniform loss survives.
       #
-      # netem's Gilbert-Elliott model alternates a good state with a lossy one: bad about 3.8% of
-      # the time, dropping 30% while it is, so about 1.2% per direction arriving in clumps.
+      # netem's Gilbert-Elliott model (`loss gemodel p r 1-h 1-k`) alternates a good state with a
+      # lossy one: p=2% in, r=50% out, so bad ~3.8% of the time, dropping 30%, ~1.2% per direction.
       LINK_MODELS="a usable link that keeps failing: ~200 ms round trip, 2 Mbit down / 1 Mbit up, burst loss averaging ~2%"
       LINK_DOWN="delay 100ms loss gemodel 2% 50% 30% 0% rate 2mbit"
       LINK_UP="delay 100ms loss gemodel 2% 50% 30% 0% rate 1mbit"

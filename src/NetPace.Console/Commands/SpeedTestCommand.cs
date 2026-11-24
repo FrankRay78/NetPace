@@ -47,8 +47,8 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ErrorOutput errorOutp
         }
         finally
         {
-            // From a finally, because a run that threw an operational fault is when its
-            // diagnostics matter most. exitCode is 1 here, matching the top-level handler.
+            // From a finally, because a run that threw an operational fault is when its diagnostics
+            // matter most; exitCode is then 1, matching the top-level handler.
             recorder.Record("run.end", ("exit", exitCode.ToString(CultureInfo.InvariantCulture)));
             FlushDiagnostics(settings);
         }

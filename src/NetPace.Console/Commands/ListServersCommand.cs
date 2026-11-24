@@ -156,6 +156,8 @@ public sealed class ListServersCommand(IAnsiConsole console, ErrorOutput errorOu
             {
                 // Screened through the path auto-selection uses, so a listed latency is the figure
                 // a run ranks on, but each gets the whole ceiling with no quicker sibling to end it.
+
+                // The live table is not safe to change from two rows at once.
                 var tableLock = new object();
 
                 async Task ScreenRowAsync(int row)

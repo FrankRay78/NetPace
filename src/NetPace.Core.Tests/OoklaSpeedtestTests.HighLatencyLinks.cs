@@ -412,6 +412,7 @@ public sealed partial class OoklaSpeedtestTests
         {
             // Given a first stage as long as the ceiling, a steady candidate ranked quickly, and a
             // faster warming candidate ranked only after the default first stage is out.
+            // When a server is chosen.
             var (result, _, warming) = await ChooseBetweenASteadyAndAWarmingCandidateAsync(StagedCeilingMilliseconds);
 
             // Then the ceiling was spent as one stage, as it was before it was spent in stages: the
@@ -424,6 +425,7 @@ public sealed partial class OoklaSpeedtestTests
         {
             // Given a first stage ending before either candidate is ranked, then a steady candidate
             // and a faster warming one ranked later, both inside the ceiling.
+            // When a server is chosen.
             var (result, _, warming) = await ChooseBetweenASteadyAndAWarmingCandidateAsync(FirstStageBeforeAnyCandidateMilliseconds);
 
             // Then the second stage waited for every candidate rather than ending on the first one

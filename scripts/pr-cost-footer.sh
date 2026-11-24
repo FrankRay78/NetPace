@@ -149,7 +149,7 @@ after_marker() { split_body after; }
 # read_usage <execution-file> — prints "<tokens>\t<cents>", either value `unknown`.
 #
 # `modelUsage` over `usage`, summed, because a review run spends on several models; cost takes the
-# opposite precedence, the scalar `total_cost_usd` already covering every. Cents round, not truncate.
+# opposite precedence, the scalar `total_cost_usd` already covering every model. Cents round, not truncate.
 #
 # A file that never reached a result message needs no branch: every figure reads null and both
 # cells come out `unknown` by the same route as a result carrying no usage.

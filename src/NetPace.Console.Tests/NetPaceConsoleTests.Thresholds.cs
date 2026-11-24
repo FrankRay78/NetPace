@@ -8,7 +8,8 @@ namespace NetPace.Console.Tests;
 /// and sets an exit code of its own, while the result the run writes is untouched.
 /// </summary>
 /// <remarks>
-/// The stub measures the same figures every run, and every target below is chosen against those.
+/// The stub measures 8 Kbps down, 100 ms idle latency and a shade under 18.67 Kbps up; every
+/// target below is chosen against those.
 /// </remarks>
 public sealed partial class NetPaceConsoleTests
 {

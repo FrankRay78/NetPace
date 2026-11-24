@@ -40,6 +40,7 @@ public sealed class ProfileXmlDocTests
         // SCENARIO: XML doc loads while a concurrent writer holds the file
         //
         // Regression: an overlapping build held NetPace.Core.xml open, which FileShare.Read refuses.
+        // Only Windows enforces share modes, so this guards there and is vacuous elsewhere.
 
         // Given
         // A private temp file, so the test never contends for the real build artefact.

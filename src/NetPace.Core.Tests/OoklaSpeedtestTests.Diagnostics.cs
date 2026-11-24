@@ -131,8 +131,8 @@ public sealed partial class OoklaSpeedtestTests
             diagnostics.ShouldAllBe(d => d.Outcome == RequestOutcome.Succeeded);
             diagnostics.Single(d => d.Sequence == 1).BytesProcessed.ShouldBe(0);
 
-            // Reported as the endpoint probe: a log counts requests by kind, so mislabelling this
-            // one would put the upload summary out by one.
+            // And reported as the endpoint probe: a log counts requests by kind, so mislabelling
+            // this one would put the upload summary out by one.
             diagnostics.Single(d => d.Sequence == 1).Kind.ShouldBe(RequestKind.EndpointProbe);
             diagnostics.Where(d => d.Sequence != 1).ShouldAllBe(d => d.Kind == RequestKind.Transfer);
         }
@@ -298,7 +298,7 @@ public sealed partial class OoklaSpeedtestTests
             settings.DownloadTest.DownloadParallelTasks.ShouldBeGreaterThanOrEqualTo(expectedRequests);
 
             // Barriered so the answer that trips the cap cannot land while the rest are still
-            // starting. Regression: `await Task.Yield()` orders nothing against the other requests.
+            // starting. Regression: GH#379 - `await Task.Yield()` orders nothing against the others.
             var arrived = 0;
 
             // RunContinuationsAsynchronously, so releasing the barrier does not run the cap's

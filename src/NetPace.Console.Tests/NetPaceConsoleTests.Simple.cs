@@ -75,6 +75,8 @@ public sealed partial class NetPaceConsoleTests
             var result = await host.RunAsync(["--simple"]);
             var word = SecondWordOfLineHolding(result.Output, "Download");
 
+            // Then it is the download speed's number, not some other figure's.
+
             // Pinned to the number itself, not to any number: --minimal puts the time of day on the
             // same line as Download, so "it parses" could pass on the very misparse this prevents.
             Assert.Equal(0, byDefault.ExitCode);

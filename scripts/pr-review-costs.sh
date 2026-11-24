@@ -182,7 +182,7 @@ build_row() {
 }
 
 # totals_row <rows> — the bold Total row, summed from the rows as they stand on the page so a hand
-# correction counts. Only size and cost, only where the cell is a plain figure.
+# correction counts. Only size, cost and tokens, the last summed from the rounded figures shown.
 totals_row() {
   printf '%s\n' "$1" | awk "$AWK_LIB"'
     function money(s, k) {

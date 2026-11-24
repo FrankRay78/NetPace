@@ -379,8 +379,8 @@ public sealed partial class NetPaceConsoleTests
                 Assert.Contains("There is not enough space on the disk.", result.ErrorOutput);
                 Assert.NotEqual(0, result.ExitCode);
 
-                // An exclusive share settles both halves at once: the open throws while anything
-                // still holds the file, so success means the run closed what it opened.
+                // And reading it back under an exclusive share settles both halves at once: the
+                // open throws while anything holds the file, so success means the run closed it.
                 using var reopened = new FileStream(testFile, System.IO.FileMode.Open, FileAccess.Read, FileShare.None);
                 using var reader = new StreamReader(reopened);
                 Assert.Equal(1, Occurrences(await reader.ReadToEndAsync(), ResultLine));

@@ -361,8 +361,8 @@ public sealed partial class NetPaceConsoleTests
                 using var provider = services.BuildServiceProvider();
 
                 // Then the error console writes its escape sequences to the writer it was given.
-                // Left to detect, Spectre falls back to System.Console's colour properties, which
-                // on Unix write escape bytes to standard OUTPUT. See Program.ErrorAnsiSupport.
+                // Where Spectre cannot confirm support it falls back to System.Console's colour
+                // properties, which on Unix write to standard OUTPUT. See Program.ErrorAnsiSupport.
                 Assert.True(provider.GetRequiredService<ErrorOutput>().Console.Profile.Capabilities.Ansi);
             }
 

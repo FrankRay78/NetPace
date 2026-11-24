@@ -58,8 +58,8 @@ set -uo pipefail
 # a test matrix can point this one at a sandbox by env var rather than relocating it.
 REPO_ROOT="${CLAUDE_PROJECT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
 
-# The banned constructs: the xUnit runtime skips, the SkippableFact family, and the
-# attribute-argument family.
+# The banned constructs: the xUnit runtime skips, the SkippableFact family, SkipException, and
+# the attribute-argument family.
 #
 # The argument alternative is a bare `Skip…=` rather than anchored to a quote, so it catches an
 # identifier too. Breadth over-blocks loudly where narrowness under-blocks silently.

@@ -322,8 +322,8 @@ done < "$TMP/tracked"
   || die "found no tracked '*.md' files in '$REPO_ROOT'. This repository has many, so an empty result means the discovery or the naming has drifted — which is the one outcome that would otherwise report green having checked nothing."
 
 # --- the verdict ------------------------------------------------------------------
-# Deduplicated, because a markdown link to a record matches both checks. Both verdicts carry the
-# counts: "2 references checked" alongside a clean verdict reads nothing like "431".
+# Deduplicated only where both checks recorded the same string, which a relative markdown link to
+# a record does not. Both verdicts carry the counts: "2 references checked" reads nothing like "431".
 if [ -s "$TMP/missing" ] || [ -s "$TMP/noheading" ]; then
   {
     if [ -s "$TMP/missing" ]; then
