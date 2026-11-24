@@ -15,7 +15,6 @@ namespace NetPace.Console.Tests;
 /// </remarks>
 public sealed class DiagnosticSpeedTester : ISpeedTestService
 {
-    /// <summary>The URL the tester's server answers on.</summary>
     public const string Url = "http://ffm.wsqm.telekom-dienste.de:8080/speedtest/upload.php";
 
     private const string LatencyUrl = "http://ffm.wsqm.telekom-dienste.de:8080/speedtest/latency.txt";

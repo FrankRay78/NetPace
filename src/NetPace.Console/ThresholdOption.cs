@@ -9,17 +9,14 @@ namespace NetPace.Console;
 /// </summary>
 /// <remarks>
 /// The units accepted are the ones NetPace displays speeds in, listed here rather than in
-/// <c>NetPace.Core</c>: how a command line is read is a CLI concern, and the library's own
-/// suffixes are an output format with no parser of its own. A test reads every suffix the library
-/// writes back through this parser, so a unit the library gains or renames shows up as a threshold
-/// value the CLI refuses.
+/// <c>NetPace.Core</c>. A test reads every suffix the library writes back through this parser, so a
+/// unit the library gains or renames shows up as a threshold value the CLI refuses.
 /// <para>
 /// A suffix is matched with the scale prefix in any case and the rest of it exactly, so
-/// <c>50mbps</c> and <c>50Mbps</c> are the same 50 megabits while <c>50MBps</c> is 50 megabytes,
-/// eight times as much. A spelling that folds the bits-or-bytes letter away, such as
-/// <c>50MBPS</c>, is refused: it could be either, and reading it as the eight-times target would
-/// be the costlier guess. The target is rounded to a whole bit per second or a whole millisecond,
-/// which is the unit the measurement itself reports in.
+/// <c>50mbps</c> and <c>50Mbps</c> are the same 50 megabits while <c>50MBps</c> is 50 megabytes.
+/// A spelling that folds the bits-or-bytes letter away, such as <c>50MBPS</c>, is refused: it
+/// could be either. The target is rounded to a whole bit per second or a whole millisecond, the
+/// unit the measurement itself reports in.
 /// </para>
 /// </remarks>
 internal static class ThresholdOption

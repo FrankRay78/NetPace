@@ -3,21 +3,11 @@ using NetPace.Console.Theming;
 
 namespace NetPace.Console;
 
-/// <summary>
-/// Custom help provider for System.CommandLine that uses Spectre.Console for rendering.
-/// </summary>
 internal static class CustomHelpProvider
 {
-    /// <summary>
-    /// The NetPace wordmark, four rows of ASCII characters, split at the column where Net ends and
-    /// Pace begins so each half can be drawn in its own colour.
-    /// </summary>
-    /// <remarks>
-    /// ASCII alone, so every monospace font has the characters and draws them all at one width.
-    /// The quadrant-block lettering this replaced lined up only where the font in use carried
-    /// those characters; where it did not, the browser or terminal took them from a fallback font
-    /// of different metrics and the rows came apart, as they did in the README's help block.
-    /// </remarks>
+    // Split at the column where Net ends and Pace begins, so each half can be drawn in its own
+    // colour. ASCII alone: the quadrant-block lettering this replaced came apart wherever the font
+    // in use lacked those characters and a fallback of different metrics supplied them.
     private static readonly (string Net, string Pace)[] WordmarkRows =
     [
         (@" _  _       _   ", @" ___"),
@@ -26,15 +16,9 @@ internal static class CustomHelpProvider
         (@"|_|\_|\___| \__|", @"|_|  \__,_|\__|\___|")
     ];
 
-    /// <summary>
-    /// An empty grid cell. A <see cref="Text"/> rather than <c>""</c> because the rest of a row is
-    /// built from renderables, and a grid row takes one kind or the other, never a mix.
-    /// </summary>
+    // A Text rather than "" because a grid row takes renderables or strings, never a mix.
     private static Text Blank => new(string.Empty);
 
-    /// <summary>
-    /// Render help for the root command.
-    /// </summary>
     public static void RenderHelp(IAnsiConsole console, RootCommand command, Theme theme)
     {
         RenderHeader(console, theme);
@@ -46,9 +30,6 @@ internal static class CustomHelpProvider
         RenderFooter(console, theme);
     }
 
-    /// <summary>
-    /// Render help for a subcommand.
-    /// </summary>
     public static void RenderHelp(IAnsiConsole console, Command command, Theme theme)
     {
         RenderHeader(console, theme);
@@ -58,9 +39,6 @@ internal static class CustomHelpProvider
         RenderFooter(console, theme);
     }
 
-    /// <summary>
-    /// The lettering both help screens open with, one blank line above it and one below.
-    /// </summary>
     private static void RenderHeader(IAnsiConsole console, Theme theme)
     {
         console.WriteLine();
@@ -115,26 +93,22 @@ internal static class CustomHelpProvider
 
         console.WriteLine("OPTIONS:", theme.Heading);
 
-        // Add options in a specific order: --help first, then the rest in the order they were added
         var sortedOptions = command.Options.ToList();
 
-        // Remove System.CommandLine's auto-generated --version option (it has description "Show version information")
-        // We want to keep only our custom one with "Prints version information."
+        // Drop System.CommandLine's auto-generated --version, matched on its description, and keep
+        // NetPace's own.
         sortedOptions.RemoveAll(o => o.Name == "--version" && (o.Description?.Contains("Show version information") ?? false));
 
-        // Hidden options are registered only so that passing them produces a useful error; help
-        // must not advertise them.
+        // Hidden options are registered only so that passing them produces a useful error.
         sortedOptions.RemoveAll(o => o.Hidden);
 
-        // Ensure --help is included and put it first
         var helpOption = sortedOptions.FirstOrDefault(o => o.Name == "--help");
         if (helpOption != null)
         {
             sortedOptions.Remove(helpOption);
         }
 
-        // Always insert --help at the beginning for display purposes
-        // (we intercept help before System.CommandLine adds it automatically)
+        // Added for display only: help is intercepted before System.CommandLine registers its own.
         var helpOptionForDisplay = new Option<bool>("--help")
         {
             Description = "Prints help information."
@@ -142,10 +116,10 @@ internal static class CustomHelpProvider
         helpOptionForDisplay.Aliases.Add("-h");
         sortedOptions.Insert(0, helpOptionForDisplay);
 
-        // Check if any option has a default value (to determine if we need the default column)
         var hasDefaults = sortedOptions.Any(o => !string.IsNullOrEmpty(GetDefaultValue(o)));
 
-        // Create grid matching Spectre.Console.Cli's exact configuration
+        // Paddings copied from Spectre.Console.Cli, so this help lines up with the help NetPace
+        // rendered before it moved off that library.
         var grid = new Grid();
         grid.AddColumn(new GridColumn { Padding = new Padding(4, 4), NoWrap = true });
 
@@ -156,7 +130,6 @@ internal static class CustomHelpProvider
 
         grid.AddColumn(new GridColumn { Padding = new Padding(0, 0) });
 
-        // Add header row if we have defaults
         if (hasDefaults)
         {
             grid.AddRow(Blank, new Text("DEFAULT", theme.DefaultColumnHeading), Blank);
@@ -164,11 +137,8 @@ internal static class CustomHelpProvider
 
         foreach (var option in sortedOptions)
         {
-            // Override System.CommandLine's default --help description to match Spectre.Console
             var description = option.Name == "--help" ? "Prints help information." : (option.Description ?? "");
 
-            // Build the display name: combine short alias with the long option name
-            // Example: -v, --version
             var shortAliases = option.Aliases
                 .Where(a => a.StartsWith("-") && !a.StartsWith("--") && a != option.Name && !a.StartsWith("/"))
                 .ToList();
@@ -178,7 +148,7 @@ internal static class CustomHelpProvider
             string displayName;
             if (shortAliases.Count > 0)
             {
-                // For --help, prefer -h over -?
+                // -h in preference to -?.
                 string primaryAlias;
                 if (longName == "--help" && shortAliases.Contains("-h"))
                 {
@@ -189,28 +159,21 @@ internal static class CustomHelpProvider
                     primaryAlias = shortAliases.OrderBy(a => a).First();
                 }
 
-                // Use only the primary short alias: "-v, --version"
                 displayName = primaryAlias + ", " + longName;
             }
             else
             {
-                // Just the long name: "    --version" (with indent)
+                // Indented, so the long name lines up under the aliased ones.
                 displayName = "    " + longName;
             }
 
-            // Get default value if available
             var defaultValue = GetDefaultValue(option);
-
-            // Handle multi-line descriptions by splitting and properly indenting
             var descriptionLines = description.Split('\n');
 
-            // Add rows based on whether we have a default column
             if (hasDefaults)
             {
-                // First line
                 grid.AddRow(new Text(displayName, theme.OptionName), new Text(defaultValue, theme.DefaultValue), new Text(descriptionLines[0]));
 
-                // Subsequent lines (empty option and default columns, just description)
                 for (int i = 1; i < descriptionLines.Length; i++)
                 {
                     grid.AddRow(Blank, Blank, new Text(descriptionLines[i]));
@@ -218,10 +181,8 @@ internal static class CustomHelpProvider
             }
             else
             {
-                // First line (no default column)
                 grid.AddRow(new Text(displayName, theme.OptionName), new Text(descriptionLines[0]));
 
-                // Subsequent lines
                 for (int i = 1; i < descriptionLines.Length; i++)
                 {
                     grid.AddRow(Blank, new Text(descriptionLines[i]));
@@ -237,10 +198,8 @@ internal static class CustomHelpProvider
     {
         try
         {
-            // Get the default value from the option
             var defaultValue = option.GetDefaultValue();
 
-            // Handle different default value types
             return defaultValue switch
             {
                 null => "",
@@ -280,13 +239,7 @@ internal static class CustomHelpProvider
         console.WriteLine();
     }
 
-    /// <summary>
-    /// The variables a user can set to change how NetPace behaves across every run.
-    /// </summary>
-    /// <remarks>
-    /// Root help only. A variable is not a property of one command, and repeating the section under
-    /// every subcommand would say the same thing in more places.
-    /// </remarks>
+    // Root help only: a variable is not a property of one command.
     private static void RenderEnvironment(IAnsiConsole console, Theme theme)
     {
         console.WriteLine("ENVIRONMENT:", theme.Heading);

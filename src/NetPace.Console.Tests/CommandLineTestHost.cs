@@ -9,9 +9,6 @@ using Spectre.Console.Testing;
 
 namespace NetPace.Console.Tests;
 
-/// <summary>
-/// Test host for System.CommandLine that captures output for testing.
-/// </summary>
 public sealed class CommandLineTestHost
 {
     /// <summary>
@@ -124,7 +121,6 @@ public sealed class CommandLineTestHost
         // running the tests has NETPACE_THEME set to.
         serviceCollection.TryAddSingleton<IThemeProvider>(new FixedThemeProvider(Theme.Default));
 
-        // Default IClientInfoProvider stub unless a test already registered one
         serviceCollection.TryAddSingleton<IClientInfoProvider, ClientInfoProviderStub>();
 
         // Fixed stand-in values for the version, runtime, OS and architecture, and a counting clock
@@ -143,8 +139,7 @@ public sealed class CommandLineTestHost
         // RecordingRunTimeLimit of its own and reaches it when it chooses.
         serviceCollection.TryAddSingleton<IRunTimeLimit>(new RecordingRunTimeLimit());
 
-        // Default SpeedTestSettingsAccessor (matches production DI). Tests that want to
-        // inspect the bound settings register their own instance before calling RunAsync.
+        // Matches production DI. A test that inspects the bound settings registers its own.
         serviceCollection.TryAddSingleton<SpeedTestSettingsAccessor>();
 
         await using var serviceProvider = serviceCollection.BuildServiceProvider();
@@ -181,34 +176,18 @@ public sealed class CommandLineTestHost
     }
 }
 
-/// <summary>
-/// Result from running a command in the test host.
-/// </summary>
 public sealed record TestResult
 {
-    /// <summary>
-    /// Gets the exit code returned by the command.
-    /// </summary>
     public required int ExitCode { get; init; }
 
-    /// <summary>
-    /// Gets the output written to stdout.
-    /// </summary>
     public required string Output { get; init; }
 
-    /// <summary>
-    /// Gets what was written to the diagnostic stream — empty unless <c>--diagnostics</c> was passed.
-    /// </summary>
+    // Empty unless --diagnostics was passed.
     public required string DiagnosticOutput { get; init; }
 
-    /// <summary>
-    /// Gets what the run said to the user alongside its result — empty unless something about the
-    /// way NetPace was asked to run needed remarking on.
-    /// </summary>
+    // Empty unless something about the way NetPace was asked to run needed remarking on.
     public required string NoticeOutput { get; init; }
 
-    /// <summary>
-    /// Gets what was written to the error stream — empty unless something went wrong.
-    /// </summary>
+    // Empty unless something went wrong.
     public required string ErrorOutput { get; init; }
 }

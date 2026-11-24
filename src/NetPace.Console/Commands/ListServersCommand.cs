@@ -5,15 +5,9 @@ namespace NetPace.Console.Commands;
 
 public sealed class ListServersCommand(IAnsiConsole console, ErrorOutput errorOutput, ISpeedTestService speedTestClient, Theme theme)
 {
-    /// <summary>
-    /// Executes the list servers command, displaying available speed test servers.
-    /// </summary>
-    /// <remarks>
-    /// Network and discovery outcomes are data, not errors, exactly as they are for a speed test:
-    /// they are reported and leave the exit code at <c>0</c>. Only an operational fault, or a
-    /// provider misconfigured through its settings, propagates out of this method to the top-level
-    /// handler for a non-zero exit code.
-    /// </remarks>
+    // Network and discovery outcomes are data, not errors, as they are for a speed test: they are
+    // reported and leave the exit code at 0. Only an operational fault, or a provider misconfigured
+    // through its settings, propagates past this method to the top-level handler.
     public async Task<int> ExecuteAsync(ListServersCommandSettings settings, CancellationToken cancellationToken)
     {
         try
@@ -22,8 +16,7 @@ public sealed class ListServersCommand(IAnsiConsole console, ErrorOutput errorOu
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
-            // The user pressed Ctrl+C on a command that told them to, so there is nothing to
-            // report. Only this command's own token counts: an HttpClient timeout surfaces as a
+            // Only this command's own token counts: an HttpClient timeout surfaces as a
             // cancellation too, and reporting that one as the user's choice would hide it.
         }
         catch (Exception e) when (ExitsNonZero(e))
@@ -32,18 +25,14 @@ public sealed class ListServersCommand(IAnsiConsole console, ErrorOutput errorOu
         }
         catch (Exception e)
         {
-            // The listing itself is the result; what went wrong while fetching it is not, so it
-            // goes to the error stream.
+            // The listing is the result; what went wrong fetching it is not, so it goes to the
+            // error stream.
             errorOutput.WriteLine(theme, e.Message);
         }
 
         return 0;
     }
 
-    /// <summary>
-    /// Lists the servers in whichever form the settings ask for: the fastest one, the plain list,
-    /// or the list with each server's latency.
-    /// </summary>
     private async Task ListAsync(ListServersCommandSettings settings, CancellationToken cancellationToken)
     {
         var servers = await speedTestClient.GetServersAsync(cancellationToken);
@@ -69,33 +58,17 @@ public sealed class ListServersCommand(IAnsiConsole console, ErrorOutput errorOu
         }
     }
 
-    /// <summary>
-    /// Whether a failure is NetPace's own rather than the network's, and so must exit non-zero: an
-    /// operational fault, or a provider the settings have made unusable.
-    /// </summary>
+    // NetPace's own failure rather than the network's: an operational fault, or a provider the
+    // settings have made unusable.
     private static bool ExitsNonZero(Exception exception) =>
         OperationalFault.Matches(exception) || exception is ArgumentException;
 
-    /// <summary>
-    /// Tells the user how to interrupt a listing that takes a while — both the live listing and
-    /// the latency scan before a static one. Drawn in the theme, with the key picked out wherever
-    /// the theme has a colour for it.
-    /// </summary>
     private void WriteExitHint() =>
         console.WriteStyledLine(("Press ", Style.Plain), ("CTRL+C", theme.Hint), (" to exit.", Style.Plain));
 
-    /// <summary>
-    /// A server detail as the table cell that shows it.
-    /// </summary>
-    /// <remarks>
-    /// Speedtest publishes these values, so NetPace does not control what they contain, and they
-    /// are drawn as plain text rather than handed to the table as strings: a string cell is read as
-    /// Spectre.Console markup, where an unbalanced square bracket in a location, sponsor or URL
-    /// fails the whole listing. Three more change a detail without failing at all - a balanced
-    /// styling tag is drawn styled with its brackets eaten, a doubled bracket is drawn halved, and
-    /// a colon-delimited emoji code is swapped for the emoji. The default output writer shows the
-    /// sponsor and URL as plain text too.
-    /// </remarks>
+    // Drawn as plain text rather than handed to the table as a string, because a string cell is
+    // read as Spectre.Console markup: Speedtest publishes these values, and an unbalanced square
+    // bracket in one would fail the whole listing.
     private static Text Detail(string? value) => new(value ?? string.Empty);
 
     private async Task DisplayFastestServer(List<IServer> servers, ISpeedTestService speedTestClient, CancellationToken cancellationToken)
@@ -148,7 +121,6 @@ public sealed class ListServersCommand(IAnsiConsole console, ErrorOutput errorOu
             .AddColumn(new TableColumn("Url"))
             .AddColumn(new TableColumn("Latency"));
 
-        // Add the initial server list (without latency)
         foreach (var server in servers)
         {
             table.AddRow(Detail(server.Location), Detail(server.Sponsor), Detail(server.Url));
@@ -162,14 +134,12 @@ public sealed class ListServersCommand(IAnsiConsole console, ErrorOutput errorOu
             .AutoClear(false)
             .StartAsync(async ctx =>
             {
-                // Screen each server through the same path auto-selection uses, so the latency
-                // listed here is the figure a run ranks on. Each server is screened on its own,
-                // though, with no quicker sibling to end the pass early, so it is given the whole
-                // ceiling: a server listed with a latency may still be one a real run would stop
-                // waiting for once a quicker server had answered. The servers are screened
-                // together, as selection screens them, so the listing takes about one screening
-                // ceiling rather than one per unreachable server. Each row is filled in
-                // as its result comes back; the table is not safe to change from two rows at once.
+                // The same path auto-selection uses, so the latency listed is the figure a run
+                // ranks on - but each server is screened on its own, with no quicker sibling to end
+                // the pass early, so a server listed with a latency may still be one a real run
+                // would stop waiting for. Screened together, so the listing takes about one ceiling
+                // rather than one per unreachable server, and filled in a row at a time, because
+                // the table is not safe to change from two rows at once.
                 var tableLock = new object();
 
                 async Task ScreenRowAsync(int row)
@@ -184,17 +154,16 @@ public sealed class ListServersCommand(IAnsiConsole console, ErrorOutput errorOu
                     }
                     catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
                     {
-                        // The user pressed Ctrl+C before this server answered, so the row is left
-                        // as it was drawn - blank. A dash here would say the server did not answer,
-                        // which is a verdict the listing never reached.
+                        // Left blank: a dash would say the server did not answer, which is a
+                        // verdict the listing never reached.
                         return;
                     }
                     catch (Exception e) when (e is not ArgumentException)
                     {
                         // Screening reports an unreachable candidate by throwing, so this is the
-                        // ordinary path for a server that did not answer. A provider misconfigured
-                        // through its settings also throws, as ArgumentException - that must reach
-                        // the user rather than print a dash against every server in the list.
+                        // ordinary path for one that did not answer. A provider misconfigured
+                        // through its settings throws ArgumentException, which must reach the user
+                        // rather than print a dash against every server in the list.
                         latency = "-";
                     }
 

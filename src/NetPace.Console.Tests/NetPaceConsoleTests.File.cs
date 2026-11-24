@@ -185,8 +185,7 @@ public sealed partial class NetPaceConsoleTests
 
             try
             {
-                // Create a file with existing content
-                await System.IO.File.WriteAllTextAsync(testFile, "OLD CONTENT THAT SHOULD BE REPLACED");
+                        await System.IO.File.WriteAllTextAsync(testFile, "OLD CONTENT THAT SHOULD BE REPLACED");
 
                 var services = new ServiceCollection();
                 services.AddSingleton<ISpeedTestService, SpeedTestStub>();
@@ -220,8 +219,7 @@ public sealed partial class NetPaceConsoleTests
 
             try
             {
-                // Create a file with existing content
-                await System.IO.File.WriteAllTextAsync(testFile, "FIRST RUN\n");
+                        await System.IO.File.WriteAllTextAsync(testFile, "FIRST RUN\n");
 
                 var services = new ServiceCollection();
                 services.AddSingleton<ISpeedTestService, SpeedTestStub>();
@@ -255,8 +253,7 @@ public sealed partial class NetPaceConsoleTests
 
             try
             {
-                // Create a file with existing content
-                await System.IO.File.WriteAllTextAsync(testFile, "EXISTING CONTENT\n");
+                        await System.IO.File.WriteAllTextAsync(testFile, "EXISTING CONTENT\n");
 
                 var services = new ServiceCollection();
                 services.AddSingleton<ISpeedTestService, SpeedTestStub>();

@@ -665,7 +665,6 @@ public sealed partial class NetPaceConsoleTests
         var cancellationTokenSource = new CancellationTokenSource();
         var waiter = new SelfCancellingWaiter(10, cancellationTokenSource);
 
-        // Create a stateful fault function that tracks calls
         var downloadCallCount = 0;
         var faultyTester = new FaultySpeedTester(
             inner: new SpeedTestStub(),

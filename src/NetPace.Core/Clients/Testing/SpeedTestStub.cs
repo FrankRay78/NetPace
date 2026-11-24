@@ -86,7 +86,6 @@ public sealed class SpeedTestStub : ISpeedTestService
 
     private int GetServerID(string serverUrl)
     {
-        // First see if we can match the server on our 'pre-canned list'
         var matched = stubServers.FirstOrDefault(s => s.Url.Equals(serverUrl));
 
         return matched != null

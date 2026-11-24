@@ -84,7 +84,7 @@ public static class DiagnosticRecord
             .Replace("\t", "\\t", StringComparison.Ordinal);
 
         // A quote in the escaped value can only have come from one in the original, which the
-        // inequality below has already caught - so there is no separate check for it.
+        // inequality below has already caught.
         bool needsQuoting = escaped.Length == 0 ||
             !string.Equals(escaped, value, StringComparison.Ordinal) ||
             escaped.Contains(' ', StringComparison.Ordinal) ||

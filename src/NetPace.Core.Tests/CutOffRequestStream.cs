@@ -13,7 +13,6 @@ internal sealed class CutOffRequestStream : Stream
 {
     private readonly int bytesBeforeCutOff;
 
-    /// <summary>How many bytes the sink has accepted so far.</summary>
     private int bytesAccepted;
 
     public CutOffRequestStream(int bytesBeforeCutOff) => this.bytesBeforeCutOff = bytesBeforeCutOff;

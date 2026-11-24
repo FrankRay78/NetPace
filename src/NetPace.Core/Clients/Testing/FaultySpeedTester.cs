@@ -8,9 +8,6 @@ namespace NetPace.Core.Clients.Testing;
 /// </summary>
 /// <remarks>
 /// <para>
-/// Developers should used this service to test the fault tolerance of their application.
-/// </para>
-/// <para>
 /// Every figure comes from the service this one wraps — <see cref="SpeedTestStub"/> unless another
 /// is supplied — so the tester adds failures without changing what succeeds. Which calls fail is
 /// decided per server and per operation: by default, a latency probe to "Test Sponsor 2" fails,
@@ -168,11 +165,6 @@ public class FaultySpeedTester : ISpeedTestService
     }
 
     /// <inheritdoc/>
-    /// <remarks>
-    /// Screening is itself a latency probe, so a server this tester cannot ping drops out of
-    /// selection rather than being ranked, and a selection left with nothing reports that no
-    /// servers are available.
-    /// </remarks>
     public Task<LatencyTestResult> GetFastestServerByLatencyAsync(IServer[] servers, IProgress<SpeedTestProgress>? progress, IProgress<RequestDiagnostic>? diagnostics, CancellationToken cancellationToken = default)
     {
         var reachable = servers.Where(CanBeScreened).ToArray();

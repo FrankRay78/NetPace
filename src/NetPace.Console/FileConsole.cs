@@ -3,10 +3,6 @@ using Spectre.Console.Rendering;
 
 namespace NetPace.Console;
 
-/// <summary>
-/// An IAnsiConsole implementation that writes output only to a file.
-/// This is a single-purpose console for file output only.
-/// </summary>
 public sealed class FileConsole : IAnsiConsole, IPersistentConsole, IDisposable
 {
     private static readonly UTF8Encoding Utf8NoByteOrderMark = new(encoderShouldEmitUTF8Identifier: false);
@@ -16,18 +12,10 @@ public sealed class FileConsole : IAnsiConsole, IPersistentConsole, IDisposable
     private readonly object _writeLock = new();
     private bool _disposed;
 
-    /// <summary>
-    /// Initializes a new instance of the <see cref="FileConsole"/> class.
-    /// </summary>
-    /// <param name="filePath">The path to the output file.</param>
-    /// <param name="fileMode">Determines whether to append to or overwrite the file.</param>
-    /// <param name="startedEmpty">
-    /// Whether the file holds no content for this run to add to: empty or absent when the run
-    /// reached it, or any file in overwrite mode, where its previous content is replaced. Read
-    /// before the file is opened, because opening it for append is itself about to add content.
-    /// A file that started empty is replaced rather than appended to, so a stray line ending, or a
-    /// byte-order mark the file already carries, is not left above the first line written.
-    /// </param>
+    // startedEmpty must be read before the file is opened, because opening it for append is itself
+    // about to add content. A file that started empty is replaced rather than appended to, so a
+    // stray line ending, or a byte-order mark the file already carries, is not left above the first
+    // line written.
     public FileConsole(string filePath, FileMode fileMode, bool startedEmpty)
     {
         if (string.IsNullOrWhiteSpace(filePath))
@@ -35,15 +23,12 @@ public sealed class FileConsole : IAnsiConsole, IPersistentConsole, IDisposable
 
         StartedEmpty = startedEmpty;
 
-        // UTF-8 with no byte-order mark, so nothing stands in front of the content a run writes:
-        // a strict JSON parser rejects a document behind a byte-order mark, and Unix text tools
-        // read one as part of the first field. Encoding.UTF8 emits one, so it is not what this
-        // writer is given. Why no option asks for one, and what that costs a
-        // spreadsheet user, is in
-        // docs/change-intent-records/2026-11-02-file-output-carries-no-byte-order-mark.md.
+        // UTF-8 with no byte-order mark: a strict JSON parser rejects a document behind one, and
+        // Unix text tools read one as part of the first field. Encoding.UTF8 emits one, so it is
+        // not what this writer is given
+        // (docs/change-intent-records/2026-11-02-file-output-carries-no-byte-order-mark.md).
         _fileWriter = new StreamWriter(filePath, append: (fileMode == FileMode.Append && !startedEmpty), Utf8NoByteOrderMark) { AutoFlush = true };
 
-        // Create console settings for plain text output.
         var settings = new AnsiConsoleSettings
         {
             Out = new FileConsoleOutput(_fileWriter),
@@ -58,9 +43,6 @@ public sealed class FileConsole : IAnsiConsole, IPersistentConsole, IDisposable
     /// <inheritdoc/>
     public bool StartedEmpty { get; }
 
-    /// <summary>
-    /// Flushes and closes the file writer.
-    /// </summary>
     public void Dispose()
     {
         lock (_writeLock)
@@ -72,19 +54,15 @@ public sealed class FileConsole : IAnsiConsole, IPersistentConsole, IDisposable
         }
     }
 
-    // IAnsiConsole implementation - delegate to template console for properties.
     public Spectre.Console.Profile Profile => _templateConsole.Profile;
     public IAnsiConsoleCursor Cursor => _templateConsole.Cursor;
     public IAnsiConsoleInput Input => _templateConsole.Input;
     public IExclusivityMode ExclusivityMode => _templateConsole.ExclusivityMode;
     public RenderPipeline Pipeline => _templateConsole.Pipeline;
 
-    /// <summary>
-    /// Writes text to the file.
-    /// </summary>
     public void Write(IRenderable renderable)
     {
-        // Render outside the lock — GetSegments has no side-effects on the writer.
+        // Rendered outside the lock: GetSegments has no side-effects on the writer.
         var builder = new StringBuilder();
         var segments = renderable.GetSegments(_templateConsole);
         foreach (var segment in segments)
@@ -102,24 +80,17 @@ public sealed class FileConsole : IAnsiConsole, IPersistentConsole, IDisposable
         }
     }
 
-    /// <summary>
-    /// Clear operations are ignored for file output.
-    /// </summary>
+    // Nothing to clear in a file.
     public void Clear(bool home)
     {
     }
 
-    /// <summary>
-    /// Raw ANSI escape writes are ignored for file output (file output is plain text only).
-    /// </summary>
+    // File output is plain text, so a raw escape sequence is dropped rather than written.
     public void WriteAnsi(Action<AnsiWriter> action)
     {
     }
 
-    /// <summary>
-    /// Custom IAnsiConsoleOutput implementation that writes to a file.
-    /// Configures Spectre.Console to treat the output as a non-terminal with fixed dimensions.
-    /// </summary>
+    // Reports itself to Spectre.Console as a non-terminal of fixed dimensions.
     private sealed class FileConsoleOutput : IAnsiConsoleOutput
     {
         private readonly TextWriter _writer;

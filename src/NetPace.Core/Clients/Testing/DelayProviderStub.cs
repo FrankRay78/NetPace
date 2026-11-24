@@ -4,8 +4,7 @@ namespace NetPace.Core.Clients.Testing;
 /// A stub implementation of <see cref="IDelayProvider"/> for testing purposes.
 /// </summary>
 /// <remarks>
-/// This stub does not actually delay - it completes immediately.
-/// It records delay requests so tests can verify the correct delays were requested.
+/// Completes every wait at once, recording what was asked for so a test can verify it.
 /// With <c>LatencyTestSettings.LoadedLatencyEnabled</c> on, the under-load probes it paces go out
 /// back to back for the whole transfer; switch probing off when using this stub for a download or
 /// an upload.
@@ -25,10 +24,6 @@ public sealed class DelayProviderStub : IDelayProvider
     public int DelayCallCount => requestedDelays.Count;
 
     /// <inheritdoc/>
-    /// <remarks>
-    /// This implementation does not actually delay - it completes immediately
-    /// but records the requested delay duration.
-    /// </remarks>
     public Task DelayAsync(int milliseconds, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();

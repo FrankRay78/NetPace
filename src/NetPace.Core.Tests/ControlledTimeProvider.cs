@@ -28,8 +28,6 @@ internal sealed class ControlledTimeProvider(DateTimeOffset start) : TimeProvide
 
     public override DateTimeOffset GetUtcNow() => new(Interlocked.Read(ref nowTicks), TimeSpan.Zero);
 
-    /// <summary>
-    /// Moves the clock on by <paramref name="amount"/>, as the only way time passes on it.
-    /// </summary>
+    // The only way time passes on this clock.
     public void Advance(TimeSpan amount) => Interlocked.Add(ref nowTicks, amount.Ticks);
 }

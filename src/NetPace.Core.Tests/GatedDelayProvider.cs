@@ -20,9 +20,6 @@ internal sealed class GatedDelayProvider : IDelayProvider
     private readonly ConcurrentQueue<TaskCompletionSource> gates = new();
     private readonly ConcurrentQueue<int> intervals = new();
 
-    /// <summary>
-    /// The intervals waiting was asked for, in the order they were asked for.
-    /// </summary>
     public IReadOnlyCollection<int> RequestedIntervals => intervals;
 
     /// <inheritdoc/>

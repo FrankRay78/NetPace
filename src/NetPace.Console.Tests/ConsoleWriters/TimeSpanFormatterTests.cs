@@ -5,9 +5,8 @@ namespace NetPace.Console.Tests.ConsoleWriters;
 
 public class TimeSpanFormatterTests
 {
-    // Replacement formatter mirrors the prior Humanizer(precision:1) contract: largest non-zero
-    // unit, truncated (never rounded). Zero/negative spans are coerced defensively to "0 seconds"
-    // (test-plan FR-011 contract).
+    // Mirrors the Humanizer(precision:1) contract this replaced: largest non-zero unit, truncated
+    // rather than rounded, and a zero or negative span coerced to "0 seconds".
 
     [Fact]
     public void Humanize_OneSecond_ReturnsSingularForm()
@@ -111,9 +110,6 @@ public class TimeSpanFormatterTests
     public void Humanize_Years_FormatsAsYears(int days, string expected) =>
         Assert.Equal(expected, TimeSpan.FromDays(days).Humanize());
 
-    // Boundary crossings — value just below the next unit's threshold should
-    // still report the lower unit; value at the threshold should report the higher.
-
     [Theory]
     [InlineData(1_000, "1 second")]                  // ms → s
     [InlineData(60_000, "1 minute")]                 // s  → m
@@ -132,8 +128,6 @@ public class TimeSpanFormatterTests
     [InlineData(365, "11 months")]                   // 365d < 1y (365.2425), falls back to months: 11.99 → 11
     public void Humanize_JustUnderOneYear_FallsBackToMonths(int days, string expected) =>
         Assert.Equal(expected, TimeSpan.FromDays(days).Humanize());
-
-    // Defensive cases.
 
     [Fact]
     public void Humanize_NegativeTimeSpan_ReturnsZeroSecondsDefensively() =>

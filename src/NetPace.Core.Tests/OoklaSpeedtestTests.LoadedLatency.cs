@@ -41,10 +41,9 @@ public sealed partial class OoklaSpeedtestTests
         /// <summary>The bytes a probe's answer carries, which must stay out of a transfer's total.</summary>
         private const int ProbeResponseBytes = 9;
 
-        /// <summary>The bytes one download request answers with.</summary>
         private const int DownloadResponseBytes = 2048;
 
-        /// <summary>How long the held download takes once the test releases it, on the test's clock.</summary>
+        // On the test's clock, not the wall clock.
         private static readonly TimeSpan TransferDuration = TimeSpan.FromMilliseconds(500);
 
         private static readonly TimeSpan HangGuard = TimeSpan.FromSeconds(10);

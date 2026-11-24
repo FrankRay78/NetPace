@@ -36,7 +36,6 @@ public sealed class CompositeAnsiConsole : IAnsiConsole
     /// </summary>
     internal IReadOnlyList<IAnsiConsole> Destinations => _consoles;
 
-    // Delegate properties to primary console
     public Spectre.Console.Profile Profile => _primary.Profile;
     public IAnsiConsoleCursor Cursor => _primary.Cursor;
     public IAnsiConsoleInput Input => _primary.Input;

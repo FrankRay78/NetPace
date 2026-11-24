@@ -23,11 +23,6 @@ internal sealed class ClockAdvancingResponseStream : Stream
 
     private int chunksDelivered;
 
-    /// <summary>
-    /// Constructs a body of <paramref name="advanceBeforeEachChunk"/>.Length chunks of
-    /// <paramref name="chunkSize"/> bytes, moving <paramref name="clock"/> on by that entry's
-    /// amount before each chunk is handed over.
-    /// </summary>
     public ClockAdvancingResponseStream(int chunkSize, ControlledTimeProvider clock, params TimeSpan[] advanceBeforeEachChunk)
     {
         this.chunkSize = chunkSize;
@@ -35,7 +30,6 @@ internal sealed class ClockAdvancingResponseStream : Stream
         this.advanceBeforeEachChunk = advanceBeforeEachChunk;
     }
 
-    /// <summary>How many bytes the whole body carries.</summary>
     public int TotalBytes => chunkSize * advanceBeforeEachChunk.Length;
 
     public override bool CanRead => true;

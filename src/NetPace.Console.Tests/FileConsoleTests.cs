@@ -3,22 +3,17 @@ using Spectre.Console.Rendering;
 
 namespace NetPace.Console.Tests;
 
-/// <summary>
-/// Unit tests for FileConsole to verify it writes plain text without ANSI formatting.
-/// </summary>
 public sealed class FileConsoleTests : IDisposable
 {
     private readonly string _testFilePath;
 
     public FileConsoleTests()
     {
-        // Create a unique temp file for each test
         _testFilePath = Path.Join(Path.GetTempPath(), $"fileconsole-test-{Guid.NewGuid()}.txt");
     }
 
     public void Dispose()
     {
-        // Clean up test file
         if (File.Exists(_testFilePath))
         {
             File.Delete(_testFilePath);

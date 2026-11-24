@@ -7,25 +7,18 @@ namespace NetPace.Console;
 /// <c>--min-upload</c> and <c>--max-latency</c> each hold the run to.
 /// </summary>
 /// <remarks>
-/// The target is kept in the measurement's own fixed unit, whole bits per second for a speed and
-/// whole milliseconds for a latency, so the comparison is between two whole numbers of the same
-/// unit and no display option can move it. The unit the user typed is kept only to write the
-/// figures back in: a target given in <c>Mbps</c> is reported in <c>Mbps</c>, whatever
-/// <c>--unit</c>, <c>--unit-system</c> and <c>--unit-scale</c> say about the result itself.
+/// Kept in the measurement's own fixed unit - whole bits per second, or whole milliseconds - so the
+/// comparison is between two whole numbers and no display option can move it. The unit the user
+/// typed is kept only to write the figures back in: a target given in <c>Mbps</c> is reported in
+/// <c>Mbps</c>, whatever <c>--unit</c> and its siblings say about the result itself.
 /// </remarks>
 public sealed record MeasurementThreshold
 {
-    /// <summary>
-    /// The fewest decimal places a figure is written to, matching what the library writes a speed
-    /// to.
-    /// </summary>
+    // Matches what the library writes a speed to.
     private const int LeastDecimals = 2;
 
-    /// <summary>
-    /// The most decimal places a figure is written to. Enough that two figures a single fixed unit
-    /// apart are still told apart in the largest unit NetPace writes, which is a pebibyte per
-    /// second.
-    /// </summary>
+    // Enough that two figures a single fixed unit apart are still told apart in the largest unit
+    // NetPace writes, a pebibyte per second.
     private const int MostDecimals = 16;
 
     private readonly decimal fixedUnitsPerUnit;

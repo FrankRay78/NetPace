@@ -7,26 +7,21 @@ namespace NetPace.Console;
 /// tests.
 /// </summary>
 /// <remarks>
-/// An error is not a result. It goes to the error stream so standard output and a <c>--file</c>
-/// target carry only the format a script or a log is reading, and so a run whose output is
-/// redirected still shows the user what went wrong. It keeps its own console so a test can assert
-/// which stream carried what.
+/// An error is not a result, so it goes to the error stream and leaves standard output and a
+/// <c>--file</c> target carrying only the format a script or a log is reading
+/// (docs/change-intent-records/2026-11-14-errors-go-to-a-themed-console-on-standard-error.md). Its
+/// own console, so a test can assert which stream carried what.
 /// <para>
 /// An <see cref="IAnsiConsole"/> rather than the plain <see cref="TextWriter"/> that
 /// <see cref="NoticeOutput"/> and <see cref="Diagnostics.DiagnosticOutput"/> use, because an error
-/// is drawn in the theme: the word that marks it is coloured where the run has colour at all. The
-/// width limit comes off, so the message is one unbroken line wherever the stream goes — a reader
-/// greps an error log by line, and a console wrapping at terminal width would split one error
-/// across several.
+/// is drawn in the theme. The width limit comes off, so a reader who greps an error log by line
+/// finds the whole message on one.
 /// </para>
 /// </remarks>
 public sealed class ErrorOutput
 {
     private readonly bool styled;
 
-    /// <summary>
-    /// Initializes a new instance of the <see cref="ErrorOutput"/> class.
-    /// </summary>
     /// <param name="console">
     /// The console errors are written to. This type takes it over and removes its width limit, so
     /// it must be the error stream's alone: a console whose profile is shared with the result —

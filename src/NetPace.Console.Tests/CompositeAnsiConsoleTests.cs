@@ -3,10 +3,6 @@ using Spectre.Console.Rendering;
 
 namespace NetPace.Console.Tests;
 
-/// <summary>
-/// Unit tests for <see cref="CompositeAnsiConsole"/> verifying it fans operations
-/// out to every inner console.
-/// </summary>
 public sealed class CompositeAnsiConsoleTests
 {
     [Fact]

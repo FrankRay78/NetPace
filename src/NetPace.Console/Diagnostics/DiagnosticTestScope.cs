@@ -12,24 +12,16 @@ namespace NetPace.Console.Diagnostics;
 /// <remarks>
 /// The scope is the <see cref="IProgress{T}"/> the provider reports requests to, so the test's name
 /// is attached here rather than being something <c>NetPace.Core</c> has to know. Its
-/// <c>test.end</c> counts are derived from the records it saw, so the summary cannot count a
-/// record that is not above it: its <c>bytes</c> total is every record's bytes added up, whatever
-/// their outcome, which is what the measurement itself counts. It can also report a cancelled
-/// count, which the measured result does not carry. Under-load latency probes are the one thing it
-/// records without counting; see <see cref="Report"/> for why.
+/// <c>test.end</c> counts are derived from the records it saw, so the summary cannot count a record
+/// that is not above it. Under-load latency probes are the one thing it records without counting;
+/// see <see cref="Report"/>.
 /// </remarks>
 internal sealed class DiagnosticTestScope : IProgress<RequestDiagnostic>, IDisposable
 {
-    /// <summary>
-    /// What a request stopped because the run ran out of time is recorded as.
-    /// </summary>
-    /// <remarks>
-    /// <c>NetPace.Core</c> records such a request with its own generic wording
-    /// (<see cref="RequestDiagnostic.StoppedByCaller"/>), because the library knows only that its
-    /// caller asked it to stop. Here that caller is known, and the one thing that stops a NetPace
-    /// run while keeping its measurement is the run's time limit - so the record names it, and a
-    /// triager reading a cut-short run is told why it was cut short.
-    /// </remarks>
+    // NetPace.Core records such a request with its own generic wording
+    // (RequestDiagnostic.StoppedByCaller), because the library knows only that its caller asked it
+    // to stop. Here the caller is known, and the one thing that stops a run while keeping its
+    // measurement is the time limit.
     private const string TimeLimitReached = "run time limit reached";
 
     private readonly IDiagnosticRecorder recorder;
@@ -44,10 +36,8 @@ internal sealed class DiagnosticTestScope : IProgress<RequestDiagnostic>, IDispo
     private long bytes;
     private bool summaryWritten;
 
-    /// <summary>
-    /// Opens the scope, recording that the named test started. Private so <see cref="For"/> is the
-    /// only way in, which is what makes "a scope exists" mean "something is being recorded".
-    /// </summary>
+    // Private so For is the only way in, which is what makes "a scope exists" mean "something is
+    // being recorded".
     private DiagnosticTestScope(IDiagnosticRecorder recorder, string test, CancellationToken timeLimitToken)
     {
         ArgumentNullException.ThrowIfNull(recorder);
@@ -60,27 +50,14 @@ internal sealed class DiagnosticTestScope : IProgress<RequestDiagnostic>, IDispo
         recorder.Record("test.start", ("test", test));
     }
 
-    /// <summary>
-    /// Opens a scope for the named test, or returns <see langword="null"/> when nothing is being
-    /// recorded.
-    /// </summary>
-    /// <remarks>
-    /// Returning null rather than a scope over a disabled recorder is what lets the provider skip
-    /// the work: <c>NetPace.Core</c> tests the reporter for null before building a record, so a
-    /// null scope means no <see cref="RequestDiagnostic"/>, no URL evaluation and - on a failure -
-    /// no walk of the exception chain, per request. Paying that inside a measurement
-    /// for a user who asked for no diagnostics is the perturbation this design avoids. A scope over
-    /// a disabled recorder would also still take this type's lock and format every record before
-    /// discarding it.
-    /// </remarks>
-    /// <param name="recorder">Where the records go.</param>
-    /// <param name="test">The test the records belong to.</param>
-    /// <param name="timeLimitToken">
-    /// The run's time limit, for a test that reaches the library through a token linked to it
-    /// rather than as a stop: a request that test reports cancelled once the limit is reached is
-    /// recorded as stopped by the limit, because the library can only call it cancelled by its
-    /// caller.
-    /// </param>
+    // Null rather than a scope over a disabled recorder, which is what lets the provider skip the
+    // work: NetPace.Core tests the reporter for null before building a record, so a null scope
+    // means no RequestDiagnostic, no URL evaluation and no walk of the exception chain, per
+    // request, for a user who asked for no diagnostics.
+    //
+    // timeLimitToken is for a test that reaches the library through a token linked to the limit
+    // rather than as a stop: a request it reports cancelled once the limit is reached is recorded
+    // as stopped by the limit, because the library can only call it cancelled by its caller.
     public static DiagnosticTestScope? For(IDiagnosticRecorder recorder, string test, CancellationToken timeLimitToken = default)
     {
         ArgumentNullException.ThrowIfNull(recorder);
@@ -97,28 +74,23 @@ internal sealed class DiagnosticTestScope : IProgress<RequestDiagnostic>, IDispo
     {
         lock (countLock)
         {
-            // A request abandoned at the screening ceiling can still finish after the pass has
-            // moved on and this scope has written its summary. Counting it would be too late to
-            // reach that summary, and recording it would put a request line below the test.end
-            // that was supposed to total it - so the scope stops accepting reports once it has
-            // written its summary, and that summary stays a true account of the records above it.
+            // A request abandoned at the screening ceiling can still finish after this scope has
+            // written its summary, and recording it would put a request line below the test.end
+            // that was supposed to total it.
             if (summaryWritten)
             {
                 return;
             }
 
-            // A latency probe sent during a download or an upload is something the test does
-            // alongside its own requests, not one of them: it gets a record of its own under
-            // event=probe, carrying a request line's fields so it reads the same way, and it is
-            // left out of the summary below - which is what keeps that summary reconciling with the
-            // transfer's request records. In the screening and latency tests the probes are the
-            // test, so there they stay ordinary request lines counted as today.
+            // A probe sent during a transfer is something the test does alongside its own
+            // requests, not one of them, so it is left out of the summary below - which is what
+            // keeps that summary reconciling with the transfer's request records. In the screening
+            // and latency tests the probes are the test, and stay ordinary request lines.
             var isLoadedLatencyProbe = value.Kind == RequestKind.LatencyProbe && DiagnosticTests.MeasuresATransfer(test);
 
-            // Recorded before it is counted, and under the same lock, so the summary can never
-            // total a record that is not above it: a throw here leaves the counters untouched, and
-            // holding the lock stops a report passing the closed check and then landing its line
-            // after Dispose has written the summary.
+            // Recorded before it is counted, and under the same lock, so a throw here leaves the
+            // counters untouched and no report can pass the closed check above and then land its
+            // line after Dispose has written the summary.
             recorder.RecordAt(
                 value.StartedAt,
                 isLoadedLatencyProbe ? "probe" : "request",
@@ -139,9 +111,8 @@ internal sealed class DiagnosticTestScope : IProgress<RequestDiagnostic>, IDispo
             requests++;
 
             // Totalled whatever the outcome, because the measurement counts the bytes the same
-            // way: a request the server cut off, and one dropped at the byte budget, each moved
-            // what their record says they moved. Summing only the successful ones would put a
-            // figure in the summary that no reported speed agrees with.
+            // way: summing only the successful ones would put a figure in the summary that no
+            // reported speed agrees with.
             bytes += value.BytesProcessed;
 
             switch (value.Outcome)
@@ -159,10 +130,8 @@ internal sealed class DiagnosticTestScope : IProgress<RequestDiagnostic>, IDispo
         }
     }
 
-    /// <summary>
-    /// Closes the scope, recording the test's summary. Recording it is what closes the scope to
-    /// further reports, so the summary totals exactly the records written above it.
-    /// </summary>
+    // Recording the summary is what closes the scope to further reports, so it totals exactly the
+    // records written above it.
     public void Dispose()
     {
         lock (countLock)
@@ -185,21 +154,16 @@ internal sealed class DiagnosticTestScope : IProgress<RequestDiagnostic>, IDispo
         }
     }
 
-    /// <summary>
-    /// Why a request did not succeed, as the record words it: the provider's own reason, unless it
-    /// is the generic stop the library records, which only the run's time limit asks for here, or
-    /// a cancellation in a test whose time limit has been reached.
-    /// </summary>
+    // The provider's own reason, unless it is the generic stop the library records, which only the
+    // run's time limit asks for here.
     private string? ReasonOf(RequestDiagnostic value) =>
         string.Equals(value.FailureReason, RequestDiagnostic.StoppedByCaller, StringComparison.Ordinal)
         || (value.Outcome == RequestOutcome.Cancelled && timeLimitToken.IsCancellationRequested)
             ? TimeLimitReached
             : value.FailureReason;
 
-    /// <summary>
-    /// The wire value for an outcome. <c>ok</c> rather than <c>succeeded</c>, because
-    /// <c>grep status=failed</c> is the whole triage workflow and the two must not share a prefix.
-    /// </summary>
+    // ok rather than succeeded, because `grep status=failed` is the whole triage workflow and the
+    // two must not share a prefix.
     private static string StatusOf(RequestOutcome outcome) => outcome switch
     {
         RequestOutcome.Succeeded => "ok",

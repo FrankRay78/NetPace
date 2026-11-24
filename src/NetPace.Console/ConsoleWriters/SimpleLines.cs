@@ -30,10 +30,10 @@ internal static class SimpleLines
         ArgumentNullException.ThrowIfNull(outcome);
         ArgumentNullException.ThrowIfNull(settings);
 
-        // Runs under --count and --loop follow one another with no separator, so a reader takes
-        // every line the same way whichever run wrote it. None of them carries the time: this
-        // format keeps the shape speedtest-cli --simple writes, and --minimal is where
-        // a timestamped line per run comes from.
+        // No separator between runs under --count and --loop, and no timestamp on any line: this
+        // format keeps the shape speedtest-cli --simple writes, and --minimal is where a
+        // timestamped line per run comes from
+        // (docs/change-intent-records/2026-11-10-minimal-returns-and-timestamp-goes.md).
         if (latency is LatencyTestResult measured)
         {
             console.WriteLine($"Ping: {measured.LatencyMilliseconds.ToString(CultureInfo.InvariantCulture)} ms");

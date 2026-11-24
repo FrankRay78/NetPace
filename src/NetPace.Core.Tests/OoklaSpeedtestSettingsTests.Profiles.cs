@@ -17,8 +17,6 @@ public sealed partial class OoklaSpeedtestSettingsTests
             // SCENARIO: Tiny profile stays within IoT budget
             //
             // Natural-transfer budget proxy: ≤ 1 MiB total per run, ≈ 245 KB down + 50 KB up ±10 %.
-            // Proxy is recorded here for future readers; not asserted at runtime (there is no
-            // Docker integration test that exercises real transfer sizes).
 
             // Given / When
             var s = new OoklaSpeedtestSettings(Profile.Tiny);

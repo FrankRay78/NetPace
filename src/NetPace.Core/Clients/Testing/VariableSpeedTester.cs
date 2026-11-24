@@ -38,7 +38,6 @@ public class VariableSpeedTester : ISpeedTestService
     /// </summary>
     public VariableSpeedTester()
     {
-        // Create a custom speed test service that returns different results for each call
         inner = new SpeedTestMock
         {
             GetServersAsyncFunc = _ => Task.FromResult(new IServer[]
@@ -50,7 +49,6 @@ public class VariableSpeedTester : ISpeedTestService
             {
                 callCount++;
 
-                // The first server is always the fastest
                 var server = servers[0];
 
                 return Task.FromResult(LatencyForCurrentTest(server));

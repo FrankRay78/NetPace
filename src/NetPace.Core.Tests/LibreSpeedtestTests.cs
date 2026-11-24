@@ -588,7 +588,6 @@ public sealed class LibreSpeedtestTests
             });
         }
 
-        /// <summary>The addresses the under-load probes were sent to.</summary>
         public IReadOnlyList<string> ProbedUrls => Snapshot(RequestKind.LatencyProbe).Select(record => record.Url).ToArray();
 
         public Task UntilFirstProbeTaken() => firstProbeTaken.Task.WaitAsync(HangGuard);

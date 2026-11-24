@@ -30,13 +30,11 @@ public sealed class MinimalConsoleWriter : IConsoleWriter
         ArgumentNullException.ThrowIfNull(clock);
         ArgumentNullException.ThrowIfNull(settings);
 
-        // Get the server to use for speed testing, then measure.
         (ChosenServer chosen, LatencyTestResult? latency) = await ServerSelector.GetServerAsync(speedTestClient, settings, recorder, cancellationToken, timeLimitToken);
         var outcome = await Measurements.PerformAsync(speedTestClient, chosen.Server, latency, settings, recorder, cancellationToken, timeLimitToken);
 
-        // The timestamp first, then a named field per figure in the order the tests ran. A test that
-        // did not run contributes null rather than a field, so nothing here ever reports a zero for
-        // a measurement nobody asked for.
+        // A test that did not run contributes null rather than a field, so nothing here reports a
+        // zero for a measurement nobody asked for.
         string?[] fields =
         [
             clock.Now.ToHumanReadable(),

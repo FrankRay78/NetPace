@@ -64,13 +64,10 @@ public sealed class CutShortSpeedTester(RecordingRunTimeLimit limit) : ISpeedTes
     /// </summary>
     public Func<int, bool> CutsShortRun { get; set; } = _ => true;
 
-    /// <summary>Where in a cut-short run the limit is reached.</summary>
     public CutShortStage Stage { get; set; } = CutShortStage.Download;
 
-    /// <summary>What the transfer cut short had delivered when the limit was reached.</summary>
     public long CutShortBytes { get; set; } = 1_000_000;
 
-    /// <summary>How many of the cut-short transfer's requests had failed when the limit was reached.</summary>
     public int CutShortFailures { get; set; }
 
     /// <summary>How many times the upload test was asked for, so a test can assert it was not.</summary>

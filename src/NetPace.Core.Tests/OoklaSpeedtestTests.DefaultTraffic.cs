@@ -18,12 +18,10 @@ public sealed partial class OoklaSpeedtestTests
     /// </summary>
     /// <remarks>
     /// Each test reads the cap off a quantity the cap actually governs. The upload test weighs the
-    /// bodies the mock received, which is what crossed the wire. The download test cannot do the
-    /// same, because its mock builds each response up front and so records bytes the client never
-    /// read; it weighs the bytes of the requests the budget counted instead, and bounds the run as
-    /// a whole by the profile's own request list. The reported figure is deliberately not the
-    /// subject of either: it now also counts what requests still in flight had received when the
-    /// budget tripped, which runs past the cap by design.
+    /// bodies the mock received; the download test cannot, because its mock builds each response up
+    /// front and so records bytes the client never read, and weighs the counted requests instead.
+    /// Neither reads the reported figure, which also counts what requests still in flight had
+    /// received when the budget tripped and so runs past the cap by design.
     /// </remarks>
     public sealed class DefaultTraffic
     {
@@ -59,7 +57,6 @@ public sealed partial class OoklaSpeedtestTests
                 int width = int.Parse(match.Groups[1].Value);
                 int height = int.Parse(match.Groups[2].Value);
 
-                // Simulate byte size: assume 3 bytes per pixel (RGB).
                 var content = new ByteArrayContent(new byte[width * height * 3]);
                 return new HttpResponseMessage(HttpStatusCode.OK) { Content = content };
             });

@@ -11,12 +11,12 @@ public sealed class JsonConsoleWriter : IConsoleWriter
 
     public async Task<SpeedTestOutcome> PerformSpeedTestAsync(IAnsiConsole console, IClock clock, IClientInfoProvider clientInfoProvider, IDiagnosticRecorder recorder, ISpeedTestService speedTestClient, SpeedTestCommandSettings settings, CancellationToken cancellationToken, CancellationToken timeLimitToken = default)
     {
-        // Get the server to use for speed testing, then measure.
         (ChosenServer chosen, LatencyTestResult? latency) = await ServerSelector.GetServerAsync(speedTestClient, settings, recorder, cancellationToken, timeLimitToken);
         var outcome = await Measurements.PerformAsync(speedTestClient, chosen.Server, latency, settings, recorder, cancellationToken, timeLimitToken);
 
-        // Display speed test result. JSON holds data, not presentation, so every speed and
-        // latency is a plain number in a fixed unit and the unit options do not reach here.
+        // JSON holds data, not presentation, so every speed and latency is a plain number in a
+        // fixed unit and the unit options do not reach here
+        // (docs/change-intent-records/2026-10-16-machine-readable-output-holds-data-not-presentation.md).
         var jsonResult = new JsonResult
         {
             ServerLocation = chosen.Server.Location,

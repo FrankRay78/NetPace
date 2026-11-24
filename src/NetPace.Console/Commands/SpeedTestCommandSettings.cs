@@ -191,17 +191,13 @@ public sealed class SpeedTestCommandSettings
 
 public static class SpeedTestCommandSettingsExtensions
 {
-    /// <summary>
-    /// Validate SpeedTestCommandSettings.
-    /// </summary>
-    /// <returns>Throws an exception if validation fails.</returns>
+
     public static void Validate(this SpeedTestCommandSettings settings)
     {
-        // Exactly one output format may be selected. --json-pretty shapes the JSON format rather
-        // than selecting a second one, so it counts as JSON and stays usable alongside --json.
-        // Checked here rather than as a parse validator: a command-level parse error discards every
-        // option-level error, which hid an unparseable --unit and the --verbosity removal notice
-        // whenever a format conflict was present too.
+        // --json-pretty shapes the JSON format rather than selecting a second one, so it counts as
+        // JSON and stays usable alongside --json. Checked here rather than as a parse validator,
+        // because a command-level parse error discards every option-level error - which hid an
+        // unparseable --unit whenever a format conflict was present too.
         var formatsSelected = (settings.CSV ? 1 : 0) + (settings.Json || settings.JsonPretty ? 1 : 0) + (settings.Minimal ? 1 : 0) + (settings.Simple ? 1 : 0);
         if (formatsSelected > 1)
         {
@@ -220,26 +216,23 @@ public static class SpeedTestCommandSettingsExtensions
             throw new ArgumentException("No tests selected. At least one of --no-latency, --no-download, or --no-upload must be omitted.");
         }
 
-        // A LibreSpeed server is always named, never discovered: LibreSpeed publishes no server
-        // list to pick one from. Rejected here, before any test runs, so the user is told what is
-        // missing rather than watching a run fail against nothing.
+        // LibreSpeed publishes no server list to pick one from, so its server is always named.
+        // Rejected before any test runs, so the user is told what is missing.
         if (settings.Provider == Provider.LibreSpeed && string.IsNullOrWhiteSpace(settings.ServerUrl))
         {
             throw new ArgumentException("A LibreSpeed server URL is needed: pass --server-url with the address LibreSpeed is installed at, such as --server-url http://pi.local:8080/.");
         }
 
-        // A target answers one question about one run, and a run that repeats has no single answer
-        // to give: whether the fifth test of fifty missed is not something an exit code can carry.
-        // A count of one is a single run however it was spelled, so only a count above one is
-        // refused. Checked before anything is measured, so the user is told at once rather than
-        // after a test they will not get an answer about.
+        // A target answers one question about one run, and an exit code cannot carry whether the
+        // fifth test of fifty missed. A count of one is a single run however it was spelled, so
+        // only a count above one is refused.
         if (settings.HasThreshold && (settings.Loop || settings.Count > 1))
         {
             throw new ArgumentException("A target checks a single run, so --min-download, --min-upload and --max-latency cannot be used with --loop or with --count above 1. Schedule repeated checks with cron, a systemd timer or Windows Task Scheduler.");
         }
 
         // A target for a test the same run turns off can never be answered either way, so it is
-        // refused rather than quietly passing or quietly failing.
+        // refused rather than quietly passing or failing.
         if (settings.MaximumLatency is not null && settings.NoLatency)
         {
             throw new ArgumentException("--max-latency needs the latency test, so it cannot be used with --no-latency.");

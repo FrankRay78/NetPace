@@ -5,7 +5,6 @@ namespace NetPace.Console;
 /// </summary>
 public sealed record JsonResult
 {
-    // Server
 
     /// <summary>
     /// Gets the geographic location of the test server.
@@ -21,8 +20,6 @@ public sealed record JsonResult
     /// Gets the URL of the test server.
     /// </summary>
     public required string ServerUrl { get; init; }
-
-    // Speed test result
 
     /// <summary>
     /// Gets the instant the speed test was performed, as local time carrying its offset from UTC.
@@ -151,8 +148,6 @@ public sealed record JsonResult
     /// </summary>
     public long? UploadJitterMilliseconds { get; init; }
 
-    // Device identity
-
     /// <summary>
     /// Gets the IP address of the device running the speed test.
     /// </summary>
@@ -170,8 +165,6 @@ public sealed record JsonResult
     /// a machine is renamed or readdressed.
     /// </summary>
     public string? DeviceId { get; init; }
-
-    // User-defined fields
 
     /// <summary>
     /// Gets the user-defined pairs recorded for this run, or <see langword="null"/> when none were

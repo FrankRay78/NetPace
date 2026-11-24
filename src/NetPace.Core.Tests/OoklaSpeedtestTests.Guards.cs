@@ -3,9 +3,6 @@ using NetPace.Core.Settings;
 
 namespace NetPace.Core.Tests;
 
-/// <summary>
-/// Guard clause tests for <see cref="OoklaSpeedtest"/>.
-/// </summary>
 public sealed partial class OoklaSpeedtestTests
 {
     public sealed class Guards

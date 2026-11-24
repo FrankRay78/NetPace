@@ -216,7 +216,6 @@ public sealed partial class OoklaSpeedtestTests
         using var mockHttp = new MockHttpMessageHandler();
         mockHttp.When("*").Respond(async _ =>
         {
-            // Simulate slow response.
             await Task.Delay(1000);
 
             return new HttpResponseMessage(HttpStatusCode.OK);
@@ -386,7 +385,6 @@ public sealed partial class OoklaSpeedtestTests
         using var mockHttp = new MockHttpMessageHandler();
         mockHttp.When("*").Respond(async _ =>
         {
-            // Simulate slow response.
             await Task.Delay(1000);
 
             return new HttpResponseMessage(HttpStatusCode.OK);
@@ -454,7 +452,6 @@ public sealed partial class OoklaSpeedtestTests
         using var mockHttp = new MockHttpMessageHandler();
         mockHttp.When("*").Respond(async _ =>
         {
-            // Simulate slow response.
             await Task.Delay(1000);
             return new HttpResponseMessage(HttpStatusCode.OK);
         });
@@ -657,7 +654,6 @@ public sealed partial class OoklaSpeedtestTests
         using var mockHttp = new MockHttpMessageHandler();
         mockHttp.When("*").Respond(async _ =>
         {
-            // Simulate slow response.
             await Task.Delay(1000);
 
             return new HttpResponseMessage(HttpStatusCode.OK);
@@ -758,7 +754,6 @@ public sealed partial class OoklaSpeedtestTests
         // Given
         using var mockHttp = new MockHttpMessageHandler();
 
-        // First two servers fail, third succeeds
         mockHttp.When("http://fail1.com/latency.txt")
                 .Throw(new HttpRequestException("Server unreachable"));
         mockHttp.When("http://fail2.com/latency.txt")
@@ -834,7 +829,6 @@ public sealed partial class OoklaSpeedtestTests
         using var mockHttp = new MockHttpMessageHandler();
         mockHttp.When("*").Respond(async _ =>
         {
-            // Simulate slow response.
             await Task.Delay(1000);
             return new HttpResponseMessage(HttpStatusCode.OK);
         });
@@ -932,7 +926,6 @@ public sealed partial class OoklaSpeedtestTests
             int width = int.Parse(match.Groups[1].Value);
             int height = int.Parse(match.Groups[2].Value);
 
-            // Simulate byte size: assume 3 bytes per pixel (RGB)
             int byteCount = width * height * 3;
             var content = new ByteArrayContent(new byte[byteCount]);
 
@@ -1021,7 +1014,6 @@ public sealed partial class OoklaSpeedtestTests
         using var mockHttp = new MockHttpMessageHandler();
         mockHttp.When("*").Respond(async _ =>
         {
-            // Simulate slow response.
             await Task.Delay(1000);
 
             return new HttpResponseMessage(HttpStatusCode.OK)
@@ -1434,7 +1426,6 @@ public sealed partial class OoklaSpeedtestTests
         using var mockHttp = new MockHttpMessageHandler();
         mockHttp.When("*").Respond(async _ =>
         {
-            // Simulate slow response.
             await Task.Delay(1000);
 
             return new HttpResponseMessage(HttpStatusCode.OK);
