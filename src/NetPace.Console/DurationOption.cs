@@ -10,14 +10,11 @@ namespace NetPace.Console;
 /// </summary>
 /// <remarks>
 /// Both options read their value through here, so neither can quietly accept a form the other
-/// refuses. Nothing wider is accepted, because <see cref="TimeSpan"/>'s own parsing reads shorter
-/// forms as something else: a bare <c>600</c> as six hundred days and <c>10:00</c> as ten hours.
-/// Either would set a duration nobody asked for, which is the one wrong answer a scheduled or
-/// unattended run has no way of noticing.
-/// <para>
-/// The unit letter is lower case only. An upper-case <c>M</c> would have to mean either minutes or
-/// months depending on the tool a user came from, and reading it as one of them would be a guess.
-/// </para>
+/// refuses. Nothing wider is accepted: <see cref="TimeSpan"/>'s own parsing reads shorter forms as
+/// something else, a bare <c>600</c> as six hundred days and <c>10:00</c> as ten hours, so widening
+/// this parser to it would bind a duration nobody asked for. Why the accepted set is drawn where it
+/// is, lower-case units and a ceiling included, is in
+/// docs/change-intent-records/2026-11-25-a-duration-is-written-one-way.md.
 /// </remarks>
 internal static class DurationOption
 {
@@ -27,8 +24,7 @@ internal static class DurationOption
     public const string Example = "10m";
 
     /// <summary>
-    /// The longest duration either option accepts. Beyond it a value is far likelier to be a
-    /// typo than a request, and a run bounded by it would outlast anything watching for it.
+    /// The longest duration either option accepts.
     /// </summary>
     public static readonly TimeSpan Longest = TimeSpan.FromDays(30);
 
