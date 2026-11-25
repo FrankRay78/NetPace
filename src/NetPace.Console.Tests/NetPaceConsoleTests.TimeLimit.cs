@@ -11,6 +11,7 @@ public sealed partial class NetPaceConsoleTests
         [InlineData("600", "plain-seconds")]
         [InlineData("soon", "words")]
         [InlineData("00:00:00", "zero")]
+        [InlineData("0s", "zero-seconds")]
         [InlineData("-00:01:00", "negative")]
         [InlineData("10:00", "minutes-and-seconds")]
         [InlineData("25:00:00", "past-a-day")]
@@ -68,10 +69,12 @@ public sealed partial class NetPaceConsoleTests
             var result = await host.RunAsync(["--help"]);
 
             // Then the option and the duration a user gets without it are both on the help screen,
-            // because the default is the whole of what protects a scheduled run.
+            // because the default is the whole of what protects a scheduled run. It is spelled the
+            // short way, which is typeable back into the option as written.
             Assert.Equal(0, result.ExitCode);
             Assert.Contains("--time-limit", result.Output, StringComparison.Ordinal);
-            Assert.Contains("00:10:00", result.Output, StringComparison.Ordinal);
+            Assert.Contains("10m", result.Output, StringComparison.Ordinal);
+            Assert.DoesNotContain("00:10:00", result.Output, StringComparison.Ordinal);
         }
 
         [Theory]

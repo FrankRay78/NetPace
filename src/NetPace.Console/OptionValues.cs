@@ -68,6 +68,7 @@ internal static class OptionValues
             SpeedUnitSystem unitSystem => UnitSystems.Spell(unitSystem),
             FileMode fileMode => FileModes.Spell(fileMode),
             FailOn failOn => FailOnModes.Spell(failOn),
+            TimeSpan duration => DurationOption.Spell(duration),
             _ => value.ToString() ?? string.Empty
         };
     }

@@ -1,1 +1,1 @@
-﻿Error: --time-limit must be written as HH:MM:SS, from 00:00:01 to 23:59:59, such as 00:10:00, but was '00:00:00'.
+﻿Error: '00:00:00' is not a valid value for --time-limit. Give a duration of more than zero, such as 10m.
