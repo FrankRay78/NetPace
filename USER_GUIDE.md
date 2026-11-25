@@ -32,17 +32,17 @@ netpace --no-download
 
 Run speed tests continuously, with a 15 minute delay between each:
 ```bash
-netpace --loop --delay 00:15:00
+netpace --loop --delay 15m
 ```
 
 Run 3 tests in a row, with 30 seconds delay between each:  
 ```bash
-netpace --count 3 --delay 00:00:30
+netpace --count 3 --delay 30s
 ```
 
 Bound a run to two minutes instead of the default ten:
 ```bash
-netpace --time-limit 00:02:00
+netpace --time-limit 2m
 ```
 
 List the nearest speed test servers:  
@@ -513,15 +513,30 @@ Reach for it when:
 
 ---
 
+## Writing a duration
+
+Two options take a length of time: `--time-limit`, which bounds one run, and `--delay`, which separates repeated runs under `--count` and `--loop`. Both read a value the same way, in either of two forms:
+
+| Form | Examples | Means |
+|---|---|---|
+| A whole number with a unit | `30s`, `10m`, `2h`, `1d` | seconds, minutes, hours or days |
+| Hours, minutes and seconds | `00:00:30`, `00:10:00`, `02:00:00` | exactly that |
+
+The unit letter is lower case, and the number is whole: `1.5h` and `1h30m` are not accepted, so write `90m` instead. Thirty days is the longest either option takes.
+
+Anything else is refused before any test runs, with a message naming the option, the value you gave and a value that would have worked. A bare number is refused too, and told which unit it is missing. That is deliberate: `--delay 600` looks like ten minutes, and nothing about a run that waits six hundred days instead would be obvious from a log the next morning.
+
+`--time-limit` needs more than zero. `--delay` accepts zero, which is its default.
+
 ## How long a run may take
 
 Every run is bounded. Left alone it ends after ten minutes, and `--time-limit` sets a bound of your own:
 
 ```bash
-netpace --time-limit 00:02:00
+netpace --time-limit 2m
 ```
 
-The value is exactly hours, minutes and seconds (`HH:MM:SS`), up to `23:59:59`. Anything shorter is refused: `5` would otherwise mean five days, and `10:00` ten hours.
+The value is written the way [Writing a duration](#writing-a-duration) describes, and must be more than zero.
 
 A run that reaches the limit has not failed. NetPace ends it and reports what it measured up to then, in the same output and with the same exit code as a run that finished on its own. The one exception is a limit reached before a server was chosen: there is nothing to measure against, so the run ends as one with no server available does, with that error and, under `--fail-on`, exit code 1.
 
