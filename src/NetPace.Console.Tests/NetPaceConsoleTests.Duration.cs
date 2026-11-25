@@ -49,6 +49,7 @@ public sealed partial class NetPaceConsoleTests
         [InlineData("--time-limit", "1.5h")]
         [InlineData("--time-limit", "31d")]
         [InlineData("--time-limit", "721h")]
+        [InlineData("--time-limit", "9999999999999999999999s")]
         [InlineData("--delay", "600")]
         [InlineData("--delay", "5")]
         [InlineData("--delay", "soon")]
@@ -63,6 +64,7 @@ public sealed partial class NetPaceConsoleTests
         [InlineData("--delay", "1.5h")]
         [InlineData("--delay", "31d")]
         [InlineData("--delay", "721h")]
+        [InlineData("--delay", "9999999999999999999999s")]
         public async Task EitherOption_GivenADurationItCannotRead_IsRefusedBeforeAnyTestRuns(string option, string value)
         {
             // Given
@@ -72,9 +74,7 @@ public sealed partial class NetPaceConsoleTests
             var result = await host.RunAsync([option, value]);
 
             // Then the run is refused up front and nothing is measured. The same list is put to
-            // both options, so a form one of them quietly accepts fails here: .NET reads a bare
-            // 600 as six hundred days and 10:00 as ten hours, which is the wrong answer nobody
-            // watching a scheduled run would notice.
+            // both options, so a form one of them quietly accepts fails here.
             Assert.NotEqual(0, result.ExitCode);
             Assert.Empty(serviceCalls);
             Assert.Empty(result.Output);
@@ -95,9 +95,7 @@ public sealed partial class NetPaceConsoleTests
             // When
             var result = await host.RunAsync(["--delay", value]);
 
-            // Then the message on the error stream names the option, the value given and a value
-            // that would have worked, and a bare number is told which unit it is missing rather
-            // than read as that many days.
+            // Then the refusal is reported on the error stream, not the output stream.
             Assert.NotEqual(0, result.ExitCode);
             Assert.Empty(serviceCalls);
             Assert.Empty(result.Output);
@@ -140,6 +138,43 @@ public sealed partial class NetPaceConsoleTests
             Assert.Equal(0, suffixedResult.ExitCode);
         }
 
+        [Theory]
+        [InlineData("30s", 30)]
+        [InlineData("10m", 10 * 60)]
+        [InlineData("2h", 2 * 60 * 60)]
+        [InlineData("1d", 24 * 60 * 60)]
+        [InlineData("30d", 30 * 24 * 60 * 60)]
+        [InlineData("00:10:00", 10 * 60)]
+        public async Task EachAcceptedForm_BoundsTheRunByTheSecondsItNames(string value, int expectedSeconds)
+        {
+            // Given
+            var (host, limit) = LimitRecordingHost();
+
+            // When
+            var result = await host.RunAsync(["--time-limit", value, "--simple"]);
+
+            // Then each unit means what it says, so a unit silently worth a different number of
+            // seconds fails here rather than binding a duration nobody asked for.
+            Assert.Equal(0, result.ExitCode);
+            Assert.Equal(TimeSpan.FromSeconds(expectedSeconds), Assert.Single(limit.Started));
+        }
+
+        [Fact]
+        public void TheLongestAcceptedDuration_IsOneTheRealLimitAndWaitAccept()
+        {
+            // Given the ceiling the options advertise, rather than a duration written out here, so
+            // raising it past what a timer takes fails here instead of where a run starts.
+            var longest = DurationOption.Longest;
+
+            // When it is put to the production limit and wait, not the recording stubs.
+            using var started = new RunTimeLimit().Start(longest);
+            var waited = new Waiter().Delay(longest, new CancellationToken(canceled: true));
+
+            // Then neither refuses it.
+            Assert.False(started.IsCancellationRequested);
+            Assert.True(waited.IsCanceled || waited.IsCompleted);
+        }
+
         [Fact]
         public async Task ASuffixedDelay_SeparatesRunsByTheDurationItNames()
         {
@@ -154,7 +189,7 @@ public sealed partial class NetPaceConsoleTests
             // When
             var result = await host.RunAsync(["--count", "2", "--delay", "1m", "--simple"]);
 
-            // Then the second run is held back by the one minute asked for, once, between the two.
+            // Then the run is held back by the one minute asked for, once.
             Assert.Equal(0, result.ExitCode);
             Assert.Equal([TimeSpan.FromMinutes(1)], waiter.Waited);
         }
@@ -173,7 +208,9 @@ public sealed partial class NetPaceConsoleTests
             // out by being refused one.
             Assert.Equal(0, result.ExitCode);
 
-            foreach (string option in (string[])["--delay", "--time-limit"])
+            string[] options = ["--delay", "--time-limit"];
+
+            foreach (string option in options)
             {
                 string line = Assert.Single(result.Output.Split('\n'), candidate => candidate.TrimStart().StartsWith($"{option} ", StringComparison.Ordinal));
                 Assert.Contains("30s", line, StringComparison.Ordinal);

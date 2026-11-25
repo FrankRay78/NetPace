@@ -72,14 +72,14 @@ public static class Program
         // which binds a bare 600 as six hundred days without complaint.
         var delayOption = new Option<TimeSpan>("--delay")
         {
-            Description = $"Time between multiple speed tests (30s, 10m, 2h, 1d or HH:MM:SS, up to {DurationOption.Spell(DurationOption.Longest)}).",
+            Description = $"Time between multiple speed tests ({DurationOption.Forms}).",
             DefaultValueFactory = _ => TimeSpan.Zero,
             CustomParser = result => DurationOption.Parse(result, "--delay", allowZero: true)
         };
 
         var timeLimitOption = new Option<TimeSpan>("--time-limit")
         {
-            Description = $"Stop a speed test run after this long (30s, 10m, 2h, 1d or HH:MM:SS, up to {DurationOption.Spell(DurationOption.Longest)}).\nA run that reaches the limit reports what it measured up to then.\nEach run of --count or --loop gets the limit afresh, and --delay is not counted.",
+            Description = $"Stop a speed test run after this long ({DurationOption.Forms}).\nA run that reaches the limit reports what it measured up to then.\nEach run of --count or --loop gets the limit afresh, and --delay is not counted.",
             DefaultValueFactory = _ => DefaultTimeLimit,
             CustomParser = result => DurationOption.Parse(result, "--time-limit", allowZero: false)
         };

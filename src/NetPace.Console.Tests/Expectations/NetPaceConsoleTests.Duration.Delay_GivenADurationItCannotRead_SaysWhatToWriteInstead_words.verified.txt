@@ -1,1 +1,1 @@
-﻿Error: 'soon' is not a valid value for --delay. Give a whole number with a unit (s, m, h or d), such as 10m, or HH:MM:SS, such as 00:10:00.
+﻿Error: 'soon' is not a valid value for --delay. Give a whole number with a unit (s, m, h or d), such as 10m, or HH:MM:SS up to 23:59:59.

@@ -113,8 +113,8 @@ OPTIONS:
     -v, --version                        Prints version information.
         --loop                           Performs the speed test on continuous loop.
         --count                          Stop speed testing after this many times.
-        --delay                          Time between multiple speed tests (30s, 10m, 2h, 1d or HH:MM:SS, up to 30d).
-        --time-limit          10m        Stop a speed test run after this long (30s, 10m, 2h, 1d or HH:MM:SS, up to 30d).
+        --delay                          Time between multiple speed tests (30s, 10m, 2h or 1d up to 30d, or HH:MM:SS up to 23:59:59).
+        --time-limit          10m        Stop a speed test run after this long (30s, 10m, 2h or 1d up to 30d, or HH:MM:SS up to 23:59:59).
                                          A run that reaches the limit reports what it measured up to then.
                                          Each run of --count or --loop gets the limit afresh, and --delay is not counted.
         --csv                            Display output as a single CSV row (always includes timestamp).
