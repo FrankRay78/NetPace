@@ -71,6 +71,12 @@ public sealed class SpeedTestCommandSettings
     public required string ServerUrl { get; init; }
 
     /// <summary>
+    /// The servers listed in the file <c>--server-file</c> named, in the order the file gives them.
+    /// Empty only when no file was named: a file listing nothing is refused as it is read.
+    /// </summary>
+    public required IReadOnlyList<IServer> ListedServers { get; init; }
+
+    /// <summary>
     /// Which kind of speed test server the run tests against.
     /// </summary>
     public required Provider Provider { get; init; }
@@ -220,12 +226,19 @@ public static class SpeedTestCommandSettingsExtensions
             throw new ArgumentException("No tests selected. At least one of --no-latency, --no-download, or --no-upload must be omitted.");
         }
 
+        // Refused rather than given a precedence, which would leave the user guessing which server the
+        // figures came from. IsNullOrEmpty as selection uses, since a blank --server-url still routes there.
+        if (settings.ListedServers.Count > 0 && !string.IsNullOrEmpty(settings.ServerUrl))
+        {
+            throw new ArgumentException("--server-file and --server-url both say which server to test, so only one of them can be given.");
+        }
+
         // A LibreSpeed server is always named, never discovered: LibreSpeed publishes no server
         // list to pick one from. Rejected here, before any test runs, so the user is told what is
         // missing rather than watching a run fail against nothing.
-        if (settings.Provider == Provider.LibreSpeed && string.IsNullOrWhiteSpace(settings.ServerUrl))
+        if (settings.Provider == Provider.LibreSpeed && string.IsNullOrWhiteSpace(settings.ServerUrl) && settings.ListedServers.Count == 0)
         {
-            throw new ArgumentException("A LibreSpeed server URL is needed: pass --server-url with the address LibreSpeed is installed at, such as --server-url http://pi.local:8080/.");
+            throw new ArgumentException("A LibreSpeed server is needed: pass --server-url with the address LibreSpeed is installed at, such as --server-url http://pi.local:8080/, or --server-file with a file listing the servers to choose from.");
         }
 
         // A target answers one question about one run, and a run that repeats has no single answer
