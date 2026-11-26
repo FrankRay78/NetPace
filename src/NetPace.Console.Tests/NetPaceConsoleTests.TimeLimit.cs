@@ -73,7 +73,7 @@ public sealed partial class NetPaceConsoleTests
             // way it can be typed back into the option.
             Assert.Equal(0, result.ExitCode);
             Assert.Contains("--time-limit", result.Output, StringComparison.Ordinal);
-            Assert.Contains("10m", result.Output, StringComparison.Ordinal);
+            Assert.Matches(@"--time-limit\s+10m\s", result.Output);
             Assert.DoesNotContain("00:10:00", result.Output, StringComparison.Ordinal);
         }
 

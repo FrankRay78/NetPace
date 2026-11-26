@@ -522,9 +522,9 @@ Two options take a length of time: `--time-limit`, which bounds one run, and `--
 | A whole number with a unit | `30s`, `10m`, `2h`, `1d` | seconds, minutes, hours or days |
 | Hours, minutes and seconds | `00:00:30`, `00:10:00`, `02:00:00` | exactly that, up to `23:59:59` |
 
-The unit letter is lower case, and the number is whole: `1.5h` and `1h30m` are not accepted, so write `90m` instead. Thirty days is the longest either option takes, and only the suffixed form reaches it: the hours field of `HH:MM:SS` stops at 23, so write `30d` or `720h` for anything longer than a day.
+The unit letter is lower case, and the number is whole: `1.5h` and `1h30m` are not accepted, so write `90m` instead. Thirty days is the longest either option takes, and only the suffixed form reaches it: the hours field of `HH:MM:SS` stops at 23, so for a day or longer use the suffixed form, such as `2d` or `48h`, up to `30d`.
 
-Anything else is refused before any test runs, with a message naming the option, the value you gave and a value that would have worked. A bare number is refused too, and told which unit it is missing. That is deliberate: `--delay 600` looks like ten minutes, and nothing about a run that waits six hundred days instead would be obvious from a log the next morning.
+Anything else is refused before any test runs, with a message naming the option, the value you gave and a value that would have worked. A bare number is refused too, with a message saying it needs a unit and suggesting one. That is deliberate: `--delay 5` looks like five seconds, and nothing about a run that waits five days instead would be obvious from a log the next morning.
 
 `--time-limit` needs more than zero. `--delay` accepts zero, which is its default.
 

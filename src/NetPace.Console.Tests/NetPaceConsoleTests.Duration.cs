@@ -13,12 +13,14 @@ public sealed partial class NetPaceConsoleTests
         [InlineData("--time-limit", "1d")]
         [InlineData("--time-limit", "30d")]
         [InlineData("--time-limit", "00:10:00")]
+        [InlineData("--time-limit", "030s")]
         [InlineData("--delay", "30s")]
         [InlineData("--delay", "10m")]
         [InlineData("--delay", "2h")]
         [InlineData("--delay", "1d")]
         [InlineData("--delay", "30d")]
         [InlineData("--delay", "00:10:00")]
+        [InlineData("--delay", "030s")]
         public async Task EitherOption_GivenADurationInAnAcceptedForm_RunsTheTest(string option, string value)
         {
             // Given
@@ -145,6 +147,7 @@ public sealed partial class NetPaceConsoleTests
         [InlineData("1d", 24 * 60 * 60)]
         [InlineData("30d", 30 * 24 * 60 * 60)]
         [InlineData("00:10:00", 10 * 60)]
+        [InlineData("030s", 30)]
         public async Task EachAcceptedForm_BoundsTheRunByTheSecondsItNames(string value, int expectedSeconds)
         {
             // Given
@@ -172,7 +175,7 @@ public sealed partial class NetPaceConsoleTests
 
             // Then neither refuses it.
             Assert.False(started.IsCancellationRequested);
-            Assert.True(waited.IsCanceled || waited.IsCompleted);
+            Assert.True(waited.IsCanceled);
         }
 
         [Fact]
