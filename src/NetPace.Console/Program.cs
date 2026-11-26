@@ -709,8 +709,8 @@ public static class Program
     }
 
     /// <summary>
-    /// What a <c>--connections</c> value outside the accepted range is reported as, by the
-    /// validator and by <see cref="ParseConnections"/> alike.
+    /// What a <c>--connections</c> value the run cannot use is reported as, by the validator and by
+    /// <see cref="ParseConnections"/> alike.
     /// </summary>
     private static string ConnectionsError(string? value) =>
         $"--connections must be a whole number from {MinimumConnections} to {MaximumConnections}, but was '{value}'.";

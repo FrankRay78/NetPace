@@ -399,11 +399,11 @@ The entries must be servers of the kind `--provider` selects, which defaults to 
 netpace --provider librespeed --server-file my-librespeed-servers.json
 ```
 
-NetPace reads and checks the whole file before it contacts anything. A file that is missing, unreadable, empty, or not a JSON array of entries fails the run, and so does an entry with no `url`, with any field besides `url` and `name`, with a field given twice, or with a `url` or `name` that is not a quoted string (`"name": null` included). The message names the file and, where there is one, the entry at fault.
+NetPace reads and checks the whole file before it contacts anything. A file that is missing, unreadable, empty, or not a JSON array of entries fails the run, and so does an entry with no `url`, with any field besides `url` and `name`, with a field given twice, or with a `url` or `name` that is not a quoted string (`"name": null` included). The message names the file and, where there is one, the entry at fault, and the run exits `1`: the file is part of what the run met rather than part of the command line (see [Exit codes](#exit-codes)).
 
 What the values say is not checked. An entry whose URL is wrong, unreachable, or a server of the other kind is simply passed over when the run tries it, the way an unreachable discovered server is. If no entry can be reached, the run reports `Error: No servers available`, exactly as a run that discovered no reachable server does. The exception is `--no-latency`, which tries nothing first: the first entry is tested as it stands, so a bad first entry fails the run as that test fails.
 
-`--server-file` and `--server-url` both say which server to test, so a run that gives both is rejected. The file is read once, when the run starts, so an edit made part-way through a `--loop` run is not picked up. `netpace servers` lists Ookla's nearby servers and takes no `--server-file`: write the file yourself.
+`--server-file` and `--server-url` both say which server to test, so a run that gives both is rejected, before the file is opened, and exits `2`. The file is read once, when the run starts, so an edit made part-way through a `--loop` run is not picked up. `netpace servers` lists Ookla's nearby servers and takes no `--server-file`: write the file yourself.
 
 ### Testing against a LibreSpeed server
 
@@ -523,7 +523,7 @@ netpace --time-limit 00:02:00
 
 The value is exactly hours, minutes and seconds (`HH:MM:SS`), up to `23:59:59`. Anything shorter is refused: `5` would otherwise mean five days, and `10:00` ten hours.
 
-A run that reaches the limit has not failed. NetPace ends it and reports what it measured up to then, in the same output and with the same exit code as a run that finished on its own. The one exception is a limit reached before a server was chosen: there is nothing to measure against, so the run ends as one with no server available does, with that error and, under `--fail-on`, exit code 1.
+A run that reaches the limit has not failed. NetPace ends it and reports what it measured up to then, in the same output and with the same exit code as a run that finished on its own. The one exception is a limit reached before a server was chosen: there is nothing to measure against, so the run ends as one with no server available does, with that error and, under `--fail-on`, exit code `4`.
 
 Otherwise:
 
@@ -688,13 +688,27 @@ netpace --json --diagnostics-file diagnostics.log > result.json
 
 This is the one to reach for when you have been asked to attach the records to a bug report. It turns diagnostics on by itself, so `--diagnostics` alongside it adds nothing, and it needs no `2>` redirection, whose syntax differs between shells. The file holds the same records `--diagnostics` writes to the error stream, with the `run.invocation` record naturally naming the options you actually passed, and no record reaches the error stream at all, so a failing run still shows you its `Error:` line on screen while the records go quietly to the file.
 
-The file is replaced on every run, so each one describes a single run, and `--file-mode` does not apply to it. It is opened before the first test, so a path that cannot be written stops the run there and then with a message naming the file and what to do, and exits non-zero. Giving the option no path is refused the same way. If writing fails later, once the run is under way, NetPace says so once on the error stream and leaves the result and the exit code alone. That message is a warning, not an `Error:` line, so a script watching for errors does not mistake the run for a failed one, and `--quiet` does not hide it.
+The file is replaced on every run, so each one describes a single run, and `--file-mode` does not apply to it. It is opened before the first test, so a path that cannot be written stops the run there and then with a message naming the file and what to do, and exits `1`. Giving the option no path is refused before the run starts at all, and exits `2`. If writing fails later, once the run is under way, NetPace says so once on the error stream and leaves the result and the exit code alone. That message is a warning, not an `Error:` line, so a script watching for errors does not mistake the run for a failed one, and `--quiet` does not hide it.
 
 ### Exit codes
 
-The exit code reports only whether **NetPace itself** functioned. Network conditions like a total outage, 100% request failure, or no servers found are *data*, not errors, and NetPace will exit `0`. Only an operational failure (for example, being unable to write the `--file` output) or a usage error (an unusable option value, or two output formats at once) exits non-zero, with `1`. So a `0 bps` measurement still exits `0` by default: inspect the counts (or use `--fail-on`) to detect it.
+By default the exit code reports only whether **NetPace itself** functioned. Network conditions like a total outage, 100% request failure, or no servers found are *data*, not errors, and NetPace will exit `0`. So a `0 bps` measurement still exits `0`: inspect the counts (or use `--fail-on`) to detect it. Two opt-ins change that, and only when you ask for them: `--fail-on` and a `--min-download`, `--min-upload` or `--max-latency` target.
 
-Two opt-ins change that, and only when you ask for them: `--fail-on` exits `1` on a failed measurement, and a missed `--min-download`, `--min-upload` or `--max-latency` target exits `3`. Those are the only codes NetPace itself chooses. A process ended from outside, by a second Ctrl+C or by a service manager stopping it, exits with whatever code the operating system gives it.
+Each kind of non-zero outcome has a code of its own, so a cron line or a monitoring check can tell from the code alone whether to fix the command or chase the ISP:
+
+| Code | Meaning |
+|---|---|
+| `0` | NetPace ran, and met every opt-in condition that was asked for |
+| `1` | Operational fault: the command line was usable, but NetPace could not do its job. The `--file` or `--diagnostics-file` output could not be written, or the `--server-file` list could not be read |
+| `2` | Usage error: the command line itself cannot be run. An unknown option, a missing or unusable value, or a forbidden combination such as two output formats at once. Decided before any test runs |
+| `3` | A `--min-download`, `--min-upload` or `--max-latency` target was missed |
+| `4` | `--fail-on` was triggered by a failed measurement, or by a measurement that never ran |
+
+What separates `1` from `2` is whether the command line alone decides it. A refusal you would get on any machine for the same arguments is a usage error. A failure that depends on what the run met, a file system or a permission, is an operational fault.
+
+Where more than one applies to a run, the most serious is reported: an operational fault (`1`) over a `--fail-on` trigger (`4`) over a missed target (`3`). A usage error never runs a test, so it is never combined with the others.
+
+Those are the only codes NetPace itself chooses. A process ended from outside, by a second Ctrl+C or by a service manager stopping it, exits with whatever code the operating system gives it.
 
 **The rule covers every command, not just a speed test.** `netpace servers`, `netpace servers --latency` and `netpace servers --fastest` each report an empty server list, and a failed or timed-out attempt to fetch it — and exit `0` for both. A list no server answered on only arises where screening runs: `--fastest` reports it, `--latency` shows `-` against each row, and both exit `0`. Pressing Ctrl+C exits `0` as well, wherever you press it, and reports no error — it leaves whatever had already been drawn on screen. A script that wants to know whether servers were found reads standard error, where each of these conditions is reported, not the exit code.
 
@@ -708,7 +722,7 @@ If you want a failed measurement to fail the process, opt in with `--fail-on`. I
 
 A measurement that never ran at all — the network was down, or no server could be reached — counts as worse than an all-failed one, so it meets either threshold.
 
-`--fail-on` is fail-fast and uniform across single runs, `--count`, and `--loop`: NetPace exits `1` at the first measurement that meets the threshold.
+`--fail-on` is fail-fast and uniform across single runs, `--count`, and `--loop`: NetPace exits `4` at the first measurement that meets the threshold.
 
 ```bash
 # Treat a totally-failed test as a failure
@@ -732,7 +746,7 @@ A target is missed when the figure is below a minimum or above a maximum. A figu
 - One line per missed target goes to standard error, naming the measurement, the figure measured where there is one, and the target. `--quiet` does not suppress it.
 - NetPace exits `3`.
 
-So a cron line or a systemd timer can act on the exit code with no wrapper script: `0` means the line met every target, `3` means it fell short, and `1` still means NetPace itself did not work. An operational fault, a usage error or a `--fail-on` trigger exits `1` whatever the targets say.
+So a cron line or a systemd timer can act on the exit code with no wrapper script: `0` means the line met every target, `3` means it fell short, and `1` still means NetPace itself did not work. An operational fault (`1`) or a `--fail-on` trigger (`4`) is reported ahead of a missed target, whatever the targets say.
 
 A target answers one question about one run, so it is refused, before any test runs, alongside `--loop` or `--count` above 1, and alongside the `--no-` switch for its own test. Schedule repeated checks with cron, a systemd timer or Windows Task Scheduler. A value with no unit, an unrecognised unit, or a value that is not positive is refused the same way, with a workable example. Pressing Ctrl+C writes no target lines and exits `0`, as it does today.
 
