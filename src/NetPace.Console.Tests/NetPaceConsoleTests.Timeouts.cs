@@ -106,7 +106,7 @@ public sealed partial class NetPaceConsoleTests
 
             // Then the failure is reported and the run exits 1.
             Assert.Contains("did not respond in time", result.ErrorOutput);
-            Assert.Equal(1, result.ExitCode);
+            Assert.Equal(4, result.ExitCode);
         }
 
         [Fact]

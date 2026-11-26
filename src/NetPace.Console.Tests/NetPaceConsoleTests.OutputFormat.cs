@@ -95,7 +95,7 @@ public sealed partial class NetPaceConsoleTests
 
             // Then the error says the switch is gone and points at --help, and names no
             // replacement - --simple replaces only one of the three former values.
-            Assert.Equal(1, result.ExitCode);
+            Assert.Equal(2, result.ExitCode);
             Assert.Contains("--verbosity has been removed, see --help.", result.ErrorOutput);
             Assert.DoesNotContain("--simple", result.ErrorOutput);
         }
@@ -119,7 +119,7 @@ public sealed partial class NetPaceConsoleTests
             var result = await host.RunAsync(ArgsFrom(commandLine));
 
             // Then the error identifies which switches conflicted rather than silently picking one.
-            Assert.Equal(1, result.ExitCode);
+            Assert.Equal(2, result.ExitCode);
             Assert.Contains($"Only one output format may be specified: {conflict}.", result.ErrorOutput);
         }
 
@@ -138,7 +138,7 @@ public sealed partial class NetPaceConsoleTests
             var result = await host.RunAsync([quiet, "--csv", "--simple"]);
 
             // Then
-            Assert.Equal(1, result.ExitCode);
+            Assert.Equal(2, result.ExitCode);
             Assert.Contains("Only one output format may be specified: --csv, --simple.", result.ErrorOutput);
         }
 
@@ -157,7 +157,7 @@ public sealed partial class NetPaceConsoleTests
             var result = await host.RunAsync(["--csv", "--json", "--unit", "NotAUnit"]);
 
             // Then the option error is reported rather than masked by the conflict.
-            Assert.Equal(1, result.ExitCode);
+            Assert.Equal(2, result.ExitCode);
             Assert.Contains("NotAUnit", result.ErrorOutput);
         }
 
@@ -174,7 +174,7 @@ public sealed partial class NetPaceConsoleTests
             var result = await host.RunAsync(["--verbosity", "Minimal", "--csv", "--json"]);
 
             // Then
-            Assert.Equal(1, result.ExitCode);
+            Assert.Equal(2, result.ExitCode);
             Assert.Contains("--verbosity has been removed, see --help.", result.ErrorOutput);
         }
 

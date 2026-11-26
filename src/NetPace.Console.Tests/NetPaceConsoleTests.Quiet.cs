@@ -141,7 +141,7 @@ public sealed partial class NetPaceConsoleTests
             var result = await host.RunAsync([quiet, "--count", "ABC"]);
 
             // Then
-            Assert.Equal(1, result.ExitCode);
+            Assert.Equal(2, result.ExitCode);
             Assert.Empty(result.Output);
             await Verify(result.ErrorOutput).DisableRequireUniquePrefix();
 

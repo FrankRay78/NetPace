@@ -181,7 +181,7 @@ public sealed partial class NetPaceConsoleTests
             var result = await host.RunAsync(["--simple", "--fail-on", "partial"]);
 
             // Then the limit hides nothing: the exit code is the one the failure earns.
-            Assert.Equal(1, result.ExitCode);
+            Assert.Equal(4, result.ExitCode);
         }
 
         [Theory]
@@ -202,7 +202,7 @@ public sealed partial class NetPaceConsoleTests
 
             // Then the failure is reported and earns its exit code, as it would with no limit: a
             // test with a failed request in it ran, so it is not reported as one that did not.
-            Assert.Equal(1, result.ExitCode);
+            Assert.Equal(4, result.ExitCode);
 
             await Verify(result.Output).UseTextForParameters(formatName);
         }
@@ -220,7 +220,7 @@ public sealed partial class NetPaceConsoleTests
             var result = await host.RunAsync(["--fail-on", "total"]);
 
             // Then the download row stays and shows the failure rather than vanishing.
-            Assert.Equal(1, result.ExitCode);
+            Assert.Equal(4, result.ExitCode);
 
             await Verify(result.Output);
         }

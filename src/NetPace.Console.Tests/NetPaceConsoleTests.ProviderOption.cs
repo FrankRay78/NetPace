@@ -267,7 +267,7 @@ public sealed partial class NetPaceConsoleTests
                 .RunAsync(["--provider", "librespeed", "--server-url", LibreSpeedUrl, "--fail-on", failOn]);
 
             // Then
-            Assert.Equal(1, result.ExitCode);
+            Assert.Equal(4, result.ExitCode);
         }
 
         [Fact]

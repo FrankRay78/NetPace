@@ -183,8 +183,8 @@ public sealed partial class NetPaceConsoleTests
             var result = await DiagnosticHost(failEveryUpload: true).RunAsync(["--simple", "--fail-on", "Total", "--diagnostics"]);
 
             // Then the diagnostics record the code the process actually exited with.
-            Assert.Equal(1, result.ExitCode);
-            Assert.Contains("event=run.end exit=1", result.DiagnosticOutput, StringComparison.Ordinal);
+            Assert.Equal(4, result.ExitCode);
+            Assert.Contains("event=run.end exit=4", result.DiagnosticOutput, StringComparison.Ordinal);
         }
 
         [Fact]

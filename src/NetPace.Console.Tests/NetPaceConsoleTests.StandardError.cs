@@ -191,7 +191,7 @@ public sealed partial class NetPaceConsoleTests
             var result = await host.RunAsync(["--profile", "huge"]);
 
             // Then
-            Assert.Equal(1, result.ExitCode);
+            Assert.Equal(2, result.ExitCode);
             Assert.Contains("huge", result.ErrorOutput, StringComparison.Ordinal);
             Assert.Empty(result.Output);
         }

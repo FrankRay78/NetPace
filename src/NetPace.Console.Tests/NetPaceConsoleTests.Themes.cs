@@ -488,7 +488,7 @@ public sealed partial class NetPaceConsoleTests
             async Task<string> Draw(string[] arguments, Theme theme)
             {
                 var result = await StaticScreenHost(SpeedTestServices(Chosen(theme))).RunAsync(arguments);
-                Assert.Equal(1, result.ExitCode);
+                Assert.Equal(2, result.ExitCode);
                 return AnsiSnapshot.Readable(result.ErrorOutput);
             }
         }
@@ -505,7 +505,7 @@ public sealed partial class NetPaceConsoleTests
 
             // Then the failure is marked by a word, so it survives being read with the colours
             // stripped out — which is what a reader who cannot tell them apart is doing.
-            Assert.Equal(1, result.ExitCode);
+            Assert.Equal(2, result.ExitCode);
             Assert.Contains("Error:", AnsiSnapshot.WithoutStyling(result.ErrorOutput), StringComparison.Ordinal);
         }
 

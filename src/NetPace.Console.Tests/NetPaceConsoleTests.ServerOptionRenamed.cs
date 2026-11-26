@@ -26,7 +26,7 @@ public sealed partial class NetPaceConsoleTests
             // was reached, the exit code reports the usage error, and the message names the option
             // to use instead. Its wording is not asserted: that is a message for a person to read.
             Assert.Empty(serviceCalls);
-            Assert.Equal(1, result.ExitCode);
+            Assert.Equal(2, result.ExitCode);
             Assert.Contains("--server-url", result.ErrorOutput);
         }
 
@@ -42,7 +42,7 @@ public sealed partial class NetPaceConsoleTests
 
             // Then
             Assert.Empty(serviceCalls);
-            Assert.Equal(1, result.ExitCode);
+            Assert.Equal(2, result.ExitCode);
             Assert.Contains("--server-url", result.ErrorOutput);
         }
 

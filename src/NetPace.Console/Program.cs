@@ -225,7 +225,7 @@ public static class Program
             var value = result.GetValueOrDefault<string>();
             if (!TryParseConnections(value, out var connections) || connections < MinimumConnections || connections > MaximumConnections)
             {
-                result.AddError($"--connections must be a whole number from {MinimumConnections} to {MaximumConnections}, but was '{value}'.");
+                result.AddError(ConnectionsError(value));
             }
         });
 
@@ -327,21 +327,21 @@ public static class Program
 
         var minDownloadOption = new Option<MeasurementThreshold?>("--min-download")
         {
-            Description = $"Exit {ThresholdCheck.MissedExitCode} when the download speed is below this, such as {ThresholdOption.SpeedExample}.\nTakes any unit NetPace writes a speed in, whatever --unit, --unit-system and --unit-scale say.\nChecks one run, so not with --loop, --count above 1, or --no-download.",
+            Description = $"Exit {ExitCode.MissedTarget} when the download speed is below this, such as {ThresholdOption.SpeedExample}.\nTakes any unit NetPace writes a speed in, whatever --unit, --unit-system and --unit-scale say.\nChecks one run, so not with --loop, --count above 1, or --no-download.",
             DefaultValueFactory = _ => null,
             CustomParser = result => ThresholdOption.ParseSpeed(result, "--min-download")
         };
 
         var minUploadOption = new Option<MeasurementThreshold?>("--min-upload")
         {
-            Description = $"Exit {ThresholdCheck.MissedExitCode} when the upload speed is below this, such as {ThresholdOption.SpeedExample}.\nRead the same way as --min-download; not with --loop, --count above 1, or --no-upload.",
+            Description = $"Exit {ExitCode.MissedTarget} when the upload speed is below this, such as {ThresholdOption.SpeedExample}.\nRead the same way as --min-download; not with --loop, --count above 1, or --no-upload.",
             DefaultValueFactory = _ => null,
             CustomParser = result => ThresholdOption.ParseSpeed(result, "--min-upload")
         };
 
         var maxLatencyOption = new Option<MeasurementThreshold?>("--max-latency")
         {
-            Description = $"Exit {ThresholdCheck.MissedExitCode} when the idle latency is above this, such as {ThresholdOption.LatencyExample}.\nMilliseconds only; not with --loop, --count above 1, or --no-latency.",
+            Description = $"Exit {ExitCode.MissedTarget} when the idle latency is above this, such as {ThresholdOption.LatencyExample}.\nMilliseconds only; not with --loop, --count above 1, or --no-latency.",
             DefaultValueFactory = _ => null,
             CustomParser = result => ThresholdOption.ParseLatency(result, "--max-latency")
         };
@@ -378,7 +378,7 @@ public static class Program
 
         var failOnOption = new Option<FailOn>("--fail-on")
         {
-            Description = $"Exit with a non-zero code on a failed measurement. {OptionValues.FailOnModes.HelpList}\nWith 'none' the exit code is never affected; 'total' triggers when a test is all-failed;\n'partial' triggers on any failed request. Fail-fast across --count and --loop.",
+            Description = $"Exit {ExitCode.FailOnTriggered} on a failed measurement. {OptionValues.FailOnModes.HelpList}\nWith 'none' the exit code is never affected; 'total' triggers when a test is all-failed;\n'partial' triggers on any failed request. Fail-fast across --count and --loop.",
             DefaultValueFactory = _ => FailOn.None,
             CustomParser = result => OptionValues.FailOnModes.Parse(result, "--fail-on")
         };
@@ -449,7 +449,7 @@ public static class Program
                     NoUpload = parseResult.GetValue(noUploadOption),
                     Provider = parseResult.GetValue(providerOption),
                     ServerUrl = parseResult.GetValue(serverUrlOption) ?? string.Empty,
-                    ListedServers = ServerFileReader.Read(parseResult.GetValue(serverFileOption) ?? string.Empty),
+                    ServerFile = parseResult.GetValue(serverFileOption) ?? string.Empty,
                     Profile = parseResult.GetValue(profileOption),
                     DownloadSizeMb = parseResult.GetValue(downloadSizeOption),
                     UploadSizeMb = parseResult.GetValue(uploadSizeOption),
@@ -472,6 +472,12 @@ public static class Program
 
                 // Validate settings
                 settings.Validate();
+
+                // Read only now the command line has passed: a server file is part of the
+                // environment the run met, so a failure to read it is an operational fault, and a
+                // run that is both unusable and names an unreadable file must still report the
+                // usage error that any machine would have given it.
+                settings = settings with { ListedServers = ServerFileReader.Read(settings.ServerFile) };
 
                 // Build the provider's settings from --provider, --profile and the per-cap
                 // overrides. The settings accessor is the test seam: production resolves the
@@ -542,12 +548,12 @@ public static class Program
             }
             catch (Exception ex)
             {
-                // Usage/configuration errors and operational failures go to the error stream, so a
-                // redirect of the result never swallows them and no reader of the result ever meets
-                // a line that is not part of its format. Resolved again here rather than reused
-                // from above, because the throw may have come before that line ran.
+                // Usage errors and operational failures go to the error stream, so a redirect of
+                // the result never swallows them and no reader of the result ever meets a line
+                // that is not part of its format. Resolved again here rather than reused from
+                // above, because the throw may have come before that line ran.
                 serviceProvider.GetRequiredService<ErrorOutput>().WriteLine(theme, ex.Message);
-                return 1;
+                return ExitCodeFor(ex);
             }
             finally
             {
@@ -671,7 +677,7 @@ public static class Program
     private static TimeSpan ParseTimeLimit(string? value) =>
         TryParseTimeLimit(value, out var limit)
             ? limit
-            : throw new ArgumentException(TimeLimitError(value));
+            : throw new UsageException(TimeLimitError(value));
 
     /// <summary>
     /// What a <c>--time-limit</c> value that will not parse is reported as, by the validator and by
@@ -693,8 +699,21 @@ public static class Program
     /// will not parse means the validator never ran, and throwing beats reporting a speed for a
     /// load nobody asked for.
     /// </summary>
-    private static int? ParseConnections(string? value) =>
-        string.IsNullOrEmpty(value) ? null : int.Parse(value, NumberStyles.None, CultureInfo.InvariantCulture);
+    private static int? ParseConnections(string? value)
+    {
+        if (string.IsNullOrEmpty(value)) return null;
+
+        return TryParseConnections(value, out var connections)
+            ? connections
+            : throw new UsageException(ConnectionsError(value));
+    }
+
+    /// <summary>
+    /// What a <c>--connections</c> value outside the accepted range is reported as, by the
+    /// validator and by <see cref="ParseConnections"/> alike.
+    /// </summary>
+    private static string ConnectionsError(string? value) =>
+        $"--connections must be a whole number from {MinimumConnections} to {MaximumConnections}, but was '{value}'.";
 
     /// <summary>
     /// Create the list servers command.
@@ -743,16 +762,28 @@ public static class Program
             }
             catch (Exception ex)
             {
-                // Usage/configuration errors and operational failures go to the error stream.
-                // Network and discovery outcomes never reach here: ListServersCommand reports those
-                // itself and leaves the exit code at 0, as a speed test does.
+                // Usage errors and operational failures go to the error stream. Network and
+                // discovery outcomes never reach here: ListServersCommand reports those itself and
+                // leaves the exit code at 0, as a speed test does.
                 serviceProvider.GetRequiredService<ErrorOutput>().WriteLine(theme, ex.Message);
-                return 1;
+                return ExitCodeFor(ex);
             }
         });
 
         return command;
     }
+
+    /// <summary>
+    /// Which code a command exits with for a failure that reached its top-level handler: the
+    /// command line's own fault, or NetPace's.
+    /// </summary>
+    /// <remarks>
+    /// Both commands' handlers decide it here, so the two cannot come to disagree about what a code
+    /// means. Anything that is not a <see cref="UsageException"/> is an operational fault, which is
+    /// the safer reading of an exception nobody anticipated.
+    /// </remarks>
+    private static int ExitCodeFor(Exception exception) =>
+        exception is UsageException ? ExitCode.UsageError : ExitCode.OperationalFault;
 
     /// <summary>
     /// Registers the three outputs that go to the process error stream rather than to the result:
@@ -980,7 +1011,7 @@ public static class Program
             {
                 errorOutput.WriteLine(selection.Theme, error.Message);
             }
-            return 1;
+            return ExitCode.UsageError;
         }
 
         return await parseResult.InvokeAsync(cancellationToken: cancellationToken);

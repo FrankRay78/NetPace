@@ -62,7 +62,7 @@ OPTIONS:
     -f, --file                            Write output to file.                                                                                           
         --file-mode           append      Determines file output behavior. <append, overwrite>                                                            
     -q, --quiet                           Suppress all normal console output (file output still works).                                                   
-        --fail-on             none        Exit with a non-zero code on a failed measurement. <none, total, partial>                                       
+        --fail-on             none        Exit 4 on a failed measurement. <none, total, partial>                                                          
                                           With 'none' the exit code is never affected; 'total' triggers when a test is all-failed;                        
                                           'partial' triggers on any failed request. Fail-fast across --count and --loop.                                  
         --min-download                    Exit 3 when the download speed is below this, such as 50Mbps.                                                   
@@ -82,6 +82,14 @@ COMMANDS:
 
 ENVIRONMENT:
     NETPACE_THEME  Colour theme to draw in. <default, plain, green, halloween>
+
+EXIT CODES:
+    0  Ran, and met every opt-in condition asked for.
+    1  Operational fault: NetPace could not do its job.
+    2  Usage error: the command line itself cannot be run.
+    3  A --min-download, --min-upload or --max-latency target was missed.
+    4  --fail-on was triggered by a failed measurement.
+    Where more than one applies, the most serious wins: 1, then 4, then 3.
 
 SEE ALSO:
     https://github.com/FrankRay78/NetPace/blob/main/USER_GUIDE.md

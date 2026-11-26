@@ -112,8 +112,8 @@ and upload speed testing.
                                           <append, overwrite>                   
     \e[38;5;65m-q, --quiet\e[0m                           Suppress all normal console output    
                                           (file output still works).            
-    \e[38;5;65m    --fail-on\e[0m             \e[1;38;5;29mnone\e[0m        Exit with a non-zero code on a failed 
-                                          measurement. <none, total, partial>   
+    \e[38;5;65m    --fail-on\e[0m             \e[1;38;5;29mnone\e[0m        Exit 4 on a failed measurement. <none,
+                                          total, partial>                       
                                           With 'none' the exit code is never    
                                           affected; 'total' triggers when a test
                                           is all-failed;                        
@@ -151,6 +151,14 @@ and upload speed testing.
 
 \e[1;38;5;28mENVIRONMENT:\e[0m
     \e[38;5;65mNETPACE_THEME\e[0m  Colour theme to draw in. <default, plain, green, halloween>
+
+\e[1;38;5;28mEXIT CODES:\e[0m
+    \e[38;5;65m0\e[0m  Ran, and met every opt-in condition asked for.
+    \e[38;5;65m1\e[0m  Operational fault: NetPace could not do its job.
+    \e[38;5;65m2\e[0m  Usage error: the command line itself cannot be run.
+    \e[38;5;65m3\e[0m  A --min-download, --min-upload or --max-latency target was missed.
+    \e[38;5;65m4\e[0m  --fail-on was triggered by a failed measurement.
+    Where more than one applies, the most serious wins: 1, then 4, then 3.
 
 \e[1;38;5;28mSEE ALSO:\e[0m
     \e]8;id=0;https://github.com/FrankRay78/NetPace/blob/main/USER_GUIDE.md\e\https://github.com/FrankRay78/NetPace/blob/main/USER_GUIDE.md\e]8;;\e\
