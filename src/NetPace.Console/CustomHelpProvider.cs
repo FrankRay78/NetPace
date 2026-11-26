@@ -305,8 +305,8 @@ internal static class CustomHelpProvider
     /// </summary>
     /// <remarks>
     /// Root help only, for the reason the environment section above is: a code is not a property of
-    /// one command. <c>netpace servers</c> returns the same codes, so repeating the section on its
-    /// page would say the same thing twice.
+    /// one command. <c>netpace servers</c> returns a subset of these, so repeating the section on
+    /// its page would add nothing.
     /// </remarks>
     private static void RenderExitCodes(IAnsiConsole console, Theme theme)
     {
@@ -321,7 +321,7 @@ internal static class CustomHelpProvider
 
         console.WriteLine("EXIT CODES:", theme.Heading);
 
-        foreach (var (code, meaning) in codes)
+        foreach ((int code, string meaning) in codes)
         {
             console.WriteStyledLine(
                 ("    ", Style.Plain),
@@ -329,7 +329,7 @@ internal static class CustomHelpProvider
                 ($"  {meaning}", Style.Plain));
         }
 
-        console.WriteLine($"    Where more than one applies, the most serious wins: {ExitCode.OperationalFault}, then {ExitCode.FailOnTriggered}, then {ExitCode.MissedTarget}.");
+        console.WriteLine($"    Where more than one applies, the most serious wins: {ExitCode.UsageError} over {ExitCode.OperationalFault} over {ExitCode.FailOnTriggered} over {ExitCode.MissedTarget}.");
         console.WriteLine();
     }
 

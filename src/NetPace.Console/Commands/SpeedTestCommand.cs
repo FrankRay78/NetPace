@@ -42,7 +42,7 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ErrorOutput errorOutp
     /// </remarks>
     public async Task<int> ExecuteAsync(SpeedTestCommandSettings settings, CancellationToken cancellationToken)
     {
-        var exitCode = ExitCode.OperationalFault;
+        int exitCode = ExitCode.OperationalFault;
 
         try
         {

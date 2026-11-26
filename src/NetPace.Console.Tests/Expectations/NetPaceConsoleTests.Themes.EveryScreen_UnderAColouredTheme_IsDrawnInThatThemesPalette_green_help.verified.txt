@@ -158,7 +158,7 @@ and upload speed testing.
     \e[38;5;65m2\e[0m  Usage error: the command line itself cannot be run.
     \e[38;5;65m3\e[0m  A --min-download, --min-upload or --max-latency target was missed.
     \e[38;5;65m4\e[0m  --fail-on was triggered by a failed measurement.
-    Where more than one applies, the most serious wins: 1, then 4, then 3.
+    Where more than one applies, the most serious wins: 2 over 1 over 4 over 3.
 
 \e[1;38;5;28mSEE ALSO:\e[0m
     \e]8;id=0;https://github.com/FrankRay78/NetPace/blob/main/USER_GUIDE.md\e\https://github.com/FrankRay78/NetPace/blob/main/USER_GUIDE.md\e]8;;\e\

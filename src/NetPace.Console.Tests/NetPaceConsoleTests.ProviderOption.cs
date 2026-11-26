@@ -43,8 +43,8 @@ public sealed partial class NetPaceConsoleTests
             var result = await host.RunAsync(["--provider", "librespeed"]);
 
             // Then nothing is measured, the user is told a server URL is needed, and the exit code
-            // is non-zero: a missing option is a usage error, not a network outcome.
-            Assert.NotEqual(0, result.ExitCode);
+            // is 2: a missing option is a usage error, not a network outcome.
+            Assert.Equal(2, result.ExitCode);
             Assert.Empty(result.Output);
             await Verify(result.ErrorOutput);
         }

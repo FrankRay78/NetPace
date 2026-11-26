@@ -706,7 +706,7 @@ Each kind of non-zero outcome has a code of its own, so a cron line or a monitor
 
 What separates `1` from `2` is whether the command line alone decides it. A refusal you would get on any machine for the same arguments is a usage error. A failure that depends on what the run met, a file system or a permission, is an operational fault.
 
-Where more than one applies to a run, the most serious is reported: an operational fault (`1`) over a `--fail-on` trigger (`4`) over a missed target (`3`). A usage error never runs a test, so it is never combined with the others.
+Where more than one applies to a run, the most serious is reported: a usage error (`2`) over an operational fault (`1`) over a `--fail-on` trigger (`4`) over a missed target (`3`). A usage error is decided before any test, so it is reported ahead of an operational fault the run would otherwise have met: a command line that is refused on its own terms and also names an unreadable `--server-file` exits `2`.
 
 Those are the only codes NetPace itself chooses. A process ended from outside, by a second Ctrl+C or by a service manager stopping it, exits with whatever code the operating system gives it.
 

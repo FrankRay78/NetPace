@@ -81,12 +81,14 @@ public sealed record SpeedTestCommandSettings
     /// them. Empty where no file was named: a file listing nothing is refused as it is read.
     /// </summary>
     /// <remarks>
-    /// Filled in after <see cref="SpeedTestCommandSettingsExtensions.Validate"/> has passed, which
-    /// is why it is not required: the command line is checked before the file it names is opened,
-    /// so a run that is both unusable and names an unreadable file reports the usage error. Every
-    /// check in <c>Validate</c> therefore reads <see cref="ServerFile"/>, never this.
+    /// Set empty at construction and filled in after
+    /// <see cref="SpeedTestCommandSettingsExtensions.Validate"/> has passed: the command line is
+    /// checked before the file it names is opened, so a run that is both unusable and names an
+    /// unreadable file reports the usage error. Every check in <c>Validate</c> therefore reads
+    /// <see cref="ServerFile"/>, never this, and a caller that sets <see cref="ServerFile"/> and
+    /// leaves this empty tests against discovered servers rather than the listed ones.
     /// </remarks>
-    public IReadOnlyList<IServer> ListedServers { get; init; } = [];
+    public required IReadOnlyList<IServer> ListedServers { get; init; }
 
     /// <summary>
     /// Which kind of speed test server the run tests against.
@@ -212,7 +214,7 @@ public static class SpeedTestCommandSettingsExtensions
     /// <summary>
     /// Validate SpeedTestCommandSettings.
     /// </summary>
-    /// <returns>Throws an exception if validation fails.</returns>
+    /// <exception cref="UsageException">The command line cannot be run as given.</exception>
     public static void Validate(this SpeedTestCommandSettings settings)
     {
         // Exactly one output format may be selected. --json-pretty shapes the JSON format rather

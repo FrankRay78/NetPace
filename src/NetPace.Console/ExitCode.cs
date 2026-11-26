@@ -7,10 +7,10 @@ namespace NetPace.Console;
 /// <remarks>
 /// A network outcome is data rather than a failure, so it leaves the code at
 /// <see cref="Success"/> unless the user opted in with <c>--fail-on</c> or a target. Where more
-/// than one of the rest applies to a run, the most serious is reported:
+/// than one applies to a run, the most serious is reported: <see cref="UsageError"/>, then
 /// <see cref="OperationalFault"/>, then <see cref="FailOnTriggered"/>, then
-/// <see cref="MissedTarget"/>. A <see cref="UsageError"/> never runs a test, so it is never
-/// combined with the others.
+/// <see cref="MissedTarget"/>. A <see cref="UsageError"/> is decided before any test, so it is
+/// reported ahead of an operational fault the run would otherwise have met.
 /// <para>
 /// These are an interface contract: a script reads them, so a code's meaning cannot change
 /// without breaking it.
@@ -24,8 +24,9 @@ internal static class ExitCode
     public const int Success = 0;
 
     /// <summary>
-    /// The command line was usable, but NetPace could not do its job: the <c>--file</c> output
-    /// could not be written, or the <c>--server-file</c> list could not be read.
+    /// The command line was usable, but NetPace could not do its job: the <c>--file</c> or
+    /// <c>--diagnostics-file</c> output could not be written, or the <c>--server-file</c> list
+    /// could not be read.
     /// </summary>
     public const int OperationalFault = 1;
 

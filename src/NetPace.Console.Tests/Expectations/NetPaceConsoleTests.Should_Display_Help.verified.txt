@@ -89,7 +89,7 @@ EXIT CODES:
     2  Usage error: the command line itself cannot be run.
     3  A --min-download, --min-upload or --max-latency target was missed.
     4  --fail-on was triggered by a failed measurement.
-    Where more than one applies, the most serious wins: 1, then 4, then 3.
+    Where more than one applies, the most serious wins: 2 over 1 over 4 over 3.
 
 SEE ALSO:
     https://github.com/FrankRay78/NetPace/blob/main/USER_GUIDE.md

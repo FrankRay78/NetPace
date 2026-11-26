@@ -426,7 +426,7 @@ public static class Program
         command.SetAction((Func<ParseResult, CancellationToken, Task<int>>)(async (parseResult, cancellationToken) =>
         {
             // Declared out here so the diagnostics file is closed however the run ends, including
-            // the throws the catch below turns into exit code 1.
+            // the throws the catch below turns into a non-zero exit code.
             TextWriter? diagnosticsFile = null;
 
             try
@@ -450,6 +450,7 @@ public static class Program
                     Provider = parseResult.GetValue(providerOption),
                     ServerUrl = parseResult.GetValue(serverUrlOption) ?? string.Empty,
                     ServerFile = parseResult.GetValue(serverFileOption) ?? string.Empty,
+                    ListedServers = [],
                     Profile = parseResult.GetValue(profileOption),
                     DownloadSizeMb = parseResult.GetValue(downloadSizeOption),
                     UploadSizeMb = parseResult.GetValue(uploadSizeOption),
@@ -982,14 +983,14 @@ public static class Program
         if (args.Length > 0 && (args[0] is "-v" or "--version"))
         {
             ansiConsole.WriteLine(AppVersion.Current);
-            return 0;
+            return ExitCode.Success;
         }
 
         // Check for help request before parsing
         if (args.Length > 0 && (args[0] is "-h" or "--help" or "-?"))
         {
             CustomHelpProvider.RenderHelp(ansiConsole, rootCommand, selection.Theme);
-            return 0;
+            return ExitCode.Success;
         }
 
         // Check for subcommand help
@@ -1000,7 +1001,7 @@ public static class Program
             if (subcommand != null)
             {
                 CustomHelpProvider.RenderHelp(ansiConsole, subcommand, selection.Theme);
-                return 0;
+                return ExitCode.Success;
             }
         }
 
