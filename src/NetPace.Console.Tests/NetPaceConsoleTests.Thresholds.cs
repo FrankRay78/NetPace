@@ -28,8 +28,6 @@ public sealed partial class NetPaceConsoleTests
         /// </summary>
         private const int UsageExitCode = 2;
 
-        private static CommandLineTestHost StubHost() => GetCommandLineTestHost(StubServices());
-
         private static CommandLineTestHost HostWith(ISpeedTestService service)
         {
             var services = new ServiceCollection();

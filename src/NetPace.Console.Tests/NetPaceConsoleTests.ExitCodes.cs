@@ -22,8 +22,6 @@ public sealed partial class NetPaceConsoleTests
             return GetCommandLineTestHost(services);
         }
 
-        private static CommandLineTestHost StubHost() => GetCommandLineTestHost(StubServices());
-
         /// <summary>
         /// A path in a directory that does not exist, so nothing can be read from it or written to
         /// it. Fresh on every call.
@@ -99,7 +97,7 @@ public sealed partial class NetPaceConsoleTests
             // When
             var result = await host.RunAsync([.. repeat, "--fail-on", "total", "--simple"], giveUp.Token);
 
-            // Then it stays fail-fast, and the code is the trigger's own.
+            // Then the code is the trigger's own.
             Assert.Equal(4, result.ExitCode);
         }
 

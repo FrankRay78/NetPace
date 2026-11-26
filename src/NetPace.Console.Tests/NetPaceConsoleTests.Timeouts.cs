@@ -104,7 +104,7 @@ public sealed partial class NetPaceConsoleTests
             // When the test runs with --fail-on.
             var result = await host.RunAsync(["--server-url", ServerUrl, "--fail-on", failOn]);
 
-            // Then the failure is reported and the run exits 1.
+            // Then the failure is reported and the run exits 4.
             Assert.Contains("did not respond in time", result.ErrorOutput);
             Assert.Equal(4, result.ExitCode);
         }

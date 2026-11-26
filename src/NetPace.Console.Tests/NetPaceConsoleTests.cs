@@ -139,6 +139,12 @@ public sealed partial class NetPaceConsoleTests
     }
 
     /// <summary>
+    /// A host wired to nothing but <see cref="StubServices"/>. Shared by the nested classes that
+    /// run the stub as it comes.
+    /// </summary>
+    private static CommandLineTestHost StubHost() => GetCommandLineTestHost(StubServices());
+
+    /// <summary>
     /// Create the CommandLineTestHost for a run that sees an interactive terminal, so the live
     /// progress display renders into the captured output.
     /// </summary>
