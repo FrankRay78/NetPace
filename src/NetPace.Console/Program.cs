@@ -473,10 +473,10 @@ public static class Program
                 // Validate settings
                 settings.Validate();
 
-                // Read only now the command line has passed: a server file is part of the
-                // environment the run met, so a failure to read it is an operational fault, and a
-                // run that is both unusable and names an unreadable file must still report the
-                // usage error that any machine would have given it.
+                // Read only now the command line has passed, so a run that is both unusable and
+                // names an unreadable file reports the usage error any machine would have given
+                // it. Why the file is a fault rather than a usage error:
+                // docs/change-intent-records/2026-11-26-each-outcome-exits-with-its-own-code.md
                 settings = settings with { ListedServers = ServerFileReader.Read(settings.ServerFile) };
 
                 // Build the provider's settings from --provider, --profile and the per-cap

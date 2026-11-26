@@ -7,8 +7,8 @@ namespace NetPace.Console;
 /// The type is what tells a usage error apart from an operational fault once both have become an
 /// exception, so the top-level handler can exit <see cref="ExitCode.UsageError"/> for the one and
 /// <see cref="ExitCode.OperationalFault"/> for the other. Anything else that reaches the handler is
-/// an operational fault: a fault is the safer reading of an exception nobody anticipated, since it
-/// says NetPace could not do its job rather than blaming the command line.
+/// an operational fault. Why it is the type and not the exception's class hierarchy:
+/// <c>docs/change-intent-records/2026-11-26-each-outcome-exits-with-its-own-code.md</c>.
 /// <para>
 /// Throw it only where the refusal would happen on any machine for the same arguments. A failure
 /// that depends on the environment the run met, such as a file that could not be read, is an
