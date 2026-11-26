@@ -10,6 +10,7 @@ public sealed partial class NetPaceConsoleTests
         [InlineData("5", "plain-number")]
         [InlineData("600", "plain-seconds")]
         [InlineData("soon", "words")]
+        [InlineData("0", "bare-zero")]
         [InlineData("00:00:00", "zero")]
         [InlineData("0s", "zero-seconds")]
         [InlineData("-00:01:00", "negative")]

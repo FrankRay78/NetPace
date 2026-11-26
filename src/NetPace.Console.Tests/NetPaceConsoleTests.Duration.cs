@@ -84,6 +84,7 @@ public sealed partial class NetPaceConsoleTests
 
         [Theory]
         [InlineData("600", "bare-number")]
+        [InlineData("3600000", "bare-number-past-the-longest")]
         [InlineData("soon", "words")]
         [InlineData("10:00", "minutes-and-seconds")]
         [InlineData("31d", "past-the-longest")]
