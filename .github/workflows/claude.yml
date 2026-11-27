@@ -31,11 +31,18 @@ jobs:
           args=$(bash scripts/stage-flags.sh claude-mention)
           echo "args=$args" >> "$GITHUB_OUTPUT"
 
+      # The action starts the agent in auto mode, where a safety review decides each command no
+      # rule covers. That is kept, so the agent can run what the maintainer would — the tests, the
+      # scripts, `gh` — but the review is a judgement, not a boundary. The deny rules are the
+      # boundary for the one move that turns injected text into a program run with this job's
+      # tokens: writing git's config, which names programs a later git call runs. `git config`
+      # and `git -c` set it directly, and `--output`, which `git diff`, `git log` and `git show`
+      # take, writes anywhere. Deny outranks auto mode's review, quoted or escaped spellings too.
       - name: Run Claude Code
         id: claude
         uses: anthropics/claude-code-action@v1
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          claude_args: '${{ steps.model.outputs.args }}'
+          claude_args: '${{ steps.model.outputs.args }} --disallowedTools "Bash(git config *),Bash(git -c *),Bash(git *--output*)"'
           additional_permissions: |
             actions: read

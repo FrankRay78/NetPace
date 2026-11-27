@@ -167,7 +167,7 @@ run
 ok "the third round is Review 2" '[ "$(cell "Review 2" 1)" = "33" ]'
 ok "and the total covers all three" \
   '[ "$(cell Total 1)" = "1,268,000" ] && [ "$(cell Total 2)" = "\$13.46" ]'
-# Re-running the first review from the workflow's manual dispatch is a fourth posting round.
+# Re-running the first review's workflow run is a fourth posting round.
 run
 ok "a fourth posting round is Review 3 and is counted in the total" \
   '[ "$(cell "Review 3" 1)" = "33" ] && [ "$(cell Total 1)" = "1,268,033" ] && [ "$(rows)" = 4 ]'

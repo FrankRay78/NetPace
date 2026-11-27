@@ -10,10 +10,6 @@ name: Link Check
 # inbound pointers in places nobody opens at the time: CONVENTIONS.md, a workflow comment, another
 # record. This job is where that shows up while the change is still a pull request.
 #
-# Deliberately its own workflow rather than a job in dotnet.yml or shell-tests.yml: the job name
-# becomes the required-status-check context, and keeping it here means an unrelated change to the
-# .NET build matrix or the shell-test discovery can never rename it out from under the ruleset.
-#
 # The check's own behaviour is gated separately — scripts/link-check.tests.sh is a committed
 # `*.tests.sh`, so shell-tests.yml discovers and runs it with no entry needed here.
 
