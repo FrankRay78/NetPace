@@ -21,10 +21,10 @@
 # the review, and the round would lose its row while the run stayed green. That
 # test cannot tell this run's review from one an earlier run left at the same commit, so on its own
 # it only rules out a head nobody has reviewed. The calling workflow's check — that the count of
-# marked reviews went up — is what rules out a re-dispatch that posted nothing.
+# marked reviews at that commit went up — is what rules out a re-run that posted nothing.
 #
 # WHY THE ROW NAME COMES FROM THE FOOTER AND NOT FROM THE ROUND. Counting the rows already in the
-# footer makes the next name a function of what is written down, so a re-dispatched first review
+# footer makes the next name a function of what is written down, so a re-run first review
 # or a repeated follow-up adds the next row rather than overwriting one. The round number the
 # command reasons about (`/gaffer:review-followup` step 2's cap) is about reviews posted; this is about
 # rows recorded, and the two are deliberately not the same question.

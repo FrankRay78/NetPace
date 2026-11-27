@@ -515,6 +515,14 @@ chmod 000 "$REPO/docs/guide.md" || setup_fail "chmod guide"
 check
 ok "a file that cannot be read fails rather than being passed over" 'failed && names "no verdict is possible"'
 
+# grep reads a file holding a NUL byte as binary: it prints no match and exits 0, so without the
+# guard the broken link below would go unread and the verdict would be OK.
+new_case
+printf 'See [gone](docs/gone.md).\n\000\n' > "$REPO/README.md" || setup_fail "write NUL file"
+git -C "$REPO" add README.md && git -C "$REPO" commit -q -m "add NUL file" || setup_fail "commit NUL file"
+check
+ok "a markdown file holding a NUL byte fails rather than passing with its links unread" 'failed && names "README.md" && names "NUL byte"'
+
 echo
 echo "cases: $cases  assertions passed: $pass  failed: $fail"
 [ "$fail" -eq 0 ] || exit 1
