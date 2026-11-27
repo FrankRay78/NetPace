@@ -156,16 +156,22 @@ public sealed partial class NetPaceConsoleTests
         [Fact]
         public async Task An_Operational_Fault_Outranks_A_FailOn_Trigger_And_A_Missed_Target()
         {
-            // Given a run that would trip --fail-on and miss its target, whose --file output
-            // cannot be written.
-            var service = new ScriptedSpeedTester { DownloadFactory = _ => ScriptedSpeedTester.AllFailed(150) };
+            // Given a test whose download already trips --fail-on and misses its target, and whose
+            // upload then meets an operational fault, so all three outcomes arise in one test.
+            const string diskFull = "There is not enough space on the disk.";
+            var service = new ScriptedSpeedTester
+            {
+                DownloadFactory = _ => ScriptedSpeedTester.AllFailed(150),
+                UploadFactory = _ => throw new IOException(diskFull),
+            };
             var host = HostWith(service);
 
             // When
-            var result = await host.RunAsync(["--file", UnusableFilePath(), "--fail-on", "total", "--min-download", "50Mbps"]);
+            var result = await host.RunAsync(["--simple", "--fail-on", "total", "--min-download", "50Mbps"]);
 
-            // Then the fault decides the code.
+            // Then the fault decides the code, and it is the fault that was reported.
             Assert.Equal(1, result.ExitCode);
+            Assert.Contains(diskFull, result.ErrorOutput);
         }
 
         [Fact]
