@@ -312,7 +312,7 @@ public sealed partial class NetPaceConsoleTests
 
             // Then the exit code reports that NetPace failed, not the network - the other half of
             // the split the speed test already follows, which no network outcome above reaches.
-            Assert.NotEqual(0, result.ExitCode);
+            Assert.Equal(1, result.ExitCode);
         }
 
         [Theory]

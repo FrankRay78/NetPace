@@ -19,13 +19,6 @@ namespace NetPace.Console;
 internal static class ThresholdCheck
 {
     /// <summary>
-    /// The exit code a run that missed a target reports: distinct from <c>0</c> and from the
-    /// <c>1</c> that means NetPace itself did not work, so a scheduler can tell a slow line from a
-    /// broken check.
-    /// </summary>
-    public const int MissedExitCode = 3;
-
-    /// <summary>
     /// The names the miss lines call the three measurements, matching what <c>--simple</c> output
     /// labels them, bar the latency, which that format still calls Ping.
     /// </summary>

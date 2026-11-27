@@ -5,7 +5,7 @@ namespace NetPace.Console.Commands;
 /// <summary>
 /// Settings for the SpeedTestCommand.
 /// </summary>
-public sealed class SpeedTestCommandSettings
+public sealed record SpeedTestCommandSettings
 {
     /// <summary>
     /// Performs the speed test on continuous loop.
@@ -71,9 +71,23 @@ public sealed class SpeedTestCommandSettings
     public required string ServerUrl { get; init; }
 
     /// <summary>
-    /// The servers listed in the file <c>--server-file</c> named, in the order the file gives them.
-    /// Empty only when no file was named: a file listing nothing is refused as it is read.
+    /// The path <c>--server-file</c> named, or an empty string when no file was named. What the
+    /// file holds is <see cref="ListedServers"/>.
     /// </summary>
+    public required string ServerFile { get; init; }
+
+    /// <summary>
+    /// The servers listed in the file <see cref="ServerFile"/> names, in the order the file gives
+    /// them. Empty where no file was named: a file listing nothing is refused as it is read.
+    /// </summary>
+    /// <remarks>
+    /// Set empty at construction and filled in after
+    /// <see cref="SpeedTestCommandSettingsExtensions.Validate"/> has passed: the command line is
+    /// checked before the file it names is opened, so a run that is both unusable and names an
+    /// unreadable file reports the usage error. Every check in <c>Validate</c> therefore reads
+    /// <see cref="ServerFile"/>, never this, and a caller that sets <see cref="ServerFile"/> and
+    /// leaves this empty tests against discovered servers rather than the listed ones.
+    /// </remarks>
     public required IReadOnlyList<IServer> ListedServers { get; init; }
 
     /// <summary>
@@ -200,7 +214,7 @@ public static class SpeedTestCommandSettingsExtensions
     /// <summary>
     /// Validate SpeedTestCommandSettings.
     /// </summary>
-    /// <returns>Throws an exception if validation fails.</returns>
+    /// <exception cref="UsageException">The command line cannot be run as given.</exception>
     public static void Validate(this SpeedTestCommandSettings settings)
     {
         // Exactly one output format may be selected. --json-pretty shapes the JSON format rather
@@ -218,27 +232,27 @@ public static class SpeedTestCommandSettingsExtensions
             if (settings.Minimal) switches.Add("--minimal");
             if (settings.Simple) switches.Add("--simple");
 
-            throw new ArgumentException($"Only one output format may be specified: {string.Join(", ", switches)}.");
+            throw new UsageException($"Only one output format may be specified: {string.Join(", ", switches)}.");
         }
 
         if (settings.NoLatency && settings.NoDownload && settings.NoUpload)
         {
-            throw new ArgumentException("No tests selected. At least one of --no-latency, --no-download, or --no-upload must be omitted.");
+            throw new UsageException("No tests selected. At least one of --no-latency, --no-download, or --no-upload must be omitted.");
         }
 
         // Refused rather than given a precedence, which would leave the user guessing which server the
         // figures came from. IsNullOrEmpty as selection uses, since a blank --server-url still routes there.
-        if (settings.ListedServers.Count > 0 && !string.IsNullOrEmpty(settings.ServerUrl))
+        if (!string.IsNullOrWhiteSpace(settings.ServerFile) && !string.IsNullOrEmpty(settings.ServerUrl))
         {
-            throw new ArgumentException("--server-file and --server-url both say which server to test, so only one of them can be given.");
+            throw new UsageException("--server-file and --server-url both say which server to test, so only one of them can be given.");
         }
 
         // A LibreSpeed server is always named, never discovered: LibreSpeed publishes no server
         // list to pick one from. Rejected here, before any test runs, so the user is told what is
         // missing rather than watching a run fail against nothing.
-        if (settings.Provider == Provider.LibreSpeed && string.IsNullOrWhiteSpace(settings.ServerUrl) && settings.ListedServers.Count == 0)
+        if (settings.Provider == Provider.LibreSpeed && string.IsNullOrWhiteSpace(settings.ServerUrl) && string.IsNullOrWhiteSpace(settings.ServerFile))
         {
-            throw new ArgumentException("A LibreSpeed server is needed: pass --server-url with the address LibreSpeed is installed at, such as --server-url http://pi.local:8080/, or --server-file with a file listing the servers to choose from.");
+            throw new UsageException("A LibreSpeed server is needed: pass --server-url with the address LibreSpeed is installed at, such as --server-url http://pi.local:8080/, or --server-file with a file listing the servers to choose from.");
         }
 
         // A target answers one question about one run, and a run that repeats has no single answer
@@ -248,24 +262,24 @@ public static class SpeedTestCommandSettingsExtensions
         // after a test they will not get an answer about.
         if (settings.HasThreshold && (settings.Loop || settings.Count > 1))
         {
-            throw new ArgumentException("A target checks a single run, so --min-download, --min-upload and --max-latency cannot be used with --loop or with --count above 1. Schedule repeated checks with cron, a systemd timer or Windows Task Scheduler.");
+            throw new UsageException("A target checks a single run, so --min-download, --min-upload and --max-latency cannot be used with --loop or with --count above 1. Schedule repeated checks with cron, a systemd timer or Windows Task Scheduler.");
         }
 
         // A target for a test the same run turns off can never be answered either way, so it is
         // refused rather than quietly passing or quietly failing.
         if (settings.MaximumLatency is not null && settings.NoLatency)
         {
-            throw new ArgumentException("--max-latency needs the latency test, so it cannot be used with --no-latency.");
+            throw new UsageException("--max-latency needs the latency test, so it cannot be used with --no-latency.");
         }
 
         if (settings.MinimumDownload is not null && settings.NoDownload)
         {
-            throw new ArgumentException("--min-download needs the download test, so it cannot be used with --no-download.");
+            throw new UsageException("--min-download needs the download test, so it cannot be used with --no-download.");
         }
 
         if (settings.MinimumUpload is not null && settings.NoUpload)
         {
-            throw new ArgumentException("--min-upload needs the upload test, so it cannot be used with --no-upload.");
+            throw new UsageException("--min-upload needs the upload test, so it cannot be used with --no-upload.");
         }
     }
 }

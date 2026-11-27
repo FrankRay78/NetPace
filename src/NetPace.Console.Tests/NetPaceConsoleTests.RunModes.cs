@@ -184,8 +184,9 @@ public sealed partial class NetPaceConsoleTests
             // When the run is asked for in this mode, under --fail-on.
             var result = await RunAsync(mode, service, TestsPerRun, "--fail-on", "Total");
 
-            // Then it stopped at that failure and exited 1: no later test reported a result.
-            Assert.Equal(1, result.ExitCode);
+            // Then it stopped at that failure and exited with the trigger's code: no later test
+            // reported a result.
+            Assert.Equal(4, result.ExitCode);
             Assert.Equal(1, Occurrences(result.ErrorOutput, ReportedBy(shape)));
             Assert.Equal(0, Occurrences(result.Output, ResultLine));
         }
@@ -208,8 +209,8 @@ public sealed partial class NetPaceConsoleTests
             // When the run is asked for in this mode, under that threshold.
             var result = await RunAsync(mode, service, TestsPerRun, "--fail-on", threshold);
 
-            // Then it stopped at the first triggering test and exited 1.
-            Assert.Equal(1, result.ExitCode);
+            // Then it stopped at the first triggering test and exited with the trigger's code.
+            Assert.Equal(4, result.ExitCode);
             Assert.Equal(1, Occurrences(result.Output, ResultLine));
         }
 
@@ -276,9 +277,9 @@ public sealed partial class NetPaceConsoleTests
             // When the run is asked for in this mode, under --fail-on.
             var result = await RunAsync(mode, service, TestsPerRun, "--fail-on", "Total");
 
-            // Then the failure is reported and the run exits 1.
+            // Then the failure is reported and the run exits with the trigger's code.
             Assert.Contains("Error:", result.ErrorOutput);
-            Assert.Equal(1, result.ExitCode);
+            Assert.Equal(4, result.ExitCode);
         }
 
         [Theory]

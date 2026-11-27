@@ -168,7 +168,7 @@ public sealed partial class NetPaceConsoleTests
 
             // Then it is refused naming the option, rather than exiting zero having written no
             // records and said nothing - the user asked for a file and would find none.
-            Assert.Equal(1, result.ExitCode);
+            Assert.Equal(2, result.ExitCode);
             Assert.Contains("--diagnostics-file", result.ErrorOutput, StringComparison.Ordinal);
         }
 

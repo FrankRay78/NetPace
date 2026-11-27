@@ -322,10 +322,10 @@ public sealed partial class NetPaceConsoleTests
             // When
             var result = await host.RunAsync(["--csv", "--server-file", file.Path]);
 
-            // Then nothing was contacted, the run exits non-zero, and the message names the file so
-            // the user knows which one to go and look at.
+            // Then nothing was contacted, the run exits 1 whichever way the file is malformed, and
+            // the message names the file so the user knows which one to go and look at.
             Assert.Empty(serviceCalls);
-            Assert.NotEqual(0, result.ExitCode);
+            Assert.Equal(1, result.ExitCode);
             Assert.Empty(result.Output);
             Assert.Contains(file.Path, result.ErrorOutput, StringComparison.Ordinal);
             Assert.Contains(cause, result.ErrorOutput, StringComparison.Ordinal);
@@ -524,10 +524,10 @@ public sealed partial class NetPaceConsoleTests
             // When
             var result = await host.RunAsync(["--csv", "--server-file", file.Path, "--server-url", serverUrl]);
 
-            // Then the run is refused before contacting anything, naming both options so the user
-            // knows which pair is in conflict.
+            // Then the run is refused before contacting anything as a usage error, naming both
+            // options so the user knows which pair is in conflict.
             Assert.Empty(serviceCalls);
-            Assert.NotEqual(0, result.ExitCode);
+            Assert.Equal(2, result.ExitCode);
             Assert.Contains("--server-file", result.ErrorOutput, StringComparison.Ordinal);
             Assert.Contains("--server-url", result.ErrorOutput, StringComparison.Ordinal);
         }

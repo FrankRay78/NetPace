@@ -22,7 +22,11 @@ public sealed partial class NetPaceConsoleTests
         /// </summary>
         private const int MissedExitCode = 3;
 
-        private static CommandLineTestHost StubHost() => GetCommandLineTestHost(StubServices());
+        /// <summary>
+        /// The exit code a refusal the command line alone decides reports, named here for the same
+        /// reason.
+        /// </summary>
+        private const int UsageExitCode = 2;
 
         private static CommandLineTestHost HostWith(ISpeedTestService service)
         {
@@ -125,7 +129,7 @@ public sealed partial class NetPaceConsoleTests
             var result = await host.RunAsync([option, value]);
 
             // Then it is refused as a usage error before anything is measured.
-            Assert.Equal(1, result.ExitCode);
+            Assert.Equal(UsageExitCode, result.ExitCode);
             Assert.Empty(serviceCalls);
             await Verify(result.ErrorOutput).UseParameters(option, value);
         }
@@ -152,7 +156,7 @@ public sealed partial class NetPaceConsoleTests
 
             // Then it is refused before anything is measured, and the user is told where repeated
             // checks belong.
-            Assert.Equal(1, result.ExitCode);
+            Assert.Equal(UsageExitCode, result.ExitCode);
             Assert.Empty(serviceCalls);
             await Verify(result.ErrorOutput).UseParameters(repeat);
         }
@@ -184,7 +188,7 @@ public sealed partial class NetPaceConsoleTests
             var result = await host.RunAsync([option, value, switchedOff]);
 
             // Then it is refused before anything is measured.
-            Assert.Equal(1, result.ExitCode);
+            Assert.Equal(UsageExitCode, result.ExitCode);
             Assert.Empty(serviceCalls);
             await Verify(result.ErrorOutput).UseParameters(option, value, switchedOff);
         }
@@ -303,7 +307,7 @@ public sealed partial class NetPaceConsoleTests
 
             // Then the value is read rather than refused: whether the run then met the target or
             // missed it, it was never a usage error.
-            Assert.NotEqual(1, result.ExitCode);
+            Assert.NotEqual(UsageExitCode, result.ExitCode);
         }
 
         [Fact]
@@ -451,7 +455,7 @@ public sealed partial class NetPaceConsoleTests
         }
 
         [Fact]
-        public async Task A_FailOn_Trigger_Exits_One_Even_When_A_Threshold_Was_Missed()
+        public async Task A_FailOn_Trigger_Exits_Four_Even_When_A_Threshold_Was_Missed()
         {
             // Given a download test whose every request failed, with both --fail-on and a target
             // that the zero figure misses.
@@ -461,9 +465,9 @@ public sealed partial class NetPaceConsoleTests
             // When
             var result = await host.RunAsync(["--simple", "--fail-on", "total", "--min-download", "50Mbps"]);
 
-            // Then --fail-on decides the exit code, as it does today, and the user still hears
-            // what the line fell short of.
-            Assert.Equal(1, result.ExitCode);
+            // Then --fail-on decides the exit code, with its own, and the user still hears what
+            // the line fell short of.
+            Assert.Equal(4, result.ExitCode);
             await Verify(result.NoticeOutput);
         }
 

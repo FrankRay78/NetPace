@@ -37,7 +37,7 @@ public sealed class ListServersCommand(IAnsiConsole console, ErrorOutput errorOu
             errorOutput.WriteLine(theme, e.Message);
         }
 
-        return 0;
+        return ExitCode.Success;
     }
 
     /// <summary>

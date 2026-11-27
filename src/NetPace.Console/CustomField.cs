@@ -82,7 +82,7 @@ public sealed record CustomField
     /// expected form before any test is performed; one reaching here has bypassed that validation,
     /// and is reported rather than silently left out.
     /// </remarks>
-    /// <exception cref="ArgumentException">
+    /// <exception cref="UsageException">
     /// An argument is not in the form <c>key=value</c>.
     /// </exception>
     public static IReadOnlyList<CustomField> ParseAll(IEnumerable<string>? arguments)
@@ -97,7 +97,7 @@ public sealed record CustomField
         {
             if (!TryParse(argument, out CustomField? field))
             {
-                throw new ArgumentException($"'{argument}' is not in the form {ExpectedForm}.", nameof(arguments));
+                throw new UsageException($"'{argument}' is not in the form {ExpectedForm}.");
             }
 
             fields.Add(field);

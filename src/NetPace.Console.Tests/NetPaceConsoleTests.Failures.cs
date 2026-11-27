@@ -78,7 +78,7 @@ public sealed partial class NetPaceConsoleTests
         }
 
         [Fact]
-        public async Task FailOn_Total_Exits_One_When_Every_Request_Failed_Despite_Delivering_Bytes()
+        public async Task FailOn_Total_Exits_Four_When_Every_Request_Failed_Despite_Delivering_Bytes()
         {
             // Given every upload request fails after delivering some data, so the figure is real
             // while the test is not.
@@ -90,13 +90,13 @@ public sealed partial class NetPaceConsoleTests
 
             // Then --fail-on still fails the run: it reads the request counts, not the figure, so a
             // speed beside zero successes does not mask a total failure.
-            Assert.Equal(1, result.ExitCode);
+            Assert.Equal(4, result.ExitCode);
         }
 
         [Theory]
         [InlineData("Total")]
         [InlineData("Partial")]
-        public async Task FailOn_Exits_One_When_The_Measurement_Never_Ran(string failOn)
+        public async Task FailOn_Exits_Four_When_The_Measurement_Never_Ran(string failOn)
         {
             // A measurement that never completed is worse than an all-failed one, so it has to
             // satisfy the stricter Partial threshold as well as Total.
@@ -112,7 +112,7 @@ public sealed partial class NetPaceConsoleTests
             var result = await host.RunAsync(["--fail-on", failOn]);
 
             // Then
-            Assert.Equal(1, result.ExitCode);
+            Assert.Equal(4, result.ExitCode);
         }
 
         [Fact]
@@ -243,7 +243,7 @@ public sealed partial class NetPaceConsoleTests
         }
 
         [Fact]
-        public async Task FailOn_Total_Exits_One_On_All_Failed_Test()
+        public async Task FailOn_Total_Exits_Four_On_All_Failed_Test()
         {
             // SCENARIO: --fail-on total opt-in
 
@@ -254,7 +254,7 @@ public sealed partial class NetPaceConsoleTests
             var result = await host.RunAsync(["--fail-on", "Total"]);
 
             // Then
-            Assert.Equal(1, result.ExitCode);
+            Assert.Equal(4, result.ExitCode);
         }
 
         [Theory]
@@ -262,7 +262,7 @@ public sealed partial class NetPaceConsoleTests
         [InlineData("--csv", true)]
         [InlineData("--json", false)]
         [InlineData("--json", true)]
-        public async Task FailOn_Total_Exits_One_On_All_Failed_Test_In_Machine_Formats(string format, bool downloadFails)
+        public async Task FailOn_Total_Exits_Four_On_All_Failed_Test_In_Machine_Formats(string format, bool downloadFails)
         {
             // --fail-on reads the outcome each writer returns, so a writer that drops a result
             // silently disables the exit-code policy for its own format. Every format has to trip
@@ -279,7 +279,7 @@ public sealed partial class NetPaceConsoleTests
             var result = await host.RunAsync([format, "--fail-on", "Total"]);
 
             // Then
-            Assert.Equal(1, result.ExitCode);
+            Assert.Equal(4, result.ExitCode);
         }
 
         [Fact]
@@ -298,7 +298,7 @@ public sealed partial class NetPaceConsoleTests
         }
 
         [Fact]
-        public async Task FailOn_Partial_Exits_One_When_Any_Request_Failed()
+        public async Task FailOn_Partial_Exits_Four_When_Any_Request_Failed()
         {
             // SCENARIO: --fail-on partial opt-in
 
@@ -309,7 +309,7 @@ public sealed partial class NetPaceConsoleTests
             var result = await host.RunAsync(["--fail-on", "Partial"]);
 
             // Then
-            Assert.Equal(1, result.ExitCode);
+            Assert.Equal(4, result.ExitCode);
         }
 
         [Fact]
@@ -340,7 +340,7 @@ public sealed partial class NetPaceConsoleTests
             var result = await host.RunAsync(["--quiet", "--fail-on", "Total"]);
 
             // Then
-            Assert.Equal(1, result.ExitCode);
+            Assert.Equal(4, result.ExitCode);
             Assert.Empty(result.Output);
         }
 
@@ -395,9 +395,9 @@ public sealed partial class NetPaceConsoleTests
             // When run with --count under --fail-on total.
             var result = await host.RunAsync(["--count", "5", "--fail-on", "Total", "--simple"]);
 
-            // Then it exits 1 at the first triggering measurement - the snapshot carries one
+            // Then it exits 4 at the first triggering measurement - the snapshot carries one
             // run's lines, not five runs'.
-            Assert.Equal(1, result.ExitCode);
+            Assert.Equal(4, result.ExitCode);
             await Verify(result.Output);
         }
 
@@ -417,7 +417,7 @@ public sealed partial class NetPaceConsoleTests
             var result = await host.RunAsync(["--count", "5", "--fail-on", "Total", "--simple"]);
 
             // Then the process stops at the first iteration rather than reporting all five.
-            Assert.Equal(1, result.ExitCode);
+            Assert.Equal(4, result.ExitCode);
             Assert.Equal(1, Occurrences(result.ErrorOutput, "No such host is known"));
         }
     }

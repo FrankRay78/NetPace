@@ -34,14 +34,15 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ErrorOutput errorOutp
     /// </summary>
     /// <remarks>
     /// Network and discovery outcomes are data, not errors: they are reported through the output
-    /// counts and leave the exit code at <c>0</c> unless the consumer opts in, with <c>--fail-on</c>
-    /// for <c>1</c> or with a <c>--min-download</c>, <c>--min-upload</c> or <c>--max-latency</c>
-    /// target for <see cref="ThresholdCheck.MissedExitCode"/>. Otherwise only operational failures
-    /// (which propagate out of this method to the top-level handler) produce a non-zero exit code.
+    /// counts and leave the exit code at <see cref="ExitCode.Success"/> unless the consumer opts
+    /// in, with <c>--fail-on</c> for <see cref="ExitCode.FailOnTriggered"/> or with a
+    /// <c>--min-download</c>, <c>--min-upload</c> or <c>--max-latency</c> target for
+    /// <see cref="ExitCode.MissedTarget"/>. Otherwise only operational failures (which propagate
+    /// out of this method to the top-level handler) produce a non-zero exit code.
     /// </remarks>
     public async Task<int> ExecuteAsync(SpeedTestCommandSettings settings, CancellationToken cancellationToken)
     {
-        var exitCode = 1;
+        int exitCode = ExitCode.OperationalFault;
 
         try
         {
@@ -52,7 +53,8 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ErrorOutput errorOutp
         {
             // Written after the last per-iteration flush, and from a finally because a run that
             // threw an operational fault is exactly when its diagnostics matter most. exitCode is
-            // 1 here when RunAsync threw, which matches what the top-level handler returns.
+            // the fault code here when RunAsync threw, which matches what the top-level handler
+            // returns for anything it does not recognise as a usage error.
             recorder.Record("run.end", ("exit", exitCode.ToString(CultureInfo.InvariantCulture)));
             FlushDiagnostics(settings);
         }
@@ -149,7 +151,7 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ErrorOutput errorOutp
                 catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
                 {
                     // User requested cancellation.
-                    return 0;
+                    return ExitCode.Success;
                 }
             }
 
@@ -173,13 +175,13 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ErrorOutput errorOutp
                 FlushDiagnostics(settings);
                 missedThreshold |= ReportMisses(outcome, settings);
 
-                if (FailOnTriggered(outcome, settings)) return 1;
+                if (FailOnTriggered(outcome, settings)) return ExitCode.FailOnTriggered;
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
                 // User requested cancellation. Nothing is reported about the targets: a run
                 // stopped part-way measured nothing to hold to them.
-                return 0;
+                return ExitCode.Success;
             }
             catch (Exception e) when (OperationalFault.Matches(e))
             {
@@ -211,7 +213,7 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ErrorOutput errorOutp
                 // see the line is not a check that passed.
                 missedThreshold |= ReportMisses(outcome: null, settings);
 
-                if (FailOnRequested(settings)) return 1;
+                if (FailOnRequested(settings)) return ExitCode.FailOnTriggered;
             }
 
             // Flushed per iteration so a long run reports as it goes and the buffer does
@@ -219,7 +221,7 @@ public sealed class SpeedTestCommand(IAnsiConsole console, ErrorOutput errorOutp
             FlushDiagnostics(settings);
         }
 
-        return missedThreshold ? ThresholdCheck.MissedExitCode : 0;
+        return missedThreshold ? ExitCode.MissedTarget : ExitCode.Success;
     }
 
     /// <summary>

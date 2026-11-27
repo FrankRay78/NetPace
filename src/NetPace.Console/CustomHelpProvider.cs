@@ -1,4 +1,6 @@
 using System.CommandLine;
+using System.Globalization;
+
 using NetPace.Console.Theming;
 
 namespace NetPace.Console;
@@ -43,6 +45,7 @@ internal static class CustomHelpProvider
         RenderOptions(console, command, theme);
         RenderSubcommands(console, command, theme);
         RenderEnvironment(console, theme);
+        RenderExitCodes(console, theme);
         RenderFooter(console, theme);
     }
 
@@ -294,6 +297,39 @@ internal static class CustomHelpProvider
             ("    ", Style.Plain),
             (EnvironmentThemeProvider.ThemeVariable, theme.OptionName),
             ($"  Colour theme to draw in. {Theme.NameList}", Style.Plain));
+        console.WriteLine();
+    }
+
+    /// <summary>
+    /// The code each kind of outcome exits with, and which one wins where more than one applies.
+    /// </summary>
+    /// <remarks>
+    /// Root help only, for the reason the environment section above is: a code is not a property of
+    /// one command. <c>netpace servers</c> returns a subset of these, so repeating the section on
+    /// its page would add nothing.
+    /// </remarks>
+    private static void RenderExitCodes(IAnsiConsole console, Theme theme)
+    {
+        (int Code, string Meaning)[] codes =
+        [
+            (ExitCode.Success, "Ran, and met every opt-in condition asked for."),
+            (ExitCode.OperationalFault, "Operational fault: NetPace could not do its job."),
+            (ExitCode.UsageError, "Usage error: the command line itself cannot be run."),
+            (ExitCode.MissedTarget, "A --min-download, --min-upload or --max-latency target was missed."),
+            (ExitCode.FailOnTriggered, "--fail-on was triggered by a failed measurement.")
+        ];
+
+        console.WriteLine("EXIT CODES:", theme.Heading);
+
+        foreach ((int code, string meaning) in codes)
+        {
+            console.WriteStyledLine(
+                ("    ", Style.Plain),
+                (code.ToString(CultureInfo.InvariantCulture), theme.OptionName),
+                ($"  {meaning}", Style.Plain));
+        }
+
+        console.WriteLine($"    Where more than one applies, the most serious wins: {ExitCode.UsageError} over {ExitCode.OperationalFault} over {ExitCode.FailOnTriggered} over {ExitCode.MissedTarget}.");
         console.WriteLine();
     }
 
